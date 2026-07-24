@@ -2,14 +2,17 @@
 // GET /api/v1/health/history/{date}. Artifact-backed list-query over dated
 // health/history snapshots with health-surfaces filters.
 
+import { z } from "zod";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  GetHealthHistoryInputSchema,
+  GetHealthHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-health-history.ts";
 
 const HEALTH_SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["health-surfaces"].sort_fields;
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
 
 export interface HealthHistoryMcpError extends Error {
   healthHistoryMcp: true;
@@ -194,85 +197,12 @@ export const GET_HEALTH_HISTORY_MCP_TOOL = {
     "classification; sort with sort + order; page with limit (1-1000) / cursor. " +
     "Use get_network_health for the live rollup and get_health_trends for the " +
     "7d/30d matrix. Mirrors GET /api/v1/health/history/{date}.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      date: {
-        type: "string",
-        description: "UTC snapshot date inclusive, YYYY-MM-DD.",
-        pattern: "^\\d{4}-\\d{2}-\\d{2}$",
-      },
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: QUERY_ENUMS.surfaceKind,
-        description: "Filter by surface kind.",
-      },
-      provider: {
-        type: "string",
-        description: "Filter by provider slug.",
-      },
-      status: {
-        type: "string",
-        enum: QUERY_ENUMS.healthStatus,
-        description: "Filter by probe status.",
-      },
-      classification: {
-        type: "string",
-        enum: QUERY_ENUMS.healthClassification,
-        description: "Filter by health classification.",
-      },
-      sort: {
-        type: "string",
-        enum: HEALTH_SURFACE_SORT_FIELDS,
-        description:
-          "Field to sort by (bare name only). Pair with order for direction.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of surface row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max surface rows to return (1-1000). Enables pagination.",
-        minimum: 1,
-        maximum: 1000,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["date"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetHealthHistoryInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-export const GET_HEALTH_HISTORY_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["date", "surfaces"],
-  properties: {
-    date: NULLABLE_STRING,
-    summary: { type: ["object", "null"] },
-    surfaces: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
-  },
-};
+export const GET_HEALTH_HISTORY_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetHealthHistoryOutputSchema,
+  { target: "draft-2020-12" },
+);

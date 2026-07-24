@@ -56,6 +56,70 @@ import {
 } from "../schemas-src/mcp-tools/get-subnet-stake-quote.ts";
 import { GetEconomicsInputSchema } from "../schemas-src/mcp-tools/get-economics.ts";
 import {
+  FindSubnetsByCapabilityInputSchema,
+  FindSubnetsByCapabilityOutputSchema,
+} from "../schemas-src/mcp-tools/find-subnets-by-capability.ts";
+import {
+  GetSubnetDetailInputSchema,
+  GetSubnetDetailOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-detail.ts";
+import {
+  GetSubnetSnapshotInputSchema,
+  GetSubnetSnapshotOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-snapshot.ts";
+import {
+  GetSubnetHealthInputSchema,
+  GetSubnetHealthOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health.ts";
+import {
+  GetSubnetHealthTrendsInputSchema,
+  GetSubnetHealthTrendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health-trends.ts";
+import {
+  GetHealthTrendsInputSchema,
+  GetHealthTrendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-health-trends.ts";
+import {
+  GetSubnetHealthPercentilesInputSchema,
+  GetSubnetHealthPercentilesOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health-percentiles.ts";
+import {
+  GetSubnetHealthIncidentsInputSchema,
+  GetSubnetHealthIncidentsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health-incidents.ts";
+import {
+  GetSubnetEconomicsInputSchema,
+  GetSubnetEconomicsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-economics.ts";
+import {
+  GetStakeActionPreviewInputSchema,
+  GetStakeActionPreviewOutputSchema,
+} from "../schemas-src/mcp-tools/get-stake-action-preview.ts";
+import {
+  GetSubnetTrajectoryInputSchema,
+  GetSubnetTrajectoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-trajectory.ts";
+import {
+  GetSubnetConcentrationInputSchema,
+  GetSubnetConcentrationOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-concentration.ts";
+import {
+  GetSubnetPerformanceInputSchema,
+  GetSubnetPerformanceOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-performance.ts";
+import {
+  GetSubnetIdleStakeInputSchema,
+  GetSubnetIdleStakeOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-idle-stake.ts";
+import {
+  GetSubnetMoversInputSchema,
+  GetSubnetMoversOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-movers.ts";
+import {
+  GetSubnetUptimeInputSchema,
+  GetSubnetUptimeOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-uptime.ts";
+import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,
   recordMcpInitializeEvent,
@@ -327,6 +391,7 @@ import {
   GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   loadHealthHistory,
 } from "./health-history-mcp.ts";
+import { GetHealthHistoryInputSchema } from "../schemas-src/mcp-tools/get-health-history.ts";
 import {
   buildChainConcentration,
   buildConcentration,
@@ -710,7 +775,7 @@ import {
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
-import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
+import { computeStakeQuote } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
@@ -2578,31 +2643,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "list_subnets: pass `cursor` to page past the first results; the response " +
       "carries `total` and a `next_cursor` (null at the end) so the whole " +
       "ranked match set is reachable.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        capability: {
-          type: "string",
-          description:
-            "Capability/category to match, e.g. 'inference', 'data', 'bitcoin'.",
-        },
-        cursor: {
-          type: "integer",
-          description:
-            "Pagination cursor from a prior response's next_cursor. Default 0.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max results per page (1-50, default 10).",
-          minimum: 1,
-          maximum: 50,
-        },
-      },
-      required: ["capability"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(FindSubnetsByCapabilityInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof FindSubnetsByCapabilityInputSchema>,
+      ctx: McpCtx,
+    ) {
       const capability = requireString(args, "capability");
       const staticCatalog = await loadArtifactData(
         ctx,
@@ -2680,15 +2727,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "view (profile + health + curation + gaps + counts); use this for the " +
       "raw structural record itself, or get_subnet_economics for economics " +
       "alone. Mirrors GET /api/v1/subnets/{netuid}.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetDetailInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetDetailInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const detail = await loadArtifactData(
         ctx,
@@ -2716,27 +2761,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "than drilling into just one facet (which the individual tools remain " +
       "better suited for, since each carries its own full parameter set this " +
       "compound view intentionally simplifies).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        top_validators_limit: {
-          type: "integer",
-          description:
-            "Max validators in the top-validators slice. Default 10.",
-          minimum: 1,
-        },
-        recent_events_limit: {
-          type: "integer",
-          description: "Max events in the recent-events slice. Default 10.",
-          minimum: 1,
-          maximum: 1000,
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetSnapshotInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetSnapshotInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const topValidatorsLimit =
         optionalPositiveInt(args, "top_validators_limit") ?? 10;
@@ -2816,7 +2847,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_HEALTH_HISTORY_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof GetHealthHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       try {
         return await loadHealthHistory(ctx, args, {
           readArtifact: loadArtifactData as AnyFn,
@@ -2836,15 +2870,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description:
       "Fetch live operational health for one subnet's surfaces (probed every " +
       "~15 minutes): per-surface status, latency, and last-ok timestamps.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHealthInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHealthInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const [live, reliability] = await Promise.all([
         mcpLiveHealth(ctx),
@@ -2875,15 +2907,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "latency per surface for each window. Use it to see whether a surface is " +
       "regressing or recovering, where get_subnet_health only gives current " +
       "status. Mirrors GET /api/v1/subnets/{netuid}/health/trends.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHealthTrendsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHealthTrendsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -2907,12 +2937,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "latency, sample counts) for sparklines and cross-subnet sorting. Use " +
       "get_subnet_health_trends for one subnet's per-surface breakdown. " +
       "Mirrors GET /api/v1/health/trends.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
-    async handler(_args: unknown, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetHealthTrendsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      _args: z.infer<typeof GetHealthTrendsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const postgres = await tryPostgresTier(
         ctx.env,
         mcpNeuronsTierRequest("/api/v1/health/trends"),
@@ -2935,20 +2966,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "to see a surface's latency distribution and tail behavior, where " +
       "get_subnet_health_trends gives the uptime+latency trend and get_subnet_health " +
       "the current status. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Lookback window (default 7d).",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHealthPercentilesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHealthPercentilesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
@@ -2983,20 +3007,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "and how long a surface was actually down, where get_subnet_health_trends " +
       "gives the uptime trend and get_subnet_health_percentiles the latency " +
       "distribution. Mirrors GET /api/v1/subnets/{netuid}/health/incidents.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Lookback window (default 7d).",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHealthIncidentsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHealthIncidentsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
@@ -3028,15 +3045,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "share, and pool reserves. Served live from the economics tier " +
       "(refreshed ~3h), falling back to the latest committed snapshot. Use it " +
       "to decide whether (and where) to register, mine, or validate.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetEconomicsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetEconomicsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
     },
@@ -3093,77 +3108,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "artifact, and never touches a wallet or key. Submitting a stake requires " +
       "a separate signed extrinsic outside this tool. Use it to explain a " +
       "prospective stake's outcome to a user, not to act on-chain.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        amount: {
-          type: "number",
-          description:
-            "Amount to preview, in TAO for direction=stake or alpha for " +
-            "direction=unstake. Must be a finite number greater than 0.",
-          exclusiveMinimum: 0,
-        },
-        direction: {
-          type: "string",
-          enum: STAKE_QUOTE_DIRECTIONS,
-          description: 'Action direction: stake or unstake (default "stake").',
-        },
-      },
-      required: ["netuid", "amount"],
-      additionalProperties: false,
-    },
-    outputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer" },
-        direction: { type: "string" },
-        amount: { type: "number" },
-        summary: {
-          type: "string",
-          description: "Human-readable one-line preview of the action.",
-        },
-        estimated_out: {
-          type: "object",
-          properties: {
-            amount: { type: "number" },
-            unit: { type: "string" },
-          },
-          required: ["amount", "unit"],
-          additionalProperties: false,
-        },
-        spot_price_tao: { type: "number" },
-        effective_price_tao: { type: "number" },
-        price_impact_pct: { type: "number" },
-        warnings: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Plan-shaped, non-fatal cautions computed from the preview (e.g. " +
-            "high price impact / slippage). Empty array when none apply, never " +
-            "null or omitted.",
-        },
-        ok: {
-          type: "boolean",
-          description:
-            "Plan-style policy-compliance flag: false when a documented safety " +
-            "threshold is exceeded (estimated price impact >= 5%), true " +
-            "otherwise. Purely advisory — the tool still executes nothing.",
-        },
-        disclaimer: { type: "string" },
-      },
-      required: [
-        "netuid",
-        "direction",
-        "amount",
-        "summary",
-        "warnings",
-        "ok",
-        "disclaimer",
-      ],
-      additionalProperties: true,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetStakeActionPreviewInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(GetStakeActionPreviewOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetStakeActionPreviewInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
@@ -3234,15 +3188,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "total stake, alpha price, and emission share over time, plus 7d/30d " +
       "deltas. Use it to see whether a subnet is growing or contracting before " +
       "committing resources.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetTrajectoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetTrajectoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3302,15 +3254,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "per-UID, per-entity (coldkey-collapsed), and validator-only distributions. " +
       "Use it to see whether a subnet is broadly distributed or captured by a few " +
       "large holders. Mirrors GET /api/v1/subnets/{netuid}/concentration.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetConcentrationInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetConcentrationInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3333,15 +3283,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(which measures stake/emission): use it to see whether a subnet's emissions " +
       "are broadly earned or captured by a few UIDs. Mirrors GET " +
       "/api/v1/subnets/{netuid}/performance.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetPerformanceInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetPerformanceInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3362,15 +3310,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "this covers both a hotkey with no validator permit and a permitted hotkey " +
       "whose weight-setting output is currently zero — both pay every delegator " +
       "nothing right now. Mirrors GET /api/v1/subnets/{netuid}/idle-stake.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetIdleStakeInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetIdleStakeInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -4891,29 +4837,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "neuron_daily snapshots. Sort by stake (default), emission, or " +
       "validators; cap with limit (1-100, default 20). Mirrors " +
       "GET /api/v1/subnets/movers.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: MOVERS_WINDOW_KEYS,
-          description: `Comparison window (default ${DEFAULT_MOVERS_WINDOW}).`,
-        },
-        sort: {
-          type: "string",
-          enum: MOVERS_SORTS,
-          description: `Rank metric (default ${DEFAULT_MOVERS_SORT}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max movers to return (1-${MOVERS_LIMIT_MAX}, default ${MOVERS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: MOVERS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetMoversInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetMoversInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
       if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
         throw toolError(
@@ -4963,26 +4893,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "requested window (90d or 1y). ?min_samples drops low-sample day rows " +
       "(daily probe count below the threshold, incl. zero-sample 'unknown' days). " +
       "Mirrors GET /api/v1/subnets/{netuid}/uptime.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        window: {
-          type: "string",
-          enum: ["90d", "1y"],
-          description: "History window (default 90d).",
-        },
-        min_samples: {
-          type: "integer",
-          minimum: 0,
-          description:
-            "Drop day rows whose daily probe count is below this threshold.",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetUptimeInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetUptimeInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const window = parseUptimeWindow(args?.window);
       if (args?.window !== undefined && window === null) {
@@ -11828,183 +11745,39 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_subnets: z.toJSONSchema(ListSubnetsOutputSchema, {
     target: "draft-2020-12",
   }),
-  find_subnets_by_capability: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "capability",
-      "total",
-      "count",
-      "cursor",
-      "limit",
-      "next_cursor",
-      "results",
-    ],
-    properties: {
-      capability: { type: "string" },
-      total: { type: "integer" },
-      count: { type: "integer" },
-      cursor: { type: "integer" },
-      limit: { type: "integer" },
-      next_cursor: { type: ["integer", "null"] },
-      results: objectItems({
-        netuid: { type: "integer" },
-        slug: { type: "string" },
-        name: NULLABLE_STRING,
-        categories: { type: "array" },
-        service_kinds: { type: "array" },
-        callable_count: { type: "integer" },
-        integration_readiness: ANY,
-      }),
-    },
-  },
+  find_subnets_by_capability: z.toJSONSchema(
+    FindSubnetsByCapabilityOutputSchema,
+    { target: "draft-2020-12" },
+  ),
   get_subnet: z.toJSONSchema(GetSubnetOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_subnet_detail: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet"],
-    properties: {
-      schema_version: { type: "integer" },
-      generated_at: NULLABLE_STRING,
-      subnet: { type: "object" },
-      candidate_surfaces: { type: "array" },
-      candidates: { type: "array" },
-      endpoints: { type: "array" },
-      gaps: ANY,
-      surfaces: { type: "array" },
-      verified_surfaces: { type: "array" },
-      economics: { type: ["object", "null"] },
-    },
-  },
-  get_subnet_snapshot: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "netuid",
-      "hyperparameters",
-      "concentration",
-      "performance",
-      "top_validators",
-      "recent_events",
-    ],
-    properties: {
-      netuid: { type: "integer" },
-      hyperparameters: { type: "object" },
-      concentration: { type: "object" },
-      performance: { type: "object" },
-      top_validators: { type: "object" },
-      recent_events: { type: "object" },
-    },
-  },
-  get_subnet_health: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "summary", "surfaces"],
-    properties: {
-      netuid: { type: "integer" },
-      summary: { type: "object" },
-      operational_observed_at: NULLABLE_STRING,
-      surfaces: objectItems({
-        surface_id: { type: "string" },
-        netuid: { type: "integer" },
-        kind: NULLABLE_STRING,
-        status: { type: "string" },
-        latency_ms: NULLABLE_INT,
-        last_checked: NULLABLE_STRING,
-        last_ok: NULLABLE_STRING,
-      }),
-    },
-  },
-  get_subnet_health_trends: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "windows"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      observed_at: NULLABLE_STRING,
-      source: NULLABLE_STRING,
-      windows: { type: "object" },
-    },
-  },
-  get_health_trends: {
-    type: "object",
-    additionalProperties: true,
-    required: ["windows"],
-    properties: {
-      schema_version: { type: "integer" },
-      observed_at: NULLABLE_STRING,
-      source: NULLABLE_STRING,
-      windows: { type: "object" },
-    },
-  },
-  get_subnet_health_percentiles: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "surfaces"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      source: NULLABLE_STRING,
-      surfaces: objectItems({
-        surface_id: NULLABLE_STRING,
-        samples: { type: "integer" },
-        latency_ms: {
-          type: "object",
-          additionalProperties: true,
-          properties: {
-            p50: NULLABLE_INT,
-            p95: NULLABLE_INT,
-            p99: NULLABLE_INT,
-            avg: NULLABLE_INT,
-            min: NULLABLE_INT,
-            max: NULLABLE_INT,
-          },
-        },
-      }),
-    },
-  },
-  get_subnet_health_incidents: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "surfaces"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      source: NULLABLE_STRING,
-      surfaces: objectItems({
-        surface_id: NULLABLE_STRING,
-        samples: { type: "integer" },
-        uptime_ratio: { type: ["number", "null"] },
-        incident_count: { type: "integer" },
-        downtime_ms: { type: "integer" },
-        incidents: objectItems({
-          started_at: NULLABLE_INT,
-          ended_at: NULLABLE_INT,
-          duration_ms: NULLABLE_INT,
-          failed_samples: { type: "integer" },
-        }),
-      }),
-    },
-  },
-  get_subnet_economics: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "economics"],
-    properties: {
-      netuid: { type: "integer" },
-      source: NULLABLE_STRING,
-      captured_at: NULLABLE_STRING,
-      summary: { type: ["object", "null"] },
-      economics: { type: ["object", "null"] },
-    },
-  },
+  get_subnet_detail: z.toJSONSchema(GetSubnetDetailOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_snapshot: z.toJSONSchema(GetSubnetSnapshotOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_health: z.toJSONSchema(GetSubnetHealthOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_health_trends: z.toJSONSchema(GetSubnetHealthTrendsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_health_trends: z.toJSONSchema(GetHealthTrendsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_health_percentiles: z.toJSONSchema(
+    GetSubnetHealthPercentilesOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_subnet_health_incidents: z.toJSONSchema(
+    GetSubnetHealthIncidentsOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_subnet_economics: z.toJSONSchema(GetSubnetEconomicsOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_subnet_stake_quote: z.toJSONSchema(GetSubnetStakeQuoteOutputSchema, {
     target: "draft-2020-12",
   }),
@@ -12013,18 +11786,9 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_profiles: LIST_PROFILES_OUTPUT_SCHEMA,
   get_subnet_profile: GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
   get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
-  get_subnet_trajectory: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "point_count", "points"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      point_count: { type: "integer" },
-      points: { type: "array", items: { type: "object" } },
-      deltas: { type: "object" },
-    },
-  },
+  get_subnet_trajectory: z.toJSONSchema(GetSubnetTrajectoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_economics_trends: {
     type: "object",
     additionalProperties: true,
@@ -12045,55 +11809,15 @@ const TOOL_OUTPUT_SCHEMAS = {
       }),
     },
   },
-  get_subnet_concentration: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "neuron_count"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      neuron_count: { type: "integer" },
-      entity_count: { type: "integer" },
-      uids_per_entity: { type: ["number", "null"] },
-      captured_at: NULLABLE_STRING,
-      stake: { type: ["object", "null"] },
-      emission: { type: ["object", "null"] },
-      entity_stake: { type: ["object", "null"] },
-      entity_emission: { type: ["object", "null"] },
-      validator_stake: { type: ["object", "null"] },
-    },
-  },
-  get_subnet_performance: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "neuron_count"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      neuron_count: { type: "integer" },
-      validator_count: { type: "integer" },
-      active_count: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      incentive: { type: ["object", "null"] },
-      dividends: { type: ["object", "null"] },
-      trust: { type: ["object", "null"] },
-      consensus: { type: ["object", "null"] },
-      validator_trust: { type: ["object", "null"] },
-    },
-  },
-  get_subnet_idle_stake: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "neuron_count", "idle_neuron_count", "idle_stake_tao"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      neuron_count: { type: "integer" },
-      idle_neuron_count: { type: "integer" },
-      idle_stake_tao: { type: "number" },
-    },
-  },
+  get_subnet_concentration: z.toJSONSchema(GetSubnetConcentrationOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_performance: z.toJSONSchema(GetSubnetPerformanceOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_idle_stake: z.toJSONSchema(GetSubnetIdleStakeOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_chain_concentration: {
     type: "object",
     additionalProperties: true,
@@ -13285,36 +13009,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       points: { type: "array", items: { type: "object" } },
     },
   },
-  get_subnet_movers: {
-    type: "object",
-    additionalProperties: true,
-    required: ["window", "sort", "subnet_count", "movers"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      start_date: NULLABLE_STRING,
-      end_date: NULLABLE_STRING,
-      sort: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      movers: objectItems({
-        netuid: { type: "integer" },
-        stake_start_tao: ANY,
-        stake_end_tao: ANY,
-        stake_delta_tao: ANY,
-        stake_pct_change: { type: ["number", "null"] },
-        emission_start_tao: ANY,
-        emission_end_tao: ANY,
-        emission_delta_tao: ANY,
-        emission_pct_change: { type: ["number", "null"] },
-        validators_start: { type: "integer" },
-        validators_end: { type: "integer" },
-        validators_delta: { type: "integer" },
-        neurons_start: { type: "integer" },
-        neurons_end: { type: "integer" },
-        neurons_delta: { type: "integer" },
-      }),
-    },
-  },
+  get_subnet_movers: z.toJSONSchema(GetSubnetMoversOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_subnet_turnover: {
     type: "object",
     additionalProperties: true,
@@ -13359,19 +13056,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       },
     },
   },
-  get_subnet_uptime: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "window", "surfaces"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      surfaces: { type: "array", items: { type: "object" } },
-      reliability: { type: ["object", "null"] },
-    },
-  },
+  get_subnet_uptime: z.toJSONSchema(GetSubnetUptimeOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_registry_leaderboards: {
     type: "object",
     additionalProperties: true,
