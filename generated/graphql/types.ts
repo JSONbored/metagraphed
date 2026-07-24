@@ -2420,7 +2420,7 @@ export type Query = {
   blocks_summary: BlocksSummary;
   /** The generated build summary: artifact inventory counts and sizes, subnet/provider/surface totals, coverage rollup, and publish metadata. Resolves to a GraphQL error (not null) when the build-summary artifact has not been baked in this environment, matching the REST route's 404 and the get_build MCP tool. Mirrors GET /api/v1/build. */
   build: BuildSummary;
-  /** The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor, exactly like the REST route. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates. */
+  /** The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state/id/confidence, sort with sort + order, and page with limit (1-1000) / cursor, exactly like the REST route — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the candidates rows, as opaque JSON. A cold/absent artifact is a GraphQL error (matching REST/MCP not_found). Mirrors GET /api/v1/candidates. */
   candidates?: Maybe<Scalars['JSON']['output']>;
   /** Per-UTC-day network activity series over a 7d/30d window (default 7d): each UTC day's block count, extrinsic count (with its successful-extrinsic count and success rate), on-chain event count, and distinct signer count, newest day first. Computed live from the extrinsics/blocks tiers; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/activity. */
   chain_activity: ChainActivity;
@@ -2924,11 +2924,15 @@ export type QueryBlocksArgs = {
 
 
 export type QueryCandidatesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
+  confidence?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
   state?: InputMaybe<Scalars['String']['input']>;
 };
 

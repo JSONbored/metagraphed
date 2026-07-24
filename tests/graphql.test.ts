@@ -8471,69 +8471,95 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
 
 describe("graphql — candidates / fixtures / agent_catalog / freshness / top_holders (#6991)", () => {
   const CANDIDATES = {
+    generated_at: "2026-07-01T00:00:00.000Z",
     candidates: [
-      { id: "c1", netuid: 1, kind: "docs", provider: "acme", state: "new" },
-      { id: "c2", netuid: 2, kind: "api", provider: "beta", state: "verified" },
+      {
+        id: "c1",
+        netuid: 1,
+        kind: "docs",
+        provider: "acme",
+        state: "schema-valid",
+        confidence: "low",
+      },
+      {
+        id: "c2",
+        netuid: 2,
+        kind: "openapi",
+        provider: "beta",
+        state: "verified",
+        confidence: "high",
+      },
     ],
   };
 
-  test("candidates resolves the ledger with total and next_cursor", async () => {
+  test("candidates resolves the ledger with the REST pagination envelope", async () => {
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
     const { status, body } = await gql("{ candidates }", env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.candidates.total, 2);
-    assert.equal(body.data.candidates.items.length, 2);
+    assert.equal(body.data.candidates.candidates.length, 2);
+    assert.equal(body.data.candidates.generated_at, "2026-07-01T00:00:00.000Z");
   });
 
   test("candidates applies the netuid/kind/provider/state filters", async () => {
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
     const { body } = await gql(
-      '{ candidates(netuid: 2, kind: "api", provider: "beta", state: "verified") }',
+      '{ candidates(netuid: 2, kind: "openapi", provider: "beta", state: "verified") }',
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.equal(body.data.candidates.total, 1);
-    assert.equal(body.data.candidates.items[0].id, "c2");
+    assert.equal(body.data.candidates.candidates[0].id, "c2");
   });
 
-  test("candidates keys the cursor off `key` when a row has no id", async () => {
-    const env = fixtureEnv({
-      "/metagraph/candidates.json": {
-        candidates: [
-          {
-            key: "k1",
-            netuid: 1,
-            kind: "docs",
-            provider: "acme",
-            state: "new",
-          },
-          { key: "k2", netuid: 2, kind: "api", provider: "beta", state: "new" },
-        ],
-      },
-    });
-    const { body } = await gql("{ candidates(limit: 1) }", env);
+  test("candidates filters by id (#7871)", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(id: "c1") }', env);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.candidates.next_cursor, "k1");
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.candidates[0].id, "c1");
+  });
+
+  test("candidates filters by confidence (#7871)", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(confidence: "high") }', env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.candidates[0].id, "c2");
+  });
+
+  test("candidates sorts with sort + order (#7871)", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql(
+      '{ candidates(sort: "netuid", order: "desc") }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.candidates[0].id, "c2");
+    assert.equal(body.data.candidates.candidates[1].id, "c1");
   });
 
   test("candidates pages with limit and hands back a next_cursor", async () => {
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
     const { body } = await gql("{ candidates(limit: 1) }", env);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.candidates.items.length, 1);
+    assert.equal(body.data.candidates.candidates.length, 1);
     assert.equal(body.data.candidates.total, 2);
-    assert.equal(body.data.candidates.next_cursor, "c1");
+    assert.equal(body.data.candidates.returned, 1);
+    assert.ok(body.data.candidates.next_cursor != null);
   });
 
-  test("candidates resolves an empty ledger when the artifact is cold", async () => {
-    const { body } = await gql("{ candidates }");
-    assert.equal(body.errors, undefined);
-    assert.deepEqual(body.data.candidates, {
-      items: [],
-      total: 0,
-      next_cursor: null,
-    });
+  test("candidates surfaces an invalid sort as a GraphQL error (#7871)", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(sort: "bogus") }', env);
+    assert.ok(body.errors?.length);
+  });
+
+  test("candidates surfaces a cold/missing artifact as a GraphQL error", async () => {
+    const { body } = await gql("{ candidates }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data.candidates, null);
   });
 
   test("fixtures resolves the baked fixture index", async () => {

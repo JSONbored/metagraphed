@@ -66,6 +66,10 @@ import { loadProvidersList } from "./providers-mcp.ts";
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
 import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.ts";
+// #7871: GraphQL parity for GET /api/v1/candidates' id/confidence/sort/order
+// filters, reusing loadCandidatesList that MCP list_candidates already calls --
+// not a reimplementation.
+import { loadCandidatesList } from "./candidates-mcp.ts";
 import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
 import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
 import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.ts";
@@ -1679,26 +1683,13 @@ const rootValue = {
   // #6991: five registry-meta routes that had an MCP tool but no GraphQL
   // field. Each reads the same baked artifact (and applies the same overlay /
   // builder) its MCP tool does, so REST, MCP, and GraphQL can't drift.
-  async candidates(
-    { netuid, kind, provider, state, limit, cursor }: Row,
-    context: GqlContext,
-  ) {
-    const data = await loadArtifact(context, "/metagraph/candidates.json");
-    const all = Array.isArray(data?.candidates) ? data.candidates : [];
-    const filtered = all.filter(
-      (c: Row) =>
-        (netuid == null || c.netuid === netuid) &&
-        (kind == null || c.kind === kind) &&
-        (provider == null || c.provider === provider) &&
-        (state == null || c.state === state),
-    );
-    const { page, total, nextCursor } = paginate(
-      filtered,
-      limit,
-      cursor,
-      (c: Row) => c.id ?? c.key,
-    );
-    return { items: page, total, next_cursor: nextCursor };
+  // #7871: reuse list_candidates' own loader unchanged so REST, MCP, and
+  // GraphQL share one filter/sort/page contract -- id/confidence/sort/order now
+  // included, matching GET /api/v1/candidates. An invalid filter/sort value or a
+  // cold/absent artifact throws, becoming a GraphQL error (matching the sibling
+  // gaps / subnet_candidates convention), rather than a silent default.
+  candidates(args: Row, context: GqlContext) {
+    return loadCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
   fixtures(_args: unknown, context: GqlContext) {
