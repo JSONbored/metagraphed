@@ -64,6 +64,15 @@ const DESIGN_RULES = [
     message:
       "Use <ExternalLink> (./external-link) — it sets rel=noreferrer, the external-icon, and safeExternalUrl filtering automatically.",
   },
+  {
+    // #7840: the 13 raw shadow-[…] values found across both packages
+    // collapsed into a named --mg-shadow-* elevation scale (styles.css).
+    // Negative-lookahead excludes the token-referencing form itself
+    // (shadow-[var(--mg-shadow-…)]) so the rule doesn't flag the fix.
+    selector: "Literal[value=/\\bshadow-\\[(?!var\\(--mg-shadow)/]",
+    message:
+      "Raw shadow value. Use one of the --mg-shadow-* elevation tokens (see styles.css).",
+  },
 ];
 
 // SSR footguns -- see apps/ui/docs/ssr-safety.md. ui-kit's own components

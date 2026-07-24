@@ -105,6 +105,17 @@ const SPACING_TYPE_RULES = [
   },
 ];
 
+// #7840: the 13 raw shadow-[…] values found across both packages collapsed
+// into a named --mg-shadow-* elevation scale (packages/ui-kit/src/styles.css).
+// Negative-lookahead excludes the token-referencing form itself
+// (shadow-[var(--mg-shadow-…)]) so the rule doesn't flag the fix.
+const ELEVATION_RULES = [
+  {
+    selector: "Literal[value=/\\bshadow-\\[(?!var\\(--mg-shadow)/]",
+    message: "Raw shadow value. Use one of the --mg-shadow-* elevation tokens (see styles.css).",
+  },
+];
+
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see
   // source.config.ts) -- codegen, not authored code, same treatment as dist.
@@ -172,6 +183,7 @@ export default tseslint.config(
         ...SPACING_TYPE_RULES,
         ...PRIMITIVE_STEER_RULES,
         ...SSR_SAFETY_RULES,
+        ...ELEVATION_RULES,
       ],
     },
   },

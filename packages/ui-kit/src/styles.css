@@ -330,6 +330,31 @@
   }
 }
 
+/* ============================================================
+ * Elevation tokens (#7840) — the 8 distinct raw shadow-[…] values
+ * found across apps/ui + ui-kit collapsed into a named scale, so
+ * new shadows reach for one of these instead of inventing another
+ * bespoke recipe. color-mix(in oklab, var(--ink-strong) …) tracks
+ * the active theme automatically; two of the values converted here
+ * previously used a hard-coded rgba(15,23,42,…) that did NOT adapt
+ * in dark mode (account-history-chart.tsx's pill toggle) — this is
+ * a small visual fix alongside the token move, not just a rename.
+ * ============================================================ */
+:root {
+  --mg-shadow-hairline: 0 1px 0 0 var(--border);
+  --mg-shadow-hairline-inset: inset 0 -1px 0 var(--border);
+  --mg-shadow-pop: 0 8px 24px -12px
+    color-mix(in oklab, var(--ink-strong) 35%, transparent);
+  --mg-shadow-drawer: 0 -8px 32px -12px
+    color-mix(in oklab, var(--ink-strong) 35%, transparent);
+  --mg-shadow-pill: 0 18px 50px -44px
+    color-mix(in oklab, var(--ink-strong) 45%, transparent);
+  --mg-shadow-pill-active: 0 12px 30px -24px
+    color-mix(in oklab, var(--ink-strong) 85%, transparent);
+  --mg-shadow-ring-accent: 0 0 0 1px
+    color-mix(in oklab, var(--accent) 25%, transparent);
+}
+
 /* ============ DARK — Ink + dialed mint ============ */
 .dark {
   --paper: oklch(0.14 0.003 250);

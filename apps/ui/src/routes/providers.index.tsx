@@ -586,7 +586,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                   params={{ slug: p.slug }}
                   className={classNames(
                     "group block rounded-lg border border-border bg-card p-4 transition-colors",
-                    "hover:border-accent/60 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent)_25%,transparent)]",
+                    "hover:border-accent/60 hover:shadow-[var(--mg-shadow-ring-accent)]",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">

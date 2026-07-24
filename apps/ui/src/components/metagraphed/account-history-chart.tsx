@@ -168,14 +168,14 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
       {availableNetuids.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="mg-type-micro text-ink-muted">scope</span>
-          <div className="inline-flex flex-wrap rounded-full border border-border/80 bg-card/80 p-1 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.45)]">
+          <div className="inline-flex flex-wrap rounded-full border border-border/80 bg-card/80 p-1 shadow-[var(--mg-shadow-pill)]">
             <button
               type="button"
               onClick={() => setScope("all")}
               className={classNames(
                 "rounded-full px-3 py-1.5 mg-type-label uppercase transition-colors",
                 scope === "all"
-                  ? "bg-ink-strong text-paper shadow-[0_12px_30px_-24px_rgba(15,23,42,0.85)]"
+                  ? "bg-ink-strong text-paper shadow-[var(--mg-shadow-pill-active)]"
                   : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -189,7 +189,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
                 className={classNames(
                   "rounded-full px-3 py-1.5 mg-type-label uppercase transition-colors",
                   scope === netuid
-                    ? "bg-ink-strong text-paper shadow-[0_12px_30px_-24px_rgba(15,23,42,0.85)]"
+                    ? "bg-ink-strong text-paper shadow-[var(--mg-shadow-pill-active)]"
                     : "text-ink-muted hover:text-ink-strong",
                 )}
               >

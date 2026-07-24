@@ -66,7 +66,7 @@ export function BackToTop({ threshold = 600 }: { threshold?: number }) {
         "fixed z-40 bottom-5 right-5 md:bottom-7 md:right-7",
         "inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur",
         "px-3 py-2 mg-type-label uppercase text-ink-strong",
-        "shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] hover:border-accent/60 hover:text-accent",
+        "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",
         "transition-[opacity,transform,border-color,color] duration-200",
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"

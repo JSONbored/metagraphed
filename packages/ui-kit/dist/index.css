@@ -170,6 +170,15 @@
     animation: none !important;
   }
 }
+:root {
+  --mg-shadow-hairline: 0 1px 0 0 var(--border);
+  --mg-shadow-hairline-inset: inset 0 -1px 0 var(--border);
+  --mg-shadow-pop: 0 8px 24px -12px color-mix(in oklab, var(--ink-strong) 35%, transparent);
+  --mg-shadow-drawer: 0 -8px 32px -12px color-mix(in oklab, var(--ink-strong) 35%, transparent);
+  --mg-shadow-pill: 0 18px 50px -44px color-mix(in oklab, var(--ink-strong) 45%, transparent);
+  --mg-shadow-pill-active: 0 12px 30px -24px color-mix(in oklab, var(--ink-strong) 85%, transparent);
+  --mg-shadow-ring-accent: 0 0 0 1px color-mix(in oklab, var(--accent) 25%, transparent);
+}
 .dark {
   --paper: oklch(0.14 0.003 250);
   --surface: oklch(0.175 0.003 250);

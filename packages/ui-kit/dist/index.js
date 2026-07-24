@@ -658,7 +658,7 @@ function BackToTop({ threshold = 600 }) {
         "fixed z-40 bottom-5 right-5 md:bottom-7 md:right-7",
         "inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur",
         "px-3 py-2 mg-type-label uppercase text-ink-strong",
-        "shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] hover:border-accent/60 hover:text-accent",
+        "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",
         "transition-[opacity,transform,border-color,color] duration-200",
         visible ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"
       ),
@@ -1821,7 +1821,7 @@ function Kbd({
     "kbd",
     {
       className: classNames(
-        "inline-flex items-center justify-center rounded border border-border bg-paper px-1.5 min-w-[1.25rem] h-5 font-mono text-[10px] text-ink-muted shadow-[inset_0_-1px_0_var(--border)]",
+        "inline-flex items-center justify-center rounded border border-border bg-paper px-1.5 min-w-[1.25rem] h-5 font-mono text-[10px] text-ink-muted shadow-[var(--mg-shadow-hairline-inset)]",
         className
       ),
       children
