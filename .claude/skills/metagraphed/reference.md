@@ -323,7 +323,10 @@ fails the PR on its own). No local paths, env dumps, or private notes.
   types-epic A plus their necessary sub-components — `SubnetsArtifact`, `SubnetIndexEntry`,
   `SubnetDetailArtifact`, `Surface`, `CandidateSurface`, `EndpointResource`, `Gaps`,
   `CurationMetadata`, `PartnershipMetadata`, `EconomicsArtifact`, `HealthSummaryArtifact`,
-  `HealthSubnetSummary`, `SubnetStakeQuoteArtifact`), the hand-edited `schemas/components/*.schema.json`
+  `HealthSubnetSummary`, `SubnetStakeQuoteArtifact`, plus the 13 enum/sub-shape leaves those reference —
+  `SurfaceKind`, `SourceTier`, `Classification`, `Authority`, `EndpointLayer`, `ProbeConfig`,
+  `EndpointMonitoringPolicy`, `EndpointScoreReason`, `VerificationResult`, `ReviewState`,
+  `BittensorNetwork`, `HealthStatus`, `CurationLevel`), the hand-edited `schemas/components/*.schema.json`
   key is DELETED — the component is instead emitted from its Zod schema via
   `scripts/generate-openapi-zod-components.ts` (`z.toJSONSchema()` against the registry) and merged
   into `components.schemas` inside `scripts/openapi-components.ts::loadOpenApiComponentSchemas()`, so
@@ -335,6 +338,26 @@ fails the PR on its own). No local paths, env dumps, or private notes.
   equivalence-diff audit against the hand-edited predecessor, normalizing known cosmetic differences —
   see its own file header) until it reports PASS, fixing any real (non-cosmetic) diff it surfaces in
   the Zod schema itself, not by loosening the audit's normalizer.
+  - **Register every named leaf, not just the artifact root** (PR #8054 review caught this the hard
+    way): `z.toJSONSchema(..., { reused: "inline" })` only keeps a schema as its own
+    `components.schemas.X` entry when X is separately registered. Before deleting a hand-edited
+    component's JSON, grep the OLD `schemas/components/*.schema.json` for every
+    `$ref: "#/components/schemas/<Name>"` the shape you're converting points to — if `<Name>` was
+    previously its own standalone component (not an inline anonymous shape), export its Zod const if
+    private and `register()` it too, and add it to `OPENAPI_ZOD_COMPONENT_NAMES`. Otherwise it gets
+    silently inlined and vanishes from `packages/contract/index.d.ts` — a real public-contract
+    regression the diff audit won't catch on its own (`resolveShallowRef()` treats any unregistered
+    `$ref` as safe-to-inline-and-compare-flattened, which is exactly the blind spot). After
+    regenerating, diff `packages/contract/index.d.ts` against `origin/main` and confirm the only names
+    lost are ones deliberately dropped (documented in the registry's header, e.g. `SubnetEconomics`).
+  - **`validate-schema-enums.ts` reads `public/metagraph/openapi.json` (the merged document), not
+    `schemas/api-components.schema.json`** (the hand-edited-only bundle `bundle-schemas.ts` builds) —
+    this was also a real CI failure caught post-merge-attempt on #8054: any enum component that moves
+    from hand-edited to Zod-generated disappears from the bundle by design (Zod merging happens one
+    layer later), so a validator still reading the bundle reports every enum value as
+    `missing_from_schema`, a false positive. If you add another script that needs component _content_
+    (not just the bundle's own reproducibility, which `validate-contract-drift.ts` legitimately checks
+    against the bundle itself), read it from `public/metagraph/openapi.json`.
 - **Client SDK version: do NOT bump in your PR.** `packages/client/package.json` is versioned by the
   post-merge `sync-client-version` workflow, which auto-opens a `chore/sync-client-version` PR whenever
   a contract file lands on main. `validate:client-sdk-sync` emits a notice (not a failure) either way:
