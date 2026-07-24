@@ -32,48 +32,30 @@
 }
 
 /* ============================================================
- * Bone & Ink rhythm + type tokens (Batch B, plan step 1).
- * Named so components and route heros read semantic rhythm
- * ("section gap", "panel pad") instead of raw utilities.
+ * Page-level rhythm tokens (Batch B, plan step 1; consolidated #7846).
+ * The --mg-space-*, --mg-panel-pad*, --mg-type-micro/label, and
+ * --mg-tracking-* tokens, their utility classes, and the mg-skel-pulse
+ * keyframes now live solely in packages/ui-kit/src/styles.css (imported
+ * above) -- this
+ * block only keeps the tokens that describe apps/ui's own page shell
+ * (section/stack/hero/toolbar rhythm), not a reusable component concern.
  * Contributors must reach for these — the ESLint guardrails in
  * eslint.config.js now block raw p-* / gap-* / space-y-* outside
  * the primitives folder and the vendor snapshot.
  * ============================================================ */
 :root {
-  /* 4pt base scale — the only allowed padding/gap steps. */
-  --mg-space-3xs: 0.125rem; /* 2  */
-  --mg-space-2xs: 0.25rem; /* 4  */
-  --mg-space-xs: 0.5rem; /* 8  */
-  --mg-space-sm: 0.75rem; /* 12 */
-  --mg-space-md: 1rem; /* 16 */
-  --mg-space-lg: 1.5rem; /* 24 */
-  --mg-space-xl: 2rem; /* 32 */
-  --mg-space-2xl: 3rem; /* 48 */
-  --mg-space-3xl: 4rem; /* 64 */
-
-  /* Semantic layout rhythm — use in page/panel/hero shells. */
+  /* Semantic layout rhythm — use in page/panel/hero shells. Reference the
+     --mg-space-* base scale defined in ui-kit's styles.css (imported above);
+     custom properties resolve across the cascade regardless of which
+     stylesheet declares them, as long as that stylesheet loads first. */
   --mg-section-gap: var(--mg-space-2xl);
   --mg-section-gap-sm: var(--mg-space-xl);
   --mg-stack-gap: var(--mg-space-md);
   --mg-stack-gap-tight: var(--mg-space-sm);
-  --mg-panel-pad: var(--mg-space-lg);
-  --mg-panel-pad-dense: var(--mg-space-md);
   --mg-hero-pad-y: var(--mg-space-2xl);
   --mg-hero-pad-y-sm: var(--mg-space-xl);
   --mg-toolbar-pad-y: var(--mg-space-sm);
   --mg-gutter-x: clamp(1rem, 4vw, 1.5rem);
-
-  /* Type scale — locks the micro/label idiom into named tokens. */
-  --mg-type-micro: 9.5px;
-  --mg-type-label: 11px;
-  --mg-type-body: 14px;
-  --mg-type-body-lg: 15px;
-  --mg-type-h4: 16px;
-  --mg-type-h3: 18px;
-  --mg-type-h2: 22px;
-  --mg-type-h1: 28px;
-  --mg-tracking-label: 0.14em;
-  --mg-tracking-micro: 0.18em;
 }
 
 /* Page-level rhythm helpers — reserved for Panel / PageHero / route shells. */
@@ -85,15 +67,6 @@
     margin-top: var(--mg-section-gap-sm);
   }
 }
-.mg-panel-pad {
-  padding: var(--mg-panel-pad);
-}
-.mg-panel-pad-dense {
-  padding: var(--mg-panel-pad-dense);
-}
-.mg-panel-pad-flush {
-  padding: 0;
-}
 .mg-stack-gap > * + * {
   margin-top: var(--mg-stack-gap);
 }
@@ -103,20 +76,6 @@
 .mg-gutter-x {
   padding-left: var(--mg-gutter-x);
   padding-right: var(--mg-gutter-x);
-}
-
-.mg-type-micro {
-  font-family: var(--font-mono);
-  font-size: var(--mg-type-micro);
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: var(--mg-tracking-micro);
-}
-.mg-type-label {
-  font-family: var(--font-mono);
-  font-size: var(--mg-type-label);
-  line-height: 1.25;
-  letter-spacing: var(--mg-tracking-label);
 }
 
 /* Horizontal scroll fade for mobile tables — apply to overflow-x containers
@@ -186,22 +145,6 @@
     z-index: 10;
     background: color-mix(in oklab, var(--card) 94%, transparent);
     backdrop-filter: blur(8px);
-  }
-}
-
-/* Skeleton pulse used by TableSkeleton primitive. */
-@keyframes mg-skel-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 0.9;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  [style*="mg-skel-pulse"] {
-    animation: none !important;
   }
 }
 

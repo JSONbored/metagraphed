@@ -136,6 +136,12 @@
   --mg-tracking-micro: 0.18em;
   --mg-type-caption: 12px;
   --mg-type-caption-lg: 13px;
+  --mg-type-body: 14px;
+  --mg-type-body-lg: 15px;
+  --mg-type-h4: 16px;
+  --mg-type-h3: 18px;
+  --mg-type-h2: 22px;
+  --mg-type-h1: 28px;
 }
 .mg-panel-pad {
   padding: var(--mg-panel-pad);
