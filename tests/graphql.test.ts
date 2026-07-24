@@ -21161,3 +21161,87 @@ describe("graphql — subnet_hyperparameters_history cursor (#7882)", () => {
     assert.equal(new URL(seen.url!).searchParams.has("cursor"), false);
   });
 });
+
+// #7874: the sudo field gained block_start/block_end/from/to, the same range
+// filters GET /api/v1/sudo and MCP get_sudo accept, forwarded verbatim to the
+// Postgres tier (the /sudo route is the extrinsics feed with call_module fixed
+// to Sudo).
+describe("graphql — sudo range filters (#7874)", () => {
+  function capturingEnv(seen: { url?: URL }) {
+    return {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          seen.url = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+  }
+
+  test("forwards a block_start/block_end range to /api/v1/sudo", async () => {
+    const seen: { url?: URL } = {};
+    const { status } = await gql(
+      `{ sudo(block_start: 100, block_end: 200) { total } }`,
+      capturingEnv(seen) as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(seen.url!.pathname, "/api/v1/sudo");
+    assert.equal(seen.url!.searchParams.get("block_start"), "100");
+    assert.equal(seen.url!.searchParams.get("block_end"), "200");
+  });
+
+  test("forwards a from/to observed_at range", async () => {
+    const seen: { url?: URL } = {};
+    await gql(
+      `{ sudo(from: 1700000000, to: 1700003600) { total } }`,
+      capturingEnv(seen) as unknown as Env,
+    );
+    assert.equal(seen.url!.searchParams.get("from"), "1700000000");
+    assert.equal(seen.url!.searchParams.get("to"), "1700003600");
+  });
+
+  test("omits every new param when none is supplied", async () => {
+    const seen: { url?: URL } = {};
+    await gql(`{ sudo { total } }`, capturingEnv(seen) as unknown as Env);
+    for (const key of ["block_start", "block_end", "from", "to"]) {
+      assert.equal(seen.url!.searchParams.has(key), false);
+    }
+  });
+
+  test("rejects a negative range bound as BAD_USER_INPUT, not a dropped filter", async () => {
+    for (const [arg, name] of [
+      ["block_start: -1", "block_start"],
+      ["block_end: -5", "block_end"],
+      ["from: -1", "from"],
+      ["to: -2", "to"],
+    ] as const) {
+      const seen: { url?: URL } = {};
+      const { body } = await gql(
+        `{ sudo(${arg}) { total } }`,
+        capturingEnv(seen) as unknown as Env,
+      );
+      assert.ok(
+        body.errors?.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+        `${name} should be rejected`,
+      );
+      assert.match(body.errors[0].message, new RegExp(name));
+    }
+  });
+
+  test("still rejects a non-integer bound", async () => {
+    const seen: { url?: URL } = {};
+    const { body } = await gql(
+      `{ sudo(block_end: 1.5) { total } }`,
+      capturingEnv(seen) as unknown as Env,
+    );
+    assert.ok(body.errors?.length);
+  });
+});

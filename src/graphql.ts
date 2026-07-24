@@ -3768,16 +3768,39 @@ const rootValue = {
   },
 
   async sudo(
-    { limit, offset, cursor, block, call_function: callFunction, success }: Row,
+    {
+      limit,
+      offset,
+      cursor,
+      block,
+      call_function: callFunction,
+      success,
+      block_start: blockStart,
+      block_end: blockEnd,
+      from,
+      to,
+    }: Row,
     context: GqlContext,
   ) {
     // The Sudo governance feed is the /extrinsics feed with call_module fixed
     // to Sudo by the route itself, so it takes no signer/call_module args and
     // reuses the identical extrinsics source + ExtrinsicList shape.
-    if (block != null && (!Number.isInteger(block) || block < 0)) {
-      throw new GraphQLError("block must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+    // #7874: every numeric bound shares one guard, so an invalid one is a
+    // BAD_USER_INPUT error rather than a silently dropped filter -- the same
+    // block_start/block_end (block_number) and from/to (observed_at epoch)
+    // params GET /api/v1/sudo and MCP get_sudo validate as non-negative ints.
+    for (const [name, value] of [
+      ["block", block],
+      ["block_start", blockStart],
+      ["block_end", blockEnd],
+      ["from", from],
+      ["to", to],
+    ] as const) {
+      if (value != null && (!Number.isInteger(value) || value < 0)) {
+        throw new GraphQLError(`${name} must be a non-negative integer.`, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
     }
     const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
     const safeOffset = clampOffset(offset);
@@ -3788,6 +3811,10 @@ const rootValue = {
     if (block != null) params.set("block", String(block));
     if (callFunction) params.set("call_function", callFunction);
     if (success != null) params.set("success", String(success));
+    if (blockStart != null) params.set("block_start", String(blockStart));
+    if (blockEnd != null) params.set("block_end", String(blockEnd));
+    if (from != null) params.set("from", String(from));
+    if (to != null) params.set("to", String(to));
     const data =
       ((await tryPostgresTier(
         context.env,

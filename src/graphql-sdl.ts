@@ -776,6 +776,10 @@ export const SDL = /* GraphQL */ `
       block: Int
       call_function: String
       success: Boolean
+      block_start: Int
+      block_end: Int
+      from: Int
+      to: Int
     ): ExtrinsicList!
   }
 
