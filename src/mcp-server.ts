@@ -10216,13 +10216,6 @@ const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 // never drift from reality. A schema only constrains successful results — a tool
 // that returns isError (e.g. the AI tools when the AI layer is off) carries no
 // structuredContent, so its schema is simply not applied on that path.
-const ANY = {};
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-const objectItems = (properties = {}) => ({
-  type: "array",
-  items: { type: "object", additionalProperties: true, properties },
-});
 const TOOL_OUTPUT_SCHEMAS = {
   search_subnets: z.toJSONSchema(SearchSubnetsOutputSchema, {
     target: "draft-2020-12",
