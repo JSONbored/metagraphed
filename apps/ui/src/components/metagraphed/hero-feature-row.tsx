@@ -87,7 +87,7 @@ function ChainThroughputCard() {
         )}
       </div>
 
-      <div className="mt-1 flex items-center justify-between border-t border-border px-4 py-3">
+      <div className="mt-1 flex flex-col items-start gap-1.5 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="mg-type-micro text-ink-muted">/api/v1/chain/activity</span>
         <Link
           to="/blocks"
