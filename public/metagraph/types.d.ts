@@ -3578,7 +3578,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        AgentCatalogArtifact: components["schemas"]["ArtifactBase"] & ({
+        AgentCatalogArtifact: {
             blocked_subnet_count?: number;
             blocked_subnets?: ({
                 agent_readiness: components["schemas"]["AgentReadinessStatus"];
@@ -3599,6 +3599,11 @@ export interface components {
                 [key: string]: unknown;
             };
             callable_service_count?: number;
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             subnet_count: number;
             subnets: ({
                 agent_readiness?: components["schemas"]["AgentReadinessStatus"];
@@ -3606,11 +3611,12 @@ export interface components {
                 callable_count?: number;
                 categories?: string[];
                 completeness_score?: number | null;
+                example_count?: number;
                 health?: string;
                 integration_readiness?: number;
                 name?: string;
+                native_name?: string | null;
                 netuid: number;
-                /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
                 previously_known_as?: string[];
                 readiness?: components["schemas"]["IntegrationReadiness"];
                 service_count: number;
@@ -3623,38 +3629,102 @@ export interface components {
             total_subnet_count?: number;
         } & {
             [key: string]: unknown;
-        });
-        AgentCatalogSubnetArtifact: components["schemas"]["ArtifactBase"] & ({
+        };
+        AgentCatalogSubnetArtifact: {
             agent_readiness?: components["schemas"]["AgentReadinessStatus"];
             categories?: string[];
             completeness_score?: number | null;
+            contract_version?: string;
+            example_count?: number;
+            examples?: ({
+                authority?: string;
+                name?: string;
+                provider?: string;
+                surface_id: string;
+                url: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            generated_at: string;
             integration_readiness?: number;
             name?: string;
             netuid: number;
-            /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+            notes?: string | string[];
             previously_known_as?: string[];
             readiness?: components["schemas"]["IntegrationReadiness"];
+            /** @constant */
+            schema_version: 1;
             service_count: number;
             services: ({
+                auth?: {
+                    [key: string]: unknown;
+                } | null;
                 auth_required?: boolean;
+                auth_schemes?: string[];
                 authority?: string | null;
                 base_url: string;
                 capability?: string;
                 description?: string | null;
                 eligibility?: {
+                    callable?: boolean;
+                    live_status?: string;
+                    reasons?: string[];
+                } & {
                     [key: string]: unknown;
                 };
-                fixture?: components["schemas"]["SurfaceFixtureReference"];
-                fixture_status?: components["schemas"]["AgentServiceFixtureStatus"];
+                fixture?: {
+                    artifact_path: string;
+                    captured_at?: string | null;
+                    request: {
+                        method: string;
+                        url: string | null;
+                    };
+                    response: {
+                        content_type?: string | null;
+                        status: number | null;
+                    };
+                };
+                fixture_status?: {
+                    artifact_path: string | null;
+                    captured_at: string | null;
+                    reason: string | null;
+                    /** @enum {string} */
+                    status: "available" | "missing" | "capture-failed" | "auth-required" | "non-get" | "unsupported-kind";
+                };
                 health?: {
+                    classification?: string | null;
+                    last_checked?: string | null;
+                    last_ok?: string | null;
+                    latency_ms?: number | null;
+                    monitoring_status?: string | null;
+                    observed_by?: string;
+                    stale?: boolean;
+                    status?: string;
+                } & {
                     [key: string]: unknown;
                 };
                 kind: string;
                 provider?: string | null;
                 schema_artifact?: string | null;
-                schema_source?: components["schemas"]["AgentServiceSchemaSource"] | null;
+                schema_source?: {
+                    artifact: string | null;
+                    hash: string | null;
+                    /** @enum {string} */
+                    match: "surface-id" | "schema-url" | "same-origin-openapi";
+                    observed_at: string | null;
+                    status: string | null;
+                    surface_id: string;
+                    url: string | null;
+                } | null;
                 schema_status?: string | null;
                 schema_url?: string | null;
+                snippets?: ({
+                    curl?: string;
+                    python?: string;
+                    typescript?: string;
+                } & {
+                    [key: string]: unknown;
+                }) | null;
                 surface_id: string;
             } & {
                 [key: string]: unknown;
@@ -3663,7 +3733,7 @@ export interface components {
             subnet_type?: string | null;
         } & {
             [key: string]: unknown;
-        });
+        };
         AgentReadinessBlocker: {
             code: string;
             field: string;
@@ -3672,17 +3742,18 @@ export interface components {
             /** @enum {string} */
             severity: "hard" | "missing-data" | "needs-review";
         };
-        /** @description Agent-facing readiness status and blocker taxonomy for one subnet. */
         AgentReadinessStatus: {
             /** @enum {string} */
             blocker_level: "none" | "hard-blocked" | "needs-review" | "missing-data";
             blockers: components["schemas"]["AgentReadinessBlocker"][];
             missing_fields: string[];
+            readiness_verified?: boolean;
             /** @enum {string} */
             status: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
         };
-        AgentResourcesArtifact: components["schemas"]["ArtifactBase"] & ({
+        AgentResourcesArtifact: {
             content_hash?: string;
+            contract_version?: string;
             copyable_agent: {
                 description?: string;
                 title?: string;
@@ -3691,6 +3762,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+            generated_at: string;
             mcp: {
                 /** Format: uri */
                 endpoint: string;
@@ -3707,6 +3779,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+            notes?: string | string[];
             published_at?: string | null;
             resources: ({
                 id: string;
@@ -3717,79 +3790,79 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            /** @description Headline counts across the agent-facing registry. */
+            /** @constant */
+            schema_version: 1;
             summary?: {
-                callable_service_count?: number;
-                subnet_count?: number;
-            } & {
-                [key: string]: unknown;
+                callable_service_count: number;
+                subnet_count: number;
             };
         } & {
             [key: string]: unknown;
-        });
-        /** @description Fixture availability or absence reason for an agent-catalog service. */
-        AgentServiceFixtureStatus: {
-            artifact_path: string | null;
-            captured_at: string | null;
-            reason: string | null;
-            /** @enum {string} */
-            status: "available" | "missing" | "capture-failed" | "auth-required" | "non-get" | "unsupported-kind";
         };
-        /** @description Source metadata for the schema artifact associated with an agent-catalog service. */
-        AgentServiceSchemaSource: {
-            /** @description Metagraphed schema artifact path. */
-            artifact: string | null;
-            /** @description Content hash for the captured schema artifact. */
-            hash: string | null;
-            /**
-             * @description How the callable service was linked to the schema artifact.
-             * @enum {string}
-             */
-            match: "surface-id" | "schema-url" | "same-origin-openapi";
-            /** @description When the schema snapshot was observed, if available. */
-            observed_at: string | null;
-            /** @description Schema capture status from the schema index. */
-            status: string | null;
-            /** @description Schema/OpenAPI surface that supplied the artifact. */
-            surface_id: string;
-            /** @description Machine-readable schema URL, when known. */
-            url: string | null;
-        };
-        ApiIndexArtifact: components["schemas"]["ArtifactBase"] & ({
-            artifact_contracts: components["schemas"]["ArtifactContractEntry"][];
+        ApiIndexArtifact: {
+            artifact_contracts: {
+                content_type?: string;
+                contract_version: string;
+                description?: string;
+                id: string;
+                path: string;
+                retirement?: {
+                    code: string;
+                    http_status: number;
+                    message: string;
+                } | null;
+                schema_ref: string | null;
+                /** @enum {string} */
+                status: "live" | "retired";
+                /** @enum {string} */
+                storage_tier: "dual" | "git" | "r2";
+            }[];
             /** @constant */
             base_path: "/api/v1";
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
             /** @constant */
             openapi_url: "/api/v1/openapi.json";
             /** @constant */
             primary_domain: "api.metagraph.sh";
-            response_envelope: components["schemas"]["ResponseEnvelopeContract"];
-            routes: components["schemas"]["ApiRoute"][];
+            response_envelope: {
+                /** @constant */
+                error_schema_ref: "#/components/schemas/ErrorEnvelope";
+                fields: ("ok" | "data" | "meta" | "error")[];
+                notes: string;
+                /** @constant */
+                schema_version: 1;
+                /** @constant */
+                success_schema_ref: "#/components/schemas/SuccessEnvelope";
+            };
+            routes: {
+                artifact_path: string;
+                /** @enum {string} */
+                cache: "short" | "standard" | "static";
+                description: string;
+                id: string;
+                /** @constant */
+                method: "GET";
+                path: string;
+                /** @constant */
+                public: true;
+                query_collection?: string | null;
+                query_filter_names?: string[];
+                query_parameters: {
+                    description?: string;
+                    name: string;
+                    schema: {
+                        [key: string]: unknown;
+                    };
+                }[];
+            }[];
+            /** @constant */
+            schema_version: 1;
             /** @constant */
             type_definitions_url: "/metagraph/types.d.ts";
         } & {
             [key: string]: unknown;
-        });
-        ApiQueryParameter: {
-            description?: string;
-            name: string;
-            schema: {
-                [key: string]: unknown;
-            };
-        };
-        ApiRoute: {
-            artifact_path: string;
-            cache: components["schemas"]["CacheProfile"];
-            description: string;
-            id: string;
-            /** @enum {unknown} */
-            method: "GET";
-            path: string;
-            /** @constant */
-            public: true;
-            query_collection?: string | null;
-            query_filter_names?: string[];
-            query_parameters: components["schemas"]["ApiQueryParameter"][];
         };
         ArtifactBase: {
             contract_version?: string;
@@ -3799,40 +3872,6 @@ export interface components {
             schema_version: 1;
         } & {
             [key: string]: unknown;
-        };
-        ArtifactContractEntry: {
-            content_type?: string;
-            contract_version: string;
-            description?: string;
-            id: string;
-            path: string;
-            /** @description Null for a live artifact. For a retired one, the response the route actually returns instead of the payload. */
-            retirement?: {
-                code: string;
-                http_status: number;
-                message: string;
-            } | null;
-            schema_ref: string | null;
-            /**
-             * @description Lifecycle of the artifact. `retired` means the route always refuses the read (see `retirement`), so a consumer must not treat the entry as fetchable.
-             * @enum {unknown}
-             */
-            status: "live" | "retired";
-            /** @enum {unknown} */
-            storage_tier: "dual" | "git" | "r2";
-        };
-        ArtifactDiffEntry: string | {
-            hash?: string;
-            path: string;
-            previous_hash?: string | null;
-        };
-        ArtifactSizeBudget: {
-            fail_bytes: number;
-            path: string;
-            size_bytes: number;
-            /** @enum {unknown} */
-            status: "ok" | "warn" | "fail";
-            warn_bytes: number;
         };
         /** @enum {string} */
         Authority: "official" | "provider-claimed" | "community" | "registry-observed";
@@ -3958,22 +3997,60 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        BuildSummaryArtifact: components["schemas"]["ArtifactBase"] & ({
-            artifact_budgets?: components["schemas"]["ArtifactSizeBudget"][];
+        BuildSummaryArtifact: {
+            adapter_count?: number;
+            artifact_budget_summary?: {
+                fail_count: number;
+                ok_count: number;
+                warn_count: number;
+            } & {
+                [key: string]: unknown;
+            };
+            artifact_budgets?: {
+                fail_bytes: number;
+                path: string;
+                size_bytes: number;
+                /** @enum {string} */
+                status: "ok" | "warn" | "fail";
+                warn_bytes: number;
+            }[];
             artifact_count: number;
             artifact_size_bytes: number;
+            artifacts?: {
+                [key: string]: unknown;
+            }[];
             candidate_count?: number;
+            contract_version?: string;
+            coverage?: {
+                [key: string]: unknown;
+            };
+            endpoint_count?: number;
+            full_artifact_count?: number;
+            full_artifact_size_bytes?: number;
+            generated_at: string;
+            notes?: string | string[];
+            profile_count?: number;
             provider_count?: number;
-            /**
-             * Format: date-time
-             * @description Real wall-clock time this artifact set was published to production, distinct from the deterministic generated_at build stamp. Null for local/deterministic builds.
-             */
+            public_contract?: {
+                url: string;
+                version: string;
+            } & {
+                [key: string]: unknown;
+            };
             published_at?: string | null;
+            /** @constant */
+            schema_version: 1;
+            storage_tier_counts?: {
+                [key: string]: number;
+            };
+            storage_tier_size_bytes?: {
+                [key: string]: number;
+            };
             subnet_count: number;
             surface_count: number;
         } & {
             [key: string]: unknown;
-        });
+        };
         BulkHealthTrendsArtifact: {
             observed_at?: string | null;
             schema_version: number;
@@ -4639,27 +4716,64 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
+        ChangelogArtifact: {
             artifacts: {
-                added: components["schemas"]["ArtifactDiffEntry"][];
-                modified: components["schemas"]["ArtifactDiffEntry"][];
-                removed: components["schemas"]["ArtifactDiffEntry"][];
+                added: (string | {
+                    hash?: string;
+                    path: string;
+                    previous_hash?: string | null;
+                })[];
+                modified: (string | {
+                    hash?: string;
+                    path: string;
+                    previous_hash?: string | null;
+                })[];
+                removed: (string | {
+                    hash?: string;
+                    path: string;
+                    previous_hash?: string | null;
+                })[];
             };
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             /** @constant */
             source: "generated-artifact-diff";
             subnets: {
-                added: number[];
-                removed: number[];
-                renamed: {
+                added: ({
+                    name?: string | null;
+                    netuid: number;
+                    slug?: string;
+                } & {
                     [key: string]: unknown;
-                }[];
+                })[];
+                removed: ({
+                    name?: string | null;
+                    netuid: number;
+                    slug?: string;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                renamed: ({
+                    after?: string | null;
+                    before?: string | null;
+                    netuid: number;
+                } & {
+                    [key: string]: unknown;
+                })[];
             };
             summary: {
                 artifact_added_count: number;
                 artifact_modified_count: number;
                 artifact_removed_count: number;
                 coverage_delta: {
-                    [key: string]: components["schemas"]["CoverageDelta"] | null;
+                    [key: string]: {
+                        after: number;
+                        before: number;
+                        delta: number;
+                    } | null;
                 } | null;
                 netuid_added_count: number;
                 netuid_removed_count: number;
@@ -4667,7 +4781,7 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
         CompareArtifact: {
@@ -4773,21 +4887,42 @@ export interface components {
         } & {
             [key: string]: unknown;
         }) | null;
-        ContractsArtifact: components["schemas"]["ArtifactBase"] & ({
-            artifacts: components["schemas"]["ArtifactContractEntry"][];
+        ContractsArtifact: {
+            artifacts: {
+                content_type?: string;
+                contract_version: string;
+                description?: string;
+                id: string;
+                path: string;
+                retirement?: {
+                    code: string;
+                    http_status: number;
+                    message: string;
+                } | null;
+                schema_ref: string | null;
+                /** @enum {string} */
+                status: "live" | "retired";
+                /** @enum {string} */
+                storage_tier: "dual" | "git" | "r2";
+            }[];
             /** @constant */
             base_path: "/metagraph";
+            contract_version?: string;
+            generated_at: string;
             name: string;
+            notes?: string | string[];
             /** @constant */
             openapi_url: "/metagraph/openapi.json";
             /** @constant */
             primary_domain: "api.metagraph.sh";
+            /** @constant */
+            schema_version: 1;
             status_domain: null;
             /** @constant */
             type_definitions_url: "/metagraph/types.d.ts";
         } & {
             [key: string]: unknown;
-        });
+        };
         CountMap: {
             [key: string]: number;
         };
@@ -4840,11 +4975,6 @@ export interface components {
             surface_count: number;
         } & {
             [key: string]: unknown;
-        };
-        CoverageDelta: {
-            after: number;
-            before: number;
-            delta: number;
         };
         CoverageDepthArtifact: {
             contract_version?: string;
@@ -5132,17 +5262,6 @@ export interface components {
             timeout_ms?: number | null;
         };
         EndpointPoolsArtifact: components["schemas"]["RpcPoolsArtifact"];
-        EndpointProviderScore: {
-            average_score: number;
-            degraded_count: number;
-            endpoint_count: number;
-            failed_count: number;
-            monitored_count: number;
-            ok_count: number;
-            operational_score: number;
-            pool_eligible_count: number;
-            provider: string;
-        };
         /** @enum {unknown} */
         EndpointPublicationState: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
         EndpointResource: {
@@ -5367,8 +5486,28 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        FreshnessArtifact: components["schemas"]["ArtifactBase"] & ({
-            sources: components["schemas"]["FreshnessSource"][];
+        FreshnessArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            sources: {
+                as_of: string | null;
+                id: string;
+                /** @enum {string} */
+                lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot";
+                notes?: string;
+                path: string;
+                required_for_publish: boolean;
+                stale_after_hours: number;
+                /** @enum {string} */
+                stale_behavior: "block" | "warn";
+                /** @enum {string} */
+                status: "captured" | "current" | "degraded" | "missing" | "stale";
+                timestamp: string | null;
+                timestamp_field: string | null;
+            }[];
             summary: {
                 adapter_count: number;
                 adapter_snapshot_as_of: string | null;
@@ -5380,6 +5519,7 @@ export interface components {
                 native_data_as_of: string;
                 native_snapshot_captured_at: string;
                 openapi_surface_count: number;
+                operational_probe_as_of?: string | null;
                 publish_ready_without_age_check: boolean;
                 schema_snapshot_as_of: string | null;
                 stale_window_warnings: string[];
@@ -5389,22 +5529,6 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
-        FreshnessSource: {
-            as_of: string | null;
-            id: string;
-            /** @enum {unknown} */
-            lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot";
-            notes?: string;
-            path: string;
-            required_for_publish: boolean;
-            stale_after_hours: number;
-            /** @enum {unknown} */
-            stale_behavior: "block" | "warn";
-            /** @enum {unknown} */
-            status: "captured" | "current" | "degraded" | "missing" | "stale";
-            timestamp: string | null;
-            timestamp_field: string | null;
         };
         Gaps: {
             gap_notes: string[];
@@ -5958,86 +6082,67 @@ export interface components {
         };
         Provider: {
             authority: components["schemas"]["Authority"];
-            /** @description Shared-team cluster id (registrable domain of team_url/website_url, else the provider id) grouping providers run by the same team (issue #347). */
             cluster_id?: string;
-            /**
-             * Format: uri
-             * @example https://example.com/contact
-             */
             contact_url?: string;
-            /**
-             * Format: uri
-             * @example https://docs.example.com
-             */
             docs_url?: string;
-            /** @description Number of live endpoints attributed to this provider. */
             endpoint_count?: number;
-            /**
-             * Format: uri
-             * @example https://github.com/example
-             */
             github_url?: string;
             id: string;
-            kind: components["schemas"]["ProviderKind"];
-            /**
-             * Format: uri
-             * @description Curated provider logo, else backfilled from the on-chain logo of the single subnet this provider operates. Display-only; never feeds completeness.
-             * @example https://example.com/logo.png
-             */
+            /** @enum {string} */
+            kind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
             logo_url?: string;
             name: string;
-            /** @description Sorted unique netuids this provider operates a curated surface on (issue #347). Derived/reporting — never feeds completeness. */
             netuids?: number[];
             notes?: string;
             public_notes?: string;
             /** @constant */
             schema_version: 1;
-            /** @description Structured social links: a curated provider override, else borrowed from the single subnet this provider operates. Display-only; never feeds completeness. */
             social?: {
-                /**
-                 * Format: uri
-                 * @example https://reddit.com/r/example
-                 */
                 reddit?: string;
-                /**
-                 * Format: uri
-                 * @example https://t.me/example
-                 */
                 telegram?: string;
-                /**
-                 * Format: uri
-                 * @example https://x.com/example
-                 */
                 x?: string;
-                /**
-                 * Format: uri
-                 * @example https://youtube.com/@example
-                 */
                 youtube?: string;
             };
-            /** @description Number of distinct subnets this provider operates (netuids.length). */
             subnet_count?: number;
-            /** @description Number of curated surfaces attributed to this provider. */
             surface_count?: number;
-            /**
-             * Format: uri
-             * @example https://example.com/team
-             */
             team_url?: string;
-            /**
-             * Format: uri
-             * @example https://example.com
-             */
             website_url: string;
         };
-        ProviderArtifact: components["schemas"]["ArtifactBase"] & ({
+        ProviderArtifact: {
+            contract_version?: string;
+            endpoint_summary?: {
+                by_kind?: {
+                    [key: string]: number;
+                };
+                by_layer?: {
+                    [key: string]: number;
+                };
+                by_provider?: {
+                    [key: string]: number;
+                };
+                by_publication_state?: {
+                    [key: string]: number;
+                };
+                by_status?: {
+                    [key: string]: number;
+                };
+                endpoint_count: number;
+                monitored_count: number;
+                pool_eligible_count: number;
+            };
+            generated_at: string;
+            notes?: string | string[];
             provider: components["schemas"]["Provider"];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
-        ProviderEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
+        };
+        ProviderEndpointsArtifact: {
+            contract_version?: string;
             endpoints: components["schemas"]["EndpointResource"][];
-            /** @description Identity summary of the provider these endpoints belong to. */
+            generated_at: string;
+            notes?: string | string[];
             provider: {
                 authority?: string;
                 id?: string;
@@ -6046,17 +6151,43 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            summary: components["schemas"]["EndpointSummary"];
+            /** @constant */
+            schema_version: 1;
+            summary: {
+                by_kind?: {
+                    [key: string]: number;
+                };
+                by_layer?: {
+                    [key: string]: number;
+                };
+                by_provider?: {
+                    [key: string]: number;
+                };
+                by_publication_state?: {
+                    [key: string]: number;
+                };
+                by_status?: {
+                    [key: string]: number;
+                };
+                endpoint_count: number;
+                monitored_count: number;
+                pool_eligible_count: number;
+            };
         } & {
             [key: string]: unknown;
-        });
+        };
         /** @enum {unknown} */
         ProviderKind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
-        ProvidersArtifact: components["schemas"]["ArtifactBase"] & ({
+        ProvidersArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
             providers: components["schemas"]["Provider"][];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
+        };
         R2ManifestArtifact: components["schemas"]["ArtifactBase"] & ({
             artifact_count: number;
             artifact_size_bytes: number;
@@ -6151,16 +6282,6 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
-        };
-        ResponseEnvelopeContract: {
-            /** @constant */
-            error_schema_ref: "#/components/schemas/ErrorEnvelope";
-            fields: ("ok" | "data" | "meta" | "error")[];
-            notes: string;
-            /** @constant */
-            schema_version: 1;
-            /** @constant */
-            success_schema_ref: "#/components/schemas/SuccessEnvelope";
         };
         ResponseMeta: {
             artifact_path?: string;
@@ -6547,45 +6668,48 @@ export interface components {
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
-        RpcEndpoint: {
-            archive_support?: boolean | null;
-            auth_required?: boolean;
-            authority?: components["schemas"]["Authority"];
+        RpcEndpointsArtifact: {
+            contract_version?: string;
+            endpoints: {
+                archive_support?: boolean | null;
+                auth_required?: boolean;
+                authority?: components["schemas"]["Authority"];
+                /** @constant */
+                chain: "bittensor";
+                classification: components["schemas"]["Classification"];
+                error?: string | null;
+                /** @enum {string} */
+                health_source: "probe-derived" | "missing-probe" | "not-monitored";
+                health_stale: boolean;
+                id: string;
+                /** @enum {string} */
+                kind: "subtensor-rpc" | "subtensor-wss";
+                last_checked?: string | null;
+                last_ok: string | null;
+                latency_ms?: number | null;
+                latest_block?: number | null;
+                method_tested?: string | null;
+                methods_supported?: {
+                    [key: string]: boolean;
+                } | string[] | null;
+                netuid?: number;
+                network: components["schemas"]["BittensorNetwork"];
+                observed_at: string | null;
+                provider: string;
+                public_safe?: boolean;
+                rate_limit_notes?: string | null;
+                rpc_method_count?: number | null;
+                source_urls?: string[];
+                status: components["schemas"]["HealthStatus"];
+                subnet_name?: string;
+                subnet_slug?: string;
+                /** Format: uri */
+                url: string;
+            }[];
+            generated_at: string;
+            notes?: string | string[];
             /** @constant */
-            chain: "bittensor";
-            classification: components["schemas"]["Classification"];
-            error?: string | null;
-            /** @enum {unknown} */
-            health_source: "probe-derived" | "missing-probe" | "not-monitored";
-            health_stale: boolean;
-            id: string;
-            /** @enum {unknown} */
-            kind: "subtensor-rpc" | "subtensor-wss";
-            last_checked?: string | null;
-            last_ok: string | null;
-            latency_ms?: number | null;
-            latest_block?: number | null;
-            method_tested?: string;
-            methods_supported?: {
-                [key: string]: boolean;
-            } | string[] | null;
-            netuid?: number;
-            network: components["schemas"]["BittensorNetwork"];
-            observed_at: string | null;
-            provider: string;
-            public_safe?: boolean;
-            rate_limit_notes?: string | null;
-            rpc_method_count?: number | null;
-            source_urls?: string[];
-            status: components["schemas"]["HealthStatus"];
-            subnet_name?: string;
-            subnet_slug?: string;
-            /** Format: uri */
-            url: string;
-        };
-        RpcEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
-            endpoints: components["schemas"]["RpcEndpoint"][];
-            /** @description Roll-up counts across the base-layer RPC endpoint set. */
+            schema_version: 1;
             summary: {
                 archive_supported_count?: number;
                 by_kind?: {
@@ -6597,52 +6721,47 @@ export interface components {
                 by_status?: {
                     [key: string]: number;
                 };
-                endpoint_count?: number;
+                endpoint_count: number;
             } & {
                 [key: string]: unknown;
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         RpcPool: {
             best_endpoint_id?: string | null;
             eligible_count: number;
             endpoint_count: number;
-            endpoints: components["schemas"]["RpcPoolEndpoint"][];
+            endpoints: {
+                archive_support?: boolean | null;
+                auth_required?: boolean;
+                /** @enum {string} */
+                health_source: "probe-derived" | "missing-probe" | "not-monitored";
+                health_stale: boolean;
+                id: string;
+                kind?: components["schemas"]["SurfaceKind"];
+                last_ok: string | null;
+                latency_ms?: number | null;
+                latest_block?: number | null;
+                layer?: components["schemas"]["EndpointLayer"];
+                observed_at: string | null;
+                pool_eligibility_reasons?: string[];
+                pool_eligible: boolean;
+                provider: string;
+                public_safe?: boolean;
+                score: number;
+                score_reasons?: components["schemas"]["EndpointScoreReason"][];
+                status: components["schemas"]["HealthStatus"];
+                surface_id?: string;
+                surface_key?: string;
+                /** Format: uri */
+                url: string;
+            }[];
             id: string;
             kind: string;
         };
-        RpcPoolEndpoint: {
-            archive_support?: boolean | null;
-            /** @description Structural pool-eligibility input: whether the endpoint requires auth (#4979). */
-            auth_required?: boolean;
-            /** @enum {unknown} */
-            health_source: "probe-derived" | "missing-probe" | "not-monitored";
-            health_stale: boolean;
-            id: string;
-            kind?: components["schemas"]["SurfaceKind"];
-            last_ok: string | null;
-            latency_ms?: number | null;
-            latest_block?: number | null;
-            layer?: components["schemas"]["EndpointLayer"];
-            observed_at: string | null;
-            pool_eligibility_reasons?: string[];
-            pool_eligible: boolean;
-            provider: string;
-            /** @description Structural pool-eligibility input: whether the endpoint is safe for public proxying (#4979). */
-            public_safe?: boolean;
-            score: number;
-            score_reasons?: components["schemas"]["EndpointScoreReason"][];
-            status: components["schemas"]["HealthStatus"];
-            /** @description Human-readable surface alias retained for display/back-compat. */
-            surface_id?: string;
-            /** @description Stable surface identity (#1005) when the pool endpoint came from a catalogued surface. */
-            surface_key?: string;
-            /** Format: uri */
-            url: string;
-        };
-        RpcPoolsArtifact: components["schemas"]["ArtifactBase"] & ({
-            /** @description The read-only RPC proxy contract (disabled by default behind a feature flag). */
+        RpcPoolsArtifact: {
+            contract_version?: string;
             disabled_proxy_contract?: {
                 allowed_methods?: string[];
                 denied_method_patterns?: string[];
@@ -6653,7 +6772,6 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            /** @description How endpoints qualify for a pool — derived from monitored state only. */
             eligibility_policy?: {
                 eligible_layers?: string[];
                 notes?: string;
@@ -6665,12 +6783,25 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+            generated_at: string;
+            notes?: string | string[];
             pools: components["schemas"]["RpcPool"][];
-            provider_scores?: components["schemas"]["EndpointProviderScore"][];
+            provider_scores?: {
+                average_score: number;
+                degraded_count: number;
+                endpoint_count: number;
+                failed_count: number;
+                monitored_count: number;
+                ok_count: number;
+                operational_score: number;
+                pool_eligible_count: number;
+                provider: string;
+            }[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
-        /** @description RPC reverse-proxy usage analytics over a 7d/30d window: request volume, latency percentiles, failover + error rate, cache-hit rate, per-endpoint request distribution, and bounded time buckets for heatmaps. Computed live from the rpc_proxy_events telemetry (no static file). */
+        };
         RpcUsageArtifact: {
             bucket_granularity?: string | null;
             buckets: ({
@@ -6766,32 +6897,46 @@ export interface components {
             /** Format: uri */
             url: string;
         };
-        SchemaIndexArtifact: components["schemas"]["ArtifactBase"] & ({
-            schemas: components["schemas"]["SchemaIndexEntry"][];
+        SchemaIndexArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            observed_at?: string;
+            /** @constant */
+            schema_version: 1;
+            schemas: {
+                content_type?: string | null;
+                /** @enum {string} */
+                drift_status: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
+                error?: string | null;
+                hash?: string | null;
+                netuid?: number;
+                path?: string | null;
+                previous_hash?: string | null;
+                schema_url: string | null;
+                snapshot?: {
+                    [key: string]: unknown;
+                };
+                /** @enum {string} */
+                status: "captured" | "error" | "not-captured" | "not-found" | "too-large" | "unsafe";
+                subnet_slug?: string;
+                surface_id: string;
+                /** Format: uri */
+                url?: string;
+            }[];
             source: string;
+            summary?: {
+                by_drift_status: {
+                    [key: string]: number;
+                };
+                by_status: {
+                    [key: string]: number;
+                };
+                schema_count: number;
+                surface_count: number;
+            };
         } & {
             [key: string]: unknown;
-        });
-        SchemaIndexEntry: {
-            content_type?: string | null;
-            /** @enum {unknown} */
-            drift_status: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
-            error?: string | null;
-            hash?: string | null;
-            netuid?: number;
-            path?: string | null;
-            previous_hash?: string | null;
-            /** Format: uri */
-            schema_url: string | null;
-            snapshot?: {
-                [key: string]: unknown;
-            };
-            /** @enum {unknown} */
-            status: "captured" | "error" | "not-captured" | "not-found" | "too-large" | "unsafe";
-            subnet_slug?: string;
-            surface_id: string;
-            /** Format: uri */
-            url?: string;
         };
         ScoreDistribution: ({
             count?: number;
@@ -6806,47 +6951,74 @@ export interface components {
         } & {
             [key: string]: unknown;
         }) | null;
-        SearchArtifact: components["schemas"]["ArtifactBase"] & ({
+        SearchArtifact: {
+            contract_version?: string;
             document_count?: number;
-            documents: components["schemas"]["SearchDocument"][];
+            documents: {
+                artifact_path: string;
+                categories?: string[];
+                id: string;
+                netuid?: number;
+                service_kinds?: string[];
+                slug?: string;
+                subtitle?: string;
+                title: string;
+                tokens: string[];
+                /** @enum {string} */
+                type: "subnet" | "surface" | "provider";
+                url?: string;
+            }[];
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
-        SearchDocument: {
-            artifact_path: string;
-            categories?: string[];
-            id: string;
-            netuid?: number;
-            service_kinds?: string[];
-            slug?: string;
-            subtitle?: string;
-            title: string;
-            tokens: string[];
-            /** @enum {unknown} */
-            type: "subnet" | "surface" | "provider";
-            url?: string;
         };
-        SearchIndexArtifact: components["schemas"]["ArtifactBase"] & ({
+        SearchIndexArtifact: {
+            contract_version?: string;
             document_count?: number;
-            documents: components["schemas"]["SearchIndexDocument"][];
+            documents: {
+                artifact_path: string;
+                categories?: string[];
+                id: string;
+                netuid?: number;
+                service_kinds?: string[];
+                slug?: string;
+                subtitle?: string;
+                title: string;
+                /** @enum {string} */
+                type: "subnet" | "surface" | "provider";
+                url?: string;
+            }[];
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
-        SearchIndexDocument: {
-            artifact_path: string;
-            categories?: string[];
-            id: string;
-            netuid?: number;
-            service_kinds?: string[];
-            slug?: string;
-            subtitle?: string;
-            title: string;
-            /** @enum {unknown} */
-            type: "subnet" | "surface" | "provider";
-            url?: string;
         };
-        SourceHealthArtifact: components["schemas"]["ArtifactBase"] & ({
-            providers: components["schemas"]["SourceHealthProvider"][];
+        SourceHealthArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            providers: {
+                authority: components["schemas"]["Authority"];
+                candidate_count: number;
+                classifications: {
+                    [key: string]: number;
+                };
+                endpoint_count: number;
+                id: string;
+                /** @enum {string} */
+                kind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
+                name: string;
+                rpc_endpoint_count: number;
+                status: components["schemas"]["HealthStatus"];
+                verification_result_count: number;
+            }[];
+            /** @constant */
+            schema_version: 1;
             /** @constant */
             source: "generated-provider-and-verification-summary";
             summary: {
@@ -6854,35 +7026,29 @@ export interface components {
                 endpoint_count: number;
                 provider_count: number;
                 rpc_endpoint_count: number;
-                status_counts: components["schemas"]["CountMap"];
+                status_counts: {
+                    [key: string]: number;
+                };
                 verification_result_count: number;
             };
         } & {
             [key: string]: unknown;
-        });
-        SourceHealthProvider: {
-            authority: components["schemas"]["Authority"];
-            candidate_count: number;
-            classifications: components["schemas"]["CountMap"];
-            endpoint_count: number;
-            id: string;
-            kind: components["schemas"]["ProviderKind"];
-            name: string;
-            rpc_endpoint_count: number;
-            status: components["schemas"]["HealthStatus"];
-            verification_result_count: number;
         };
-        SourceSnapshot: {
-            captured_at: string;
-            hash: string;
-            id: string;
-            /** @enum {unknown} */
-            kind: "adapter-snapshot" | "candidate-discovery" | "native-chain" | "probe-results" | "registry-manifest" | "review-ledger";
-            path: string;
-            record_count: number;
-        };
-        SourceSnapshotsArtifact: components["schemas"]["ArtifactBase"] & ({
-            sources: components["schemas"]["SourceSnapshot"][];
+        SourceSnapshotsArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            sources: {
+                captured_at: string;
+                hash: string;
+                id: string;
+                /** @enum {string} */
+                kind: "adapter-snapshot" | "candidate-discovery" | "native-chain" | "probe-results" | "registry-manifest" | "review-ledger";
+                path: string;
+                record_count: number;
+            }[];
             summary: {
                 adapter_snapshot_count: number;
                 candidate_count: number;
@@ -6893,7 +7059,7 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
         SubnetAlphaVolumeArtifact: {
@@ -7073,48 +7239,37 @@ export interface components {
             block?: number;
             candidate_count?: number;
             categories?: string[];
-            /** @description Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data. */
             contact?: string | null;
-            coverage_level: components["schemas"]["CoverageLevel"];
+            /** @enum {string} */
+            coverage_level: "native-only" | "manifested" | "probed";
             curation: components["schemas"]["CurationMetadata"];
             curation_level: components["schemas"]["CurationLevel"];
-            /** Format: uri */
             dashboard_url?: string | null;
-            /** @description Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness. */
             derived_categories?: string[];
             description?: string | null;
-            /** Format: uri */
             docs_url?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
-            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.ts --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
             github_languages?: {
                 [key: string]: number;
             } | null;
-            /**
-             * Format: date-time
-             * @description Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.
-             */
             github_last_push_at?: string | null;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
             links: {
                 [key: string]: unknown;
             }[];
-            /** Format: uri */
             logo_url?: string | null;
             mechanism_count?: number;
             name: string;
             native_name?: string | null;
-            /** @enum {unknown} */
+            /** @enum {string} */
             native_name_quality?: "chain" | "placeholder" | "empty";
             native_slug?: string | null;
             netuid: number;
             notes?: string | null;
             participant_count?: number;
-            /** @description Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation, which is a trust signal only. */
             partnership?: components["schemas"]["PartnershipMetadata"] | null;
-            /** @description Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647). */
             previously_known_as?: string[];
             probed_surface_count?: number;
             provenance: {
@@ -7122,25 +7277,20 @@ export interface components {
             };
             registered_at_block?: number;
             slug: string;
-            /** @description Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification. */
             social?: {
-                /** Format: uri */
                 reddit?: string;
-                /** Format: uri */
                 telegram?: string;
-                /** Format: uri */
                 x?: string;
-                /** Format: uri */
                 youtube?: string;
             } | null;
-            /** Format: uri */
             source_repo?: string | null;
-            status: components["schemas"]["SubnetStatus"];
-            subnet_type: components["schemas"]["SubnetType"];
+            /** @enum {string} */
+            status: "active" | "inactive" | "unknown";
+            /** @enum {string} */
+            subnet_type: "root" | "application";
             surface_count: number;
             symbol?: string | null;
             tempo?: number;
-            /** Format: uri */
             website_url?: string | null;
         };
         SubnetDetailArtifact: {
@@ -7183,64 +7333,7 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-            subnet: {
-                block?: number;
-                candidate_count?: number;
-                categories?: string[];
-                contact?: string | null;
-                /** @enum {string} */
-                coverage_level: "native-only" | "manifested" | "probed";
-                curation: components["schemas"]["CurationMetadata"];
-                curation_level: components["schemas"]["CurationLevel"];
-                dashboard_url?: string | null;
-                derived_categories?: string[];
-                description?: string | null;
-                docs_url?: string | null;
-                gap_count?: number;
-                gaps: components["schemas"]["Gaps"];
-                github_languages?: {
-                    [key: string]: number;
-                } | null;
-                github_last_push_at?: string | null;
-                /** @enum {string} */
-                lifecycle?: "active" | "deprecated" | "parked" | "pending";
-                links: {
-                    [key: string]: unknown;
-                }[];
-                logo_url?: string | null;
-                mechanism_count?: number;
-                name: string;
-                native_name?: string | null;
-                /** @enum {string} */
-                native_name_quality?: "chain" | "placeholder" | "empty";
-                native_slug?: string | null;
-                netuid: number;
-                notes?: string | null;
-                participant_count?: number;
-                partnership?: components["schemas"]["PartnershipMetadata"] | null;
-                previously_known_as?: string[];
-                probed_surface_count?: number;
-                provenance: {
-                    [key: string]: unknown;
-                };
-                registered_at_block?: number;
-                slug: string;
-                social?: {
-                    reddit?: string;
-                    telegram?: string;
-                    x?: string;
-                    youtube?: string;
-                } | null;
-                source_repo?: string | null;
-                /** @enum {string} */
-                status: "active" | "inactive" | "unknown";
-                /** @enum {string} */
-                subnet_type: "root" | "application";
-                surface_count: number;
-                symbol?: string | null;
-                tempo?: number;
-                website_url?: string | null;
-            };
+            subnet: components["schemas"]["SubnetDetail"];
             surfaces: components["schemas"]["Surface"][];
             verified_surfaces?: components["schemas"]["Surface"][];
         } & {
@@ -7904,16 +7997,21 @@ export interface components {
             symbol?: string | null;
             team: string | null;
         };
-        SubnetProfileArtifact: components["schemas"]["ArtifactBase"] & ({
+        SubnetProfileArtifact: {
             candidate_surfaces: components["schemas"]["CandidateSurface"][];
+            contract_version?: string;
             endpoints: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
+            generated_at: string;
+            notes?: string | string[];
             profile: components["schemas"]["SubnetProfile"];
+            /** @constant */
+            schema_version: 1;
             subnet: components["schemas"]["SubnetDetail"];
             surfaces: components["schemas"]["Surface"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         SubnetProfileIdentityEvidence: {
             candidate_identity_count: number;
             curated_identity_count: number;
@@ -7927,13 +8025,24 @@ export interface components {
             stale_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
             unverified_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
         };
-        SubnetProfilesArtifact: components["schemas"]["ArtifactBase"] & ({
+        SubnetProfilesArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
             profiles: components["schemas"]["SubnetProfile"][];
+            /** @constant */
+            schema_version: 1;
             summary: {
                 average_completeness_score: number;
-                by_confidence: components["schemas"]["CountMap"];
-                by_identity_level: components["schemas"]["CountMap"];
-                by_profile_level: components["schemas"]["CountMap"];
+                by_confidence: {
+                    [key: string]: number;
+                };
+                by_identity_level: {
+                    [key: string]: number;
+                };
+                by_profile_level: {
+                    [key: string]: number;
+                };
                 identity_promotion_candidate_count: number;
                 native_identity_count: number;
                 native_identity_unpromoted_count: number;
@@ -7941,7 +8050,7 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         SubnetPrometheusArtifact: {
             announcements: number;
             announcements_per_exporter: number | null;
@@ -8346,24 +8455,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Bounded reference to a captured, sanitized live request/response sample for one surface (#748). The request + response shape are inline; fetch the full sanitized body at artifact_path (GET /metagraph/fixtures/{surface_id}.json, or the get_fixture MCP tool). */
-        SurfaceFixtureReference: {
-            /** @description Public artifact path of the full sanitized fixture. */
-            artifact_path: string;
-            /**
-             * Format: date-time
-             * @description When the sample was captured.
-             */
-            captured_at?: string | null;
-            request: {
-                method: string;
-                url: string | null;
-            };
-            response: {
-                content_type?: string | null;
-                status: number | null;
-            };
-        };
         /** @enum {string} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
         SurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
@@ -12186,7 +12277,9 @@ export interface operations {
                      *             "netuid": 7
                      *           }
                      *         ],
-                     *         "blocker_summary": {},
+                     *         "blocker_summary": {
+                     *           "example": null
+                     *         },
                      *         "callable_service_count": 1,
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
@@ -12314,6 +12407,7 @@ export interface operations {
                      *           "missing_fields": [
                      *             "example"
                      *           ],
+                     *           "readiness_verified": false,
                      *           "status": "callable"
                      *         },
                      *         "categories": [
@@ -12321,6 +12415,13 @@ export interface operations {
                      *         ],
                      *         "completeness_score": 100,
                      *         "contract_version": "2026-06-29.1",
+                     *         "example_count": 1,
+                     *         "examples": [
+                     *           {
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "integration_readiness": 1,
                      *         "name": "Example Subnet",
@@ -13309,6 +13410,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "adapter_count": 1,
+                     *         "artifact_budget_summary": {
+                     *           "fail_count": 1,
+                     *           "ok_count": 1,
+                     *           "warn_count": 1
+                     *         },
                      *         "artifact_budgets": [
                      *           {
                      *             "fail_bytes": 1,
@@ -13320,13 +13427,33 @@ export interface operations {
                      *         ],
                      *         "artifact_count": 1,
                      *         "artifact_size_bytes": 1,
+                     *         "artifacts": [
+                     *           {}
+                     *         ],
                      *         "candidate_count": 1,
                      *         "contract_version": "2026-06-29.1",
+                     *         "coverage": {
+                     *           "example": null
+                     *         },
+                     *         "endpoint_count": 1,
+                     *         "full_artifact_count": 1,
+                     *         "full_artifact_size_bytes": 1,
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
+                     *         "profile_count": 1,
                      *         "provider_count": 1,
+                     *         "public_contract": {
+                     *           "url": "https://api.metagraph.sh/example",
+                     *           "version": "2026-06-29.1"
+                     *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "storage_tier_counts": {
+                     *           "example": 1
+                     *         },
+                     *         "storage_tier_size_bytes": {
+                     *           "example": 1
+                     *         },
                      *         "subnet_count": 1,
                      *         "surface_count": 1
                      *       },
@@ -16969,13 +17096,19 @@ export interface operations {
                      *         "source": "generated-artifact-diff",
                      *         "subnets": {
                      *           "added": [
-                     *             1
+                     *             {
+                     *               "netuid": 7
+                     *             }
                      *           ],
                      *           "removed": [
-                     *             1
+                     *             {
+                     *               "netuid": 7
+                     *             }
                      *           ],
                      *           "renamed": [
-                     *             {}
+                     *             {
+                     *               "netuid": 7
+                     *             }
                      *           ]
                      *         },
                      *         "summary": {
@@ -19708,6 +19841,7 @@ export interface operations {
                      *           "native_data_as_of": "example",
                      *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
                      *           "openapi_surface_count": 1,
+                     *           "operational_probe_as_of": "example",
                      *           "publish_ready_without_age_check": false,
                      *           "schema_snapshot_as_of": "example",
                      *           "stale_window_warnings": [
@@ -20936,14 +21070,22 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "components": {},
-                     *         "info": {},
+                     *         "components": {
+                     *           "example": null
+                     *         },
+                     *         "info": {
+                     *           "example": null
+                     *         },
                      *         "openapi": "3.1.0",
-                     *         "paths": {},
+                     *         "paths": {
+                     *           "example": null
+                     *         },
                      *         "servers": [
                      *           {}
                      *         ],
-                     *         "x-metagraphed": {}
+                     *         "x-metagraphed": {
+                     *           "example": null
+                     *         }
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -21439,6 +21581,16 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "contract_version": "2026-06-29.1",
+                     *         "endpoint_summary": {
+                     *           "by_kind": {},
+                     *           "by_layer": {},
+                     *           "by_provider": {},
+                     *           "by_publication_state": {},
+                     *           "by_status": {},
+                     *           "endpoint_count": 1,
+                     *           "monitored_count": 1,
+                     *           "pool_eligible_count": 1
+                     *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "provider": {
@@ -23651,6 +23803,7 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "schemas": [
                      *           {
@@ -23660,7 +23813,13 @@ export interface operations {
                      *             "surface_id": "example"
                      *           }
                      *         ],
-                     *         "source": "live-cron-prober"
+                     *         "source": "live-cron-prober",
+                     *         "summary": {
+                     *           "by_drift_status": {},
+                     *           "by_status": {},
+                     *           "schema_count": 1,
+                     *           "surface_count": 1
+                     *         }
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

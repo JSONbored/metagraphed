@@ -66,69 +66,6 @@
         },
         "additionalProperties": false
       },
-      "SchemaIndexEntry": {
-        "type": "object",
-        "required": ["drift_status", "schema_url", "status", "surface_id"],
-        "properties": {
-          "content_type": {
-            "type": ["string", "null"]
-          },
-          "drift_status": {
-            "enum": [
-              "changed",
-              "missing-after-previous-capture",
-              "new",
-              "not-captured",
-              "unchanged"
-            ]
-          },
-          "error": {
-            "type": ["string", "null"]
-          },
-          "hash": {
-            "type": ["string", "null"]
-          },
-          "netuid": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "path": {
-            "type": ["string", "null"]
-          },
-          "previous_hash": {
-            "type": ["string", "null"]
-          },
-          "schema_url": {
-            "type": ["string", "null"],
-            "format": "uri"
-          },
-          "snapshot": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "status": {
-            "enum": [
-              "captured",
-              "error",
-              "not-captured",
-              "not-found",
-              "too-large",
-              "unsafe"
-            ]
-          },
-          "subnet_slug": {
-            "type": "string"
-          },
-          "surface_id": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string",
-            "format": "uri"
-          }
-        },
-        "additionalProperties": false
-      },
       "R2ManifestEntry": {
         "type": "object",
         "required": [
@@ -208,29 +145,6 @@
                 "items": {
                   "$ref": "#/components/schemas/SchemaDriftSurface"
                 }
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      },
-      "SchemaIndexArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          },
-          {
-            "type": "object",
-            "required": ["schemas", "source"],
-            "properties": {
-              "schemas": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/SchemaIndexEntry"
-                }
-              },
-              "source": {
-                "type": "string"
               }
             },
             "additionalProperties": true

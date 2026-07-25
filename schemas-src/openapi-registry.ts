@@ -67,6 +67,7 @@ import {
 } from "./routes/subnets.ts";
 import {
   SubnetDetailArtifactSchema,
+  SubnetDetailSchema,
   SurfaceSchema,
   CandidateSurfaceSchema,
   EndpointResourceSchema,
@@ -294,6 +295,42 @@ import {
   ReviewProfileCompletenessArtifactSchema,
   SubnetGapsArtifactSchema,
 } from "./routes/review-gaps-profile.ts";
+
+import {
+  ApiIndexArtifactSchema,
+  ContractsArtifactSchema,
+  OpenApiArtifactSchema,
+  BuildSummaryArtifactSchema,
+  ChangelogArtifactSchema,
+} from "./routes/meta-contracts.ts";
+import {
+  FreshnessArtifactSchema,
+  SourceHealthArtifactSchema,
+  SourceSnapshotsArtifactSchema,
+  SearchArtifactSchema,
+  SearchIndexArtifactSchema,
+} from "./routes/evidence-search.ts";
+import {
+  ProviderArtifactSchema,
+  ProvidersArtifactSchema,
+  ProviderEndpointsArtifactSchema,
+  RpcEndpointsArtifactSchema,
+  RpcPoolsArtifactSchema,
+  RpcUsageArtifactSchema,
+  ProviderSchema,
+  RpcPoolSchema,
+} from "./routes/providers-rpc.ts";
+import {
+  SubnetProfilesArtifactSchema,
+  SubnetProfileArtifactSchema,
+  SchemaIndexArtifactSchema,
+} from "./routes/subnet-profiles.ts";
+import {
+  AgentCatalogArtifactSchema,
+  AgentCatalogSubnetArtifactSchema,
+  AgentResourcesArtifactSchema,
+  AgentReadinessStatusSchema,
+} from "./routes/agent-catalog.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -549,6 +586,48 @@ register(JsonObjectSchema, "JsonObject");
 register(CoverageDepthRowSchema, "CoverageDepthRow");
 register(CountMapSchema, "CountMap");
 
+// Batch 10 (#8064) additions.
+register(ApiIndexArtifactSchema, "ApiIndexArtifact");
+register(ContractsArtifactSchema, "ContractsArtifact");
+register(OpenApiArtifactSchema, "OpenApiArtifact");
+register(BuildSummaryArtifactSchema, "BuildSummaryArtifact");
+register(ChangelogArtifactSchema, "ChangelogArtifact");
+register(FreshnessArtifactSchema, "FreshnessArtifact");
+register(SourceHealthArtifactSchema, "SourceHealthArtifact");
+register(SourceSnapshotsArtifactSchema, "SourceSnapshotsArtifact");
+register(SearchArtifactSchema, "SearchArtifact");
+register(SearchIndexArtifactSchema, "SearchIndexArtifact");
+register(ProviderArtifactSchema, "ProviderArtifact");
+register(ProvidersArtifactSchema, "ProvidersArtifact");
+register(ProviderEndpointsArtifactSchema, "ProviderEndpointsArtifact");
+register(RpcEndpointsArtifactSchema, "RpcEndpointsArtifact");
+register(RpcPoolsArtifactSchema, "RpcPoolsArtifact");
+register(RpcUsageArtifactSchema, "RpcUsageArtifact");
+// Provider/RpcPool: no remaining $ref, but generated/metagraphed-client.ts
+// hardcodes a components["schemas"] type lookup against both by name (see
+// providers-rpc.ts's own header) -- register so they stay real named
+// components instead of being inlined.
+register(ProviderSchema, "Provider");
+register(RpcPoolSchema, "RpcPool");
+register(SubnetProfilesArtifactSchema, "SubnetProfilesArtifact");
+register(SubnetProfileArtifactSchema, "SubnetProfileArtifact");
+// SubnetDetail (bare): same situation as Provider/RpcPool above --
+// generated/metagraphed-client.ts hardcodes a lookup against it by name, and
+// SubnetProfileArtifact (this batch) is now its only $ref'd use.
+register(SubnetDetailSchema, "SubnetDetail");
+register(SchemaIndexArtifactSchema, "SchemaIndexArtifact");
+register(AgentCatalogArtifactSchema, "AgentCatalogArtifact");
+register(AgentCatalogSubnetArtifactSchema, "AgentCatalogSubnetArtifact");
+register(AgentResourcesArtifactSchema, "AgentResourcesArtifact");
+// AgentReadinessBlocker is already registered above by batch 8 (imported
+// from ./routes/coverage.ts, the same shape agent-catalog.ts reuses by
+// import rather than redefining -- see that file's own header).
+// AgentReadinessStatus: no remaining $ref, but
+// scripts/validate-schema-enums.ts hardcodes a property-enum lookup against
+// it by name (see agent-catalog.ts's own header) -- register so it stays a
+// real named component instead of being inlined.
+register(AgentReadinessStatusSchema, "AgentReadinessStatus");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -724,6 +803,33 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "JsonObject",
   "CoverageDepthRow",
   "CountMap",
+  // Batch 10 (#8064) additions.
+  "ApiIndexArtifact",
+  "ContractsArtifact",
+  "OpenApiArtifact",
+  "BuildSummaryArtifact",
+  "ChangelogArtifact",
+  "FreshnessArtifact",
+  "SourceHealthArtifact",
+  "SourceSnapshotsArtifact",
+  "SearchArtifact",
+  "SearchIndexArtifact",
+  "ProviderArtifact",
+  "ProvidersArtifact",
+  "ProviderEndpointsArtifact",
+  "RpcEndpointsArtifact",
+  "RpcPoolsArtifact",
+  "RpcUsageArtifact",
+  "Provider",
+  "RpcPool",
+  "SubnetProfilesArtifact",
+  "SubnetProfileArtifact",
+  "SubnetDetail",
+  "SchemaIndexArtifact",
+  "AgentCatalogArtifact",
+  "AgentCatalogSubnetArtifact",
+  "AgentResourcesArtifact",
+  "AgentReadinessStatus",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -917,4 +1023,47 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "ReviewEnrichmentTarget",
   "ReviewEnrichmentTargetGroup",
   "ReviewProfileCompletenessEntry",
+  // Batch 10 (#8064) additions: ArtifactContractEntry/ArtifactDiffEntry/
+  // ApiRoute/ApiQueryParameter/ResponseEnvelopeContract/ArtifactSizeBudget/
+  // CoverageDelta (meta-contracts.ts), FreshnessSource/SourceHealthProvider/
+  // SourceSnapshot/SearchDocument/SearchIndexDocument (evidence-search.ts),
+  // RpcEndpoint/RpcPoolEndpoint/EndpointProviderScore (providers-rpc.ts),
+  // SchemaIndexEntry (subnet-profiles.ts), AgentServiceSchemaSource/
+  // AgentServiceFixtureStatus/SurfaceFixtureReference (agent-catalog.ts) are
+  // each referenced only by the one (or, where multiple components in this
+  // batch share a name, only this batch's own) hand-edited component(s) this
+  // batch replaces -- verified via repo-wide $ref grep, same test as every
+  // prior batch's additions. CountMap/ProviderKind/EndpointSummary are
+  // deliberately NOT here -- each still has a referrer outside this batch
+  // (verified the same way); this batch's own local Zod copies stay
+  // unregistered rather than orphaning the hand-edited original.
+  // AgentReadinessStatus/Provider/RpcPool/SubnetDetail are also deliberately
+  // NOT here despite this batch replacing their sole (or, for SubnetDetail,
+  // only remaining) hand-edited $ref -- see their own register() calls
+  // above: all three are required by validate-schema-enums.ts's hardcoded
+  // property-enum lookup or generated/metagraphed-client.ts's hardcoded
+  // components["schemas"] type lookups, caught by the full validate suite
+  // and `npm run typecheck` respectively, not by $ref-grep alone.
+  // (AgentReadinessBlocker isn't this batch's concern at all -- batch 8
+  // already registers it from schemas-src/routes/coverage.ts, reused here
+  // by import, not $ref.)
+  "ArtifactContractEntry",
+  "ArtifactDiffEntry",
+  "ApiRoute",
+  "ApiQueryParameter",
+  "ResponseEnvelopeContract",
+  "ArtifactSizeBudget",
+  "CoverageDelta",
+  "FreshnessSource",
+  "SourceHealthProvider",
+  "SourceSnapshot",
+  "SearchDocument",
+  "SearchIndexDocument",
+  "RpcEndpoint",
+  "RpcPoolEndpoint",
+  "EndpointProviderScore",
+  "SchemaIndexEntry",
+  "AgentServiceSchemaSource",
+  "AgentServiceFixtureStatus",
+  "SurfaceFixtureReference",
 ] as const;
