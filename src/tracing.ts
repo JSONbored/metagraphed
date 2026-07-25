@@ -29,7 +29,10 @@
 // PostHog's trace list is fully filterable/groupable by those dimensions
 // even without parent/child nesting.
 
-import { isUsageTelemetryConfigured, resolvePostHogHost } from "./usage-telemetry.ts";
+import {
+  isUsageTelemetryConfigured,
+  resolvePostHogHost,
+} from "./usage-telemetry.ts";
 
 export const POSTHOG_TRACES_PATH = "/i/v1/traces";
 
@@ -212,7 +215,9 @@ export interface SpanTimingResult<T> {
  * needed to build a TraceSpanInput. Mirrors Sentry.startSpan's ergonomics
  * (wrap-a-callback) without needing an active-span context stack.
  */
-export async function timedSpan<T>(fn: () => Promise<T>): Promise<
+export async function timedSpan<T>(
+  fn: () => Promise<T>,
+): Promise<
   | { ok: true; value: T; startedAt: number; endedAt: number }
   | { ok: false; error: unknown; startedAt: number; endedAt: number }
 > {

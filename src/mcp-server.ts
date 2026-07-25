@@ -11420,7 +11420,10 @@ function scheduleExceptionEvent(ctx: McpCtx, event: Row) {
 // Sentry.startSpan's per-tool spans. Same waitUntil/no-throw discipline as
 // scheduleExceptionEvent above -- a trace-span POST must never affect the
 // tool call it's describing.
-function scheduleTraceSpan(ctx: McpCtx, span: Parameters<typeof recordTraceSpan>[1]) {
+function scheduleTraceSpan(
+  ctx: McpCtx,
+  span: Parameters<typeof recordTraceSpan>[1],
+) {
   try {
     const pending = Promise.resolve(recordTraceSpan(ctx?.env, span)).catch(
       () => false,

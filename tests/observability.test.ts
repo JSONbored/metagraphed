@@ -205,4 +205,3 @@ test("captureExceptionAndContinue: captures to PostHog (immediate, awaited, tagg
   assert.equal(exitSpy.mock.calls.length, 0);
   exitSpy.mockRestore();
 });
-
