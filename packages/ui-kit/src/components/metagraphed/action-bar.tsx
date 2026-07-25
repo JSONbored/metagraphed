@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { classNames } from "@/lib/format";
+import { Panel } from "./panel";
 
 /**
  * Segmented container for one-shot page actions (share, download, reset
@@ -17,13 +17,13 @@ export function ActionBar({
   className?: string;
 }) {
   return (
-    <div
-      className={classNames(
-        "inline-flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5",
-        className,
-      )}
+    <Panel
+      as="div"
+      flush
+      className={className}
+      bodyClassName="inline-flex items-center gap-0.5 p-0.5"
     >
       {children}
-    </div>
+    </Panel>
   );
 }

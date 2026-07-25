@@ -431,6 +431,115 @@ var SheetDescription = React3.forwardRef(({ className, ...props }, ref) => /* @_
   }
 ));
 SheetDescription.displayName = DialogPrimitive.Description.displayName;
+var TONE_CLASSES = {
+  default: "text-ink-muted",
+  muted: "text-ink-subtle-text",
+  accent: "text-accent-text",
+  warn: "text-health-warn-text",
+  down: "text-health-down"
+};
+function SectionLabel({
+  children,
+  size = "micro",
+  tone = "default",
+  icon,
+  hint,
+  as,
+  className,
+  title
+}) {
+  const Cmp = as ?? "span";
+  return /* @__PURE__ */ jsxs(
+    Cmp,
+    {
+      title,
+      className: classNames(
+        size === "micro" ? "mg-type-micro" : "mg-type-label",
+        "inline-flex items-center gap-1.5",
+        TONE_CLASSES[tone],
+        className
+      ),
+      children: [
+        icon ? /* @__PURE__ */ jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "inline-flex size-3 items-center justify-center",
+            children: icon
+          }
+        ) : null,
+        /* @__PURE__ */ jsx("span", { className: "truncate", children }),
+        hint != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-subtle-text normal-case tracking-normal", children: hint }) : null
+      ]
+    }
+  );
+}
+var TONE_STYLES = {
+  default: { border: "border-border", bg: "bg-card" },
+  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
+  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
+  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
+  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
+  muted: { border: "border-border", bg: "bg-surface-2" }
+};
+function Panel({
+  title,
+  action,
+  caption,
+  dense,
+  flush,
+  interactive,
+  tone = "default",
+  tintBorderOnly,
+  glow,
+  as,
+  className,
+  bodyClassName,
+  children,
+  ...rest
+}) {
+  const Cmp = as ?? "section";
+  const hasHeader = title != null || action != null || caption != null;
+  const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
+  const toneStyle = TONE_STYLES[tone];
+  return /* @__PURE__ */ jsxs(
+    Cmp,
+    {
+      ...rest,
+      className: classNames(
+        "rounded border",
+        toneStyle.border,
+        tintBorderOnly ? "bg-card" : toneStyle.bg,
+        interactive ? "mg-hover-lift" : null,
+        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
+        className
+      ),
+      children: [
+        hasHeader ? /* @__PURE__ */ jsxs(
+          "header",
+          {
+            className: classNames(
+              "flex items-start justify-between gap-3 border-b border-border/70",
+              dense ? "mg-panel-pad-dense" : "mg-panel-pad"
+            ),
+            style: {
+              paddingTop: "var(--mg-space-sm)",
+              paddingBottom: "var(--mg-space-sm)"
+            },
+            children: [
+              /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                title != null ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : null,
+                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
+              ] }),
+              action != null ? /* @__PURE__ */ jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
+            ]
+          }
+        ) : null,
+        /* @__PURE__ */ jsx("div", { className: classNames(padClass, bodyClassName), children })
+      ]
+    }
+  );
+}
 function SegmentedToggle({
   options,
   value,
@@ -439,14 +548,14 @@ function SegmentedToggle({
   className
 }) {
   return /* @__PURE__ */ jsx(
-    "div",
+    Panel,
     {
+      as: "div",
+      flush: true,
       role: "tablist",
       "aria-label": ariaLabel,
-      className: classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className
-      ),
+      className,
+      bodyClassName: "inline-flex items-center p-0.5",
       children: options.map(
         ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
           const active = v === value;
@@ -460,7 +569,7 @@ function SegmentedToggle({
               title: title ?? label,
               onClick: () => onChange(v),
               className: classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors min-h-8",
                 active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
               ),
               children: [
@@ -539,7 +648,7 @@ function AccentBand({
           "div",
           {
             className: classNames(
-              "relative max-w-shell-max mx-auto px-4 md:px-8 py-14 md:py-20",
+              "relative max-w-shell-max mx-auto px-4 md:px-8 py-12 md:py-20",
               innerClassName
             ),
             children
@@ -1205,7 +1314,7 @@ function HealthDot({
   if (variant === "dot") return dot;
   return /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
     dot,
-    /* @__PURE__ */ jsx("span", { className: "text-[11px] font-medium text-ink", children: label })
+    /* @__PURE__ */ jsx("span", { className: "mg-type-caption font-medium text-ink", children: label })
   ] });
 }
 function HealthPill({
@@ -1215,7 +1324,7 @@ function HealthPill({
   if (label) {
     return /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
       /* @__PURE__ */ jsx(HealthDot, { state }),
-      /* @__PURE__ */ jsx("span", { className: "text-[11px] font-medium text-ink", children: label })
+      /* @__PURE__ */ jsx("span", { className: "mg-type-caption font-medium text-ink", children: label })
     ] });
   }
   return /* @__PURE__ */ jsx(HealthDot, { state, variant: "label" });
@@ -1258,7 +1367,7 @@ function CurationChip({ level }) {
     "span",
     {
       className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
         cls
       ),
       children: label
@@ -1280,7 +1389,7 @@ function ReviewChip({ state }) {
     "span",
     {
       className: classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
         reviewCls[key]
       ),
       title: `Maintainer review: ${key}`,
@@ -1289,7 +1398,7 @@ function ReviewChip({ state }) {
   );
 }
 function CandidateChip() {
-  return /* @__PURE__ */ jsx("span", { className: "inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted", children: "Unverified" });
+  return /* @__PURE__ */ jsx("span", { className: "inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider text-ink-muted", children: "Unverified" });
 }
 function truncateCopyPreview(value, max = 64) {
   return value.length > max ? value.slice(0, max) + "\u2026" : value;
@@ -1555,11 +1664,11 @@ function DownloadCsvButton({
       "aria-label": label,
       title: label,
       className: classNames(
-        bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
+        bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
           // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
           // other compact header controls it commonly sits next to — a plain
           // `rounded` rectangle reads as a mismatched shape beside a pill.
-          "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1"
+          "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 mg-type-caption font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1"
         ),
         className
       ),
@@ -1598,26 +1707,19 @@ function EligibilityChip({
       {
         tabIndex: 0,
         className: classNames(
-          "inline-flex items-center gap-1.5 rounded-full border bg-transparent font-mono uppercase tracking-wider whitespace-nowrap cursor-help transition-colors",
+          "inline-flex items-center gap-1.5 rounded-full border bg-transparent whitespace-nowrap cursor-help transition-colors",
           "before:content-[''] before:size-1.5 before:rounded-full",
           "hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          size === "xs" ? "px-2 py-0 text-[9px] h-5" : "px-2.5 py-0 text-[10px] h-6",
+          size === "xs" ? "px-2 py-0 h-5 mg-type-micro" : "px-2.5 py-0 h-6 mg-type-label",
           TONE[eligibility]
         ),
         children: ELIGIBILITY_LABEL[eligibility]
       }
     ) }),
-    /* @__PURE__ */ jsxs(
-      TooltipContent,
-      {
-        side: "top",
-        className: "max-w-[240px] text-[11px] leading-relaxed",
-        children: [
-          /* @__PURE__ */ jsx("div", { className: "mg-type-micro opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
-          RULE[eligibility]
-        ]
-      }
-    )
+    /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-[240px] mg-type-caption", children: [
+      /* @__PURE__ */ jsx("div", { className: "mg-type-micro opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
+      RULE[eligibility]
+    ] })
   ] }) });
 }
 var SAFE_EXTERNAL_PROTOCOLS = /* @__PURE__ */ new Set(["http:", "https:"]);
@@ -1661,9 +1763,36 @@ function ExternalLink({
   children,
   authRequired,
   publicSafe = true,
-  className
+  className,
+  bare,
+  title,
+  ariaLabel
 }) {
   const safeHref = safeExternalUrl(href);
+  if (bare) {
+    if (!safeHref) {
+      return /* @__PURE__ */ jsx(
+        "span",
+        {
+          className,
+          title: title ?? "Blocked unsafe external URL",
+          children
+        }
+      );
+    }
+    return /* @__PURE__ */ jsx(
+      "a",
+      {
+        href: safeHref,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        title,
+        "aria-label": ariaLabel,
+        className,
+        children
+      }
+    );
+  }
   const content = /* @__PURE__ */ jsxs(Fragment, { children: [
     /* @__PURE__ */ jsx("span", { className: "truncate", children }),
     safeHref ? /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3 shrink-0 text-ink-muted" }) : null,
@@ -1723,14 +1852,7 @@ function InfoTooltip({
         children: /* @__PURE__ */ jsx(Info, { className: "size-3.5" })
       }
     ) }),
-    /* @__PURE__ */ jsx(
-      TooltipContent,
-      {
-        side: "top",
-        className: "max-w-xs text-[11px] leading-relaxed",
-        children: label
-      }
-    )
+    /* @__PURE__ */ jsx(TooltipContent, { side: "top", className: "max-w-xs mg-type-caption", children: label })
   ] }) });
 }
 function FreshnessIndicator({
@@ -1811,7 +1933,7 @@ function HoverPreview({
           "span",
           {
             role: "tooltip",
-            className: "absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg text-[11px] text-ink leading-relaxed",
+            className: "absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg mg-type-caption text-ink",
             children: content
           }
         ) : null
@@ -1976,7 +2098,7 @@ function LoadMore({
     );
   }
   if (error) {
-    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-[11px]", children: [
+    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 mg-type-caption", children: [
       /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5 text-health-down", children: [
         /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
         "Couldn\u2019t load more \u2014 ",
@@ -1998,7 +2120,7 @@ function LoadMore({
     ] });
   }
   if (cursorInvalid) {
-    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-[11px] text-health-warn", children: [
+    return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 mg-type-caption text-health-warn", children: [
       /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
         /* @__PURE__ */ jsx(AlertCircle, { className: "size-3" }),
         "Pagination stopped \u2014 the server returned an invalid next cursor."
@@ -2019,7 +2141,7 @@ function LoadMore({
       {
         type: "button",
         onClick: onLoadMore,
-        className: "inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-[11px] font-medium hover:border-ink/30 min-h-9",
+        className: "inline-flex items-center rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium hover:border-ink/30 min-h-9",
         children: "Load more"
       }
     ) : /* @__PURE__ */ jsx("span", { className: "opacity-60", children: "end of list" })
@@ -2040,7 +2162,7 @@ function PageHero({
     "section",
     {
       className: classNames(
-        "mg-hero-slab relative mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-14",
+        "mg-hero-slab relative mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-12",
         className
       ),
       children: [
@@ -2051,8 +2173,8 @@ function PageHero({
               live ? /* @__PURE__ */ jsx("span", { className: "mg-live-dot" }) : null,
               eyebrow
             ] }) : null,
-            /* @__PURE__ */ jsx("h1", { className: "mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-[2.5rem] sm:text-5xl md:text-[3.75rem] font-semibold leading-[1.02] tracking-[-0.025em] text-ink-strong", children: title }),
-            description ? /* @__PURE__ */ jsx("p", { className: "mg-fade-in mg-fade-in-delay-2 mt-5 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed", children: description }) : null,
+            /* @__PURE__ */ jsx("h1", { className: "mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-[2.5rem] sm:text-5xl md:text-6xl font-semibold leading-[1.02] tracking-[-0.025em] text-ink-strong", children: title }),
+            description ? /* @__PURE__ */ jsx("p", { className: "mg-fade-in mg-fade-in-delay-2 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed", children: description }) : null,
             actions ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-wrap items-center gap-2", children: actions }) : null
           ] }),
           aside ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0", children: aside }) : null
@@ -2095,12 +2217,12 @@ function EntityHero({
     {
       className: classNames(
         "mg-hero-slab relative",
-        display ? "mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-14" : "pt-8 md:pt-12 pb-8 md:pb-10 mb-6",
+        display ? "mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-12" : "pt-8 md:pt-12 pb-8 md:pb-10 mb-6",
         className
       ),
       children: [
         caption ? /* @__PURE__ */ jsx("div", { className: "absolute right-0 top-4 hidden md:block", children: /* @__PURE__ */ jsx("span", { className: "mg-hero-caption", children: caption }) }) : null,
-        banner ? /* @__PURE__ */ jsx("div", { className: "mb-5", children: banner }) : null,
+        banner ? /* @__PURE__ */ jsx("div", { className: "mb-4", children: banner }) : null,
         /* @__PURE__ */ jsxs(
           "div",
           {
@@ -2131,7 +2253,7 @@ function EntityHero({
                       {
                         className: classNames(
                           "mg-fade-in mg-fade-in-delay-1 font-display font-semibold text-ink-strong",
-                          display ? "mt-4 text-[2.5rem] sm:text-5xl md:text-[3.75rem] leading-[1.02] tracking-[-0.025em]" : "text-3xl md:text-4xl tracking-[-0.01em]"
+                          display ? "mt-4 text-[2.5rem] sm:text-5xl md:text-6xl leading-[1.02] tracking-[-0.025em]" : "text-3xl md:text-4xl tracking-[-0.01em]"
                         ),
                         children: title
                       }
@@ -2143,7 +2265,7 @@ function EntityHero({
                     {
                       className: classNames(
                         "mg-fade-in mg-fade-in-delay-2 text-ink-muted leading-relaxed",
-                        display ? "mt-5 max-w-xl text-base md:text-lg" : "mt-3 max-w-3xl text-sm md:text-base"
+                        display ? "mt-4 max-w-xl text-base md:text-lg" : "mt-3 max-w-3xl text-sm md:text-base"
                       ),
                       children: description
                     }
@@ -2207,7 +2329,7 @@ function PageSection({
       "data-section-anchor": id ? "" : void 0,
       className: classNames(
         "mg-section",
-        tone === "muted" && "rounded-xl bg-surface-2/40 px-5 md:px-8 py-8 md:py-10",
+        tone === "muted" && "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className
       ),
       children: [
@@ -2222,7 +2344,7 @@ function PageSection({
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
                 eyebrow ? /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
-                title ? /* @__PURE__ */ jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-[1.875rem] font-semibold tracking-[-0.02em] text-ink-strong", children: [
+                title ? /* @__PURE__ */ jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink-strong", children: [
                   /* @__PURE__ */ jsx("span", { children: title }),
                   id ? /* @__PURE__ */ jsx(
                     "a",
@@ -2337,7 +2459,7 @@ function SectionAnchor({
                 }
               )
             ] }),
-            subtitle ? /* @__PURE__ */ jsx("p", { className: "mt-0.5 text-[11px] text-ink-muted", children: subtitle }) : null
+            subtitle ? /* @__PURE__ */ jsx("p", { className: "mt-0.5 mg-type-caption text-ink-muted", children: subtitle }) : null
           ] }),
           right ? /* @__PURE__ */ jsx("div", { className: "shrink-0", children: right }) : null
         ] }),
@@ -2413,7 +2535,7 @@ function ShareButton({
         "aria-label": "Copy link with current filters, sort, and page",
         title: "Copy link with current filters, sort, and page",
         className: classNames(
-          connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? iconOnly ? "inline-flex items-center justify-center rounded p-1 min-h-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : iconOnly ? "inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? iconOnly ? "inline-flex items-center justify-center rounded p-1 min-h-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : iconOnly ? "inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           className
         ),
         children: [
@@ -2440,12 +2562,12 @@ function ActionBar({
   className
 }) {
   return /* @__PURE__ */ jsx(
-    "div",
+    Panel,
     {
-      className: classNames(
-        "inline-flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5",
-        className
-      ),
+      as: "div",
+      flush: true,
+      className,
+      bodyClassName: "inline-flex items-center gap-0.5 p-0.5",
       children
     }
   );
@@ -2905,13 +3027,12 @@ function PrimaryLinksRail({
     const Icon = it.icon;
     const href = safeExternalUrl(it.href);
     return /* @__PURE__ */ jsx(
-      "a",
+      ExternalLink,
       {
         href,
-        target: "_blank",
-        rel: "noopener noreferrer",
+        bare: true,
         title: it.label,
-        "aria-label": it.label,
+        ariaLabel: it.label,
         className: "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors",
         children: /* @__PURE__ */ jsx(Icon, { className: "size-4" })
       },
@@ -2919,7 +3040,15 @@ function PrimaryLinksRail({
     );
   });
   if (bare) return /* @__PURE__ */ jsx(Fragment, { children: segments });
-  return /* @__PURE__ */ jsx("div", { className: "inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden", children: segments });
+  return /* @__PURE__ */ jsx(
+    Panel,
+    {
+      as: "div",
+      flush: true,
+      bodyClassName: "inline-flex items-center divide-x divide-border overflow-hidden",
+      children: segments
+    }
+  );
 }
 function MethodologyCallout({
   generatedAt,
@@ -2967,7 +3096,7 @@ function MethodologyCallout({
             ]
           }
         ),
-        open ? /* @__PURE__ */ jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 text-[11.5px] leading-relaxed text-ink-muted md:grid-cols-2", children: [
+        open ? /* @__PURE__ */ jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 mg-type-caption text-ink-muted md:grid-cols-2", children: [
           /* @__PURE__ */ jsxs("div", { children: [
             /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Sparklines" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Uptime & latency sparklines plot the active health window (7d default, switchable to 30d). Each point is the mean across every tracked endpoint in that bucket \u2014 gaps mean no probe landed in the window, not zero." })
@@ -3392,7 +3521,7 @@ function SparkLegend({
           sideOffset: 6,
           collisionPadding: 8,
           avoidCollisions: true,
-          className: "max-w-xs text-[11px] leading-relaxed",
+          className: "max-w-xs mg-type-caption",
           children: [
             /* @__PURE__ */ jsxs("div", { className: "mg-type-micro mb-1", children: [
               metric,
@@ -3579,115 +3708,6 @@ function Sparkline({
     }
   );
 }
-var TONE_CLASSES = {
-  default: "text-ink-muted",
-  muted: "text-ink-subtle-text",
-  accent: "text-accent-text",
-  warn: "text-health-warn-text",
-  down: "text-health-down"
-};
-function SectionLabel({
-  children,
-  size = "micro",
-  tone = "default",
-  icon,
-  hint,
-  as,
-  className,
-  title
-}) {
-  const Cmp = as ?? "span";
-  return /* @__PURE__ */ jsxs(
-    Cmp,
-    {
-      title,
-      className: classNames(
-        size === "micro" ? "mg-type-micro" : "mg-type-label",
-        "inline-flex items-center gap-1.5",
-        TONE_CLASSES[tone],
-        className
-      ),
-      children: [
-        icon ? /* @__PURE__ */ jsx(
-          "span",
-          {
-            "aria-hidden": true,
-            className: "inline-flex size-3 items-center justify-center",
-            children: icon
-          }
-        ) : null,
-        /* @__PURE__ */ jsx("span", { className: "truncate", children }),
-        hint != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-subtle-text normal-case tracking-normal", children: hint }) : null
-      ]
-    }
-  );
-}
-var TONE_STYLES = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" }
-};
-function Panel({
-  title,
-  action,
-  caption,
-  dense,
-  flush,
-  interactive,
-  tone = "default",
-  tintBorderOnly,
-  glow,
-  as,
-  className,
-  bodyClassName,
-  children,
-  ...rest
-}) {
-  const Cmp = as ?? "section";
-  const hasHeader = title != null || action != null || caption != null;
-  const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
-  return /* @__PURE__ */ jsxs(
-    Cmp,
-    {
-      ...rest,
-      className: classNames(
-        "rounded border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
-        className
-      ),
-      children: [
-        hasHeader ? /* @__PURE__ */ jsxs(
-          "header",
-          {
-            className: classNames(
-              "flex items-start justify-between gap-3 border-b border-border/70",
-              dense ? "mg-panel-pad-dense" : "mg-panel-pad"
-            ),
-            style: {
-              paddingTop: "var(--mg-space-sm)",
-              paddingBottom: "var(--mg-space-sm)"
-            },
-            children: [
-              /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-                title != null ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
-              ] }),
-              action != null ? /* @__PURE__ */ jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
-            ]
-          }
-        ) : null,
-        /* @__PURE__ */ jsx("div", { className: classNames(padClass, bodyClassName), children })
-      ]
-    }
-  );
-}
 function StatTile({
   icon: Icon,
   eyebrow,
@@ -3798,26 +3818,19 @@ function StatWithSpark({
               delta
             ] }),
             viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
-            hint ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] text-ink-muted/80 truncate", children: hint }) : null,
-            freshLine ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9px] tracking-wide text-ink-muted/70 truncate", children: freshLine }) : null
+            hint ? /* @__PURE__ */ jsx("div", { className: "mg-type-data-sm text-ink-muted/80 truncate", children: hint }) : null,
+            freshLine ? /* @__PURE__ */ jsx("div", { className: "mg-type-data-sm tracking-wide text-ink-muted/70 truncate", children: freshLine }) : null
           ]
         }
       ) }),
-      /* @__PURE__ */ jsxs(
-        TooltipContent,
-        {
-          side: "bottom",
-          className: "max-w-xs text-[11px] leading-relaxed",
-          children: [
-            /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
-            freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm text-primary-foreground/70", children: [
-              freshAbs ? `Last checked ${freshAbs}` : null,
-              freshAbs && windowLabel ? " \xB7 " : "",
-              windowLabel ? `${windowLabel} window` : null
-            ] }) : null
-          ]
-        }
-      )
+      /* @__PURE__ */ jsxs(TooltipContent, { side: "bottom", className: "max-w-xs mg-type-caption", children: [
+        /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
+        freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm text-primary-foreground/70", children: [
+          freshAbs ? `Last checked ${freshAbs}` : null,
+          freshAbs && windowLabel ? " \xB7 " : "",
+          windowLabel ? `${windowLabel} window` : null
+        ] }) : null
+      ] })
     ] }) })
   );
 }
@@ -3970,19 +3983,12 @@ function NoDataSpark({
           ]
         }
       ) }),
-      /* @__PURE__ */ jsxs(
-        TooltipContent,
-        {
-          side: "top",
-          className: "max-w-xs text-[11px] leading-relaxed",
-          children: [
-            reason,
-            ".",
-            " ",
-            freshAbs ? `Last checked ${freshAbs}${windowLabel ? ` \xB7 ${windowLabel} window` : ""}.` : "No probe samples recorded yet."
-          ]
-        }
-      )
+      /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-xs mg-type-caption", children: [
+        reason,
+        ".",
+        " ",
+        freshAbs ? `Last checked ${freshAbs}${windowLabel ? ` \xB7 ${windowLabel} window` : ""}.` : "No probe samples recorded yet."
+      ] })
     ] }) })
   );
 }
@@ -4085,7 +4091,7 @@ function TreemapMini({
               style: { background: t.color ?? "var(--accent)" },
               children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxs(Fragment, { children: [
                 /* @__PURE__ */ jsx("span", { className: "truncate mg-type-data-sm font-medium leading-none text-accent-foreground", children: t.label }),
-                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] leading-none text-accent-foreground/80", children: formatValue(t.value) }) : null
+                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate mg-type-data-sm leading-none text-accent-foreground/80", children: formatValue(t.value) }) : null
               ] }) : null
             }
           )

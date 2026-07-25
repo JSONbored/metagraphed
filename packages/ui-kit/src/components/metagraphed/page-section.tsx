@@ -44,7 +44,7 @@ export function PageSection({
       className={classNames(
         "mg-section",
         tone === "muted" &&
-          "rounded-xl bg-surface-2/40 px-5 md:px-8 py-8 md:py-10",
+          "rounded-xl bg-surface-2/40 px-4 md:px-8 py-8 md:py-10",
         className,
       )}
     >
@@ -65,7 +65,7 @@ export function PageSection({
               </div>
             ) : null}
             {title ? (
-              <h2 className="group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-[1.875rem] font-semibold tracking-[-0.02em] text-ink-strong">
+              <h2 className="group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink-strong">
                 <span>{title}</span>
                 {id ? (
                   <a

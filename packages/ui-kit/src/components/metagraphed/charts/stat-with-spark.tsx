@@ -82,21 +82,18 @@ export function StatWithSpark({
             </div>
             {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
             {hint ? (
-              <div className="font-mono text-[9.5px] text-ink-muted/80 truncate">
+              <div className="mg-type-data-sm text-ink-muted/80 truncate">
                 {hint}
               </div>
             ) : null}
             {freshLine ? (
-              <div className="font-mono text-[9px] tracking-wide text-ink-muted/70 truncate">
+              <div className="mg-type-data-sm tracking-wide text-ink-muted/70 truncate">
                 {freshLine}
               </div>
             ) : null}
           </div>
         </TooltipTrigger>
-        <TooltipContent
-          side="bottom"
-          className="max-w-xs text-[11px] leading-relaxed"
-        >
+        <TooltipContent side="bottom" className="max-w-xs mg-type-caption">
           <div>{full ?? hint ?? label}</div>
           {freshAbs || windowLabel ? (
             <div className="mt-1 mg-type-data-sm text-primary-foreground/70">
@@ -273,10 +270,7 @@ export function NoDataSpark({
             </span>
           </div>
         </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-xs text-[11px] leading-relaxed"
-        >
+        <TooltipContent side="top" className="max-w-xs mg-type-caption">
           {reason}.{" "}
           {freshAbs
             ? `Last checked ${freshAbs}${windowLabel ? ` · ${windowLabel} window` : ""}.`

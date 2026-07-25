@@ -81,7 +81,7 @@ export function EntityHero({
       className={classNames(
         "mg-hero-slab relative",
         display
-          ? "mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-14"
+          ? "mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-12"
           : "pt-8 md:pt-12 pb-8 md:pb-10 mb-6",
         className,
       )}
@@ -92,7 +92,7 @@ export function EntityHero({
         </div>
       ) : null}
 
-      {banner ? <div className="mb-5">{banner}</div> : null}
+      {banner ? <div className="mb-4">{banner}</div> : null}
 
       <div
         className={classNames(
@@ -119,7 +119,7 @@ export function EntityHero({
                 className={classNames(
                   "mg-fade-in mg-fade-in-delay-1 font-display font-semibold text-ink-strong",
                   display
-                    ? "mt-4 text-[2.5rem] sm:text-5xl md:text-[3.75rem] leading-[1.02] tracking-[-0.025em]"
+                    ? "mt-4 text-[2.5rem] sm:text-5xl md:text-6xl leading-[1.02] tracking-[-0.025em]"
                     : "text-3xl md:text-4xl tracking-[-0.01em]",
                 )}
               >
@@ -136,7 +136,7 @@ export function EntityHero({
                 className={classNames(
                   "mg-fade-in mg-fade-in-delay-2 text-ink-muted leading-relaxed",
                   display
-                    ? "mt-5 max-w-xl text-base md:text-lg"
+                    ? "mt-4 max-w-xl text-base md:text-lg"
                     : "mt-3 max-w-3xl text-sm md:text-base",
                 )}
               >

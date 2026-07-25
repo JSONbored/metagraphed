@@ -32,10 +32,7 @@ export function InfoTooltip({
             <Info className="size-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-xs text-[11px] leading-relaxed"
-        >
+        <TooltipContent side="top" className="max-w-xs mg-type-caption">
           {label}
         </TooltipContent>
       </Tooltip>

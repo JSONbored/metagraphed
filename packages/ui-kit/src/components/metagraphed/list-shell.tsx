@@ -150,7 +150,7 @@ export function LoadMore({
 
   if (error) {
     return (
-      <div className="flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-[11px]">
+      <div className="flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 mg-type-caption">
         <span className="inline-flex items-center gap-1.5 text-health-down">
           <AlertCircle className="size-3" />
           Couldn&rsquo;t load more — {error.message || "network error"}.
@@ -168,7 +168,7 @@ export function LoadMore({
 
   if (cursorInvalid) {
     return (
-      <div className="flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-[11px] text-health-warn">
+      <div className="flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 mg-type-caption text-health-warn">
         <span className="inline-flex items-center gap-1.5">
           <AlertCircle className="size-3" />
           Pagination stopped — the server returned an invalid next cursor.
@@ -191,7 +191,7 @@ export function LoadMore({
         <button
           type="button"
           onClick={onLoadMore}
-          className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-[11px] font-medium hover:border-ink/30 min-h-9"
+          className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium hover:border-ink/30 min-h-9"
         >
           Load more
         </button>

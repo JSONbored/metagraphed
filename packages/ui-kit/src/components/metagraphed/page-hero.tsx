@@ -43,7 +43,7 @@ export function PageHero({
   return (
     <section
       className={classNames(
-        "mg-hero-slab relative mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-14",
+        "mg-hero-slab relative mb-12 md:mb-16 pt-12 md:pt-20 pb-10 md:pb-12",
         className,
       )}
     >
@@ -60,11 +60,11 @@ export function PageHero({
               {eyebrow}
             </div>
           ) : null}
-          <h1 className="mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-[2.5rem] sm:text-5xl md:text-[3.75rem] font-semibold leading-[1.02] tracking-[-0.025em] text-ink-strong">
+          <h1 className="mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-[2.5rem] sm:text-5xl md:text-6xl font-semibold leading-[1.02] tracking-[-0.025em] text-ink-strong">
             {title}
           </h1>
           {description ? (
-            <p className="mg-fade-in mg-fade-in-delay-2 mt-5 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
+            <p className="mg-fade-in mg-fade-in-delay-2 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
               {description}
             </p>
           ) : null}
