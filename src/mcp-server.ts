@@ -12182,6 +12182,16 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       return rpcError(id, RPC_INVALID_PARAMS, error.message);
     }
     // Don't echo raw internals to the public client; log server-side instead.
+    // Same discipline as callTool's sibling catch above: a handled toolError
+    // is an expected outcome and returns before this point, uncaptured --
+    // only a genuinely unexpected fault (malformed/unroutable JSON-RPC) gets
+    // captured (metagraphed#8081).
+    Sentry.captureException(error, { tags: { mcp_method: method } });
+    scheduleExceptionEvent(ctx, {
+      error,
+      route: `mcp-dispatch:${method}`,
+      errorCode: "internal_error",
+    });
     console.error("MCP dispatch failed:", error);
     return rpcError(id, RPC_INTERNAL_ERROR, "Internal error.");
   }
