@@ -7,9 +7,9 @@
 // here at all.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ApiPromise } from "@polkadot/api";
 import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
+import { useFlowSession, useFeeEstimate } from "./use-flow-session";
 import { raoToTao, type Rao } from "@/lib/metagraphed/units";
 import {
   percentToTakeParts,
@@ -26,7 +26,6 @@ import {
   type TakeValidationIssue,
 } from "@/lib/metagraphed/take-extrinsics";
 import {
-  getApi,
   getCurrentBlock,
   getMaxDelegateTake,
   getMinDelegateTake,
@@ -38,7 +37,6 @@ import {
 } from "@/lib/metagraphed/chain-connection";
 import { getSigner } from "@/lib/metagraphed/wallet-injected";
 import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
-import { estimateFee } from "@/lib/metagraphed/tx-fee";
 
 export type TakeFlowPhase =
   "connect" | "amount" | "confirm" | "signing" | "broadcasting" | "failed" | "done";
@@ -120,28 +118,8 @@ export function useTakeFlow(hotkey: string, ownerColdkey: string | null): UseTak
 
   const isOwner = !!ownerColdkey && wallet.wallet?.address === ownerColdkey;
 
-  // Generated client-only -- see use-stake-flow.ts's identical pattern for
-  // why (avoids an SSR/CSR hydration mismatch).
-  const [sessionId, setSessionId] = useState("");
-  useEffect(() => {
-    setSessionId(crypto.randomUUID());
-  }, []);
-
-  const [api, setApi] = useState<ApiPromise | null>(null);
-  useEffect(() => {
-    if (wallet.status !== "connected") return;
-    let cancelled = false;
-    getApi()
-      .then((connected) => {
-        if (!cancelled) setApi(connected);
-      })
-      .catch(() => {
-        /* best-effort; bounds/submit simply stay unavailable */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.status]);
+  // Shared across all three stake/take flows -- see use-flow-session.ts.
+  const { sessionId, api } = useFlowSession(wallet.status);
 
   const [bounds, setBounds] = useState<TakeBounds | null>(null);
   useEffect(() => {
@@ -229,24 +207,7 @@ export function useTakeFlow(hotkey: string, ownerColdkey: string | null): UseTak
 
   // Fee dry-run -- identical posture to use-stake-flow.ts's: only fetched
   // once the user has reached "confirm" with a resolved, idle tx.
-  const [feeRao, setFeeRao] = useState<Rao | null>(null);
-  useEffect(() => {
-    setFeeRao(null);
-    if (!confirmed || txStatus.status !== "idle") return;
-    if (!api || !wallet.wallet || !params) return;
-    let cancelled = false;
-    const extrinsic = buildExtrinsic(api, params);
-    estimateFee(extrinsic, wallet.wallet.address)
-      .then((fee) => {
-        if (!cancelled) setFeeRao(fee);
-      })
-      .catch(() => {
-        /* best-effort; the confirm screen just keeps showing "Estimating..." */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [confirmed, txStatus.status, api, wallet.wallet, params]);
+  const feeRao = useFeeEstimate(confirmed, txStatus.status, api, wallet.wallet, params);
 
   const confirm = useCallback(() => setConfirmed(true), []);
   const editAmount = useCallback(() => {
