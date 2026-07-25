@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/cloudflare";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 
 // Postgres-tier serving gate, one env flag per data source (originally ADR
@@ -35,7 +34,7 @@ import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 // found DATA_API subrequests reporting outcome "canceled" on a real fraction
 // of requests, and there was no signal anywhere to catch it before a wider
 // live-testing pass happened to notice). The same silent-degradation risk is
-// why this also now reaches Sentry/PostHog, not just Wrangler's own log tail.
+// why this also now reaches PostHog, not just Wrangler's own log tail.
 let postgresTierFallbackGeneration = 0;
 
 function markPostgresTierFallback(): null {
@@ -47,8 +46,8 @@ export function currentPostgresTierFallbackGeneration(): number {
   return postgresTierFallbackGeneration;
 }
 
-// Sentry + PostHog $exception capture for a Postgres-tier degradation --
-// same no-throw, awaited-not-waitUntil'd contract as workers/data-api.ts's
+// PostHog $exception capture for a Postgres-tier degradation -- same
+// no-throw, awaited-not-waitUntil'd contract as workers/data-api.ts's
 // captureDataApiError (this module has no ExecutionContext threaded down
 // from either of its callers, REST or MCP, to hand a background task to).
 // tryPostgresTier is a shared chokepoint across every data source (blocks,
@@ -59,7 +58,6 @@ async function capturePostgresTierFallback(
   flagName: keyof Env,
   env: Env,
 ): Promise<void> {
-  Sentry.captureException(err, { tags: { postgres_tier: String(flagName) } });
   await recordExceptionEvent(env, {
     error: err,
     route: `postgres-tier:${String(flagName)}`,

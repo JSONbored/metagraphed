@@ -1,22 +1,20 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "metagraphed",
-  // Sentry deploy-entry wrapper (metagraphed#6479/#6502/#6485), not the raw
-  // handler -- see workers/api.sentry.mjs's own header for why this can't
-  // be wrapped inline (breaks its ~90 existing tests, which import
-  // workers/api.mjs directly and are unaffected by this).
-  "main": "workers/api.sentry.ts",
+  // GitHub OAuth deploy-entry composition (metagraphed#7151), not the raw
+  // handler -- see workers/api.entry.ts's own header for why this can't be
+  // composed inline (breaks its ~90 existing tests, which import
+  // workers/api.ts directly and are unaffected by this).
+  "main": "workers/api.entry.ts",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
   "minify": true,
-  // Auto-detected release for @sentry/cloudflare (workers/api.sentry.mjs's
-  // own CF_VERSION_METADATA?.id read) -- Cloudflare's own per-deploy
-  // version UUID, present on every deploy with no extra CI/build step
-  // needed. upload_source_maps makes Wrangler generate + upload sourcemaps
-  // for this Worker's own deploy (Cloudflare's Sourcemap Uploads product,
-  // separate from -- and simpler than -- @sentry/vite-plugin's own upload
-  // mechanism used for apps/ui, since Workers deploys go through `wrangler
-  // deploy`/Workers Builds, not a Vite build).
+  // Cloudflare's own per-deploy version UUID (metagraphed#7766: no longer
+  // read for Sentry release tagging -- Sentry fully removed -- but still
+  // useful as a stable deploy identifier). upload_source_maps makes Wrangler
+  // generate + upload sourcemaps for this Worker's own deploy (Cloudflare's
+  // Sourcemap Uploads product, feeding PostHog's error-tracking source-map
+  // resolution -- see scripts/deploy-worker-with-sourcemaps.sh).
   "version_metadata": {
     "binding": "CF_VERSION_METADATA",
   },

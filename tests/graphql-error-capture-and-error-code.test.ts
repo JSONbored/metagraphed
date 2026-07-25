@@ -1,26 +1,22 @@
-// metagraphed#7734: confirms src/graphql.mjs's genuine-fault discriminator
+// metagraphed#7734: confirms src/graphql.ts's genuine-fault discriminator
 // (a resolver's raw Error, wrapped by execute() into result.errors, vs a
 // deliberately-thrown `new GraphQLError(...)` -- expected, caller-fixable
-// validation, the GraphQL analogue of a REST 4xx) actually reaches Sentry
-// only for the former, and that the x-metagraph-error-code response header
-// is set correctly across every transport- and execution-level error path.
-// A separate small file rather than folded into tests/graphql.test.mjs
-// (20k lines, ~900 tests): vi.mock is file-scoped and hoisted, and that
-// file's own tests already exercise these same paths through the real
-// (unmocked) Sentry no-op -- mocking it there risks disturbing tests this
-// issue doesn't own. Mirrors tests/mcp-server-sentry-args-safety.test.mjs's
-// and tests/api-ai-routes-sentry.test.mjs's own identical rationale.
+// validation, the GraphQL analogue of a REST 4xx) actually reaches PostHog's
+// $exception capture only for the former (metagraphed#7766: the equivalent
+// Sentry.captureException assertions this file used to also make are gone --
+// Sentry fully removed once PostHog parity was proven), and that the
+// x-metagraph-error-code response header is set correctly across every
+// transport- and execution-level error path. A separate small file rather
+// than folded into tests/graphql.test.mjs (20k lines, ~900 tests): that
+// file's own tests already exercise these same paths, and this one needs a
+// mocked resolveLiveEconomics that risks disturbing tests this issue
+// doesn't own.
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
 
-const captureException = vi.hoisted(() => vi.fn());
 const resolveLiveEconomics = vi.hoisted(() => vi.fn());
-
-vi.mock("@sentry/cloudflare", () => ({
-  captureException,
-}));
 
 // loadEconomics (src/graphql.mjs) awaits resolveLiveEconomics with no
 // try/catch, and Query.economics awaits loadEconomics the same way -- a
@@ -40,7 +36,6 @@ const {
 } = await import("../src/graphql.ts");
 
 afterEach(() => {
-  captureException.mockClear();
   resolveLiveEconomics.mockReset();
 });
 
@@ -56,7 +51,7 @@ async function gql(query: string, env: Row = emptyEnv) {
   return { res, body: (await res.json()) as Row };
 }
 
-test("a resolver's genuine exception reaches Sentry and is tagged graphql_execution_error", async () => {
+test("a resolver's genuine exception reaches PostHog as $exception, tagged graphql_execution_error", async () => {
   resolveLiveEconomics.mockRejectedValue(new Error("hyperdrive unavailable"));
   const { res, body } = await gql("{ economics { total } }");
 
@@ -66,17 +61,9 @@ test("a resolver's genuine exception reaches Sentry and is tagged graphql_execut
     "graphql_execution_error",
   );
   assert.ok(body.errors?.length >= 1);
-
-  assert.equal(captureException.mock.calls.length, 1);
-  const [capturedError, context] = captureException.mock.calls[0];
-  assert.equal(capturedError.message, "hyperdrive unavailable");
-  assert.deepEqual(context, { tags: { route: "graphql" } });
 });
 
-// metagraphed#7758: PostHog $exception capture, parallel-run alongside the
-// Sentry.captureException above -- same route tag, same genuine-fault-only
-// discriminator.
-test("a resolver's genuine exception also reaches PostHog as $exception, tagged the same way", async () => {
+test("a resolver's genuine exception reaches PostHog as $exception, tagged the same way", async () => {
   resolveLiveEconomics.mockRejectedValue(new Error("hyperdrive unavailable"));
   const original = globalThis.fetch;
   const posted: Row[] = [];
@@ -128,7 +115,7 @@ test("a deliberate GraphQLError (bad user input) never reaches PostHog either", 
   }
 });
 
-test("a deliberate GraphQLError (bad user input) never reaches Sentry, tagged graphql_field_error", async () => {
+test("a deliberate GraphQLError (bad user input) is tagged graphql_field_error", async () => {
   const { res, body } = await gql(
     "{ subnet_identity_history(netuid: -1) { __typename } }",
   );
@@ -139,18 +126,16 @@ test("a deliberate GraphQLError (bad user input) never reaches Sentry, tagged gr
     "graphql_field_error",
   );
   assert.ok(body.errors?.[0]?.message.includes("non-negative"));
-  assert.equal(captureException.mock.calls.length, 0);
 });
 
-test("a clean success carries no error-code header and is not captured", async () => {
+test("a clean success carries no error-code header", async () => {
   const { res, body } = await gql("{ __typename }");
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("x-metagraph-error-code"), null);
   assert.equal(body.errors, undefined);
-  assert.equal(captureException.mock.calls.length, 0);
 });
 
-test("every transport-level rejection carries its own error code, none reach Sentry", async () => {
+test("every transport-level rejection carries its own error code", async () => {
   const cases = [
     {
       name: "bad method",
@@ -257,5 +242,4 @@ test("every transport-level rejection carries its own error code, none reach Sen
       `${name}: error code`,
     );
   }
-  assert.equal(captureException.mock.calls.length, 0);
 });

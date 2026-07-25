@@ -19,10 +19,15 @@
 // endpoint; the database itself stays exactly as private as it already was
 // (bound to 127.0.0.1 on its host, reachable only via the Cloudflare Tunnel
 // + Workers VPC Service + Hyperdrive path already proven for reads).
-import * as Sentry from "@sentry/cloudflare";
 import type postgres from "postgres";
 import { syncBeginWithConnectionRetry } from "./hyperdrive-sync-retry.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import {
+  newSpanId,
+  newTraceId,
+  recordTraceSpan,
+  shouldSampleTrace,
+} from "../src/tracing.ts";
 import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
 
@@ -89,14 +94,16 @@ function isValidRow(row: unknown): row is Record<string, unknown> {
   return Boolean(row) && typeof row === "object" && !Array.isArray(row);
 }
 
-// This Worker's Sentry wrap (registry-sync-api.sentry.ts's withSentry())
-// only ever sees an exception that escapes fetch() entirely -- the write
-// batch below is already caught and converted to a clean 502, so nothing
-// reached Sentry OR PostHog for the write-failure path until now. Same gap,
-// same fix, as workers/api.ts's captureAiRouteError / workers/data-api.ts's
+// metagraphed#7766: Sentry fully removed (was captureException here,
+// parallel-run alongside PostHog since #7758; Sentry decommissioned once
+// parity was proven). This Worker's top-level fetch has no ExecutionContext
+// (see the default export below), so every capture here is awaited directly
+// rather than scheduled via waitUntil -- the write batch below is already
+// caught and converted to a clean 502, so nothing reaches PostHog's own
+// top-level catch for the write-failure path without this. Same gap, same
+// fix, as workers/api.ts's captureAiRouteError / workers/data-api.ts's
 // captureDataApiError.
 async function captureRegistrySyncError(error: unknown, env: Env) {
-  Sentry.captureException(error, { tags: { route: "registry-sync" } });
   await recordExceptionEvent(env, {
     error,
     route: "registry-sync",
@@ -104,8 +111,15 @@ async function captureRegistrySyncError(error: unknown, env: Env) {
   });
 }
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+// The actual write dispatcher, extracted from the default export's fetch so
+// the top-level export (below) can wrap it with a PostHog trace span
+// (metagraphed#7768) without indenting this whole function. Tests import
+// this raw handler directly (unaffected by the wrapper).
+async function dispatchRegistrySyncRequest(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  {
     if (request.method !== "POST") {
       return json({ error: "method not allowed" }, 405);
     }
@@ -399,5 +413,41 @@ export default {
     // when the request/invocation ends (Cloudflare's documented pattern) --
     // the previous await sql.end(...) was undocumented, unnecessary extra
     // work that also delayed every response by however long teardown took.
+  }
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // metagraphed#7768: PostHog distributed tracing (alpha), one root span
+    // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
+    // instrumentation. This Worker's fetch has no ExecutionContext (CI-only,
+    // low-traffic write path -- see captureRegistrySyncError's own comment),
+    // so the span is awaited directly rather than scheduled via waitUntil,
+    // same tradeoff already accepted for error capture on this Worker.
+    if (!shouldSampleTrace(env)) {
+      return dispatchRegistrySyncRequest(request, env);
+    }
+    const startedAt = Date.now();
+    const route = "registry-sync";
+    let ok = true;
+    try {
+      const response = await dispatchRegistrySyncRequest(request, env);
+      ok = response.status < 500;
+      return response;
+    } catch (error) {
+      ok = false;
+      throw error;
+    } finally {
+      await recordTraceSpan(env, {
+        traceId: newTraceId(),
+        spanId: newSpanId(),
+        name: route,
+        startTimeMs: startedAt,
+        endTimeMs: Date.now(),
+        ok,
+        serviceName: "metagraphed-registry-sync-api",
+        attributes: { route },
+      });
+    }
   },
 };

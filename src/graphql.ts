@@ -7,7 +7,6 @@ import {
   specifiedRules,
   validate,
 } from "graphql";
-import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 // #7881: the same list-query helper the REST pipeline and the list_* MCP
 // loaders use, so subnet_health's filter/sort/page allowlists cannot drift
@@ -544,11 +543,11 @@ const mcpCtx = (context: GqlContext) =>
 
 // The contextValue handleGraphQLRequest passes to execute() (env + a
 // per-request memo Map + the raw Request), plus the extra fields the
-// graphql-ws subscription path stamps on (clientIp/graphqlWsConnection) and
-// the Sentry hook. Kept loose (all optional except env) because different
-// entry points populate different subsets. Exported (types-epic D, #7862)
-// as the `contextType` graphql-codegen's typescript-resolvers plugin is
-// configured against.
+// graphql-ws subscription path stamps on (clientIp/graphqlWsConnection).
+// Kept loose (all optional except env) because different entry points
+// populate different subsets. Exported (types-epic D, #7862) as the
+// `contextType` graphql-codegen's typescript-resolvers plugin is configured
+// against.
 export interface GqlContext {
   env: Env;
   cache: Map<string, unknown>;
@@ -7601,9 +7600,9 @@ export async function handleGraphQLRequest(request: Request, env: Env) {
   });
 
   // metagraphed#7734: execute() catches every resolver throw into
-  // result.errors rather than letting it propagate -- api.sentry.ts's
-  // withSentry() (uncaught exceptions only) never sees any of these, so this
-  // is the only place a genuine resolver fault can reach Sentry at all. A
+  // result.errors rather than letting it propagate -- api.entry.ts's
+  // top-level handler (uncaught exceptions only) never sees any of these, so
+  // this is the only place a genuine resolver fault can be captured at all. A
   // deliberately-thrown `new GraphQLError(...)` (validation, "netuid must be
   // non-negative", etc. -- expected, caller-fixable, the GraphQL analogue of
   // a REST 4xx) is NOT the same as a resolver's raw Error wrapping a real
@@ -7617,15 +7616,12 @@ export async function handleGraphQLRequest(request: Request, env: Env) {
       (e) => e.originalError && !(e.originalError instanceof GraphQLError),
     ) ?? [];
   for (const fault of genuineFaults) {
-    Sentry.captureException(fault.originalError, {
-      tags: { route: "graphql" },
-    });
-    // metagraphed#7758: PostHog $exception capture, parallel-run alongside
-    // Sentry above. handleGraphQLRequest has no ExecutionContext (see this
-    // function's own comment in workers/api.mjs), so this is awaited inline
-    // rather than fire-and-forget via waitUntil -- the only real cost is a
-    // little latency on this already-failing response, not silent event
-    // loss from an isolate torn down mid-fetch.
+    // metagraphed#7758/#7766: PostHog $exception capture (Sentry.captureException
+    // removed once parity was proven). handleGraphQLRequest has no
+    // ExecutionContext (see this function's own comment in workers/api.ts),
+    // so this is awaited inline rather than fire-and-forget via waitUntil --
+    // the only real cost is a little latency on this already-failing
+    // response, not silent event loss from an isolate torn down mid-fetch.
     await recordExceptionEvent(env, {
       error: fault.originalError,
       route: "graphql",

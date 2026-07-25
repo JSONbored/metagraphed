@@ -7,7 +7,6 @@
 // recordSubnetIdentityChanges' own header comment). Pure + injectable for
 // tests.
 
-import * as Sentry from "@sentry/cloudflare";
 import { encodeCursor, decodeCursor } from "./cursor.ts";
 import {
   sanitizeIdentityHistoryFields,
@@ -300,9 +299,6 @@ export async function recordSubnetIdentityChanges(
     // src/graphql.ts's handleGraphQLRequest -- no ExecutionContext reaches
     // this cron-tick call path (writeSubnetSnapshot -> here), so this is
     // awaited inline rather than fire-and-forget via waitUntil.
-    Sentry.captureException(error, {
-      tags: { route: "subnet-identity-history-diff" },
-    });
     await recordExceptionEvent(env, {
       error,
       route: "subnet-identity-history-diff",

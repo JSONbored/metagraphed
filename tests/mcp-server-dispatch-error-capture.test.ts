@@ -2,28 +2,17 @@
 // resources/read | resources/subscribe | prompts/get | etc. dispatch layer,
 // one level above callTool's own catch) only ever logged a genuinely
 // unexpected fault to console -- unlike its sibling in callTool, it never
-// reached Sentry or PostHog. A separate small file rather than folded into
-// tests/mcp-server-sentry-args-safety.test.ts: vi.mock is file-scoped and
-// hoisted, and that file's other tests already exercise the real (unmocked)
-// Sentry.captureException through a different call path -- mocking it there
-// risks disturbing tests this issue doesn't own. Mirrors that file's and
-// tests/graphql-sentry-and-error-code.test.ts's own identical rationale.
+// reached PostHog. metagraphed#7766: this file used to also assert
+// Sentry.captureException alongside PostHog's $exception capture -- Sentry
+// fully removed once PostHog parity was proven. A separate small file
+// rather than folded into tests/mcp-server-trace-span-args-safety.test.ts:
+// that file's other tests already exercise a different call path.
 import assert from "node:assert/strict";
-import { afterEach, test, vi } from "vitest";
+import { test } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
 
-const captureException = vi.hoisted(() => vi.fn());
-
-vi.mock("@sentry/cloudflare", () => ({
-  captureException,
-}));
-
 const { handleMcpRequest } = await import("../src/mcp-server.ts");
-
-afterEach(() => {
-  captureException.mockClear();
-});
 
 // resources/read for a valid subnet URI routes through loadArtifactData,
 // which calls ctx.readArtifact -- a rejection there is exactly the
@@ -57,17 +46,13 @@ async function readResourceExpectingDispatchFault(env: Row = {}) {
   return { body: (await response.json()) as Row };
 }
 
-test("a genuine dispatch-level fault reaches Sentry, tagged with the JSON-RPC method", async () => {
+test("a genuine dispatch-level fault returns a clean Internal error", async () => {
   const { body } = await readResourceExpectingDispatchFault();
 
   assert.equal(body.error?.message, "Internal error.");
-  assert.equal(captureException.mock.calls.length, 1);
-  const [capturedError, context] = captureException.mock.calls[0];
-  assert.equal(capturedError.message, "R2 get failed");
-  assert.deepEqual(context, { tags: { mcp_method: "resources/read" } });
 });
 
-test("the same fault also reaches PostHog as $exception, tagged mcp-dispatch:resources/read", async () => {
+test("a genuine dispatch-level fault reaches PostHog as $exception, tagged mcp-dispatch:resources/read", async () => {
   const original = globalThis.fetch;
   const posted: Row[] = [];
   globalThis.fetch = (async (
@@ -97,7 +82,7 @@ test("the same fault also reaches PostHog as $exception, tagged mcp-dispatch:res
   }
 });
 
-test("a handled toolError (e.g. an unknown resource URI) never reaches Sentry or PostHog", async () => {
+test("a handled toolError (e.g. an unknown resource URI) never reaches PostHog", async () => {
   const original = globalThis.fetch;
   const posted: Row[] = [];
   globalThis.fetch = (async (
@@ -124,7 +109,6 @@ test("a handled toolError (e.g. an unknown resource URI) never reaches Sentry or
     );
     const body = (await response.json()) as Row;
     assert.equal(body.error?.code, -32602);
-    assert.equal(captureException.mock.calls.length, 0);
     assert.equal(posted.length, 0);
   } finally {
     globalThis.fetch = original;

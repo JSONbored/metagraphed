@@ -3494,8 +3494,8 @@ test("neurons-sync maps a DB failure to a clean 502 instead of throwing", async 
   expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
-// metagraphed#7758: captureDataApiError now also posts a PostHog $exception
-// alongside the existing Sentry.captureException, for every one of this
+// metagraphed#7758/#7766: captureDataApiError posts a PostHog $exception
+// (Sentry.captureException fully removed since), for every one of this
 // file's 26 sync/query error sites -- this is the one representative case
 // proving the (mechanically identical) wiring pattern actually works
 // end-to-end, since all 26 share this exact catch-block shape. Uses a

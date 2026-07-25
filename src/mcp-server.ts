@@ -35,7 +35,6 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
-import * as Sentry from "@sentry/cloudflare";
 import { z } from "zod";
 import {
   SearchSubnetsInputSchema,
@@ -186,6 +185,12 @@ import {
   recordMcpToolCallEvent,
   recordUsageEvent,
 } from "./usage-telemetry.ts";
+import {
+  newSpanId,
+  newTraceId,
+  recordTraceSpan,
+  shouldSampleTrace,
+} from "./tracing.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
@@ -11396,15 +11401,30 @@ function scheduleMcpInitializeEvent(ctx: McpCtx, event: Row) {
   }
 }
 
-// metagraphed#7758: PostHog $exception capture, parallel-run alongside the
-// existing Sentry.captureException at the same site below. Same
-// waitUntil/no-throw discipline as the schedulers above.
+// metagraphed#7758: PostHog $exception capture (Sentry.captureException
+// removed here once parity was proven, #7766). Same waitUntil/no-throw
+// discipline as the schedulers above.
 function scheduleExceptionEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordExceptionEvent ?? recordExceptionEvent;
     const pending = Promise.resolve(
       record(ctx?.env, event, { distinctId: ctx?.distinctId }),
     ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+// metagraphed#7768: PostHog distributed tracing (alpha), replacing
+// Sentry.startSpan's per-tool spans. Same waitUntil/no-throw discipline as
+// scheduleExceptionEvent above -- a trace-span POST must never affect the
+// tool call it's describing.
+function scheduleTraceSpan(ctx: McpCtx, span: Parameters<typeof recordTraceSpan>[1]) {
+  try {
+    const pending = Promise.resolve(recordTraceSpan(ctx?.env, span)).catch(
+      () => false,
+    );
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
@@ -11434,15 +11454,34 @@ async function dispatchTool(
   }
   try {
     const args = validateToolArguments(tool, params?.arguments);
-    // Per-tool span (metagraphed#7152) so the existing 5%-sampled perf trace
-    // (workers/api.sentry.mjs's withSentry() wrap, already live for the whole
-    // /mcp route) can break down latency by tool, not just by worker. Scoped
-    // to the handler call only -- argument validation stays outside the span,
-    // it's not the cost anyone building this needs visibility into.
-    const data = await Sentry.startSpan(
-      { name: `mcp.tool/${name}`, op: "mcp.tool" },
-      () => tool.handler(args, ctx),
-    );
+    // Per-tool span (metagraphed#7152, now PostHog distributed tracing --
+    // #7768/#7766 replaced Sentry.startSpan + the withSentry() wrap it relied
+    // on) so trace visibility can break down latency by tool, not just by
+    // Worker. Scoped to the handler call only -- argument validation stays
+    // outside the span, it's not the cost anyone building this needs
+    // visibility into.
+    const toolStartedAt = Date.now();
+    let toolOk = true;
+    let data: unknown;
+    try {
+      data = await tool.handler(args, ctx);
+    } catch (err) {
+      toolOk = false;
+      throw err;
+    } finally {
+      if (shouldSampleTrace(ctx?.env)) {
+        scheduleTraceSpan(ctx, {
+          traceId: newTraceId(),
+          spanId: newSpanId(),
+          name: `mcp.tool/${name}`,
+          startTimeMs: toolStartedAt,
+          endTimeMs: Date.now(),
+          ok: toolOk,
+          serviceName: "metagraphed-api",
+          attributes: { mcp_tool: name },
+        });
+      }
+    }
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
       structuredContent: data as Row,
@@ -11470,11 +11509,10 @@ async function dispatchTool(
     // fallback contract clients branch on.
     //
     // Tagged with mcp_tool (metagraphed#7152) so this is findable per-tool in
-    // Sentry, matching the existing workers/data-api.mjs:380 route-tagged
+    // PostHog, matching the existing workers/data-api.ts:380 route-tagged
     // pattern. A handled toolError above is an expected outcome (rate limit,
     // AI degraded to fallback, etc.) and deliberately NOT captured here --
     // only genuinely unexpected faults should page/alert.
-    Sentry.captureException(error, { tags: { mcp_tool: name } });
     scheduleExceptionEvent(ctx, {
       error,
       mcpTool: name,
@@ -11593,7 +11631,6 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
     // is an expected outcome and returns before this point, uncaptured --
     // only a genuinely unexpected fault (malformed/unroutable JSON-RPC) gets
     // captured (metagraphed#8081).
-    Sentry.captureException(error, { tags: { mcp_method: method } });
     scheduleExceptionEvent(ctx, {
       error,
       route: `mcp-dispatch:${method}`,

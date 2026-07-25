@@ -20,13 +20,18 @@
 // per-request client and response headers (a write ack must never carry the
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
-import * as Sentry from "@sentry/cloudflare";
 import {
   MAX_CONNECTION_RETRY_ATTEMPTS,
   RETRYABLE_CONNECTION_ERROR_CODES,
   syncBeginWithConnectionRetry,
 } from "./hyperdrive-sync-retry.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import {
+  newSpanId,
+  newTraceId,
+  recordTraceSpan,
+  shouldSampleTrace,
+} from "../src/tracing.ts";
 import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.ts";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
 import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
@@ -377,21 +382,18 @@ import {
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 
 // metagraphed#6769: a caught write/query failure (logged via console.error,
-// converted to a clean error response) never reached Sentry -- only an
-// UNCAUGHT exception would, via data-api.sentry.mjs's withSentry() wrapper.
-// Sentry.captureException is a safe no-op with no active client (confirmed
-// live: returns an event id, doesn't throw), which is every test in this
-// file -- they import this raw, unwrapped handler directly.
+// converted to a clean error response) never reaches PostHog's own top-level
+// catch -- only a genuinely UNCAUGHT exception would.
 //
-// metagraphed#7758: PostHog $exception capture added alongside, parallel-run.
-// Awaited (not waitUntil) -- callers are already deep in an async handler's
-// catch block about to return an error response, with no ExecutionContext
-// threaded down to this helper. The cost is a little latency on an
-// already-failing request, not silent event loss. recordExceptionEvent is
-// itself a safe no-op with no configured token, same guarantee as Sentry
-// above -- this can't newly break any of this file's existing tests.
+// metagraphed#7766: Sentry fully removed (was captureException here,
+// parallel-run alongside PostHog since #7758; Sentry decommissioned once
+// parity was proven). Awaited (not waitUntil) -- callers are already deep in
+// an async handler's catch block about to return an error response, with no
+// ExecutionContext threaded down to this helper. The cost is a little
+// latency on an already-failing request, not silent event loss.
+// recordExceptionEvent is a safe no-op with no configured token, so this
+// can't newly break any of this file's existing tests.
 async function captureDataApiError(err: unknown, route: string, env: Env) {
-  Sentry.captureException(err, { tags: { route } });
   await recordExceptionEvent(env, {
     error: err,
     route,
@@ -4662,8 +4664,15 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
   );
 }
 
-export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
+// The actual route dispatcher, extracted from the default export's fetch so
+// the top-level export (below) can wrap it with a PostHog trace span
+// (metagraphed#7768) without indenting this whole function. Tests import
+// this raw handler directly (unaffected by the wrapper).
+async function dispatchDataApiRequest(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  {
     const url = new URL(request.url);
     // The write routes (#4771, #4832) -- checked before the GET-only gate
     // below, same as how the main Worker's own POST-accepting routes
@@ -9673,7 +9682,8 @@ export default {
       console.error("data-api query failed:", err);
       // url.pathname (not a static tag) -- this catch is the generic
       // fallback for the WHOLE route dispatcher above, so the actual
-      // failing route is the only thing that makes the Sentry event useful.
+      // failing route is the only thing that makes the PostHog $exception
+      // event useful.
       await captureDataApiError(err, url.pathname, env);
       return json({ error: "data query failed" }, 502);
     }
@@ -9682,5 +9692,53 @@ export default {
     // the previous ctx.waitUntil(sql.end(...)) was undocumented, unnecessary
     // background work racing the response, right where #4686's subrequest-
     // cancellation flakiness was observed.
+  }
+}
+
+export default {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
+    // metagraphed#7768: PostHog distributed tracing (alpha), one root span
+    // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
+    // instrumentation. Off by default (POSTHOG_TRACES_SAMPLE_RATE unset --
+    // see src/tracing.ts's own header for why); set it as a deployed var to
+    // match Sentry's old 0.05. This is the Worker that actually runs the
+    // leaderboard/chain-events Postgres queries the original rollout's
+    // tracesSampleRate comment called out as the highest-value place to have
+    // span visibility.
+    if (!shouldSampleTrace(env)) {
+      return dispatchDataApiRequest(request, env);
+    }
+    const startedAt = Date.now();
+    const route = new URL(request.url).pathname;
+    let ok = true;
+    try {
+      const response = await dispatchDataApiRequest(request, env);
+      ok = response.status < 500;
+      return response;
+    } catch (error) {
+      ok = false;
+      throw error;
+    } finally {
+      const endedAt = Date.now();
+      const pending = Promise.resolve(
+        recordTraceSpan(env, {
+          traceId: newTraceId(),
+          spanId: newSpanId(),
+          name: route,
+          startTimeMs: startedAt,
+          endTimeMs: endedAt,
+          ok,
+          serviceName: "metagraphed-data-api",
+          attributes: { route },
+        }),
+      ).catch(() => false);
+      if (typeof ctx?.waitUntil === "function") {
+        ctx.waitUntil(pending);
+      }
+    }
   },
 };

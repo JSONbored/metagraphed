@@ -10,20 +10,17 @@ const assetsIgnore = await fs.readFile(assetsIgnorePath, "utf8");
 const errors: string[] = [];
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
-// workers/api.sentry.ts is the real deployed entry point as of
-// metagraphed#6502/#6479/#6485 -- a thin Sentry deploy-entry wrapper that
-// imports and re-exports workers/api.mjs's own handler + Durable Object
-// classes unchanged (see that file's own header for why it's a separate
-// file, not an inline wrap). Either value is a legitimate, verified-working
-// entry point; this check's real intent is "the main Worker's own handler,
-// wrapped or not," not a literal string pin to one exact filename. Accepts
-// both .mjs and .ts spellings of each -- the TypeScript migration
-// (metagraphed#7510) converts workers/ file by file. Mirrors the same check
-// in cloudflare-verify.ts.
+// workers/api.entry.ts is the real deployed entry point (metagraphed#7151,
+// #7766) -- a thin composition layer that imports workers/api.ts's own
+// handler + Durable Object classes and layers the GitHub OAuth provider on
+// top (see that file's own header for why it's a separate file, not an
+// inline wrap). Either value is a legitimate, verified-working entry point;
+// this check's real intent is "the main Worker's own handler, wrapped or
+// not," not a literal string pin to one exact filename. Mirrors the same
+// check in cloudflare-verify.ts.
 check(
-  ["workers/api.mjs", "workers/api.ts"].includes(config.main) ||
-    ["workers/api.sentry.mjs", "workers/api.sentry.ts"].includes(config.main),
-  "wrangler main must point to workers/api.(mjs|ts) or its Sentry deploy-entry wrapper, workers/api.sentry.(mjs|ts)",
+  config.main === "workers/api.ts" || config.main === "workers/api.entry.ts",
+  "wrangler main must point to workers/api.ts or its deploy-entry wrapper, workers/api.entry.ts",
 );
 const workerPath = path.join(repoRoot, config.main);
 check(
