@@ -20,28 +20,39 @@
     "schemas": {
       "AccountAxonRemovalsArtifact": {
         "additionalProperties": false,
-        "description": "One account's axon-removal footprint per subnet over a recent window, from the account_events AxonInfoRemoved stream: per-subnet removal count with the first/last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet. The teardown-side complement to /accounts/{ss58}/serving (axon announcements) and the account-level companion to /api/v1/chain/axon-removals and /api/v1/subnets/{netuid}/axon-removals, orthogonal to /accounts/{ss58}/subnets (registration state).",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -50,24 +61,32 @@
               "additionalProperties": false,
               "properties": {
                 "first_removed_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_removed_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "removals": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -83,19 +102,23 @@
             "type": "array"
           },
           "total_removals": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -150,27 +173,73 @@
         "type": "object"
       },
       "AccountChildrenArtifact": {
-        "additionalProperties": true,
-        "description": "Live child-hotkey delegation graph for one account (#6723, part of epic #6721) -- every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts.",
+        "additionalProperties": {},
         "properties": {
           "account": {
             "type": "string"
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnets": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/ChildDelegationSubnet"
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "child": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "proportion": {
+                            "type": "string"
+                          },
+                          "proportion_fraction": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "child",
+                          "proportion",
+                          "proportion_fraction"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "netuid": {
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "entries"
+                  ],
+                  "type": "object"
                 },
                 "type": "array"
               },
@@ -187,21 +256,25 @@
         "type": "object"
       },
       "AccountCounterpartiesArtifact": {
-        "additionalProperties": true,
-        "description": "Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file).",
+        "additionalProperties": {},
         "properties": {
           "counterparties": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": false,
               "properties": {
                 "address": {
-                  "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
                   "type": "string"
                 },
                 "last_block": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "net_tao": {
@@ -214,57 +287,79 @@
                   "type": "number"
                 },
                 "transfer_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
               },
               "required": [
-                "address"
+                "address",
+                "sent_tao",
+                "received_tao",
+                "net_tao",
+                "transfer_count",
+                "last_block"
               ],
               "type": "object"
             },
             "type": "array"
           },
           "counterparty_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "relationship": {
             "additionalProperties": false,
-            "description": "Present only when ?counterparty=<ss58> is supplied. Pair-level transfer evidence for the requested account/counterparty relationship; summary fields cover every matching row in the bounded scan, while transfers is limited by the request limit.",
             "properties": {
               "counterparty": {
-                "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
                 "type": "string"
               },
               "first_block": {
-                "type": [
-                  "integer",
-                  "null"
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "first_seen_at": {
-                "format": "date-time",
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "last_block": {
-                "type": [
-                  "integer",
-                  "null"
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "last_seen_at": {
-                "format": "date-time",
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "limit": {
-                "description": "Maximum number of recent transfer evidence rows returned in transfers.",
                 "maximum": 100,
                 "minimum": 1,
                 "type": "integer"
@@ -276,10 +371,11 @@
                 "type": "boolean"
               },
               "schema_version": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
                 "type": "integer"
               },
               "ss58": {
-                "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
                 "type": "string"
               },
               "total_received_tao": {
@@ -289,25 +385,27 @@
                 "type": "number"
               },
               "transfer_count": {
-                "description": "Count of all matching account/counterparty transfer rows in the bounded scan, before the evidence list is sliced by limit.",
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "transfers": {
-                "description": "Recent pair transfer evidence rows, sliced to limit. Summary counts and totals may cover more rows than this array contains.",
                 "items": {
                   "additionalProperties": false,
                   "properties": {
                     "amount_tao": {
-                      "type": [
-                        "number",
-                        "null"
-                      ]
+                      "type": "number"
                     },
                     "block_number": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "direction": {
@@ -318,30 +416,43 @@
                       "type": "string"
                     },
                     "event_index": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "from": {
-                      "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
                       "type": "string"
                     },
                     "netuid": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "observed_at": {
-                      "format": "date-time",
-                      "type": [
-                        "string",
-                        "null"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "to": {
-                      "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
                       "type": "string"
                     }
                   },
@@ -360,7 +471,7 @@
                 "type": "array"
               },
               "transfers_scanned": {
-                "description": "Raw bounded D1 pair rows inspected before malformed rows are skipped.",
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               }
@@ -388,10 +499,11 @@
             "type": "boolean"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
-            "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
             "type": "string"
           },
           "total_received_tao": {
@@ -401,6 +513,7 @@
             "type": "number"
           },
           "transfers_scanned": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
@@ -409,81 +522,49 @@
           "schema_version",
           "ss58",
           "counterparty_count",
+          "transfers_scanned",
+          "scan_capped",
+          "total_sent_tao",
+          "total_received_tao",
           "counterparties"
-        ],
-        "type": "object"
-      },
-      "AccountDay": {
-        "additionalProperties": true,
-        "description": "One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day.",
-        "properties": {
-          "day": {
-            "format": "date",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "event_count": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "event_kinds": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "first_block": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "last_block": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "netuid": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "day"
         ],
         "type": "object"
       },
       "AccountDeregistrationsArtifact": {
         "additionalProperties": false,
-        "description": "One account's neuron-deregistration footprint per subnet over a recent window, from the account_events NeuronDeregistered stream: per-subnet eviction count with the first/last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. The eviction-side complement to /accounts/{ss58}/registrations and the account-level companion to /api/v1/chain/deregistrations and /api/v1/subnets/{netuid}/deregistrations, distinct from /accounts/{ss58}/subnets (current registration state).",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -492,24 +573,32 @@
               "additionalProperties": false,
               "properties": {
                 "deregistrations": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "first_deregistered_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_deregistered_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -525,19 +614,23 @@
             "type": "array"
           },
           "total_deregistrations": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -554,47 +647,108 @@
         "type": "object"
       },
       "AccountEntitiesArtifact": {
-        "additionalProperties": true,
-        "description": "One address's entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6740) -- either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership: an address that has held a subnet since registration and never lost it will not appear in ownership_ties. Served live at GET /api/v1/accounts/{ss58}/entities (no static file).",
+        "additionalProperties": {},
         "properties": {
           "labels": {
             "items": {
-              "$ref": "#/components/schemas/EntityLabel"
+              "additionalProperties": {},
+              "properties": {
+                "category": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "exchange",
+                        "foundation",
+                        "operator",
+                        "other"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "notes": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "source_urls": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
             },
             "type": "array"
           },
           "ownership_tie_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "ownership_ties": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "block_number": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "observed_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "role": {
                   "enum": [
                     "gained_ownership",
                     "lost_ownership"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -606,6 +760,8 @@
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -754,10 +910,10 @@
         "type": "object"
       },
       "AccountEventsArtifact": {
-        "additionalProperties": true,
-        "description": "Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file).",
+        "additionalProperties": {},
         "properties": {
           "event_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -768,18 +924,28 @@
             "type": "array"
           },
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -790,37 +956,168 @@
           "schema_version",
           "ss58",
           "event_count",
+          "limit",
+          "offset",
           "events"
         ],
         "type": "object"
       },
       "AccountExtrinsicsArtifact": {
-        "additionalProperties": true,
-        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Page with limit/offset or follow next_cursor, the opaque keyset token emitted on full pages. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "additionalProperties": {},
         "properties": {
           "extrinsic_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "extrinsics": {
             "items": {
-              "$ref": "#/components/schemas/Extrinsic"
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_args": {
+                  "anyOf": [
+                    {},
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_function": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_module": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_index": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fee_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "signer": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "success": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tip_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "extrinsic_index"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -831,37 +1128,119 @@
           "schema_version",
           "ss58",
           "extrinsic_count",
+          "limit",
+          "offset",
           "extrinsics"
         ],
         "type": "object"
       },
       "AccountHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Durable per-day activity series for one account (#1854), newest day first, from the hotkey-keyed account_events_daily rollup. NOTE: the rollup writes only hotkey-attributed rows, so an ss58 with no hotkey activity returns zero days even when /events (which matches the hotkey or coldkey) shows activity. ?netuid / ?from / ?to narrow the series. Served live at /api/v1/accounts/{ss58}/history (no static file).",
+        "additionalProperties": {},
         "properties": {
           "day_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "days": {
             "items": {
-              "$ref": "#/components/schemas/AccountDay"
+              "additionalProperties": {},
+              "properties": {
+                "day": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "event_count": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "event_kinds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "first_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "netuid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "day"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -872,6 +1251,8 @@
           "schema_version",
           "ss58",
           "day_count",
+          "limit",
+          "offset",
           "days"
         ],
         "type": "object"
@@ -1136,27 +1517,73 @@
         "type": "object"
       },
       "AccountParentsArtifact": {
-        "additionalProperties": true,
-        "description": "Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) -- every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts.",
+        "additionalProperties": {},
         "properties": {
           "account": {
             "type": "string"
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnets": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/ParentDelegationSubnet"
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "parent": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "proportion": {
+                            "type": "string"
+                          },
+                          "proportion_fraction": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "parent",
+                          "proportion",
+                          "proportion_fraction"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "netuid": {
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "netuid",
+                    "entries"
+                  ],
+                  "type": "object"
                 },
                 "type": "array"
               },
@@ -1711,28 +2138,39 @@
       },
       "AccountRegistrationsArtifact": {
         "additionalProperties": false,
-        "description": "One account's neuron-registration footprint per subnet over a recent window, from the account_events NeuronRegistered stream: per-subnet registration count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet. Windowed registration EVENTS (including re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations and /api/v1/subnets/{netuid}/registrations, distinct from /accounts/{ss58}/subnets (current registration state).",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -1741,24 +2179,32 @@
               "additionalProperties": false,
               "properties": {
                 "first_registered_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_registered_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "registrations": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -1774,19 +2220,23 @@
             "type": "array"
           },
           "total_registrations": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -2894,28 +3344,38 @@
         "type": "object"
       },
       "AccountTransfersArtifact": {
-        "additionalProperties": true,
-        "description": "The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file).",
+        "additionalProperties": {},
         "properties": {
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
             "type": "string"
           },
           "transfer_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -2924,51 +3384,81 @@
               "additionalProperties": false,
               "properties": {
                 "amount_tao": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "block_number": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "direction": {
-                  "enum": [
-                    "sent",
-                    "received",
-                    null
-                  ],
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "sent",
+                        "received"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "event_index": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "from": {
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "observed_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "to": {
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -2986,34 +3476,47 @@
           "schema_version",
           "ss58",
           "transfer_count",
+          "limit",
+          "offset",
           "transfers"
         ],
         "type": "object"
       },
       "AccountWeightSettersArtifact": {
         "additionalProperties": false,
-        "description": "One account's (validator's) weight-setting footprint per subnet over a 7d/30d window, from the account_events WeightsSet stream: per-subnet WeightsSet count with the first/last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet. Keyed on the hotkey (the validator submitting weights); the account-level companion to /api/v1/chain/weights/setters and /api/v1/subnets/{netuid}/weights/setters.",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -3022,24 +3525,32 @@
               "additionalProperties": false,
               "properties": {
                 "first_set_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_set_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "weight_sets": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -3055,18 +3566,22 @@
             "type": "array"
           },
           "total_weight_sets": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -8122,52 +8637,6 @@
           }
         ]
       },
-      "ChildDelegationEntry": {
-        "additionalProperties": false,
-        "description": "One child hotkey a parent has delegated a share of stake-weight to, on one subnet (#6723, part of epic #6721). proportion is the raw on-chain u64 (out of u64::MAX = 100%, per the pallet's own invariant), returned as a string to avoid JS Number precision loss; proportion_fraction is the same value pre-divided to a plain 0..1 float for convenience.",
-        "properties": {
-          "child": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "proportion": {
-            "type": "string"
-          },
-          "proportion_fraction": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "child",
-          "proportion",
-          "proportion_fraction"
-        ],
-        "type": "object"
-      },
-      "ChildDelegationSubnet": {
-        "additionalProperties": false,
-        "description": "One subnet's children for an account (#6723) -- only subnets where the account actually has at least one child are included.",
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/ChildDelegationEntry"
-            },
-            "type": "array"
-          },
-          "netuid": {
-            "maximum": 65535,
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "netuid",
-          "entries"
-        ],
-        "type": "object"
-      },
       "Classification": {
         "enum": [
           "live",
@@ -10894,40 +11363,6 @@
         ],
         "type": "object"
       },
-      "EntityLabel": {
-        "additionalProperties": true,
-        "description": "One community-contributed entity label (#6737/#6738) -- omits the underlying registry file's `review` governance state, which is curation metadata, not a user-facing claim.",
-        "properties": {
-          "category": {
-            "enum": [
-              "exchange",
-              "foundation",
-              "operator",
-              "other",
-              null
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "notes": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "source_urls": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
       "ErrorEnvelope": {
         "additionalProperties": false,
         "properties": {
@@ -11042,26 +11477,34 @@
         ]
       },
       "EvmAddressMappingArtifact": {
-        "additionalProperties": true,
-        "description": "Live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping precompile's addressMapping(address), queried from the finney RPC at request time and cached for 1h (deterministic given h160, never changes). ss58 is null on RPC failure.",
+        "additionalProperties": {},
         "properties": {
           "h160": {
             "type": "string"
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -13296,35 +13739,53 @@
         ]
       },
       "NetworkParametersArtifact": {
-        "additionalProperties": true,
-        "description": "Live global Subtensor protocol/governance parameters (#6343) -- TaoWeight, StakeThreshold, PendingChildKeyCooldown -- queried from the finney RPC at request time and cached for 300s. Each field is independently null on its own RPC failure.",
+        "additionalProperties": {},
         "properties": {
           "pending_childkey_cooldown_blocks": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "stake_threshold_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "tao_weight": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -13996,52 +14457,6 @@
         ],
         "type": "object"
       },
-      "ParentDelegationEntry": {
-        "additionalProperties": false,
-        "description": "One parent hotkey currently delegating a share of stake-weight to this account, on one subnet (#6723, part of epic #6721). Same proportion/proportion_fraction shape as ChildDelegationEntry.",
-        "properties": {
-          "parent": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "proportion": {
-            "type": "string"
-          },
-          "proportion_fraction": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "parent",
-          "proportion",
-          "proportion_fraction"
-        ],
-        "type": "object"
-      },
-      "ParentDelegationSubnet": {
-        "additionalProperties": false,
-        "description": "One subnet's parents for an account (#6723) -- only subnets where the account actually has at least one parent are included.",
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/ParentDelegationEntry"
-            },
-            "type": "array"
-          },
-          "netuid": {
-            "maximum": 65535,
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "netuid",
-          "entries"
-        ],
-        "type": "object"
-      },
       "PartnershipMetadata": {
         "additionalProperties": false,
         "properties": {
@@ -14449,35 +14864,57 @@
         "type": "object"
       },
       "RandomnessArtifact": {
-        "additionalProperties": true,
-        "description": "Live drand randomness-beacon status (#6730/#6731) -- LastStoredRound/OldestStoredRound -- queried from the finney RPC at request time and cached for 30s. A current-state snapshot, not a history feed (pulses land ~3s apart). Each field is independently null on its own RPC failure.",
+        "additionalProperties": {},
         "properties": {
           "last_stored_round": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "oldest_stored_round": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "stored_round_span": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -25976,23 +26413,31 @@
         "type": "object"
       },
       "SudoKeyArtifact": {
-        "additionalProperties": true,
-        "description": "The current Sudo::Key holder (#4310/2.4), queried from the finney RPC at request time and cached for 1h (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key (Optional<AccountId>).",
+        "additionalProperties": {},
         "properties": {
           "hotkey": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },

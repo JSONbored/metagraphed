@@ -119,6 +119,30 @@ import {
   AccountStakeFlowArtifactSchema,
 } from "../schemas-src/routes/account-activity.ts";
 import {
+  AccountAxonRemovalsArtifactSchema,
+  AccountDeregistrationsArtifactSchema,
+  AccountRegistrationsArtifactSchema,
+  AccountWeightSettersArtifactSchema,
+} from "../schemas-src/routes/account-activity-registrations.ts";
+import {
+  AccountEventsArtifactSchema,
+  AccountHistoryArtifactSchema,
+  AccountTransfersArtifactSchema,
+} from "../schemas-src/routes/account-events-feed.ts";
+import { AccountExtrinsicsArtifactSchema } from "../schemas-src/routes/account-extrinsics.ts";
+import { AccountCounterpartiesArtifactSchema } from "../schemas-src/routes/account-counterparties.ts";
+import { AccountEntitiesArtifactSchema } from "../schemas-src/routes/account-entities.ts";
+import {
+  AccountChildrenArtifactSchema,
+  AccountParentsArtifactSchema,
+} from "../schemas-src/routes/account-child-delegation.ts";
+import {
+  EvmAddressMappingArtifactSchema,
+  NetworkParametersArtifactSchema,
+  RandomnessArtifactSchema,
+  SudoKeyArtifactSchema,
+} from "../schemas-src/routes/network-singletons.ts";
+import {
   buildAccountSummary,
   buildAccountSubnets,
 } from "../src/account-events.ts";
@@ -135,6 +159,26 @@ import { buildAccountServing } from "../src/account-serving.ts";
 import { buildAccountPrometheus } from "../src/account-prometheus.ts";
 import { buildAccountStakeMoves } from "../src/account-stake-moves.ts";
 import { buildAccountStakeFlow } from "../src/account-stake-flow.ts";
+import { buildAccountAxonRemovals } from "../src/account-axon-removals.ts";
+import { buildAccountDeregistrations } from "../src/account-deregistrations.ts";
+import { buildAccountRegistrations } from "../src/account-registrations.ts";
+import { buildAccountWeightSetters } from "../src/account-weight-setters.ts";
+import {
+  buildAccountEvents,
+  buildAccountHistory,
+  buildAccountTransfers,
+} from "../src/account-events.ts";
+import { buildAccountExtrinsics } from "../src/extrinsics.ts";
+import { buildCounterparties } from "../src/counterparties.ts";
+import { buildAccountEntities } from "../src/entity-labels.ts";
+import {
+  loadAccountChildren,
+  loadAccountParents,
+} from "../src/child-hotkey-delegation.ts";
+import { loadAddressMapping } from "../src/address-mapping.ts";
+import { loadNetworkParameters } from "../src/network-parameters.ts";
+import { loadRandomnessStatus } from "../src/randomness.ts";
+import { loadSudoKey } from "../src/sudo-key.ts";
 import { mockEnv } from "./row-type.ts";
 import type { z } from "zod";
 
@@ -1122,6 +1166,343 @@ describe("batch 4 (#8058) route artifact schemas parse real builder output", () 
   });
   test("account-stake-flow: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = AccountStakeFlowArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+});
+
+// Batch 5 (#8059) -- account_events/extrinsics/account_identity D1-tier and
+// live finney-RPC routes. None of these are servable through
+// createLocalArtifactEnv() either (same situation batches 3/4 hit), so each
+// case drives the real pure builder/loader directly against a real
+// D1/event-row shape (reused from that builder's own tests/*.test.ts
+// fixtures). The live-RPC routes mock global fetch, or exercise the
+// documented RPC-failure/cold-empty code path where that's simpler and
+// still real, schema-conformant output.
+describe("batch 5 (#8059) route artifact schemas parse real builder output", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const ACTIVITY_ADDR = "5GReferenceAccountAddressForZodSchemaTestsB5ssssss";
+  function activityRow(
+    netuid: number,
+    countField: string,
+    count: number,
+    first: number,
+    last: number,
+  ) {
+    return {
+      netuid,
+      [countField]: count,
+      first_observed: first,
+      last_observed: last,
+    };
+  }
+
+  test("account-axon-removals: ArtifactSchema.parse(buildAccountAxonRemovals(...)) succeeds", () => {
+    const data = buildAccountAxonRemovals(
+      [activityRow(1, "removals", 5, 1_700_000_000_000, 1_700_500_000_000)],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountAxonRemovalsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-axon-removals: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountAxonRemovalsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-deregistrations: ArtifactSchema.parse(buildAccountDeregistrations(...)) succeeds", () => {
+    const data = buildAccountDeregistrations(
+      [
+        activityRow(
+          1,
+          "deregistrations",
+          2,
+          1_700_000_000_000,
+          1_700_500_000_000,
+        ),
+      ],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountDeregistrationsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-deregistrations: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountDeregistrationsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-registrations: ArtifactSchema.parse(buildAccountRegistrations(...)) succeeds", () => {
+    const data = buildAccountRegistrations(
+      [
+        activityRow(
+          1,
+          "registrations",
+          3,
+          1_700_000_000_000,
+          1_700_500_000_000,
+        ),
+      ],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountRegistrationsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-registrations: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountRegistrationsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-weight-setters: ArtifactSchema.parse(buildAccountWeightSetters(...)) succeeds", () => {
+    const data = buildAccountWeightSetters(
+      [activityRow(1, "weight_sets", 30, 1_700_000_000_000, 1_700_500_000_000)],
+      ACTIVITY_ADDR,
+      { window: "7d" },
+    );
+    const parsed = AccountWeightSettersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-weight-setters: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountWeightSettersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-events: ArtifactSchema.parse(buildAccountEvents(...)) succeeds", () => {
+    const row = {
+      block_number: 9,
+      event_kind: "StakeAdded",
+      observed_at: 1750009000000,
+    };
+    const data = buildAccountEvents([row], "5Hk", {
+      limit: 100,
+      offset: 0,
+      nextCursor: "2.1",
+    });
+    const parsed = AccountEventsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-events: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountEventsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-history: ArtifactSchema.parse(buildAccountHistory(...)) succeeds", () => {
+    const row = {
+      day: "2026-06-20",
+      netuid: 7,
+      event_count: 5,
+      event_kinds: "StakeAdded,StakeRemoved",
+      first_block: 100,
+      last_block: 200,
+    };
+    const data = buildAccountHistory([row], "5Hk", {
+      limit: 100,
+      offset: 0,
+      nextCursor: null,
+    });
+    const parsed = AccountHistoryArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-history: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountHistoryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-transfers: ArtifactSchema.parse(buildAccountTransfers(...)) succeeds", () => {
+    const row = {
+      block_number: 9,
+      hotkey: "5From",
+      coldkey: "5To",
+      amount_tao: 12.5,
+      observed_at: 1750009000000,
+    };
+    const data = buildAccountTransfers([row], "5From", {
+      limit: 100,
+      offset: 0,
+      nextCursor: null,
+    });
+    const parsed = AccountTransfersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-transfers: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountTransfersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-extrinsics: ArtifactSchema.parse(buildAccountExtrinsics(...)) succeeds", () => {
+    const row = {
+      block_number: 1000,
+      extrinsic_index: 4,
+      extrinsic_hash: "0xhash",
+      signer: "5Signer",
+      call_module: "SubtensorModule",
+      call_function: "add_stake",
+      call_args: '[{"name":"hotkey","value":"5H..."}]',
+      fee_tao: 0.0125,
+      tip_tao: 0.5,
+      success: 1,
+      observed_at: 1750009000000,
+    };
+    const data = buildAccountExtrinsics([row], "5Hk", {
+      limit: 100,
+      offset: 0,
+      nextCursor: null,
+    });
+    const parsed = AccountExtrinsicsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-extrinsics: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountExtrinsicsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-counterparties: ArtifactSchema.parse(buildCounterparties(...)) succeeds", () => {
+    const rows = [
+      {
+        hotkey: "5Me",
+        coldkey: "5CounterpartyA",
+        amount_tao: 100,
+        block_number: 5,
+      },
+      {
+        hotkey: "5CounterpartyB",
+        coldkey: "5Me",
+        amount_tao: 30,
+        block_number: 6,
+      },
+    ];
+    const data = buildCounterparties(rows, "5Me", { limit: 20 });
+    const parsed = AccountCounterpartiesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-counterparties: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountCounterpartiesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-entities: ArtifactSchema.parse(buildAccountEntities(...)) succeeds", () => {
+    const data = buildAccountEntities("5SomeAccount", {
+      entities: [],
+      ownershipRows: [],
+    });
+    const parsed = AccountEntitiesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-entities: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountEntitiesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  const DELEGATION_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  test("account-children: ArtifactSchema.parse(loadAccountChildren(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const body = JSON.parse(init!.body as string);
+        if (body.method === "state_getKeysPaged") {
+          return { ok: true, json: async () => ({ result: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ result: null }) } as Response;
+      }),
+    );
+    const data = await loadAccountChildren(mockEnv(), DELEGATION_SS58);
+    const parsed = AccountChildrenArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-children: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountChildrenArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-parents: ArtifactSchema.parse(loadAccountParents(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const body = JSON.parse(init!.body as string);
+        if (body.method === "state_getKeysPaged") {
+          return { ok: true, json: async () => ({ result: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ result: null }) } as Response;
+      }),
+    );
+    const data = await loadAccountParents(mockEnv(), DELEGATION_SS58);
+    const parsed = AccountParentsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-parents: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountParentsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("evm-address-mapping: ArtifactSchema.parse(loadAddressMapping(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network unavailable in test");
+      }),
+    );
+    const data = await loadAddressMapping(
+      mockEnv(),
+      "0x1234567890123456789012345678901234567890",
+    );
+    const parsed = EvmAddressMappingArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("evm-address-mapping: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = EvmAddressMappingArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("network-parameters: ArtifactSchema.parse(loadNetworkParameters(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network unavailable in test");
+      }),
+    );
+    const data = await loadNetworkParameters(mockEnv());
+    const parsed = NetworkParametersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("network-parameters: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = NetworkParametersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("randomness: ArtifactSchema.parse(loadRandomnessStatus(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network unavailable in test");
+      }),
+    );
+    const data = await loadRandomnessStatus(mockEnv());
+    const parsed = RandomnessArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("randomness: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = RandomnessArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("sudo-key: ArtifactSchema.parse(loadSudoKey(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network unavailable in test");
+      }),
+    );
+    const data = await loadSudoKey(mockEnv());
+    const parsed = SudoKeyArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("sudo-key: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SudoKeyArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
 });

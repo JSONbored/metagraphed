@@ -3017,7 +3017,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description One account's axon-removal footprint per subnet over a recent window, from the account_events AxonInfoRemoved stream: per-subnet removal count with the first/last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet. The teardown-side complement to /accounts/{ss58}/serving (axon announcements) and the account-level companion to /api/v1/chain/axon-removals and /api/v1/subnets/{netuid}/axon-removals, orthogonal to /accounts/{ss58}/subnets (registration state). */
         AccountAxonRemovalsArtifact: {
             address: string;
             concentration: number | null;
@@ -3025,16 +3024,13 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: {
-                /** Format: date-time */
                 first_removed_at: string | null;
-                /** Format: date-time */
                 last_removed_at: string | null;
                 netuid: number;
                 removals: number;
             }[];
             total_removals: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
         AccountBalanceArtifact: {
             balance_tao?: number | null;
@@ -3044,39 +3040,37 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Live child-hotkey delegation graph for one account (#6723, part of epic #6721) -- every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts. */
         AccountChildrenArtifact: {
             account: string;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
-            subnets?: components["schemas"]["ChildDelegationSubnet"][] | null;
+            subnets?: {
+                entries: {
+                    child: string | null;
+                    proportion: string;
+                    proportion_fraction: number;
+                }[];
+                netuid: number;
+            }[] | null;
         } & {
             [key: string]: unknown;
         };
-        /** @description Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file). */
         AccountCounterpartiesArtifact: {
-            counterparties: ({
+            counterparties: {
                 address: string;
-                last_block?: number | null;
-                net_tao?: number;
-                received_tao?: number;
-                sent_tao?: number;
-                transfer_count?: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+                last_block: number | null;
+                net_tao: number;
+                received_tao: number;
+                sent_tao: number;
+                transfer_count: number;
+            }[];
             counterparty_count: number;
-            /** @description Present only when ?counterparty=<ss58> is supplied. Pair-level transfer evidence for the requested account/counterparty relationship; summary fields cover every matching row in the bounded scan, while transfers is limited by the request limit. */
             relationship?: {
                 counterparty: string;
                 first_block: number | null;
-                /** Format: date-time */
                 first_seen_at: string | null;
                 last_block: number | null;
-                /** Format: date-time */
                 last_seen_at: string | null;
-                /** @description Maximum number of recent transfer evidence rows returned in transfers. */
                 limit: number;
                 net_tao: number;
                 scan_capped: boolean;
@@ -3084,46 +3078,29 @@ export interface components {
                 ss58: string;
                 total_received_tao: number;
                 total_sent_tao: number;
-                /** @description Count of all matching account/counterparty transfer rows in the bounded scan, before the evidence list is sliced by limit. */
                 transfer_count: number;
-                /** @description Recent pair transfer evidence rows, sliced to limit. Summary counts and totals may cover more rows than this array contains. */
                 transfers: {
-                    amount_tao: number | null;
+                    amount_tao: number;
                     block_number: number | null;
                     /** @enum {string} */
                     direction: "sent" | "received";
                     event_index: number | null;
                     from: string;
                     netuid: number | null;
-                    /** Format: date-time */
                     observed_at: string | null;
                     to: string;
                 }[];
-                /** @description Raw bounded D1 pair rows inspected before malformed rows are skipped. */
                 transfers_scanned: number;
             };
-            scan_capped?: boolean;
+            scan_capped: boolean;
             schema_version: number;
             ss58: string;
-            total_received_tao?: number;
-            total_sent_tao?: number;
-            transfers_scanned?: number;
+            total_received_tao: number;
+            total_sent_tao: number;
+            transfers_scanned: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day. */
-        AccountDay: {
-            /** Format: date */
-            day: string | null;
-            event_count?: number | null;
-            event_kinds?: string[];
-            first_block?: number | null;
-            last_block?: number | null;
-            netuid?: number | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /** @description One account's neuron-deregistration footprint per subnet over a recent window, from the account_events NeuronDeregistered stream: per-subnet eviction count with the first/last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. The eviction-side complement to /accounts/{ss58}/registrations and the account-level companion to /api/v1/chain/deregistrations and /api/v1/subnets/{netuid}/deregistrations, distinct from /accounts/{ss58}/subnets (current registration state). */
         AccountDeregistrationsArtifact: {
             address: string;
             concentration: number | null;
@@ -3132,26 +3109,28 @@ export interface components {
             subnet_count: number;
             subnets: {
                 deregistrations: number;
-                /** Format: date-time */
                 first_deregistered_at: string | null;
-                /** Format: date-time */
                 last_deregistered_at: string | null;
                 netuid: number;
             }[];
             total_deregistrations: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description One address's entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6740) -- either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership: an address that has held a subnet since registration and never lost it will not appear in ownership_ties. Served live at GET /api/v1/accounts/{ss58}/entities (no static file). */
         AccountEntitiesArtifact: {
-            labels: components["schemas"]["EntityLabel"][];
+            labels: ({
+                category?: ("exchange" | "foundation" | "operator" | "other") | null;
+                name?: string | null;
+                notes?: string | null;
+                source_urls?: string[];
+            } & {
+                [key: string]: unknown;
+            })[];
             ownership_tie_count: number;
             ownership_ties: ({
                 block_number?: number | null;
                 netuid: number | null;
-                /** Format: date-time */
                 observed_at?: string | null;
-                /** @enum {unknown} */
+                /** @enum {string} */
                 role: "gained_ownership" | "lost_ownership";
             } & {
                 [key: string]: unknown;
@@ -3174,37 +3153,55 @@ export interface components {
             observed_at?: string | null;
             uid?: number | null;
         };
-        /** @description Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file). */
         AccountEventsArtifact: {
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
-            limit?: number;
+            limit: number;
             next_cursor?: string | null;
-            offset?: number;
+            offset: number;
             schema_version: number;
             ss58: string;
         } & {
             [key: string]: unknown;
         };
-        /** @description Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Page with limit/offset or follow next_cursor, the opaque keyset token emitted on full pages. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file). */
         AccountExtrinsicsArtifact: {
             extrinsic_count: number;
-            extrinsics: components["schemas"]["Extrinsic"][];
-            limit?: number;
+            extrinsics: {
+                block_number: number | null;
+                call_args?: unknown | null;
+                call_function?: string | null;
+                call_module?: string | null;
+                extrinsic_hash?: string | null;
+                extrinsic_index: number | null;
+                fee_tao?: number | null;
+                observed_at?: string | null;
+                signer?: string | null;
+                success?: boolean | null;
+                tip_tao?: number | null;
+            }[];
+            limit: number;
             next_cursor?: string | null;
-            offset?: number;
+            offset: number;
             schema_version: number;
             ss58: string;
         } & {
             [key: string]: unknown;
         };
-        /** @description Durable per-day activity series for one account (#1854), newest day first, from the hotkey-keyed account_events_daily rollup. NOTE: the rollup writes only hotkey-attributed rows, so an ss58 with no hotkey activity returns zero days even when /events (which matches the hotkey or coldkey) shows activity. ?netuid / ?from / ?to narrow the series. Served live at /api/v1/accounts/{ss58}/history (no static file). */
         AccountHistoryArtifact: {
             day_count: number;
-            days: components["schemas"]["AccountDay"][];
-            limit?: number;
+            days: ({
+                day: string | null;
+                event_count?: number | null;
+                event_kinds?: string[];
+                first_block?: number | null;
+                last_block?: number | null;
+                netuid?: number | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            limit: number;
             next_cursor?: string | null;
-            offset?: number;
+            offset: number;
             schema_version: number;
             ss58: string;
         } & {
@@ -3244,13 +3241,18 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) -- every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts. */
         AccountParentsArtifact: {
             account: string;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
-            subnets?: components["schemas"]["ParentDelegationSubnet"][] | null;
+            subnets?: {
+                entries: {
+                    parent: string | null;
+                    proportion: string;
+                    proportion_fraction: number;
+                }[];
+                netuid: number;
+            }[] | null;
         } & {
             [key: string]: unknown;
         };
@@ -3338,7 +3340,6 @@ export interface components {
             total_announcements: number;
             window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description One account's neuron-registration footprint per subnet over a recent window, from the account_events NeuronRegistered stream: per-subnet registration count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet. Windowed registration EVENTS (including re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations and /api/v1/subnets/{netuid}/registrations, distinct from /accounts/{ss58}/subnets (current registration state). */
         AccountRegistrationsArtifact: {
             address: string;
             concentration: number | null;
@@ -3346,16 +3347,13 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: {
-                /** Format: date-time */
                 first_registered_at: string | null;
-                /** Format: date-time */
                 last_registered_at: string | null;
                 netuid: number;
                 registrations: number;
             }[];
             total_registrations: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
         AccountRootClaimArtifact: {
             claim_type?: {
@@ -3526,29 +3524,25 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file). */
         AccountTransfersArtifact: {
-            limit?: number;
+            limit: number;
             next_cursor?: string | null;
-            offset?: number;
+            offset: number;
             schema_version: number;
             ss58: string;
             transfer_count: number;
             transfers: {
                 amount_tao?: number | null;
                 block_number: number | null;
-                /** @enum {string|null} */
-                direction?: "sent" | "received" | null;
+                direction?: ("sent" | "received") | null;
                 event_index?: number | null;
                 from: string | null;
-                /** Format: date-time */
                 observed_at?: string | null;
                 to: string | null;
             }[];
         } & {
             [key: string]: unknown;
         };
-        /** @description One account's (validator's) weight-setting footprint per subnet over a 7d/30d window, from the account_events WeightsSet stream: per-subnet WeightsSet count with the first/last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet. Keyed on the hotkey (the validator submitting weights); the account-level companion to /api/v1/chain/weights/setters and /api/v1/subnets/{netuid}/weights/setters. */
         AccountWeightSettersArtifact: {
             address: string;
             concentration: number | null;
@@ -3556,16 +3550,13 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: {
-                /** Format: date-time */
                 first_set_at: string | null;
-                /** Format: date-time */
                 last_set_at: string | null;
                 netuid: number;
                 weight_sets: number;
             }[];
             total_weight_sets: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
         AdapterArtifact: components["schemas"]["ArtifactBase"] & ({
             /** @description Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific. */
@@ -4746,17 +4737,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description One child hotkey a parent has delegated a share of stake-weight to, on one subnet (#6723, part of epic #6721). proportion is the raw on-chain u64 (out of u64::MAX = 100%, per the pallet's own invariant), returned as a string to avoid JS Number precision loss; proportion_fraction is the same value pre-divided to a plain 0..1 float for convenience. */
-        ChildDelegationEntry: {
-            child: string | null;
-            proportion: string;
-            proportion_fraction: number;
-        };
-        /** @description One subnet's children for an account (#6723) -- only subnets where the account actually has at least one child are included. */
-        ChildDelegationSubnet: {
-            entries: components["schemas"]["ChildDelegationEntry"][];
-            netuid: number;
-        };
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
         /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
@@ -5287,16 +5267,6 @@ export interface components {
             monitored_count: number;
             pool_eligible_count: number;
         };
-        /** @description One community-contributed entity label (#6737/#6738) -- omits the underlying registry file's `review` governance state, which is curation metadata, not a user-facing claim. */
-        EntityLabel: {
-            /** @enum {unknown} */
-            category?: "exchange" | "foundation" | "operator" | "other" | null;
-            name?: string | null;
-            notes?: string | null;
-            source_urls?: string[];
-        } & {
-            [key: string]: unknown;
-        };
         ErrorEnvelope: {
             data: null;
             error: {
@@ -5326,10 +5296,8 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping precompile's addressMapping(address), queried from the finney RPC at request time and cached for 1h (deterministic given h160, never changes). ss58 is null on RPC failure. */
         EvmAddressMappingArtifact: {
             h160: string;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
             ss58?: string | null;
@@ -5871,10 +5839,8 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Live global Subtensor protocol/governance parameters (#6343) -- TaoWeight, StakeThreshold, PendingChildKeyCooldown -- queried from the finney RPC at request time and cached for 300s. Each field is independently null on its own RPC failure. */
         NetworkParametersArtifact: {
             pending_childkey_cooldown_blocks?: number | null;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
             stake_threshold_tao?: number | null;
@@ -6006,17 +5972,6 @@ export interface components {
             returned: number;
             sort?: string | null;
             total: number;
-        };
-        /** @description One parent hotkey currently delegating a share of stake-weight to this account, on one subnet (#6723, part of epic #6721). Same proportion/proportion_fraction shape as ChildDelegationEntry. */
-        ParentDelegationEntry: {
-            parent: string | null;
-            proportion: string;
-            proportion_fraction: number;
-        };
-        /** @description One subnet's parents for an account (#6723) -- only subnets where the account actually has at least one parent are included. */
-        ParentDelegationSubnet: {
-            entries: components["schemas"]["ParentDelegationEntry"][];
-            netuid: number;
         };
         PartnershipMetadata: {
             /** Format: date */
@@ -6160,11 +6115,9 @@ export interface components {
             /** @enum {unknown} */
             storage_tier: "dual" | "git" | "r2";
         };
-        /** @description Live drand randomness-beacon status (#6730/#6731) -- LastStoredRound/OldestStoredRound -- queried from the finney RPC at request time and cached for 30s. A current-state snapshot, not a history feed (pulses land ~3s apart). Each field is independently null on its own RPC failure. */
         RandomnessArtifact: {
             last_stored_round?: number | null;
             oldest_stored_round?: number | null;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
             stored_round_span?: number | null;
@@ -8223,10 +8176,8 @@ export interface components {
             /** @constant */
             schema_version: 1;
         };
-        /** @description The current Sudo::Key holder (#4310/2.4), queried from the finney RPC at request time and cached for 1h (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key (Optional<AccountId>). */
         SudoKeyArtifact: {
             hotkey?: string | null;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
         } & {

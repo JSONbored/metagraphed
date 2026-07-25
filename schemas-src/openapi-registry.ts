@@ -181,6 +181,30 @@ import {
   AccountStakeMovesArtifactSchema,
   AccountStakeFlowArtifactSchema,
 } from "./routes/account-activity.ts";
+import {
+  AccountAxonRemovalsArtifactSchema,
+  AccountDeregistrationsArtifactSchema,
+  AccountRegistrationsArtifactSchema,
+  AccountWeightSettersArtifactSchema,
+} from "./routes/account-activity-registrations.ts";
+import {
+  AccountEventsArtifactSchema,
+  AccountHistoryArtifactSchema,
+  AccountTransfersArtifactSchema,
+} from "./routes/account-events-feed.ts";
+import { AccountExtrinsicsArtifactSchema } from "./routes/account-extrinsics.ts";
+import { AccountCounterpartiesArtifactSchema } from "./routes/account-counterparties.ts";
+import { AccountEntitiesArtifactSchema } from "./routes/account-entities.ts";
+import {
+  AccountChildrenArtifactSchema,
+  AccountParentsArtifactSchema,
+} from "./routes/account-child-delegation.ts";
+import {
+  EvmAddressMappingArtifactSchema,
+  NetworkParametersArtifactSchema,
+  RandomnessArtifactSchema,
+  SudoKeyArtifactSchema,
+} from "./routes/network-singletons.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -299,6 +323,25 @@ register(
 register(SubnetPrometheusArtifactSchema, "SubnetPrometheusArtifact");
 register(SubnetWeightsArtifactSchema, "SubnetWeightsArtifact");
 register(SubnetWeightSettersArtifactSchema, "SubnetWeightSettersArtifact");
+register(AccountAxonRemovalsArtifactSchema, "AccountAxonRemovalsArtifact");
+register(
+  AccountDeregistrationsArtifactSchema,
+  "AccountDeregistrationsArtifact",
+);
+register(AccountRegistrationsArtifactSchema, "AccountRegistrationsArtifact");
+register(AccountWeightSettersArtifactSchema, "AccountWeightSettersArtifact");
+register(AccountEventsArtifactSchema, "AccountEventsArtifact");
+register(AccountHistoryArtifactSchema, "AccountHistoryArtifact");
+register(AccountTransfersArtifactSchema, "AccountTransfersArtifact");
+register(AccountExtrinsicsArtifactSchema, "AccountExtrinsicsArtifact");
+register(AccountCounterpartiesArtifactSchema, "AccountCounterpartiesArtifact");
+register(AccountEntitiesArtifactSchema, "AccountEntitiesArtifact");
+register(AccountChildrenArtifactSchema, "AccountChildrenArtifact");
+register(AccountParentsArtifactSchema, "AccountParentsArtifact");
+register(EvmAddressMappingArtifactSchema, "EvmAddressMappingArtifact");
+register(NetworkParametersArtifactSchema, "NetworkParametersArtifact");
+register(RandomnessArtifactSchema, "RandomnessArtifact");
+register(SudoKeyArtifactSchema, "SudoKeyArtifact");
 // ConcentrationMetrics/ScoreDistribution: still referenced by name from
 // AccountPortfolioArtifact/BlocksSummaryArtifact/ChainConcentrationArtifact/
 // ChainPerformanceArtifact, all still hand-edited (verified via repo-wide
@@ -401,6 +444,22 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AccountPrometheusArtifact",
   "AccountStakeMovesArtifact",
   "AccountStakeFlowArtifact",
+  "AccountAxonRemovalsArtifact",
+  "AccountDeregistrationsArtifact",
+  "AccountRegistrationsArtifact",
+  "AccountWeightSettersArtifact",
+  "AccountEventsArtifact",
+  "AccountHistoryArtifact",
+  "AccountTransfersArtifact",
+  "AccountExtrinsicsArtifact",
+  "AccountCounterpartiesArtifact",
+  "AccountEntitiesArtifact",
+  "AccountChildrenArtifact",
+  "AccountParentsArtifact",
+  "EvmAddressMappingArtifact",
+  "NetworkParametersArtifact",
+  "RandomnessArtifact",
+  "SudoKeyArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -476,4 +535,24 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "RootClaimType",
   "RootClaimHotkey",
   "RootClaimEntry",
+  // Batch 5 (#8059) additions: AccountDay/ChildDelegationEntry/
+  // ChildDelegationSubnet/ParentDelegationEntry/ParentDelegationSubnet are
+  // each referenced only by the one hand-edited component this batch
+  // replaces (verified via repo-wide $ref grep). `Extrinsic` is deliberately
+  // NOT here -- it still has 3 referrers outside this batch (block/
+  // extrinsic-detail routes, out of scope until batch 7) -- its hand-edited
+  // component key stays registered untouched; this batch's own
+  // AccountExtrinsicsArtifact models that shape with a local unregistered
+  // copy instead (see account-extrinsics.ts's header). `EntityLabel` WAS in
+  // the same situation (its other referrer, AccountSummaryArtifact, was
+  // batch 4/#8058, not yet merged when this batch was originally written)
+  // but batch 4 has since merged, and both its referrers now inline it
+  // locally rather than $ref it -- so EntityLabel is added below too, as
+  // part of resolving this batch's rebase conflict against batch 4.
+  "AccountDay",
+  "ChildDelegationEntry",
+  "ChildDelegationSubnet",
+  "ParentDelegationEntry",
+  "ParentDelegationSubnet",
+  "EntityLabel",
 ] as const;
