@@ -240,30 +240,29 @@ describe("public contract registry", () => {
     assert.equal(openapi.openapi, "3.1.0");
     assert.equal(openapi.info.version, CONTRACT_VERSION);
     assert.equal(Object.keys(openapi.paths).length, API_ROUTES.length);
+    // FixtureArtifact is Zod-generated (types-epic B batch 8, #8062) via
+    // ArtifactBaseSchema.extend({...}) -- like every other Zod-generated
+    // artifact since batch 1, that flattens into a single `object` schema
+    // rather than the hand-edited bundle's `allOf: [{$ref: ArtifactBase},
+    // {...}]` composition (structurally different, validation-equivalent:
+    // both accept/reject the same documents). Assert the flattened shape
+    // directly instead of un-composing an `allOf` that no longer exists.
     const fixtureArtifactSchema = openapi.components.schemas.FixtureArtifact;
+    assert.equal(fixtureArtifactSchema.properties.schema_version.const, 1);
     assert.equal(
-      fixtureArtifactSchema.allOf.some(
-        (branch: Row) => branch.$ref === "#/components/schemas/ArtifactBase",
-      ),
-      true,
-    );
-    const fixtureDetailSchema = fixtureArtifactSchema.allOf.find(
-      (branch: Row) => branch.properties?.response,
-    );
-    assert.equal(
-      fixtureDetailSchema.properties.surface_id.pattern,
+      fixtureArtifactSchema.properties.surface_id.pattern,
       "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
     );
     assert.equal(
-      fixtureDetailSchema.properties.request.properties.method.const,
+      fixtureArtifactSchema.properties.request.properties.method.const,
       "GET",
     );
     assert.equal(
-      fixtureDetailSchema.properties.kind.$ref,
+      fixtureArtifactSchema.properties.kind.$ref,
       "#/components/schemas/SurfaceKind",
     );
     const fixtureBodySchema =
-      fixtureDetailSchema.properties.response.properties.body;
+      fixtureArtifactSchema.properties.response.properties.body;
     assert.equal(
       fixtureBodySchema.anyOf.some(
         (branch: Row) => branch.$ref === "#/components/schemas/JsonObject",

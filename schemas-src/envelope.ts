@@ -21,6 +21,14 @@ import { z } from "zod";
 export const CacheProfileSchema = z.enum(["short", "standard", "static"]);
 export type CacheProfile = z.infer<typeof CacheProfileSchema>;
 
+// Generic label -> non-negative count map (schemas/components/00-core.schema
+// .json's CountMap) -- shared by many not-yet-converted components beyond
+// this batch (curation_level_counts, by_confidence, tier_counts, etc.),
+// hoisted here since it's a foundational leaf like the schemas above
+// (types-epic B batch 8, #8062).
+export const CountMapSchema = z.record(z.string(), z.int().min(0));
+export type CountMap = z.infer<typeof CountMapSchema>;
+
 export const PaginationMetaSchema = z
   .object({
     collection: z.string(),

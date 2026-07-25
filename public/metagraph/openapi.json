@@ -3598,48 +3598,75 @@
         "type": "object"
       },
       "AdapterArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "extensions": {
-                "additionalProperties": {
-                  "additionalProperties": true,
-                  "type": "object"
+          "extensions": {
+            "additionalProperties": {
+              "additionalProperties": {},
+              "properties": {},
+              "type": "object"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
                 },
-                "description": "Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific.",
+                "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "properties": {},
                 "type": "object"
               },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "slug": {
-                "type": "string"
-              },
-              "snapshot": {
-                "additionalProperties": true,
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "subnet": {
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "netuid",
-              "subnet",
-              "slug",
-              "extensions"
-            ],
-            "type": "object"
+            ]
+          },
+          "subnet": {
+            "type": "string"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "subnet",
+          "slug",
+          "extensions"
+        ],
+        "type": "object"
       },
       "AgentCatalogArtifact": {
         "allOf": [
@@ -3979,21 +4006,17 @@
       },
       "AgentReadinessBlocker": {
         "additionalProperties": false,
-        "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
         "properties": {
           "code": {
-            "description": "Stable blocker code, e.g. missing-callable-service or missing-schema.",
             "type": "string"
           },
           "field": {
-            "description": "Registry field, artifact family, or evidence surface that needs attention.",
             "type": "string"
           },
           "message": {
             "type": "string"
           },
           "next_action": {
-            "description": "Concrete maintainer/contributor action to clear or explain the blocker.",
             "type": "string"
           },
           "severity": {
@@ -9747,7 +9770,7 @@
         "type": "string"
       },
       "CompareArtifact": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "dimensions": {
             "items": {
@@ -9756,18 +9779,26 @@
             "type": "array"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "requested_netuids": {
             "items": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
               "type": "integer"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -9775,7 +9806,198 @@
           },
           "subnets": {
             "items": {
-              "$ref": "#/components/schemas/CompareSubnetEntry"
+              "additionalProperties": false,
+              "properties": {
+                "economics": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "alpha_price_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "emission_share": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "miner_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "miner_readiness": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "open_slots": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "registration_allowed": {
+                          "type": "boolean"
+                        },
+                        "registration_cost_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "total_stake_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validator_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "found": {
+                  "type": "boolean"
+                },
+                "health": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "avg_latency_ms": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "ok_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "surface_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "slug": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "structure": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "completeness_score": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "operational_interface_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "surface_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "netuid",
+                "name",
+                "slug",
+                "found"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -9784,140 +10006,6 @@
           "schema_version",
           "source",
           "subnets"
-        ],
-        "type": "object"
-      },
-      "CompareSubnetEntry": {
-        "additionalProperties": false,
-        "description": "One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row.",
-        "properties": {
-          "economics": {
-            "additionalProperties": false,
-            "properties": {
-              "alpha_price_tao": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "emission_share": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "miner_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "miner_readiness": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "open_slots": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              },
-              "registration_allowed": {
-                "type": "boolean"
-              },
-              "registration_cost_tao": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "total_stake_tao": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "validator_count": {
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "found": {
-            "type": "boolean"
-          },
-          "health": {
-            "additionalProperties": false,
-            "properties": {
-              "avg_latency_ms": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "ok_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "surface_count": {
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "slug": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "structure": {
-            "additionalProperties": false,
-            "properties": {
-              "completeness_score": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "operational_interface_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "surface_count": {
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "type": [
-              "object",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "netuid",
-          "name",
-          "slug",
-          "found"
         ],
         "type": "object"
       },
@@ -10536,178 +10624,223 @@
       },
       "CountMap": {
         "additionalProperties": {
+          "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer"
+        },
+        "propertyNames": {
+          "type": "string"
         },
         "type": "object"
       },
       "CoverageArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "application_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           },
-          {
-            "additionalProperties": true,
+          "candidate_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "candidate_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "chain_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "completeness": {
+            "additionalProperties": {},
             "properties": {
-              "application_subnet_count": {
+              "average_score": {
+                "maximum": 100,
                 "minimum": 0,
                 "type": "integer"
               },
-              "candidate_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "candidate_subnet_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "chain_subnet_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "completeness": {
-                "additionalProperties": true,
-                "description": "Aggregate trustworthy-coverage-completeness scoreboard derived from per-subnet completeness scores. The per-subnet leaderboard is /api/v1/profiles?sort=completeness_score.",
-                "properties": {
-                  "average_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "dimension_coverage": {
-                    "additionalProperties": {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  "fully_complete_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "fully_complete_pct": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "median_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "methodology": {
-                    "type": "string"
-                  },
-                  "score_distribution": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "scored_subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
+              "dimension_coverage": {
+                "additionalProperties": {
+                  "additionalProperties": {},
+                  "properties": {},
+                  "type": "object"
+                },
+                "propertyNames": {
+                  "type": "string"
                 },
                 "type": "object"
               },
-              "curated_overlay_count": {
+              "fully_complete_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
-              "curation_level_counts": {
-                "$ref": "#/components/schemas/CountMap"
-              },
-              "manifested_count": {
+              "fully_complete_pct": {
+                "maximum": 100,
                 "minimum": 0,
                 "type": "integer"
               },
-              "native_only_count": {
+              "median_score": {
+                "maximum": 100,
                 "minimum": 0,
                 "type": "integer"
               },
-              "native_only_with_candidates": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "native_only_without_candidates": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "native_snapshot_captured_at": {
+              "methodology": {
                 "type": "string"
               },
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
-              },
-              "probed_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "probed_surface_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "root_subnet_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "source": {
-                "additionalProperties": false,
-                "properties": {
-                  "candidates": {
-                    "type": "string"
-                  },
-                  "native": {
-                    "oneOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "additionalProperties": true,
-                        "type": "object"
-                      }
-                    ]
-                  },
-                  "overlays": {
-                    "type": "string"
-                  }
+              "score_distribution": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
-                "required": [
-                  "candidates",
-                  "native",
-                  "overlays"
-                ],
+                "propertyNames": {
+                  "type": "string"
+                },
                 "type": "object"
               },
-              "surface_count": {
+              "scored_subnet_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               }
             },
+            "type": "object"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "curated_overlay_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "curation_level_counts": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "manifested_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "native_only_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "native_only_with_candidates": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "native_only_without_candidates": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "native_snapshot_captured_at": {
+            "type": "string"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "probed_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "probed_surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "root_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "additionalProperties": false,
+            "properties": {
+              "candidates": {
+                "type": "string"
+              },
+              "native": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "additionalProperties": {},
+                    "properties": {},
+                    "type": "object"
+                  }
+                ]
+              },
+              "overlays": {
+                "type": "string"
+              }
+            },
             "required": [
-              "application_subnet_count",
-              "candidate_count",
-              "candidate_subnet_count",
-              "chain_subnet_count",
-              "curated_overlay_count",
-              "curation_level_counts",
-              "manifested_count",
-              "native_only_count",
-              "native_only_with_candidates",
-              "native_only_without_candidates",
-              "native_snapshot_captured_at",
-              "network",
-              "probed_count",
-              "probed_surface_count",
-              "root_subnet_count",
-              "source",
-              "surface_count"
+              "candidates",
+              "native",
+              "overlays"
             ],
             "type": "object"
+          },
+          "surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "application_subnet_count",
+          "candidate_count",
+          "candidate_subnet_count",
+          "chain_subnet_count",
+          "curated_overlay_count",
+          "curation_level_counts",
+          "manifested_count",
+          "native_only_count",
+          "native_only_with_candidates",
+          "native_only_without_candidates",
+          "native_snapshot_captured_at",
+          "network",
+          "probed_count",
+          "probed_surface_count",
+          "root_subnet_count",
+          "source",
+          "surface_count"
+        ],
+        "type": "object"
       },
       "CoverageDelta": {
         "additionalProperties": false,
@@ -10732,197 +10865,240 @@
         "type": "object"
       },
       "CoverageDepthArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "coverage_depth_version": {
-                "minimum": 1,
-                "type": "integer"
+          "coverage_depth_version": {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "ranked_queue": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/CoverageDepthQueueEntry"
+                  "type": "string"
                 },
                 "type": "array"
-              },
-              "rows": {
-                "items": {
-                  "$ref": "#/components/schemas/CoverageDepthRow"
+              }
+            ]
+          },
+          "ranked_queue": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
                 },
-                "type": "array"
-              },
-              "scoring": {
-                "additionalProperties": true,
-                "properties": {
-                  "methodology": {
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "priority_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "rank": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "recommended_next_action": {
+                  "type": "string"
+                },
+                "score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "severity": {
+                  "enum": [
+                    "hard",
+                    "missing-data",
+                    "needs-review"
+                  ],
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "tier": {
+                  "type": "string"
+                },
+                "top_gap_codes": {
+                  "items": {
                     "type": "string"
                   },
-                  "weights": {
-                    "additionalProperties": {
-                      "maximum": 100,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "methodology",
-                  "weights"
-                ],
-                "type": "object"
+                  "type": "array"
+                }
               },
-              "subnet_count": {
-                "minimum": 0,
-                "type": "integer"
+              "required": [
+                "rank",
+                "netuid",
+                "slug",
+                "name",
+                "tier",
+                "score",
+                "priority_score",
+                "severity",
+                "top_gap_codes",
+                "recommended_next_action"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageDepthRow"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "scoring": {
+            "additionalProperties": {},
+            "properties": {
+              "methodology": {
+                "type": "string"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "agent_ready_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "average_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "blocked_subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "blocker_level_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "callable_subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "gap_code_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "queue_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "row_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "severity_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "tier_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  }
+              "weights": {
+                "additionalProperties": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
                 },
-                "required": [
-                  "row_count",
-                  "agent_ready_count",
-                  "callable_subnet_count",
-                  "blocked_subnet_count",
-                  "queue_count",
-                  "average_score",
-                  "tier_counts",
-                  "blocker_level_counts",
-                  "severity_counts",
-                  "gap_code_counts"
-                ],
+                "propertyNames": {
+                  "type": "string"
+                },
                 "type": "object"
               }
             },
             "required": [
-              "coverage_depth_version",
-              "subnet_count",
-              "summary",
-              "scoring",
-              "rows",
-              "ranked_queue"
+              "methodology",
+              "weights"
+            ],
+            "type": "object"
+          },
+          "subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "agent_ready_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "average_score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "blocked_subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "blocker_level_counts": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "callable_subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gap_code_counts": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "queue_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "row_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "severity_counts": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "tier_counts": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "row_count",
+              "agent_ready_count",
+              "callable_subnet_count",
+              "blocked_subnet_count",
+              "queue_count",
+              "average_score",
+              "tier_counts",
+              "blocker_level_counts",
+              "severity_counts",
+              "gap_code_counts"
             ],
             "type": "object"
           }
-        ]
-      },
-      "CoverageDepthQueueEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "priority_score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "rank": {
-            "minimum": 1,
-            "type": "integer"
-          },
-          "recommended_next_action": {
-            "type": "string"
-          },
-          "score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "severity": {
-            "enum": [
-              "hard",
-              "missing-data",
-              "needs-review"
-            ],
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "tier": {
-            "type": "string"
-          },
-          "top_gap_codes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
         },
         "required": [
-          "rank",
-          "netuid",
-          "slug",
-          "name",
-          "tier",
-          "score",
-          "priority_score",
-          "severity",
-          "top_gap_codes",
-          "recommended_next_action"
+          "generated_at",
+          "schema_version",
+          "coverage_depth_version",
+          "subnet_count",
+          "summary",
+          "scoring",
+          "rows",
+          "ranked_queue"
         ],
         "type": "object"
       },
@@ -10949,33 +11125,45 @@
             "type": "string"
           },
           "completeness_score": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "curation_level": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dimensions": {
-            "additionalProperties": true,
+            "additionalProperties": {},
             "properties": {
               "callable_service_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "candidate_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "candidate_operational_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "data_artifact_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
@@ -10983,45 +11171,58 @@
                 "type": "boolean"
               },
               "example_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "fixture_available_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "fixture_status_counts": {
                 "additionalProperties": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
                 },
                 "type": "object"
               },
               "official_surface_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "provider_claimed_surface_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "registry_observed_surface_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "schema_missing_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "schema_service_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "sdk_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "service_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
@@ -11035,6 +11236,7 @@
                 "type": "boolean"
               },
               "surface_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               }
@@ -11065,6 +11267,7 @@
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -11074,9 +11277,13 @@
             "type": "integer"
           },
           "profile_level": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "readiness_score": {
@@ -11085,9 +11292,13 @@
             "type": "integer"
           },
           "recommended_next_action": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "score": {
@@ -11099,9 +11310,13 @@
             "type": "string"
           },
           "subnet_type": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "tier": {
@@ -11146,94 +11361,117 @@
         "type": "object"
       },
       "CoverageLevel": {
-        "description": "How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).",
         "enum": [
           "native-only",
           "manifested",
           "probed"
-        ]
+        ],
+        "type": "string"
       },
       "CurationArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "curation": {
+          "curation": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "coverage_level": {
+                  "$ref": "#/components/schemas/CoverageLevel"
+                },
+                "curation": {
+                  "$ref": "#/components/schemas/CurationMetadata"
+                },
+                "description": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "gap_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "gaps": {
+                  "$ref": "#/components/schemas/Gaps"
+                },
+                "lifecycle": {
+                  "enum": [
+                    "active",
+                    "deprecated",
+                    "parked",
+                    "pending"
+                  ],
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "surface_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "slug",
+                "name",
+                "coverage_level",
+                "surface_count",
+                "candidate_count",
+                "curation",
+                "gaps"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/CurationEntry"
+                  "type": "string"
                 },
                 "type": "array"
               }
-            },
-            "required": [
-              "curation"
-            ],
-            "type": "object"
-          }
-        ]
-      },
-      "CurationEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "coverage_level": {
-            "$ref": "#/components/schemas/CoverageLevel"
-          },
-          "curation": {
-            "$ref": "#/components/schemas/CurationMetadata"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
             ]
           },
-          "gap_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "gaps": {
-            "$ref": "#/components/schemas/Gaps"
-          },
-          "lifecycle": {
-            "enum": [
-              "active",
-              "deprecated",
-              "parked",
-              "pending"
-            ],
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "surface_count": {
-            "minimum": 0,
-            "type": "integer"
+          "schema_version": {
+            "const": 1,
+            "type": "number"
           }
         },
         "required": [
-          "netuid",
-          "slug",
-          "name",
-          "coverage_level",
-          "surface_count",
-          "candidate_count",
-          "curation",
-          "gaps"
+          "generated_at",
+          "schema_version",
+          "curation"
         ],
         "type": "object"
       },
@@ -13223,260 +13461,364 @@
         "type": "object"
       },
       "FixtureArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "captured_at": {
+        "additionalProperties": {},
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
                 "format": "date-time",
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
               },
-              "kind": {
-                "$ref": "#/components/schemas/SurfaceKind"
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "request": {
-                "additionalProperties": true,
-                "properties": {
-                  "method": {
-                    "const": "GET"
-                  },
-                  "url": {
-                    "format": "uri",
-                    "type": "string"
-                  }
+              {
+                "items": {
+                  "type": "string"
                 },
-                "required": [
-                  "method",
-                  "url"
-                ],
-                "type": "object"
+                "type": "array"
+              }
+            ]
+          },
+          "request": {
+            "additionalProperties": {},
+            "properties": {
+              "method": {
+                "const": "GET",
+                "type": "string"
               },
-              "response": {
-                "additionalProperties": true,
-                "properties": {
-                  "body": {
-                    "anyOf": [
-                      {
-                        "$ref": "#/components/schemas/JsonObject"
-                      },
-                      {
-                        "items": {},
-                        "type": "array"
-                      },
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Sanitized JSON response body; sensitive fields and private URLs are redacted before publish."
-                  },
-                  "content_type": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "status": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "status",
-                  "body"
-                ],
-                "type": "object"
-              },
-              "subnet_name": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "subnet_slug": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "surface_id": {
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+              "url": {
+                "format": "uri",
                 "type": "string"
               }
             },
             "required": [
-              "surface_id",
-              "netuid",
-              "kind",
-              "request",
-              "response"
+              "method",
+              "url"
             ],
             "type": "object"
-          }
-        ],
-        "description": "Captured, sanitized live request/response sample for one no-auth GET surface."
-      },
-      "FixturesIndexArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
           },
-          {
-            "additionalProperties": true,
+          "response": {
+            "additionalProperties": {},
             "properties": {
-              "candidate_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "coverage": {
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "artifact_path": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "captured_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "kind": {
-                      "type": "string"
-                    },
-                    "netuid": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "response_status": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "status": {
-                      "enum": [
-                        "available",
-                        "missing",
-                        "capture-failed"
-                      ],
-                      "type": "string"
-                    },
-                    "subnet_slug": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "surface_id": {
-                      "type": "string"
-                    }
+              "body": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/JsonObject"
                   },
-                  "required": [
-                    "surface_id",
-                    "netuid",
-                    "status"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "fixture_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "fixtures": {
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "captured_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "kind": {
-                      "type": "string"
-                    },
-                    "netuid": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "response_status": {
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "subnet_slug": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "surface_id": {
-                      "type": "string"
-                    }
+                  {
+                    "items": {},
+                    "type": "array"
                   },
-                  "required": [
-                    "surface_id",
-                    "netuid"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "missing_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "published_at": {
-                "type": [
-                  "string",
-                  "null"
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
-              "status_counts": {
-                "additionalProperties": {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "type": "object"
+              "content_type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
               }
             },
             "required": [
-              "fixture_count",
-              "fixtures"
+              "status",
+              "body"
             ],
             "type": "object"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "subnet_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subnet_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "surface_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+            "type": "string"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "surface_id",
+          "netuid",
+          "kind",
+          "request",
+          "response"
+        ],
+        "type": "object"
+      },
+      "FixturesIndexArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "candidate_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "coverage": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "artifact_path": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "captured_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "response_status": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "available",
+                    "missing",
+                    "capture-failed"
+                  ],
+                  "type": "string"
+                },
+                "subnet_slug": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "surface_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "surface_id",
+                "netuid",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "fixture_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fixtures": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "captured_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "response_status": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_slug": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "surface_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "surface_id",
+                "netuid"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "missing_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "fixture_count",
+          "fixtures"
+        ],
+        "type": "object"
       },
       "FreshnessArtifact": {
         "allOf": [
@@ -13707,69 +14049,85 @@
         "type": "object"
       },
       "GapsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "gaps": {
+          "gaps": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "coverage_level": {
+                  "$ref": "#/components/schemas/CoverageLevel"
+                },
+                "curation_level": {
+                  "$ref": "#/components/schemas/CurationLevel"
+                },
+                "gap_priority": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "gap_severity": {
+                  "enum": [
+                    "critical",
+                    "warning",
+                    "info"
+                  ],
+                  "type": "string"
+                },
+                "gaps": {
+                  "$ref": "#/components/schemas/Gaps"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "slug": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "slug",
+                "name",
+                "coverage_level",
+                "curation_level",
+                "gaps"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/GapsEntry"
+                  "type": "string"
                 },
                 "type": "array"
               }
-            },
-            "required": [
-              "gaps"
-            ],
-            "type": "object"
-          }
-        ]
-      },
-      "GapsEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "coverage_level": {
-            "$ref": "#/components/schemas/CoverageLevel"
-          },
-          "curation_level": {
-            "$ref": "#/components/schemas/CurationLevel"
-          },
-          "gap_priority": {
-            "description": "0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving.",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "gap_severity": {
-            "description": "Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale.",
-            "enum": [
-              "critical",
-              "warning",
-              "info"
             ]
           },
-          "gaps": {
-            "$ref": "#/components/schemas/Gaps"
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "slug": {
-            "type": "string"
+          "schema_version": {
+            "const": 1,
+            "type": "number"
           }
         },
         "required": [
-          "netuid",
-          "slug",
-          "name",
-          "coverage_level",
-          "curation_level",
+          "generated_at",
+          "schema_version",
           "gaps"
         ],
         "type": "object"
@@ -15298,151 +15656,215 @@
         "type": "object"
       },
       "JsonObject": {
-        "additionalProperties": true,
+        "additionalProperties": {},
+        "propertyNames": {
+          "type": "string"
+        },
         "type": "object"
       },
       "LineageArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "broken_link_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "broken_link_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "broken_links": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "conflicts_with_source_netuid": {
-                      "minimum": 0,
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "reason": {
-                      "enum": [
-                        "invalid-approval",
-                        "source-netuid-missing",
-                        "target-netuid-missing",
-                        "target-netuid-conflict"
-                      ]
-                    },
-                    "source_netuid": {
-                      "minimum": 0,
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "target_netuid": {
-                      "minimum": 0,
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "source_netuid",
-                    "target_netuid",
-                    "reason"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "graduated_subnet_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "link_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "links": {
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "mainnet_name": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "mainnet_netuid": {
+          "broken_links": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "conflicts_with_source_netuid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
                       "minimum": 0,
                       "type": "integer"
                     },
-                    "mainnet_slug": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "matched_by": {
-                      "enum": [
-                        "github_repo",
-                        "chain_name"
-                      ]
-                    },
-                    "testnet_name": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "testnet_netuid": {
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reason": {
+                  "enum": [
+                    "invalid-approval",
+                    "source-netuid-missing",
+                    "target-netuid-missing",
+                    "target-netuid-conflict"
+                  ],
+                  "type": "string"
+                },
+                "source_netuid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    {
+                      "type": "null"
                     }
-                  },
-                  "required": [
-                    "mainnet_netuid",
-                    "testnet_netuid",
-                    "matched_by"
-                  ],
-                  "type": "object"
+                  ]
                 },
-                "type": "array"
+                "target_netuid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
               },
-              "matched_by_counts": {
-                "additionalProperties": {
+              "required": [
+                "source_netuid",
+                "target_netuid",
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "graduated_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "link_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "links": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "mainnet_name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "mainnet_netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
-                "type": "object"
+                "mainnet_slug": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "matched_by": {
+                  "enum": [
+                    "github_repo",
+                    "chain_name"
+                  ],
+                  "type": "string"
+                },
+                "testnet_name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "testnet_netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
               },
-              "published_at": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "source_network": {
-                "type": "string"
-              },
-              "target_network": {
-                "type": "string"
-              },
-              "testnet_only_count": {
-                "minimum": 0,
-                "type": "integer"
-              }
+              "required": [
+                "mainnet_netuid",
+                "testnet_netuid",
+                "matched_by"
+              ],
+              "type": "object"
             },
-            "required": [
-              "source_network",
-              "target_network",
-              "link_count",
-              "links"
-            ],
+            "type": "array"
+          },
+          "matched_by_counts": {
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
             "type": "object"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source_network": {
+            "type": "string"
+          },
+          "target_network": {
+            "type": "string"
+          },
+          "testnet_only_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "source_network",
+          "target_network",
+          "link_count",
+          "links"
+        ],
+        "type": "object"
       },
       "NetworkParametersArtifact": {
         "additionalProperties": {},
@@ -16630,31 +17052,45 @@
         "type": "object"
       },
       "RegistryLeaderboardsArtifact": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "board": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "boards": {
             "additionalProperties": {
               "items": {
-                "additionalProperties": true,
+                "additionalProperties": {},
+                "properties": {},
                 "type": "object"
               },
               "type": "array"
             },
+            "propertyNames": {
+              "type": "string"
+            },
             "type": "object"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -16669,101 +17105,133 @@
         "type": "object"
       },
       "RegistrySummaryArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
+          "counts": {
+            "additionalProperties": {},
             "properties": {
-              "counts": {
-                "additionalProperties": true,
-                "properties": {
-                  "candidates": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "endpoints": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "providers": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "surfaces": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "surfaces",
-                  "endpoints",
-                  "providers",
-                  "candidates"
-                ],
-                "type": "object"
-              },
-              "coverage": {
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "curation_level_counts": {
-                "$ref": "#/components/schemas/CountMap"
-              },
-              "profile_level_counts": {
-                "$ref": "#/components/schemas/CountMap"
-              },
-              "recent_changes": {
-                "type": "object"
-              },
-              "subnet_count": {
+              "candidates": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
-              "top_subnets": {
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "completeness_score": {
-                      "type": "number"
-                    },
-                    "curation_level": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "netuid": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "profile_level": {
-                      "type": "string"
-                    },
-                    "slug": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "netuid",
-                    "completeness_score"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
+              "endpoints": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "providers": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surfaces": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "subnet_count",
-              "counts",
-              "top_subnets"
+              "surfaces",
+              "endpoints",
+              "providers",
+              "candidates"
             ],
             "type": "object"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "properties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curation_level_counts": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "profile_level_counts": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "recent_changes": {
+            "additionalProperties": {},
+            "properties": {},
+            "type": "object"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "top_subnets": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "completeness_score": {
+                  "type": "number"
+                },
+                "curation_level": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "profile_level": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "netuid",
+                "completeness_score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "subnet_count",
+          "counts",
+          "top_subnets"
+        ],
+        "type": "object"
       },
       "ReliabilityScore": {
         "additionalProperties": true,
@@ -16932,6 +17400,7 @@
         "additionalProperties": false,
         "properties": {
           "candidate_api_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16954,6 +17423,7 @@
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16964,6 +17434,7 @@
             "type": "array"
           },
           "operational_surface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16974,6 +17445,7 @@
             "type": "array"
           },
           "priority_score": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16989,7 +17461,8 @@
               "data-artifact-adapter",
               "generic-openapi-or-custom",
               "stream-adapter"
-            ]
+            ],
+            "type": "string"
           },
           "slug": {
             "type": "string"
@@ -17017,179 +17490,97 @@
         "type": "object"
       },
       "ReviewAdapterCandidatesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewAdapterCandidate"
+            },
+            "type": "array"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "candidates": {
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                  "type": "string"
                 },
                 "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "adapter_backed_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "adapter_backed_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "by_curation_level": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "by_recommended_adapter_kind": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "candidate_api_kind_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "data_artifact_backed_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "openapi_backed_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "operational_kind_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "sse_backed_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "adapter_backed_count",
-                  "candidate_api_kind_counts",
-                  "candidate_count",
-                  "by_curation_level",
-                  "by_recommended_adapter_kind",
-                  "data_artifact_backed_count",
-                  "openapi_backed_count",
-                  "operational_kind_counts",
-                  "sse_backed_count"
-                ],
-                "type": "object"
+              "by_curation_level": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_recommended_adapter_kind": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "candidate_api_kind_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "data_artifact_backed_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "openapi_backed_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "operational_kind_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "sse_backed_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "candidates",
-              "summary"
+              "adapter_backed_count",
+              "candidate_api_kind_counts",
+              "candidate_count",
+              "by_curation_level",
+              "by_recommended_adapter_kind",
+              "data_artifact_backed_count",
+              "openapi_backed_count",
+              "operational_kind_counts",
+              "sse_backed_count"
             ],
             "type": "object"
           }
-        ]
-      },
-      "ReviewCandidateEvidence": {
-        "additionalProperties": false,
-        "properties": {
-          "candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "classifications": {
-            "$ref": "#/components/schemas/CountMap"
-          },
-          "live_or_redirected_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "reviewable_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "sample_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "stale_or_failed_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "unverified_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
         },
         "required": [
-          "candidate_count",
-          "classifications",
-          "live_or_redirected_count",
-          "reviewable_count",
-          "sample_candidate_ids",
-          "stale_or_failed_count",
-          "unverified_count"
-        ],
-        "type": "object"
-      },
-      "ReviewCandidateEvidenceSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "kinds_with_candidates": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "live_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "live_or_redirected_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "reviewable_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stale_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "stale_or_failed_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "unverified_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "unverified_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "candidate_count",
-          "kinds_with_candidates",
-          "live_kinds",
-          "live_or_redirected_count",
-          "reviewable_count",
-          "stale_kinds",
-          "stale_or_failed_count",
-          "unverified_count",
-          "unverified_kinds"
+          "generated_at",
+          "schema_version",
+          "candidates",
+          "summary"
         ],
         "type": "object"
       },
@@ -17335,866 +17726,1185 @@
         ]
       },
       "ReviewEnrichmentEvidenceArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "candidate_evidence_by_kind": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "candidate_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "classifications": {
+                        "$ref": "#/components/schemas/CountMap"
+                      },
+                      "live_or_redirected_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "reviewable_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "sample_candidate_ids": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "stale_or_failed_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "unverified_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "candidate_count",
+                      "classifications",
+                      "live_or_redirected_count",
+                      "reviewable_count",
+                      "sample_candidate_ids",
+                      "stale_or_failed_count",
+                      "unverified_count"
+                    ],
+                    "type": "object"
+                  },
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "candidate_evidence_summary": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidate_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kinds_with_candidates": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "live_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "live_or_redirected_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reviewable_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "stale_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "stale_or_failed_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unverified_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unverified_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "candidate_count",
+                    "kinds_with_candidates",
+                    "live_kinds",
+                    "live_or_redirected_count",
+                    "reviewable_count",
+                    "stale_kinds",
+                    "stale_or_failed_count",
+                    "unverified_count",
+                    "unverified_kinds"
+                  ],
+                  "type": "object"
+                },
+                "direct_submission_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "evidence_action": {
+                  "enum": [
+                    "submit-new-evidence",
+                    "verify-existing-evidence",
+                    "replace-stale-evidence",
+                    "review-existing-evidence",
+                    "maintainer-review-existing-evidence",
+                    "monitor"
+                  ],
+                  "type": "string"
+                },
+                "lane": {
+                  "enum": [
+                    "direct-submission",
+                    "maintainer-review",
+                    "adapter-candidate",
+                    "monitoring-followup",
+                    "baseline-monitoring"
+                  ],
+                  "type": "string"
+                },
+                "missing_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "priority_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "slug": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "candidate_evidence_by_kind",
+                "candidate_evidence_summary",
+                "direct_submission_kinds",
+                "evidence_action",
+                "lane",
+                "missing_kinds",
+                "name",
+                "netuid",
+                "priority_score",
+                "slug"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
             "properties": {
-              "entries": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewEnrichmentEvidenceEntry"
-                },
-                "type": "array"
+              "entry_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "notes": {
-                "type": "string"
+              "evidence_action_counts": {
+                "$ref": "#/components/schemas/CountMap"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "entry_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "evidence_action_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "stale_candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "unverified_candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "entry_count",
-                  "evidence_action_counts",
-                  "stale_candidate_count",
-                  "subnet_count",
-                  "unverified_candidate_count"
-                ],
-                "type": "object"
+              "stale_candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unverified_candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "entries",
-              "notes",
-              "summary"
+              "entry_count",
+              "evidence_action_counts",
+              "stale_candidate_count",
+              "subnet_count",
+              "unverified_candidate_count"
             ],
             "type": "object"
           }
-        ]
-      },
-      "ReviewEnrichmentEvidenceEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "candidate_evidence_by_kind": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/ReviewCandidateEvidence"
-            },
-            "type": "object"
-          },
-          "candidate_evidence_summary": {
-            "$ref": "#/components/schemas/ReviewCandidateEvidenceSummary"
-          },
-          "direct_submission_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "evidence_action": {
-            "$ref": "#/components/schemas/ReviewEvidenceAction"
-          },
-          "lane": {
-            "$ref": "#/components/schemas/ReviewEnrichmentLane"
-          },
-          "missing_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "priority_score": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "slug": {
-            "type": "string"
-          }
         },
         "required": [
-          "candidate_evidence_by_kind",
-          "candidate_evidence_summary",
-          "direct_submission_kinds",
-          "evidence_action",
-          "lane",
-          "missing_kinds",
-          "name",
-          "netuid",
-          "priority_score",
-          "slug"
+          "generated_at",
+          "notes",
+          "schema_version",
+          "entries",
+          "summary"
         ],
         "type": "object"
-      },
-      "ReviewEnrichmentLane": {
-        "enum": [
-          "direct-submission",
-          "maintainer-review",
-          "adapter-candidate",
-          "monitoring-followup",
-          "baseline-monitoring"
-        ]
       },
       "ReviewEnrichmentQueueArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "queue": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "adapter_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "candidate_evidence_summary": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidate_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kinds_with_candidates": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "live_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "live_or_redirected_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reviewable_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "stale_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "stale_or_failed_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unverified_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unverified_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "candidate_count",
+                    "kinds_with_candidates",
+                    "live_kinds",
+                    "live_or_redirected_count",
+                    "reviewable_count",
+                    "stale_kinds",
+                    "stale_or_failed_count",
+                    "unverified_count",
+                    "unverified_kinds"
+                  ],
+                  "type": "object"
+                },
+                "completeness_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "contribution_hint": {
+                  "type": "string"
+                },
+                "curation_level": {
+                  "$ref": "#/components/schemas/CurationLevel"
+                },
+                "direct_submission_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "endpoint_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "evidence_action": {
+                  "enum": [
+                    "submit-new-evidence",
+                    "verify-existing-evidence",
+                    "replace-stale-evidence",
+                    "review-existing-evidence",
+                    "maintainer-review-existing-evidence",
+                    "monitor"
+                  ],
+                  "type": "string"
+                },
+                "identity_level": {
+                  "enum": [
+                    "none",
+                    "directory",
+                    "partial",
+                    "complete"
+                  ],
+                  "type": "string"
+                },
+                "identity_surface_count": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lane": {
+                  "enum": [
+                    "direct-submission",
+                    "maintainer-review",
+                    "adapter-candidate",
+                    "monitoring-followup",
+                    "baseline-monitoring"
+                  ],
+                  "type": "string"
+                },
+                "manual_review_required": {
+                  "type": "boolean"
+                },
+                "missing_identity": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "missing_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "operational_interface_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "priority_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "profile_level": {
+                  "enum": [
+                    "directory-only",
+                    "identity-partial",
+                    "identity-complete",
+                    "operational",
+                    "adapter-backed"
+                  ],
+                  "type": "string"
+                },
+                "reason_codes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "recommended_action": {
+                  "type": "string"
+                },
+                "review_state": {
+                  "$ref": "#/components/schemas/ReviewState"
+                },
+                "sample_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_live_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_stale_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_target_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "source_urls": {
+                  "items": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "stale_candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "verified_candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "adapter_score",
+                "candidate_count",
+                "candidate_evidence_summary",
+                "completeness_score",
+                "contribution_hint",
+                "curation_level",
+                "direct_submission_kinds",
+                "endpoint_count",
+                "evidence_action",
+                "identity_level",
+                "identity_surface_count",
+                "lane",
+                "manual_review_required",
+                "missing_kinds",
+                "missing_identity",
+                "name",
+                "netuid",
+                "operational_interface_count",
+                "priority_score",
+                "profile_level",
+                "reason_codes",
+                "recommended_action",
+                "review_state",
+                "sample_candidate_ids",
+                "sample_live_candidate_ids",
+                "sample_stale_candidate_ids",
+                "sample_target_candidate_ids",
+                "slug",
+                "source_urls",
+                "stale_candidate_count",
+                "surface_count",
+                "verified_candidate_count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
             "properties": {
-              "notes": {
-                "type": "string"
+              "adapter_candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "queue": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
-                },
-                "type": "array"
+              "baseline_monitoring_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "adapter_candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "baseline_monitoring_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "direct_submission_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "evidence_action_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "identity_level_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "lane_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "maintainer_review_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "manual_review_required_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "monitoring_followup_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "queue_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "top_direct_submission_kinds": {
-                    "$ref": "#/components/schemas/CountMap"
-                  }
-                },
-                "required": [
-                  "adapter_candidate_count",
-                  "baseline_monitoring_count",
-                  "direct_submission_count",
-                  "evidence_action_counts",
-                  "identity_level_counts",
-                  "lane_counts",
-                  "maintainer_review_count",
-                  "manual_review_required_count",
-                  "monitoring_followup_count",
-                  "queue_count",
-                  "subnet_count",
-                  "top_direct_submission_kinds"
-                ],
-                "type": "object"
+              "direct_submission_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "evidence_action_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "identity_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "lane_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "maintainer_review_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "manual_review_required_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "monitoring_followup_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "queue_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "top_direct_submission_kinds": {
+                "$ref": "#/components/schemas/CountMap"
               }
             },
             "required": [
-              "notes",
-              "queue",
-              "summary"
+              "adapter_candidate_count",
+              "baseline_monitoring_count",
+              "direct_submission_count",
+              "evidence_action_counts",
+              "identity_level_counts",
+              "lane_counts",
+              "maintainer_review_count",
+              "manual_review_required_count",
+              "monitoring_followup_count",
+              "queue_count",
+              "subnet_count",
+              "top_direct_submission_kinds"
             ],
             "type": "object"
           }
-        ]
-      },
-      "ReviewEnrichmentQueueEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "adapter_score": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "candidate_evidence_summary": {
-            "$ref": "#/components/schemas/ReviewCandidateEvidenceSummary"
-          },
-          "completeness_score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "contribution_hint": {
-            "type": "string"
-          },
-          "curation_level": {
-            "$ref": "#/components/schemas/CurationLevel"
-          },
-          "direct_submission_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "endpoint_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "evidence_action": {
-            "$ref": "#/components/schemas/ReviewEvidenceAction"
-          },
-          "identity_level": {
-            "enum": [
-              "none",
-              "directory",
-              "partial",
-              "complete"
-            ]
-          },
-          "identity_surface_count": {
-            "maximum": 3,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "lane": {
-            "$ref": "#/components/schemas/ReviewEnrichmentLane"
-          },
-          "manual_review_required": {
-            "type": "boolean"
-          },
-          "missing_identity": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "missing_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "operational_interface_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "priority_score": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "profile_level": {
-            "enum": [
-              "directory-only",
-              "identity-partial",
-              "identity-complete",
-              "operational",
-              "adapter-backed"
-            ]
-          },
-          "reason_codes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "recommended_action": {
-            "type": "string"
-          },
-          "review_state": {
-            "$ref": "#/components/schemas/ReviewState"
-          },
-          "sample_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "sample_live_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "sample_stale_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "sample_target_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "source_urls": {
-            "items": {
-              "format": "uri",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "stale_candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "surface_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "verified_candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
         },
         "required": [
-          "adapter_score",
-          "candidate_evidence_summary",
-          "candidate_count",
-          "completeness_score",
-          "contribution_hint",
-          "curation_level",
-          "direct_submission_kinds",
-          "endpoint_count",
-          "evidence_action",
-          "identity_level",
-          "identity_surface_count",
-          "lane",
-          "manual_review_required",
-          "missing_identity",
-          "missing_kinds",
-          "name",
-          "netuid",
-          "operational_interface_count",
-          "priority_score",
-          "profile_level",
-          "reason_codes",
-          "recommended_action",
-          "review_state",
-          "sample_candidate_ids",
-          "sample_live_candidate_ids",
-          "sample_stale_candidate_ids",
-          "sample_target_candidate_ids",
-          "slug",
-          "source_urls",
-          "stale_candidate_count",
-          "surface_count",
-          "verified_candidate_count"
-        ],
-        "type": "object"
-      },
-      "ReviewEnrichmentSubmissionRoute": {
-        "enum": [
-          "direct-candidate-pr",
-          "adapter-request",
-          "maintainer-review",
-          "status-report"
-        ]
-      },
-      "ReviewEnrichmentTarget": {
-        "additionalProperties": false,
-        "properties": {
-          "auto_review_candidate": {
-            "type": "boolean"
-          },
-          "candidate_command": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "candidate_evidence": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReviewCandidateEvidence"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "contribution_prompt": {
-            "type": "string"
-          },
-          "evidence_action": {
-            "$ref": "#/components/schemas/ReviewEvidenceAction"
-          },
-          "identity_level": {
-            "enum": [
-              "none",
-              "directory",
-              "partial",
-              "complete"
-            ]
-          },
-          "kind": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SurfaceKind"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "lane": {
-            "$ref": "#/components/schemas/ReviewEnrichmentLane"
-          },
-          "manual_review_required": {
-            "type": "boolean"
-          },
-          "missing_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "priority_score": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "profile_level": {
-            "enum": [
-              "directory-only",
-              "identity-partial",
-              "identity-complete",
-              "operational",
-              "adapter-backed"
-            ]
-          },
-          "queue_context": {
-            "$ref": "#/components/schemas/ReviewEnrichmentTargetQueueContext"
-          },
-          "reason_codes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "recommended_action": {
-            "type": "string"
-          },
-          "sample_live_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "sample_stale_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "sample_target_candidate_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "source_requirements": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "source_urls": {
-            "items": {
-              "format": "uri",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "submission_route": {
-            "$ref": "#/components/schemas/ReviewEnrichmentSubmissionRoute"
-          },
-          "target_action": {
-            "$ref": "#/components/schemas/ReviewEnrichmentTargetAction"
-          },
-          "target_id": {
-            "type": "string"
-          },
-          "target_type": {
-            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
-          }
-        },
-        "required": [
-          "auto_review_candidate",
-          "candidate_command",
-          "candidate_evidence",
-          "contribution_prompt",
-          "evidence_action",
-          "identity_level",
-          "kind",
-          "lane",
-          "manual_review_required",
-          "missing_kinds",
-          "name",
-          "netuid",
-          "priority_score",
-          "profile_level",
-          "queue_context",
-          "reason_codes",
-          "recommended_action",
-          "sample_live_candidate_ids",
-          "sample_stale_candidate_ids",
-          "sample_target_candidate_ids",
-          "slug",
-          "source_requirements",
-          "source_urls",
-          "submission_route",
-          "target_action",
-          "target_id",
-          "target_type"
-        ],
-        "type": "object"
-      },
-      "ReviewEnrichmentTargetAction": {
-        "enum": [
-          "submit-new-candidate",
-          "replace-stale-candidate",
-          "verify-existing-candidate",
-          "review-existing-candidate",
-          "adapter-review",
-          "maintainer-review",
-          "monitoring-followup"
-        ]
-      },
-      "ReviewEnrichmentTargetGroup": {
-        "additionalProperties": false,
-        "properties": {
-          "auto_review_candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "kind": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SurfaceKind"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "manual_review_required_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "target_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "target_ids": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "target_type": {
-            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
-          },
-          "top_netuids": {
-            "items": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "auto_review_candidate_count",
-          "kind",
-          "manual_review_required_count",
-          "target_count",
-          "target_ids",
-          "target_type",
-          "top_netuids"
-        ],
-        "type": "object"
-      },
-      "ReviewEnrichmentTargetQueueContext": {
-        "additionalProperties": false,
-        "properties": {
-          "adapter_score": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "completeness_score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "curation_level": {
-            "$ref": "#/components/schemas/CurationLevel"
-          },
-          "direct_submission_kind_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "endpoint_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "identity_surface_count": {
-            "maximum": 3,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "operational_interface_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "profile_level": {
-            "enum": [
-              "directory-only",
-              "identity-partial",
-              "identity-complete",
-              "operational",
-              "adapter-backed"
-            ]
-          },
-          "review_state": {
-            "$ref": "#/components/schemas/ReviewState"
-          },
-          "source_url_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stale_candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "surface_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "verified_candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "adapter_score",
-          "candidate_count",
-          "completeness_score",
-          "curation_level",
-          "direct_submission_kind_count",
-          "endpoint_count",
-          "identity_surface_count",
-          "operational_interface_count",
-          "profile_level",
-          "review_state",
-          "source_url_count",
-          "stale_candidate_count",
-          "surface_count",
-          "verified_candidate_count"
+          "generated_at",
+          "notes",
+          "schema_version",
+          "queue",
+          "summary"
         ],
         "type": "object"
       },
       "ReviewEnrichmentTargetsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
+          "generated_at": {
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "auto_review_candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SurfaceKind"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "manual_review_required_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "target_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "target_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "target_type": {
+                  "enum": [
+                    "surface-candidate",
+                    "adapter-review",
+                    "maintainer-review",
+                    "monitoring-followup"
+                  ],
+                  "type": "string"
+                },
+                "top_netuids": {
+                  "items": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "auto_review_candidate_count",
+                "kind",
+                "manual_review_required_count",
+                "target_count",
+                "target_ids",
+                "target_type",
+                "top_netuids"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
             "properties": {
-              "groups": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewEnrichmentTargetGroup"
-                },
-                "type": "array"
+              "auto_review_candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "notes": {
-                "type": "string"
+              "by_evidence_action": {
+                "$ref": "#/components/schemas/CountMap"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "auto_review_candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "by_evidence_action": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "by_kind": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "by_lane": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "by_target_type": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "manual_review_required_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "new_evidence_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "stale_replacement_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "target_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "auto_review_candidate_count",
-                  "by_evidence_action",
-                  "by_kind",
-                  "by_lane",
-                  "by_target_type",
-                  "manual_review_required_count",
-                  "new_evidence_count",
-                  "stale_replacement_count",
-                  "subnet_count",
-                  "target_count"
-                ],
-                "type": "object"
+              "by_kind": {
+                "$ref": "#/components/schemas/CountMap"
               },
-              "targets": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewEnrichmentTarget"
-                },
-                "type": "array"
+              "by_lane": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_target_type": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "manual_review_required_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "new_evidence_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "stale_replacement_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "target_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "groups",
-              "notes",
-              "summary",
-              "targets"
+              "auto_review_candidate_count",
+              "by_evidence_action",
+              "by_kind",
+              "by_lane",
+              "by_target_type",
+              "manual_review_required_count",
+              "new_evidence_count",
+              "stale_replacement_count",
+              "subnet_count",
+              "target_count"
             ],
             "type": "object"
+          },
+          "targets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "auto_review_candidate": {
+                  "type": "boolean"
+                },
+                "candidate_command": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "candidate_evidence": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "candidate_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "classifications": {
+                          "$ref": "#/components/schemas/CountMap"
+                        },
+                        "live_or_redirected_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "reviewable_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "sample_candidate_ids": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "stale_or_failed_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "unverified_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "candidate_count",
+                        "classifications",
+                        "live_or_redirected_count",
+                        "reviewable_count",
+                        "sample_candidate_ids",
+                        "stale_or_failed_count",
+                        "unverified_count"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "contribution_prompt": {
+                  "type": "string"
+                },
+                "evidence_action": {
+                  "enum": [
+                    "submit-new-evidence",
+                    "verify-existing-evidence",
+                    "replace-stale-evidence",
+                    "review-existing-evidence",
+                    "maintainer-review-existing-evidence",
+                    "monitor"
+                  ],
+                  "type": "string"
+                },
+                "identity_level": {
+                  "enum": [
+                    "none",
+                    "directory",
+                    "partial",
+                    "complete"
+                  ],
+                  "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SurfaceKind"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "lane": {
+                  "enum": [
+                    "direct-submission",
+                    "maintainer-review",
+                    "adapter-candidate",
+                    "monitoring-followup",
+                    "baseline-monitoring"
+                  ],
+                  "type": "string"
+                },
+                "manual_review_required": {
+                  "type": "boolean"
+                },
+                "missing_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "priority_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "profile_level": {
+                  "enum": [
+                    "directory-only",
+                    "identity-partial",
+                    "identity-complete",
+                    "operational",
+                    "adapter-backed"
+                  ],
+                  "type": "string"
+                },
+                "queue_context": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "adapter_score": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "candidate_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "completeness_score": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "curation_level": {
+                      "$ref": "#/components/schemas/CurationLevel"
+                    },
+                    "direct_submission_kind_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "endpoint_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "identity_surface_count": {
+                      "maximum": 3,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "operational_interface_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "profile_level": {
+                      "enum": [
+                        "directory-only",
+                        "identity-partial",
+                        "identity-complete",
+                        "operational",
+                        "adapter-backed"
+                      ],
+                      "type": "string"
+                    },
+                    "review_state": {
+                      "$ref": "#/components/schemas/ReviewState"
+                    },
+                    "source_url_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "stale_candidate_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "surface_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "verified_candidate_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "adapter_score",
+                    "candidate_count",
+                    "completeness_score",
+                    "curation_level",
+                    "direct_submission_kind_count",
+                    "endpoint_count",
+                    "identity_surface_count",
+                    "operational_interface_count",
+                    "profile_level",
+                    "review_state",
+                    "source_url_count",
+                    "stale_candidate_count",
+                    "surface_count",
+                    "verified_candidate_count"
+                  ],
+                  "type": "object"
+                },
+                "reason_codes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "recommended_action": {
+                  "type": "string"
+                },
+                "sample_live_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_stale_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_target_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "source_requirements": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "source_urls": {
+                  "items": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "submission_route": {
+                  "enum": [
+                    "direct-candidate-pr",
+                    "adapter-request",
+                    "maintainer-review",
+                    "status-report"
+                  ],
+                  "type": "string"
+                },
+                "target_action": {
+                  "enum": [
+                    "submit-new-candidate",
+                    "replace-stale-candidate",
+                    "verify-existing-candidate",
+                    "review-existing-candidate",
+                    "adapter-review",
+                    "maintainer-review",
+                    "monitoring-followup"
+                  ],
+                  "type": "string"
+                },
+                "target_id": {
+                  "type": "string"
+                },
+                "target_type": {
+                  "enum": [
+                    "surface-candidate",
+                    "adapter-review",
+                    "maintainer-review",
+                    "monitoring-followup"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "auto_review_candidate",
+                "candidate_command",
+                "candidate_evidence",
+                "contribution_prompt",
+                "evidence_action",
+                "identity_level",
+                "kind",
+                "lane",
+                "manual_review_required",
+                "missing_kinds",
+                "name",
+                "netuid",
+                "priority_score",
+                "profile_level",
+                "queue_context",
+                "reason_codes",
+                "recommended_action",
+                "sample_live_candidate_ids",
+                "sample_stale_candidate_ids",
+                "sample_target_candidate_ids",
+                "slug",
+                "source_requirements",
+                "source_urls",
+                "submission_route",
+                "target_action",
+                "target_id",
+                "target_type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
-        ]
-      },
-      "ReviewEnrichmentTargetType": {
-        "enum": [
-          "surface-candidate",
-          "adapter-review",
-          "maintainer-review",
-          "monitoring-followup"
-        ]
-      },
-      "ReviewEvidenceAction": {
-        "enum": [
-          "submit-new-evidence",
-          "verify-existing-evidence",
-          "replace-stale-evidence",
-          "review-existing-evidence",
-          "maintainer-review-existing-evidence",
-          "monitor"
-        ]
+        },
+        "required": [
+          "generated_at",
+          "notes",
+          "schema_version",
+          "groups",
+          "summary",
+          "targets"
+        ],
+        "type": "object"
       },
       "ReviewGapPrioritiesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "priorities": {
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/ReviewGapPriority"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "priorities": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewGapPriority"
             },
-            "required": [
-              "priorities"
-            ],
-            "type": "object"
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "priorities"
+        ],
+        "type": "object"
       },
       "ReviewGapPriority": {
         "additionalProperties": false,
         "properties": {
           "candidate_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18211,10 +18921,12 @@
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "priority_score": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18228,10 +18940,12 @@
             "type": "string"
           },
           "surface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "verified_candidate_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
@@ -18252,256 +18966,291 @@
         "type": "object"
       },
       "ReviewProfileCompletenessArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "profiles": {
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/ReviewProfileCompletenessEntry"
+                  "type": "string"
                 },
                 "type": "array"
-              },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "average_completeness_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "by_confidence": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "by_identity_level": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "by_profile_level": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "critical_gap_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "identity_promotion_candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "native_identity_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "native_identity_unpromoted_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "needs_identity_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "needs_operational_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "profile_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
+              }
+            ]
+          },
+          "profiles": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
-                "required": [
-                  "profile_count",
-                  "needs_identity_count",
-                  "needs_operational_count",
-                  "average_completeness_score",
-                  "native_identity_count",
-                  "identity_promotion_candidate_count",
-                  "native_identity_unpromoted_count",
-                  "by_identity_level",
-                  "by_profile_level",
-                  "by_confidence",
-                  "critical_gap_counts"
-                ],
-                "type": "object"
+                "completeness_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "confidence": {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "type": "string"
+                },
+                "curation_level": {
+                  "$ref": "#/components/schemas/CurationLevel"
+                },
+                "gap_reasons": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "identity_evidence": {
+                  "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
+                },
+                "identity_level": {
+                  "enum": [
+                    "none",
+                    "directory",
+                    "partial",
+                    "complete"
+                  ],
+                  "type": "string"
+                },
+                "identity_promotion_kind_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "identity_promotion_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "identity_surface_count": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "live_identity_candidate_kind_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "missing_critical_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "missing_identity": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "missing_operational": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "missing_required": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "native_identity_signal_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "native_name_quality": {
+                  "enum": [
+                    "chain",
+                    "placeholder",
+                    "empty"
+                  ],
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "operational_interface_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "priority_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "profile_level": {
+                  "enum": [
+                    "directory-only",
+                    "identity-partial",
+                    "identity-complete",
+                    "operational",
+                    "adapter-backed"
+                  ],
+                  "type": "string"
+                },
+                "review_state": {
+                  "$ref": "#/components/schemas/ReviewState"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "source_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stale_identity_candidate_kind_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "suggested_next_action": {
+                  "type": "string"
+                },
+                "supported_interface_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "candidate_count",
+                "completeness_score",
+                "confidence",
+                "curation_level",
+                "gap_reasons",
+                "identity_level",
+                "identity_evidence",
+                "identity_promotion_kind_count",
+                "identity_promotion_kinds",
+                "identity_surface_count",
+                "live_identity_candidate_kind_count",
+                "missing_critical_count",
+                "missing_identity",
+                "missing_operational",
+                "missing_required",
+                "name",
+                "native_name_quality",
+                "native_identity_signal_count",
+                "netuid",
+                "operational_interface_count",
+                "priority_score",
+                "profile_level",
+                "review_state",
+                "slug",
+                "source_count",
+                "stale_identity_candidate_kind_count",
+                "supported_interface_kinds",
+                "suggested_next_action"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "average_completeness_score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "by_confidence": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_identity_level": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_profile_level": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "critical_gap_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "identity_promotion_candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "native_identity_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "native_identity_unpromoted_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "needs_identity_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "needs_operational_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "profile_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "profiles",
-              "summary"
+              "profile_count",
+              "needs_identity_count",
+              "needs_operational_count",
+              "average_completeness_score",
+              "native_identity_count",
+              "identity_promotion_candidate_count",
+              "native_identity_unpromoted_count",
+              "by_identity_level",
+              "by_profile_level",
+              "by_confidence",
+              "critical_gap_counts"
             ],
             "type": "object"
           }
-        ]
-      },
-      "ReviewProfileCompletenessEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "candidate_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "completeness_score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "confidence": {
-            "enum": [
-              "low",
-              "medium",
-              "high"
-            ]
-          },
-          "curation_level": {
-            "$ref": "#/components/schemas/CurationLevel"
-          },
-          "gap_reasons": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "identity_evidence": {
-            "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
-          },
-          "identity_level": {
-            "enum": [
-              "none",
-              "directory",
-              "partial",
-              "complete"
-            ]
-          },
-          "identity_promotion_kind_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "identity_promotion_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "identity_surface_count": {
-            "maximum": 3,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "live_identity_candidate_kind_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "missing_critical_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "missing_identity": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "missing_operational": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "missing_required": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "name": {
-            "type": "string"
-          },
-          "native_identity_signal_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "native_name_quality": {
-            "enum": [
-              "chain",
-              "placeholder",
-              "empty"
-            ]
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "operational_interface_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "priority_score": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "profile_level": {
-            "enum": [
-              "directory-only",
-              "identity-partial",
-              "identity-complete",
-              "operational",
-              "adapter-backed"
-            ]
-          },
-          "review_state": {
-            "$ref": "#/components/schemas/ReviewState"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "source_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stale_identity_candidate_kind_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "suggested_next_action": {
-            "type": "string"
-          },
-          "supported_interface_kinds": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          }
         },
         "required": [
-          "candidate_count",
-          "completeness_score",
-          "confidence",
-          "curation_level",
-          "gap_reasons",
-          "identity_level",
-          "identity_evidence",
-          "identity_promotion_kind_count",
-          "identity_promotion_kinds",
-          "identity_surface_count",
-          "live_identity_candidate_kind_count",
-          "missing_critical_count",
-          "missing_identity",
-          "missing_operational",
-          "missing_required",
-          "name",
-          "native_identity_signal_count",
-          "native_name_quality",
-          "netuid",
-          "operational_interface_count",
-          "priority_score",
-          "profile_level",
-          "review_state",
-          "slug",
-          "source_count",
-          "stale_identity_candidate_kind_count",
-          "supported_interface_kinds",
-          "suggested_next_action"
+          "generated_at",
+          "schema_version",
+          "profiles",
+          "summary"
         ],
         "type": "object"
       },
@@ -22556,44 +23305,337 @@
         "$ref": "#/components/schemas/EvidenceLedgerArtifact"
       },
       "SubnetGapsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "enrichment_queue": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+          "enrichment_queue": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "adapter_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
-                "type": "array"
-              },
-              "name": {
-                "type": "string"
-              },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "priorities": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewGapPriority"
+                "candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
-                "type": "array"
+                "candidate_evidence_summary": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "candidate_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "kinds_with_candidates": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "live_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "live_or_redirected_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "reviewable_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "stale_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    },
+                    "stale_or_failed_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unverified_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "unverified_kinds": {
+                      "items": {
+                        "$ref": "#/components/schemas/SurfaceKind"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "candidate_count",
+                    "kinds_with_candidates",
+                    "live_kinds",
+                    "live_or_redirected_count",
+                    "reviewable_count",
+                    "stale_kinds",
+                    "stale_or_failed_count",
+                    "unverified_count",
+                    "unverified_kinds"
+                  ],
+                  "type": "object"
+                },
+                "completeness_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "contribution_hint": {
+                  "type": "string"
+                },
+                "curation_level": {
+                  "$ref": "#/components/schemas/CurationLevel"
+                },
+                "direct_submission_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "endpoint_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "evidence_action": {
+                  "enum": [
+                    "submit-new-evidence",
+                    "verify-existing-evidence",
+                    "replace-stale-evidence",
+                    "review-existing-evidence",
+                    "maintainer-review-existing-evidence",
+                    "monitor"
+                  ],
+                  "type": "string"
+                },
+                "identity_level": {
+                  "enum": [
+                    "none",
+                    "directory",
+                    "partial",
+                    "complete"
+                  ],
+                  "type": "string"
+                },
+                "identity_surface_count": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lane": {
+                  "enum": [
+                    "direct-submission",
+                    "maintainer-review",
+                    "adapter-candidate",
+                    "monitoring-followup",
+                    "baseline-monitoring"
+                  ],
+                  "type": "string"
+                },
+                "manual_review_required": {
+                  "type": "boolean"
+                },
+                "missing_identity": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "missing_kinds": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "operational_interface_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "priority_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "profile_level": {
+                  "enum": [
+                    "directory-only",
+                    "identity-partial",
+                    "identity-complete",
+                    "operational",
+                    "adapter-backed"
+                  ],
+                  "type": "string"
+                },
+                "reason_codes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "recommended_action": {
+                  "type": "string"
+                },
+                "review_state": {
+                  "$ref": "#/components/schemas/ReviewState"
+                },
+                "sample_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_live_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_stale_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sample_target_candidate_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "source_urls": {
+                  "items": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "stale_candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "verified_candidate_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
               },
-              "slug": {
-                "type": "string"
-              }
+              "required": [
+                "adapter_score",
+                "candidate_count",
+                "candidate_evidence_summary",
+                "completeness_score",
+                "contribution_hint",
+                "curation_level",
+                "direct_submission_kinds",
+                "endpoint_count",
+                "evidence_action",
+                "identity_level",
+                "identity_surface_count",
+                "lane",
+                "manual_review_required",
+                "missing_kinds",
+                "missing_identity",
+                "name",
+                "netuid",
+                "operational_interface_count",
+                "priority_score",
+                "profile_level",
+                "reason_codes",
+                "recommended_action",
+                "review_state",
+                "sample_candidate_ids",
+                "sample_live_candidate_ids",
+                "sample_stale_candidate_ids",
+                "sample_target_candidate_ids",
+                "slug",
+                "source_urls",
+                "stale_candidate_count",
+                "surface_count",
+                "verified_candidate_count"
+              ],
+              "type": "object"
             },
-            "required": [
-              "netuid",
-              "priorities",
-              "enrichment_queue"
-            ],
-            "type": "object"
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "priorities": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewGapPriority"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "priorities",
+          "enrichment_queue"
+        ],
+        "type": "object"
       },
       "SubnetHistoryArtifact": {
         "additionalProperties": {},
@@ -34616,7 +35658,9 @@
                     "notes": "Example description.",
                     "schema_version": 1,
                     "slug": "example-subnet",
-                    "snapshot": {},
+                    "snapshot": {
+                      "example": null
+                    },
                     "subnet": "example"
                   },
                   "meta": {
@@ -48690,7 +49734,9 @@
                       "providers": 1,
                       "surfaces": 1
                     },
-                    "coverage": {},
+                    "coverage": {
+                      "example": null
+                    },
                     "curation_level_counts": {
                       "example": 1
                     },
@@ -48699,7 +49745,9 @@
                     "profile_level_counts": {
                       "example": 1
                     },
-                    "recent_changes": {},
+                    "recent_changes": {
+                      "example": null
+                    },
                     "schema_version": 1,
                     "subnet_count": 1,
                     "top_subnets": [

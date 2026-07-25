@@ -60,6 +60,7 @@ import {
   PartnershipMetadataSchema,
   ScoreDistributionSchema,
 } from "./shared.ts";
+import { CountMapSchema } from "./envelope.ts";
 import {
   SubnetsArtifactSchema,
   SubnetIndexEntrySchema,
@@ -257,6 +258,42 @@ import {
 import { ChainTurnoverArtifactSchema } from "./routes/chain-turnover.ts";
 import { ChainWeightSettersArtifactSchema } from "./routes/chain-weight-setters.ts";
 import { ChainYieldArtifactSchema } from "./routes/chain-yield.ts";
+import { CompareArtifactSchema } from "./routes/compare.ts";
+import {
+  AgentReadinessBlockerSchema,
+  CoverageArtifactSchema,
+  CoverageDepthArtifactSchema,
+  CoverageDepthRowSchema,
+} from "./routes/coverage.ts";
+import {
+  CoverageLevelSchema,
+  CurationArtifactSchema,
+  GapsArtifactSchema,
+} from "./routes/curation-gaps.ts";
+import {
+  FixtureArtifactSchema,
+  FixturesIndexArtifactSchema,
+  JsonObjectSchema,
+} from "./routes/fixtures.ts";
+import { LineageArtifactSchema } from "./routes/lineage.ts";
+import {
+  RegistryLeaderboardsArtifactSchema,
+  RegistrySummaryArtifactSchema,
+} from "./routes/registry-summary-leaderboards.ts";
+import { AdapterArtifactSchema } from "./routes/adapter.ts";
+import {
+  ReviewAdapterCandidateSchema,
+  ReviewAdapterCandidatesArtifactSchema,
+  ReviewEnrichmentEvidenceArtifactSchema,
+  ReviewEnrichmentQueueArtifactSchema,
+  ReviewEnrichmentTargetsArtifactSchema,
+} from "./routes/review-enrichment.ts";
+import {
+  ReviewGapPrioritiesArtifactSchema,
+  ReviewGapPrioritySchema,
+  ReviewProfileCompletenessArtifactSchema,
+  SubnetGapsArtifactSchema,
+} from "./routes/review-gaps-profile.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -443,6 +480,75 @@ register(ValidatorNominatorsArtifactSchema, "ValidatorNominatorsArtifact");
 register(ConcentrationMetricsSchema, "ConcentrationMetrics");
 register(ScoreDistributionSchema, "ScoreDistribution");
 
+// Batch 8 (#8062) additions. Only the 18 top-level route artifacts (each
+// required -- schemaRefForArtifactPath binds its route to exactly this
+// name) plus AgentReadinessBlocker/CoverageLevel/CountMap (still
+// referenced by name from AgentReadinessStatus/SubnetDetail/several
+// SourceHealth*+Endpoint*+SubnetProfilesArtifact components respectively,
+// all still hand-edited -- verified via repo-wide $ref grep) plus
+// ReviewGapPriority/ReviewAdapterCandidate (still referenced by name from
+// ReviewCurationArtifact, also still hand-edited and out of this batch's
+// scope -- same test) plus JsonObject (hardcoded by name in
+// src/contracts.ts's schema-snapshot artifact, same test as AdapterArtifact
+// below) plus CoverageDepthRow (hardcoded by name in
+// scripts/validate-schema-enums.ts's comparePropertyEnum, which resolves it
+// as a top-level components.schemas entry, not via $ref) are registered
+// here. Every other sub-shape this batch modeled (CompareSubnetEntry,
+// CoverageDepthQueueEntry, CurationEntry, GapsEntry,
+// ReviewEnrichmentQueueEntry, ReviewCandidateEvidence(+Summary),
+// ReviewEnrichmentTargetQueueContext, ReviewEnrichmentTarget(+Group),
+// ReviewProfileCompletenessEntry, and the 5 small Review* enums) is
+// referenced only by this batch's own converted routes, all converted
+// together here -- same as batch 7's Block/Extrinsic/ColdkeyIdentity/etc.
+// treatment, see OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES below.
+register(CompareArtifactSchema, "CompareArtifact");
+register(CoverageArtifactSchema, "CoverageArtifact");
+register(CoverageDepthArtifactSchema, "CoverageDepthArtifact");
+register(AgentReadinessBlockerSchema, "AgentReadinessBlocker");
+register(CoverageLevelSchema, "CoverageLevel");
+register(CurationArtifactSchema, "CurationArtifact");
+register(GapsArtifactSchema, "GapsArtifact");
+register(FixturesIndexArtifactSchema, "FixturesIndexArtifact");
+register(FixtureArtifactSchema, "FixtureArtifact");
+register(LineageArtifactSchema, "LineageArtifact");
+register(RegistrySummaryArtifactSchema, "RegistrySummaryArtifact");
+register(RegistryLeaderboardsArtifactSchema, "RegistryLeaderboardsArtifact");
+// AdapterArtifact: hardcoded by name in scripts/generate-client.ts
+// (AdapterSnapshot's type alias) -- must stay registered like
+// SubnetIndexEntry, not just for a still-hand-edited $ref.
+register(AdapterArtifactSchema, "AdapterArtifact");
+register(ReviewGapPrioritiesArtifactSchema, "ReviewGapPrioritiesArtifact");
+register(SubnetGapsArtifactSchema, "SubnetGapsArtifact");
+register(
+  ReviewProfileCompletenessArtifactSchema,
+  "ReviewProfileCompletenessArtifact",
+);
+register(ReviewEnrichmentQueueArtifactSchema, "ReviewEnrichmentQueueArtifact");
+register(
+  ReviewEnrichmentEvidenceArtifactSchema,
+  "ReviewEnrichmentEvidenceArtifact",
+);
+register(
+  ReviewEnrichmentTargetsArtifactSchema,
+  "ReviewEnrichmentTargetsArtifact",
+);
+register(
+  ReviewAdapterCandidatesArtifactSchema,
+  "ReviewAdapterCandidatesArtifact",
+);
+register(ReviewGapPrioritySchema, "ReviewGapPriority");
+register(ReviewAdapterCandidateSchema, "ReviewAdapterCandidate");
+// JsonObject: hardcoded by name in src/contracts.ts (the schema-snapshot
+// artifact's schema_ref) -- must stay registered, same test/treatment as
+// AdapterArtifact above.
+register(JsonObjectSchema, "JsonObject");
+// CoverageDepthRow: hardcoded by name in scripts/validate-schema-enums.ts
+// (comparePropertyEnum("CoverageDepthRow", "tier", ...) looks it up as a
+// top-level components.schemas entry, not via $ref) -- must stay
+// registered for that drift check to see its `tier` enum at all.
+register(CoverageDepthRowSchema, "CoverageDepthRow");
+register(CountMapSchema, "CountMap");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -592,6 +698,32 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "CompareValidatorsArtifact",
   "ValidatorHistoryArtifact",
   "ValidatorNominatorsArtifact",
+  // Batch 8 (#8062) additions.
+  "CompareArtifact",
+  "CoverageArtifact",
+  "CoverageDepthArtifact",
+  "AgentReadinessBlocker",
+  "CoverageLevel",
+  "CurationArtifact",
+  "GapsArtifact",
+  "FixturesIndexArtifact",
+  "FixtureArtifact",
+  "LineageArtifact",
+  "RegistrySummaryArtifact",
+  "RegistryLeaderboardsArtifact",
+  "AdapterArtifact",
+  "ReviewGapPrioritiesArtifact",
+  "SubnetGapsArtifact",
+  "ReviewProfileCompletenessArtifact",
+  "ReviewEnrichmentQueueArtifact",
+  "ReviewEnrichmentEvidenceArtifact",
+  "ReviewEnrichmentTargetsArtifact",
+  "ReviewAdapterCandidatesArtifact",
+  "ReviewGapPriority",
+  "ReviewAdapterCandidate",
+  "JsonObject",
+  "CoverageDepthRow",
+  "CountMap",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -748,4 +880,41 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "ValidatorDetailSubnet",
   "GlobalValidatorEntry",
   "CompareValidatorEntry",
+  // Batch 8 (#8062) additions: CompareSubnetEntry/CoverageDepthQueueEntry/
+  // CurationEntry/GapsEntry/ReviewEnrichmentQueueEntry/
+  // ReviewCandidateEvidence(+Summary)/ReviewEnrichmentTargetQueueContext/
+  // ReviewEnrichmentTarget(+Group)/ReviewProfileCompletenessEntry, and the
+  // 5 small Review* enums (ReviewEnrichmentLane/ReviewEvidenceAction/
+  // ReviewEnrichmentTargetType/ReviewEnrichmentSubmissionRoute/
+  // ReviewEnrichmentTargetAction) are each referenced only by this batch's
+  // own converted routes, all converted together here (verified via
+  // repo-wide $ref grep) -- same pattern as batch 7's Block/Extrinsic/
+  // ColdkeyIdentity/etc. above. None is hardcoded by name in
+  // scripts/generate-client.ts, src/contracts.ts, or
+  // scripts/validate-schema-enums.ts either (unlike AdapterArtifact, which
+  // stays registered above). Not worth a standalone registry entry; their
+  // hand-edited keys become orphaned the moment their referrer(s) are
+  // Zod-owned and inline them instead. (ReviewGapPriority/
+  // ReviewAdapterCandidate/JsonObject/CoverageDepthRow are deliberately
+  // NOT here -- ReviewCurationArtifact [still hand-edited, out of this
+  // batch's scope] $refs the first two by name, src/contracts.ts hardcodes
+  // the third, and scripts/validate-schema-enums.ts hardcodes the fourth
+  // -- see OPENAPI_ZOD_COMPONENT_NAMES above instead.)
+  "CompareSubnetEntry",
+  "CoverageDepthQueueEntry",
+  "CurationEntry",
+  "GapsEntry",
+  "ReviewEnrichmentLane",
+  "ReviewEvidenceAction",
+  "ReviewEnrichmentTargetType",
+  "ReviewEnrichmentSubmissionRoute",
+  "ReviewEnrichmentTargetAction",
+  "ReviewCandidateEvidence",
+  "ReviewCandidateEvidenceSummary",
+  "ReviewEnrichmentTargetQueueContext",
+  "ReviewEnrichmentQueueEntry",
+  "ReviewEnrichmentEvidenceEntry",
+  "ReviewEnrichmentTarget",
+  "ReviewEnrichmentTargetGroup",
+  "ReviewProfileCompletenessEntry",
 ] as const;
