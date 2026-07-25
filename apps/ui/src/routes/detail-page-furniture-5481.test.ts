@@ -18,7 +18,7 @@ const subnetRouteSource = readFileSync(
   "utf8",
 );
 const providerRouteSource = readFileSync(
-  fileURLToPath(new URL("./providers.$slug.tsx", import.meta.url)),
+  fileURLToPath(new URL("./-providers-slug-page.tsx", import.meta.url)),
   "utf8",
 );
 

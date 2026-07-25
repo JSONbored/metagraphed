@@ -12,7 +12,10 @@ import { describe, expect, it } from "vitest";
 // Router/Query context a rendered test can't easily stand up, so this suite is
 // node-environment source assertions, mirroring
 // validators-index-empty-action.test.ts's own convention.
-const source = readFileSync(fileURLToPath(new URL("./leaderboards.tsx", import.meta.url)), "utf8");
+const source = readFileSync(
+  fileURLToPath(new URL("./-leaderboards-page.tsx", import.meta.url)),
+  "utf8",
+);
 
 describe("leaderboards ActionBar CSV export", () => {
   it("renders exactly one CsvExportMenu trigger in the ActionBar, not a DownloadCsvButton per board", () => {

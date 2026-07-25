@@ -22,7 +22,7 @@ const SITES: Array<[string, string, string]> = [
   ],
   [
     "providers.index (official-provider badge)",
-    "../../routes/providers.index.tsx",
+    "../../routes/-providers-index-page.tsx",
     'aria-label="Official provider"',
   ],
   [
