@@ -5377,6 +5377,21 @@ async function dispatchDataApiRequest(
           // already re-derives the true block_number/event_index order
           // afterward, so which order SQL fetches the top CAP+1 rows in
           // doesn't change the final output (METAGRAPHED-6-class fix).
+          //
+          // Confirmed live 2026-07-25: even with that fix (no Sort node,
+          // idx_ae_hotkey_observed/idx_ae_coldkey_observed both used), this
+          // route still tripped the shared 3000ms default under real
+          // concurrent load -- two sequential 87-chunk scans per request,
+          // contending with this box's other concurrent readers/writers for
+          // buffer/CPU access, occasionally pushed total time past the
+          // blanket budget (pg_stat_activity + docker logs both showed
+          // `canceling statement due to statement timeout` still firing on
+          // this route's exact query text). The sibling
+          // /api/v1/accounts/:ss58/events route hit this same class of
+          // problem first and already widens its own budget below (10000ms)
+          // rather than raising the global default for every other, much
+          // lighter route in this dispatcher -- same fix, ported here.
+          await sql`SET LOCAL statement_timeout = '10000ms'`;
           const hotkeyScanRows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
           FROM account_events WHERE hotkey = ${ss58}

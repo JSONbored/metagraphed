@@ -1341,6 +1341,7 @@ test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolv
 test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from two merged, re-capped bounded scans", async () => {
   mockQueue.current = [
     [], // SET
+    [], // SET LOCAL statement_timeout
     [ACCOUNT_EVENT_ROW], // hotkeyScanRows
     [{ ...ACCOUNT_EVENT_ROW, netuid: 5 }], // coldkeyScanRows
     [{ netuid: 4, uid: 1, stake_tao: "10", validator_permit: 1, active: 1 }], // regRows
@@ -1375,6 +1376,7 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from two merged
 test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {
   mockQueue.current = [
     [], // SET
+    [], // SET LOCAL statement_timeout
     [ACCOUNT_EVENT_ROW], // hotkeyScanRows
     [{ ...ACCOUNT_EVENT_ROW, netuid: null }], // coldkeyScanRows
     [], // regRows
@@ -1423,6 +1425,7 @@ test("GET /api/v1/accounts/:ss58 merges, re-sorts, and re-caps events from BOTH 
   };
   mockQueue.current = [
     [], // SET
+    [], // SET LOCAL statement_timeout
     [hotkeyRow], // hotkeyScanRows
     [coldkeyRowNewer, coldkeyRowOlder], // coldkeyScanRows
     [], // regRows
@@ -1468,6 +1471,7 @@ test("GET /api/v1/accounts/:ss58 breaks a same-block tie between branches by eve
   };
   mockQueue.current = [
     [], // SET
+    [], // SET LOCAL statement_timeout
     [hotkeyRow], // hotkeyScanRows
     [coldkeyRow], // coldkeyScanRows
     [], // regRows
