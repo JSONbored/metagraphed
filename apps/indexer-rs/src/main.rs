@@ -357,8 +357,8 @@ fn authority_accounts(v: &Value<()>) -> Vec<String> {
     list.iter().filter_map(|a| acct(a)).collect()
 }
 
-/// Postgres `jsonb` cannot store ` ` (null). EVM/Ethereum event `data` (and
-/// some call args) are raw bytes that serialize to a string full of ` `
+/// Postgres `jsonb` cannot store `\x00` (null). EVM/Ethereum event `data` (and
+/// some call args) are raw bytes that serialize to a string full of `\x00`
 /// escapes — one such row fails the WHOLE multi-row chain_events insert, silently
 /// dropping every event in the chunk. Strip them so the event is still stored
 /// (this is the verbatim display tier; exact EVM bytes come from the extrinsic).
@@ -1502,8 +1502,26 @@ fn track_stuck_block(
 // existing curl-based alerting convention (metagraphed-infra's
 // send-alert.sh) for a single, rare, non-hot-path POST.
 async fn alert_stuck_block(webhook_url: Option<&str>, block: u64, ticks: u64, poll_secs: u64) {
-    let Some(url) = webhook_url else { return };
     let minutes = (ticks * poll_secs) / 60;
+    // metagraphed#7766: also reaches PostHog, not just Discord -- the
+    // caller (run_live's own track_stuck_block/should_alert logic) already
+    // rate-limits how often this whole function runs, so no separate
+    // CaptureWindow needed here on top of that. Discord is "something's
+    // wrong right now"; PostHog is "trend this over time, correlate with
+    // everything else" -- same dual-channel split as every other
+    // Discord-alerted component in this program.
+    let stuck_err = anyhow::anyhow!(
+        "live ingestion stuck on block #{block} for ~{minutes}min ({ticks} retries) -- possible permanent decode failure"
+    );
+    backfill_rs::observability::capture_exception(
+        "indexer-rs-live",
+        &stuck_err,
+        &[
+            ("block", block.to_string()),
+            ("stuck_ticks", ticks.to_string()),
+        ],
+    );
+    let Some(url) = webhook_url else { return };
     let content = format!(
         "🔴 metagraphed-indexer-rs: live ingestion stuck on block #{block} for ~{minutes}min ({ticks} retries) — possible permanent decode failure, check logs."
     );
@@ -1632,8 +1650,26 @@ async fn run_live(client: &ChainClient, pg: &mut tokio_postgres::Client) -> Resu
     }
 }
 
+// PostHog capture on the fatal path only: `run()` below is this crate's
+// entire actual `main` body, unchanged -- this wrapper's only job is
+// awaiting a capture before the process exits on an unhandled `Err`, the
+// same "must complete before exit, not just get queued" reasoning every
+// other component's own fatal-path capture (captureFatalAndExit,
+// handleFatal) already documents. `#[tokio::main]` stays on this outer
+// function (not `run`) so the SAME runtime instance serves the actual work
+// and this capture -- a second `#[tokio::main]`-wrapped async fn would spin
+// up its own separate runtime, which panics if called from inside one
+// that's already running.
 #[tokio::main]
 async fn main() -> Result<()> {
+    let result = run().await;
+    if let Err(err) = &result {
+        backfill_rs::observability::capture_exception_immediate("indexer-rs", err).await;
+    }
+    result
+}
+
+async fn run() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();

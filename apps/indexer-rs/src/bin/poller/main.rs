@@ -64,9 +64,12 @@
 
 mod jobs;
 
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use backfill_rs::observability::CaptureWindow;
 
 /// What a single job tick reports back to its own `run_loop` -- lets every
 /// job apply the same `log_job_outcome` logging convention instead of each
@@ -76,6 +79,27 @@ pub struct JobOutcome {
     pub written: u64,
     pub errors: u64,
 }
+
+// metagraphed#7766: one CaptureWindow per job name, keyed here rather than
+// threaded through every job's own `run_loop` -- log_job_outcome is
+// already the one function every job calls after each tick (see this
+// file's own module doc comment for why there's no generic scheduler to
+// hang this off instead), so extending it here keeps every job's own
+// run_loop unchanged. A plain Mutex<HashMap>, not per-job state owned by
+// each run_loop: log_job_outcome's own signature (name: &str, not a
+// &mut self) has nowhere else to keep it, and contention is a non-issue
+// (this only locks once per job tick -- minutes to hours apart per job,
+// never a hot path).
+fn capture_windows() -> &'static Mutex<HashMap<String, CaptureWindow>> {
+    static WINDOWS: OnceLock<Mutex<HashMap<String, CaptureWindow>>> = OnceLock::new();
+    WINDOWS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+// Same threshold/interval defaults as every other CaptureWindow consumer in
+// this program (validator-ops' observability.py, chain-firehose-relay.ts) --
+// no single value is load-bearing here, just consistency across dashboards.
+const CAPTURE_THRESHOLD: u32 = 10;
+const CAPTURE_INTERVAL: Duration = Duration::from_secs(300);
 
 /// Shared logging policy every job's own `run_loop` calls after each tick.
 pub fn log_job_outcome(
@@ -95,6 +119,15 @@ pub fn log_job_outcome(
             eprintln!(
                 "{name}: tick failed ({e:#}) -- retrying in {interval:?} ({elapsed:?} elapsed)"
             );
+            let mut windows = capture_windows()
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            windows.entry(name.to_string()).or_default().record(
+                name,
+                e,
+                CAPTURE_THRESHOLD,
+                CAPTURE_INTERVAL,
+            );
         }
     }
 }
@@ -103,8 +136,22 @@ fn env_u64(k: &str) -> Option<u64> {
     std::env::var(k).ok().and_then(|v| v.parse().ok())
 }
 
+// PostHog capture on the fatal path only -- see main.rs's own identical
+// wrapper (this crate's sibling binary) for the full reasoning. Here, the
+// only way `run()` below returns `Err` at all is a genuine job-task panic
+// (see the `select_all` loop's own comment for why every other failure
+// mode -- a job returning cleanly, or retrying forever internally -- never
+// reaches this point).
 #[tokio::main]
 async fn main() -> Result<()> {
+    let result = run().await;
+    if let Err(err) = &result {
+        backfill_rs::observability::capture_exception_immediate("indexer-rs-poller", err).await;
+    }
+    result
+}
+
+async fn run() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
