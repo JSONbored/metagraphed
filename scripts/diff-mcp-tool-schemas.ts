@@ -116,6 +116,66 @@ import {
   GetHealthHistoryInputSchema,
   GetHealthHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-health-history.ts";
+import {
+  GetBlocksSummaryInputSchema,
+  GetBlocksSummaryOutputSchema,
+} from "../schemas-src/mcp-tools/get-blocks-summary.ts";
+import {
+  GetSubnetConcentrationHistoryInputSchema,
+  GetSubnetConcentrationHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-concentration-history.ts";
+import {
+  GetSubnetTurnoverInputSchema,
+  GetSubnetTurnoverOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-turnover.ts";
+import {
+  GetSubnetYieldInputSchema,
+  GetSubnetYieldOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-yield.ts";
+import {
+  GetSubnetYieldHistoryInputSchema,
+  GetSubnetYieldHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-yield-history.ts";
+import {
+  GetSubnetStakeFlowInputSchema,
+  GetSubnetStakeFlowOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-stake-flow.ts";
+import {
+  GetSubnetEventSummaryInputSchema,
+  GetSubnetEventSummaryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-event-summary.ts";
+import {
+  GetSubnetWeightsInputSchema,
+  GetSubnetWeightsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-weights.ts";
+import {
+  GetSubnetWeightSettersInputSchema,
+  GetSubnetWeightSettersOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-weight-setters.ts";
+import {
+  GetSubnetRegistrationsInputSchema as GetSubnetRegistrationsMcpInputSchema,
+  GetSubnetRegistrationsOutputSchema as GetSubnetRegistrationsMcpOutputSchema,
+  GetSubnetStakeMovesInputSchema,
+  GetSubnetStakeMovesOutputSchema,
+  GetSubnetStakeTransfersInputSchema,
+  GetSubnetStakeTransfersOutputSchema,
+  GetSubnetAxonRemovalsInputSchema as GetSubnetAxonRemovalsMcpInputSchema,
+  GetSubnetAxonRemovalsOutputSchema as GetSubnetAxonRemovalsMcpOutputSchema,
+  GetSubnetServingInputSchema as GetSubnetServingMcpInputSchema,
+  GetSubnetServingOutputSchema as GetSubnetServingMcpOutputSchema,
+  GetSubnetPrometheusInputSchema,
+  GetSubnetPrometheusOutputSchema,
+  GetSubnetDeregistrationsInputSchema as GetSubnetDeregistrationsMcpInputSchema,
+  GetSubnetDeregistrationsOutputSchema as GetSubnetDeregistrationsMcpOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-activity.ts";
+import {
+  GetSubnetPerformanceHistoryInputSchema,
+  GetSubnetPerformanceHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-performance-history.ts";
+import {
+  GetEconomicsTrendsInputSchema,
+  GetEconomicsTrendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-economics-trends.ts";
 
 type Row = Record<string, unknown>;
 
@@ -223,6 +283,17 @@ const HEALTH_SURFACE_SORT_FIELDS = [
   "surface_id",
   "verified_at",
 ];
+
+// Batch 3 (#8066) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (each tool's own src/subnet-*.ts WINDOWS
+// constant, src/stake-flow.ts's STAKE_FLOW_WINDOWS/DIRECTIONS,
+// src/neuron-history.ts's HISTORY_WINDOWS), cross-checked against the
+// actual runtime source at the time of writing.
+const ACTIVITY_WINDOWS = ["7d", "30d"];
+const HISTORY_WINDOWS_3 = ["7d", "30d", "90d"];
+const HISTORY_WINDOWS_5 = ["7d", "30d", "90d", "1y", "all"];
+const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"];
+const STAKE_FLOW_DIRECTIONS = ["all", "in", "out"];
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -980,6 +1051,595 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_blocks_summary: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["block_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        block_count: { type: "integer" },
+        first_block: { type: ["integer", "null"] },
+        last_block: { type: ["integer", "null"] },
+        first_observed_at: NULLABLE_STRING,
+        last_observed_at: NULLABLE_STRING,
+        block_time: { type: ["object", "null"] },
+        throughput: { type: ["object", "null"] },
+        distinct_authors: { type: "integer" },
+        author_concentration: { type: ["object", "null"] },
+        distinct_spec_versions: { type: "integer" },
+        latest_spec_version: { type: ["integer", "null"] },
+      },
+    },
+  },
+  get_subnet_concentration_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_3 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: objectItems({
+          snapshot_date: NULLABLE_STRING,
+          neuron_count: NULLABLE_INT,
+          stake_gini: ANY,
+          stake_nakamoto_coefficient: ANY,
+          stake_top_10pct_share: ANY,
+          emission_gini: ANY,
+          emission_nakamoto_coefficient: ANY,
+          emission_top_10pct_share: ANY,
+        }),
+      },
+    },
+  },
+  get_subnet_turnover: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_5 },
+        changes: { type: "boolean" },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "comparable",
+        "validators_start",
+        "validators_end",
+        "validators_entered",
+        "validators_exited",
+        "neurons_start",
+        "neurons_end",
+        "uids_deregistered",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        start_date: NULLABLE_STRING,
+        end_date: NULLABLE_STRING,
+        comparable: { type: "boolean" },
+        validators_start: { type: "integer" },
+        validators_end: { type: "integer" },
+        validators_entered: { type: "integer" },
+        validators_exited: { type: "integer" },
+        validator_retention: { type: ["number", "null"] },
+        neurons_start: { type: "integer" },
+        neurons_end: { type: "integer" },
+        uids_deregistered: { type: "integer" },
+        neuron_retention: { type: ["number", "null"] },
+        stability_score: { type: ["integer", "null"] },
+        changes: {
+          type: "object",
+          properties: {
+            validators_entered_count: { type: "integer" },
+            validators_exited_count: { type: "integer" },
+            uid_reassignment_count: { type: "integer" },
+            validators_entered: { type: "array", items: { type: "object" } },
+            validators_exited: { type: "array", items: { type: "object" } },
+            uid_reassignments: { type: "array", items: { type: "object" } },
+          },
+        },
+      },
+    },
+  },
+  get_subnet_yield: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "neuron_count", "neurons"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        neuron_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        miner_count: { type: "integer" },
+        total_stake_tao: { type: ["number", "null"] },
+        total_emission_tao: { type: ["number", "null"] },
+        subnet_yield: { type: ["number", "null"] },
+        mean_yield: { type: ["number", "null"] },
+        median_yield: { type: ["number", "null"] },
+        p25_yield: { type: ["number", "null"] },
+        p75_yield: { type: ["number", "null"] },
+        p90_yield: { type: ["number", "null"] },
+        neurons: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_subnet_yield_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_3 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_subnet_stake_flow: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: STAKE_FLOW_WINDOWS },
+        direction: { type: "string", enum: STAKE_FLOW_DIRECTIONS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "total_staked_tao",
+        "total_unstaked_tao",
+        "net_flow_tao",
+        "stake_events",
+        "unstake_events",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        total_staked_tao: ANY,
+        total_unstaked_tao: ANY,
+        net_flow_tao: ANY,
+        stake_events: { type: "integer" },
+        unstake_events: { type: "integer" },
+      },
+    },
+  },
+  get_subnet_event_summary: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_3 },
+        limit: { type: "integer", minimum: 1, maximum: 50 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "total_events",
+        "kind_count",
+        "recent_event_count",
+        "categories",
+        "event_kinds",
+        "recent_events",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        total_events: { type: "integer" },
+        kind_count: { type: "integer" },
+        category_count: { type: "integer" },
+        recent_event_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        categories: objectItems({
+          category: NULLABLE_STRING,
+          event_count: { type: "integer" },
+          kind_count: { type: "integer" },
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          first_block: NULLABLE_INT,
+          last_block: NULLABLE_INT,
+          first_observed_at: NULLABLE_STRING,
+          last_observed_at: NULLABLE_STRING,
+        }),
+        event_kinds: objectItems({
+          event_kind: NULLABLE_STRING,
+          category: NULLABLE_STRING,
+          event_count: { type: "integer" },
+          hotkey_count: { type: "integer" },
+          coldkey_count: { type: "integer" },
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          first_block: NULLABLE_INT,
+          last_block: NULLABLE_INT,
+          first_observed_at: NULLABLE_STRING,
+          last_observed_at: NULLABLE_STRING,
+        }),
+        recent_events: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_subnet_weights: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "distinct_setters",
+        "weight_sets",
+        "sets_per_setter",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_setters: { type: "integer" },
+        weight_sets: { type: "integer" },
+        sets_per_setter: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_weight_setters: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "distinct_setters",
+        "weight_sets",
+        "setter_count",
+        "setters",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_setters: { type: "integer" },
+        weight_sets: { type: "integer" },
+        setter_count: { type: "integer" },
+        setters: objectItems({
+          hotkey: NULLABLE_STRING,
+          uid: NULLABLE_INT,
+          weight_sets: { type: "integer" },
+          share: ANY,
+          first_set_at: NULLABLE_STRING,
+          last_set_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_subnet_registrations: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window", "distinct_registrants", "registrations"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_registrants: { type: "integer" },
+        registrations: { type: "integer" },
+        registrations_per_registrant: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_stake_moves: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window", "distinct_movers", "movements"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_movers: { type: "integer" },
+        movements: { type: "integer" },
+        movements_per_mover: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_stake_transfers: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window", "distinct_senders", "transfers"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_senders: { type: "integer" },
+        transfers: { type: "integer" },
+        transfers_per_sender: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_axon_removals: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "distinct_removers",
+        "removals",
+        "removals_per_remover",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_removers: { type: "integer" },
+        removals: { type: "integer" },
+        removals_per_remover: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_serving: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "distinct_servers",
+        "announcements",
+        "announcements_per_server",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_servers: { type: "integer" },
+        announcements: { type: "integer" },
+        announcements_per_server: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_prometheus: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "distinct_exporters",
+        "announcements",
+        "announcements_per_exporter",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_exporters: { type: "integer" },
+        announcements: { type: "integer" },
+        announcements_per_exporter: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_deregistrations: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: ACTIVITY_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "window",
+        "distinct_deregistered_hotkeys",
+        "deregistrations",
+        "deregistrations_per_hotkey",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_deregistered_hotkeys: { type: "integer" },
+        deregistrations: { type: "integer" },
+        deregistrations_per_hotkey: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_performance_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_3 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_economics_trends: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: HISTORY_WINDOWS_5 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window", "day_count", "days"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        day_count: { type: "integer" },
+        days: objectItems({
+          snapshot_date: NULLABLE_STRING,
+          subnet_count: NULLABLE_INT,
+          total_stake_tao: { type: ["number", "null"] },
+          alpha_price_tao_weighted: { type: ["number", "null"] },
+          alpha_price_tao_median: { type: ["number", "null"] },
+          validator_count: NULLABLE_INT,
+          miner_count: NULLABLE_INT,
+          mean_emission_share: { type: ["number", "null"] },
+        }),
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -1071,6 +1731,78 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
   get_health_history: {
     input: GetHealthHistoryInputSchema,
     output: GetHealthHistoryOutputSchema,
+  },
+  get_blocks_summary: {
+    input: GetBlocksSummaryInputSchema,
+    output: GetBlocksSummaryOutputSchema,
+  },
+  get_subnet_concentration_history: {
+    input: GetSubnetConcentrationHistoryInputSchema,
+    output: GetSubnetConcentrationHistoryOutputSchema,
+  },
+  get_subnet_turnover: {
+    input: GetSubnetTurnoverInputSchema,
+    output: GetSubnetTurnoverOutputSchema,
+  },
+  get_subnet_yield: {
+    input: GetSubnetYieldInputSchema,
+    output: GetSubnetYieldOutputSchema,
+  },
+  get_subnet_yield_history: {
+    input: GetSubnetYieldHistoryInputSchema,
+    output: GetSubnetYieldHistoryOutputSchema,
+  },
+  get_subnet_stake_flow: {
+    input: GetSubnetStakeFlowInputSchema,
+    output: GetSubnetStakeFlowOutputSchema,
+  },
+  get_subnet_event_summary: {
+    input: GetSubnetEventSummaryInputSchema,
+    output: GetSubnetEventSummaryOutputSchema,
+  },
+  get_subnet_weights: {
+    input: GetSubnetWeightsInputSchema,
+    output: GetSubnetWeightsOutputSchema,
+  },
+  get_subnet_weight_setters: {
+    input: GetSubnetWeightSettersInputSchema,
+    output: GetSubnetWeightSettersOutputSchema,
+  },
+  get_subnet_registrations: {
+    input: GetSubnetRegistrationsMcpInputSchema,
+    output: GetSubnetRegistrationsMcpOutputSchema,
+  },
+  get_subnet_stake_moves: {
+    input: GetSubnetStakeMovesInputSchema,
+    output: GetSubnetStakeMovesOutputSchema,
+  },
+  get_subnet_stake_transfers: {
+    input: GetSubnetStakeTransfersInputSchema,
+    output: GetSubnetStakeTransfersOutputSchema,
+  },
+  get_subnet_axon_removals: {
+    input: GetSubnetAxonRemovalsMcpInputSchema,
+    output: GetSubnetAxonRemovalsMcpOutputSchema,
+  },
+  get_subnet_serving: {
+    input: GetSubnetServingMcpInputSchema,
+    output: GetSubnetServingMcpOutputSchema,
+  },
+  get_subnet_prometheus: {
+    input: GetSubnetPrometheusInputSchema,
+    output: GetSubnetPrometheusOutputSchema,
+  },
+  get_subnet_deregistrations: {
+    input: GetSubnetDeregistrationsMcpInputSchema,
+    output: GetSubnetDeregistrationsMcpOutputSchema,
+  },
+  get_subnet_performance_history: {
+    input: GetSubnetPerformanceHistoryInputSchema,
+    output: GetSubnetPerformanceHistoryOutputSchema,
+  },
+  get_economics_trends: {
+    input: GetEconomicsTrendsInputSchema,
+    output: GetEconomicsTrendsOutputSchema,
   },
 };
 
