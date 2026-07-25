@@ -181,6 +181,64 @@ import { loadRandomnessStatus } from "../src/randomness.ts";
 import { loadSudoKey } from "../src/sudo-key.ts";
 import { mockEnv } from "./row-type.ts";
 import type { z } from "zod";
+import {
+  ChainActivityArtifactSchema,
+  ChainCallsArtifactSchema,
+  ChainSignersArtifactSchema,
+  ChainFeesArtifactSchema,
+} from "../schemas-src/routes/chain-analytics.ts";
+import {
+  ChainAxonRemovalsArtifactSchema,
+  ChainDeregistrationsArtifactSchema,
+  ChainPrometheusArtifactSchema,
+  ChainRegistrationsArtifactSchema,
+  ChainServingArtifactSchema,
+  ChainStakeMovesArtifactSchema,
+  ChainStakeTransfersArtifactSchema,
+  ChainWeightsArtifactSchema,
+} from "../schemas-src/routes/chain-network-rollups.ts";
+import { ChainAlphaVolumeArtifactSchema } from "../schemas-src/routes/chain-alpha-volume.ts";
+import { ChainConcentrationArtifactSchema } from "../schemas-src/routes/chain-concentration.ts";
+import {
+  ChainEventsFeedArtifactSchema,
+  ChainEventsStatsArtifactSchema,
+} from "../schemas-src/routes/chain-events.ts";
+import { ChainIdentityHistoryArtifactSchema } from "../schemas-src/routes/chain-identity-history.ts";
+import { ChainIdleStakeArtifactSchema } from "../schemas-src/routes/chain-idle-stake.ts";
+import { ChainPerformanceArtifactSchema } from "../schemas-src/routes/chain-performance.ts";
+import { ChainStakeFlowArtifactSchema } from "../schemas-src/routes/chain-stake-flow.ts";
+import {
+  ChainTransferPairsArtifactSchema,
+  ChainTransfersArtifactSchema,
+} from "../schemas-src/routes/chain-transfers.ts";
+import { ChainTurnoverArtifactSchema } from "../schemas-src/routes/chain-turnover.ts";
+import { ChainWeightSettersArtifactSchema } from "../schemas-src/routes/chain-weight-setters.ts";
+import { ChainYieldArtifactSchema } from "../schemas-src/routes/chain-yield.ts";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainSigners,
+  buildChainFees,
+} from "../src/chain-analytics.ts";
+import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
+import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
+import { buildChainPrometheus } from "../src/chain-prometheus.ts";
+import { buildChainRegistrations } from "../src/chain-registrations.ts";
+import { buildChainServing } from "../src/chain-serving.ts";
+import { buildChainStakeMoves } from "../src/chain-stake-moves.ts";
+import { buildChainStakeTransfers } from "../src/chain-stake-transfers.ts";
+import { buildChainWeights } from "../src/chain-weights.ts";
+import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
+import { buildChainConcentration } from "../src/concentration.ts";
+import { buildChainIdentityHistory } from "../src/chain-identity-history.ts";
+import { buildChainIdleStake } from "../src/subnet-idle-stake.ts";
+import { buildChainPerformance } from "../src/chain-performance.ts";
+import { buildChainStakeFlow } from "../src/chain-stake-flow.ts";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
+import { buildChainTransfers } from "../src/chain-transfers.ts";
+import { buildChainTurnover } from "../src/chain-turnover.ts";
+import { buildChainWeightSetters } from "../src/chain-weight-setters.ts";
+import { buildChainYield } from "../src/chain-yield.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -1503,6 +1561,668 @@ describe("batch 5 (#8059) route artifact schemas parse real builder output", () 
   });
   test("sudo-key: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = SudoKeyArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+});
+
+// Batch 6 (#8060) -- chain/* network-wide aggregates: extrinsics/blocks/
+// account_events/neurons D1-tier data (no static file), driven directly
+// against each route's own pure builder with fixture rows reused verbatim
+// from that builder's own tests/*.test.ts. The two Postgres-proxy-only
+// routes (chain-events, chain-events/stats) have no local pure builder to
+// call (workers/data-api.ts inline-shapes them) -- those two use a real
+// production response captured live via the metagraphed MCP's
+// list_chain_events/get_chain_activity tools, which mirror these exact two
+// REST routes.
+describe("batch 6 (#8060) route artifact schemas parse real builder output", () => {
+  const OBS = 1_700_000_000_000;
+
+  test("chain-activity: ArtifactSchema.parse(buildChainActivity(...)) succeeds", () => {
+    const data = buildChainActivity({
+      window: "7d",
+      observedAt: "2026-06-26T12:00:00.000Z",
+      extrinsicRows: [
+        {
+          day: "2026-06-25",
+          extrinsic_count: 100,
+          successful_extrinsics: 99,
+          unique_signers: 42,
+        },
+      ],
+      blockRows: [{ day: "2026-06-25", block_count: 7200, event_count: 30000 }],
+    });
+    const parsed = ChainActivityArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-activity: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainActivityArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-calls: ArtifactSchema.parse(buildChainCalls(...)) succeeds", () => {
+    const data = buildChainCalls({
+      window: "7d",
+      total: 1000,
+      rows: [
+        { call_module: "SubtensorModule", count: 600 },
+        { call_module: "Balances", count: 150 },
+      ],
+    });
+    const parsed = ChainCallsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-calls: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainCallsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-signers: ArtifactSchema.parse(buildChainSigners(...)) succeeds", () => {
+    const data = buildChainSigners({
+      window: "7d",
+      observedAt: "2026-06-26T00:00:00.000Z",
+      rows: [
+        {
+          signer: "5Sig",
+          tx_count: 100,
+          total_fee_tao: 1.5,
+          total_tip_tao: 0.1,
+          last_tx_block: 8490000,
+        },
+      ],
+    });
+    const parsed = ChainSignersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-signers: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainSignersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-fees: ArtifactSchema.parse(buildChainFees(...)) succeeds", () => {
+    const data = buildChainFees({
+      window: "7d",
+      dailyRows: [
+        {
+          day: "2026-06-25",
+          extrinsic_count: 100,
+          total_fee_tao: 1.0,
+          total_tip_tao: 0.5,
+        },
+      ],
+      medianRows: [
+        { day: "2026-06-25", median_fee_tao: "0.004", median_tip_tao: 0.001 },
+      ],
+      payerRows: [
+        {
+          signer: "5Pay",
+          total_fee_tao: 0.8,
+          total_tip_tao: 0.1,
+          extrinsic_count: 40,
+        },
+      ],
+    });
+    const parsed = ChainFeesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-fees: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainFeesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // ---- network-rollup family (8 routes, identical shape) -------------------
+
+  test("chain-axon-removals: ArtifactSchema.parse(buildChainAxonRemovals(...)) succeeds", () => {
+    const data = buildChainAxonRemovals(
+      [
+        { netuid: 1, distinct_removers: 4, removals: 40 },
+        { netuid: 2, distinct_removers: 2, removals: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: { distinct_removers: 6, newest_observed: OBS },
+      },
+    );
+    const parsed = ChainAxonRemovalsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-axon-removals: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainAxonRemovalsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-deregistrations: ArtifactSchema.parse(buildChainDeregistrations(...)) succeeds", () => {
+    const data = buildChainDeregistrations(
+      [
+        { netuid: 1, distinct_deregistered_hotkeys: 4, deregistrations: 40 },
+        { netuid: 2, distinct_deregistered_hotkeys: 2, deregistrations: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: {
+          distinct_deregistered_hotkeys: 6,
+          newest_observed: OBS,
+        },
+      },
+    );
+    const parsed = ChainDeregistrationsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-deregistrations: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainDeregistrationsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-prometheus: ArtifactSchema.parse(buildChainPrometheus(...)) succeeds", () => {
+    const data = buildChainPrometheus(
+      [
+        { netuid: 1, distinct_exporters: 4, announcements: 40 },
+        { netuid: 2, distinct_exporters: 2, announcements: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: { distinct_exporters: 6, newest_observed: OBS },
+      },
+    );
+    const parsed = ChainPrometheusArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-prometheus: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainPrometheusArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-registrations: ArtifactSchema.parse(buildChainRegistrations(...)) succeeds", () => {
+    const data = buildChainRegistrations(
+      [
+        { netuid: 1, distinct_registrants: 4, registrations: 40 },
+        { netuid: 2, distinct_registrants: 2, registrations: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: { distinct_registrants: 6, newest_observed: OBS },
+      },
+    );
+    const parsed = ChainRegistrationsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-registrations: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainRegistrationsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-serving: ArtifactSchema.parse(buildChainServing(...)) succeeds", () => {
+    const data = buildChainServing(
+      [
+        { netuid: 1, distinct_servers: 4, announcements: 40 },
+        { netuid: 2, distinct_servers: 2, announcements: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: { distinct_servers: 6, newest_observed: OBS },
+      },
+    );
+    const parsed = ChainServingArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-serving: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainServingArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-stake-moves: ArtifactSchema.parse(buildChainStakeMoves(...)) succeeds", () => {
+    const data = buildChainStakeMoves(
+      [
+        { netuid: 1, distinct_movers: 4, movements: 40 },
+        { netuid: 2, distinct_movers: 2, movements: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: { distinct_movers: 6, newest_observed: OBS },
+      },
+    );
+    const parsed = ChainStakeMovesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-stake-moves: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainStakeMovesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-stake-transfers: ArtifactSchema.parse(buildChainStakeTransfers(...)) succeeds", () => {
+    const data = buildChainStakeTransfers(
+      [
+        { netuid: 1, distinct_senders: 4, transfers: 40 },
+        { netuid: 2, distinct_senders: 2, transfers: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: { distinct_senders: 6, newest_observed: OBS },
+      },
+    );
+    const parsed = ChainStakeTransfersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-stake-transfers: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainStakeTransfersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-weights: ArtifactSchema.parse(buildChainWeights(...)) succeeds", () => {
+    const data = buildChainWeights(
+      [
+        { netuid: 1, distinct_setters: 4, weight_sets: 40 },
+        { netuid: 2, distinct_setters: 2, weight_sets: 30 },
+      ],
+      {
+        window: "7d",
+        networkDistinct: {
+          distinct_setters: 6,
+          newest_observed: OBS,
+        },
+      },
+    );
+    const parsed = ChainWeightsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-weights: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainWeightsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // ---- remaining chain/* routes ---------------------------------------------
+
+  test("chain-alpha-volume: ArtifactSchema.parse(buildChainAlphaVolume(...)) succeeds", () => {
+    const ev = (
+      netuid: number,
+      event_kind: string,
+      alpha_volume: number,
+      tao_volume: number,
+      event_count: number,
+    ) => ({
+      netuid,
+      event_kind,
+      alpha_volume,
+      tao_volume,
+      event_count,
+      last_observed: OBS,
+    });
+    const data = buildChainAlphaVolume(
+      [
+        ev(1, "StakeAdded", 100, 100, 5),
+        ev(1, "StakeRemoved", 30, 30, 2),
+        ev(2, "StakeAdded", 20, 20, 1),
+        ev(2, "StakeRemoved", 80, 80, 3),
+      ],
+      {},
+    );
+    const parsed = ChainAlphaVolumeArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-alpha-volume: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainAlphaVolumeArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-concentration: ArtifactSchema.parse(buildChainConcentration(...)) succeeds", () => {
+    const data = buildChainConcentration([
+      {
+        stake_tao: 10,
+        emission_tao: 1,
+        coldkey: "ck-a",
+        validator_permit: 1,
+        netuid: 1,
+        captured_at: "2026-06-27T00:00:00Z",
+      },
+      {
+        stake_tao: 20,
+        emission_tao: 2,
+        coldkey: "ck-a",
+        validator_permit: 1,
+        netuid: 2,
+        captured_at: "2026-06-27T00:00:00Z",
+      },
+      {
+        stake_tao: 30,
+        emission_tao: 3,
+        coldkey: "ck-b",
+        validator_permit: 0,
+        netuid: 2,
+        captured_at: "2026-06-27T00:00:00Z",
+      },
+    ]);
+    const parsed = ChainConcentrationArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-concentration: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainConcentrationArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // chain-events + chain-events/stats: pure Postgres-proxy routes with the
+  // shaping logic inline in workers/data-api.ts (no local pure builder to
+  // call). Fixtures below are a REAL production response captured live via
+  // the metagraphed MCP's list_chain_events({limit:3})/get_chain_activity
+  // ({blocks:100}) tools, which mirror these exact two REST routes.
+  test("chain-events: ArtifactSchema.parse(<live list_chain_events response>) succeeds", () => {
+    const data = {
+      count: 3,
+      next_before: 8697469,
+      next_cursor: "1784965824000.8697469.326",
+      events: [
+        {
+          block_number: 8697469,
+          event_index: 328,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: {
+            dispatch_info: {
+              class: "Normal",
+              weight: { ref_time: 2580157000, proof_size: 14789 },
+              pays_fee: "Yes",
+            },
+          },
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 15,
+          observed_at: 1784965824000,
+        },
+        {
+          block_number: 8697469,
+          event_index: 327,
+          pallet: "TransactionPayment",
+          method: "TransactionFeePaid",
+          args: {
+            tip: [0],
+            who: "5EymzZqKMoYbgDX17SrmzBFa3fqQKwVPMJrxAd5czjBbEcsk",
+            actual_fee: [1290240],
+          },
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 15,
+          observed_at: 1784965824000,
+        },
+      ],
+    };
+    const parsed = ChainEventsFeedArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-events: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainEventsFeedArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-events-stats: ArtifactSchema.parse(<live get_chain_activity response>) succeeds", () => {
+    const data = {
+      window_blocks: 100,
+      groups: 40,
+      activity: [
+        { pallet: "Balances", method: "Transfer", count: 16551 },
+        { pallet: "Balances", method: "Deposit", count: 14671 },
+        { pallet: "System", method: "ExtrinsicSuccess", count: 1517 },
+      ],
+    };
+    const parsed = ChainEventsStatsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-events-stats: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainEventsStatsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-identity-history: ArtifactSchema.parse(buildChainIdentityHistory(...)) succeeds", () => {
+    const change = (overrides: Record<string, unknown> = {}) => ({
+      id: 10,
+      netuid: 7,
+      block_number: 100,
+      observed_at: 1_700_000_000_000,
+      subnet_name: "Alpha",
+      symbol: "α",
+      description: "old",
+      github_repo: null,
+      subnet_url: null,
+      discord: null,
+      logo_url: null,
+      identity_hash: "abc",
+      ...overrides,
+    });
+    const data = buildChainIdentityHistory(
+      [
+        change({ id: 4, netuid: 12, block_number: 400, subnet_name: "Delta" }),
+        change({ id: 3, netuid: 7, block_number: 300, subnet_name: "Gamma" }),
+      ],
+      { limit: 50 },
+    );
+    const parsed = ChainIdentityHistoryArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-identity-history: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainIdentityHistoryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-idle-stake: ArtifactSchema.parse(buildChainIdleStake(...)) succeeds", () => {
+    const data = buildChainIdleStake([
+      { netuid: 1, stake_tao: 10, dividends: 0 },
+      { netuid: 2, stake_tao: 50, dividends: 0 },
+      { netuid: 1, stake_tao: 5, dividends: 0.1 },
+      { netuid: 2, stake_tao: 5, dividends: 0 },
+    ]);
+    const parsed = ChainIdleStakeArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-idle-stake: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainIdleStakeArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-performance: ArtifactSchema.parse(buildChainPerformance(...)) succeeds", () => {
+    const data = buildChainPerformance([
+      {
+        incentive: 0.6,
+        dividends: 0.5,
+        trust: 0.9,
+        consensus: 0.8,
+        validator_trust: 0.95,
+        active: 1,
+        validator_permit: 1,
+        netuid: 7,
+        captured_at: 1_750_000_000_000,
+      },
+      {
+        incentive: 0.1,
+        dividends: 0,
+        trust: 0.4,
+        consensus: 0.3,
+        validator_trust: 0,
+        active: 1,
+        validator_permit: 0,
+        netuid: 12,
+        captured_at: 1_750_000_000_000,
+      },
+    ]);
+    const parsed = ChainPerformanceArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-performance: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainPerformanceArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-stake-flow: ArtifactSchema.parse(buildChainStakeFlow(...)) succeeds", () => {
+    const ev = (
+      netuid: number,
+      event_kind: string,
+      total_tao: number,
+      event_count: number,
+    ) => ({ netuid, event_kind, total_tao, event_count, last_observed: OBS });
+    const data = buildChainStakeFlow(
+      [
+        ev(1, "StakeAdded", 100, 5),
+        ev(1, "StakeRemoved", 30, 2),
+        ev(2, "StakeAdded", 20, 1),
+        ev(2, "StakeRemoved", 80, 3),
+      ],
+      { window: "30d" },
+    );
+    const parsed = ChainStakeFlowArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-stake-flow: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainStakeFlowArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-transfer-pairs: ArtifactSchema.parse(buildChainTransferPairs(...)) succeeds", () => {
+    const pair = (
+      from: string | null,
+      to: string | null,
+      volume: number,
+      count = 1,
+      lastBlock: unknown = 100,
+    ) => ({
+      from,
+      to,
+      volume_tao: volume,
+      transfer_count: count,
+      last_block: lastBlock,
+      last_observed_at: OBS,
+    });
+    const data = buildChainTransferPairs({
+      window: "7d",
+      sort: "count",
+      observedAt: "2026-07-03T00:00:00.000Z",
+      totals: {
+        transfer_count: "12",
+        total_volume_tao: 100,
+        unique_pairs: "5",
+      },
+      pairs: [
+        pair("5From", "5To", 20, 4.9, "8454388"),
+        pair("5To", "5From", 55, 2, 8454380),
+      ],
+    });
+    const parsed = ChainTransferPairsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-transfer-pairs: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainTransferPairsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-transfers: ArtifactSchema.parse(buildChainTransfers(...)) succeeds", () => {
+    const party = (address: string | null, volume: number, count = 1) => ({
+      address,
+      volume_tao: volume,
+      transfer_count: count,
+    });
+    const data = buildChainTransfers({
+      window: "30d",
+      observedAt: "2026-06-30T00:00:00.000Z",
+      totals: {
+        transfer_count: 12,
+        total_volume_tao: 100,
+        unique_senders: 5,
+        unique_receivers: 7,
+      },
+      senders: [party("5Sa", 60, 3), party("5Sb", 20, 2)],
+      receivers: [party("5Rx", 55, 4)],
+    });
+    const parsed = ChainTransfersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-transfers: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainTransfersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-turnover: ArtifactSchema.parse(buildChainTurnover(...)) succeeds", () => {
+    const vrow = (
+      snapshot_date: string,
+      netuid: number,
+      hotkey: string,
+      validator_permit = 1,
+    ) => ({ snapshot_date, netuid, hotkey, validator_permit });
+    const START = "2026-05-31";
+    const END = "2026-06-30";
+    const data = buildChainTurnover(
+      [
+        vrow(START, 1, "A"),
+        vrow(START, 1, "B"),
+        vrow(START, 2, "C"),
+        vrow(END, 1, "B"),
+        vrow(END, 1, "D"),
+        vrow(END, 2, "C"),
+      ],
+      { window: "30d", startDate: START, endDate: END },
+    );
+    const parsed = ChainTurnoverArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-turnover: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainTurnoverArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-weight-setters: ArtifactSchema.parse(buildChainWeightSetters(...)) succeeds", () => {
+    const leaderRows = [
+      {
+        hotkey: "5Grw...alice",
+        uid: 3,
+        weight_sets: 30,
+        first_set: 1_750_000_000_000,
+        last_set: 1_750_600_000_000,
+      },
+      {
+        hotkey: null,
+        uid: 8,
+        weight_sets: 10,
+        first_set: 1_750_100_000_000,
+        last_set: 1_750_200_000_000,
+      },
+    ];
+    const totals = {
+      weight_sets: 40,
+      distinct_setters: 2,
+      newest_observed: 1_750_600_000_000,
+    };
+    const data = buildChainWeightSetters(leaderRows, totals, {
+      window: "7d",
+    });
+    const parsed = ChainWeightSettersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-weight-setters: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainWeightSettersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("chain-yield: ArtifactSchema.parse(buildChainYield(...)) succeeds", () => {
+    const data = buildChainYield([
+      {
+        validator_permit: 1,
+        stake_tao: 1000,
+        emission_tao: 50,
+        netuid: 7,
+        captured_at: 1_750_000_000_000,
+      },
+      {
+        validator_permit: 1,
+        stake_tao: 500,
+        emission_tao: 20,
+        netuid: 7,
+        captured_at: 1_750_000_000_000,
+      },
+      {
+        validator_permit: 0,
+        stake_tao: 100,
+        emission_tao: 10,
+        netuid: 12,
+        captured_at: 1_750_000_000_000,
+      },
+    ]);
+    const parsed = ChainYieldArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("chain-yield: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChainYieldArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
 });
