@@ -3317,11 +3317,19 @@ function Donut({
           {
             style: {
               position: "absolute",
-              inset: 0,
+              top: "50%",
+              left: "50%",
+              // Constrain to the ring's unstroked hole (not the full size×size
+              // box) so long labels wrap within it instead of rendering on top
+              // of the ring, where they read as illegible against its color
+              // (#8112).
+              width: Math.max(0, size - strokeWidth * 2),
+              transform: "translate(-50%, -50%)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              textAlign: "center",
               pointerEvents: "none"
             },
             children: [
