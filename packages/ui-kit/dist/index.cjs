@@ -169,13 +169,13 @@ var DialogContent = React3__namespace.forwardRef(({ className, children, ...prop
     {
       ref,
       className: cn(
-        "fixed left-[50%] top-[50%] z-[var(--mg-z-modal)] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-[var(--mg-z-modal)] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-md",
         className
       ),
       ...props,
       children: [
         children,
-        /* @__PURE__ */ jsxRuntime.jsxs(DialogPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
+        /* @__PURE__ */ jsxRuntime.jsxs(DialogPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground", children: [
           /* @__PURE__ */ jsxRuntime.jsx(lucideReact.X, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: "Close" })
         ] })
@@ -307,7 +307,7 @@ var CommandItem = React3__namespace.forwardRef(({ className, ...props }, ref) =>
   {
     ref,
     className: cn(
-      "relative flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "relative flex cursor-default gap-2 select-none items-center rounded px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       className
     ),
     ...props
@@ -404,7 +404,7 @@ var SheetContent = React3__namespace.forwardRef(({ side = "right", className, ch
       className: cn(sheetVariants({ side }), className),
       ...props,
       children: [
-        /* @__PURE__ */ jsxRuntime.jsxs(DialogPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
+        /* @__PURE__ */ jsxRuntime.jsxs(DialogPrimitive__namespace.Close, { className: "absolute right-4 top-4 rounded opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary", children: [
           /* @__PURE__ */ jsxRuntime.jsx(lucideReact.X, { className: "h-4 w-4" }),
           /* @__PURE__ */ jsxRuntime.jsx("span", { className: "sr-only", children: "Close" })
         ] }),
@@ -2228,7 +2228,7 @@ function PageSection({
       "data-section-anchor": id ? "" : void 0,
       className: classNames(
         "mg-section",
-        tone === "muted" && "rounded-2xl bg-surface-2/40 px-5 md:px-8 py-8 md:py-10",
+        tone === "muted" && "rounded-xl bg-surface-2/40 px-5 md:px-8 py-8 md:py-10",
         className
       ),
       children: [
@@ -2954,7 +2954,7 @@ function MethodologyCallout({
     "aside",
     {
       "aria-label": "Data freshness and methodology",
-      className: "mb-6 rounded-lg border border-border mg-glass-soft",
+      className: "mb-6 rounded-md border border-border mg-glass-soft",
       children: [
         /* @__PURE__ */ jsxRuntime.jsxs(
           "button",
@@ -3365,7 +3365,7 @@ function DonutLegend({ segments }) {
           "span",
           {
             "aria-hidden": true,
-            className: "inline-block size-2 rounded-sm",
+            className: "inline-block size-2 rounded",
             style: { background: s.color }
           }
         ),
@@ -3969,7 +3969,7 @@ function NoDataSpark({
           tabIndex: 0,
           role: "img",
           "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`,
-          className: "flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          className: "flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           style: { height },
           children: [
             /* @__PURE__ */ jsxRuntime.jsx(
@@ -4094,7 +4094,7 @@ function TreemapMini({
           children: /* @__PURE__ */ jsxRuntime.jsx(
             "div",
             {
-              className: "flex h-full w-full flex-col justify-between rounded-sm border border-background/40 p-1.5",
+              className: "flex h-full w-full flex-col justify-between rounded border border-background/40 p-1.5",
               style: { background: t.color ?? "var(--accent)" },
               children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
                 /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate mg-type-data-sm font-medium leading-none text-accent-foreground", children: t.label }),
@@ -5479,7 +5479,7 @@ function QueryBarRoot({
       className: classNames(
         "mg-query-shell",
         "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-lg border border-border mg-glass-soft",
+        "h-10 rounded-md border border-border mg-glass-soft",
         "px-1 transition-colors",
         "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
         "focus-within:ring-2 focus-within:ring-ring/60",
@@ -5842,7 +5842,7 @@ function ChartSkeleton({
         variant === "bars" ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "absolute inset-2 flex items-end gap-[3px]", "aria-hidden": true, children: Array.from({ length: 16 }).map((_, i) => /* @__PURE__ */ jsxRuntime.jsx(
           "div",
           {
-            className: "flex-1 rounded-sm bg-ink-strong/10 animate-pulse",
+            className: "flex-1 rounded bg-ink-strong/10 animate-pulse",
             style: { height: `${20 + i * 17 % 70}%` }
           },
           i
