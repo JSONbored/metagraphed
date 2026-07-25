@@ -87,7 +87,7 @@ export function SectionAnchor({
             </button>
           </div>
           {subtitle ? (
-            <p className="mt-0.5 text-[11px] text-ink-muted">{subtitle}</p>
+            <p className="mt-0.5 mg-type-caption text-ink-muted">{subtitle}</p>
           ) : null}
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}

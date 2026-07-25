@@ -59,7 +59,7 @@ export function MethodologyCallout({
         />
       </button>
       {open ? (
-        <div className="grid gap-3 border-t border-border px-3 py-3 text-[11.5px] leading-relaxed text-ink-muted md:grid-cols-2">
+        <div className="grid gap-3 border-t border-border px-3 py-3 mg-type-caption text-ink-muted md:grid-cols-2">
           <div>
             <div className="mg-type-micro text-ink-strong">Sparklines</div>
             <p className="mt-1">

@@ -145,9 +145,30 @@ const SSR_SAFETY_RULES = [
 // it. Any PR that brings a directory to 0 warnings MUST add it here in the
 // same PR (see apps/ui/CONTRIBUTING.md); removing an entry requires an issue
 // explaining why. Initial set (2026-07-24 audit): src/hooks/** and src/lib/**
-// were the only ui-kit directories clean end-to-end -- src/components/** is
-// not (19 of 109 files still warn) and stays un-ratcheted.
+// were the only ui-kit directories clean end-to-end -- src/components/** was
+// not (19 of 109 files warned). #8172 cleaned 16 of those 19; the remaining
+// 3 files (see RATCHETED_COMPONENT_EXCEPTIONS below) each keep one genuinely
+// missing token, so src/components/** ratchets everywhere except them rather
+// than staying un-ratcheted repo-wide over 3 residual sites.
 const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"];
+
+// Excluded from the src/components/** ratchet below -- each still carries one
+// no-restricted-syntax warning with no existing design-system-token
+// equivalent (not invented ad hoc per #8172's own guidance):
+// - entity-hero.tsx / page-hero.tsx: the "display"-size hero <h1> and its
+//   KPI-strip value use text-[2.5rem]/text-[1.75rem] -- the mg-type-* scale
+//   tops out at mg-type-caption-lg (13px, see styles.css); no hero/display
+//   heading tier is authored yet (--mg-type-h1..h4 are reserved CSS
+//   variables, not yet exposed as .mg-type-h* utility classes).
+// - section-anchor.tsx: `scroll-mt-32` compensates for the sticky header's
+//   pixel height on anchor scroll, not a spacing-scale choice -- the exact
+//   same site class #7810 already left unconverted elsewhere (see that
+//   commit's own "endpoint-detail-drawer.tsx ... scroll-mt-32" note).
+const RATCHETED_COMPONENT_EXCEPTIONS = [
+  "src/components/metagraphed/entity-hero.tsx",
+  "src/components/metagraphed/page-hero.tsx",
+  "src/components/metagraphed/section-anchor.tsx",
+];
 
 const PRIMITIVE_FILES = [
   "src/components/metagraphed/panel.tsx",
@@ -244,6 +265,17 @@ export default tseslint.config(
     // off-exclusion block below stays last so those files keep their existing
     // exemption unchanged even if a ratcheted glob ever overlapped one.
     files: RATCHETED_DIRS,
+    rules: {
+      "no-restricted-syntax": ["error", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
+    },
+  },
+  {
+    // #8172: src/components/** joins the ratchet -- every file is clean
+    // except the 3 in RATCHETED_COMPONENT_EXCEPTIONS (documented above),
+    // which `ignores` keeps at the warn tier from the block above instead
+    // of failing CI on their one pre-existing, genuinely-missing-token site.
+    files: ["src/components/**/*.{ts,tsx}"],
+    ignores: RATCHETED_COMPONENT_EXCEPTIONS,
     rules: {
       "no-restricted-syntax": ["error", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
     },

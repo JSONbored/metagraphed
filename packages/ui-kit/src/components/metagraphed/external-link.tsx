@@ -11,6 +11,16 @@ interface Props {
   authRequired?: boolean;
   publicSafe?: boolean;
   className?: string;
+  /**
+   * Skip the external-icon glyph, underline styling, and auth/publicSafe
+   * badges -- for composing into an icon-only segmented bar (e.g.
+   * PrimaryLinksRail) where the icon itself is the only content and a
+   * trailing external-icon/underline would be redundant. Still runs the
+   * same safeExternalUrl filtering and target/rel handling.
+   */
+  bare?: boolean;
+  title?: string;
+  ariaLabel?: string;
 }
 
 const SAFE_EXTERNAL_PROTOCOLS = new Set(["http:", "https:"]);
@@ -98,8 +108,37 @@ export function ExternalLink({
   authRequired,
   publicSafe = true,
   className,
+  bare,
+  title,
+  ariaLabel,
 }: Props) {
   const safeHref = safeExternalUrl(href);
+
+  if (bare) {
+    if (!safeHref) {
+      return (
+        <span
+          className={className}
+          title={title ?? "Blocked unsafe external URL"}
+        >
+          {children}
+        </span>
+      );
+    }
+    return (
+      <a
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={title}
+        aria-label={ariaLabel}
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+
   const content = (
     <>
       <span className="truncate">{children}</span>

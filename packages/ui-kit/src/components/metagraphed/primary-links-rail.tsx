@@ -1,5 +1,9 @@
 import { BookOpen, Github, Globe, LayoutDashboard } from "lucide-react";
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
+import {
+  ExternalLink,
+  safeExternalUrl,
+} from "@/components/metagraphed/external-link";
+import { Panel } from "@/components/metagraphed/panel";
 
 type LinkSpec = {
   label: string;
@@ -59,25 +63,28 @@ export function PrimaryLinksRail({
     const Icon = it.icon;
     const href = safeExternalUrl(it.href)!;
     return (
-      <a
+      <ExternalLink
         key={it.label + href}
         href={href}
-        target="_blank"
-        rel="noopener noreferrer"
+        bare
         title={it.label}
-        aria-label={it.label}
+        ariaLabel={it.label}
         className="inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
       >
         <Icon className="size-4" />
-      </a>
+      </ExternalLink>
     );
   });
 
   if (bare) return <>{segments}</>;
 
   return (
-    <div className="inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
+    <Panel
+      as="div"
+      flush
+      bodyClassName="inline-flex items-center divide-x divide-border overflow-hidden"
+    >
       {segments}
-    </div>
+    </Panel>
   );
 }

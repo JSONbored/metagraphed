@@ -53,7 +53,7 @@ export function SparkLegend({
           sideOffset={6}
           collisionPadding={8}
           avoidCollisions
-          className="max-w-xs text-[11px] leading-relaxed"
+          className="max-w-xs mg-type-caption"
         >
           <div className="mg-type-micro mb-1">
             {metric}

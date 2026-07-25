@@ -89,7 +89,7 @@ export function HealthDot({
   return (
     <span className="inline-flex items-center gap-1.5">
       {dot}
-      <span className="text-[11px] font-medium text-ink">{label}</span>
+      <span className="mg-type-caption font-medium text-ink">{label}</span>
     </span>
   );
 }
@@ -109,7 +109,7 @@ export function HealthPill({
     return (
       <span className="inline-flex items-center gap-1.5">
         <HealthDot state={state} />
-        <span className="text-[11px] font-medium text-ink">{label}</span>
+        <span className="mg-type-caption font-medium text-ink">{label}</span>
       </span>
     );
   }
@@ -172,7 +172,7 @@ export function CurationChip({ level }: { level?: CurationLevel | string }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
         cls,
       )}
     >
@@ -200,7 +200,7 @@ export function ReviewChip({ state }: { state?: string }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider",
         reviewCls[key],
       )}
       title={`Maintainer review: ${key}`}
@@ -212,7 +212,7 @@ export function ReviewChip({ state }: { state?: string }) {
 
 export function CandidateChip() {
   return (
-    <span className="inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
+    <span className="inline-flex items-center rounded border border-dashed border-ink-subtle bg-transparent px-1.5 py-0.5 mg-type-caption font-medium uppercase tracking-wider text-ink-muted">
       Unverified
     </span>
   );

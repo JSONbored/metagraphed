@@ -1,5 +1,6 @@
 import { type ComponentType } from "react";
 import { classNames } from "@/lib/format";
+import { Panel } from "@/components/metagraphed/panel";
 
 export interface SegmentedToggleOption<T extends string> {
   value: T;
@@ -29,13 +30,13 @@ export function SegmentedToggle<T extends string>({
   className?: string;
 }) {
   return (
-    <div
+    <Panel
+      as="div"
+      flush
       role="tablist"
       aria-label={ariaLabel}
-      className={classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className,
-      )}
+      className={className}
+      bodyClassName="inline-flex items-center p-0.5"
     >
       {options.map(
         ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
@@ -50,7 +51,7 @@ export function SegmentedToggle<T extends string>({
               title={title ?? label}
               onClick={() => onChange(v)}
               className={classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors min-h-8",
                 active
                   ? "bg-surface text-ink-strong"
                   : "text-ink-muted hover:text-ink-strong",
@@ -62,6 +63,6 @@ export function SegmentedToggle<T extends string>({
           );
         },
       )}
-    </div>
+    </Panel>
   );
 }

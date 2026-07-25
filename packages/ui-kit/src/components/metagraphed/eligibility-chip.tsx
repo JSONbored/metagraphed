@@ -66,22 +66,19 @@ export function EligibilityChip({
           <span
             tabIndex={0}
             className={classNames(
-              "inline-flex items-center gap-1.5 rounded-full border bg-transparent font-mono uppercase tracking-wider whitespace-nowrap cursor-help transition-colors",
+              "inline-flex items-center gap-1.5 rounded-full border bg-transparent whitespace-nowrap cursor-help transition-colors",
               "before:content-[''] before:size-1.5 before:rounded-full",
               "hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               size === "xs"
-                ? "px-2 py-0 text-[9px] h-5"
-                : "px-2.5 py-0 text-[10px] h-6",
+                ? "px-2 py-0 h-5 mg-type-micro"
+                : "px-2.5 py-0 h-6 mg-type-label",
               TONE[eligibility],
             )}
           >
             {ELIGIBILITY_LABEL[eligibility]}
           </span>
         </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-[240px] text-[11px] leading-relaxed"
-        >
+        <TooltipContent side="top" className="max-w-[240px] mg-type-caption">
           <div className="mg-type-micro opacity-70 mb-1">
             {ELIGIBILITY_LABEL[eligibility]}
           </div>

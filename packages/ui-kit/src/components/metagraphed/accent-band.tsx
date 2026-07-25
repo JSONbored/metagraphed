@@ -45,7 +45,7 @@ export function AccentBand({
       ) : null}
       <div
         className={classNames(
-          "relative max-w-shell-max mx-auto px-4 md:px-8 py-14 md:py-20",
+          "relative max-w-shell-max mx-auto px-4 md:px-8 py-12 md:py-20",
           innerClassName,
         )}
       >
