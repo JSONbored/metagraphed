@@ -15,6 +15,27 @@ import { SubnetDetailResponseSchema } from "../schemas-src/routes/subnet-detail.
 import { HealthResponseSchema } from "../schemas-src/routes/health.ts";
 import { EconomicsResponseSchema } from "../schemas-src/routes/economics.ts";
 import { StakeQuoteResponseSchema } from "../schemas-src/routes/stake-quote.ts";
+import { SubnetAlphaVolumeResponseSchema } from "../schemas-src/routes/subnet-alpha-volume.ts";
+import {
+  SubnetAxonRemovalsResponseSchema,
+  SubnetDeregistrationsResponseSchema,
+  SubnetRegistrationsResponseSchema,
+  SubnetServingResponseSchema,
+} from "../schemas-src/routes/subnet-activity.ts";
+import {
+  SubnetBurnResponseSchema,
+  SubnetRecycledResponseSchema,
+} from "../schemas-src/routes/subnet-registration-cost.ts";
+import { SubnetEventsResponseSchema } from "../schemas-src/routes/subnet-events.ts";
+import { SubnetEventSummaryResponseSchema } from "../schemas-src/routes/subnet-event-summary.ts";
+import { SubnetHistoryResponseSchema } from "../schemas-src/routes/subnet-history.ts";
+import { SubnetIdentityHistoryResponseSchema } from "../schemas-src/routes/subnet-identity-history.ts";
+import { SubnetIdleStakeResponseSchema } from "../schemas-src/routes/subnet-idle-stake.ts";
+import { SubnetOverviewResponseSchema } from "../schemas-src/routes/subnet-overview.ts";
+import {
+  DomainSummaryResponseSchema,
+  DomainsResponseSchema,
+} from "../schemas-src/routes/domains.ts";
 import type { z } from "zod";
 
 function req(path: string) {
@@ -44,12 +65,86 @@ const cases: [string, string, z.ZodType][] = [
   ],
 ];
 
+// Batch 1 (#8055) -- same ground-truth pattern, 15 more routes.
+const batch1Cases: [string, string, z.ZodType][] = [
+  [
+    "subnet-volume",
+    "/api/v1/subnets/64/volume",
+    SubnetAlphaVolumeResponseSchema,
+  ],
+  [
+    "subnet-axon-removals",
+    "/api/v1/subnets/64/axon-removals",
+    SubnetAxonRemovalsResponseSchema,
+  ],
+  ["subnet-burn", "/api/v1/subnets/64/burn", SubnetBurnResponseSchema],
+  [
+    "subnet-deregistrations",
+    "/api/v1/subnets/64/deregistrations",
+    SubnetDeregistrationsResponseSchema,
+  ],
+  [
+    "subnet-event-summary",
+    "/api/v1/subnets/64/event-summary",
+    SubnetEventSummaryResponseSchema,
+  ],
+  ["subnet-events", "/api/v1/subnets/64/events", SubnetEventsResponseSchema],
+  ["subnet-history", "/api/v1/subnets/64/history", SubnetHistoryResponseSchema],
+  [
+    "subnet-identity-history",
+    "/api/v1/subnets/64/identity-history",
+    SubnetIdentityHistoryResponseSchema,
+  ],
+  [
+    "subnet-recycled",
+    "/api/v1/subnets/64/recycled",
+    SubnetRecycledResponseSchema,
+  ],
+  [
+    "subnet-registrations",
+    "/api/v1/subnets/64/registrations",
+    SubnetRegistrationsResponseSchema,
+  ],
+  ["subnet-serving", "/api/v1/subnets/64/serving", SubnetServingResponseSchema],
+  [
+    "subnet-idle-stake",
+    "/api/v1/subnets/64/idle-stake",
+    SubnetIdleStakeResponseSchema,
+  ],
+  [
+    "subnet-overview",
+    "/api/v1/subnets/64/overview",
+    SubnetOverviewResponseSchema,
+  ],
+  [
+    "domain-summary",
+    "/api/v1/domains/agents/summary",
+    DomainSummaryResponseSchema,
+  ],
+  ["domains", "/api/v1/domains", DomainsResponseSchema],
+];
+
 describe("pilot route response schemas parse real handler output", () => {
   for (const [name, path, schema] of cases) {
     test(`${name}: Schema.parse(realHandlerBody) succeeds`, async () => {
       const body = await realBody(path);
       // Throws with a readable field-path diff on any mismatch — a schema
       // that merely typechecks but doesn't match reality must fail here.
+      const parsed = schema.parse(body);
+      assert.ok(parsed);
+    });
+
+    test(`${name}: Schema.parse({}) fails (not a vacuous passthrough)`, () => {
+      const result = schema.safeParse({});
+      assert.equal(result.success, false);
+    });
+  }
+});
+
+describe("batch 1 (#8055) route response schemas parse real handler output", () => {
+  for (const [name, path, schema] of batch1Cases) {
+    test(`${name}: Schema.parse(realHandlerBody) succeeds`, async () => {
+      const body = await realBody(path);
       const parsed = schema.parse(body);
       assert.ok(parsed);
     });
