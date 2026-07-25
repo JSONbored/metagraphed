@@ -16,7 +16,10 @@ import { describe, expect, it } from "vitest";
 // composes TanStack Router/Query context a rendered test can't easily stand
 // up, so this suite is node-environment source assertions, mirroring
 // leaderboards-csv-export-menu.test.ts's own convention.
-const source = readFileSync(fileURLToPath(new URL("./subnets.index.tsx", import.meta.url)), "utf8");
+const source = readFileSync(
+  fileURLToPath(new URL("./-subnets-index-page.tsx", import.meta.url)),
+  "utf8",
+);
 
 const strip = source.slice(
   source.indexOf("function SubnetsStatStrip"),
