@@ -1,0 +1,198 @@
+// MCP tools `list_endpoint_pools`, `list_endpoint_incidents`,
+// `list_provider_endpoints` (types-epic E batch 11, #8074). None are defined
+// inline in src/mcp-server.ts -- their `LIST_X_MCP_TOOL`/
+// `LIST_X_OUTPUT_SCHEMA` hand-written literals live in
+// src/endpoint-pools-mcp.ts, src/endpoint-incidents-mcp.ts, and
+// src/provider-endpoints-mcp.ts respectively, imported into mcp-server.ts's
+// MCP_TOOLS array via object spread. The z.toJSONSchema(...) wiring for
+// these three happens in THEIR OWN files, not mcp-server.ts. None mirror an
+// existing schemas-src/routes/ REST schema -- modeled fresh, matching each
+// hand-written literal field-for-field. `list_provider_endpoints`' `slug` is
+// REQUIRED (a path param, not a filter), unlike every other filter in this
+// file.
+import { z } from "zod";
+import { OpenObjectSchema, NotesFieldSchema } from "./shared.ts";
+
+const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"] as const;
+const POOL_SORT_FIELDS = [
+  "eligible_count",
+  "endpoint_count",
+  "id",
+  "kind",
+] as const;
+
+export const ListEndpointPoolsInputSchema = z
+  .object({
+    id: z.string().optional(),
+    kind: z.enum(POOL_KINDS).optional(),
+    min_eligible_count: z.number().optional(),
+    max_eligible_count: z.number().optional(),
+    min_endpoint_count: z.number().optional(),
+    max_endpoint_count: z.number().optional(),
+    sort: z.enum(POOL_SORT_FIELDS).optional(),
+    order: z.enum(["asc", "desc"]).optional(),
+    fields: z.string().optional(),
+    limit: z.int().min(1).max(100).optional(),
+    cursor: z.int().min(0).optional(),
+  })
+  .strict();
+export type ListEndpointPoolsInput = z.infer<
+  typeof ListEndpointPoolsInputSchema
+>;
+
+export const ListEndpointPoolsOutputSchema = z
+  .object({
+    generated_at: z.string().nullable().optional(),
+    notes: NotesFieldSchema,
+    pools: z.array(OpenObjectSchema),
+    total: z.int().optional(),
+    returned: z.int().optional(),
+    limit: z.int().optional(),
+    cursor: z.int().optional(),
+    next_cursor: z.int().nullable().optional(),
+    sort: z.string().nullable().optional(),
+    order: z.string().nullable().optional(),
+  })
+  .passthrough();
+export type ListEndpointPoolsOutput = z.infer<
+  typeof ListEndpointPoolsOutputSchema
+>;
+
+const SURFACE_KINDS = [
+  "archive",
+  "dashboard",
+  "data-artifact",
+  "docs",
+  "example",
+  "openapi",
+  "repo-registry",
+  "sdk",
+  "source-repo",
+  "sse",
+  "subnet-api",
+  "subtensor-rpc",
+  "subtensor-wss",
+  "website",
+] as const;
+const HEALTH_STATUSES = ["ok", "degraded", "failed", "unknown"] as const;
+const INCIDENT_SEVERITIES = ["critical", "warning", "info"] as const;
+const INCIDENT_STATES = ["active", "resolved"] as const;
+const INCIDENT_SORT_FIELDS = [
+  "detected_at",
+  "endpoint_id",
+  "kind",
+  "last_checked",
+  "netuid",
+  "provider",
+  "severity",
+  "state",
+  "status",
+] as const;
+
+export const ListEndpointIncidentsInputSchema = z
+  .object({
+    netuid: z.int().min(0).optional(),
+    kind: z.enum(SURFACE_KINDS).optional(),
+    provider: z.string().optional(),
+    status: z.enum(HEALTH_STATUSES).optional(),
+    severity: z.enum(INCIDENT_SEVERITIES).optional(),
+    state: z.enum(INCIDENT_STATES).optional(),
+    sort: z.enum(INCIDENT_SORT_FIELDS).optional(),
+    order: z.enum(["asc", "desc"]).optional(),
+    fields: z.string().optional(),
+    limit: z.int().min(1).max(100).optional(),
+    cursor: z.int().min(0).optional(),
+  })
+  .strict();
+export type ListEndpointIncidentsInput = z.infer<
+  typeof ListEndpointIncidentsInputSchema
+>;
+
+export const ListEndpointIncidentsOutputSchema = z
+  .object({
+    generated_at: z.string().nullable().optional(),
+    notes: NotesFieldSchema,
+    summary: OpenObjectSchema.nullable().optional(),
+    incidents: z.array(OpenObjectSchema),
+    total: z.int().optional(),
+    returned: z.int().optional(),
+    limit: z.int().optional(),
+    cursor: z.int().optional(),
+    next_cursor: z.int().nullable().optional(),
+    sort: z.string().nullable().optional(),
+    order: z.string().nullable().optional(),
+  })
+  .passthrough();
+export type ListEndpointIncidentsOutput = z.infer<
+  typeof ListEndpointIncidentsOutputSchema
+>;
+
+const ENDPOINT_LAYERS = [
+  "bittensor-base",
+  "data-provider",
+  "docs-provider",
+  "subnet-app",
+] as const;
+const ENDPOINT_PUBLICATION_STATES = [
+  "candidate",
+  "verified",
+  "monitored",
+  "pool-eligible",
+  "disabled",
+  "rejected",
+] as const;
+const ENDPOINT_SORT_FIELDS = [
+  "kind",
+  "last_checked",
+  "latency_ms",
+  "layer",
+  "netuid",
+  "pool_eligible",
+  "provider",
+  "publication_state",
+  "score",
+  "status",
+] as const;
+
+export const ListProviderEndpointsInputSchema = z
+  .object({
+    slug: z.string().regex(/^[a-z0-9-]+$/),
+    kind: z.enum(SURFACE_KINDS).optional(),
+    layer: z.enum(ENDPOINT_LAYERS).optional(),
+    netuid: z.int().min(0).optional(),
+    publication_state: z.enum(ENDPOINT_PUBLICATION_STATES).optional(),
+    status: z.enum(HEALTH_STATUSES).optional(),
+    pool_eligible: z.boolean().optional(),
+    min_latency_ms: z.number().optional(),
+    max_latency_ms: z.number().optional(),
+    min_score: z.number().optional(),
+    max_score: z.number().optional(),
+    sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
+    order: z.enum(["asc", "desc"]).optional(),
+    fields: z.string().optional(),
+    limit: z.int().min(1).max(100).optional(),
+    cursor: z.int().min(0).optional(),
+  })
+  .strict();
+export type ListProviderEndpointsInput = z.infer<
+  typeof ListProviderEndpointsInputSchema
+>;
+
+export const ListProviderEndpointsOutputSchema = z
+  .object({
+    slug: z.string(),
+    generated_at: z.string().nullable().optional(),
+    notes: NotesFieldSchema,
+    endpoints: z.array(OpenObjectSchema),
+    total: z.int().optional(),
+    returned: z.int().optional(),
+    limit: z.int().optional(),
+    cursor: z.int().optional(),
+    next_cursor: z.int().nullable().optional(),
+    sort: z.string().nullable().optional(),
+    order: z.string().nullable().optional(),
+  })
+  .passthrough();
+export type ListProviderEndpointsOutput = z.infer<
+  typeof ListProviderEndpointsOutputSchema
+>;

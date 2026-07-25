@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/enrichment-evidence.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListEnrichmentEvidenceInputSchema,
+  ListEnrichmentEvidenceOutputSchema,
+} from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
 
 export const ENRICHMENT_EVIDENCE_ARTIFACT =
   "/metagraph/review/enrichment-evidence.json";
@@ -231,91 +236,14 @@ export const LIST_ENRICHMENT_EVIDENCE_MCP_TOOL = {
     "sort with sort + order; and page with limit (1-100) / cursor. Distinct from " +
     "list_enrichment_queue (prioritized queue summary) and get_subnet_evidence " +
     "(one subnet's live evidence). Mirrors GET /api/v1/review/enrichment-evidence.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      q: {
-        type: "string",
-        description: "Keyword search across name, slug, and evidence_action.",
-      },
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      lane: {
-        type: "string",
-        enum: LANES,
-        description:
-          "Filter by enrichment lane (direct-submission, maintainer-review, etc.).",
-      },
-      evidence_action: {
-        type: "string",
-        enum: EVIDENCE_ACTIONS,
-        description: "Filter by the recommended evidence action.",
-      },
-      direct_submission_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description:
-          "Filter rows whose direct_submission_kinds include this kind.",
-      },
-      missing_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter rows whose missing_kinds include this kind.",
-      },
-      sort: {
-        type: "string",
-        enum: EVIDENCE_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of evidence row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListEnrichmentEvidenceInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["entries"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    entries: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListEnrichmentEvidenceOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

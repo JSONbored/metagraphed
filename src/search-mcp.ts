@@ -4,9 +4,14 @@
 // blobs) — the same subnet/surface/provider corpus search_subnets reads but
 // without its subnet-only filter, and unlike list_search_index it keeps tokens.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
+import {
+  ListSearchInputSchema,
+  ListSearchOutputSchema,
+} from "../schemas-src/mcp-tools/search-documents.ts";
 
 export const SEARCH_ARTIFACT = "/metagraph/search.json";
 
@@ -189,73 +194,14 @@ export const LIST_SEARCH_MCP_TOOL = {
     "providers even when the AI layer semantic_search depends on is not configured. " +
     "Unlike list_search_index, which serves the slim variant without token blobs, " +
     "this keeps the full documents. Use semantic_search for meaning-based discovery.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      q: {
-        type: "string",
-        description: "Keyword search across title, subtitle, slug, and tokens.",
-      },
-      type: {
-        type: "string",
-        enum: ["subnet", "surface", "provider"],
-        description: "Filter by document type (subnet, surface, or provider).",
-      },
-      netuid: {
-        type: "integer",
-        description: "Filter by subnet netuid.",
-        minimum: 0,
-      },
-      sort: {
-        type: "string",
-        enum: DOCUMENT_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description: "Comma-separated projection of document fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSearchInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SEARCH_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["documents"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    documents: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SEARCH_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSearchOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

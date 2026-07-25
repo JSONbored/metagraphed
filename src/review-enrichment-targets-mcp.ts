@@ -3,9 +3,14 @@
 // transforms as the REST route over the baked
 // /metagraph/review/enrichment-targets.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListReviewEnrichmentTargetsInputSchema,
+  ListReviewEnrichmentTargetsOutputSchema,
+} from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
 
 export const REVIEW_ENRICHMENT_TARGETS_ARTIFACT =
   "/metagraph/review/enrichment-targets.json";
@@ -286,132 +291,14 @@ export const LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL = {
     "(1-100) / cursor. Distinct from list_enrichment_targets (coverage-depth scorecard) " +
     "and list_enrichment_queue (prioritized queue summary). Mirrors " +
     "GET /api/v1/review/enrichment-targets.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      q: {
-        type: "string",
-        description:
-          "Keyword search across name, slug, contribution_prompt, recommended_action, and reason_codes.",
-      },
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      target_type: {
-        type: "string",
-        enum: TARGET_TYPES,
-        description:
-          "Filter by target type (surface-candidate, adapter-review, etc.).",
-      },
-      target_action: {
-        type: "string",
-        enum: TARGET_ACTIONS,
-        description: "Filter by the recommended target action.",
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind.",
-      },
-      lane: {
-        type: "string",
-        enum: LANES,
-        description:
-          "Filter by enrichment lane (direct-submission, maintainer-review, etc.).",
-      },
-      evidence_action: {
-        type: "string",
-        enum: EVIDENCE_ACTIONS,
-        description: "Filter by the recommended evidence action.",
-      },
-      identity_level: {
-        type: "string",
-        enum: IDENTITY_LEVELS,
-        description: "Filter by subnet identity completeness.",
-      },
-      profile_level: {
-        type: "string",
-        enum: PROFILE_LEVELS,
-        description: "Filter by profile completeness.",
-      },
-      submission_route: {
-        type: "string",
-        enum: SUBMISSION_ROUTES,
-        description: "Filter by contributor submission route.",
-      },
-      auto_review_candidate: {
-        type: "string",
-        enum: BOOLEAN_STRINGS,
-        description:
-          "Filter by whether the target is an auto-review candidate.",
-      },
-      manual_review_required: {
-        type: "string",
-        enum: BOOLEAN_STRINGS,
-        description: "Filter by whether manual review is required.",
-      },
-      missing_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter rows whose missing_kinds include this kind.",
-      },
-      reason_codes: {
-        type: "string",
-        description: "Filter by reason_codes substring match.",
-      },
-      sort: {
-        type: "string",
-        enum: TARGET_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of target row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListReviewEnrichmentTargetsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["targets"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    targets: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListReviewEnrichmentTargetsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

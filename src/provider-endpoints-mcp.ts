@@ -3,9 +3,14 @@
 // transforms as the REST route over the baked
 // /metagraph/providers/{slug}/endpoints.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListProviderEndpointsInputSchema,
+  ListProviderEndpointsOutputSchema,
+} from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 
 export const PROVIDER_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -277,112 +282,14 @@ export const LIST_PROVIDER_ENDPOINTS_MCP_TOOL = {
     "cursor. The per-provider view of list_endpoints (the network-wide catalog). " +
     "Complements get_provider_detail (identity + optional endpoints attachment). " +
     "Mirrors GET /api/v1/providers/{slug}/endpoints.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      slug: {
-        type: "string",
-        pattern: "^[a-z0-9-]+$",
-        description: "Provider slug, e.g. 'datura' or 'allways'.",
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind, e.g. 'subnet-api'.",
-      },
-      layer: {
-        type: "string",
-        enum: ENDPOINT_LAYERS,
-        description: "Filter by endpoint layer.",
-      },
-      netuid: {
-        type: "integer",
-        description: "Filter to endpoints for one subnet netuid.",
-        minimum: 0,
-      },
-      publication_state: {
-        type: "string",
-        enum: PUBLICATION_STATES,
-        description: "Filter by publication state.",
-      },
-      status: {
-        type: "string",
-        enum: HEALTH_STATUSES,
-        description: "Filter by probe-derived health status.",
-      },
-      pool_eligible: {
-        type: "boolean",
-        description: "Only endpoints eligible (or not) for RPC pooling.",
-      },
-      min_latency_ms: {
-        type: "number",
-        description: "Keep endpoints with latency_ms >= this bound.",
-      },
-      max_latency_ms: {
-        type: "number",
-        description: "Keep endpoints with latency_ms <= this bound.",
-      },
-      min_score: {
-        type: "number",
-        description: "Keep endpoints with score >= this bound.",
-      },
-      max_score: {
-        type: "number",
-        description: "Keep endpoints with score <= this bound.",
-      },
-      sort: {
-        type: "string",
-        enum: ENDPOINT_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of endpoint row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["slug"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListProviderEndpointsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["slug", "endpoints"],
-  properties: {
-    slug: { type: "string" },
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    endpoints: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListProviderEndpointsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

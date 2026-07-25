@@ -508,6 +508,58 @@ import {
   ListSubnetHealthInputSchema,
   ListSubnetHealthOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
+import {
+  GetSubnetCandidatesInputSchema,
+  GetSubnetCandidatesOutputSchema,
+  ListSubnetCandidatesInputSchema,
+  ListSubnetCandidatesOutputSchema,
+  GetSubnetEvidenceInputSchema,
+  GetSubnetEvidenceOutputSchema,
+  ListSubnetEvidenceInputSchema,
+  ListSubnetEvidenceOutputSchema,
+  GetSubnetSurfacesInputSchema,
+  GetSubnetSurfacesOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-registry-lists.ts";
+import {
+  ListFixturesInputSchema,
+  ListFixturesOutputSchema,
+  ListSchemasInputSchema,
+  ListSchemasOutputSchema,
+} from "../schemas-src/mcp-tools/catalog-indexes.ts";
+import {
+  ListSearchIndexInputSchema,
+  ListSearchIndexOutputSchema,
+  ListSearchInputSchema,
+  ListSearchOutputSchema,
+} from "../schemas-src/mcp-tools/search-documents.ts";
+import {
+  ListCurationInputSchema,
+  ListCurationOutputSchema,
+  ListGapsInputSchema,
+  ListGapsOutputSchema,
+} from "../schemas-src/mcp-tools/curation-and-gaps.ts";
+import {
+  ListEnrichmentQueueInputSchema,
+  ListEnrichmentQueueOutputSchema,
+  ListAdapterCandidatesInputSchema,
+  ListAdapterCandidatesOutputSchema,
+} from "../schemas-src/mcp-tools/enrichment-queue-and-candidates.ts";
+import {
+  ListEnrichmentEvidenceInputSchema,
+  ListEnrichmentEvidenceOutputSchema,
+  ListReviewGapsInputSchema,
+  ListReviewGapsOutputSchema,
+  ListReviewEnrichmentTargetsInputSchema,
+  ListReviewEnrichmentTargetsOutputSchema,
+} from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
+import {
+  ListEndpointPoolsInputSchema,
+  ListEndpointPoolsOutputSchema,
+  ListEndpointIncidentsInputSchema,
+  ListEndpointIncidentsOutputSchema,
+  ListProviderEndpointsInputSchema,
+  ListProviderEndpointsOutputSchema,
+} from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 
 type Row = Record<string, unknown>;
 
@@ -871,6 +923,152 @@ const PROFILE_SORT_FIELDS = [
   "stale_identity_candidate_kind_count",
 ];
 const BOOLEAN_STRINGS = ["true", "false"];
+
+// Batch 10 (#8074) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/contracts.ts's QUERY_ENUMS.* and
+// API_QUERY_COLLECTIONS.{documents,curation,gaps,enrichment-queue,
+// adapter-candidates,enrichment-evidence,review-gap-priorities,
+// enrichment-targets,endpoint-pools,endpoint-incidents,endpoints}.sort_fields),
+// cross-checked against the actual runtime source at the time of writing.
+// Reuses SURFACE_KIND/COVERAGE_LEVEL/CURATION_LEVEL/PROFILE_LEVEL/
+// CANDIDATE_STATES/CONFIDENCE_LEVELS/CANDIDATES_SORT_FIELDS/CLAIM_SORT_FIELDS/
+// ENDPOINT_LAYERS/ENDPOINT_PUBLICATION_STATES/ENDPOINT_SORT_FIELDS/
+// POOL_KINDS/POOL_SORT_FIELDS/IDENTITY_LEVELS/BOOLEAN_STRINGS already
+// defined above (batches 1-9) -- confirmed identical to this batch's own
+// symbolic references, not just reused by name.
+const DOCUMENT_TYPES = ["subnet", "surface", "provider"];
+const DOCUMENT_SORT_FIELDS = ["netuid", "slug", "title", "type"];
+const CURATION_SORT_FIELDS = [
+  "coverage_level",
+  "curation_level",
+  "name",
+  "netuid",
+];
+const GAPS_SORT_FIELDS = [
+  "coverage_level",
+  "curation_level",
+  "gap_count",
+  "name",
+  "netuid",
+];
+const EVIDENCE_ACTIONS = [
+  "submit-new-evidence",
+  "verify-existing-evidence",
+  "replace-stale-evidence",
+  "review-existing-evidence",
+  "maintainer-review-existing-evidence",
+  "monitor",
+];
+const LANES = [
+  "direct-submission",
+  "maintainer-review",
+  "adapter-candidate",
+  "monitoring-followup",
+  "baseline-monitoring",
+];
+const QUEUE_SORT_FIELDS = [
+  "adapter_score",
+  "candidate_count",
+  "completeness_score",
+  "curation_level",
+  "endpoint_count",
+  "evidence_action",
+  "identity_level",
+  "identity_surface_count",
+  "lane",
+  "name",
+  "netuid",
+  "operational_interface_count",
+  "priority_score",
+  "profile_level",
+  "review_state",
+  "stale_candidate_count",
+  "surface_count",
+  "verified_candidate_count",
+];
+const RECOMMENDED_ADAPTER_KINDS = [
+  "custom-adapter",
+  "data-artifact-adapter",
+  "generic-openapi-or-custom",
+  "stream-adapter",
+];
+const ADAPTER_CANDIDATES_SORT_FIELDS = [
+  "candidate_api_count",
+  "candidate_api_kinds",
+  "curation_level",
+  "name",
+  "netuid",
+  "operational_kinds",
+  "operational_surface_count",
+  "priority_score",
+  "recommended_adapter_kind",
+];
+const EVIDENCE_SORT_FIELDS = [
+  "evidence_action",
+  "lane",
+  "name",
+  "netuid",
+  "priority_score",
+];
+const PRIORITY_SORT_FIELDS = [
+  "candidate_count",
+  "curation_level",
+  "missing_kinds",
+  "name",
+  "netuid",
+  "priority_score",
+  "surface_count",
+  "verified_candidate_count",
+];
+const SUBMISSION_ROUTES = [
+  "direct-candidate-pr",
+  "adapter-request",
+  "maintainer-review",
+  "status-report",
+];
+const TARGET_ACTIONS = [
+  "submit-new-candidate",
+  "replace-stale-candidate",
+  "verify-existing-candidate",
+  "review-existing-candidate",
+  "adapter-review",
+  "maintainer-review",
+  "monitoring-followup",
+];
+const TARGET_TYPES = [
+  "surface-candidate",
+  "adapter-review",
+  "maintainer-review",
+  "monitoring-followup",
+];
+const TARGET_SORT_FIELDS = [
+  "auto_review_candidate",
+  "evidence_action",
+  "identity_level",
+  "kind",
+  "lane",
+  "manual_review_required",
+  "name",
+  "netuid",
+  "priority_score",
+  "profile_level",
+  "submission_route",
+  "target_action",
+  "target_type",
+];
+const INCIDENT_SEVERITIES = ["critical", "warning", "info"];
+const INCIDENT_STATES = ["active", "resolved"];
+const INCIDENT_SORT_FIELDS = [
+  "detected_at",
+  "endpoint_id",
+  "kind",
+  "last_checked",
+  "netuid",
+  "provider",
+  "severity",
+  "state",
+  "status",
+];
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -6518,6 +6716,650 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_subnet_candidates: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        netuid: { type: ["integer", "null"] },
+        candidates: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+      },
+    },
+  },
+  list_subnet_candidates: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        state: { type: "string", enum: CANDIDATE_STATES },
+        id: { type: "string" },
+        confidence: { type: "string", enum: CONFIDENCE_LEVELS },
+        sort: { type: "string", enum: CANDIDATES_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["candidates"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        candidates: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_evidence: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        netuid: { type: ["integer", "null"] },
+        claims: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+      },
+    },
+  },
+  list_subnet_evidence: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        q: { type: "string" },
+        sort: { type: "string", enum: CLAIM_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["claims"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        claims: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_surfaces: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        netuid: { type: ["integer", "null"] },
+        surfaces: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+      },
+    },
+  },
+  list_fixtures: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        candidate_count: { type: "integer" },
+        coverage: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+      },
+    },
+  },
+  list_schemas: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        schemas: { type: "array", items: { type: "object" } },
+        observed_at: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        notes: NULLABLE_STRING,
+      },
+    },
+  },
+  list_search_index: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        type: { type: "string", enum: DOCUMENT_TYPES },
+        netuid: { type: "integer", minimum: 0 },
+        sort: { type: "string", enum: DOCUMENT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["documents"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        documents: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_search: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        type: { type: "string", enum: DOCUMENT_TYPES },
+        netuid: { type: "integer", minimum: 0 },
+        sort: { type: "string", enum: DOCUMENT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["documents"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        documents: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_curation: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        coverage_level: { type: "string", enum: COVERAGE_LEVEL },
+        curation_level: { type: "string", enum: CURATION_LEVEL },
+        sort: { type: "string", enum: CURATION_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["curation"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: NULLABLE_STRING,
+        curation: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_gaps: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        coverage_level: { type: "string", enum: COVERAGE_LEVEL },
+        curation_level: { type: "string", enum: CURATION_LEVEL },
+        sort: { type: "string", enum: GAPS_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["gaps"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: NULLABLE_STRING,
+        gaps: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_enrichment_queue: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        netuid: { type: "integer", minimum: 0 },
+        lane: { type: "string", enum: LANES },
+        evidence_action: { type: "string", enum: EVIDENCE_ACTIONS },
+        identity_level: { type: "string", enum: IDENTITY_LEVELS },
+        curation_level: { type: "string", enum: CURATION_LEVEL },
+        profile_level: { type: "string", enum: PROFILE_LEVEL },
+        direct_submission_kinds: { type: "string", enum: SURFACE_KIND },
+        missing_kinds: { type: "string", enum: SURFACE_KIND },
+        manual_review_required: { type: "string", enum: BOOLEAN_STRINGS },
+        reason_codes: { type: "string" },
+        review_state: { type: "string" },
+        sort: { type: "string", enum: QUEUE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["queue"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        queue: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_adapter_candidates: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        curation_level: { type: "string", enum: CURATION_LEVEL },
+        candidate_api_kinds: { type: "string", enum: SURFACE_KIND },
+        operational_kinds: { type: "string", enum: SURFACE_KIND },
+        recommended_adapter_kind: {
+          type: "string",
+          enum: RECOMMENDED_ADAPTER_KINDS,
+        },
+        reason_codes: { type: "string" },
+        sort: { type: "string", enum: ADAPTER_CANDIDATES_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["candidates"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        candidates: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_enrichment_evidence: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        netuid: { type: "integer", minimum: 0 },
+        lane: { type: "string", enum: LANES },
+        evidence_action: { type: "string", enum: EVIDENCE_ACTIONS },
+        direct_submission_kinds: { type: "string", enum: SURFACE_KIND },
+        missing_kinds: { type: "string", enum: SURFACE_KIND },
+        sort: { type: "string", enum: EVIDENCE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["entries"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        entries: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_review_gaps: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        curation_level: { type: "string", enum: CURATION_LEVEL },
+        missing_kinds: { type: "string", enum: SURFACE_KIND },
+        review_state: { type: "string" },
+        sort: { type: "string", enum: PRIORITY_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["priorities"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        priorities: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_review_enrichment_targets: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        netuid: { type: "integer", minimum: 0 },
+        target_type: { type: "string", enum: TARGET_TYPES },
+        target_action: { type: "string", enum: TARGET_ACTIONS },
+        kind: { type: "string", enum: SURFACE_KIND },
+        lane: { type: "string", enum: LANES },
+        evidence_action: { type: "string", enum: EVIDENCE_ACTIONS },
+        identity_level: { type: "string", enum: IDENTITY_LEVELS },
+        profile_level: { type: "string", enum: PROFILE_LEVEL },
+        submission_route: { type: "string", enum: SUBMISSION_ROUTES },
+        auto_review_candidate: { type: "string", enum: BOOLEAN_STRINGS },
+        manual_review_required: { type: "string", enum: BOOLEAN_STRINGS },
+        missing_kinds: { type: "string", enum: SURFACE_KIND },
+        reason_codes: { type: "string" },
+        sort: { type: "string", enum: TARGET_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["targets"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        targets: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_endpoint_pools: {
+    input: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        kind: { type: "string", enum: POOL_KINDS },
+        min_eligible_count: { type: "number" },
+        max_eligible_count: { type: "number" },
+        min_endpoint_count: { type: "number" },
+        max_endpoint_count: { type: "number" },
+        sort: { type: "string", enum: POOL_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["pools"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        pools: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_endpoint_incidents: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        status: { type: "string", enum: HEALTH_STATUS },
+        severity: { type: "string", enum: INCIDENT_SEVERITIES },
+        state: { type: "string", enum: INCIDENT_STATES },
+        sort: { type: "string", enum: INCIDENT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["incidents"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        summary: { type: ["object", "null"] },
+        incidents: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_provider_endpoints: {
+    input: {
+      type: "object",
+      properties: {
+        slug: { type: "string", pattern: "^[a-z0-9-]+$" },
+        kind: { type: "string", enum: SURFACE_KIND },
+        layer: { type: "string", enum: ENDPOINT_LAYERS },
+        netuid: { type: "integer", minimum: 0 },
+        publication_state: {
+          type: "string",
+          enum: ENDPOINT_PUBLICATION_STATES,
+        },
+        status: { type: "string", enum: HEALTH_STATUS },
+        pool_eligible: { type: "boolean" },
+        min_latency_ms: { type: "number" },
+        max_latency_ms: { type: "number" },
+        min_score: { type: "number" },
+        max_score: { type: "number" },
+        sort: { type: "string", enum: ENDPOINT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["slug", "endpoints"],
+      properties: {
+        slug: { type: "string" },
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        endpoints: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -7145,6 +7987,82 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
   list_subnet_health: {
     input: ListSubnetHealthInputSchema,
     output: ListSubnetHealthOutputSchema,
+  },
+  get_subnet_candidates: {
+    input: GetSubnetCandidatesInputSchema,
+    output: GetSubnetCandidatesOutputSchema,
+  },
+  list_subnet_candidates: {
+    input: ListSubnetCandidatesInputSchema,
+    output: ListSubnetCandidatesOutputSchema,
+  },
+  get_subnet_evidence: {
+    input: GetSubnetEvidenceInputSchema,
+    output: GetSubnetEvidenceOutputSchema,
+  },
+  list_subnet_evidence: {
+    input: ListSubnetEvidenceInputSchema,
+    output: ListSubnetEvidenceOutputSchema,
+  },
+  get_subnet_surfaces: {
+    input: GetSubnetSurfacesInputSchema,
+    output: GetSubnetSurfacesOutputSchema,
+  },
+  list_fixtures: {
+    input: ListFixturesInputSchema,
+    output: ListFixturesOutputSchema,
+  },
+  list_schemas: {
+    input: ListSchemasInputSchema,
+    output: ListSchemasOutputSchema,
+  },
+  list_search_index: {
+    input: ListSearchIndexInputSchema,
+    output: ListSearchIndexOutputSchema,
+  },
+  list_search: {
+    input: ListSearchInputSchema,
+    output: ListSearchOutputSchema,
+  },
+  list_curation: {
+    input: ListCurationInputSchema,
+    output: ListCurationOutputSchema,
+  },
+  list_gaps: {
+    input: ListGapsInputSchema,
+    output: ListGapsOutputSchema,
+  },
+  list_enrichment_queue: {
+    input: ListEnrichmentQueueInputSchema,
+    output: ListEnrichmentQueueOutputSchema,
+  },
+  list_adapter_candidates: {
+    input: ListAdapterCandidatesInputSchema,
+    output: ListAdapterCandidatesOutputSchema,
+  },
+  list_enrichment_evidence: {
+    input: ListEnrichmentEvidenceInputSchema,
+    output: ListEnrichmentEvidenceOutputSchema,
+  },
+  list_review_gaps: {
+    input: ListReviewGapsInputSchema,
+    output: ListReviewGapsOutputSchema,
+  },
+  list_review_enrichment_targets: {
+    input: ListReviewEnrichmentTargetsInputSchema,
+    output: ListReviewEnrichmentTargetsOutputSchema,
+  },
+  list_endpoint_pools: {
+    input: ListEndpointPoolsInputSchema,
+    output: ListEndpointPoolsOutputSchema,
+  },
+  list_endpoint_incidents: {
+    input: ListEndpointIncidentsInputSchema,
+    output: ListEndpointIncidentsOutputSchema,
+  },
+  list_provider_endpoints: {
+    input: ListProviderEndpointsInputSchema,
+    output: ListProviderEndpointsOutputSchema,
   },
 };
 

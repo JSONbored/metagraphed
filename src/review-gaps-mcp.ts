@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/gap-priorities.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListReviewGapsInputSchema,
+  ListReviewGapsOutputSchema,
+} from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
 
 export const REVIEW_GAPS_ARTIFACT = "/metagraph/review/gap-priorities.json";
 
@@ -198,80 +203,14 @@ export const LIST_REVIEW_GAPS_MCP_TOOL = {
     "or review_state; sort with sort + order; and page with limit (1-100) / cursor. " +
     "Distinct from list_gaps (interface facet reports at GET /api/v1/gaps) and " +
     "get_subnet_gaps (one subnet's detailed gap artifact). Mirrors GET /api/v1/review/gaps.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      curation_level: {
-        type: "string",
-        enum: CURATION_LEVELS,
-        description: "Filter by curation level.",
-      },
-      missing_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description:
-          "Filter rows whose missing_kinds include this surface kind.",
-      },
-      review_state: {
-        type: "string",
-        description: "Filter by review_state substring match.",
-      },
-      sort: {
-        type: "string",
-        enum: PRIORITY_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of priority row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListReviewGapsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_REVIEW_GAPS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["priorities"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    priorities: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_REVIEW_GAPS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListReviewGapsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);
