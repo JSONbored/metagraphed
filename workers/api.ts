@@ -1931,11 +1931,13 @@ export async function handleRequest(
     return handleSemanticSearchRequest(request, env, url);
   }
 
-  // Registry leaderboards (D1 + registry projections; fileless-D1 pattern).
+  // Registry leaderboards (registry projections; D1 fully eliminated
+  // 2026-07-17 -- the health/rpc/growth/reliability boards are unconditionally
+  // empty now, see composeLeaderboardsData/handleLeaderboards).
   if (url.pathname === "/api/v1/registry/leaderboards") {
-    // Deterministic per-cron-tick D1 leaderboard; edge-cache keyed on the health
-    // snapshot's last_run_at (auto-busts on the next probe) like the sibling
-    // analytics routes, so a polling/cross-colo burst doesn't re-run the SQL.
+    // Edge-cache keyed on the health snapshot's last_run_at (auto-busts on the
+    // next probe) like the sibling analytics routes, so a polling/cross-colo
+    // burst doesn't re-run the composition.
     return withEdgeCache(
       request,
       ctx,

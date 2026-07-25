@@ -1,6 +1,6 @@
 // Storage + IO layer for the API Worker — artifact reads (R2 + static-asset
 // tiers with fallback), the latest-pointer / health-KV reads, request logging,
-// and the timeout guards that bound R2/D1 access. Extracted from workers/api.mjs
+// and the timeout guard that bounds R2 access. Extracted from workers/api.mjs
 // (issue #510, de-monolith) as a leaf module: it imports only the artifact-tier
 // contract and a config key, and calls nothing back into api.mjs, so handlers
 // and the response builders can share it without an import cycle.
@@ -12,7 +12,6 @@ import {
 import { METAGRAPH_LATEST_KEY } from "./config.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
-const DEFAULT_D1_TIMEOUT_MS = 5000;
 
 export interface StorageReadOk {
   ok: true;
@@ -62,15 +61,6 @@ export function logEvent(
 export function r2TimeoutMs(env: Env): number {
   const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
-}
-
-// Health-analytics D1 reads (trends/percentiles/incidents/uptime) can scan large
-// time-series. Bound them so a slow/degraded query degrades to the route's normal
-// empty-result path instead of holding the isolate until the CPU limit kills it.
-// Tunable via METAGRAPH_D1_TIMEOUT_MS.
-export function d1TimeoutMs(env: Env): number {
-  const raw = Number(env.METAGRAPH_D1_TIMEOUT_MS);
-  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_D1_TIMEOUT_MS;
 }
 
 // R2's get() takes no AbortSignal, so bound it with a race: a slow/degraded

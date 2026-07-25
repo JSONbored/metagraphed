@@ -19,7 +19,7 @@ import { contractVersion, envelopeResponse } from "../responses.ts";
 import {
   analyticsMeta,
   analyticsQueryError,
-  markD1FallbackResponse,
+  markPostgresTierFallbackResponse,
   validateQueryParams,
 } from "./analytics.ts";
 import {
@@ -250,7 +250,7 @@ export async function handleTrajectory(
       request,
       TRAJECTORY_CSV_COLUMNS,
     );
-    return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
+    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
   }
   const response = await envelopeResponse(
     request,
@@ -264,7 +264,7 @@ export async function handleTrajectory(
     },
     "short",
   );
-  return isFallback ? markD1FallbackResponse(response) : response;
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // Network-wide economics time series (#1307): aggregate the per-subnet daily
@@ -308,7 +308,7 @@ export async function handleEconomicsTrends(
       request,
       ECONOMICS_TRENDS_CSV_COLUMNS,
     );
-    return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
+    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
   }
   const response = await envelopeResponse(
     request,
@@ -318,7 +318,7 @@ export async function handleEconomicsTrends(
     },
     "short",
   );
-  return isFallback ? markD1FallbackResponse(response) : response;
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces.
@@ -382,7 +382,7 @@ export async function handleUptime(
       request,
       UPTIME_CSV_COLUMNS,
     );
-    return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
+    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
   }
   const response = await envelopeResponse(
     request,
@@ -396,7 +396,7 @@ export async function handleUptime(
     },
     "short",
   );
-  return isFallback ? markD1FallbackResponse(response) : response;
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // Normalises the uptime URL so that a bare ?-free request and an explicit
@@ -622,7 +622,7 @@ export async function handleLeaderboards(
   // D1 fully eliminated (2026-07-17): the health/rpc/growth/reliability
   // boards are always empty now (see composeLeaderboardsData) -- never
   // edge-cache this as if it were a fresh read.
-  return markD1FallbackResponse(response);
+  return markPostgresTierFallbackResponse(response);
 }
 
 export function canonicalCompareCachePath(url: URL): string | null {
@@ -844,7 +844,9 @@ export async function handleCompare(
     },
     "standard",
   );
-  return healthIsFallback ? markD1FallbackResponse(response) : response;
+  return healthIsFallback
+    ? markPostgresTierFallbackResponse(response)
+    : response;
 }
 
 // Shared input for both domain-rollup routes below: the subnets index (netuid

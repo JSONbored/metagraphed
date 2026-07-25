@@ -19,7 +19,7 @@ import {
   handleChainFees,
   validateQueryParams,
   analyticsWindow,
-  markD1FallbackResponse,
+  markPostgresTierFallbackResponse,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
   canonicalHealthWindowCachePath,
@@ -757,10 +757,10 @@ describe("analyticsQueryError", () => {
 // payload on a Postgres-tier miss, never a live D1 read, so the D1 read
 // path + its fallback-row bookkeeping had zero remaining callers.
 
-describe("markD1FallbackResponse", () => {
-  test("markD1FallbackResponse tags a Response object", () => {
+describe("markPostgresTierFallbackResponse", () => {
+  test("markPostgresTierFallbackResponse tags a Response object", () => {
     const response = new Response("{}");
-    const tagged = markD1FallbackResponse(response);
+    const tagged = markPostgresTierFallbackResponse(response);
     assert.equal(tagged, response);
   });
 });
@@ -918,7 +918,7 @@ describe("withEdgeCache", () => {
       env,
       "bulk-trends",
       async () =>
-        markD1FallbackResponse(
+        markPostgresTierFallbackResponse(
           new Response(JSON.stringify({ ok: true }), { status: 200 }),
         ),
     );
@@ -1097,7 +1097,7 @@ describe("handleBulkHealthTrends", () => {
   test("edge cache MISS then HIT avoids a second DATA_API call", async () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier miss now falls straight
     // through to an empty payload that's ALWAYS marked a D1 fallback, so it can
-    // never be cached (mirrors withEdgeCache's own D1_FALLBACK_RESPONSES guard).
+    // never be cached (mirrors withEdgeCache's own POSTGRES_TIER_FALLBACK_RESPONSES guard).
     // The only path that still gets cached is a Postgres-tier HIT, so that's
     // what this now exercises -- was a D1-mock MISS/HIT pair.
     originalCaches = globalWithCaches.caches;
