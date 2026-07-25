@@ -1374,7 +1374,7 @@ async function getJson(url: string, env: Row) {
   return { status: res.status, body: await res.json() };
 }
 
-describe("analytics routes (cold local D1)", () => {
+describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)", () => {
   const env = createLocalArtifactEnv();
   test("percentiles returns an empty-but-valid envelope", async () => {
     const { status, body } = await getJson(
@@ -1392,7 +1392,7 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.deepEqual(body.data.surfaces, []);
   });
-  test("D1 analytics routes reject non-canonical query strings before D1", async () => {
+  test("analytics routes reject non-canonical query strings before the Postgres tier", async () => {
     const cases = [
       ["/api/v1/subnets/7/health/percentiles?window=bogus", "window"],
       ["/api/v1/subnets/7/health/incidents?window=7d&cacheBust=x", "cacheBust"],
@@ -1429,36 +1429,62 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.equal(body.data.point_count, 0);
   });
-  test("a hung D1 query times out and degrades to empty (never blocks the isolate)", async () => {
-    // METAGRAPH_HEALTH_DB whose .all() never resolves + a 50ms D1 timeout: each
-    // route must still return its normal cold/empty envelope. Without the
-    // withTimeout wrap this test would hang until the test runner kills it.
-    const hangingDb = {
-      prepare: () => ({ bind: () => ({ all: () => new Promise(() => {}) }) }),
-    };
-    const hungEnv = {
+  test("a failing Postgres-tier DATA_API call degrades to empty (never a client-facing error), captured for real observability (metagraphed#8081 follow-up)", async () => {
+    // D1 is fully eliminated (2026-07-17, reconfirmed live 2026-07-25 -- zero
+    // D1 databases remain on the account) -- this used to mock a hanging D1
+    // .all() call, but METAGRAPH_HEALTH_SOURCE was never set to "postgres" in
+    // that version, so tryPostgresTier short-circuited on the tier-flag check
+    // before ever touching the (fictional) D1 mock: the test was vacuous. The
+    // real failure mode tryPostgresTier actually protects against today is a
+    // rejected DATA_API fetch (workers/postgres-tier.ts) -- exercise that,
+    // and confirm it now reaches PostHog's $exception capture too (added
+    // alongside this fix), not just Wrangler's own log tail.
+    const posted: Row[] = [];
+    const failingEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: hangingDb,
-      METAGRAPH_D1_TIMEOUT_MS: "50",
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      POSTHOG_PROJECT_TOKEN: "phc_test",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("DATA_API unreachable");
+        },
+      },
     };
-    // percentiles → d1All (shared helper); trends → handleHealthTrends (inline query)
-    const pct = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles",
-      hungEnv,
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push({ url, body: JSON.parse(init!.body as string) });
+      return { ok: true };
+    }) as typeof fetch;
+    try {
+      const pct = await getJson(
+        "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles",
+        failingEnv,
+      );
+      assert.equal(pct.status, 200);
+      assert.deepEqual(pct.body.data.surfaces, []);
+      const trends = await getJson(
+        "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
+        failingEnv,
+      );
+      assert.equal(trends.status, 200);
+      const bulkTrends = await getJson(
+        "https://api.metagraph.sh/api/v1/health/trends",
+        failingEnv,
+      );
+      assert.equal(bulkTrends.status, 200);
+      assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
+    } finally {
+      globalThis.fetch = original;
+    }
+    const exceptionPost = posted.find((p) => p.body.event === "$exception");
+    assert.ok(
+      exceptionPost,
+      "a Postgres-tier DATA_API failure should reach PostHog as $exception",
     );
-    assert.equal(pct.status, 200);
-    assert.deepEqual(pct.body.data.surfaces, []);
-    const trends = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
-      hungEnv,
+    assert.equal(
+      exceptionPost.body.properties.route,
+      "postgres-tier:METAGRAPH_HEALTH_SOURCE",
     );
-    assert.equal(trends.status, 200);
-    const bulkTrends = await getJson(
-      "https://api.metagraph.sh/api/v1/health/trends",
-      hungEnv,
-    );
-    assert.equal(bulkTrends.status, 200);
-    assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
   });
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
     const profileEnv = createLocalArtifactEnv({
@@ -1586,12 +1612,19 @@ describe("analytics routes reject malformed params before any tier call", () => 
   });
 });
 
-describe("analytics routes tolerate a failing D1", () => {
+describe("analytics routes tolerate a failing Postgres tier (D1 fully eliminated)", () => {
+  // Same vacuous-mock bug as the "hung D1 query" test above: METAGRAPH_HEALTH_DB
+  // is never read by any live code (D1 is gone), and METAGRAPH_HEALTH_SOURCE was
+  // never set to "postgres" here either, so tryPostgresTier short-circuited on
+  // the tier-flag check before this mock could matter either way. leaderboards
+  // doesn't go through tryPostgresTier at all (composeLeaderboardsData's boards
+  // are unconditionally empty now, D1 fully eliminated) -- unaffected either way.
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        throw new Error("d1 unavailable");
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () => {
+        throw new Error("DATA_API unreachable");
       },
     },
   };

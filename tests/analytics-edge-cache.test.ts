@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
 import {
-  markD1FallbackResponse,
+  markPostgresTierFallbackResponse,
   withEdgeCache,
 } from "../workers/request-handlers/analytics.ts";
 import {
@@ -1088,7 +1088,7 @@ describe("analytics edge cache", () => {
           },
           "short",
         );
-        return markD1FallbackResponse(response);
+        return markPostgresTierFallbackResponse(response);
       },
     );
     await Promise.resolve();
@@ -1103,7 +1103,7 @@ describe("analytics edge cache", () => {
   });
 
   // #6012: handleSubnetStakeFlow / handleBlocksSummary used to pass the
-  // *Promise* from envelopeResponse into markD1FallbackResponse. withEdgeCache
+  // *Promise* from envelopeResponse into markPostgresTierFallbackResponse. withEdgeCache
   // then saw the awaited Response (a different object) and cached the stub.
   test("NO-CACHE-ON-ERROR: handleSubnetStakeFlow stub is marked and not edge-cached (#6012)", async () => {
     originalCaches = globalWithCaches.caches;

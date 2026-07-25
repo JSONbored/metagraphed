@@ -1,18 +1,20 @@
 // Analytics handlers + the edge-cache guard that protects them.
 //
-// D1 fully eliminated (2026-07-17): every handler in this file now goes
+// D1 fully eliminated (2026-07-17, reconfirmed live 2026-07-25 -- zero D1
+// databases remain on the account): every handler in this file now goes
 // straight to a schema-stable empty payload on a Postgres-tier miss, never a
 // live D1 read -- the D1 read path (`d1All`) and its fallback-row bookkeeping
 // (`markD1FallbackRows`/`hasD1FallbackRows`/the `d1FallbackGeneration`
 // counter) were deleted once they had zero remaining callers.
 //
-// What's left is `markD1FallbackResponse` + the `D1_FALLBACK_RESPONSES`
-// WeakSet (the name is legacy -- it now just means "this response used the
-// degraded/empty-fallback path, not a real tier hit") and `withEdgeCache`,
-// which reads that WeakSet to decide whether a 200 may be persisted into the
-// edge cache: `markD1FallbackResponse` must tag an *awaited* Response, and
-// `withEdgeCache` must inspect that same object, or a degraded payload could
-// poison the edge cache (the #1760 bug class).
+// What's left is `markPostgresTierFallbackResponse` + the
+// `POSTGRES_TIER_FALLBACK_RESPONSES` WeakSet (renamed 2026-07-25 -- it means
+// "this response used the degraded/empty-fallback path, not a real tier
+// hit") and `withEdgeCache`, which reads that WeakSet to decide whether a
+// 200 may be persisted into the edge cache: `markPostgresTierFallbackResponse`
+// must tag an *awaited* Response, and `withEdgeCache` must inspect that same
+// object, or a degraded payload could poison the edge cache (the #1760 bug
+// class).
 //
 // The handlers depend on one api.mjs-local helper (`readHealthMetaKv`, an
 // in-isolate memoized KV read that stays in api.mjs because the deferred clusters
@@ -314,10 +316,10 @@ function validateMaxLength(
   return null;
 }
 
-const D1_FALLBACK_RESPONSES = new WeakSet<Response>();
+const POSTGRES_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
 
-function markD1FallbackResponse(response: Response): Response {
-  D1_FALLBACK_RESPONSES.add(response);
+function markPostgresTierFallbackResponse(response: Response): Response {
+  POSTGRES_TIER_FALLBACK_RESPONSES.add(response);
   return response;
 }
 
@@ -338,10 +340,12 @@ async function analyticsMeta(
   };
 }
 
-// Edge-cache wrapper for the D1-backed analytics routes (audit #6). Each of these
-// re-runs a full-window D1 aggregation on EVERY request, yet the result only
-// changes when the health cron writes a new snapshot — so a cross-colo / agent-
-// polling burst re-executes the same 7d/30d aggregation needlessly. Mirrors the
+// Edge-cache wrapper for the Postgres-backed analytics routes (audit #6). Each
+// of these re-runs a full-window Postgres aggregation on EVERY request, yet
+// the result only changes when the health cron writes a new snapshot — so a
+// cross-colo / agent-polling burst re-executes the same 7d/30d aggregation
+// needlessly (D1 fully eliminated 2026-07-17 -- see this file's own header).
+// Mirrors the
 // live-overlay collection cache exactly (the CACHEABLE_OVERLAY_ROUTE_IDS path):
 // same Cache API, same `edge-cache.metagraph.sh` key host, same last_run_at
 // keying, same conditional-GET 304 short-circuit, same ctx.waitUntil put.
@@ -440,7 +444,7 @@ export async function withEdgeCache(
     cache &&
     cacheKey &&
     response.status === 200 &&
-    !D1_FALLBACK_RESPONSES.has(response) &&
+    !POSTGRES_TIER_FALLBACK_RESPONSES.has(response) &&
     currentPostgresTierFallbackGeneration() === pgFallbackGeneration
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
@@ -450,7 +454,8 @@ export async function withEdgeCache(
     : response;
 }
 
-// D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
+// Postgres-backed 7d/30d daily uptime + latency trends across all subnets
+// (D1 fully eliminated 2026-07-17 -- see this file's own header). This is a
 // compact matrix feed for UI dashboards and agents, so it groups by netuid/day
 // instead of returning every surface series.
 export async function handleBulkHealthTrends(
@@ -515,14 +520,15 @@ export async function handleBulkHealthTrends(
         },
         "short",
       );
-      return isFallback ? markD1FallbackResponse(response) : response;
+      return isFallback ? markPostgresTierFallbackResponse(response) : response;
     },
   );
 }
 
-// D1-backed 7d/30d uptime + latency trends for one subnet's operational
-// surfaces. Returns a schema-stable empty payload when D1 is unbound/cold so it
-// never errors (mirrors the live-overlay fall-back philosophy). The query +
+// Postgres-backed 7d/30d uptime + latency trends for one subnet's operational
+// surfaces (D1 fully eliminated 2026-07-17 -- see this file's own header).
+// Returns a schema-stable empty payload on a Postgres-tier miss so it never
+// errors (mirrors the live-overlay fall-back philosophy). The query +
 // formatting live in loadSubnetHealthTrends (src/analytics-live.mjs) so the
 // get_subnet_health_trends MCP tool shares this exact read path (#2335).
 export async function handleHealthTrends(
@@ -573,11 +579,12 @@ export async function handleHealthTrends(
       },
       "short",
     );
-    return usedFallback ? markD1FallbackResponse(response) : response;
+    return usedFallback ? markPostgresTierFallbackResponse(response) : response;
   });
 }
 
-// p50/p95/p99 latency percentiles per surface, computed in D1. The query +
+// p50/p95/p99 latency percentiles per surface, computed in Postgres (D1 fully
+// eliminated 2026-07-17 -- see this file's own header). The query +
 // formatting live in loadSubnetPercentiles (src/analytics-live.mjs) so the
 // get_subnet_health_percentiles MCP tool shares this exact read path.
 export async function handleHealthPercentiles(
@@ -626,7 +633,9 @@ export async function handleHealthPercentiles(
         },
         "short",
       );
-      return usedFallback ? markD1FallbackResponse(response) : response;
+      return usedFallback
+        ? markPostgresTierFallbackResponse(response)
+        : response;
     },
     canonicalHealthWindowCachePath(url),
   );
@@ -679,7 +688,9 @@ export async function handleHealthIncidents(
         },
         "short",
       );
-      return usedFallback ? markD1FallbackResponse(response) : response;
+      return usedFallback
+        ? markPostgresTierFallbackResponse(response)
+        : response;
     },
     canonicalHealthWindowCachePath(url),
   );
@@ -765,7 +776,7 @@ export async function handleGlobalIncidents(
     "short",
     link ? { link } : {},
   );
-  return isFallback ? markD1FallbackResponse(response) : response;
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // Explicit CSV column order for the chain-analytics ?format=csv exports (#2532).
@@ -1078,7 +1089,7 @@ export async function handleChainCalls(
             ? CHAIN_CALLS_FUNCTION_CSV_COLUMNS
             : CHAIN_CALLS_CSV_COLUMNS,
         );
-        return usedFallback ? markD1FallbackResponse(csvRes) : csvRes;
+        return usedFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -1092,7 +1103,9 @@ export async function handleChainCalls(
         },
         "short",
       );
-      return usedFallback ? markD1FallbackResponse(response) : response;
+      return usedFallback
+        ? markPostgresTierFallbackResponse(response)
+        : response;
     },
     `${canonicalAnalyticsCacheRoute(url, {
       window: label,
@@ -2345,6 +2358,6 @@ export {
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
   analyticsWindow,
-  markD1FallbackResponse,
+  markPostgresTierFallbackResponse,
   validateQueryParams,
 };

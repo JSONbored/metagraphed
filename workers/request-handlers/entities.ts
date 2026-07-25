@@ -42,7 +42,7 @@ import { csvRequested, csvResponse } from "../csv.ts";
 import { validateResponseTripwire } from "../../src/response-validation-tripwire.ts";
 import {
   analyticsQueryError,
-  markD1FallbackResponse,
+  markPostgresTierFallbackResponse,
   validateQueryParams,
 } from "./analytics.ts";
 import type { QueryError } from "../list-query.ts";
@@ -621,10 +621,10 @@ function parseBoundedIntParam(
   return { value };
 }
 
-// --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
-// (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
-// unbound/cold D1 returns a schema-stable empty payload, like the other
-// D1-backed analytics routes.
+// --- Per-UID metagraph (#1304/#1305) --- D1 fully eliminated (2026-07-17);
+// neurons' D1 write path was retired in #4772/#4909 (see handleSubnetMetagraph
+// below), so this now serves a schema-stable literal rather than a live
+// query, like the other Postgres-backed analytics routes.
 async function metagraphMeta(
   env: Env,
   artifactPath: string,
@@ -2910,7 +2910,7 @@ export async function handleSubnetStakeFlow(
     },
     "short",
   );
-  return pgPayload ? response : markD1FallbackResponse(response);
+  return pgPayload ? response : markPostgresTierFallbackResponse(response);
 }
 
 // One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
@@ -4812,7 +4812,7 @@ export async function handleBlocksSummary(
     },
     "short",
   );
-  return pgData ? response : markD1FallbackResponse(response);
+  return pgData ? response : markPostgresTierFallbackResponse(response);
 }
 
 // GET /api/v1/blocks/{ref}: per-block detail (#1345). ref is a numeric
