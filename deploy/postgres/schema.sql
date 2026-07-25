@@ -96,6 +96,24 @@ CREATE INDEX IF NOT EXISTS idx_ae_coldkey  ON account_events (coldkey, block_num
 CREATE INDEX IF NOT EXISTS idx_ae_netuid   ON account_events (netuid, block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_ae_observed ON account_events (observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ae_extrinsic ON account_events (block_number, extrinsic_index);
+-- GET /api/v1/accounts/:ss58's two-branch hotkey=/coldkey= scans
+-- (workers/data-api.ts, added by the METAGRAPHED-5/#6878 fix) lead
+-- their ORDER BY with observed_at (added later, for hypertable chunk
+-- exclusion elsewhere -- see the /api/v1/extrinsics list route's own
+-- comment) but idx_ae_hotkey/idx_ae_coldkey above are still ordered by
+-- block_number, not observed_at -- confirmed live via EXPLAIN: for a
+-- coldkey with tens of millions of rows (a treasury/burn-style address),
+-- every chunk that could contain it gets a full Sort of its ENTIRE
+-- matching set before ChunkAppend can apply the outer LIMIT, since the
+-- per-chunk scan isn't already in the final sort order -- the exact same
+-- "index doesn't match this ORDER BY" bug METAGRAPHED-5/6 already found
+-- and fixed for the OTHER predicate shapes (event_kind-qualified scans get
+-- idx_ae_kind_hotkey_observed/idx_ae_kind_coldkey_observed below; this is
+-- the plain, no-event_kind-filter case those don't cover). Root-caused
+-- 2026-07-25 chasing a live statement-timeout incident PostHog's new
+-- distributed tracing/error capture surfaced (243 occurrences in ~35min).
+CREATE INDEX IF NOT EXISTS idx_ae_hotkey_observed  ON account_events (hotkey, observed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ae_coldkey_observed ON account_events (coldkey, observed_at DESC);
 -- #2079: covers the /subnets/{netuid}/events ?kind filter (unindexed post-filter today).
 CREATE INDEX IF NOT EXISTS idx_ae_netuid_kind ON account_events (netuid, event_kind, block_number DESC);
 -- #4832 Tier 2: covers the network-wide (no netuid filter) `event_kind = ? AND
