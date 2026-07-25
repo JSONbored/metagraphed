@@ -145,7 +145,7 @@ describe("#7853 breadcrumb de-duplication: AppShell crumbLabel wiring", () => {
     "utf8",
   );
   const blocksRouteSource = readFileSync(
-    fileURLToPath(new URL("./blocks.$ref.tsx", import.meta.url)),
+    fileURLToPath(new URL("./-blocks-ref-page.tsx", import.meta.url)),
     "utf8",
   );
 
