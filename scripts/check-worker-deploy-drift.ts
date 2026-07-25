@@ -8,10 +8,8 @@
 // compares the live deployment's commit -- read from the workers/message
 // annotation that scripts/deploy-worker-with-sourcemaps.sh's `--message
 // "$(git rev-parse HEAD)"` sets on every deploy -- against origin/main HEAD,
-// falling back to Sentry's release tracking if that annotation is ever
-// absent (e.g. a deployment predating the #7224 fix), and fails the
-// scheduled job once the drift has persisted across a prior scheduled run
-// (see evaluateDeployDrift below for the grace-window rule).
+// and fails the scheduled job once the drift has persisted across a prior
+// scheduled run (see evaluateDeployDrift below for the grace-window rule).
 //
 // #7224: this previously read a `workers/commit_hash` annotation that never
 // existed for Cloudflare Workers deployments (confirmed against wrangler's
@@ -25,15 +23,8 @@ type Row = Record<string, unknown>;
 
 const DEPLOYMENTS_PATH_TEMPLATE =
   "https://api.cloudflare.com/client/v4/accounts/{accountId}/workers/scripts/{scriptName}/deployments";
-const SENTRY_RELEASES_PATH_TEMPLATE =
-  "https://sentry.io/api/0/projects/{org}/{project}/releases/";
-// A bare 40-hex-char git SHA is what both a real deployment's workers/message
-// annotation (deploy-worker-with-sourcemaps.sh's --message) and a real
-// production Sentry release's version (workers/api.sentry.ts's
-// `release: env.SENTRY_RELEASE || ...`) should contain. PR-preview deploys
-// (apps/ui/.github/workflows/ui-preview-deploy.yml) tag Sentry releases
-// "<sha>-preview" -- excluded so a preview build is never mistaken for what's
-// actually live in production.
+// A bare 40-hex-char git SHA is what a real deployment's workers/message
+// annotation (deploy-worker-with-sourcemaps.sh's --message) should contain.
 const PRODUCTION_RELEASE_VERSION_PATTERN = /^[0-9a-f]{40}$/i;
 
 export function extractDeployedCommitSha(deploymentsJson: Row): string {
@@ -54,59 +45,6 @@ export function extractDeployedCommitSha(deploymentsJson: Row): string {
     );
   }
   return message;
-}
-
-// Fallback for a deployment whose workers/message annotation is absent or
-// not SHA-shaped (e.g. one predating the #7224 --message fix): @sentry/
-// cloudflare's withSentry() (workers/api.sentry.ts) already tags every
-// production error event with the real deployed commit SHA as its Sentry
-// release, independent of Cloudflare's own deployment bookkeeping. Sorts by
-// dateCreated rather than trusting response order, since that isn't
-// documented/guaranteed.
-export function selectLatestProductionRelease(
-  releases: Row[] | null | undefined,
-): Row | null {
-  if (!Array.isArray(releases)) {
-    return null;
-  }
-  const candidates = releases.filter(
-    (release) =>
-      typeof release?.version === "string" &&
-      PRODUCTION_RELEASE_VERSION_PATTERN.test(release.version as string),
-  );
-  if (candidates.length === 0) {
-    return null;
-  }
-  return candidates.sort(
-    (a, b) =>
-      new Date(b.dateCreated as string).getTime() -
-      new Date(a.dateCreated as string).getTime(),
-  )[0];
-}
-
-export async function findLatestProductionReleaseCommit({
-  sentryAuthToken,
-  sentryOrg,
-  sentryProject,
-}: {
-  sentryAuthToken: string;
-  sentryOrg: string;
-  sentryProject: string;
-}): Promise<string | null> {
-  const releasesUrl = SENTRY_RELEASES_PATH_TEMPLATE.replace(
-    "{org}",
-    sentryOrg,
-  ).replace("{project}", sentryProject);
-  const res = await fetch(releasesUrl, {
-    headers: { Authorization: `Bearer ${sentryAuthToken}` },
-  });
-  if (!res.ok) {
-    throw new Error(
-      `Sentry releases API returned HTTP ${res.status}: ${await res.text()}`,
-    );
-  }
-  const latest = selectLatestProductionRelease((await res.json()) as Row[]);
-  return (latest?.version as string | undefined) ?? null;
 }
 
 export function findPreviousScheduledRunAt(
@@ -233,39 +171,8 @@ async function main(): Promise<number> {
       (await deploymentsRes.json()) as Row,
     );
   } catch (cfError) {
-    // Fall back to Sentry's release tracking (see findLatestProductionReleaseCommit
-    // above) rather than failing outright -- this is what actually let a maintainer
-    // confirm live code was current while this annotation gap was unresolved.
-    const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
-    if (!sentryAuthToken) {
-      console.error(`::error::${(cfError as Error).message}`);
-      return 1;
-    }
-    console.error(
-      `::warning::${(cfError as Error).message} -- falling back to Sentry's latest release commit.`,
-    );
-    let fallbackSha: string | null;
-    try {
-      fallbackSha = await findLatestProductionReleaseCommit({
-        sentryAuthToken,
-        sentryOrg: process.env.SENTRY_ORG || "jsonbored",
-        sentryProject: process.env.SENTRY_PROJECT || "metagraphed",
-      });
-    } catch (sentryError) {
-      console.error(`::error::${(cfError as Error).message}`);
-      console.error(
-        `::error::Sentry fallback also failed: ${(sentryError as Error).message}`,
-      );
-      return 1;
-    }
-    if (!fallbackSha) {
-      console.error(`::error::${(cfError as Error).message}`);
-      console.error(
-        "::error::Sentry fallback found no production release either.",
-      );
-      return 1;
-    }
-    deployedCommitSha = fallbackSha;
+    console.error(`::error::${(cfError as Error).message}`);
+    return 1;
   }
 
   let previousScheduledRunAt: string | null = null;
