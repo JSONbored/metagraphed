@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
+import {
+  POSTHOG_PROJECT_TOKEN_ENV,
+  USAGE_EVENT_DISTINCT_ID,
+} from "../src/usage-telemetry.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
@@ -433,6 +436,147 @@ describe("MCP tool-dispatch usage telemetry", () => {
   });
 });
 
+// metagraphed#7153: real per-caller identity. @cloudflare/workers-oauth-provider
+// stamps `ctx.props` on the ExecutionContext once it has validated the
+// caller's Bearer token (src/github-oauth.ts) -- buildContext resolves that
+// into a namespaced PostHog distinct_id, threaded through every telemetry
+// event this dispatch path emits.
+describe("MCP telemetry distinct_id resolution (#7153)", () => {
+  function fakeExecutionCtxWithProps(props?: Row) {
+    const scheduled: Promise<unknown>[] = [];
+    return {
+      scheduled,
+      waitUntil: (promise: Promise<unknown>) => scheduled.push(promise),
+      ...(props !== undefined ? { props } : {}),
+    };
+  }
+
+  test("an authenticated caller's events carry distinct_id github:<login>", async () => {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push({ url, body: JSON.parse(init!.body as string) });
+      return { ok: true };
+    }) as typeof fetch;
+    try {
+      const executionCtx = fakeExecutionCtxWithProps({
+        githubUserId: 12345,
+        githubLogin: "octocat",
+      });
+      const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+        executionCtx,
+      });
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(payload.result.isError, false);
+      assert.equal(posted.length, 2);
+      for (const post of posted) {
+        assert.equal(post.body.distinct_id, "github:octocat");
+      }
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("an anonymous caller (no executionCtx.props) still falls back to the shared distinct_id", async () => {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push({ url, body: JSON.parse(init!.body as string) });
+      return { ok: true };
+    }) as typeof fetch;
+    try {
+      const executionCtx = fakeExecutionCtxWithProps();
+      const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+        executionCtx,
+      });
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(payload.result.isError, false);
+      assert.equal(posted.length, 2);
+      for (const post of posted) {
+        assert.equal(post.body.distinct_id, USAGE_EVENT_DISTINCT_ID);
+      }
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("a malformed (non-string) githubLogin is treated as anonymous, not a crash", async () => {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push({ url, body: JSON.parse(init!.body as string) });
+      return { ok: true };
+    }) as typeof fetch;
+    try {
+      const executionCtx = fakeExecutionCtxWithProps({ githubLogin: 12345 });
+      const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+        executionCtx,
+      });
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(payload.result.isError, false);
+      const usagePost = posted.find((p) => p.body.event === "usage_event");
+      assert.ok(usagePost);
+      assert.equal(usagePost.body.distinct_id, USAGE_EVENT_DISTINCT_ID);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  // Proves the full chain end-to-end: executionCtx.props -> buildContext's
+  // McpCtx.distinctId -> the ask tool handler -> askQuestion's AskDeps ->
+  // recordAiGenerationEvent -- not just the usage_event/$mcp_tool_call
+  // schedulers covered above, which don't exercise the ask tool's own
+  // separate distinctId passthrough (src/mcp-server.ts's ask handler,
+  // src/ai-search.ts's askQuestion).
+  test("the ask tool attributes its $ai_generation event to the same resolved identity", async () => {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push({ url, body: JSON.parse(init!.body as string) });
+      return { ok: true };
+    }) as typeof fetch;
+    try {
+      const executionCtx = fakeExecutionCtxWithProps({
+        githubLogin: "octocat",
+      });
+      const env = {
+        ...CONFIGURED_ENV,
+        METAGRAPH_ENABLE_AI: "true",
+        AI: {
+          run(_model: unknown, input: Row) {
+            if (input?.text) {
+              const n = Array.isArray(input.text) ? input.text.length : 1;
+              return Promise.resolve({
+                data: Array.from({ length: n }, () =>
+                  new Array(1024).fill(0.02),
+                ),
+              });
+            }
+            return Promise.resolve({ response: "answer." });
+          },
+        },
+        VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+      };
+      const payload = await callMcp(
+        toolCall("ask", { question: "which subnet does images?" }),
+        env,
+        { executionCtx },
+      );
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(payload.result.isError, false);
+      const aiPost = posted.find((p) => p.body.event === "$ai_generation");
+      assert.ok(aiPost, "$ai_generation should be posted");
+      assert.equal(aiPost.body.distinct_id, "github:octocat");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
 // metagraphed#7758: dispatchTool's PostHog $exception capture, parallel-run
 // alongside the existing Sentry.captureException at the same site. Uses the
 // same real internal-error trigger as
@@ -523,6 +667,48 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
       );
     } finally {
       globalThis.fetch = original;
+    }
+  });
+
+  // Mirrors the usage_event/$mcp_tool_call/$mcp_initialize failure-mode tests
+  // above -- scheduleExceptionEvent's own .catch(() => false), now actually
+  // reachable via injection since buildContext threads recordExceptionEvent
+  // through (fixed alongside #7153; it previously only copied
+  // recordUsageEvent onto ctx, so this exact injection silently no-opped).
+  test("an $exception telemetry failure changes nothing about the tool result", async () => {
+    const baseline = await callMcp(
+      toolCall("semantic_search", { query: "images" }),
+      aiEnv(),
+    );
+    assert.equal(baseline.result.isError, true);
+
+    const failureModes: Record<string, Row> = {
+      "recorder rejects": {
+        recordExceptionEvent: () => Promise.reject(new Error("posthog down")),
+        executionCtx: fakeExecutionCtx(),
+      },
+      "recorder throws synchronously": {
+        recordExceptionEvent: () => {
+          throw new Error("recorder exploded");
+        },
+        executionCtx: fakeExecutionCtx(),
+      },
+    };
+
+    for (const [mode, deps] of Object.entries(failureModes)) {
+      const payload = await callMcp(
+        toolCall("semantic_search", { query: "images" }),
+        aiEnv(),
+        deps,
+      );
+      if (Array.isArray(deps.executionCtx?.scheduled)) {
+        await Promise.allSettled(deps.executionCtx.scheduled);
+      }
+      assert.deepEqual(
+        payload,
+        baseline,
+        `telemetry mode changed the result: ${mode}`,
+      );
     }
   });
 });

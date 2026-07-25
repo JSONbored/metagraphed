@@ -20,7 +20,10 @@ import {
 import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { overlayCatalogIndex } from "../src/health-serving.ts";
-import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
+import {
+  POSTHOG_PROJECT_TOKEN_ENV,
+  USAGE_EVENT_DISTINCT_ID,
+} from "../src/usage-telemetry.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
@@ -1034,6 +1037,75 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
       await askQuestion(mockEnv(env), "Which subnet does images?");
     });
     assert.equal(calls.length, 0);
+  });
+
+  // metagraphed#7153: an authenticated MCP caller's real identity (threaded
+  // from McpCtx.distinctId, resolved from a validated GitHub OAuth login)
+  // attributes the $ai_generation event to them instead of the shared
+  // anonymous fallback -- same deps.distinctId passthrough on both the
+  // success and error paths.
+  test("attributes a successful $ai_generation event to the passed-in distinctId", async () => {
+    const calls: Row[] = [];
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: stubAi(),
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await askQuestion(
+        mockEnv(env),
+        "Which subnet does images?",
+        {},
+        { distinctId: "github:octocat" },
+      );
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].distinct_id, "github:octocat");
+  });
+
+  test("attributes a failed $ai_generation event to the passed-in distinctId", async () => {
+    const calls: Row[] = [];
+    const failingAi = {
+      run(model: string, input: Row) {
+        if (model === EMBED_MODEL) {
+          const n = Array.isArray(input.text) ? input.text.length : 1;
+          return Promise.resolve({
+            data: Array.from({ length: n }, () => new Array(1024).fill(0.02)),
+          });
+        }
+        return Promise.reject(new Error("Workers AI unavailable"));
+      },
+    };
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: failingAi,
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await assert.rejects(() =>
+        askQuestion(
+          mockEnv(env),
+          "Which subnet does images?",
+          {},
+          { distinctId: "github:octocat" },
+        ),
+      );
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].distinct_id, "github:octocat");
+  });
+
+  test("falls back to the shared anonymous distinct_id when no distinctId is passed", async () => {
+    const calls: Row[] = [];
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: stubAi(),
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await askQuestion(mockEnv(env), "Which subnet does images?");
+    });
+    assert.equal(calls[0].distinct_id, USAGE_EVENT_DISTINCT_ID);
   });
 });
 

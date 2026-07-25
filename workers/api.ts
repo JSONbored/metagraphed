@@ -1568,7 +1568,7 @@ export async function handleRequest(
   // which would otherwise just 404 as rpc_network_unsupported instead of
   // reaching this dedicated, differently-authed handler).
   if (url.pathname === "/rpc/v1/fullnode") {
-    return handleFullnodeRpcProxyRequest(request, env, url);
+    return handleFullnodeRpcProxyRequest(request, env, url, ctx);
   }
 
   if (url.pathname.startsWith("/rpc/v1/")) {

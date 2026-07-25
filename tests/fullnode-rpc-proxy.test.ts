@@ -11,8 +11,12 @@
 // {valid, code, tier, accountId} shape each test needs, exactly the
 // contract workers/data-api.mjs's handleApiKeyVerify actually returns.
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test } from "vitest";
+import { afterEach, beforeEach, describe, test } from "vitest";
 import { handleFullnodeRpcProxyRequest } from "../workers/request-handlers/fullnode-rpc-proxy.ts";
+import {
+  POSTHOG_CAPTURE_PATH,
+  USAGE_EVENT_NAME,
+} from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
 
 function createFakeKv() {
@@ -547,4 +551,149 @@ test("fails over to a second configured origin when one is unreachable", async (
   const body = (await res.json()) as Row;
   assert.equal(body.result, "ok");
   assert.ok(calls >= 1);
+});
+
+// PostHog usage telemetry (metagraphed#7153): fullnode-rpc-proxy.ts is the one
+// route with genuine per-caller identity already available pre-request (the
+// resolved Unkey accountId), so it records its own event directly rather than
+// going through the generic withUsageTelemetry chokepoint (which explicitly
+// excludes "the RPC proxy" — workers/api.ts's usageRouteLabel). The capture
+// POST and the proxied RPC call both go through the same monkey-patched
+// globalThis.fetch, matching this file's own established convention, so these
+// tests distinguish them by URL.
+describe("PostHog usage telemetry", () => {
+  function captureCalls(
+    rpcResult: unknown = { jsonrpc: "2.0", id: 1, result: "ok" },
+  ) {
+    const captures: Row[] = [];
+    globalThis.fetch = (async (url: unknown, init?: Row) => {
+      if (String(url).includes(POSTHOG_CAPTURE_PATH)) {
+        captures.push(JSON.parse(init!.body));
+        return new Response(null, { status: 200 });
+      }
+      return new Response(JSON.stringify(rpcResult), { status: 200 });
+    }) as unknown as typeof fetch;
+    return captures;
+  }
+
+  function fakeCtx() {
+    const pending: Promise<unknown>[] = [];
+    return {
+      ctx: { waitUntil: (p: Promise<unknown>) => pending.push(p) },
+      flush: () => Promise.all(pending),
+    };
+  }
+
+  test("records a usage_event scoped to the caller's account on success", async () => {
+    const { env, key } = makeValidatedKeyEnv({
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+    });
+    const captures = captureCalls();
+    const { ctx, flush } = fakeCtx();
+    const request = req(`/rpc/v1/fullnode?authorization=${key}`, {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    const res = await handleFullnodeRpcProxyRequest(
+      request,
+      env,
+      new URL(request.url),
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    await flush();
+    assert.equal(captures.length, 1);
+    assert.equal(captures[0]!.distinct_id, "account:1");
+    assert.equal(captures[0]!.event, USAGE_EVENT_NAME);
+    assert.equal(captures[0]!.properties.route, "fullnode_rpc");
+    assert.equal(captures[0]!.properties.ok, true);
+    assert.equal(captures[0]!.properties.error_code, undefined);
+  });
+
+  test("records the route error_code on a rejected (but non-5xx) call", async () => {
+    const { env, key } = makeValidatedKeyEnv({
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+      FULLNODE_RPC_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    });
+    const captures = captureCalls();
+    const { ctx, flush } = fakeCtx();
+    const request = req(`/rpc/v1/fullnode?authorization=${key}`, {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    const res = await handleFullnodeRpcProxyRequest(
+      request,
+      env,
+      new URL(request.url),
+      ctx,
+    );
+    assert.equal(res.status, 429);
+    await flush();
+    assert.equal(captures.length, 1);
+    // 429 is a route correctly rejecting an over-quota caller, not a broken
+    // route -- same status<500 "ok" convention withUsageTelemetry uses.
+    assert.equal(captures[0]!.properties.ok, true);
+    assert.equal(
+      captures[0]!.properties.error_code,
+      "fullnode_rpc_rate_limited",
+    );
+  });
+
+  test("does not record telemetry for an unauthenticated request", async () => {
+    const { env } = makeValidatedKeyEnv({
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+    });
+    const captures = captureCalls();
+    const { ctx, flush } = fakeCtx();
+    const request = req("/rpc/v1/fullnode", {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    const res = await handleFullnodeRpcProxyRequest(
+      request,
+      env,
+      new URL(request.url),
+      ctx,
+    );
+    assert.equal(res.status, 401);
+    await flush();
+    assert.equal(captures.length, 0);
+  });
+
+  test("a telemetry capture failure never surfaces into the proxied response", async () => {
+    const { env, key } = makeValidatedKeyEnv({
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+    });
+    globalThis.fetch = (async (url: unknown) => {
+      if (String(url).includes(POSTHOG_CAPTURE_PATH)) {
+        throw new Error("posthog unreachable");
+      }
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+    const { ctx, flush } = fakeCtx();
+    const request = req(`/rpc/v1/fullnode?authorization=${key}`, {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    const res = await handleFullnodeRpcProxyRequest(
+      request,
+      env,
+      new URL(request.url),
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    await assert.doesNotReject(flush());
+  });
+
+  test("works with no ctx provided at all (direct call, no waitUntil available)", async () => {
+    const { env, key } = makeValidatedKeyEnv({
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+    });
+    captureCalls();
+    const res = await call(
+      `/rpc/v1/fullnode?authorization=${key}`,
+      { body: { jsonrpc: "2.0", id: 1, method: "system_health" } },
+      env,
+    );
+    assert.equal(res.status, 200);
+  });
 });
