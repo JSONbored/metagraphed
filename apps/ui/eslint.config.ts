@@ -140,6 +140,31 @@ const GLASS_SURFACE_RULES = [
   },
 ];
 
+// The full Bone & Ink rule set applied to src/**/*.{ts,tsx} (the "warn" block
+// below) -- named so the #7851 ratchet block can apply the identical set at
+// "error" without duplicating the array.
+const FULL_DESIGN_RULES = [
+  ...BASE_DESIGN_RULES,
+  ...SPACING_TYPE_RULES,
+  ...PRIMITIVE_STEER_RULES,
+  ...SSR_SAFETY_RULES,
+  ...ELEVATION_RULES,
+  ...Z_INDEX_RULES,
+  ...GLASS_SURFACE_RULES,
+];
+
+// #7851: one-way lint ratchet. A directory enters this list only once it's
+// been verified at 0 Bone & Ink warnings (no-restricted-syntax) -- from that
+// point on, new drift in the directory fails CI instead of only annotating
+// it. Any PR that brings a directory to 0 warnings MUST add it here in the
+// same PR (see CONTRIBUTING.md); removing an entry requires an issue
+// explaining why. Initial set (2026-07-24 audit): src/hooks/** was the only
+// apps/ui directory clean end-to-end -- src/lib/** came close (2 residual
+// hits: one real text-[11px] and one false-positive string-literal match on
+// unrelated test fixture data) and is left for a follow-up PR rather than
+// bundled here.
+const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}"];
+
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see
   // source.config.ts) -- codegen, not authored code, same treatment as dist.
@@ -206,16 +231,19 @@ export default tseslint.config(
     ],
     rules: {
       // "warn" for the same reason as the base block above -- see its comment.
-      "no-restricted-syntax": [
-        "warn",
-        ...BASE_DESIGN_RULES,
-        ...SPACING_TYPE_RULES,
-        ...PRIMITIVE_STEER_RULES,
-        ...SSR_SAFETY_RULES,
-        ...ELEVATION_RULES,
-        ...Z_INDEX_RULES,
-        ...GLASS_SURFACE_RULES,
-      ],
+      "no-restricted-syntax": ["warn", ...FULL_DESIGN_RULES],
+    },
+  },
+  {
+    // #7851: promotes the ratcheted directories above from warn to error.
+    // Layered after the warn-tier block so it wins for files in both (flat
+    // config's last-matching-block-wins semantics); the off-exclusion blocks
+    // below stay last so primitives/showcase/health-tokens/og-image keep
+    // their existing exemption unchanged even if a ratcheted glob ever
+    // overlapped one of them.
+    files: RATCHETED_DIRS,
+    rules: {
+      "no-restricted-syntax": ["error", ...FULL_DESIGN_RULES],
     },
   },
   {
