@@ -1,6 +1,7 @@
-// Unit tests for scripts/observability.ts -- the shared Sentry init for
-// the box-side data-refresh-economics/data-refresh-node scripts, plus the
-// release-health (crash-free session) tracking layered on top of it.
+// Unit tests for scripts/observability.ts -- the shared Sentry + PostHog
+// init for the box-side data-refresh-economics/data-refresh-node scripts,
+// plus the release-health (crash-free session) tracking layered on top of
+// the Sentry half.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
@@ -27,6 +28,38 @@ vi.mock("@sentry/node", () => ({
 }));
 vi.mock("@sentry/core", () => ({ closeSession }));
 
+// Every `new PostHog(...)` call returns these SAME shared mock functions
+// (not a fresh pair per instance) -- fine here since observability.ts only
+// ever holds one client at a time, matching how the Sentry mocks above are
+// shared module-level spies too.
+const posthogCaptureExceptionImmediate = vi.hoisted(() =>
+  vi.fn(async (_error: unknown, _distinctId?: string) => {}),
+);
+const posthogShutdown = vi.hoisted(() => vi.fn(async () => {}));
+const posthogConstructorCalls = vi.hoisted(() => [] as unknown[][]);
+// A real `class`, not an arrow-function mock implementation -- observability.ts
+// calls `new PostHog(...)`, and an arrow function can't be invoked with `new`
+// ("TypeError: ... is not a constructor"). Cast to mockImplementation's
+// function-type parameter -- it's actually invoked via `new`, never called
+// plainly, so the shape mismatch is cosmetic only.
+const PostHogMock = vi.hoisted(() => {
+  class PostHogMockImpl {
+    constructor(...args: unknown[]) {
+      posthogConstructorCalls.push(args);
+      return {
+        captureExceptionImmediate: posthogCaptureExceptionImmediate,
+        shutdown: posthogShutdown,
+      };
+    }
+  }
+  return vi
+    .fn()
+    .mockImplementation(
+      PostHogMockImpl as unknown as (...args: unknown[]) => unknown,
+    );
+});
+vi.mock("posthog-node", () => ({ PostHog: PostHogMock }));
+
 import {
   initSentry,
   endSessionAndFlush,
@@ -45,16 +78,57 @@ afterEach(() => {
   onSpy.mockRestore();
 });
 
-test("initSentry: no-ops (never calls Sentry.init, never registers signal handlers) when SENTRY_DSN is unset", () => {
+test("initSentry: no-ops (never calls Sentry.init, never registers signal handlers, never inits PostHog) when both SENTRY_DSN and POSTHOG_PROJECT_TOKEN are unset", () => {
   sentryInit.mockClear();
   setTag.mockClear();
   startSession.mockClear();
+  PostHogMock.mockClear();
   vi.stubEnv("SENTRY_DSN", "");
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "");
   initSentry("some-script");
   assert.equal(sentryInit.mock.calls.length, 0);
   assert.equal(setTag.mock.calls.length, 0);
   assert.equal(startSession.mock.calls.length, 0);
   assert.equal(onSpy.mock.calls.length, 0);
+  assert.equal(PostHogMock.mock.calls.length, 0);
+  vi.unstubAllEnvs();
+});
+
+test("initSentry: initializes PostHog and registers crash handlers when POSTHOG_PROJECT_TOKEN is set, even with SENTRY_DSN unset", () => {
+  sentryInit.mockClear();
+  PostHogMock.mockClear();
+  onSpy.mockClear();
+  posthogConstructorCalls.length = 0;
+  vi.stubEnv("SENTRY_DSN", "");
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  vi.stubEnv("POSTHOG_HOST", "");
+  initSentry("some-script");
+
+  assert.equal(sentryInit.mock.calls.length, 0);
+  assert.equal(PostHogMock.mock.calls.length, 1);
+  assert.deepEqual(posthogConstructorCalls[0], [
+    "phc_test_token",
+    { host: "https://us.i.posthog.com" },
+  ]);
+  const onNames = onSpy.mock.calls.map((call: unknown[]) => call[0]);
+  assert.deepEqual(onNames, ["uncaughtException", "unhandledRejection"]);
+
+  vi.unstubAllEnvs();
+});
+
+test("initSentry: honors POSTHOG_HOST when set", () => {
+  PostHogMock.mockClear();
+  posthogConstructorCalls.length = 0;
+  vi.stubEnv("SENTRY_DSN", "");
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  vi.stubEnv("POSTHOG_HOST", "https://eu.i.posthog.com");
+  initSentry("some-script");
+
+  assert.deepEqual(posthogConstructorCalls[0], [
+    "phc_test_token",
+    { host: "https://eu.i.posthog.com" },
+  ]);
+
   vi.unstubAllEnvs();
 });
 
@@ -219,4 +293,50 @@ test("captureFatalAndExit: defaults to exit code 1", async () => {
 
   assert.equal(exitSpy.mock.calls[0][0], 1);
   exitSpy.mockRestore();
+});
+
+test("captureFatalAndExit: captures to PostHog (immediate, awaited) and shuts the client down, independent of Sentry", async () => {
+  vi.stubEnv("SENTRY_DSN", "");
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  initSentry("some-script");
+  vi.unstubAllEnvs();
+
+  posthogCaptureExceptionImmediate.mockClear();
+  posthogShutdown.mockClear();
+  const exitSpy = vi
+    .spyOn(process, "exit")
+    .mockImplementation((() => {}) as unknown as (
+      code?: string | number | null,
+    ) => never);
+  const error = new Error("boom");
+
+  await captureFatalAndExit(error, 3);
+
+  assert.equal(posthogCaptureExceptionImmediate.mock.calls.length, 1);
+  assert.equal(posthogCaptureExceptionImmediate.mock.calls[0][0], error);
+  assert.equal(
+    posthogCaptureExceptionImmediate.mock.calls[0][1],
+    "metagraphed-infra",
+  );
+  assert.equal(posthogShutdown.mock.calls.length, 1);
+  // The capture must be awaited BEFORE shutdown tears the client down, not
+  // just fired -- assert the actual invocation order, not merely that both
+  // were called.
+  assert.ok(
+    posthogCaptureExceptionImmediate.mock.invocationCallOrder[0] <
+      posthogShutdown.mock.invocationCallOrder[0],
+  );
+  assert.equal(exitSpy.mock.calls[0][0], 3);
+  exitSpy.mockRestore();
+});
+
+test("endSessionAndFlush: shuts down PostHog when it was initialized", async () => {
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  initSentry("some-script");
+  vi.unstubAllEnvs();
+
+  posthogShutdown.mockClear();
+  await endSessionAndFlush();
+
+  assert.equal(posthogShutdown.mock.calls.length, 1);
 });

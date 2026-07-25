@@ -37,6 +37,36 @@ vi.mock("@sentry/node", () => ({
   flush,
 }));
 
+// PostHog mock -- same shape as tests/observability.test.ts's own (a real
+// `class`, not an arrow function, since observability code calls `new
+// PostHog(...)`; arrow functions can't be invoked with `new`).
+const posthogCaptureException = vi.hoisted(() =>
+  vi.fn((_error: unknown, _distinctId?: string, _properties?: unknown) => {}),
+);
+const posthogCaptureExceptionImmediate = vi.hoisted(() =>
+  vi.fn(async (_error: unknown, _distinctId?: string) => {}),
+);
+const posthogShutdown = vi.hoisted(() => vi.fn(async () => {}));
+const posthogConstructorCalls = vi.hoisted(() => [] as unknown[][]);
+const PostHogMock = vi.hoisted(() => {
+  class PostHogMockImpl {
+    constructor(...args: unknown[]) {
+      posthogConstructorCalls.push(args);
+      return {
+        captureException: posthogCaptureException,
+        captureExceptionImmediate: posthogCaptureExceptionImmediate,
+        shutdown: posthogShutdown,
+      };
+    }
+  }
+  return vi
+    .fn()
+    .mockImplementation(
+      PostHogMockImpl as unknown as (...args: unknown[]) => unknown,
+    );
+});
+vi.mock("posthog-node", () => ({ PostHog: PostHogMock }));
+
 import {
   CHAIN_FIREHOSE_BACKOFF_BASE_MS,
   CHAIN_FIREHOSE_BACKOFF_MAX_MS,
@@ -853,25 +883,64 @@ test("computeDropWindowUpdate: two independent windows (null starting state each
 
 test("reportRateLimitPause: calls Sentry.captureMessage directly, once per call (naturally low-frequency, no aggregation needed)", () => {
   captureMessage.mockClear();
+  posthogCaptureException.mockClear();
   reportRateLimitPause(65_000);
   assert.equal(captureMessage.mock.calls.length, 1);
   const [message, options] = captureMessage.mock.calls[0];
   assert.match(message, /pausing 65000ms/);
   assert.equal(options.extra.pauseMs, 65_000);
+  // PostHog uninitialized at this point (no test has set POSTHOG_PROJECT_TOKEN
+  // yet) -- the fire-and-forget mirror call must no-op silently, not throw.
+  assert.equal(posthogCaptureException.mock.calls.length, 0);
 });
 
 // --- initSentry ---------------------------------------------------------------
 
-test("initSentry: no-ops (never calls Sentry.init) when SENTRY_DSN is unset", () => {
+test("initSentry: no-ops (never calls Sentry.init, never inits PostHog) when both SENTRY_DSN and POSTHOG_PROJECT_TOKEN are unset", () => {
   sentryInit.mockClear();
   setTag.mockClear();
   startSession.mockClear();
+  PostHogMock.mockClear();
   vi.stubEnv("SENTRY_DSN", "");
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "");
   initSentry();
   assert.equal(sentryInit.mock.calls.length, 0);
   assert.equal(setTag.mock.calls.length, 0);
   assert.equal(startSession.mock.calls.length, 0);
+  assert.equal(PostHogMock.mock.calls.length, 0);
   vi.unstubAllEnvs();
+});
+
+test("initSentry: initializes PostHog independent of SENTRY_DSN, defaulting POSTHOG_HOST to us.i.posthog.com", () => {
+  PostHogMock.mockClear();
+  posthogConstructorCalls.length = 0;
+  vi.stubEnv("SENTRY_DSN", "");
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  vi.stubEnv("POSTHOG_HOST", "");
+  initSentry();
+  assert.equal(PostHogMock.mock.calls.length, 1);
+  assert.deepEqual(posthogConstructorCalls[0], [
+    "phc_test_token",
+    { host: "https://us.i.posthog.com" },
+  ]);
+  vi.unstubAllEnvs();
+});
+
+test("reportRateLimitPause: mirrors the same message to PostHog once initialized", () => {
+  captureMessage.mockClear();
+  posthogCaptureException.mockClear();
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  initSentry();
+  vi.unstubAllEnvs();
+
+  reportRateLimitPause(65_000);
+  assert.equal(posthogCaptureException.mock.calls.length, 1);
+  const [error, distinctId, properties] = posthogCaptureException.mock
+    .calls[0] as [Error, string, Row];
+  assert.match(error.message, /pausing 65000ms/);
+  assert.equal(distinctId, "metagraphed-infra");
+  assert.equal(properties.pauseMs, 65_000);
+  assert.equal(properties.level, "warning");
 });
 
 test("initSentry: calls Sentry.init with dsn/environment/release, tags the component, and starts a release-health session when SENTRY_DSN is set", () => {
@@ -926,6 +995,16 @@ test("endSessionAndFlush: ends the session and flushes", async () => {
   assert.equal(endSession.mock.calls.length, 1);
   assert.equal(flush.mock.calls.length, 1);
   assert.equal((flush.mock.calls[0] as unknown[])[0], 2000);
+});
+
+test("endSessionAndFlush: also shuts down PostHog once it was initialized", async () => {
+  vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
+  initSentry();
+  vi.unstubAllEnvs();
+
+  posthogShutdown.mockClear();
+  await endSessionAndFlush();
+  assert.equal(posthogShutdown.mock.calls.length, 1);
 });
 
 // --- touchHeartbeat / isHeartbeatFresh -----------------------------------------
