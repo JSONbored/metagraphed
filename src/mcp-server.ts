@@ -8682,7 +8682,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...LIST_SEARCH_INDEX_MCP_TOOL,
-    async handler(args: z.infer<typeof ListSearchIndexInputSchema>, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListSearchIndexInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadSearchIndexList(asMcpLoaderCtx(ctx), args);
     },
   },
