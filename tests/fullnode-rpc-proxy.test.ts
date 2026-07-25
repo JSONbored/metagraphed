@@ -13,6 +13,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "vitest";
 import { handleFullnodeRpcProxyRequest } from "../workers/request-handlers/fullnode-rpc-proxy.ts";
+import { handleRequest } from "../workers/api.ts";
 import {
   POSTHOG_CAPTURE_PATH,
   USAGE_EVENT_NAME,
@@ -695,5 +696,30 @@ describe("PostHog usage telemetry", () => {
       env,
     );
     assert.equal(res.status, 200);
+  });
+});
+
+// workers/api.ts's own dispatch (codecov/patch flagged this line after
+// #8123: every other test in this file calls handleFullnodeRpcProxyRequest
+// directly, so the "/rpc/v1/fullnode" branch's ctx passthrough in
+// handleRequest itself was never exercised end-to-end). Same pattern as
+// tests/rpc-network-routing.test.ts's own handleRequest-level routing tests.
+describe("dispatch from workers/api.ts's handleRequest", () => {
+  test("routes /rpc/v1/fullnode through to the gate with a working ctx", async () => {
+    const { env, key } = makeValidatedKeyEnv();
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }), {
+        status: 200,
+      });
+    const waitUntilCalls: Promise<unknown>[] = [];
+    const request = req(`/rpc/v1/fullnode?authorization=${key}`, {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    const res = await handleRequest(request, env, {
+      waitUntil: (p: Promise<unknown>) => waitUntilCalls.push(p),
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal(body.result, "ok");
   });
 });
