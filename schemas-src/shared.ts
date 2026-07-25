@@ -96,3 +96,54 @@ export const SubnetEconomicsSchema = z
   })
   .strict();
 export type SubnetEconomics = z.infer<typeof SubnetEconomicsSchema>;
+
+// One concentration lens over a single value distribution (src/concentration.ts's
+// computeConcentration()) -- shared by SubnetPerformanceArtifact/
+// ChainPerformanceArtifact's incentive/dividends lenses AND
+// ChainConcentrationArtifact/AccountPortfolioArtifact/BlocksSummaryArtifact's
+// own concentration fields (types-epic B batch 3, #8057; verified via
+// repo-wide $ref grep -- unlike subnet-concentration.ts's ConcentrationLensSchema,
+// which is deliberately NOT this component since the hand-edited
+// SubnetConcentrationArtifact never $ref'd it either). Registered as a public
+// OpenAPI component (schemas-src/openapi-registry.ts) since routes outside
+// this batch still reference it by name.
+export const ConcentrationMetricsSchema = z
+  .object({
+    holders: z.int().min(0).optional(),
+    total: z.number().nullable().optional(),
+    gini: z.number().nullable().optional(),
+    hhi: z.number().nullable().optional(),
+    hhi_normalized: z.number().nullable().optional(),
+    nakamoto_coefficient: z.int().nullable().optional(),
+    top_1pct_share: z.number().nullable().optional(),
+    top_5pct_share: z.number().nullable().optional(),
+    top_10pct_share: z.number().nullable().optional(),
+    top_20pct_share: z.number().nullable().optional(),
+    entropy: z.number().nullable().optional(),
+    entropy_normalized: z.number().nullable().optional(),
+  })
+  .passthrough()
+  .nullable();
+export type ConcentrationMetrics = z.infer<typeof ConcentrationMetricsSchema>;
+
+// Distribution summary of a 0-1 per-UID score across neurons (src/subnet-
+// performance.ts's scoreDistribution()) -- shared by SubnetPerformanceArtifact/
+// ChainPerformanceArtifact's trust/consensus/validator_trust lenses (types-epic
+// B batch 3, #8057; verified via repo-wide $ref grep). Registered as a public
+// OpenAPI component since ChainPerformanceArtifact (outside this batch) still
+// references it by name.
+export const ScoreDistributionSchema = z
+  .object({
+    count: z.int().min(0).optional(),
+    mean: z.number().nullable().optional(),
+    min: z.number().nullable().optional(),
+    max: z.number().nullable().optional(),
+    p10: z.number().nullable().optional(),
+    p25: z.number().nullable().optional(),
+    p50: z.number().nullable().optional(),
+    p75: z.number().nullable().optional(),
+    p90: z.number().nullable().optional(),
+  })
+  .passthrough()
+  .nullable();
+export type ScoreDistribution = z.infer<typeof ScoreDistributionSchema>;

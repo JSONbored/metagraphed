@@ -54,9 +54,11 @@
 import { z } from "zod";
 import {
   BittensorNetworkSchema,
+  ConcentrationMetricsSchema,
   CurationLevelSchema,
   HealthStatusSchema,
   PartnershipMetadataSchema,
+  ScoreDistributionSchema,
 } from "./shared.ts";
 import {
   SubnetsArtifactSchema,
@@ -137,6 +139,25 @@ import {
 } from "./routes/subnet-lease.ts";
 import { SubnetOwnershipHistoryArtifactSchema } from "./routes/subnet-ownership-history.ts";
 import { SubnetConvictionArtifactSchema } from "./routes/subnet-conviction.ts";
+import {
+  SubnetMetagraphArtifactSchema,
+  NeuronDetailArtifactSchema,
+  SubnetValidatorsArtifactSchema,
+  NeuronHistoryArtifactSchema,
+} from "./routes/subnet-metagraph.ts";
+import {
+  SubnetHyperparametersArtifactSchema,
+  SubnetHyperparamsHistoryArtifactSchema,
+} from "./routes/subnet-hyperparameters.ts";
+import {
+  SubnetPerformanceArtifactSchema,
+  SubnetPerformanceHistoryArtifactSchema,
+} from "./routes/subnet-performance.ts";
+import { SubnetPrometheusArtifactSchema } from "./routes/subnet-prometheus.ts";
+import {
+  SubnetWeightsArtifactSchema,
+  SubnetWeightSettersArtifactSchema,
+} from "./routes/subnet-weights.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -216,6 +237,32 @@ register(
 );
 register(SubnetConvictionArtifactSchema, "SubnetConvictionArtifact");
 
+// Batch 3 (#8057) additions.
+register(SubnetMetagraphArtifactSchema, "SubnetMetagraphArtifact");
+register(NeuronDetailArtifactSchema, "NeuronDetailArtifact");
+register(SubnetValidatorsArtifactSchema, "SubnetValidatorsArtifact");
+register(NeuronHistoryArtifactSchema, "NeuronHistoryArtifact");
+register(SubnetHyperparametersArtifactSchema, "SubnetHyperparametersArtifact");
+register(
+  SubnetHyperparamsHistoryArtifactSchema,
+  "SubnetHyperparamsHistoryArtifact",
+);
+register(SubnetPerformanceArtifactSchema, "SubnetPerformanceArtifact");
+register(
+  SubnetPerformanceHistoryArtifactSchema,
+  "SubnetPerformanceHistoryArtifact",
+);
+register(SubnetPrometheusArtifactSchema, "SubnetPrometheusArtifact");
+register(SubnetWeightsArtifactSchema, "SubnetWeightsArtifact");
+register(SubnetWeightSettersArtifactSchema, "SubnetWeightSettersArtifact");
+// ConcentrationMetrics/ScoreDistribution: still referenced by name from
+// AccountPortfolioArtifact/BlocksSummaryArtifact/ChainConcentrationArtifact/
+// ChainPerformanceArtifact, all still hand-edited (verified via repo-wide
+// $ref grep) -- unlike this batch's other shared sub-shapes, these must stay
+// registered, not orphaned.
+register(ConcentrationMetricsSchema, "ConcentrationMetrics");
+register(ScoreDistributionSchema, "ScoreDistribution");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -282,6 +329,19 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetLeaseHistoryArtifact",
   "SubnetOwnershipHistoryArtifact",
   "SubnetConvictionArtifact",
+  "SubnetMetagraphArtifact",
+  "NeuronDetailArtifact",
+  "SubnetValidatorsArtifact",
+  "NeuronHistoryArtifact",
+  "SubnetHyperparametersArtifact",
+  "SubnetHyperparamsHistoryArtifact",
+  "SubnetPerformanceArtifact",
+  "SubnetPerformanceHistoryArtifact",
+  "SubnetPrometheusArtifact",
+  "SubnetWeightsArtifact",
+  "SubnetWeightSettersArtifact",
+  "ConcentrationMetrics",
+  "ScoreDistribution",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -308,6 +368,15 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
 // same test as the batch 1 additions above). Not worth a standalone registry
 // entry; their hand-edited keys become orphaned the moment their one
 // referrer is Zod-owned and inlines them instead.
+// Batch 3 (#8057) additions: Neuron is referenced only by
+// SubnetMetagraphArtifact/NeuronDetailArtifact/SubnetValidatorsArtifact, all
+// three converted together in this same batch (verified via repo-wide $ref
+// grep) -- becomes orphaned once all three are Zod-owned and inline it
+// instead. SubnetHyperparameters is referenced only by
+// SubnetHyperparametersArtifact and SubnetHyperparamsHistoryEntry (itself
+// referenced only by SubnetHyperparamsHistoryArtifact), all converted
+// together here -- both SubnetHyperparameters and
+// SubnetHyperparamsHistoryEntry become orphaned the same way.
 export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "SubnetEconomics",
   "SubnetProfileNativeIdentity",
@@ -324,4 +393,7 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "SubnetLeaseEvent",
   "SubnetOwnershipChange",
   "SubnetConvictionEntry",
+  "Neuron",
+  "SubnetHyperparameters",
+  "SubnetHyperparamsHistoryEntry",
 ] as const;

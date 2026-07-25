@@ -7913,83 +7913,133 @@
         "type": "object"
       },
       "ConcentrationMetrics": {
-        "additionalProperties": true,
-        "description": "One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column).",
-        "properties": {
-          "entropy": {
-            "type": [
-              "number",
-              "null"
-            ]
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "properties": {
+              "entropy": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "entropy_normalized": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gini": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hhi": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hhi_normalized": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "holders": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "top_10pct_share": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "top_1pct_share": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "top_20pct_share": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "top_5pct_share": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "total": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
           },
-          "entropy_normalized": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "gini": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "hhi": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "hhi_normalized": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "holders": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "nakamoto_coefficient": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "top_10pct_share": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "top_1pct_share": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "top_20pct_share": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "top_5pct_share": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "total": {
-            "type": [
-              "number",
-              "null"
-            ]
+          {
+            "type": "null"
           }
-        },
-        "type": [
-          "object",
-          "null"
         ]
       },
       "ContractsArtifact": {
@@ -12637,152 +12687,214 @@
         ],
         "type": "object"
       },
-      "Neuron": {
-        "additionalProperties": false,
-        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null. `featured` (#5166) is only populated on the validators-list artifacts (SubnetValidatorsArtifact) -- a DB-toggled pin (featured_validators, keyed by hotkey) that surfaces a maintainer-highlighted validator; omitted (not false) on the metagraph/neuron-detail artifacts, which don't compute it.",
-        "properties": {
-          "active": {
-            "type": "boolean"
-          },
-          "axon": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "coldkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "consensus": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "dividends": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "emission_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "featured": {
-            "type": "boolean"
-          },
-          "hotkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "immunity_expires_at": {
-            "description": "Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block_number/captured_at at ~12s/block (the same block-time assumption apy_estimate depends on). Only present alongside immunity_expires_at_block; null when that snapshot anchor is unavailable or the window has already elapsed (#6640).",
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "immunity_expires_at_block": {
-            "description": "The block immunity ends (registered_at_block + the subnet's live immunity_period). Only present while is_immunity_period is true and both inputs are known (#6640) -- omitted, not null, otherwise.",
-            "type": "integer"
-          },
-          "incentive": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "is_immunity_period": {
-            "type": "boolean"
-          },
-          "rank": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "registered_at_block": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "stake_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "take": {
-            "description": "Validator take/commission (#2548): the 0..1 fraction of delegator rewards this hotkey keeps, from SubtensorModule::Delegates. Global per-hotkey, not per-subnet -- identical across every Neuron row for the same hotkey. Null if the hotkey had no Delegates entry at capture time.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "uid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "validator_permit": {
-            "type": "boolean"
-          },
-          "validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "uid",
-          "hotkey",
-          "coldkey",
-          "active",
-          "validator_permit"
-        ],
-        "type": "object"
-      },
       "NeuronDetailArtifact": {
-        "additionalProperties": true,
-        "description": "A single neuron's metagraph state (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "neuron": {
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/Neuron"
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "axon": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "coldkey": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "consensus": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "dividends": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "emission_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "featured": {
+                    "type": "boolean"
+                  },
+                  "hotkey": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "immunity_expires_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "immunity_expires_at_block": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "incentive": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "is_immunity_period": {
+                    "type": "boolean"
+                  },
+                  "rank": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "registered_at_block": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "stake_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "take": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "trust": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "uid": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "validator_permit": {
+                    "type": "boolean"
+                  },
+                  "validator_trust": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "uid",
+                  "hotkey",
+                  "coldkey",
+                  "active",
+                  "validator_permit"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -12790,6 +12902,8 @@
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -12801,57 +12915,242 @@
         "type": "object"
       },
       "NeuronHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Per-UID daily metagraph history (block-explorer Tier-1, #1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Each point is a Neuron's state on one snapshot_date.",
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "point_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "points": {
             "items": {
-              "additionalProperties": true,
-              "description": "A Neuron's metagraph state on one snapshot_date (the Neuron fields plus snapshot_date/captured_at/block_number).",
+              "additionalProperties": {},
               "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "axon": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "block_number": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "captured_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "consensus": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "featured": {
+                  "type": "boolean"
+                },
+                "hotkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "immunity_expires_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "immunity_expires_at_block": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "incentive": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "is_immunity_period": {
+                  "type": "boolean"
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "registered_at_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "snapshot_date": {
                   "type": "string"
+                },
+                "stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_permit": {
+                  "type": "boolean"
+                },
+                "validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
-                "snapshot_date"
+                "snapshot_date",
+                "uid",
+                "hotkey",
+                "coldkey",
+                "active",
+                "validator_permit"
               ],
               "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "uid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -16607,65 +16906,101 @@
         "type": "object"
       },
       "ScoreDistribution": {
-        "additionalProperties": true,
-        "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
-        "properties": {
-          "count": {
-            "minimum": 0,
-            "type": "integer"
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "properties": {
+              "count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "mean": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "min": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "p10": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "p25": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "p50": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "p75": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "p90": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
           },
-          "max": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "mean": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "min": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "p10": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "p25": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "p50": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "p75": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "p90": {
-            "type": [
-              "number",
-              "null"
-            ]
+          {
+            "type": "null"
           }
-        },
-        "type": [
-          "object",
-          "null"
         ]
       },
       "SearchArtifact": {
@@ -19730,216 +20065,346 @@
         ],
         "type": "object"
       },
-      "SubnetHyperparameters": {
-        "additionalProperties": false,
-        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307). *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats; bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted — scaling constant unconfirmed).",
-        "properties": {
-          "activity_cutoff": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "activity_cutoff_factor": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "alpha_high_ratio": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_low_ratio": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_sigmoid_steepness": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "bonds_moving_avg_raw": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "bonds_reset_enabled": {
-            "type": "boolean"
-          },
-          "burn_half_life": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "burn_increase_mult": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "commit_reveal_enabled": {
-            "type": "boolean"
-          },
-          "commit_reveal_period": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "immunity_period": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "kappa_ratio": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "liquid_alpha_enabled": {
-            "type": "boolean"
-          },
-          "max_burn_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "max_regs_per_block": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "max_validators": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "max_weight_limit_ratio": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "min_allowed_weights": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "min_burn_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "min_childkey_take_ratio": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "owner_cut_auto_lock_enabled": {
-            "type": "boolean"
-          },
-          "owner_cut_enabled": {
-            "type": "boolean"
-          },
-          "registration_allowed": {
-            "type": "boolean"
-          },
-          "serving_rate_limit": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "subnet_is_active": {
-            "type": "boolean"
-          },
-          "target_regs_per_interval": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "tempo": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "transfers_enabled": {
-            "type": "boolean"
-          },
-          "user_liquidity_enabled": {
-            "type": "boolean"
-          },
-          "weights_rate_limit": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "weights_version": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "yuma_version": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "registration_allowed",
-          "commit_reveal_enabled",
-          "liquid_alpha_enabled",
-          "subnet_is_active",
-          "transfers_enabled",
-          "bonds_reset_enabled",
-          "user_liquidity_enabled",
-          "owner_cut_enabled",
-          "owner_cut_auto_lock_enabled"
-        ],
-        "type": "object"
-      },
       "SubnetHyperparametersArtifact": {
-        "additionalProperties": true,
-        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "hyperparameters": {
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/SubnetHyperparameters"
+                "additionalProperties": false,
+                "properties": {
+                  "activity_cutoff": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "activity_cutoff_factor": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alpha_high_ratio": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alpha_low_ratio": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alpha_sigmoid_steepness": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "bonds_moving_avg_raw": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "bonds_reset_enabled": {
+                    "type": "boolean"
+                  },
+                  "burn_half_life": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "burn_increase_mult": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "commit_reveal_enabled": {
+                    "type": "boolean"
+                  },
+                  "commit_reveal_period": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "immunity_period": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kappa_ratio": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "liquid_alpha_enabled": {
+                    "type": "boolean"
+                  },
+                  "max_burn_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max_regs_per_block": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max_validators": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max_weight_limit_ratio": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "min_allowed_weights": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "min_burn_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "min_childkey_take_ratio": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_cut_auto_lock_enabled": {
+                    "type": "boolean"
+                  },
+                  "owner_cut_enabled": {
+                    "type": "boolean"
+                  },
+                  "registration_allowed": {
+                    "type": "boolean"
+                  },
+                  "serving_rate_limit": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "subnet_is_active": {
+                    "type": "boolean"
+                  },
+                  "target_regs_per_interval": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tempo": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "transfers_enabled": {
+                    "type": "boolean"
+                  },
+                  "user_liquidity_enabled": {
+                    "type": "boolean"
+                  },
+                  "weights_rate_limit": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "weights_version": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "yuma_version": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "registration_allowed",
+                  "commit_reveal_enabled",
+                  "liquid_alpha_enabled",
+                  "subnet_is_active",
+                  "transfers_enabled",
+                  "bonds_reset_enabled",
+                  "user_liquidity_enabled",
+                  "owner_cut_enabled",
+                  "owner_cut_auto_lock_enabled"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -19947,10 +20412,13 @@
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -19962,45 +20430,414 @@
         "type": "object"
       },
       "SubnetHyperparamsHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Append-only hyperparameter-change timeline for one subnet (#4309), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "additionalProperties": {},
         "properties": {
           "entries": {
             "items": {
-              "$ref": "#/components/schemas/SubnetHyperparamsHistoryEntry"
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hyperparameters": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "activity_cutoff": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "activity_cutoff_factor": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "alpha_high_ratio": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "alpha_low_ratio": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "alpha_sigmoid_steepness": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "bonds_moving_avg_raw": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "bonds_reset_enabled": {
+                          "type": "boolean"
+                        },
+                        "burn_half_life": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "burn_increase_mult": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "commit_reveal_enabled": {
+                          "type": "boolean"
+                        },
+                        "commit_reveal_period": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "immunity_period": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "kappa_ratio": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "liquid_alpha_enabled": {
+                          "type": "boolean"
+                        },
+                        "max_burn_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "max_regs_per_block": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "max_validators": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "max_weight_limit_ratio": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "min_allowed_weights": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "min_burn_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "min_childkey_take_ratio": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "owner_cut_auto_lock_enabled": {
+                          "type": "boolean"
+                        },
+                        "owner_cut_enabled": {
+                          "type": "boolean"
+                        },
+                        "registration_allowed": {
+                          "type": "boolean"
+                        },
+                        "serving_rate_limit": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "subnet_is_active": {
+                          "type": "boolean"
+                        },
+                        "target_regs_per_interval": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "tempo": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "transfers_enabled": {
+                          "type": "boolean"
+                        },
+                        "user_liquidity_enabled": {
+                          "type": "boolean"
+                        },
+                        "weights_rate_limit": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "weights_version": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "yuma_version": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "registration_allowed",
+                        "commit_reveal_enabled",
+                        "liquid_alpha_enabled",
+                        "subnet_is_active",
+                        "transfers_enabled",
+                        "bonds_reset_enabled",
+                        "user_liquidity_enabled",
+                        "owner_cut_enabled",
+                        "owner_cut_auto_lock_enabled"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hyperparams_hash": {
+                  "type": "string"
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observed_at",
+                "hyperparams_hash"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "entry_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "limit": {
-            "maximum": 1000,
-            "minimum": 1,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 1000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -20009,44 +20846,6 @@
           "netuid",
           "entry_count",
           "entries"
-        ],
-        "type": "object"
-      },
-      "SubnetHyperparamsHistoryEntry": {
-        "additionalProperties": false,
-        "description": "One observed subnet_hyperparams change for a subnet (#4309), recorded when the refresh-subnet-hyperparams diff detects any hyperparameter changed since the last snapshot. Forward-only — no rows before this feature shipped.",
-        "properties": {
-          "block_number": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "hyperparameters": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/SubnetHyperparameters"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "hyperparams_hash": {
-            "type": "string"
-          },
-          "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "observed_at",
-          "hyperparams_hash"
         ],
         "type": "object"
       },
@@ -20842,37 +21641,223 @@
         "type": "object"
       },
       "SubnetMetagraphArtifact": {
-        "additionalProperties": true,
-        "description": "Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "neuron_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "neurons": {
             "items": {
-              "$ref": "#/components/schemas/Neuron"
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "axon": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "consensus": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "featured": {
+                  "type": "boolean"
+                },
+                "hotkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "immunity_expires_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "immunity_expires_at_block": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "incentive": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "is_immunity_period": {
+                  "type": "boolean"
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "registered_at_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_permit": {
+                  "type": "boolean"
+                },
+                "validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "uid",
+                "hotkey",
+                "coldkey",
+                "active",
+                "validator_permit"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -21553,17 +22538,21 @@
         "type": "object"
       },
       "SubnetPerformanceArtifact": {
-        "additionalProperties": true,
-        "description": "Reward-distribution & score-spread metrics for one subnet, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. The reward-flow companion to SubnetConcentrationArtifact.",
+        "additionalProperties": {},
         "properties": {
           "active_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "captured_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "consensus": {
@@ -21576,20 +22565,25 @@
             "$ref": "#/components/schemas/ConcentrationMetrics"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "neuron_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "trust": {
             "$ref": "#/components/schemas/ScoreDistribution"
           },
           "validator_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -21609,74 +22603,113 @@
         "type": "object"
       },
       "SubnetPerformanceHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Per-day reward-flow & trust trend for one subnet (newest first) over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean/median of the 0-1 trust, consensus, and validator_trust scores. The reward-flow twin of /concentration/history, computed live from the neuron_daily D1 rollup.",
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "point_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "points": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "active_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "consensus_mean": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "consensus_median": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "dividends_gini": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "dividends_nakamoto_coefficient": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "dividends_top_10pct_share": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "incentive_gini": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "incentive_nakamoto_coefficient": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "incentive_top_10pct_share": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "neuron_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -21684,31 +22717,48 @@
                   "type": "string"
                 },
                 "trust_mean": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "trust_median": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "validator_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "validator_trust_mean": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "validator_trust_median": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -21720,12 +22770,18 @@
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -22587,46 +23643,60 @@
       },
       "SubnetPrometheusArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet Prometheus-endpoint serving activity over a 7d/30d window: the distinct exporters (hotkeys), PrometheusServed event count, and announcements per exporter for ONE subnet. The per-subnet drill-in of /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of /api/v1/subnets/{netuid}/serving, served live from the account_events PrometheusServed stream at /api/v1/subnets/{netuid}/prometheus (no static file); zeroed when the subnet has no PrometheusServed events in the window.",
         "properties": {
           "announcements": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "announcements_per_exporter": {
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "distinct_exporters": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -23630,36 +24700,222 @@
         ]
       },
       "SubnetValidatorsArtifact": {
-        "additionalProperties": true,
-        "description": "Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "validator_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "validators": {
             "items": {
-              "$ref": "#/components/schemas/Neuron"
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "axon": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "consensus": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "featured": {
+                  "type": "boolean"
+                },
+                "hotkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "immunity_expires_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "immunity_expires_at_block": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "incentive": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "is_immunity_period": {
+                  "type": "boolean"
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "registered_at_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_permit": {
+                  "type": "boolean"
+                },
+                "validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "uid",
+                "hotkey",
+                "coldkey",
+                "active",
+                "validator_permit"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -23677,46 +24933,60 @@
       },
       "SubnetWeightsArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet validator weight-setting activity over a 7d/30d window: the distinct weight-setting validators, WeightsSet event count, and updates per validator for ONE subnet. The per-subnet drill-in of /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights (no static file); zeroed when the subnet has no WeightsSet events in the window.",
         "properties": {
           "distinct_setters": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "sets_per_setter": {
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "weight_sets": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -23733,27 +25003,34 @@
       },
       "SubnetWeightSettersArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet weight-setter leaderboard over a 7d/30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total, and its first/last set time. The setter-level drill-in of /api/v1/subnets/{netuid}/weights, served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file); an empty leaderboard when the subnet has no WeightsSet events in the window.",
         "properties": {
           "distinct_setters": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "setter_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -23762,40 +25039,60 @@
               "additionalProperties": false,
               "properties": {
                 "first_set_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "hotkey": {
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_set_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "share": {
-                  "minimum": 0,
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "uid": {
-                  "minimum": 0,
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "weight_sets": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -23813,18 +25110,22 @@
             "type": "array"
           },
           "weight_sets": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -54298,7 +55599,12 @@
                     "point_count": 1,
                     "points": [
                       {
-                        "snapshot_date": "example"
+                        "active": false,
+                        "coldkey": "example",
+                        "hotkey": "example",
+                        "snapshot_date": "example",
+                        "uid": 1,
+                        "validator_permit": false
                       }
                     ],
                     "schema_version": 1,

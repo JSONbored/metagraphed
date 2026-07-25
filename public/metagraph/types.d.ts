@@ -4845,7 +4845,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column). */
         ConcentrationMetrics: ({
             entropy?: number | null;
             entropy_normalized?: number | null;
@@ -5889,55 +5888,63 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null. `featured` (#5166) is only populated on the validators-list artifacts (SubnetValidatorsArtifact) -- a DB-toggled pin (featured_validators, keyed by hotkey) that surfaces a maintainer-highlighted validator; omitted (not false) on the metagraph/neuron-detail artifacts, which don't compute it. */
-        Neuron: {
-            active: boolean;
-            axon?: string | null;
-            coldkey: string | null;
-            consensus?: number | null;
-            dividends?: number | null;
-            emission_tao?: number | null;
-            featured?: boolean;
-            hotkey: string | null;
-            /**
-             * Format: date-time
-             * @description Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block_number/captured_at at ~12s/block (the same block-time assumption apy_estimate depends on). Only present alongside immunity_expires_at_block; null when that snapshot anchor is unavailable or the window has already elapsed (#6640).
-             */
-            immunity_expires_at?: string | null;
-            /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period). Only present while is_immunity_period is true and both inputs are known (#6640) -- omitted, not null, otherwise. */
-            immunity_expires_at_block?: number;
-            incentive?: number | null;
-            is_immunity_period?: boolean;
-            rank?: number | null;
-            registered_at_block?: number | null;
-            stake_tao?: number | null;
-            /** @description Validator take/commission (#2548): the 0..1 fraction of delegator rewards this hotkey keeps, from SubtensorModule::Delegates. Global per-hotkey, not per-subnet -- identical across every Neuron row for the same hotkey. Null if the hotkey had no Delegates entry at capture time. */
-            take?: number | null;
-            trust?: number | null;
-            uid: number;
-            validator_permit: boolean;
-            validator_trust?: number | null;
-        };
-        /** @description A single neuron's metagraph state (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file). */
         NeuronDetailArtifact: {
             block_number?: number | null;
-            /** Format: date-time */
             captured_at?: string | null;
             netuid: number;
-            neuron: components["schemas"]["Neuron"] | null;
+            neuron: {
+                active: boolean;
+                axon?: string | null;
+                coldkey: string | null;
+                consensus?: number | null;
+                dividends?: number | null;
+                emission_tao?: number | null;
+                featured?: boolean;
+                hotkey: string | null;
+                immunity_expires_at?: string | null;
+                immunity_expires_at_block?: number;
+                incentive?: number | null;
+                is_immunity_period?: boolean;
+                rank?: number | null;
+                registered_at_block?: number | null;
+                stake_tao?: number | null;
+                take?: number | null;
+                trust?: number | null;
+                uid: number;
+                validator_permit: boolean;
+                validator_trust?: number | null;
+            } | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description Per-UID daily metagraph history (block-explorer Tier-1, #1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Each point is a Neuron's state on one snapshot_date. */
         NeuronHistoryArtifact: {
             netuid: number;
             point_count: number;
             points: ({
+                active: boolean;
+                axon?: string | null;
                 block_number?: number | null;
-                /** Format: date-time */
                 captured_at?: string | null;
+                coldkey: string | null;
+                consensus?: number | null;
+                dividends?: number | null;
+                emission_tao?: number | null;
+                featured?: boolean;
+                hotkey: string | null;
+                immunity_expires_at?: string | null;
+                immunity_expires_at_block?: number;
+                incentive?: number | null;
+                is_immunity_period?: boolean;
+                rank?: number | null;
+                registered_at_block?: number | null;
                 snapshot_date: string;
+                stake_tao?: number | null;
+                take?: number | null;
+                trust?: number | null;
+                uid: number;
+                validator_permit: boolean;
+                validator_trust?: number | null;
             } & {
                 [key: string]: unknown;
             })[];
@@ -6881,7 +6888,6 @@ export interface components {
             /** Format: uri */
             url?: string;
         };
-        /** @description Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network). */
         ScoreDistribution: ({
             count?: number;
             max?: number | null;
@@ -7421,56 +7427,90 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One subnet's consensus, economic, and governance hyperparameters (#4307). *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats; bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted — scaling constant unconfirmed). */
-        SubnetHyperparameters: {
-            activity_cutoff?: number | null;
-            activity_cutoff_factor?: number | null;
-            alpha_high_ratio?: number | null;
-            alpha_low_ratio?: number | null;
-            alpha_sigmoid_steepness?: number | null;
-            bonds_moving_avg_raw?: number | null;
-            bonds_reset_enabled: boolean;
-            burn_half_life?: number | null;
-            burn_increase_mult?: number | null;
-            commit_reveal_enabled: boolean;
-            commit_reveal_period?: number | null;
-            immunity_period?: number | null;
-            kappa_ratio?: number | null;
-            liquid_alpha_enabled: boolean;
-            max_burn_tao?: number | null;
-            max_regs_per_block?: number | null;
-            max_validators?: number | null;
-            max_weight_limit_ratio?: number | null;
-            min_allowed_weights?: number | null;
-            min_burn_tao?: number | null;
-            min_childkey_take_ratio?: number | null;
-            owner_cut_auto_lock_enabled: boolean;
-            owner_cut_enabled: boolean;
-            registration_allowed: boolean;
-            serving_rate_limit?: number | null;
-            subnet_is_active: boolean;
-            target_regs_per_interval?: number | null;
-            tempo?: number | null;
-            transfers_enabled: boolean;
-            user_liquidity_enabled: boolean;
-            weights_rate_limit?: number | null;
-            weights_version?: number | null;
-            yuma_version?: number | null;
-        };
-        /** @description One subnet's consensus, economic, and governance hyperparameters (#4307), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file). */
         SubnetHyperparametersArtifact: {
             block_number?: number | null;
-            /** Format: date-time */
             captured_at?: string | null;
-            hyperparameters: components["schemas"]["SubnetHyperparameters"] | null;
+            hyperparameters: {
+                activity_cutoff?: number | null;
+                activity_cutoff_factor?: number | null;
+                alpha_high_ratio?: number | null;
+                alpha_low_ratio?: number | null;
+                alpha_sigmoid_steepness?: number | null;
+                bonds_moving_avg_raw?: number | null;
+                bonds_reset_enabled: boolean;
+                burn_half_life?: number | null;
+                burn_increase_mult?: number | null;
+                commit_reveal_enabled: boolean;
+                commit_reveal_period?: number | null;
+                immunity_period?: number | null;
+                kappa_ratio?: number | null;
+                liquid_alpha_enabled: boolean;
+                max_burn_tao?: number | null;
+                max_regs_per_block?: number | null;
+                max_validators?: number | null;
+                max_weight_limit_ratio?: number | null;
+                min_allowed_weights?: number | null;
+                min_burn_tao?: number | null;
+                min_childkey_take_ratio?: number | null;
+                owner_cut_auto_lock_enabled: boolean;
+                owner_cut_enabled: boolean;
+                registration_allowed: boolean;
+                serving_rate_limit?: number | null;
+                subnet_is_active: boolean;
+                target_regs_per_interval?: number | null;
+                tempo?: number | null;
+                transfers_enabled: boolean;
+                user_liquidity_enabled: boolean;
+                weights_rate_limit?: number | null;
+                weights_version?: number | null;
+                yuma_version?: number | null;
+            } | null;
             netuid: number;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description Append-only hyperparameter-change timeline for one subnet (#4309), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging. */
         SubnetHyperparamsHistoryArtifact: {
-            entries: components["schemas"]["SubnetHyperparamsHistoryEntry"][];
+            entries: {
+                block_number?: number | null;
+                hyperparameters?: {
+                    activity_cutoff?: number | null;
+                    activity_cutoff_factor?: number | null;
+                    alpha_high_ratio?: number | null;
+                    alpha_low_ratio?: number | null;
+                    alpha_sigmoid_steepness?: number | null;
+                    bonds_moving_avg_raw?: number | null;
+                    bonds_reset_enabled: boolean;
+                    burn_half_life?: number | null;
+                    burn_increase_mult?: number | null;
+                    commit_reveal_enabled: boolean;
+                    commit_reveal_period?: number | null;
+                    immunity_period?: number | null;
+                    kappa_ratio?: number | null;
+                    liquid_alpha_enabled: boolean;
+                    max_burn_tao?: number | null;
+                    max_regs_per_block?: number | null;
+                    max_validators?: number | null;
+                    max_weight_limit_ratio?: number | null;
+                    min_allowed_weights?: number | null;
+                    min_burn_tao?: number | null;
+                    min_childkey_take_ratio?: number | null;
+                    owner_cut_auto_lock_enabled: boolean;
+                    owner_cut_enabled: boolean;
+                    registration_allowed: boolean;
+                    serving_rate_limit?: number | null;
+                    subnet_is_active: boolean;
+                    target_regs_per_interval?: number | null;
+                    tempo?: number | null;
+                    transfers_enabled: boolean;
+                    user_liquidity_enabled: boolean;
+                    weights_rate_limit?: number | null;
+                    weights_version?: number | null;
+                    yuma_version?: number | null;
+                } | null;
+                hyperparams_hash: string;
+                observed_at: string | null;
+            }[];
             entry_count: number;
             limit?: number | null;
             netuid: number;
@@ -7479,14 +7519,6 @@ export interface components {
             schema_version: number;
         } & {
             [key: string]: unknown;
-        };
-        /** @description One observed subnet_hyperparams change for a subnet (#4309), recorded when the refresh-subnet-hyperparams diff detects any hyperparameter changed since the last snapshot. Forward-only — no rows before this feature shipped. */
-        SubnetHyperparamsHistoryEntry: {
-            block_number?: number | null;
-            hyperparameters?: components["schemas"]["SubnetHyperparameters"] | null;
-            hyperparams_hash: string;
-            /** Format: date-time */
-            observed_at: string | null;
         };
         SubnetIdentityHistoryArtifact: {
             entries: {
@@ -7613,14 +7645,33 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file). */
         SubnetMetagraphArtifact: {
             block_number?: number | null;
-            /** Format: date-time */
             captured_at?: string | null;
             netuid: number;
             neuron_count: number;
-            neurons: components["schemas"]["Neuron"][];
+            neurons: {
+                active: boolean;
+                axon?: string | null;
+                coldkey: string | null;
+                consensus?: number | null;
+                dividends?: number | null;
+                emission_tao?: number | null;
+                featured?: boolean;
+                hotkey: string | null;
+                immunity_expires_at?: string | null;
+                immunity_expires_at_block?: number;
+                incentive?: number | null;
+                is_immunity_period?: boolean;
+                rank?: number | null;
+                registered_at_block?: number | null;
+                stake_tao?: number | null;
+                take?: number | null;
+                trust?: number | null;
+                uid: number;
+                validator_permit: boolean;
+                validator_trust?: number | null;
+            }[];
             schema_version: number;
         } & {
             [key: string]: unknown;
@@ -7743,7 +7794,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Reward-distribution & score-spread metrics for one subnet, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. The reward-flow companion to SubnetConcentrationArtifact. */
         SubnetPerformanceArtifact: {
             active_count?: number;
             captured_at?: string | null;
@@ -7759,7 +7809,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Per-day reward-flow & trust trend for one subnet (newest first) over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean/median of the 0-1 trust, consensus, and validator_trust scores. The reward-flow twin of /concentration/history, computed live from the neuron_daily D1 rollup. */
         SubnetPerformanceHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -7936,17 +7985,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Per-subnet Prometheus-endpoint serving activity over a 7d/30d window: the distinct exporters (hotkeys), PrometheusServed event count, and announcements per exporter for ONE subnet. The per-subnet drill-in of /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of /api/v1/subnets/{netuid}/serving, served live from the account_events PrometheusServed stream at /api/v1/subnets/{netuid}/prometheus (no static file); zeroed when the subnet has no PrometheusServed events in the window. */
         SubnetPrometheusArtifact: {
             announcements: number;
             announcements_per_exporter: number | null;
             distinct_exporters: number;
             netuid: number;
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
         SubnetRecycledArtifact: {
             netuid: number;
@@ -8111,52 +8157,63 @@ export interface components {
         };
         /** @enum {unknown} */
         SubnetType: "root" | "application";
-        /** @description Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file). */
         SubnetValidatorsArtifact: {
             block_number?: number | null;
-            /** Format: date-time */
             captured_at?: string | null;
             netuid: number;
             schema_version: number;
             validator_count: number;
-            validators: components["schemas"]["Neuron"][];
+            validators: {
+                active: boolean;
+                axon?: string | null;
+                coldkey: string | null;
+                consensus?: number | null;
+                dividends?: number | null;
+                emission_tao?: number | null;
+                featured?: boolean;
+                hotkey: string | null;
+                immunity_expires_at?: string | null;
+                immunity_expires_at_block?: number;
+                incentive?: number | null;
+                is_immunity_period?: boolean;
+                rank?: number | null;
+                registered_at_block?: number | null;
+                stake_tao?: number | null;
+                take?: number | null;
+                trust?: number | null;
+                uid: number;
+                validator_permit: boolean;
+                validator_trust?: number | null;
+            }[];
         } & {
             [key: string]: unknown;
         };
         SubnetVerificationArtifact: components["schemas"]["VerificationArtifact"];
-        /** @description Per-subnet validator weight-setting activity over a 7d/30d window: the distinct weight-setting validators, WeightsSet event count, and updates per validator for ONE subnet. The per-subnet drill-in of /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights (no static file); zeroed when the subnet has no WeightsSet events in the window. */
         SubnetWeightsArtifact: {
             distinct_setters: number;
             netuid: number;
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             sets_per_setter: number | null;
             weight_sets: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Per-subnet weight-setter leaderboard over a 7d/30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total, and its first/last set time. The setter-level drill-in of /api/v1/subnets/{netuid}/weights, served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file); an empty leaderboard when the subnet has no WeightsSet events in the window. */
         SubnetWeightSettersArtifact: {
             distinct_setters: number;
             netuid: number;
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             setter_count: number;
             setters: {
-                /** Format: date-time */
                 first_set_at: string | null;
                 hotkey: string | null;
-                /** Format: date-time */
                 last_set_at: string | null;
                 share: number | null;
                 uid: number | null;
                 weight_sets: number;
             }[];
             weight_sets: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
         SubnetYieldArtifact: {
             block_number: number | null;
@@ -27889,7 +27946,12 @@ export interface operations {
                      *         "point_count": 1,
                      *         "points": [
                      *           {
-                     *             "snapshot_date": "example"
+                     *             "active": false,
+                     *             "coldkey": "example",
+                     *             "hotkey": "example",
+                     *             "snapshot_date": "example",
+                     *             "uid": 1,
+                     *             "validator_permit": false
                      *           }
                      *         ],
                      *         "schema_version": 1,
