@@ -56,7 +56,9 @@ budget — keep new dependencies/imports lean.
 - **Components** live in `src/components/metagraphed/`; route trees in `src/routes/`.
 - Reuse existing design tokens (`src/styles.css`, `packages/ui-kit/src/styles.css`) and
   shared components instead of inventing new one-off styles. The "Bone & Ink" rules,
-  mechanically flagged (as warnings — see `eslint.config.ts`) by `no-restricted-syntax`:
+  mechanically flagged by `no-restricted-syntax` (see `eslint.config.ts`) — **warning**
+  everywhere by default, but **error** inside the directories listed in each config's
+  `RATCHETED_DIRS` (see "Lint ratchet" below):
   - Semantic tokens only — `bg-paper`, `text-ink-strong`, `bg-health-ok`, `text-accent-text`,
     `border-border`, etc. Never a raw Tailwind palette color (`bg-emerald-500`,
     `text-gray-600`) and never a hex/rgb literal in code. Author new colors in OKLCH in
@@ -89,6 +91,21 @@ budget — keep new dependencies/imports lean.
     stacking context — not a global layer, so it doesn't belong on this scale.
 
   - See `docs/ssr-safety.md` for the hydration-safety rules (also partly ESLint-enforced).
+
+  **Lint ratchet.** `no-restricted-syntax` is warn-tier everywhere by default — a
+  full-codebase audit (2026-07-23) found too many pre-existing violations to make error-tier
+  safe repo-wide without blocking unrelated PRs. Both `eslint.config.ts` files (here and in
+  `packages/ui-kit/`) define a `RATCHETED_DIRS` array of glob prefixes verified at 0
+  warnings; a directory in that list is error-tier instead, so new drift there fails CI
+  rather than only annotating it. This is a **one-way ratchet**:
+  - If your PR brings a directory to 0 `no-restricted-syntax` warnings, add it to
+    `RATCHETED_DIRS` in the _same_ PR — don't leave a clean directory un-ratcheted for a
+    later PR to notice.
+  - Removing a directory from `RATCHETED_DIRS` requires its own issue explaining why
+    (e.g. a new dependency reintroduced unavoidable raw values) — never a silent drop.
+  - `RATCHETED_DIRS` globs are checked directory-by-directory, not file-by-file — a single
+    remaining violation anywhere under a glob keeps the whole directory out.
+
 - Keep diffs focused. Don't reformat or refactor unrelated files in a feature PR.
 
 ## Lovable-managed surface

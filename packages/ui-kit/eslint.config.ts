@@ -117,6 +117,16 @@ const SSR_SAFETY_RULES = [
 // external-link.tsx/table-state.tsx are known, documented exceptions -- see
 // their own inline comments). Same treatment as apps/ui's primitives/
 // folder + design.primitives.tsx exclusion.
+// #7851: one-way lint ratchet. A directory enters this list only once it's
+// been verified at 0 Bone & Ink warnings (no-restricted-syntax) -- from that
+// point on, new drift in the directory fails CI instead of only annotating
+// it. Any PR that brings a directory to 0 warnings MUST add it here in the
+// same PR (see apps/ui/CONTRIBUTING.md); removing an entry requires an issue
+// explaining why. Initial set (2026-07-24 audit): src/hooks/** and src/lib/**
+// were the only ui-kit directories clean end-to-end -- src/components/** is
+// not (19 of 109 files still warn) and stays un-ratcheted.
+const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"];
+
 const PRIMITIVE_FILES = [
   "src/components/metagraphed/panel.tsx",
   "src/components/metagraphed/panel-header.tsx",
@@ -203,6 +213,17 @@ export default tseslint.config(
       // "warn", not "error" -- matching apps/ui's own rationale: fix
       // incrementally as files are touched, don't block unrelated PRs.
       "no-restricted-syntax": ["warn", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
+    },
+  },
+  {
+    // #7851: promotes the ratcheted directories above from warn to error.
+    // Layered after the warn-tier block above so it wins for files in both
+    // (flat config's last-matching-block-wins semantics); the PRIMITIVE_FILES
+    // off-exclusion block below stays last so those files keep their existing
+    // exemption unchanged even if a ratcheted glob ever overlapped one.
+    files: RATCHETED_DIRS,
+    rules: {
+      "no-restricted-syntax": ["error", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
     },
   },
   {
