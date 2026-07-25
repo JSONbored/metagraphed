@@ -618,6 +618,24 @@ import {
   ListSubnetGapsInputSchema,
   ListSubnetGapsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-summary-gaps.ts";
+import {
+  FindSubnetOpportunitiesInputSchema,
+  FindSubnetOpportunitiesOutputSchema,
+  SemanticSearchInputSchema,
+  SemanticSearchOutputSchema,
+  AskInputSchema,
+  AskOutputSchema,
+  FindSubnetForTaskInputSchema,
+  FindSubnetForTaskOutputSchema,
+} from "../schemas-src/mcp-tools/ai-discovery.ts";
+import {
+  HowDoICallInputSchema,
+  HowDoICallOutputSchema,
+  VerifyIntegrationInputSchema,
+  VerifyIntegrationOutputSchema,
+  CallSubnetSurfaceInputSchema,
+  CallSubnetSurfaceOutputSchema,
+} from "../schemas-src/mcp-tools/ai-integration.ts";
 
 type Row = Record<string, unknown>;
 
@@ -1166,6 +1184,29 @@ const GAP_PRIORITY_SORT_FIELDS = [
   "surface_count",
   "verified_candidate_count",
 ];
+
+// Batch 12 (#8076) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/health-serving.ts's
+// ECONOMIC_BOARD_SPECS[].key and src/ai-search.ts's SEMANTIC_TYPES),
+// cross-checked against the actual runtime source at the time of writing.
+const ECONOMIC_LEADERBOARD_BOARDS = [
+  "open-slots",
+  "cheapest-registration",
+  "highest-emission",
+  "validator-headroom",
+  "biggest-alpha-gain-1d",
+  "biggest-alpha-gain-7d",
+];
+const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
+// mcp-server.ts's own semanticTypeSchema() helper shape (removed by this
+// batch's conversion, once the sole call sites -- ask, semantic_search --
+// were converted): one kind or a list of kinds.
+const SEMANTIC_TYPE_SCHEMA = {
+  oneOf: [
+    { type: "string", enum: SEMANTIC_TYPES },
+    { type: "array", items: { type: "string", enum: SEMANTIC_TYPES } },
+  ],
+};
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -8091,6 +8132,214 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  find_subnet_opportunities: {
+    input: {
+      type: "object",
+      properties: {
+        board: {
+          type: "string",
+          enum: [...ECONOMIC_LEADERBOARD_BOARDS],
+        },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["boards", "with_economics_count"],
+      properties: {
+        board: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        with_economics_count: { type: "integer" },
+        boards: {
+          type: "object",
+          additionalProperties: objectItems({
+            netuid: { type: "integer" },
+            slug: NULLABLE_STRING,
+            name: NULLABLE_STRING,
+          }),
+        },
+      },
+    },
+  },
+  semantic_search: {
+    input: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 20 },
+        type: SEMANTIC_TYPE_SCHEMA,
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["query", "count", "results"],
+      properties: {
+        query: { type: "string" },
+        count: { type: "integer" },
+        model: NULLABLE_STRING,
+        results: objectItems({
+          score: ANY,
+          type: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          slug: NULLABLE_STRING,
+          title: NULLABLE_STRING,
+          subtitle: NULLABLE_STRING,
+          url: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  ask: {
+    input: {
+      type: "object",
+      properties: {
+        question: { type: "string" },
+        type: SEMANTIC_TYPE_SCHEMA,
+      },
+      required: ["question"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["question", "answer"],
+      properties: {
+        question: { type: "string" },
+        answer: { type: "string" },
+        model: NULLABLE_STRING,
+        context_count: NULLABLE_INT,
+        citations: objectItems({
+          ref: ANY,
+          score: { type: "number" },
+          title: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          slug: NULLABLE_STRING,
+          url: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  find_subnet_for_task: {
+    input: {
+      type: "object",
+      properties: {
+        task: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 20 },
+      },
+      required: ["task"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["task", "count", "results"],
+      properties: {
+        task: { type: "string" },
+        count: { type: "integer" },
+        discovery: ANY,
+        note: NULLABLE_STRING,
+        results: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  how_do_i_call: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        subnet: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "callable", "services"],
+      properties: {
+        netuid: { type: "integer" },
+        name: NULLABLE_STRING,
+        slug: NULLABLE_STRING,
+        integration_readiness: ANY,
+        callable: { type: "boolean" },
+        callable_count: { type: "integer" },
+        guidance: ANY,
+        services: { type: "array", items: { type: "object" } },
+        next_steps: { type: "array" },
+        operational_observed_at: NULLABLE_STRING,
+        health_source: NULLABLE_STRING,
+      },
+    },
+  },
+  verify_integration: {
+    input: {
+      type: "object",
+      properties: {
+        surface_id: { type: "string" },
+        netuid: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surface_id", "status", "callable"],
+      properties: {
+        surface_id: { type: "string" },
+        surface_key: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        kind: { type: "string" },
+        url: { type: "string" },
+        provider: NULLABLE_STRING,
+        status: { type: "string" },
+        classification: NULLABLE_STRING,
+        callable: { type: "boolean" },
+        latency_ms: NULLABLE_INT,
+        status_code: NULLABLE_INT,
+        error: NULLABLE_STRING,
+        probed_at: NULLABLE_STRING,
+        from_cache: { type: "boolean" },
+      },
+    },
+  },
+  call_subnet_surface: {
+    input: {
+      type: "object",
+      properties: {
+        surface_id: { type: "string" },
+        query: {
+          type: "object",
+          additionalProperties: { type: ["string", "number", "boolean"] },
+        },
+        path: { type: "string" },
+        method: { type: "string", enum: ["GET", "HEAD", "POST", "PUT"] },
+        body: { type: ["object", "string"] },
+        content_type: { type: "string" },
+        credential: { type: ["string", "object"] },
+      },
+      required: ["surface_id"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surface_id", "url", "status_code", "truncated"],
+      properties: {
+        surface_id: { type: "string" },
+        url: { type: "string" },
+        status_code: { type: "integer" },
+        content_type: NULLABLE_STRING,
+        latency_ms: NULLABLE_INT,
+        body: {},
+        truncated: { type: "boolean" },
+        parse_error: NULLABLE_STRING,
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -8879,6 +9128,34 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
     input: RunSavedQueryInputSchema,
     output: RunSavedQueryOutputSchema,
   },
+  find_subnet_opportunities: {
+    input: FindSubnetOpportunitiesInputSchema,
+    output: FindSubnetOpportunitiesOutputSchema,
+  },
+  semantic_search: {
+    input: SemanticSearchInputSchema,
+    output: SemanticSearchOutputSchema,
+  },
+  ask: {
+    input: AskInputSchema,
+    output: AskOutputSchema,
+  },
+  find_subnet_for_task: {
+    input: FindSubnetForTaskInputSchema,
+    output: FindSubnetForTaskOutputSchema,
+  },
+  how_do_i_call: {
+    input: HowDoICallInputSchema,
+    output: HowDoICallOutputSchema,
+  },
+  verify_integration: {
+    input: VerifyIntegrationInputSchema,
+    output: VerifyIntegrationOutputSchema,
+  },
+  call_subnet_surface: {
+    input: CallSubnetSurfaceInputSchema,
+    output: CallSubnetSurfaceOutputSchema,
+  },
 };
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -8961,6 +9238,25 @@ function normalize(node: unknown, path: string): unknown {
   for (const [key, value] of Object.entries(obj)) {
     if (key === "$schema" || key === "$id") continue;
     if (key === "description") continue; // issue-sanctioned cosmetic (#7863's own wording)
+
+    // `propertyNames: {type:"string"}` (Zod's z.record(z.string(), ...)
+    // always emits this alongside `additionalProperties`) is a no-op
+    // constraint under JSON Schema -- every object key IS already a string
+    // by the JSON spec itself, so this never rejects anything
+    // additionalProperties wouldn't already reject on its own. Drop it, the
+    // same treatment $schema/$id get above (batch 12, #8076's
+    // find_subnet_opportunities.output.boards and
+    // call_subnet_surface.input.query, the epic's first z.record() uses).
+    if (
+      key === "propertyNames" &&
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value as Row).length === 1 &&
+      (value as Row).type === "string"
+    ) {
+      continue;
+    }
 
     // `oneOf` (hand-written, e.g. batch 9's list_rpc_endpoints fields/cursor
     // params: string-or-array, integer-or-string) vs Zod's `anyOf` for the

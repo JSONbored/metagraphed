@@ -848,6 +848,24 @@ import {
   ListSubnetGapsInputSchema,
 } from "../schemas-src/mcp-tools/registry-summary-gaps.ts";
 import {
+  FindSubnetOpportunitiesInputSchema,
+  FindSubnetOpportunitiesOutputSchema,
+  SemanticSearchInputSchema,
+  SemanticSearchOutputSchema,
+  AskInputSchema,
+  AskOutputSchema,
+  FindSubnetForTaskInputSchema,
+  FindSubnetForTaskOutputSchema,
+} from "../schemas-src/mcp-tools/ai-discovery.ts";
+import {
+  HowDoICallInputSchema,
+  HowDoICallOutputSchema,
+  VerifyIntegrationInputSchema,
+  VerifyIntegrationOutputSchema,
+  CallSubnetSurfaceInputSchema,
+  CallSubnetSurfaceOutputSchema,
+} from "../schemas-src/mcp-tools/ai-integration.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -1200,7 +1218,6 @@ import {
 import {
   aiEnabled,
   askQuestion,
-  SEMANTIC_TYPES,
   semanticSearch,
   withinRateLimit,
 } from "./ai-search.ts";
@@ -2629,18 +2646,6 @@ function clampLimit(value: unknown, fallback: number, max: number) {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
-}
-
-// Input-schema fragment for the optional `type` scope: one record kind or a list.
-// Built from SEMANTIC_TYPES so the schema and the server-side validator never drift.
-function semanticTypeSchema() {
-  const kind = { type: "string", enum: [...SEMANTIC_TYPES] };
-  return {
-    description:
-      `Restrict results to one or more record kinds (${SEMANTIC_TYPES.join(", ")}). ` +
-      "Accepts a single kind or a list; omit for all kinds.",
-    oneOf: [kind, { type: "array", items: kind }],
-  };
 }
 
 // Resolve a lenient `cursor` arg into a non-negative offset. Mirrors the old
@@ -9397,25 +9402,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "alpha_price_change_* values. Omit `board` for all economic boards. " +
       "Economics is refreshed periodically, not live-by-the-second; use " +
       "get_subnet for one subnet's full current economics.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        board: {
-          type: "string",
-          enum: [...ECONOMIC_LEADERBOARD_BOARDS],
-          description:
-            "Optional single board. Omit to return all economic boards.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max subnets per board (1-100, default 10).",
-          minimum: 1,
-          maximum: 100,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(FindSubnetOpportunitiesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof FindSubnetOpportunitiesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const board = optionalEnum(args, "board", ECONOMIC_LEADERBOARD_BOARDS);
       const limit = clampLimit(args?.limit, 10, 100);
       const economics = await loadArtifactData(
@@ -9458,26 +9451,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "hit, optionally scoped to subnets, surfaces, and/or providers via `type`. " +
       "Requires the AI layer; fall back to search_subnets when it is not " +
       "available.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "Natural-language intent, e.g. 'summarize long documents'.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max results (1-20, default 10).",
-          minimum: 1,
-          maximum: 20,
-        },
-        type: semanticTypeSchema(),
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(SemanticSearchInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof SemanticSearchInputSchema>,
+      ctx: McpCtx,
+    ) {
       requireAi(ctx);
       const query = requireString(args, "query");
       await requireAiRateLimit(ctx, "semantic");
@@ -9498,20 +9478,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "citations — e.g. 'Which subnets expose an inference API I can call " +
       "today?'. Returns the answer plus its citations. Scope the retrieved " +
       "context with `type`. Requires the AI layer.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        question: {
-          type: "string",
-          description:
-            "A question about Bittensor subnets or the registry as a whole.",
-        },
-        type: semanticTypeSchema(),
-      },
-      required: ["question"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(AskInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof AskInputSchema>, ctx: McpCtx) {
       requireAi(ctx);
       const question = requireString(args, "question");
       await requireAiRateLimit(ctx, "ask");
@@ -9535,24 +9505,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "services, each with its integration readiness, callable service kinds, " +
       "base URL, health, and a next step. Ranks by intent when the AI layer is " +
       "available, otherwise by keyword. Pair each result with how_do_i_call.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        task: {
-          type: "string",
-          description: "What you want to accomplish, in plain language.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max subnets to return (1-20, default 5).",
-          minimum: 1,
-          maximum: 20,
-        },
-      },
-      required: ["task"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(FindSubnetForTaskInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof FindSubnetForTaskInputSchema>,
+      ctx: McpCtx,
+    ) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
       const live = await mcpLiveHealth(ctx);
@@ -9616,23 +9575,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "last-known health — plus next steps. Accepts a netuid or a slug/chain " +
       "name. When a subnet exposes nothing callable, says so and points to its " +
       "profile. Pairs with find_subnet_for_task / search_subnets.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: {
-          type: "integer",
-          minimum: 0,
-          description: "The subnet's netuid.",
-        },
-        subnet: {
-          type: "string",
-          description:
-            "Subnet slug or chain name (e.g. 'apex'); alternative to netuid.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(HowDoICallInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof HowDoICallInputSchema>, ctx: McpCtx) {
       const netuid = await resolveNetuid(ctx, args);
       const staticDetail = await loadArtifactData(
         ctx,
@@ -9720,24 +9666,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     title: "Verify a surface is callable right now",
     description:
       'Live-probe a single catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
-    inputSchema: {
-      type: "object",
-      properties: {
-        surface_id: {
-          type: "string",
-          description:
-            'Surface id, stable surface_key, or deprecated surface_id alias to verify, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
-        },
-        netuid: {
-          type: "integer",
-          minimum: 0,
-          description:
-            "Alternatively, a subnet netuid — verifies that subnet's primary catalogued surface.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(VerifyIntegrationInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof VerifyIntegrationInputSchema>,
+      ctx: McpCtx,
+    ) {
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/operational-surfaces.json",
@@ -9782,51 +9717,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     title: "Call a subnet's live API and return its response",
     description:
       "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf and never stores or reuses one past this single call.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        surface_id: {
-          type: "string",
-          description:
-            'Surface id, stable surface_key, or deprecated surface_id alias to call, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
-        },
-        query: {
-          type: "object",
-          description:
-            "Optional query parameters merged onto the effective URL (the surface's curated url, or `path` below when given), for surfaces whose notes/schema indicate they accept them.",
-          additionalProperties: { type: ["string", "number", "boolean"] },
-        },
-        path: {
-          type: "string",
-          description:
-            "Optional concrete path to call on this surface's host instead of its single curated url, e.g. \"/users/123\". Must be declared in the surface's captured schema (see get_api_schema) -- an undeclared path is rejected. Requires `method` to also be set.",
-        },
-        method: {
-          type: "string",
-          enum: ["GET", "HEAD", "POST", "PUT"],
-          description:
-            "HTTP method for `path` above. Requires `path` to also be set; ignored otherwise.",
-        },
-        body: {
-          type: ["object", "string"],
-          description:
-            "Request body for a POST/PUT `path` call, when the matched operation declares one. A JSON object is serialized for a JSON content type; use a string body for any other declared content type. Ignored for GET/HEAD.",
-        },
-        content_type: {
-          type: "string",
-          description:
-            'Media type for `body`, e.g. "application/json". Must be one the matched operation declares. Optional when the operation declares application/json or exactly one media type.',
-        },
-        credential: {
-          type: ["string", "object"],
-          description:
-            'Credential for an auth_required surface -- see this surface\'s auth details (list_subnet_apis/get_api_schema) for which shape it needs. For auth.scheme bearer/api-key/basic: a single string, already formatted per auth.value_format (e.g. "Bearer <token>" or "Basic <base64(username:password)>"). For auth.scheme signature (e.g. a Bittensor hotkey-signed request): an object mapping every name in auth.names to a value YOU have already computed -- this tool never signs anything itself, you must compute the signature yourself (with your own wallet/key, exactly as if calling the subnet directly) before calling this tool; the object\'s keys must exactly match auth.names, no more, no fewer. Any other scheme (custom, oauth2, or incompletely documented) is rejected. Never obtains a credential on your behalf, never stores or reuses one past this single call.',
-        },
-      },
-      required: ["surface_id"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(CallSubnetSurfaceInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof CallSubnetSurfaceInputSchema>,
+      ctx: McpCtx,
+    ) {
       if (typeof args?.surface_id !== "string" || !args.surface_id) {
         throw toolError("invalid_params", "surface_id is required.");
       }
@@ -9866,8 +9763,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "`body` requires `path` and `method` to also be set.",
         );
       }
-      let normalizedMethod;
-      if (hasMethod) {
+      let normalizedMethod: string | undefined;
+      if (hasMethod && typeof args.method === "string") {
         normalizedMethod = args.method.toUpperCase();
         if (!["GET", "HEAD", "POST", "PUT"].includes(normalizedMethod)) {
           throw toolError(
@@ -9928,7 +9825,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
             );
           }
-          if (!hasStringCredentialArg) {
+          if (!hasStringCredentialArg || typeof args.credential !== "string") {
             throw toolError(
               "invalid_params",
               `This surface's auth.scheme ("${scheme}") requires \`credential\` to be a single string, not an object.`,
@@ -9952,7 +9849,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               "This surface's auth mechanism (location/names) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
             );
           }
-          if (!hasObjectCredentialArg) {
+          if (
+            !hasObjectCredentialArg ||
+            typeof args.credential !== "object" ||
+            args.credential === null
+          ) {
             throw toolError(
               "invalid_params",
               `This surface's auth.scheme ("signature") requires \`credential\` to be an object mapping each of ${JSON.stringify(names)} to a value you have already computed -- this tool does not sign requests itself.`,
@@ -9983,6 +9884,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               );
             }
           }
+          // The loop above has just verified every value is a non-empty
+          // string, so this is Record<string, string> despite the wider
+          // Record<string, unknown> inferred from the input schema.
+          const credentialValues = args.credential as Record<string, string>;
           if (
             location === "body" &&
             !(
@@ -10016,7 +9921,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               : undefined;
           credentialPlacement = {
             location,
-            values: args.credential,
+            values: credentialValues,
             ...(bodyEnvelope ? { bodyEnvelope } : {}),
           };
         } else {
@@ -10034,7 +9939,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       }
       let requestBody;
       let requestContentType;
-      if (hasPath) {
+      if (hasPath && typeof args.path === "string") {
+        if (!normalizedMethod) {
+          // Unreachable: the `hasPath !== hasMethod` check above guarantees
+          // hasMethod (and therefore normalizedMethod) is set whenever
+          // hasPath is true -- narrows normalizedMethod to `string` below.
+          throw toolError(
+            "invalid_params",
+            "`method` must be supplied together with `path`.",
+          );
+        }
         const schemaArtifactId =
           surface.schema_source?.surface_id || surface.surface_id;
         const schema = await loadOptionalArtifact(
@@ -10073,7 +9987,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               `"${normalizedMethod} ${args.path}" does not declare a request body in its schema.`,
             );
           }
-          if (hasContentTypeArg) {
+          if (hasContentTypeArg && typeof args.content_type === "string") {
             if (!declaredMediaTypes.includes(args.content_type)) {
               throw toolError(
                 "invalid_params",
@@ -10854,131 +10768,26 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   list_subnet_gaps: LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
-  find_subnet_for_task: {
-    type: "object",
-    additionalProperties: true,
-    required: ["task", "count", "results"],
-    properties: {
-      task: { type: "string" },
-      count: { type: "integer" },
-      discovery: ANY,
-      note: NULLABLE_STRING,
-      results: { type: "array", items: { type: "object" } },
-    },
-  },
-  how_do_i_call: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "callable", "services"],
-    properties: {
-      netuid: { type: "integer" },
-      name: NULLABLE_STRING,
-      slug: NULLABLE_STRING,
-      integration_readiness: ANY,
-      callable: { type: "boolean" },
-      callable_count: { type: "integer" },
-      guidance: ANY,
-      services: { type: "array", items: { type: "object" } },
-      next_steps: { type: "array" },
-      operational_observed_at: NULLABLE_STRING,
-      health_source: NULLABLE_STRING,
-    },
-  },
-  find_subnet_opportunities: {
-    type: "object",
-    additionalProperties: true,
-    required: ["boards", "with_economics_count"],
-    properties: {
-      board: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      with_economics_count: { type: "integer" },
-      // Map of board key -> ranked subnet entries. additionalProperties keeps it
-      // open to the board-specific projected fields (open_slots, emission_share,
-      // validator_headroom, …) without re-listing each board's shape.
-      boards: {
-        type: "object",
-        additionalProperties: objectItems({
-          netuid: { type: "integer" },
-          slug: NULLABLE_STRING,
-          name: NULLABLE_STRING,
-        }),
-      },
-    },
-  },
-  semantic_search: {
-    type: "object",
-    additionalProperties: true,
-    required: ["query", "count", "results"],
-    properties: {
-      query: { type: "string" },
-      count: { type: "integer" },
-      model: NULLABLE_STRING,
-      results: objectItems({
-        score: ANY,
-        type: NULLABLE_STRING,
-        netuid: NULLABLE_INT,
-        slug: NULLABLE_STRING,
-        title: NULLABLE_STRING,
-        subtitle: NULLABLE_STRING,
-        url: NULLABLE_STRING,
-      }),
-    },
-  },
-  ask: {
-    type: "object",
-    additionalProperties: true,
-    required: ["question", "answer"],
-    properties: {
-      question: { type: "string" },
-      answer: { type: "string" },
-      model: NULLABLE_STRING,
-      context_count: NULLABLE_INT,
-      citations: objectItems({
-        ref: ANY,
-        score: { type: "number" },
-        title: NULLABLE_STRING,
-        netuid: NULLABLE_INT,
-        slug: NULLABLE_STRING,
-        url: NULLABLE_STRING,
-      }),
-    },
-  },
-  verify_integration: {
-    type: "object",
-    additionalProperties: true,
-    required: ["surface_id", "status", "callable"],
-    properties: {
-      surface_id: { type: "string" },
-      surface_key: NULLABLE_STRING,
-      netuid: NULLABLE_INT,
-      kind: { type: "string" },
-      url: { type: "string" },
-      provider: NULLABLE_STRING,
-      status: { type: "string" },
-      classification: NULLABLE_STRING,
-      callable: { type: "boolean" },
-      latency_ms: NULLABLE_INT,
-      status_code: NULLABLE_INT,
-      error: NULLABLE_STRING,
-      probed_at: NULLABLE_STRING,
-      from_cache: { type: "boolean" },
-    },
-  },
-  call_subnet_surface: {
-    type: "object",
-    additionalProperties: true,
-    required: ["surface_id", "url", "status_code", "truncated"],
-    properties: {
-      surface_id: { type: "string" },
-      url: { type: "string" },
-      status_code: { type: "integer" },
-      content_type: NULLABLE_STRING,
-      latency_ms: NULLABLE_INT,
-      body: {},
-      truncated: { type: "boolean" },
-      parse_error: NULLABLE_STRING,
-    },
-  },
+  find_subnet_for_task: z.toJSONSchema(FindSubnetForTaskOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  how_do_i_call: z.toJSONSchema(HowDoICallOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  find_subnet_opportunities: z.toJSONSchema(
+    FindSubnetOpportunitiesOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  semantic_search: z.toJSONSchema(SemanticSearchOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  ask: z.toJSONSchema(AskOutputSchema, { target: "draft-2020-12" }),
+  verify_integration: z.toJSONSchema(VerifyIntegrationOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  call_subnet_surface: z.toJSONSchema(CallSubnetSurfaceOutputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
 export function listToolDefinitions() {
