@@ -99,7 +99,7 @@
               }
             },
             "additionalProperties": false,
-            "description": "Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) — the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring."
+            "description": "Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) \u2014 the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring."
           }
         },
         "additionalProperties": true
@@ -143,108 +143,6 @@
           },
           "order": {
             "enum": ["asc", "desc"]
-          }
-        },
-        "additionalProperties": false
-      },
-      "ApiQueryParameter": {
-        "type": "object",
-        "required": ["name", "schema"],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "schema": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ApiRoute": {
-        "type": "object",
-        "required": [
-          "artifact_path",
-          "cache",
-          "description",
-          "id",
-          "method",
-          "path",
-          "public",
-          "query_parameters"
-        ],
-        "properties": {
-          "artifact_path": {
-            "type": "string",
-            "pattern": "^/metagraph/"
-          },
-          "cache": {
-            "$ref": "#/components/schemas/CacheProfile"
-          },
-          "description": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "method": {
-            "enum": ["GET"]
-          },
-          "path": {
-            "type": "string",
-            "pattern": "^/api/v1"
-          },
-          "public": {
-            "const": true
-          },
-          "query_collection": {
-            "type": ["string", "null"]
-          },
-          "query_filter_names": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "query_parameters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApiQueryParameter"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "ResponseEnvelopeContract": {
-        "type": "object",
-        "required": [
-          "error_schema_ref",
-          "fields",
-          "notes",
-          "schema_version",
-          "success_schema_ref"
-        ],
-        "properties": {
-          "error_schema_ref": {
-            "const": "#/components/schemas/ErrorEnvelope"
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "enum": ["ok", "data", "meta", "error"]
-            }
-          },
-          "notes": {
-            "type": "string"
-          },
-          "schema_version": {
-            "const": 1
-          },
-          "success_schema_ref": {
-            "const": "#/components/schemas/SuccessEnvelope"
           }
         },
         "additionalProperties": false

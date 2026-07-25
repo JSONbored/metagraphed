@@ -273,6 +273,61 @@ import {
 } from "../src/metagraph-neurons.ts";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import { buildValidatorNominators } from "../src/validator-nominators.ts";
+// Batch 10 (#8064) additions.
+import {
+  ApiIndexArtifactSchema,
+  ContractsArtifactSchema,
+  OpenApiArtifactSchema,
+  BuildSummaryArtifactSchema,
+  ChangelogArtifactSchema,
+} from "../schemas-src/routes/meta-contracts.ts";
+import {
+  FreshnessArtifactSchema,
+  SourceHealthArtifactSchema,
+  SourceSnapshotsArtifactSchema,
+  SearchArtifactSchema,
+  SearchIndexArtifactSchema,
+} from "../schemas-src/routes/evidence-search.ts";
+import {
+  ProviderArtifactSchema,
+  ProvidersArtifactSchema,
+  ProviderEndpointsArtifactSchema,
+  RpcEndpointsArtifactSchema,
+  RpcPoolsArtifactSchema,
+  RpcUsageArtifactSchema,
+} from "../schemas-src/routes/providers-rpc.ts";
+import {
+  SubnetProfilesArtifactSchema,
+  SubnetProfileArtifactSchema,
+  SchemaIndexArtifactSchema,
+} from "../schemas-src/routes/subnet-profiles.ts";
+import {
+  AgentCatalogArtifactSchema,
+  AgentCatalogSubnetArtifactSchema,
+  AgentResourcesArtifactSchema,
+} from "../schemas-src/routes/agent-catalog.ts";
+import {
+  buildContractsArtifact,
+  buildApiIndexArtifact,
+} from "../src/contracts.ts";
+import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.ts";
+import { buildChangelog } from "../scripts/changelog.ts";
+import {
+  evaluateArtifactBudgets,
+  summarizeArtifactBudgets,
+} from "../scripts/artifact-budgets.ts";
+import { publishedAt } from "../scripts/lib.ts";
+import { mergeFreshness, formatRpcUsage } from "../src/health-serving.ts";
+import {
+  buildEndpointResourceArtifact,
+  buildRpcEndpointArtifact,
+  buildEndpointPoolArtifact,
+} from "../scripts/lib/endpoint-artifacts.ts";
+import {
+  subnetIntegrationReadiness,
+  buildAgentReadiness,
+} from "../scripts/lib/build-readiness.ts";
+import { listToolDefinitions } from "../src/mcp-server.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -2680,6 +2735,1080 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
   });
   test("validator-nominators: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = ValidatorNominatorsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+});
+
+// Batch 10 (#8064) -- meta/contracts, evidence/freshness/search, providers/
+// rpc, subnet-profiles, and agent-catalog routes. Most of these have no
+// isolated pure per-request builder (the shape is assembled inline in
+// scripts/build-artifacts.ts, a build script excluded from in-process
+// coverage) -- for those, each case instead drives the real EXPORTED helper
+// functions that DO exist (subnetIntegrationReadiness/buildAgentReadiness,
+// evaluateArtifactBudgets/summarizeArtifactBudgets, listToolDefinitions,
+// buildEndpointResourceArtifact/buildRpcEndpointArtifact/
+// buildEndpointPoolArtifact, mergeFreshness, formatRpcUsage,
+// buildContractsArtifact/buildApiIndexArtifact/buildCanonicalOpenApiArtifact/
+// buildChangelog) composed with fixtures grounded in real captured
+// production responses (api.metagraph.sh, 2026-07-25) rather than a fully
+// hand-typed guess.
+const GENERATED_AT_10 = "2026-07-25T00:00:00.000Z";
+const CONTRACT_10 = "2026-07-03.2";
+
+describe("batch 10 (#8064) route artifact schemas parse real builder output", () => {
+  test("api-index: ApiIndexArtifactSchema.parse(buildApiIndexArtifact(...)) succeeds", () => {
+    const contracts = buildContractsArtifact(GENERATED_AT_10);
+    const apiIndex = buildApiIndexArtifact(GENERATED_AT_10, contracts);
+    const parsed = ApiIndexArtifactSchema.parse(apiIndex);
+    assert.ok(parsed);
+  });
+  test("api-index: ApiIndexArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ApiIndexArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("contracts: ContractsArtifactSchema.parse(buildContractsArtifact(...)) succeeds", () => {
+    const contracts = buildContractsArtifact(GENERATED_AT_10);
+    const parsed = ContractsArtifactSchema.parse(contracts);
+    assert.ok(parsed);
+  });
+  test("contracts: ContractsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ContractsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("openapi: OpenApiArtifactSchema.parse(buildCanonicalOpenApiArtifact(...)) succeeds", async () => {
+    const openapi = await buildCanonicalOpenApiArtifact(GENERATED_AT_10);
+    const parsed = OpenApiArtifactSchema.parse(openapi);
+    assert.ok(parsed);
+  });
+  test("openapi: OpenApiArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = OpenApiArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("changelog: ChangelogArtifactSchema.parse(buildChangelog(...)) succeeds (populated diff)", () => {
+    const data = buildChangelog({
+      contractVersion: CONTRACT_10,
+      generatedAt: GENERATED_AT_10,
+      currentArtifacts: [
+        { path: "subnets.json", hash: "abc123" },
+        { path: "openapi.json", hash: "def456" },
+      ],
+      currentCoverage: {
+        candidate_count: 300,
+        curated_overlay_count: 120,
+        native_only_count: 10,
+        surface_count: 900,
+      },
+      currentSubnets: {
+        subnets: [
+          { netuid: 1, name: "Root", slug: "root" },
+          { netuid: 64, name: "Chutes", slug: "chutes" },
+        ],
+      },
+      previousArtifacts: [{ path: "subnets.json", hash: "OLDHASH" }],
+      previousCoverage: {
+        candidate_count: 280,
+        curated_overlay_count: 115,
+        native_only_count: 12,
+        surface_count: 850,
+      },
+      previousSubnets: { subnets: [{ netuid: 1, name: "Root", slug: "root" }] },
+    });
+    const parsed = ChangelogArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.equal(parsed.subnets.added[0].name, "Chutes");
+  });
+  test("changelog: ChangelogArtifactSchema.parse(buildChangelog(...)) succeeds (empty build-time placeholder)", () => {
+    const data = buildChangelog({
+      contractVersion: CONTRACT_10,
+      generatedAt: GENERATED_AT_10,
+      currentArtifacts: [],
+      currentCoverage: {
+        candidate_count: 0,
+        curated_overlay_count: 0,
+        native_only_count: 0,
+        surface_count: 0,
+      },
+      currentSubnets: { subnets: [] },
+      previousArtifacts: null,
+      previousCoverage: null,
+      previousSubnets: null,
+    });
+    const parsed = ChangelogArtifactSchema.parse(data);
+    assert.equal(parsed.summary.coverage_delta, null);
+  });
+  test("changelog: ChangelogArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ChangelogArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("build-summary: BuildSummaryArtifactSchema.parse(...) succeeds using real budget helpers", () => {
+    const sizes = [
+      { path: "subnets.json", size_bytes: 900_000 },
+      { path: "openapi.json", size_bytes: 1_900_000 },
+    ];
+    const budgets = evaluateArtifactBudgets(sizes);
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      published_at: publishedAt(),
+      adapter_count: 64,
+      artifact_count: 500,
+      artifact_size_bytes: 42_000_000,
+      full_artifact_count: 2321,
+      full_artifact_size_bytes: 44_000_000,
+      storage_tier_counts: { dual: 4, git: 2, r2: 2315 },
+      storage_tier_size_bytes: {
+        dual: 4_000_000,
+        git: 100_000,
+        r2: 39_900_000,
+      },
+      artifacts: sizes,
+      artifact_budget_summary: summarizeArtifactBudgets(budgets),
+      artifact_budgets: budgets.filter((b) => b.status !== "ok"),
+      candidate_count: 300,
+      coverage: { candidate_count: 300, surface_count: 900 },
+      endpoint_count: 3101,
+      profile_count: 129,
+      provider_count: 136,
+      subnet_count: 129,
+      surface_count: 3444,
+      public_contract: {
+        version: CONTRACT_10,
+        url: "/metagraph/contracts.json",
+      },
+    };
+    const parsed = BuildSummaryArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("build-summary: BuildSummaryArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BuildSummaryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("freshness: FreshnessArtifactSchema.parse(mergeFreshness(...)) succeeds", () => {
+    const staticFreshness = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      sources: [
+        {
+          as_of: null,
+          id: "surface-health",
+          lane: "health-probe",
+          notes: "",
+          path: "public/metagraph/health/latest.json",
+          required_for_publish: false,
+          stale_after_hours: 24,
+          stale_behavior: "block",
+          status: "missing",
+          timestamp: null,
+          timestamp_field: "health_probe_as_of",
+        },
+        {
+          as_of: "2026-07-22T18:15:13Z",
+          id: "native-subnets",
+          lane: "native-data",
+          notes: "",
+          path: "registry/native/finney-subnets.json",
+          required_for_publish: true,
+          stale_after_hours: 48,
+          stale_behavior: "block",
+          status: "captured",
+          timestamp: "2026-07-22T18:15:13Z",
+          timestamp_field: "native_data_as_of",
+        },
+      ],
+      summary: {
+        adapter_count: 64,
+        adapter_snapshot_as_of: "2026-07-22T18:23:07.250Z",
+        blocking_source_count: 4,
+        candidate_discovery_as_of: "2026-07-22T18:15:01.351Z",
+        health_probe_as_of: null,
+        health_surface_count: 1842,
+        missing_blocking_source_count: 0,
+        native_data_as_of: "2026-07-22T18:15:13Z",
+        native_snapshot_captured_at: "2026-07-22T18:15:13Z",
+        openapi_surface_count: 70,
+        publish_ready_without_age_check: true,
+        schema_snapshot_as_of: "2026-07-22T18:15:01.351Z",
+        stale_window_warnings: [],
+        verification_as_of: "2026-07-22T18:15:01.351Z",
+        verification_generated_at: "2026-07-22T18:15:01.351Z",
+        warning_source_count: 66,
+      },
+    };
+    const merged = mergeFreshness(staticFreshness, {
+      last_run_at: "2026-07-25T09:00:57.805Z",
+    });
+    const parsed = FreshnessArtifactSchema.parse(merged);
+    assert.ok(parsed);
+    // The live-only field this batch added to the hand-edited schema.
+    assert.equal(
+      parsed.summary.operational_probe_as_of,
+      "2026-07-25T09:00:57.805Z",
+    );
+    const surfaceHealth = parsed.sources.find((s) => s.id === "surface-health");
+    assert.equal(surfaceHealth?.status, "current");
+  });
+  test("freshness: FreshnessArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = FreshnessArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // No isolated pure builder (buildSourceHealthArtifact is unexported in
+  // scripts/build-artifacts.ts) -- fixture is a real captured production
+  // response (api.metagraph.sh/api/v1/source-health, 2026-07-25).
+  test("source-health: SourceHealthArtifactSchema.parse(real captured response) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      source: "generated-provider-and-verification-summary",
+      providers: [
+        {
+          authority: "official",
+          candidate_count: 20,
+          classifications: {
+            "content-mismatch": 1,
+            dead: 4,
+            live: 13,
+            redirected: 1,
+            unsupported: 1,
+          },
+          endpoint_count: 71,
+          id: "chutes",
+          kind: "subnet-team",
+          name: "Chutes",
+          rpc_endpoint_count: 0,
+          status: "ok",
+          verification_result_count: 20,
+        },
+        {
+          authority: "community",
+          candidate_count: 0,
+          classifications: {},
+          endpoint_count: 1,
+          id: "basilica",
+          kind: "subnet-team",
+          name: "Basilica",
+          rpc_endpoint_count: 0,
+          status: "unknown",
+          verification_result_count: 0,
+        },
+      ],
+      summary: {
+        candidate_count: 2172,
+        endpoint_count: 3101,
+        provider_count: 136,
+        rpc_endpoint_count: 11,
+        status_counts: { degraded: 1, failed: 1, ok: 117, unknown: 17 },
+        verification_result_count: 2172,
+      },
+    };
+    const parsed = SourceHealthArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("source-health: SourceHealthArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SourceHealthArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // No isolated pure builder (buildSourceSnapshots closes over module-level
+  // generatedAt/contractVersion) -- fixture is a real captured production
+  // response (api.metagraph.sh/api/v1/source-snapshots, 2026-07-25).
+  test("source-snapshots: SourceSnapshotsArtifactSchema.parse(real captured response) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      sources: [
+        {
+          captured_at: "2026-07-22T18:15:01.351Z",
+          hash: "c96e1d1ba8b2992475f77c5cf3a6d8c50e8291bb6ca42dfbaa37880625fc76d0",
+          id: "adapter:ain",
+          kind: "adapter-snapshot",
+          path: "registry/adapters/latest/ain.json",
+          record_count: 2,
+        },
+        {
+          captured_at: "1970-01-01T00:00:00.000Z",
+          hash: "161b23a8fb60ef60697264edda6206d55ed377f8476202ac1201fc94dadfe2be",
+          id: "maintainer-decisions",
+          kind: "review-ledger",
+          path: "registry/reviews/maintainer-reviewed.json",
+          record_count: 129,
+        },
+        {
+          captured_at: "2026-07-22T18:15:13Z",
+          hash: "73b45792c80ce47b8049b109a09e3b6a5e3c50b7ddf47546881477b352dbafbb",
+          id: "native-subnets",
+          kind: "native-chain",
+          path: "registry/native/finney-subnets.json",
+          record_count: 129,
+        },
+      ],
+      summary: {
+        adapter_snapshot_count: 64,
+        candidate_count: 2172,
+        overlay_count: 129,
+        provider_count: 136,
+        source_count: 70,
+        verification_result_count: 2172,
+      },
+    };
+    const parsed = SourceSnapshotsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("source-snapshots: SourceSnapshotsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SourceSnapshotsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // No isolated pure builder (buildSearchIndex takes 5 registry-shaped
+  // params, not independently constructible without full build state) --
+  // fixture uses real per-type documents captured from api.metagraph.sh/
+  // api/v1/search, 2026-07-25 (one subnet/surface/provider document each).
+  test("search: SearchArtifactSchema.parse(real captured documents) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      document_count: 3,
+      documents: [
+        {
+          id: "subnet:17",
+          type: "subnet",
+          netuid: 17,
+          slug: "sn-17",
+          title: "404—GEN",
+          subtitle: "a decentralized 3D content generation competition",
+          artifact_path: "/metagraph/subnets/17.json",
+          url: "/subnets/17",
+          tokens: ["17", "404", "gen", "subnet", "content", "generation"],
+          categories: ["3d-generation", "official-website"],
+          service_kinds: ["data-artifact", "subnet-api"],
+        },
+        {
+          id: "surface:sn-35-oxmarkets-docs",
+          type: "surface",
+          netuid: 35,
+          slug: "sn-35",
+          title: "0xMarkets / Cartha documentation",
+          subtitle: "docs / oxmarkets",
+          artifact_path: "/metagraph/surfaces.json",
+          url: "https://docs.0xmarkets.io/",
+          tokens: ["0xmarkets", "35", "cartha", "docs", "documentation"],
+        },
+        {
+          id: "provider:404-gen",
+          type: "provider",
+          title: "404-GEN",
+          subtitle: "subnet-team",
+          artifact_path: "/metagraph/providers.json",
+          url: "https://www.404.xyz/",
+          tokens: ["404", "gen", "subnet", "team", "community"],
+        },
+      ],
+    };
+    const parsed = SearchArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("search: SearchArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SearchArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // buildSlimSearchIndex(searchIndex) just strips `tokens` from search.json's
+  // documents -- fixture mirrors the same real captured documents above,
+  // minus tokens (confirmed live: no document ever carries a tokens key).
+  test("search-index: SearchIndexArtifactSchema.parse(real captured slim documents) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      document_count: 2,
+      documents: [
+        {
+          id: "subnet:17",
+          type: "subnet",
+          netuid: 17,
+          slug: "sn-17",
+          title: "404—GEN",
+          subtitle: "a decentralized 3D content generation competition",
+          artifact_path: "/metagraph/subnets/17.json",
+          url: "/subnets/17",
+          categories: ["3d-generation", "official-website"],
+          service_kinds: ["data-artifact", "subnet-api"],
+        },
+        {
+          id: "provider:404-gen",
+          type: "provider",
+          title: "404-GEN",
+          subtitle: "subnet-team",
+          artifact_path: "/metagraph/providers.json",
+          url: "https://www.404.xyz/",
+        },
+      ],
+    };
+    const parsed = SearchIndexArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("search-index: SearchIndexArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SearchIndexArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // No isolated pure builder for the per-slug provider write (inline in
+  // scripts/build-artifacts.ts) -- fixture mirrors real
+  // registry/providers/*.json identity fields (basilica.json/404-gen.json)
+  // plus the build-time enrichment fields and endpoint_summary this batch
+  // added (bucket b).
+  test("provider-detail: ProviderArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      provider: {
+        schema_version: 1,
+        id: "basilica",
+        name: "Basilica",
+        kind: "subnet-team",
+        website_url: "https://www.basilica.ai/",
+        github_url: "https://github.com/one-covenant/basilica",
+        logo_url: "https://metagraph.sh/logos/basilica.png",
+        authority: "community",
+        public_notes: "",
+        netuids: [39],
+        subnet_count: 1,
+        surface_count: 2,
+        endpoint_count: 1,
+        cluster_id: "basilica",
+      },
+      endpoint_summary: {
+        endpoint_count: 1,
+        monitored_count: 1,
+        pool_eligible_count: 0,
+        by_kind: { "subnet-api": 1 },
+        by_status: { ok: 1 },
+      },
+    };
+    const parsed = ProviderArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("provider-detail: ProviderArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ProviderArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("providers: ProvidersArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      generated_at: GENERATED_AT_10,
+      providers: [
+        {
+          schema_version: 1,
+          id: "404-gen",
+          name: "404-GEN",
+          kind: "subnet-team",
+          website_url: "https://www.404.xyz/",
+          authority: "community",
+          social: { x: "https://x.com/404gen_" },
+        },
+      ],
+    };
+    const parsed = ProvidersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("providers: ProvidersArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ProvidersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("provider-endpoints: ProviderEndpointsArtifactSchema.parse(buildEndpointResourceArtifact(...)) succeeds", () => {
+    const artifact = buildEndpointResourceArtifact({
+      surfaces: [
+        {
+          id: "r1",
+          key: "rpc-key-1",
+          netuid: 0,
+          kind: "subtensor-rpc",
+          url: "https://rpc.example.com",
+          provider: "alpha",
+          authority: "official",
+          auth_required: false,
+          public_safe: true,
+          probe: {
+            enabled: true,
+            method: "JSON-RPC",
+            expect: "200",
+            timeout_ms: 5000,
+          },
+        },
+      ],
+      healthSurfaces: [
+        {
+          surface_id: "r1",
+          status: "ok",
+          classification: "live",
+          verified_at: GENERATED_AT_10,
+          archive_support: true,
+          latest_block: 100,
+          methods_supported: { a: true, b: true },
+          rpc_method_count: 7,
+          latency_ms: 50,
+        },
+      ],
+      generatedAt: GENERATED_AT_10,
+      contractVersion: CONTRACT_10,
+      source: "unit",
+    });
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      provider: {
+        id: "alpha",
+        name: "Alpha",
+        kind: "subnet-team",
+        authority: "official",
+      },
+      summary: artifact.summary,
+      endpoints: artifact.endpoints,
+    };
+    const parsed = ProviderEndpointsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("provider-endpoints: ProviderEndpointsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ProviderEndpointsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("rpc-endpoints: RpcEndpointsArtifactSchema.parse(buildRpcEndpointArtifact(...)) succeeds", () => {
+    const artifact = buildRpcEndpointArtifact({
+      surfaces: [
+        {
+          id: "s1",
+          netuid: 0,
+          subnet_slug: "root",
+          subnet_name: "Root",
+          kind: "subtensor-rpc",
+          url: "https://rpc.example.com",
+          provider: "alpha",
+          authority: "official",
+          auth_required: false,
+          public_safe: true,
+          source_urls: [],
+        },
+        {
+          id: "s2",
+          netuid: 0,
+          subnet_slug: "root",
+          subnet_name: "Root",
+          kind: "subtensor-wss",
+          url: "wss://rpc.example.com",
+          provider: "beta",
+          authority: "community",
+          auth_required: false,
+          public_safe: true,
+          source_urls: [],
+        },
+      ],
+      healthSurfaces: [
+        {
+          surface_id: "s1",
+          status: "ok",
+          classification: "live",
+          verified_at: GENERATED_AT_10,
+          archive_support: true,
+          latest_block: 100,
+          methods_supported: { a: true },
+          rpc_method_count: 5,
+          latency_ms: 50,
+          method_tested: "system_health",
+          last_ok: GENERATED_AT_10,
+        },
+      ],
+      generatedAt: GENERATED_AT_10,
+      contractVersion: CONTRACT_10,
+      source: "unit",
+    });
+    const parsed = RpcEndpointsArtifactSchema.parse(artifact);
+    assert.ok(parsed);
+  });
+  test("rpc-endpoints: RpcEndpointsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = RpcEndpointsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("rpc-pools: RpcPoolsArtifactSchema.parse(buildEndpointPoolArtifact(...)) succeeds", () => {
+    const rpcArtifact = buildRpcEndpointArtifact({
+      surfaces: [
+        {
+          id: "a",
+          netuid: 0,
+          kind: "subtensor-rpc",
+          url: "https://a.example.com",
+          provider: "alpha",
+          authority: "official",
+          auth_required: false,
+          public_safe: true,
+          source_urls: [],
+        },
+      ],
+      healthSurfaces: [],
+      generatedAt: GENERATED_AT_10,
+      contractVersion: CONTRACT_10,
+      source: "unit",
+    });
+    const artifact = buildEndpointPoolArtifact({
+      generatedAt: GENERATED_AT_10,
+      contractVersion: CONTRACT_10,
+      rpcArtifact,
+    });
+    const parsed = RpcPoolsArtifactSchema.parse(artifact);
+    assert.ok(parsed);
+  });
+  test("rpc-pools: RpcPoolsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = RpcPoolsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("rpc-usage: RpcUsageArtifactSchema.parse(formatRpcUsage(...)) succeeds (warm)", () => {
+    const out = formatRpcUsage({
+      window: "30d",
+      bucketGranularity: "6h",
+      observedAt: "2026-06-14T00:00:00Z",
+      totals: {
+        total: 1000,
+        ok_count: 950,
+        failover_count: 40,
+        cache_hits: 250,
+        avg_latency_ms: 160.7,
+      },
+      latency: { p50: 120.4, p95: 480.9 },
+      endpointRows: [
+        {
+          endpoint_id: "fx",
+          provider: "onfinality",
+          requests: 700,
+          ok_count: 690,
+          avg_latency_ms: 140.2,
+        },
+      ],
+      networkRows: [{ network: "finney", requests: 900, ok_count: 870 }],
+      bucketRows: [
+        {
+          ts: 1_718_323_200_000,
+          requests: 100,
+          errors: 3,
+          avg_latency_ms: 120.4,
+        },
+      ],
+    });
+    const parsed = RpcUsageArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("rpc-usage: RpcUsageArtifactSchema.parse(formatRpcUsage(...)) succeeds (cold)", () => {
+    const out = formatRpcUsage({ window: "7d", observedAt: null });
+    const parsed = RpcUsageArtifactSchema.parse(out);
+    assert.equal(parsed.endpoints.length, 0);
+  });
+  test("rpc-usage: RpcUsageArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = RpcUsageArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // No isolated pure builder for the list/detail writes (inline in
+  // scripts/build-artifacts.ts) -- profile shape reused verbatim from
+  // schemas-src/routes/subnet-profile.ts's own SubnetProfileSchema (already
+  // verified field-for-field against buildSubnetProfile()'s real output).
+  const PROFILE_FIXTURE = {
+    netuid: 7,
+    slug: "allways",
+    name: "Allways",
+    native_identity: null,
+    subnet_type: "application",
+    status: "active",
+    project_name: "Allways",
+    team: null,
+    categories: ["inference"],
+    derived_categories: ["inference"],
+    primary_links: {
+      website_url: "https://www.all-ways.io/",
+      docs_url: null,
+      source_repo: null,
+      dashboard_url: null,
+    },
+    primary_app_surface: null,
+    supported_interface_kinds: ["subnet-api"],
+    operational_interface_kinds: ["subnet-api"],
+    surface_count: 2,
+    endpoint_count: 1,
+    monitored_endpoint_count: 1,
+    candidate_count: 0,
+    identity_evidence: {
+      candidate_identity_count: 0,
+      curated_identity_count: 0,
+      curated_identity_kinds: [],
+      live_candidate_identity_kinds: [],
+      native_contact_present: false,
+      native_description_present: false,
+      native_identity_count: 0,
+      native_identity_kinds: [],
+      needs_promotion_kinds: [],
+      stale_candidate_identity_kinds: [],
+      unverified_candidate_identity_kinds: [],
+    },
+    completeness: {
+      score: 82,
+      profile_level: "operational",
+      identity_level: "partial",
+      identity_surface_count: 1,
+      confidence: "high",
+      missing_identity: [],
+      missing_required: [],
+      missing_operational: [],
+      missing_critical_count: 0,
+      gap_reasons: [],
+    },
+    provenance: {
+      identity_source: "chain",
+      interface_source_count: 1,
+      review_state: "unreviewed",
+      curation_level: "native",
+      reviewed_at: null,
+      source_urls: [],
+    },
+    curation_level: "native",
+    review_state: "unreviewed",
+    confidence: "high",
+    profile_level: "operational",
+    identity_level: "partial",
+    identity_surface_count: 1,
+    completeness_score: 82,
+    missing_identity: [],
+    missing_required: [],
+    missing_operational: [],
+    missing_critical_count: 0,
+    gap_reasons: [],
+    suggested_submission_kinds: [],
+    integration_readiness: 70,
+    readiness: {
+      score: 70,
+      readiness_tier: "buildable",
+      readiness_version: 1,
+      components: { has_callable_api: true },
+    },
+  };
+
+  test("profiles: SubnetProfilesArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      profiles: [PROFILE_FIXTURE],
+      summary: {
+        profile_count: 1,
+        average_completeness_score: 82,
+        native_identity_count: 0,
+        identity_promotion_candidate_count: 0,
+        native_identity_unpromoted_count: 0,
+        by_profile_level: { operational: 1 },
+        by_identity_level: { partial: 1 },
+        by_confidence: { high: 1 },
+      },
+    };
+    const parsed = SubnetProfilesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("profiles: SubnetProfilesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SubnetProfilesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-profile: SubnetProfileArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      profile: PROFILE_FIXTURE,
+      subnet: {
+        coverage_level: "probed",
+        curation: { level: "native", review_state: "unreviewed" },
+        curation_level: "native",
+        gaps: {
+          gap_notes: [],
+          missing_kinds: [],
+          supported_kinds: ["subnet-api"],
+        },
+        links: [],
+        name: "Allways",
+        netuid: 7,
+        provenance: {},
+        slug: "allways",
+        status: "active",
+        subnet_type: "application",
+        surface_count: 2,
+      },
+      surfaces: [],
+      endpoints: [],
+      candidate_surfaces: [],
+      gaps: {
+        gap_notes: [],
+        missing_kinds: [],
+        supported_kinds: ["subnet-api"],
+      },
+    };
+    const parsed = SubnetProfileArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-profile: SubnetProfileArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SubnetProfileArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("schemas: SchemaIndexArtifactSchema.parse(real handler output) succeeds", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/schemas"),
+      env as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { data: unknown };
+    const parsed = SchemaIndexArtifactSchema.parse(body.data);
+    assert.ok(parsed);
+  });
+  test("schemas: SchemaIndexArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SchemaIndexArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // No isolated top-level builder (assembled inline per-subnet in
+  // scripts/build-artifacts.ts) -- composes the real exported readiness
+  // helpers (subnetIntegrationReadiness/buildAgentReadiness) with a
+  // realistic SN7 (callable) + SN31 (blocked) fixture pair.
+  test("agent-catalog: AgentCatalogArtifactSchema.parse(...) succeeds", () => {
+    const services7 = [
+      {
+        surface_id: "allways-api-health",
+        kind: "subnet-api",
+        eligibility: { callable: true },
+        schema_artifact: "/metagraph/schemas/allways-swagger.json",
+        auth_required: false,
+      },
+    ];
+    const readiness7 = subnetIntegrationReadiness({
+      services: services7,
+      lifecycle: "active",
+      completenessScore: 82,
+      sourceRepo: "https://github.com/allways/subnet",
+      docsUrl: "https://docs.allways.io",
+      candidates: [],
+    });
+    const agentReadiness7 = buildAgentReadiness({
+      subnet: { subnet_type: "application" },
+      profile: { subnet_type: "application" },
+      services: services7,
+      readiness: readiness7,
+      callableCount: 1,
+    });
+    const readiness31 = subnetIntegrationReadiness({
+      services: [],
+      lifecycle: "active",
+      completenessScore: 40,
+      sourceRepo: null,
+      docsUrl: null,
+      candidates: [],
+    });
+    const agentReadiness31 = buildAgentReadiness({
+      subnet: { subnet_type: "application" },
+      profile: null,
+      services: [],
+      readiness: readiness31,
+      callableCount: 0,
+    });
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      total_subnet_count: 2,
+      subnet_count: 1,
+      blocked_subnet_count: 1,
+      callable_service_count: 1,
+      blocker_summary: { by_status: { blocked: 1 } },
+      subnets: [
+        {
+          netuid: 7,
+          slug: "allways",
+          name: "Allways",
+          native_name: "allways",
+          categories: ["inference"],
+          subnet_type: "application",
+          completeness_score: 82,
+          integration_readiness: readiness7.score,
+          readiness: readiness7,
+          agent_readiness: agentReadiness7,
+          service_count: 1,
+          callable_count: 1,
+          service_kinds: ["subnet-api"],
+          example_count: 0,
+          base_url: "https://api.all-ways.io",
+          health: "unknown",
+        },
+      ],
+      blocked_subnets: [
+        {
+          netuid: 31,
+          slug: "sn31",
+          name: "SN31",
+          categories: [],
+          subnet_type: "application",
+          completeness_score: 40,
+          integration_readiness: readiness31.score,
+          readiness_tier: readiness31.readiness_tier,
+          service_count: 0,
+          callable_count: 0,
+          agent_readiness: agentReadiness31,
+        },
+      ],
+    };
+    const parsed = AgentCatalogArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.ok(agentReadiness31.blockers.length > 0);
+  });
+  test("agent-catalog: AgentCatalogArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AgentCatalogArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("agent-catalog-subnet: AgentCatalogSubnetArtifactSchema.parse(...) succeeds", () => {
+    const services = [
+      {
+        surface_id: "allways-api-health",
+        kind: "subnet-api",
+        capability: "Allways health API",
+        base_url: "https://api.all-ways.io",
+        provider: "allways",
+        authority: "official",
+        auth_required: false,
+        auth_schemes: [],
+        schema_url: "https://api.all-ways.io/swagger-json",
+        schema_status: "machine-readable",
+        schema_artifact: "/metagraph/schemas/allways-swagger.json",
+        schema_source: {
+          surface_id: "allways-swagger",
+          match: "same-origin-openapi",
+          url: "https://api.all-ways.io/swagger-json",
+          artifact: "/metagraph/schemas/allways-swagger.json",
+          status: "captured",
+          observed_at: GENERATED_AT_10,
+          hash: "sha256-abc",
+        },
+        health: { status: "unknown", stale: true },
+        eligibility: { callable: true, reasons: [] },
+        fixture_status: {
+          status: "available",
+          reason: null,
+          artifact_path: "/metagraph/fixtures/allways-api-health.json",
+          captured_at: GENERATED_AT_10,
+        },
+      },
+    ];
+    const readiness = subnetIntegrationReadiness({
+      services,
+      lifecycle: "active",
+      completenessScore: 82,
+      sourceRepo: "https://github.com/allways/subnet",
+      docsUrl: "https://docs.allways.io",
+      candidates: [],
+    });
+    const agentReadiness = buildAgentReadiness({
+      subnet: { subnet_type: "application" },
+      profile: { subnet_type: "application" },
+      services,
+      readiness,
+      callableCount: 1,
+    });
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      netuid: 7,
+      slug: "allways",
+      name: "Allways",
+      categories: ["inference"],
+      subnet_type: "application",
+      completeness_score: 82,
+      integration_readiness: readiness.score,
+      readiness,
+      agent_readiness: agentReadiness,
+      service_count: 1,
+      services,
+      example_count: 0,
+      examples: [],
+    };
+    const parsed = AgentCatalogSubnetArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("agent-catalog-subnet: AgentCatalogSubnetArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AgentCatalogSubnetArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("agent-resources: AgentResourcesArtifactSchema.parse(...) succeeds using real listToolDefinitions()", () => {
+    const tools = listToolDefinitions().map(
+      (t: { name: string; title?: string | null }) => ({
+        name: t.name,
+        title: t.title ?? null,
+      }),
+    );
+    assert.ok(tools.length > 0);
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_10,
+      generated_at: GENERATED_AT_10,
+      published_at: "2026-07-01T00:05:00.000Z",
+      content_hash: "sha256-0123456789abcdef",
+      summary: { subnet_count: 128, callable_service_count: 47 },
+      copyable_agent: {
+        title: "Bittensor integration agent",
+        url: "https://api.metagraph.sh/agent.md",
+        description: "Paste-ready system prompt.",
+      },
+      mcp: {
+        endpoint: "https://api.metagraph.sh/mcp",
+        transport: "streamable-http",
+        install:
+          "claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp",
+        server_card:
+          "https://api.metagraph.sh/.well-known/mcp/server-card.json",
+        tools,
+      },
+      resources: [
+        {
+          id: "agent",
+          title: "Copyable AI agent",
+          kind: "agent",
+          url: "https://api.metagraph.sh/agent.md",
+        },
+        {
+          id: "agent-catalog",
+          title: "Agent capability catalog",
+          kind: "api",
+          url: "https://api.metagraph.sh/api/v1/agent-catalog",
+        },
+      ],
+    };
+    const parsed = AgentResourcesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("agent-resources: AgentResourcesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AgentResourcesArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
 });

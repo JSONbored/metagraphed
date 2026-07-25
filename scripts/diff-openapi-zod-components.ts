@@ -15,6 +15,7 @@ type Row = Record<string, unknown>;
 const OLD_COMPONENT_FILES = [
   "schemas/components/00-core.schema.json",
   "schemas/components/01-enums.schema.json",
+  "schemas/components/03-providers.schema.json",
   "schemas/components/04-surfaces.schema.json",
   "schemas/components/05-subnets.schema.json",
   "schemas/components/06-health.schema.json",
@@ -24,6 +25,11 @@ const OLD_COMPONENT_FILES = [
   // since no earlier batch's components lived there.
   "schemas/components/09-schemas-adapters-r2.schema.json",
   "schemas/components/11-review-intake.schema.json",
+  // Batch 10 (#8064) additions: the meta/contracts, evidence/freshness/
+  // search families live in these two files, previously never read by this
+  // script (09-schemas-adapters-r2.schema.json already added above).
+  "schemas/components/08-evidence-search-sources.schema.json",
+  "schemas/components/10-contracts-build.schema.json",
 ];
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;

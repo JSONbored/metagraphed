@@ -33,37 +33,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "ArtifactSizeBudget": {
-        "type": "object",
-        "required": [
-          "path",
-          "size_bytes",
-          "warn_bytes",
-          "fail_bytes",
-          "status"
-        ],
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "size_bytes": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "warn_bytes": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "fail_bytes": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "status": {
-            "enum": ["ok", "warn", "fail"]
-          }
-        },
-        "additionalProperties": false
       }
     }
   }
