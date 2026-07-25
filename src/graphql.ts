@@ -556,7 +556,6 @@ export interface GqlContext {
   clientIp?: string | null;
   graphqlWsConnection?: unknown;
   chainFirehose?: unknown;
-  reportError?: (err: unknown) => void;
 }
 
 export const GRAPHQL_MAX_DEPTH = 7;
