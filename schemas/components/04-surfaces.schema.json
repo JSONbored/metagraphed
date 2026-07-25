@@ -5,29 +5,6 @@
   "type": "object",
   "components": {
     "schemas": {
-      "SurfacesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          },
-          {
-            "type": "object",
-            "required": ["surfaces"],
-            "properties": {
-              "surfaces": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/Surface"
-                }
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      },
-      "SubnetSurfacesArtifact": {
-        "$ref": "#/components/schemas/SurfacesArtifact"
-      },
       "SurfaceAliasesArtifact": {
         "allOf": [
           {
@@ -106,29 +83,6 @@
             "additionalProperties": true
           }
         ]
-      },
-      "CandidatesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          },
-          {
-            "type": "object",
-            "required": ["candidates"],
-            "properties": {
-              "candidates": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CandidateSurface"
-                }
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      },
-      "SubnetCandidatesArtifact": {
-        "$ref": "#/components/schemas/CandidatesArtifact"
       },
       "ReviewQueueArtifact": {
         "$ref": "#/components/schemas/CandidatesArtifact"

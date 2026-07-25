@@ -332,6 +332,35 @@ import {
   AgentReadinessStatusSchema,
 } from "./routes/agent-catalog.ts";
 
+import {
+  HealthHistoryArtifactSchema,
+  BulkHealthTrendsArtifactSchema,
+  GlobalIncidentsArtifactSchema,
+  HealthSubnetArtifactSchema,
+  HealthSurfaceSchema,
+  HealthIncidentsArtifactSchema,
+  HealthPercentilesArtifactSchema,
+  HealthTrendsArtifactSchema,
+  UptimeArtifactSchema,
+} from "./routes/health-surfaces.ts";
+import {
+  SurfacesArtifactSchema,
+  SubnetSurfacesArtifactSchema,
+  EndpointsArtifactSchema,
+  SubnetEndpointsArtifactSchema,
+  EndpointIncidentSchema,
+  EndpointIncidentsArtifactSchema,
+  EndpointPoolsArtifactSchema,
+} from "./routes/endpoints-pools.ts";
+import { EndpointSummarySchema } from "./routes/providers-rpc.ts";
+import {
+  CandidatesArtifactSchema,
+  SubnetCandidatesArtifactSchema,
+  EvidenceClaimSchema,
+  EvidenceLedgerArtifactSchema,
+  SubnetEvidenceArtifactSchema,
+} from "./routes/candidates-evidence.ts";
+
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
 const register = (schema: z.ZodType, id: string) => {
@@ -628,6 +657,51 @@ register(AgentResourcesArtifactSchema, "AgentResourcesArtifact");
 // real named component instead of being inlined.
 register(AgentReadinessStatusSchema, "AgentReadinessStatus");
 
+// Batch 9 (#8063) additions.
+register(HealthHistoryArtifactSchema, "HealthHistoryArtifact");
+register(BulkHealthTrendsArtifactSchema, "BulkHealthTrendsArtifact");
+register(GlobalIncidentsArtifactSchema, "GlobalIncidentsArtifact");
+register(HealthSubnetArtifactSchema, "HealthSubnetArtifact");
+// HealthSurface: no remaining $ref from THIS batch's own routes (see
+// health-surfaces.ts's header for why HealthSubnetArtifact doesn't reuse
+// it), but generate-client.ts hardcodes a components["schemas"]
+// ["HealthSurface"] type lookup by name, and the still-hand-edited
+// HealthLatestArtifact (a different, out-of-batch route) still $refs it --
+// register so both keep resolving to a real, validated schema.
+register(HealthSurfaceSchema, "HealthSurface");
+register(HealthIncidentsArtifactSchema, "HealthIncidentsArtifact");
+register(HealthPercentilesArtifactSchema, "HealthPercentilesArtifact");
+register(HealthTrendsArtifactSchema, "HealthTrendsArtifact");
+register(UptimeArtifactSchema, "UptimeArtifact");
+register(SurfacesArtifactSchema, "SurfacesArtifact");
+register(SubnetSurfacesArtifactSchema, "SubnetSurfacesArtifact");
+register(EndpointsArtifactSchema, "EndpointsArtifact");
+register(SubnetEndpointsArtifactSchema, "SubnetEndpointsArtifact");
+// EndpointSummary: still referenced by name from ProviderArtifact/
+// ProviderEndpointsArtifact (batch 10, providers-rpc.ts, exported there
+// specifically for this reuse) in addition to this batch's own
+// EndpointsArtifact/SubnetEndpointsArtifact -- register under its existing
+// hand-edited name so all four keep resolving to one real, validated schema
+// (same "upgraded for free" treatment as Surface/EndpointResource above).
+register(EndpointSummarySchema, "EndpointSummary");
+// EndpointIncident: no remaining $ref (1 referrer, this batch's own
+// EndpointIncidentsArtifact), but scripts/validate-schema-enums.ts hardcodes
+// comparePropertyEnum("EndpointIncident", "severity"/"state", ...) against
+// it as a top-level components.schemas entry by name -- register so that
+// drift check keeps seeing its enums at all.
+register(EndpointIncidentSchema, "EndpointIncident");
+register(EndpointIncidentsArtifactSchema, "EndpointIncidentsArtifact");
+register(EndpointPoolsArtifactSchema, "EndpointPoolsArtifact");
+register(CandidatesArtifactSchema, "CandidatesArtifact");
+register(SubnetCandidatesArtifactSchema, "SubnetCandidatesArtifact");
+// EvidenceClaim: no remaining $ref (1 referrer, this batch's own
+// EvidenceLedgerArtifact), but generate-client.ts hardcodes
+// `export type EvidenceClaim = components["schemas"]["EvidenceClaim"];` --
+// register so that type alias keeps resolving to a real, validated schema.
+register(EvidenceClaimSchema, "EvidenceClaim");
+register(EvidenceLedgerArtifactSchema, "EvidenceLedgerArtifact");
+register(SubnetEvidenceArtifactSchema, "SubnetEvidenceArtifact");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -830,6 +904,29 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AgentCatalogSubnetArtifact",
   "AgentResourcesArtifact",
   "AgentReadinessStatus",
+  // Batch 9 (#8063) additions.
+  "HealthHistoryArtifact",
+  "BulkHealthTrendsArtifact",
+  "GlobalIncidentsArtifact",
+  "HealthSubnetArtifact",
+  "HealthSurface",
+  "HealthIncidentsArtifact",
+  "HealthPercentilesArtifact",
+  "HealthTrendsArtifact",
+  "UptimeArtifact",
+  "SurfacesArtifact",
+  "SubnetSurfacesArtifact",
+  "EndpointsArtifact",
+  "SubnetEndpointsArtifact",
+  "EndpointSummary",
+  "EndpointIncident",
+  "EndpointIncidentsArtifact",
+  "EndpointPoolsArtifact",
+  "CandidatesArtifact",
+  "SubnetCandidatesArtifact",
+  "EvidenceClaim",
+  "EvidenceLedgerArtifact",
+  "SubnetEvidenceArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -1066,4 +1163,19 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "AgentServiceSchemaSource",
   "AgentServiceFixtureStatus",
   "SurfaceFixtureReference",
+  // Batch 9 (#8063) additions: HealthHistorySurface (1 referrer,
+  // HealthHistoryArtifact, this batch's own) and ReliabilityScore (2
+  // referrers, both within this batch's own UptimeArtifact -- intra-
+  // component reuse, same treatment as batch 6's ChainTransferParty) are
+  // each referenced only by this batch's own converted routes, verified via
+  // repo-wide $ref grep. EndpointIncidentSummary is referenced only by this
+  // batch's own EndpointIncidentsArtifact (verified the same way) -- not
+  // worth a standalone registry entry, unlike EndpointIncident/EvidenceClaim/
+  // EndpointSummary above (each hardcoded by name or referenced across
+  // batches, see their own register() calls). None of these three is
+  // hardcoded in scripts/generate-client.ts or
+  // scripts/validate-schema-enums.ts either.
+  "HealthHistorySurface",
+  "ReliabilityScore",
+  "EndpointIncidentSummary",
 ] as const;
