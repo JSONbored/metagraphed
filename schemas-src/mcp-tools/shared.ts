@@ -81,3 +81,16 @@ export const DistributionStatsSchema = z
     max: z.number(),
   })
   .strict();
+
+// `notes: {type:["array","string","null"], items:{type:"string"}}` -- 10 of
+// types-epic E batch 10's (#8074) list_* tools declare this exact shape for
+// their output `notes` field (list_search_index, list_search,
+// list_enrichment_queue, list_adapter_candidates, list_enrichment_evidence,
+// list_review_gaps, list_review_enrichment_targets, list_endpoint_pools,
+// list_endpoint_incidents, list_provider_endpoints), well past the
+// established "reused 3+ times within a batch" hoisting threshold this
+// epic's shared item shapes above already follow.
+export const NotesFieldSchema = z
+  .union([z.array(z.string()), z.string()])
+  .nullable()
+  .optional();

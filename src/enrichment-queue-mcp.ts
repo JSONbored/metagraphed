@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/enrichment-queue.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListEnrichmentQueueInputSchema,
+  ListEnrichmentQueueOutputSchema,
+} from "../schemas-src/mcp-tools/enrichment-queue-and-candidates.ts";
 
 export const ENRICHMENT_QUEUE_ARTIFACT =
   "/metagraph/review/enrichment-queue.json";
@@ -252,120 +257,14 @@ export const LIST_ENRICHMENT_QUEUE_MCP_TOOL = {
     "with limit (1-100) / cursor. Distinct from list_enrichment_targets (coverage-depth " +
     "scorecard) and get_subnet_gaps (one subnet's gap priorities + queue). Mirrors " +
     "GET /api/v1/review/enrichment-queue.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      q: {
-        type: "string",
-        description:
-          "Keyword search across name, slug, recommended_action, and reason_codes.",
-      },
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      lane: {
-        type: "string",
-        enum: LANES,
-        description:
-          "Filter by enrichment lane (direct-submission, maintainer-review, etc.).",
-      },
-      evidence_action: {
-        type: "string",
-        enum: EVIDENCE_ACTIONS,
-        description: "Filter by the recommended evidence action.",
-      },
-      identity_level: {
-        type: "string",
-        enum: IDENTITY_LEVELS,
-        description: "Filter by subnet identity completeness.",
-      },
-      curation_level: {
-        type: "string",
-        enum: CURATION_LEVELS,
-        description: "Filter by curation level.",
-      },
-      profile_level: {
-        type: "string",
-        enum: PROFILE_LEVELS,
-        description: "Filter by profile completeness.",
-      },
-      direct_submission_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description:
-          "Filter rows whose direct_submission_kinds include this kind.",
-      },
-      missing_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter rows whose missing_kinds include this kind.",
-      },
-      manual_review_required: {
-        type: "string",
-        enum: BOOLEAN_STRINGS,
-        description: "Filter by whether manual review is required.",
-      },
-      reason_codes: {
-        type: "string",
-        description: "Filter by reason_codes substring match.",
-      },
-      review_state: {
-        type: "string",
-        description: "Filter by review_state substring match.",
-      },
-      sort: {
-        type: "string",
-        enum: QUEUE_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of queue row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListEnrichmentQueueInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["queue"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    queue: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListEnrichmentQueueOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

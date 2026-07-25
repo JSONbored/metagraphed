@@ -3,9 +3,14 @@
 // transforms as the REST route over the baked
 // /metagraph/candidates/{netuid}.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListSubnetCandidatesInputSchema,
+  ListSubnetCandidatesOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-registry-lists.ts";
 
 const CANDIDATE_SORT_FIELDS = API_QUERY_COLLECTIONS.candidates.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -221,86 +226,14 @@ export const LIST_SUBNET_CANDIDATES_MCP_TOOL = {
     "with limit (1-100) / cursor. Distinct from get_subnet_candidates (raw " +
     "artifact dump) and list_candidates (network-wide catalog). Mirrors " +
     "GET /api/v1/subnets/{netuid}/candidates.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind, e.g. 'subnet-api'.",
-      },
-      provider: {
-        type: "string",
-        description: "Filter by provider slug.",
-      },
-      state: {
-        type: "string",
-        enum: CANDIDATE_STATES,
-        description: "Filter by candidate review state.",
-      },
-      id: {
-        type: "string",
-        description: "Exact-match filter on candidate id.",
-      },
-      confidence: {
-        type: "string",
-        enum: CONFIDENCE_LEVELS,
-        description: "Filter by confidence level.",
-      },
-      sort: {
-        type: "string",
-        enum: CANDIDATE_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of candidate row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["netuid"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSubnetCandidatesInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["candidates"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    netuid: NULLABLE_INT,
-    candidates: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSubnetCandidatesOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

@@ -769,6 +769,44 @@ import {
   GetChainTransferPairsOutputSchema,
 } from "../schemas-src/mcp-tools/chain-transfers.ts";
 import {
+  GetSubnetCandidatesInputSchema,
+  GetSubnetCandidatesOutputSchema,
+  ListSubnetCandidatesInputSchema,
+  GetSubnetEvidenceInputSchema,
+  GetSubnetEvidenceOutputSchema,
+  ListSubnetEvidenceInputSchema,
+  GetSubnetSurfacesInputSchema,
+  GetSubnetSurfacesOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-registry-lists.ts";
+import {
+  ListFixturesInputSchema,
+  ListFixturesOutputSchema,
+  ListSchemasInputSchema,
+  ListSchemasOutputSchema,
+} from "../schemas-src/mcp-tools/catalog-indexes.ts";
+import {
+  ListSearchIndexInputSchema,
+  ListSearchInputSchema,
+} from "../schemas-src/mcp-tools/search-documents.ts";
+import {
+  ListCurationInputSchema,
+  ListGapsInputSchema,
+} from "../schemas-src/mcp-tools/curation-and-gaps.ts";
+import {
+  ListEnrichmentQueueInputSchema,
+  ListAdapterCandidatesInputSchema,
+} from "../schemas-src/mcp-tools/enrichment-queue-and-candidates.ts";
+import {
+  ListEnrichmentEvidenceInputSchema,
+  ListReviewGapsInputSchema,
+  ListReviewEnrichmentTargetsInputSchema,
+} from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
+import {
+  ListEndpointPoolsInputSchema,
+  ListEndpointIncidentsInputSchema,
+  ListProviderEndpointsInputSchema,
+} from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -8543,22 +8581,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "curated/promoted, each with its kind, provider, and review state. The " +
       "per-subnet view of list_candidates (the network-wide catalog). Mirrors " +
       "GET /api/v1/subnets/{netuid}/candidates.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetCandidatesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetCandidatesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadArtifactData(ctx, `/metagraph/candidates/${netuid}.json`);
     },
   },
   {
     ...LIST_SUBNET_CANDIDATES_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListSubnetCandidatesInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadSubnetCandidatesList(asMcpLoaderCtx(ctx), args);
     },
   },
@@ -8570,22 +8609,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "provenance and verification evidence recorded for that subnet's surfaces " +
       "(what was checked and the outcome). The per-subnet view of list_evidence " +
       "(the network-wide ledger). Mirrors GET /api/v1/subnets/{netuid}/evidence.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetEvidenceInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetEvidenceInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadArtifactData(ctx, `/metagraph/evidence/${netuid}.json`);
     },
   },
   {
     ...LIST_SUBNET_EVIDENCE_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListSubnetEvidenceInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadSubnetEvidenceList(asMcpLoaderCtx(ctx), args);
     },
   },
@@ -8598,15 +8638,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "The per-subnet view of list_surfaces (the network-wide catalog); pair " +
       "with list_subnet_apis to drill into a subnet's API surfaces. Mirrors " +
       "GET /api/v1/subnets/{netuid}/surfaces.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetSurfacesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetSurfacesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadArtifactData(ctx, `/metagraph/surfaces/${netuid}.json`);
     },
@@ -8619,11 +8657,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "surfaces carry a sanitized real sample, with capture status and metadata. " +
       "Use it to discover which surfaces have a fixture, then fetch one with " +
       "get_fixture. Mirrors GET /api/v1/fixtures.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(ListFixturesInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/fixtures.json");
     },
@@ -8637,84 +8673,106 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "drift status (new/unchanged/changed). Use it to discover which surfaces " +
       "have a schema, then fetch one with get_api_schema. Mirrors " +
       "GET /api/v1/schemas.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(ListSchemasInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/schemas/index.json");
     },
   },
   {
     ...LIST_SEARCH_INDEX_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof ListSearchIndexInputSchema>, ctx: McpCtx) {
       return loadSearchIndexList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_SEARCH_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof ListSearchInputSchema>, ctx: McpCtx) {
       return loadSearchList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_CURATION_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof ListCurationInputSchema>, ctx: McpCtx) {
       return loadCurationList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_GAPS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof ListGapsInputSchema>, ctx: McpCtx) {
       return loadGapsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENRICHMENT_QUEUE_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListEnrichmentQueueInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadEnrichmentQueueList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ADAPTER_CANDIDATES_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListAdapterCandidatesInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadAdapterCandidatesList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListEnrichmentEvidenceInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadEnrichmentEvidenceList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_REVIEW_GAPS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListReviewGapsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadReviewGapsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListReviewEnrichmentTargetsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadReviewEnrichmentTargetsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENDPOINT_POOLS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListEndpointPoolsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadEndpointPoolsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListEndpointIncidentsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadEndpointIncidentsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListProviderEndpointsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadProviderEndpointsList(asMcpLoaderCtx(ctx), args);
     },
   },
@@ -10896,40 +10954,16 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_endpoints: z.toJSONSchema(ListEndpointsOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_subnet_surfaces: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      netuid: { type: ["integer", "null"] },
-      surfaces: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
-  get_subnet_evidence: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      netuid: { type: ["integer", "null"] },
-      claims: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  get_subnet_surfaces: z.toJSONSchema(GetSubnetSurfacesOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_evidence: z.toJSONSchema(GetSubnetEvidenceOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_subnet_evidence: LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
-  get_subnet_candidates: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      netuid: { type: ["integer", "null"] },
-      candidates: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  get_subnet_candidates: z.toJSONSchema(GetSubnetCandidatesOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_subnet_candidates: LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA,
   get_subnet_endpoints: z.toJSONSchema(GetSubnetEndpointsOutputSchema, {
     target: "draft-2020-12",
@@ -10942,27 +10976,12 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_source_snapshots: LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
   list_rpc_endpoints: LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA,
   list_evidence: LIST_EVIDENCE_OUTPUT_SCHEMA,
-  list_fixtures: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      candidate_count: { type: "integer" },
-      coverage: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-    },
-  },
-  list_schemas: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      schemas: { type: "array", items: { type: "object" } },
-      observed_at: NULLABLE_STRING,
-      generated_at: NULLABLE_STRING,
-      notes: NULLABLE_STRING,
-    },
-  },
+  list_fixtures: z.toJSONSchema(ListFixturesOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_schemas: z.toJSONSchema(ListSchemasOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   list_search: LIST_SEARCH_OUTPUT_SCHEMA,
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,

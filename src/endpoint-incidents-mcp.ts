@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/endpoint-incidents.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListEndpointIncidentsInputSchema,
+  ListEndpointIncidentsOutputSchema,
+} from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 
 export const ENDPOINT_INCIDENTS_ARTIFACT = "/metagraph/endpoint-incidents.json";
 
@@ -215,90 +220,14 @@ export const LIST_ENDPOINT_INCIDENTS_MCP_TOOL = {
     "with sort + order; and page with limit (1-100) / cursor. Complements " +
     "list_endpoints (the full catalog) and get_global_incidents (registry-wide " +
     "operational incidents). Mirrors GET /api/v1/endpoint-incidents.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind, e.g. 'subnet-api'.",
-      },
-      provider: {
-        type: "string",
-        description: "Filter by provider slug.",
-      },
-      status: {
-        type: "string",
-        enum: HEALTH_STATUSES,
-        description: "Filter by probe-derived health status.",
-      },
-      severity: {
-        type: "string",
-        enum: INCIDENT_SEVERITIES,
-        description: "Filter by incident severity.",
-      },
-      state: {
-        type: "string",
-        enum: INCIDENT_STATES,
-        description: "Filter by incident state.",
-      },
-      sort: {
-        type: "string",
-        enum: INCIDENT_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of incident row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListEndpointIncidentsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["incidents"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    summary: { type: ["object", "null"] },
-    incidents: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListEndpointIncidentsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);
