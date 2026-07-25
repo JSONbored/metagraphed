@@ -181,6 +181,13 @@ undelivered issue sit unflagged.
 7. Quality over the number in what gets filed — don't pad with weak/duplicate/vague issues. This is
    not license to stop early: see point 1's "if under floor" note.
 
+**Every new issue must clear the full-scope completeness bar in `reference.md`** (reinforced by the
+maintainer, 2026-07-25): concrete/testable Requirements, a Deliverables checklist that explicitly ships
+together in one PR (not partial credit for a subset), and a falsifiable Expected Outcome. Contributors'
+AI-harness agents read only the issue text and default to the least-effort interpretation that could
+plausibly close the checklist — an issue that leaves any of that ambiguous gets exactly that outcome.
+This is required on every issue this pass files, not just the ones with an existing precedent to name.
+
 ## Pass 3 — Strategic epic/milestone health (once-per-day cadence)
 
 Beyond Pass 1/2's issue-level hygiene, this skill also runs a lighter, once-per-day strategic pass
@@ -216,6 +223,8 @@ tracker in the scheduling layer handles that gate — not part of this file).
    tracker is contributor-facing; vague vision issues aren't actionable by a contributor anyway.
 6. Link every new issue as a native sub-issue of its parent epic via `addSubIssue` where a real parent
    exists; give it a real milestone, same discipline as Pass 2.
+7. Same full-scope completeness bar as Pass 2 (see above and `reference.md`) — no exceptions for
+   epic-sourced issues.
 
 ## Daily digest
 
