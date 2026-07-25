@@ -120,8 +120,8 @@ path of resistance and submit the shittiest / lowest quality stuff possible to g
 fast as possible unless we are extremely explicit on exactly what we expect... I expect the entire
 issue done flawlessly start to finish, not broken up into smaller pieces and nothing skipped."
 
-This extends the "Reuse-existing-pattern is mandatory" rule above from *which shape to follow* to
-*how much of it must ship*. Every generated issue must leave zero room for a contributor's AI-harness
+This extends the "Reuse-existing-pattern is mandatory" rule above from _which shape to follow_ to
+_how much of it must ship_. Every generated issue must leave zero room for a contributor's AI-harness
 agent to rationally conclude that implementing a subset of the Deliverables checklist, or the
 laziest-possible interpretation of a Requirement, satisfies the issue.
 
@@ -141,7 +141,7 @@ laziest-possible interpretation of a Requirement, satisfies the issue.
 - **Don't under-scope a coherent unit of work just to make the issue look more approachable** — an
   issue whose own Requirements are incomplete, or whose Deliverables can be half-satisfied and still
   plausibly read as "done," invites exactly the shortcut-taking this section exists to prevent. This is
-  separate from splitting a genuinely large epic into multiple *sequential, individually-complete*
+  separate from splitting a genuinely large epic into multiple _sequential, individually-complete_
   issues (e.g. the `types-epic B batch N` family) — each batch issue is itself fully scoped and
   independently completable end to end, and that decomposition is fine. What's not fine is a single
   issue that itself ships incomplete or half-satisfiable.
