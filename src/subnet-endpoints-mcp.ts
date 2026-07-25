@@ -3,9 +3,14 @@
 // transforms as the REST route over the baked
 // /metagraph/endpoints/{netuid}.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListSubnetEndpointsInputSchema,
+  ListSubnetEndpointsOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
 
 const ENDPOINT_SORT_FIELDS = API_QUERY_COLLECTIONS.endpoints.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -258,108 +263,14 @@ export const LIST_SUBNET_ENDPOINTS_MCP_TOOL = {
     "sort with sort + order; and page with limit (1-100) / cursor. Distinct from " +
     "get_subnet_endpoints (raw artifact dump) and list_endpoints (network-wide " +
     "catalog). Mirrors GET /api/v1/subnets/{netuid}/endpoints.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind, e.g. 'subnet-api'.",
-      },
-      layer: {
-        type: "string",
-        enum: ENDPOINT_LAYERS,
-        description: "Filter by endpoint layer.",
-      },
-      provider: {
-        type: "string",
-        description: "Filter by provider slug.",
-      },
-      publication_state: {
-        type: "string",
-        enum: PUBLICATION_STATES,
-        description: "Filter by publication state.",
-      },
-      status: {
-        type: "string",
-        enum: HEALTH_STATUSES,
-        description: "Filter by probe-derived health status.",
-      },
-      pool_eligible: {
-        type: "string",
-        enum: BOOLEAN_STRINGS,
-        description: "Filter by whether the endpoint is pool-eligible.",
-      },
-      min_latency_ms: {
-        type: "number",
-        description: "Inclusive minimum probe latency in milliseconds.",
-      },
-      max_latency_ms: {
-        type: "number",
-        description: "Inclusive maximum probe latency in milliseconds.",
-      },
-      min_score: {
-        type: "number",
-        description: "Inclusive minimum probe score.",
-      },
-      max_score: {
-        type: "number",
-        description: "Inclusive maximum probe score.",
-      },
-      sort: {
-        type: "string",
-        enum: ENDPOINT_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of endpoint row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["netuid"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSubnetEndpointsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["endpoints"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    netuid: NULLABLE_INT,
-    endpoints: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSubnetEndpointsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

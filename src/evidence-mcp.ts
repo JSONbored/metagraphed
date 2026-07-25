@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/evidence-ledger.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
+import {
+  ListEvidenceInputSchema,
+  ListEvidenceOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 
 export const EVIDENCE_LEDGER_ARTIFACT = "/metagraph/evidence-ledger.json";
 
@@ -189,63 +194,14 @@ export const LIST_EVIDENCE_MCP_TOOL = {
     "source_url, and support_summary; sort with sort + order; project with " +
     "fields; and page with limit (1-100) / cursor. Distinct from " +
     "list_subnet_evidence (one subnet's claims). Mirrors GET /api/v1/evidence.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      q: {
-        type: "string",
-        description:
-          "Keyword search across subject, claim, source_url, and support_summary.",
-      },
-      sort: {
-        type: "string",
-        enum: CLAIM_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of claim row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListEvidenceInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_EVIDENCE_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["claims"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    schema_version: { type: ["string", "integer", "null"] },
-    summary: { type: ["object", "null"] },
-    claims: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_EVIDENCE_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListEvidenceOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

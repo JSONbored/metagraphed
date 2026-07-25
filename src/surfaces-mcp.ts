@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/surfaces.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListSurfacesInputSchema,
+  ListSurfacesOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
 
 export const SURFACES_ARTIFACT = "/metagraph/surfaces.json";
 
@@ -198,74 +203,14 @@ export const LIST_SURFACES_MCP_TOOL = {
     "fields; and page with limit (1-100) / cursor. Distinct from " +
     "get_subnet_surfaces (one subnet's raw artifact dump). Mirrors " +
     "GET /api/v1/surfaces.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Filter by subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Surface kind, e.g. 'openapi' or 'subnet-api'.",
-      },
-      provider: {
-        type: "string",
-        description: "Provider slug, e.g. 'datura'.",
-      },
-      id: {
-        type: "string",
-        description: "Exact surface id, to narrow to a single surface.",
-      },
-      sort: {
-        type: "string",
-        enum: SURFACE_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description: "Comma-separated projection of surface fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSurfacesInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SURFACES_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["surfaces"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    schema_version: { type: ["string", "integer", "null"] },
-    surfaces: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SURFACES_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSurfacesOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

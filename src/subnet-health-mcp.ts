@@ -3,9 +3,14 @@
 // transforms as the REST route over the baked
 // /metagraph/health/subnets/{netuid}.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListSubnetHealthInputSchema,
+  ListSubnetHealthOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
 
 const HEALTH_SORT_FIELDS = API_QUERY_COLLECTIONS["health-surfaces"].sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -218,77 +223,14 @@ export const LIST_SUBNET_HEALTH_MCP_TOOL = {
     "or classification; sort with sort + order; and page with limit (1-100) / " +
     "cursor. The filtered sibling of get_subnet_health (raw artifact dump). " +
     "Mirrors GET /api/v1/subnets/{netuid}/health.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind, e.g. 'subnet-api'.",
-      },
-      provider: {
-        type: "string",
-        description: "Filter by provider slug.",
-      },
-      status: {
-        type: "string",
-        enum: HEALTH_STATUSES,
-        description: "Filter by probe-derived health status.",
-      },
-      classification: {
-        type: "string",
-        enum: HEALTH_CLASSIFICATIONS,
-        description: "Filter by probe-derived reachability classification.",
-      },
-      sort: {
-        type: "string",
-        enum: HEALTH_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["netuid"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSubnetHealthInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SUBNET_HEALTH_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["surfaces"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    netuid: NULLABLE_INT,
-    surfaces: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SUBNET_HEALTH_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSubnetHealthOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

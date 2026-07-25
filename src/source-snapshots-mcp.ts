@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/source-snapshots.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
+import {
+  ListSourceSnapshotsInputSchema,
+  ListSourceSnapshotsOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 
 export const SOURCE_SNAPSHOTS_ARTIFACT = "/metagraph/source-snapshots.json";
 
@@ -189,61 +194,14 @@ export const LIST_SOURCE_SNAPSHOTS_MCP_TOOL = {
     "(1-100) / cursor. Use it to detect when a source's underlying data " +
     "changed (hash drift) or to see how many records each source contributed. " +
     "Mirrors GET /api/v1/source-snapshots.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      q: {
-        type: "string",
-        description: "Keyword search across source id, kind, and path.",
-      },
-      sort: {
-        type: "string",
-        enum: SOURCE_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description: "Comma-separated projection of source fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSourceSnapshotsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["sources"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    schema_version: { type: ["string", "integer", "null"] },
-    summary: { type: ["object", "null"] },
-    sources: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSourceSnapshotsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

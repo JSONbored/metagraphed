@@ -3,9 +3,14 @@
 // transforms as the REST route over the baked
 // /metagraph/surfaces/{netuid}.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListSubnetSurfacesInputSchema,
+  ListSubnetSurfacesOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
 
 const SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields;
@@ -205,71 +210,14 @@ export const LIST_SUBNET_SURFACES_MCP_TOOL = {
     "Filter by kind, provider, or id; sort with sort + order; and page with " +
     "limit (1-100) / cursor. The filtered sibling of get_subnet_surfaces (raw " +
     "artifact dump). Mirrors GET /api/v1/subnets/{netuid}/surfaces.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter by surface kind, e.g. 'subnet-api'.",
-      },
-      provider: {
-        type: "string",
-        description: "Filter by provider slug.",
-      },
-      id: {
-        type: "string",
-        description: "Filter to a single surface id.",
-      },
-      sort: {
-        type: "string",
-        enum: SURFACE_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["netuid"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSubnetSurfacesInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SUBNET_SURFACES_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["surfaces"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    netuid: NULLABLE_INT,
-    surfaces: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SUBNET_SURFACES_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSubnetSurfacesOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);
