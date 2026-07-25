@@ -479,7 +479,8 @@ describe("withUsageTelemetry", () => {
     // never registered with waitUntil, so the response must still serve
     // cleanly regardless.
     test("still returns the response cleanly when sampled but no usable ExecutionContext is supplied", async () => {
-      globalThis.fetch = (async () => new Response(null, { status: 200 })) as typeof fetch;
+      globalThis.fetch = (async () =>
+        new Response(null, { status: 200 })) as typeof fetch;
 
       const response = await withUsageTelemetry(
         req(),
