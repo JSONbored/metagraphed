@@ -5138,26 +5138,22 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup — the same source the per-subnet /api/v1/subnets/{netuid}/trajectory reads. Each day rolls up total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share. Served live at /api/v1/economics/trends over a 7d|30d|90d|1y|all window (no static file); day_count is 0 and days is empty when the rollup is cold. */
         EconomicsTrendsArtifact: {
             day_count: number;
-            days: components["schemas"]["EconomicsTrendsDay"][];
+            days: {
+                alpha_price_tao_median?: number | null;
+                alpha_price_tao_weighted?: number | null;
+                mean_emission_share?: number | null;
+                miner_count?: number | null;
+                snapshot_date: string;
+                subnet_count: number;
+                total_stake_tao?: string | null;
+                validator_count?: number | null;
+            }[];
             schema_version: number;
             window: string | null;
         } & {
             [key: string]: unknown;
-        };
-        /** @description One UTC day of network-wide economics aggregated across every subnet that has a snapshot that day. subnet_count is how many subnets contributed; total_stake_tao / validator_count / miner_count are sums; alpha_price_tao_weighted is the stake-weighted mean alpha price; alpha_price_tao_median is the unweighted median; mean_emission_share is the mean per-subnet emission share. Sums are null only when no subnet reported a value that day. */
-        EconomicsTrendsDay: {
-            alpha_price_tao_median?: number | null;
-            alpha_price_tao_weighted?: number | null;
-            mean_emission_share?: number | null;
-            miner_count?: number | null;
-            snapshot_date: string;
-            subnet_count: number;
-            /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide daily total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. Null only when no subnet reported a value that day. */
-            total_stake_tao?: string | null;
-            validator_count?: number | null;
         };
         EndpointIncident: {
             classification: components["schemas"]["Classification"];
@@ -7026,7 +7022,6 @@ export interface components {
             [key: string]: unknown;
         };
         SubnetCandidatesArtifact: components["schemas"]["CandidatesArtifact"];
-        /** @description Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake). */
         SubnetConcentrationArtifact: {
             captured_at?: string | null;
             emission: ({
@@ -7117,7 +7112,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup. */
         SubnetConcentrationHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -7138,11 +7132,15 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. See docs/conviction-lock-mechanism.md. Rolled forward from the periodically-captured subnet_locks snapshot to queried_at_block using the CURRENT live-queried unlock_rate/maturity_rate (never a hardcoded 30/60-day figure -- both are independently governance-adjustable and confirmed live to differ from each other). king is the top-ranked hotkey (or null if the leaderboard is empty). A subnet with no active challengers/owner lock returns an empty leaderboard, not an error -- that's the common case. */
         SubnetConvictionArtifact: {
             count: number;
             king?: string | null;
-            leaderboard: components["schemas"]["SubnetConvictionEntry"][];
+            leaderboard: {
+                conviction?: number;
+                hotkey?: string;
+                is_owner?: boolean;
+                locked_mass?: number;
+            }[];
             maturity_rate?: number | null;
             netuid: number;
             queried_at_block?: number | null;
@@ -7150,13 +7148,6 @@ export interface components {
             unlock_rate?: number | null;
         } & {
             [key: string]: unknown;
-        };
-        /** @description One hotkey's current standing in a subnet's ownership contest (#6638), rolled forward to the query time -- SS58 hotkey, whether this is the current subnet owner's own position, rolled locked_mass (alpha), and rolled conviction (the exponentially-smoothed integral of locked_mass -- what actually determines the contest, not locked_mass alone). */
-        SubnetConvictionEntry: {
-            conviction?: number;
-            hotkey?: string;
-            is_owner?: boolean;
-            locked_mass?: number;
         };
         SubnetDeregistrationsArtifact: {
             deregistrations: number;
@@ -7586,45 +7577,37 @@ export interface components {
             updated_at?: string | null;
             website_url?: string | null;
         };
-        /** @description The terms of one active subnet lease (#6719/#6718, pallets/subtensor/src/subnets/leasing.rs). beneficiary/coldkey/hotkey are SS58-encoded. emissions_share_percent is 0..100. end_block is null for a perpetual lease. accumulated_dividends_alpha is null only when its own sub-read failed independently of the rest of the lease decoding. */
-        SubnetLease: {
-            accumulated_dividends_alpha?: number | null;
-            beneficiary: string;
-            coldkey: string;
-            cost_tao?: number;
-            emissions_share_percent?: number;
-            end_block?: number | null;
-            hotkey: string;
-            lease_id: number;
-            netuid: number;
-        } & {
-            [key: string]: unknown;
-        };
-        /** @description Live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) -- whether a subnet is currently under a lease and, if so, its terms, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). lease is null while leased:true only when the lease's details couldn't be fetched/decoded this request (transient failure, or a race against a lease being terminated between the two dependent reads) -- callers should treat that as retry, not no-lease. */
         SubnetLeaseArtifact: {
-            lease?: components["schemas"]["SubnetLease"] | null;
+            lease?: ({
+                accumulated_dividends_alpha?: number | null;
+                beneficiary: string;
+                coldkey: string;
+                cost_tao?: number;
+                emissions_share_percent?: number;
+                end_block?: number | null;
+                hotkey: string;
+                lease_id: number;
+                netuid: number;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             leased: boolean | null;
             netuid: number;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description One SubnetLeaseCreated/SubnetLeaseTerminated event, decoded from the account_events stream (#6718). beneficiary is SS58-encoded (stored under account_events' generic `coldkey` column -- there is no dedicated beneficiary column). */
-        SubnetLeaseEvent: {
-            beneficiary?: string | null;
-            block_number?: number | null;
-            event_kind?: string;
-            /** Format: date-time */
-            observed_at?: string | null;
-        };
-        /** @description Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. SubnetLeaseDividendsDistributed/Contributed/Withdrew are deliberately excluded -- none carry a netuid on their account_events row (see src/subnet-lease-history.ts's own header for why). A subnet that has never been leased returns an empty list, not an error -- that's the common case. */
         SubnetLeaseHistoryArtifact: {
             count: number;
-            event_kinds?: string[];
-            event_pallet?: string;
-            lease_events: components["schemas"]["SubnetLeaseEvent"][];
+            event_kinds: string[];
+            event_pallet: string;
+            lease_events: {
+                beneficiary?: string | null;
+                block_number?: number | null;
+                event_kind?: string;
+                observed_at?: string | null;
+            }[];
             netuid: number;
             schema_version: number;
         } & {
@@ -7642,7 +7625,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots. */
         SubnetMoversArtifact: {
             end_date: string | null;
             movers: {
@@ -7664,21 +7646,14 @@ export interface components {
                 validators_end: number;
                 validators_start: number;
             }[];
-            /** @description Network-wide aggregate context: total stake/emission/validator counts at each boundary, their deltas, and how many subnets gained, lost, or held flat on the active sort metric (counted over every subnet, not just the returned page). */
             network: {
                 gainers: number;
                 losers: number;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_emission_end_tao minus total_emission_start_tao, computed in exact rao-integer space. May be negative. */
                 total_emission_delta_tao: string;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
                 total_emission_end_tao: string;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot. See total_stake_start_tao. */
                 total_emission_start_tao: string;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_stake_end_tao minus total_stake_start_tao, computed in exact rao-integer space (not as a difference of two already-lossy floats). May be negative (a leading '-') when network stake net-decreased over the window. */
                 total_stake_delta_tao: string;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
                 total_stake_end_tao: string;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#5290, mirrors #2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
                 total_stake_start_tao: string;
                 total_validators_delta: number;
                 total_validators_end: number;
@@ -7690,32 +7665,26 @@ export interface components {
             sort: "stake" | "emission" | "validators" | "neurons";
             start_date: string | null;
             subnet_count: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by interval (1h or 1d), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same SubnetAlphaVolumeArtifact reads — each row is one executed trade, price = amount_tao / alpha_amount. Empty buckets are gaps, never synthesized flat candles. The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candles array with root_excluded:true instead of a meaningless flat-line series. */
         SubnetOhlcArtifact: {
-            candles: components["schemas"]["SubnetOhlcCandle"][];
+            candles: {
+                bucket_start: number;
+                /** Format: date-time */
+                bucket_start_iso: string;
+                close: number;
+                event_count: number;
+                high: number;
+                low: number;
+                open: number;
+                volume_alpha: number;
+                volume_tao: number;
+            }[];
             /** @enum {string} */
             interval: "1h" | "1d";
             netuid: number;
-            /** @description True only for the root subnet (netuid 0), whose 1:1 TAO pricing has no AMM/price impact to chart; candles is always empty in that case. */
             root_excluded: boolean;
             schema_version: number;
-        };
-        /** @description One OHLCV candle: open/high/low/close are the first/max/min/last trade price (amount_tao / alpha_amount) in the bucket; volume_alpha/volume_tao are the summed trade amounts; event_count is the trade count. Never synthesized for an empty bucket — a bucket with zero trades is simply absent from the candles array. */
-        SubnetOhlcCandle: {
-            /** @description Bucket start, epoch milliseconds. */
-            bucket_start: number;
-            /** Format: date-time */
-            bucket_start_iso: string;
-            close: number;
-            event_count: number;
-            high: number;
-            low: number;
-            open: number;
-            volume_alpha: number;
-            volume_tao: number;
         };
         SubnetOverviewArtifact: {
             contract_version?: string;
@@ -7758,22 +7727,18 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One automatic ownership transfer, decoded from a chain_events SubnetOwnerChanged row (#6637). old_coldkey/new_coldkey are SS58-encoded. */
-        SubnetOwnershipChange: {
-            block_number?: number | null;
-            netuid?: number | null;
-            new_coldkey?: string | null;
-            /** Format: date-time */
-            observed_at?: string | null;
-            old_coldkey?: string | null;
-        };
-        /** @description Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- see docs/conviction-lock-mechanism.md for the on-chain mechanism (a permissionless, conviction-weighted contest that runs continuously; ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's, no vote required). A subnet that has never changed hands returns an empty list, not an error -- that's the common case. */
         SubnetOwnershipHistoryArtifact: {
             count: number;
-            event_method?: string;
-            event_pallet?: string;
+            event_method: string;
+            event_pallet: string;
             netuid: number;
-            ownership_changes: components["schemas"]["SubnetOwnershipChange"][];
+            ownership_changes: {
+                block_number?: number | null;
+                netuid?: number | null;
+                new_coldkey?: string | null;
+                observed_at?: string | null;
+                old_coldkey?: string | null;
+            }[];
             schema_version: number;
         } & {
             [key: string]: unknown;
@@ -8030,7 +7995,6 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
-        /** @description Net stake flow for one subnet over a recent window, summed live from the account_events stream: TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net, and event counts. */
         SubnetStakeFlowArtifact: {
             net_flow_tao: number;
             netuid: number;
@@ -8039,20 +8003,16 @@ export interface components {
             total_staked_tao: number;
             total_unstaked_tao: number;
             unstake_events: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Per-subnet stake-movement (re-delegation) activity over a 7d/30d window: the distinct movers (accounts), StakeMoved event count, and movements per mover for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of /api/v1/subnets/{netuid}/stake-flow — StakeMoved relocates stake between hotkeys/subnets (move_stake) without unstaking, so it measures churn, not flow — served live from the account_events StakeMoved stream at /api/v1/subnets/{netuid}/stake-moves (no static file); zeroed when the subnet has no StakeMoved events in the window. */
         SubnetStakeMovesArtifact: {
             distinct_movers: number;
             movements: number;
             movements_per_mover: number | null;
             netuid: number;
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
         SubnetStakeQuoteArtifact: {
             alpha_in_pool: number | null;
@@ -8070,23 +8030,19 @@ export interface components {
             spot_price_tao: number;
             tao_in_pool_tao: number | null;
         };
-        /** @description Per-subnet stake-transfer activity over a 7d/30d window: distinct senders (accounts), StakeTransferred event count, and transfers per sender for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-transfers and the between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves — transfer_stake relocates staked alpha between accounts on the same hotkey (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/subnets/{netuid}/stake-transfers (no static file); zeroed when the subnet has no events in the window. */
         SubnetStakeTransfersArtifact: {
             distinct_senders: number;
             netuid: number;
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             transfers: number;
             transfers_per_sender: number | null;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
         /** @enum {unknown} */
         SubnetStatus: "active" | "inactive" | "unknown";
         SubnetSurfacesArtifact: components["schemas"]["SurfacesArtifact"];
         SubnetTrajectoryArtifact: {
-            /** @description Windowed deltas (7d/30d) between the latest point and the point at or before that many days prior. tao_in_pool_tao/alpha_in_pool/alpha_out_pool deltas are the net TAO/alpha flow into or out of the pool over the window (#2552) — positive means net inflow. */
             deltas: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -8095,9 +8051,7 @@ export interface components {
             netuid: number;
             point_count: number;
             points: ({
-                /** @description Alpha reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
                 alpha_in_pool?: number | null;
-                /** @description Alpha issued/staked out of the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
                 alpha_out_pool?: number | null;
                 alpha_price_tao?: number | null;
                 completeness_score?: number | null;
@@ -8105,10 +8059,8 @@ export interface components {
                 emission_share?: number | null;
                 endpoint_count?: number | null;
                 miner_count?: number | null;
-                /** @description Cumulative subnet trading volume in TAO as reported by the chain at this snapshot (#2552). */
                 subnet_volume_tao?: number | null;
                 surface_count?: number | null;
-                /** @description TAO reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative — see deltas for net flow. */
                 tao_in_pool_tao?: number | null;
                 total_stake_tao?: number | null;
                 validator_count?: number | null;
@@ -8119,9 +8071,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. */
         SubnetTurnoverArtifact: {
-            /** @description Optional drilldown included only when the live turnover route is requested with changes=true. */
             changes?: {
                 uid_reassignment_count?: number;
                 uid_reassignments: {
@@ -8208,10 +8158,8 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
         };
-        /** @description Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file). */
         SubnetYieldArtifact: {
             block_number: number | null;
-            /** Format: date-time */
             captured_at: string | null;
             mean_yield: number | null;
             median_yield: number | null;
@@ -8225,8 +8173,7 @@ export interface components {
                 role: "validator" | "miner";
                 stake_tao: number;
                 uid: number;
-                /** @enum {string|null} */
-                vs_median: "above" | "below" | "at" | null;
+                vs_median: ("above" | "below" | "at") | null;
                 yield: number | null;
             }[];
             p25_yield: number | null;
@@ -8238,7 +8185,6 @@ export interface components {
             total_stake_tao: number;
             validator_count: number;
         };
-        /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup. */
         SubnetYieldHistoryArtifact: {
             netuid: number;
             point_count: number;

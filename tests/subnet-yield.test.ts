@@ -9,9 +9,15 @@ import {
 } from "../src/subnet-yield.ts";
 import type { Row } from "./row-type.ts";
 
+// Reads public/metagraph/openapi.json (the final published document), not
+// schemas/api-components.schema.json: SubnetYieldArtifact became a
+// types-epic B batch 2 (#8056) Zod-generated component, so the hand-edited
+// bundle no longer declares it at all -- mirrors tests/
+// validate-classification-enum-parity.test.ts's identical rationale for
+// Classification.
 const apiComponents = JSON.parse(
   readFileSync(
-    new URL("../schemas/api-components.schema.json", import.meta.url),
+    new URL("../public/metagraph/openapi.json", import.meta.url),
     "utf8",
   ),
 );
@@ -232,7 +238,14 @@ describe("buildSubnetYield", () => {
     const emissionSchema =
       apiComponents.components.schemas.SubnetYieldArtifact.properties.neurons
         .items.properties.emission_tao;
-    assert.deepEqual(emissionSchema.type, ["number", "null"]);
+    // Zod's z.toJSONSchema() emits a nullable number as anyOf:[{type:number},
+    // {type:null}], not the hand-written type:["number","null"] union form
+    // this asserted against pre-conversion -- same semantics, different JSON
+    // Schema idiom.
+    assert.deepEqual(emissionSchema.anyOf, [
+      { type: "number" },
+      { type: "null" },
+    ]);
 
     const negativeStake = buildSubnetYield(
       [neuron(5, { stake: -1, emission: 2 })],
