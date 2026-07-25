@@ -7,7 +7,7 @@
 // here rather than only in production. Also asserts the converse per the
 // issue's non-vacuous requirement: an empty object must fail every schema.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi, afterEach } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { SubnetsResponseSchema } from "../schemas-src/routes/subnets.ts";
@@ -95,6 +95,47 @@ import {
 import { buildSubnetPrometheus } from "../src/subnet-prometheus.ts";
 import { buildSubnetWeights } from "../src/subnet-weights.ts";
 import { buildSubnetWeightSetters } from "../src/subnet-weight-setters.ts";
+import {
+  AccountSummaryArtifactSchema,
+  AccountSubnetsArtifactSchema,
+} from "../schemas-src/routes/account-summary.ts";
+import { AccountsListArtifactSchema } from "../schemas-src/routes/accounts-list.ts";
+import { TopHoldersArtifactSchema } from "../schemas-src/routes/top-holders.ts";
+import { AccountBalanceArtifactSchema } from "../schemas-src/routes/account-balance.ts";
+import { AccountPortfolioArtifactSchema } from "../schemas-src/routes/account-portfolio.ts";
+import {
+  AccountIdentityArtifactSchema,
+  AccountIdentityHistoryArtifactSchema,
+} from "../schemas-src/routes/account-identity.ts";
+import {
+  AccountPositionsArtifactSchema,
+  AccountPositionHistoryArtifactSchema,
+} from "../schemas-src/routes/account-positions.ts";
+import { AccountRootClaimArtifactSchema } from "../schemas-src/routes/account-root-claim.ts";
+import {
+  AccountServingArtifactSchema,
+  AccountPrometheusArtifactSchema,
+  AccountStakeMovesArtifactSchema,
+  AccountStakeFlowArtifactSchema,
+} from "../schemas-src/routes/account-activity.ts";
+import {
+  buildAccountSummary,
+  buildAccountSubnets,
+} from "../src/account-events.ts";
+import { buildAccountsList } from "../src/accounts-list.ts";
+import { buildTopHoldersList } from "../src/top-holders.ts";
+import { loadAccountBalance } from "../src/account-balance.ts";
+import { buildAccountPortfolio } from "../src/account-portfolio.ts";
+import { buildAccountIdentity } from "../src/account-identity.ts";
+import { buildAccountIdentityHistory } from "../src/account-identity-history.ts";
+import { buildAccountPositions } from "../src/account-nominator-positions.ts";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
+import { loadAccountRootClaim } from "../src/account-root-claim.ts";
+import { buildAccountServing } from "../src/account-serving.ts";
+import { buildAccountPrometheus } from "../src/account-prometheus.ts";
+import { buildAccountStakeMoves } from "../src/account-stake-moves.ts";
+import { buildAccountStakeFlow } from "../src/account-stake-flow.ts";
+import { mockEnv } from "./row-type.ts";
 import type { z } from "zod";
 
 function req(path: string) {
@@ -677,6 +718,410 @@ describe("batch 3 (#8057) route artifact schemas parse real builder output", () 
   });
   test("subnet-weight-setters: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = SubnetWeightSettersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+});
+
+// Batch 4 (#8058) -- account_events/neurons/account_identity(_history)/
+// nominator_positions/account_position_daily D1-tier and live finney-RPC
+// routes. None of these are servable through createLocalArtifactEnv()
+// either (same situation batch 3 hit), so each case drives the real pure
+// builder function directly against a real D1/event-row shape (reused from
+// that builder's own tests/*.test.ts fixtures). The two live-RPC routes
+// (balance, root-claim) mock global fetch with the same SCALE-encoded
+// response shape their own loader tests use.
+describe("batch 4 (#8058) route artifact schemas parse real builder output", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("account-summary: ArtifactSchema.parse(buildAccountSummary(...)) succeeds", () => {
+    const data = buildAccountSummary("5Hk", {
+      agg: { c: 5, sc: 2, fb: 1, lb: 9, fo: 1750000000000, lo: 1750009000000 },
+      kinds: [{ kind: "StakeAdded", count: 5 }],
+      registrations: [
+        { netuid: 7, uid: 1, stake_tao: 10, validator_permit: 1, active: 1 },
+      ],
+      recent: [
+        {
+          block_number: 9,
+          event_kind: "StakeAdded",
+          observed_at: 1750009000000,
+        },
+      ],
+      activity: {
+        tx_count: 4,
+        last_tx_block: 200,
+        last_tx_at: 1750009000000,
+        total_fee_tao: 0.02,
+      },
+      modules: [{ call_module: "SubtensorModule", count: 3 }],
+    });
+    const withLabels = { ...data, labels: [] };
+    const parsed = AccountSummaryArtifactSchema.parse(withLabels);
+    assert.ok(parsed);
+  });
+  test("account-summary: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountSummaryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-subnets: ArtifactSchema.parse(buildAccountSubnets(...)) succeeds", () => {
+    const data = buildAccountSubnets(
+      [
+        {
+          netuid: 14,
+          uid: 2,
+          stake_tao: 12.25,
+          validator_permit: 1,
+          active: 1,
+        },
+      ],
+      "5Hk",
+    );
+    const parsed = AccountSubnetsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-subnets: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountSubnetsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("accounts-list: ArtifactSchema.parse(buildAccountsList(...)) succeeds", () => {
+    const row = {
+      netuid: 1,
+      uid: 0,
+      hotkey: "5Hk1",
+      coldkey: "5Co1",
+      validator_permit: 1,
+      emission_tao: 22.1,
+      stake_tao: 1000.5,
+      block_number: 8454388,
+      captured_at: 1750000000000,
+    };
+    const data = buildAccountsList([row]);
+    const parsed = AccountsListArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("accounts-list: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountsListArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("top-holders: ArtifactSchema.parse(buildTopHoldersList(...)) succeeds", () => {
+    const row = {
+      ss58: "5Whale1",
+      free_tao: 1000.5,
+      delegated_tao: 250.25,
+      captured_at: 1750000000000,
+    };
+    const data = buildTopHoldersList([row]);
+    const parsed = TopHoldersArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("top-holders: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = TopHoldersArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  const BALANCE_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // A SCALE-encoded AccountInfo blob: nonce/consumers/providers/sufficients
+  // (u32 LE each) then AccountData's free + reserved (u128 LE each) -- same
+  // shape tests/account-balance-loader.test.ts's accountInfoHex() builds.
+  function accountInfoHex(freeRao: bigint, reservedRao: bigint): string {
+    const u128 = (value: bigint): string => {
+      let hex = "";
+      let rest = value;
+      for (let index = 0; index < 16; index += 1) {
+        hex += Number(rest & 0xffn)
+          .toString(16)
+          .padStart(2, "0");
+        rest >>= 8n;
+      }
+      return hex;
+    };
+    return `0x${"00000000".repeat(4)}${u128(freeRao)}${u128(reservedRao)}`;
+  }
+
+  test("account-balance: ArtifactSchema.parse(loadAccountBalance(...)) succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          jsonrpc: "2.0",
+          id: 1,
+          result: accountInfoHex(1_000_000_000n, 0n),
+        }),
+      ),
+    );
+    const data = await loadAccountBalance(mockEnv(), BALANCE_SS58);
+    const parsed = AccountBalanceArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-balance: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountBalanceArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-portfolio: ArtifactSchema.parse(buildAccountPortfolio(...)) succeeds", () => {
+    const row = {
+      netuid: 3,
+      uid: 5,
+      validator_permit: 1,
+      active: 1,
+      stake_tao: 1000.5,
+      emission_tao: 22.1,
+      rank: 0.5,
+      trust: 0.9,
+      incentive: 0.6,
+      dividends: 0.4,
+      captured_at: 1750000000000,
+    };
+    const data = buildAccountPortfolio([row], "5Hk");
+    const parsed = AccountPortfolioArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-portfolio: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountPortfolioArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  function identityRow(overrides = {}) {
+    return {
+      account: "5Acc0",
+      name: "Example Team",
+      url: "https://miao.example/",
+      github: "https://github.com/miao-team/miao-repo",
+      image: "https://miao.example/logo.png",
+      discord: "examplehandle",
+      description: "An example subnet operator.",
+      additional: null,
+      captured_at: 1_700_000_000_000,
+      ...overrides,
+    };
+  }
+
+  test("account-identity: ArtifactSchema.parse(buildAccountIdentity(...)) succeeds", () => {
+    const data = buildAccountIdentity(identityRow(), "5Acc0");
+    const parsed = AccountIdentityArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-identity: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountIdentityArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-identity-history: ArtifactSchema.parse(buildAccountIdentityHistory(...)) succeeds", () => {
+    const row = { ...identityRow(), id: 10, identity_hash: "abc" };
+    const data = buildAccountIdentityHistory([row], "5Acc0", {
+      limit: 100,
+      offset: 0,
+      nextCursor: "2.1",
+    });
+    const parsed = AccountIdentityHistoryArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-identity-history: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountIdentityHistoryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-positions: ArtifactSchema.parse(buildAccountPositions(...)) succeeds", () => {
+    const row = {
+      coldkey: "5Cold",
+      hotkey: "5Hk1",
+      netuid: 3,
+      share_fraction: 0.25,
+      captured_at: 1_780_000_000_000,
+    };
+    const data = buildAccountPositions(
+      [row],
+      new Map([["5Hk1|3", 1000]]),
+      "5Cold",
+    );
+    const parsed = AccountPositionsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-positions: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountPositionsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-position-history: ArtifactSchema.parse(buildAccountPositionHistory(...)) succeeds", () => {
+    const row = {
+      snapshot_date: "2026-06-20",
+      captured_at: 1_780_000_000_000,
+      uid: 3,
+      coldkey: "5Cold",
+      active: 1,
+      validator_permit: 1,
+      rank: 0.5,
+      trust: 0.9,
+      incentive: 0.6,
+      dividends: 0.4,
+      stake_tao: 456.7,
+      emission_tao: 1.23,
+    };
+    const data = buildAccountPositionHistory([row], "5SS58", 7, {
+      window: "30d",
+    });
+    const parsed = AccountPositionHistoryArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-position-history: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountPositionHistoryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  const ROOT_CLAIM_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function toHex(bytes: Uint8Array) {
+    return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+  }
+  function concatBytes(...parts: Uint8Array[]) {
+    const total = parts.reduce((n, p) => n + p.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const part of parts) {
+      out.set(part, offset);
+      offset += part.length;
+    }
+    return out;
+  }
+  function compactU32(n: number) {
+    if (n < 64) return Uint8Array.of(n << 2);
+    const v = (n << 2) | 0b01;
+    return Uint8Array.of(v & 0xff, (v >>> 8) & 0xff);
+  }
+  function u16Le(n: number) {
+    return Uint8Array.of(n & 0xff, (n >>> 8) & 0xff);
+  }
+  function i128LeFromFloat(n: number) {
+    const bits = BigInt(Math.round(n * 2 ** 32));
+    const out = new Uint8Array(16);
+    let rest = bits < 0n ? bits + (1n << 128n) : bits;
+    for (let i = 0; i < 16; i += 1) {
+      out[i] = Number(rest & 0xffn);
+      rest >>= 8n;
+    }
+    return out;
+  }
+  function u128Le(n: number) {
+    return i128LeFromFloat(n);
+  }
+
+  test("account-root-claim: ArtifactSchema.parse(loadAccountRootClaim(...)) succeeds", async () => {
+    const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => i);
+    const claimTypeHex = "0x01"; // Keep
+    const stakingHex = toHex(concatBytes(compactU32(1), hotAccountId));
+    const ownedHex = toHex(compactU32(0));
+    const claimableHex = toHex(
+      concatBytes(compactU32(1), u16Le(5), i128LeFromFloat(0.25)),
+    );
+    const claimedHex = toHex(u128Le(1000));
+    const thresholdHex = toHex(i128LeFromFloat(0.5));
+    let call = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        call += 1;
+        const results = [
+          claimTypeHex,
+          stakingHex,
+          ownedHex,
+          claimableHex,
+          claimedHex,
+          thresholdHex,
+        ];
+        const result = results[call - 1] ?? null;
+        return Response.json({ jsonrpc: "2.0", id: 1, result });
+      }),
+    );
+    const data = await loadAccountRootClaim(mockEnv(), ROOT_CLAIM_SS58);
+    const parsed = AccountRootClaimArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-root-claim: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountRootClaimArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  const ACTIVITY_ADDR = "5GReferenceAccountAddressForZodSchemaTestssssssss";
+  function activityRow(
+    netuid: number,
+    count: number,
+    first: number,
+    last: number,
+  ) {
+    return {
+      netuid,
+      announcements: count,
+      movements: count,
+      first_observed: first,
+      last_observed: last,
+    };
+  }
+
+  test("account-serving: ArtifactSchema.parse(buildAccountServing(...)) succeeds", () => {
+    const data = buildAccountServing(
+      [activityRow(1, 30, 1_700_000_000_000, 1_700_500_000_000)],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountServingArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-serving: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountServingArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-prometheus: ArtifactSchema.parse(buildAccountPrometheus(...)) succeeds", () => {
+    const data = buildAccountPrometheus(
+      [activityRow(1, 30, 1_700_000_000_000, 1_700_500_000_000)],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountPrometheusArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-prometheus: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountPrometheusArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-stake-moves: ArtifactSchema.parse(buildAccountStakeMoves(...)) succeeds", () => {
+    const data = buildAccountStakeMoves(
+      [activityRow(1, 3, 1_700_000_000_000, 1_700_500_000_000)],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountStakeMovesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-stake-moves: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountStakeMovesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("account-stake-flow: ArtifactSchema.parse(buildAccountStakeFlow(...)) succeeds", () => {
+    const row = (netuid: number, kind: string, tao: number, count: number) => ({
+      netuid,
+      event_kind: kind,
+      total_tao: tao,
+      event_count: count,
+    });
+    const data = buildAccountStakeFlow(
+      [row(1, "StakeAdded", 100, 3), row(1, "StakeRemoved", 40, 2)],
+      ACTIVITY_ADDR,
+      { window: "30d" },
+    );
+    const parsed = AccountStakeFlowArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("account-stake-flow: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = AccountStakeFlowArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
 });

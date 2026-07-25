@@ -158,6 +158,29 @@ import {
   SubnetWeightsArtifactSchema,
   SubnetWeightSettersArtifactSchema,
 } from "./routes/subnet-weights.ts";
+import {
+  AccountSummaryArtifactSchema,
+  AccountSubnetsArtifactSchema,
+} from "./routes/account-summary.ts";
+import { AccountsListArtifactSchema } from "./routes/accounts-list.ts";
+import { TopHoldersArtifactSchema } from "./routes/top-holders.ts";
+import { AccountBalanceArtifactSchema } from "./routes/account-balance.ts";
+import { AccountPortfolioArtifactSchema } from "./routes/account-portfolio.ts";
+import {
+  AccountIdentityArtifactSchema,
+  AccountIdentityHistoryArtifactSchema,
+} from "./routes/account-identity.ts";
+import {
+  AccountPositionsArtifactSchema,
+  AccountPositionHistoryArtifactSchema,
+} from "./routes/account-positions.ts";
+import { AccountRootClaimArtifactSchema } from "./routes/account-root-claim.ts";
+import {
+  AccountServingArtifactSchema,
+  AccountPrometheusArtifactSchema,
+  AccountStakeMovesArtifactSchema,
+  AccountStakeFlowArtifactSchema,
+} from "./routes/account-activity.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -236,6 +259,27 @@ register(
   "SubnetOwnershipHistoryArtifact",
 );
 register(SubnetConvictionArtifactSchema, "SubnetConvictionArtifact");
+register(AccountSummaryArtifactSchema, "AccountSummaryArtifact");
+register(AccountSubnetsArtifactSchema, "AccountSubnetsArtifact");
+register(AccountsListArtifactSchema, "AccountsListArtifact");
+register(TopHoldersArtifactSchema, "TopHoldersArtifact");
+register(AccountBalanceArtifactSchema, "AccountBalanceArtifact");
+register(AccountPortfolioArtifactSchema, "AccountPortfolioArtifact");
+register(AccountIdentityArtifactSchema, "AccountIdentityArtifact");
+register(
+  AccountIdentityHistoryArtifactSchema,
+  "AccountIdentityHistoryArtifact",
+);
+register(AccountPositionsArtifactSchema, "AccountPositionsArtifact");
+register(
+  AccountPositionHistoryArtifactSchema,
+  "AccountPositionHistoryArtifact",
+);
+register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
+register(AccountServingArtifactSchema, "AccountServingArtifact");
+register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");
+register(AccountStakeMovesArtifactSchema, "AccountStakeMovesArtifact");
+register(AccountStakeFlowArtifactSchema, "AccountStakeFlowArtifact");
 
 // Batch 3 (#8057) additions.
 register(SubnetMetagraphArtifactSchema, "SubnetMetagraphArtifact");
@@ -342,6 +386,21 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetWeightSettersArtifact",
   "ConcentrationMetrics",
   "ScoreDistribution",
+  "AccountSummaryArtifact",
+  "AccountSubnetsArtifact",
+  "AccountsListArtifact",
+  "TopHoldersArtifact",
+  "AccountBalanceArtifact",
+  "AccountPortfolioArtifact",
+  "AccountIdentityArtifact",
+  "AccountIdentityHistoryArtifact",
+  "AccountPositionsArtifact",
+  "AccountPositionHistoryArtifact",
+  "AccountRootClaimArtifact",
+  "AccountServingArtifact",
+  "AccountPrometheusArtifact",
+  "AccountStakeMovesArtifact",
+  "AccountStakeFlowArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -377,6 +436,15 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
 // referenced only by SubnetHyperparamsHistoryArtifact), all converted
 // together here -- both SubnetHyperparameters and
 // SubnetHyperparamsHistoryEntry become orphaned the same way.
+// Batch 4 (#8058) additions: AccountRegistration/AccountEventKindCount/
+// AccountActivity/AccountsListEntry/AccountsListSubnet/TopHoldersEntry/
+// AccountIdentityHistoryEntry/NominatorPosition/RootClaimType/
+// RootClaimHotkey/RootClaimEntry are each referenced only by the one (or,
+// for AccountRegistration, exactly two, both converted together in this
+// same batch) hand-edited component(s) this batch replaces -- verified via
+// repo-wide $ref grep, same test as every prior batch's additions. Not
+// worth a standalone registry entry; their hand-edited keys become orphaned
+// the moment their referrer(s) are Zod-owned and inline them instead.
 export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "SubnetEconomics",
   "SubnetProfileNativeIdentity",
@@ -396,4 +464,16 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "Neuron",
   "SubnetHyperparameters",
   "SubnetHyperparamsHistoryEntry",
+  "AccountRegistration",
+  "AccountEventKindCount",
+  "AccountActivity",
+  "AccountsListEntry",
+  "AccountsListSubnet",
+  "TopHoldersEntry",
+  "AccountIdentityHistoryEntry",
+  "PortfolioPosition",
+  "NominatorPosition",
+  "RootClaimType",
+  "RootClaimHotkey",
+  "RootClaimEntry",
 ] as const;

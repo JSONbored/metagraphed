@@ -3017,18 +3017,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Aggregates are bounded to the newest retained signer rows, not all-time. tx_count is the count of sampled extrinsics this account signed; modules_called is the top call_modules by frequency within that bounded sample. */
-        AccountActivity: {
-            /** Format: date-time */
-            last_tx_at?: string | null;
-            last_tx_block?: number | null;
-            modules_called: {
-                call_module: string | null;
-                count: number;
-            }[];
-            total_fee_tao?: number | null;
-            tx_count: number;
-        };
         /** @description One account's axon-removal footprint per subnet over a recent window, from the account_events AxonInfoRemoved stream: per-subnet removal count with the first/last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet. The teardown-side complement to /accounts/{ss58}/serving (axon announcements) and the account-level companion to /api/v1/chain/axon-removals and /api/v1/subnets/{netuid}/axon-removals, orthogonal to /accounts/{ss58}/subnets (registration state). */
         AccountAxonRemovalsArtifact: {
             address: string;
@@ -3048,10 +3036,8 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
-        /** @description Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure. */
         AccountBalanceArtifact: {
             balance_tao?: number | null;
-            /** Format: date-time */
             queried_at?: string | null;
             schema_version: number;
             ss58: string;
@@ -3188,11 +3174,6 @@ export interface components {
             observed_at?: string | null;
             uid?: number | null;
         };
-        /** @description Per-kind event tally for an account (#1347). */
-        AccountEventKindCount: {
-            count: number;
-            kind: string;
-        };
         /** @description Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file). */
         AccountEventsArtifact: {
             event_count: number;
@@ -3229,27 +3210,32 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false — and every field null — for the common case of an account that has never called set_identity; that's not an error. Operator-controlled untrusted data. */
         AccountIdentityArtifact: {
             account: string;
             additional?: string | null;
-            /** Format: date-time */
             captured_at?: string | null;
             description?: string | null;
             discord?: string | null;
             github?: string | null;
             has_identity: boolean;
-            /** Format: uri */
             image?: string | null;
             name?: string | null;
             schema_version: number;
-            /** Format: uri */
             url?: string | null;
         };
-        /** @description Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging. */
         AccountIdentityHistoryArtifact: {
             account: string;
-            entries: components["schemas"]["AccountIdentityHistoryEntry"][];
+            entries: {
+                additional?: string | null;
+                description?: string | null;
+                discord?: string | null;
+                github?: string | null;
+                identity_hash: string;
+                image?: string | null;
+                name?: string | null;
+                observed_at: string | null;
+                url?: string | null;
+            }[];
             entry_count: number;
             limit?: number | null;
             next_cursor?: string | null;
@@ -3257,21 +3243,6 @@ export interface components {
             schema_version: number;
         } & {
             [key: string]: unknown;
-        };
-        /** @description One observed personal chain identity snapshot for an account (epic #4301/5.2). Operator-controlled untrusted data. */
-        AccountIdentityHistoryEntry: {
-            additional?: string | null;
-            description?: string | null;
-            discord?: string | null;
-            github?: string | null;
-            identity_hash: string;
-            /** Format: uri */
-            image?: string | null;
-            name?: string | null;
-            /** Format: date-time */
-            observed_at: string | null;
-            /** Format: uri */
-            url?: string | null;
         };
         /** @description Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) -- every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts. */
         AccountParentsArtifact: {
@@ -3283,16 +3254,28 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description A wallet's cross-subnet neuron portfolio from the neurons D1 tier: every position registered under the hotkey with its economics + yield, plus wallet-level aggregates (totals, subnet/validator counts, overall return, and how concentrated the wallet's stake is across its subnets). Richer than AccountSubnetsArtifact. Served live at /api/v1/accounts/{ss58}/portfolio (no static file). */
         AccountPortfolioArtifact: {
             captured_at: string | null;
             miner_count: number;
             overall_yield: number | null;
             position_count: number;
-            positions: components["schemas"]["PortfolioPosition"][];
+            positions: {
+                active: boolean;
+                dividends: number | null;
+                emission_tao: number;
+                incentive: number | null;
+                netuid: number;
+                rank: number | null;
+                /** @enum {string} */
+                role: "validator" | "miner";
+                stake_tao: number;
+                trust: number | null;
+                uid: number | null;
+                yield: number | null;
+            }[];
             schema_version: number;
             ss58: string;
-            stake_concentration: components["schemas"]["ConcentrationMetrics"] | null;
+            stake_concentration: components["schemas"]["ConcentrationMetrics"];
             subnet_count: number;
             total_emission_tao: number;
             total_stake_tao: number;
@@ -3300,39 +3283,46 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One wallet's position on one subnet over time (block-explorer Tier-1, epic #4329/6.2 — the 'Alpha Holdings chart'), served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file). Each point is the wallet's position economics on that subnet on one snapshot_date, in the same field shape as AccountPortfolioArtifact's PortfolioPosition entries (minus netuid, fixed for the whole series). */
         AccountPositionHistoryArtifact: {
             netuid: number;
             point_count: number;
-            points: ({
-                /** Format: date-time */
-                captured_at?: string | null;
+            points: {
+                active: boolean;
+                captured_at: string | null;
+                coldkey: string | null;
+                dividends: number | null;
+                emission_tao: number;
+                incentive: number | null;
+                rank: number | null;
+                /** @enum {string} */
+                role: "validator" | "miner";
                 snapshot_date: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+                stake_tao: number;
+                trust: number | null;
+                uid: number | null;
+                yield: number | null;
+            }[];
             schema_version: number;
             ss58: string;
             window?: string | null;
         } & {
             [key: string]: unknown;
         };
-        /** @description This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from AccountPortfolioArtifact's hotkey-scoped view (a pure delegator shows near-zero there since its stake lives on someone ELSE's hotkey row). Sourced from nominator_positions, a share-fraction ledger populated by the same SubtensorModule::Alpha scan as validator_nominator_counts (#2549), joined against live neurons stake_tao. Served live at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is NOT covered -- root has no alpha pool (#2550) and Alpha carries no root data at all, so an account that only holds root-delegated stake shows an empty positions[] here, not because it holds nothing but because this source can't see it yet. */
         AccountPositionsArtifact: {
-            /**
-             * Format: date-time
-             * @description The most recent nominator_positions.captured_at across this account's positions -- when the source Alpha scan last observed them, not when neurons.stake_tao (used for the stake_tao join) last refreshed.
-             */
             captured_at: string | null;
             position_count: number;
-            positions: components["schemas"]["NominatorPosition"][];
+            positions: {
+                hotkey: string;
+                netuid: number;
+                share_fraction: number;
+                stake_tao: number;
+            }[];
             schema_version: number;
             ss58: string;
             total_stake_tao: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description One account's Prometheus-endpoint serving footprint per subnet over a recent window, from the account_events PrometheusServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet. Operational activity (announcing a Prometheus telemetry endpoint) — the telemetry sibling of /accounts/{ss58}/serving and the account-level companion to /api/v1/chain/prometheus and /api/v1/subnets/{netuid}/prometheus, orthogonal to /accounts/{ss58}/subnets (registration state). */
         AccountPrometheusArtifact: {
             address: string;
             concentration: number | null;
@@ -3341,23 +3331,12 @@ export interface components {
             subnet_count: number;
             subnets: {
                 announcements: number;
-                /** Format: date-time */
                 first_announced_at: string | null;
-                /** Format: date-time */
                 last_announced_at: string | null;
                 netuid: number;
             }[];
             total_announcements: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
-        };
-        /** @description A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier. */
-        AccountRegistration: {
-            active?: boolean;
-            netuid: number;
-            stake_tao?: number | null;
-            uid?: number | null;
-            validator_permit?: boolean;
+            window: ("7d" | "30d" | "90d") | null;
         };
         /** @description One account's neuron-registration footprint per subnet over a recent window, from the account_events NeuronRegistered stream: per-subnet registration count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet. Windowed registration EVENTS (including re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations and /api/v1/subnets/{netuid}/registrations, distinct from /accounts/{ss58}/subnets (current registration state). */
         AccountRegistrationsArtifact: {
@@ -3378,18 +3357,27 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
-        /** @description Live root-claim current state for one Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed watermarks, and per-netuid thresholds — queried from finney RPC at request time with 120s KV cache. claim_type and hotkeys are null on RPC failure (schema-stable), distinct from a confirmed empty hotkeys list. Read-only; never submits claim_root. */
         AccountRootClaimArtifact: {
-            claim_type?: components["schemas"]["RootClaimType"] | null;
-            hotkeys?: components["schemas"]["RootClaimHotkey"][] | null;
-            /** Format: date-time */
+            claim_type?: {
+                /** @enum {string} */
+                kind: "Swap" | "Keep" | "KeepSubnets";
+                subnets?: number[];
+            } | null;
+            hotkeys?: {
+                entries: {
+                    claimable_rate: number;
+                    claimed: string;
+                    netuid: number;
+                    threshold: number;
+                }[];
+                hotkey: string;
+            }[] | null;
             queried_at?: string | null;
             schema_version: number;
             ss58: string;
         } & {
             [key: string]: unknown;
         };
-        /** @description One account's axon-serving footprint per subnet over a recent window, from the account_events AxonServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet. Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving and /api/v1/subnets/{netuid}/serving, orthogonal to /accounts/{ss58}/subnets (registration state) and /accounts/{ss58}/registrations (registration events). */
         AccountServingArtifact: {
             address: string;
             concentration: number | null;
@@ -3398,22 +3386,36 @@ export interface components {
             subnet_count: number;
             subnets: {
                 announcements: number;
-                /** Format: date-time */
                 first_served_at: string | null;
-                /** Format: date-time */
                 last_served_at: string | null;
                 netuid: number;
             }[];
             total_announcements: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Site-wide accounts leaderboard (#4324/5.3): every currently-registered hotkey (miners included) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, served live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators, generalized to every account. */
         AccountsListArtifact: {
             account_count: number;
-            accounts: components["schemas"]["AccountsListEntry"][];
+            accounts: {
+                coldkey: string | null;
+                coldkey_count: number;
+                hotkey: string;
+                latest_block_number: number | null;
+                latest_captured_at: string | null;
+                miner_count: number;
+                stake_dominance: number | null;
+                subnet_count: number;
+                subnets: {
+                    emission_tao: number;
+                    netuid: number;
+                    stake_tao: number;
+                    uid: number;
+                }[];
+                total_emission_tao: number;
+                total_stake_tao: number;
+                uid_count: number;
+                validator_count: number;
+            }[];
             block_number?: number | null;
-            /** Format: date-time */
             captured_at?: string | null;
             limit: number;
             schema_version: number;
@@ -3422,31 +3424,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One account row grouped by hotkey across every current neurons-tier registration — every currently-registered hotkey, not just validator_permit=1 ones (see GlobalValidatorEntry for the validator-only leaderboard). total_stake_tao is the closest analog to a taostats-style 'Delegated' column this D1-only route can derive; there is no 'Free'/spendable-balance or 'Total' column here (no balance-tracking tier exists to source them, see the artifact description). */
-        AccountsListEntry: {
-            coldkey: string | null;
-            coldkey_count: number;
-            hotkey: string;
-            latest_block_number: number | null;
-            /** Format: date-time */
-            latest_captured_at: string | null;
-            miner_count: number;
-            stake_dominance: number | null;
-            subnet_count: number;
-            subnets: components["schemas"]["AccountsListSubnet"][];
-            total_emission_tao: number;
-            total_stake_tao: number;
-            uid_count: number;
-            validator_count: number;
-        };
-        /** @description One current subnet membership for an account in the site-wide accounts leaderboard (#4324/5.3). Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The leaderboard returns at most the top ten memberships per account, ranked by membership stake, while subnet_count/uid_count describe the full footprint. */
-        AccountsListSubnet: {
-            emission_tao: number;
-            netuid: number;
-            stake_tao: number;
-            uid: number;
-        };
-        /** @description One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet. */
         AccountStakeFlowArtifact: {
             address: string;
             concentration: number | null;
@@ -3474,10 +3451,8 @@ export interface components {
             total_staked_tao: number;
             total_unstaked_tao: number;
             unstake_events: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup — a known daily-granularity precision limit, not a bug), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow. */
         AccountStakeMovesArtifact: {
             address: string;
             concentration: number | null;
@@ -3485,49 +3460,68 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: {
-                /** Format: date-time */
                 first_moved_at: string | null;
-                /** Format: date-time */
                 last_moved_at: string | null;
                 movements: number;
                 netuid: number;
                 price_tao_at_last_move: number | null;
             }[];
             total_movements: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file). */
         AccountSubnetsArtifact: {
             schema_version: number;
             ss58: string;
             subnet_count: number;
-            subnets: components["schemas"]["AccountRegistration"][];
+            subnets: {
+                active: boolean;
+                netuid: number;
+                stake_tao: number | null;
+                uid: number | null;
+                validator_permit: boolean;
+            }[];
         } & {
             [key: string]: unknown;
         };
-        /** @description Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). The event aggregates (event_count, subnet_count, event_kinds, first_*) are computed over the account's most recent events, bounded for cost; when event_scan_capped is true they are a lower bound over that window, not all-time totals. */
         AccountSummaryArtifact: {
-            activity?: components["schemas"]["AccountActivity"];
-            /** @description Number of account_events counted. A lower bound over the account's most recent events (not an all-time total) when event_scan_capped is true. */
+            activity?: {
+                last_tx_at: string | null;
+                last_tx_block: number | null;
+                modules_called: {
+                    call_module: string | null;
+                    count: number;
+                }[];
+                total_fee_tao: number | null;
+                tx_count: number;
+            };
             event_count: number;
-            /** @description Per-kind event counts over the counted events; a lower bound over the most recent events when event_scan_capped is true. */
-            event_kinds?: components["schemas"]["AccountEventKindCount"][];
-            /** @description True when the event aggregates hit the newest-events scan cap: event_count / subnet_count / event_kinds are then a lower bound over the account's most recent events, not all-time totals, and first_block / first_seen_at are null. */
+            event_kinds?: {
+                count: number;
+                kind: string;
+            }[];
             event_scan_capped?: boolean;
             first_block?: number | null;
-            /** Format: date-time */
             first_seen_at?: string | null;
-            /** @description Community-contributed entity labels for this address (#6737/#6739), joined live from the entities.json artifact. Empty when the address has no contributed label. */
-            labels?: components["schemas"]["EntityLabel"][];
+            labels?: ({
+                category?: ("exchange" | "foundation" | "operator" | "other") | null;
+                name?: string | null;
+                notes?: string | null;
+                source_urls?: string[];
+            } & {
+                [key: string]: unknown;
+            })[];
             last_block?: number | null;
-            /** Format: date-time */
             last_seen_at?: string | null;
             recent_events?: components["schemas"]["AccountEvent"][];
-            registrations: components["schemas"]["AccountRegistration"][];
+            registrations: {
+                active: boolean;
+                netuid: number;
+                stake_tao: number | null;
+                uid: number | null;
+                validator_permit: boolean;
+            }[];
             schema_version: number;
             ss58: string;
-            /** @description Distinct subnets across the counted events. A lower bound over the most recent events when event_scan_capped is true. */
             subnet_count?: number;
         } & {
             [key: string]: unknown;
@@ -5954,15 +5948,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One (hotkey, netuid) delegation this account holds, reconstructed from nominator_positions (#5233) joined against the live neurons stake_tao for that (hotkey, netuid). */
-        NominatorPosition: {
-            hotkey: string;
-            netuid: number;
-            /** @description This account's share of the hotkey's total alpha-pool shares on this subnet (0..1) -- a dimensionless ratio, not a TAO amount. Every delegator's share_fraction for the same (hotkey, netuid) sums to exactly 1.0. */
-            share_fraction: number;
-            /** @description share_fraction * the hotkey's current stake_tao for this netuid. Derived at serve time from the live neurons snapshot, so it moves as that snapshot refreshes even between nominator_positions scans. */
-            stake_tao: number;
-        };
         OpenApiArtifact: {
             components: {
                 [key: string]: unknown;
@@ -6045,23 +6030,6 @@ export interface components {
          * @enum {unknown}
          */
         PartnershipTier: "pilot";
-        /** @description One neuron position a wallet holds on a subnet: its economics and emission/stake yield. Score fields are null when the cell is absent; yield is null with zero stake. */
-        PortfolioPosition: {
-            active: boolean;
-            dividends: number | null;
-            emission_tao: number;
-            incentive: number | null;
-            netuid: number;
-            rank: number | null;
-            /** @enum {string} */
-            role: "validator" | "miner";
-            stake_tao: number;
-            trust: number | null;
-            uid: number | null;
-            yield: number | null;
-        } & {
-            [key: string]: unknown;
-        };
         ProbeConfig: {
             enabled: boolean;
             /** @enum {string} */
@@ -6617,25 +6585,6 @@ export interface components {
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
-        /** @description One netuid's root-claim accounting for a (hotkey, account) pair (#7229). claimable_rate is RootClaimable's I96F32 rate; claimed is RootClaimed's u128 watermark (string); threshold is RootClaimableThreshold. */
-        RootClaimEntry: {
-            claimable_rate: number;
-            claimed: string;
-            netuid: number;
-            threshold: number;
-        };
-        /** @description Root-claim rows for one staking/owned hotkey of the queried account (#7229). */
-        RootClaimHotkey: {
-            entries: components["schemas"]["RootClaimEntry"][];
-            hotkey: string;
-        };
-        /** @description Per-account RootClaimTypeEnum (#7229): Swap alpha→TAO, Keep alpha, or KeepSubnets for a listed set. */
-        RootClaimType: {
-            /** @enum {string} */
-            kind: "Swap" | "Keep" | "KeepSubnets";
-            /** @description Present only when kind is KeepSubnets. */
-            subnets?: number[];
-        };
         RpcEndpoint: {
             archive_support?: boolean | null;
             auth_required?: boolean;
@@ -8416,30 +8365,25 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Balance-based top-holder leaderboard (#6741/#6743): every account with a nonzero free balance and/or delegated stake position, ranked by total_tao (free + delegated) by default, served live at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts (which is hotkey/neuron-centric and explicitly does not carry Free/Total columns -- see AccountsListArtifact's own description for why). Sourced from account_balances (a direct chain-state scan, not event-reconstructed) joined with nominator_positions x neurons for the delegated-stake side. */
         TopHoldersArtifact: {
             account_count: number;
-            accounts: components["schemas"]["TopHoldersEntry"][];
-            /** Format: date-time */
+            accounts: {
+                delegated_tao: number;
+                free_tao: number;
+                last_updated: string | null;
+                net_flow_30d: number;
+                net_flow_7d: number;
+                net_flow_90d: number;
+                ss58: string;
+                total_tao: number;
+            }[];
             captured_at?: string | null;
             limit: number;
             schema_version: number;
             /** @enum {string} */
-            sort: "total_tao" | "free_tao" | "delegated_tao";
+            sort: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
         } & {
             [key: string]: unknown;
-        };
-        /** @description One coldkey/account row in the balance-based top-holder leaderboard (#6741/#6743) -- the taostats-style Account/Free/Delegated/Total columns AccountsListEntry cannot derive (see that schema's own description). free_tao/last_updated come from account_balances (a direct System::Account chain-state scan, scripts/fetch-account-balances.py -- see that script's own docstring for why this is ground-truth rather than event-reconstructed). delegated_tao is this account's own total stake positions across every hotkey/subnet (nominator_positions.share_fraction x neurons.stake_tao, the SAME computation GET /api/v1/accounts/:ss58/positions already does per-account, here aggregated across all accounts). total_tao is free_tao + delegated_tao only (reserved balance is NOT included, matching the cited benchmark's own Total = Free + Delegated definition). An account can appear here from either source alone -- e.g. an account with real free balance that has never delegated shows delegated_tao: 0, and vice versa. net_flow_7d/30d/90d (#6886/#6887) extend this same leaderboard with a cross-subnet stake-flow ranking (StakeAdded - StakeRemoved over the window, from the wallet_flow_daily rollup) rather than shipping as a separate feature; unlike the balance fields these are signed -- a negative value is a real net outflow, not a missing/cold value (which is 0, same as the balance fields). */
-        TopHoldersEntry: {
-            delegated_tao: number;
-            free_tao: number;
-            /** Format: date-time */
-            last_updated: string | null;
-            net_flow_30d: number;
-            net_flow_7d: number;
-            net_flow_90d: number;
-            ss58: string;
-            total_tao: number;
         };
         UptimeArtifact: {
             netuid: number;
@@ -9000,7 +8944,11 @@ export interface operations {
                      *         ],
                      *         "registrations": [
                      *           {
-                     *             "netuid": 7
+                     *             "active": false,
+                     *             "netuid": 7,
+                     *             "stake_tao": 0.5,
+                     *             "uid": 1,
+                     *             "validator_permit": false
                      *           }
                      *         ],
                      *         "schema_version": 1,
@@ -10202,7 +10150,7 @@ export interface operations {
                      *         "discord": "example",
                      *         "github": "example",
                      *         "has_identity": false,
-                     *         "image": "https://api.metagraph.sh/example",
+                     *         "image": "example",
                      *         "name": "Example Subnet",
                      *         "schema_version": 1,
                      *         "url": "https://api.metagraph.sh/example"
@@ -11522,7 +11470,11 @@ export interface operations {
                      *         "subnet_count": 1,
                      *         "subnets": [
                      *           {
-                     *             "netuid": 7
+                     *             "active": false,
+                     *             "netuid": 7,
+                     *             "stake_tao": 0.5,
+                     *             "uid": 1,
+                     *             "validator_permit": false
                      *           }
                      *         ]
                      *       },
@@ -11632,7 +11584,19 @@ export interface operations {
                      *         "point_count": 1,
                      *         "points": [
                      *           {
-                     *             "snapshot_date": "example"
+                     *             "active": false,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "coldkey": "example",
+                     *             "dividends": 0.5,
+                     *             "emission_tao": 0.5,
+                     *             "incentive": 0.5,
+                     *             "rank": 0.5,
+                     *             "role": "validator",
+                     *             "snapshot_date": "example",
+                     *             "stake_tao": 0.5,
+                     *             "trust": 0.5,
+                     *             "uid": 1,
+                     *             "yield": 0.5
                      *           }
                      *         ],
                      *         "schema_version": 1,
