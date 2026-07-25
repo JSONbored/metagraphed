@@ -590,6 +590,48 @@ import {
   GetAccountStakeFlowOutputSchema,
 } from "../schemas-src/mcp-tools/account-stake-flow.ts";
 import {
+  GetAccountStakeMovesInputSchema,
+  GetAccountStakeMovesOutputSchema,
+  GetAccountAxonRemovalsInputSchema,
+  GetAccountAxonRemovalsOutputSchema,
+  GetAccountPrometheusInputSchema,
+  GetAccountPrometheusOutputSchema,
+  GetAccountRegistrationsInputSchema,
+  GetAccountRegistrationsOutputSchema,
+  GetAccountWeightSettersInputSchema,
+  GetAccountWeightSettersOutputSchema,
+  GetAccountServingInputSchema,
+  GetAccountServingOutputSchema,
+  GetAccountDeregistrationsInputSchema,
+  GetAccountDeregistrationsOutputSchema,
+} from "../schemas-src/mcp-tools/account-footprints.ts";
+import {
+  GetAccountHistoryInputSchema,
+  GetAccountHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/account-history.ts";
+import {
+  GetAccountExtrinsicsInputSchema,
+  GetAccountExtrinsicsOutputSchema,
+} from "../schemas-src/mcp-tools/account-extrinsics.ts";
+import {
+  GetAccountTransfersInputSchema,
+  GetAccountTransfersOutputSchema,
+  GetAccountCounterpartiesInputSchema,
+  GetAccountCounterpartiesOutputSchema,
+} from "../schemas-src/mcp-tools/account-transfers.ts";
+import {
+  ListAccountsInputSchema,
+  ListAccountsOutputSchema,
+  GetTopHoldersInputSchema,
+  GetTopHoldersOutputSchema,
+} from "../schemas-src/mcp-tools/accounts-leaderboards.ts";
+import {
+  DecodeEvmCallInputSchema,
+  DecodeEvmCallOutputSchema,
+  GetEvmAddressMappingInputSchema,
+  GetEvmAddressMappingOutputSchema,
+} from "../schemas-src/mcp-tools/evm.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -6685,25 +6727,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "operational re-delegation churn, not net capital flow (see get_account_stake_flow). " +
       "The account-level companion to get_chain_stake_moves and get_subnet_stake_moves. " +
       "Mirrors GET /api/v1/accounts/{ss58}/stake-moves.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 coldkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_STAKE_MOVES_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountStakeMovesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountStakeMovesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
@@ -6738,25 +6768,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "removed — the teardown-side complement to get_account_serving (axon announcements) " +
       "and the account-level companion to get_chain_axon_removals and " +
       "get_subnet_axon_removals. Mirrors GET /api/v1/accounts/{ss58}/axon-removals.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_AXON_REMOVALS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_AXON_REMOVAL_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountAxonRemovalsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountAxonRemovalsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_AXON_REMOVAL_WINDOW;
@@ -6792,25 +6810,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "companion to get_account_serving (axon announcements) and the account-level " +
       "companion to get_chain_prometheus and get_subnet_prometheus. Mirrors GET " +
       "/api/v1/accounts/{ss58}/prometheus.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_PROMETHEUS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_PROMETHEUS_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountPrometheusInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountPrometheusInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_PROMETHEUS_WINDOW;
@@ -6845,25 +6851,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "re-registrations after a deregistration — distinct from get_account_subnets " +
       "(current registration state). The account-level companion to get_chain_registrations " +
       "and get_subnet_registrations. Mirrors GET /api/v1/accounts/{ss58}/registrations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_REGISTRATIONS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_REGISTRATION_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountRegistrationsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountRegistrationsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_REGISTRATION_WINDOW;
@@ -6897,25 +6891,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "and the dominant subnet. WeightsSet is a validator submitting its weight vector " +
       "for a subnet's consensus. The account-level companion to get_chain_weight_setters " +
       "and get_subnet_weight_setters. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountWeightSettersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountWeightSettersInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
@@ -6951,25 +6933,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(registration events). The axon-endpoint companion to get_account_prometheus " +
       "(Prometheus telemetry) and the account-level companion to get_chain_serving and " +
       "get_subnet_serving. Mirrors GET /api/v1/accounts/{ss58}/serving.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_SERVING_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_SERVING_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountServingInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountServingInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
       if (!Object.hasOwn(SERVING_WINDOWS, window)) {
@@ -7004,25 +6974,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "distinct from get_account_subnets (current registration state). The " +
       "account-level companion to get_chain_deregistrations and " +
       "get_subnet_deregistrations. Mirrors GET /api/v1/accounts/{ss58}/deregistrations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountDeregistrationsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountDeregistrationsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
@@ -7057,53 +7015,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "offset. Newest day first. Useful for understanding how active a wallet has been " +
       "over time. Note: the rollup is hotkey-attributed only — a delegate-only SS58 " +
       "address returns zero days even if it has events in get_account_events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        netuid: {
-          type: "integer",
-          description: "Optional subnet filter. Omit for all subnets.",
-          minimum: 0,
-        },
-        from: {
-          type: "string",
-          description:
-            "Optional start date inclusive, YYYY-MM-DD. Omit for no lower bound.",
-        },
-        to: {
-          type: "string",
-          description:
-            "Optional end date inclusive, YYYY-MM-DD. Omit for no upper bound.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max days to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description:
-            "Pagination offset. Default 0. Ignored when cursor is set.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor. " +
-            "Takes precedence over offset for stable head-growing pages.",
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
       const from = optionalDayArg(args, "from");
@@ -7140,49 +7058,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "block_start/block_end (inclusive). Page with limit (1-1000, default 100) / " +
       "offset, or follow next_cursor for stable keyset pagination. Mirrors " +
       "GET /api/v1/accounts/{ss58}/extrinsics.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 address (the extrinsic signer), base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        block_start: {
-          type: "integer",
-          description:
-            "Optional inclusive lower block bound; omit for no lower limit.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description:
-            "Optional inclusive upper block bound; omit for no upper limit.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max extrinsics to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset. Default 0.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor; takes " +
-            "precedence over offset for stable deep pagination.",
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountExtrinsicsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountExtrinsicsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       // block_start/block_end/cursor are validated for REST-parity and forwarded
       // to the Postgres tier below; the D1 fallback (buildAccountExtrinsics([]))
@@ -7192,7 +7074,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const cursor = optionalString(args, "cursor");
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
+        ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       return (
         (await tryPostgresTier(
@@ -7225,56 +7107,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(inclusive). Page with limit (1-1000, default 100) / offset, or follow " +
       "next_cursor for stable keyset pagination. Mirrors " +
       "GET /api/v1/accounts/{ss58}/transfers.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 address (sender or recipient), base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        direction: {
-          type: "string",
-          description:
-            "Filter by side: 'sent' (this account is sender), 'received' (recipient), " +
-            "or omit for both. Any other value is treated as both-sides.",
-          enum: ["sent", "received"],
-        },
-        block_start: {
-          type: "integer",
-          description:
-            "Optional inclusive lower block bound; omit for no lower limit.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description:
-            "Optional inclusive upper block bound; omit for no upper limit.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max transfers to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset. Default 0.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor; takes " +
-            "precedence over offset for stable deep pagination.",
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountTransfersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountTransfersInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const direction = optionalString(args, "direction");
       // block_start/block_end/cursor are validated for REST-parity and forwarded to
@@ -7287,7 +7126,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const cursor = optionalString(args, "cursor");
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
+        ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       return (
         (await tryPostgresTier(
@@ -7323,36 +7162,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "counterparties (1-100, default 20); the relationship drilldown returns up to " +
       "`limit` transfers (default 50). Native-TAO transfers only, NOT stake or other " +
       "events (those are in get_account_events).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 address (sender or recipient), base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        counterparty: {
-          type: "string",
-          description:
-            "Optional second SS58 address: drill into this account's relationship " +
-            "with it (fund-flow totals + transfer evidence) instead of the ranked " +
-            "list. Must differ from ss58.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        limit: {
-          type: "integer",
-          description:
-            "Max counterparties (list mode, default 20) or transfers (relationship " +
-            "mode, default 50) to return; 1-100.",
-          minimum: 1,
-          maximum: 100,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAccountCounterpartiesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAccountCounterpartiesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ss58 = requireSs58(args);
       const counterparty = optionalString(args, "counterparty");
       if (counterparty != null) {
@@ -8106,24 +7922,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "total_stake (default), total_emission, subnet_count, uid_count, " +
       "validator_count, stake_dominance, or last_active. The all-accounts " +
       "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        sort: {
-          type: "string",
-          enum: ACCOUNTS_LIST_SORTS,
-          description: "Ranking key (default total_stake).",
-        },
-        limit: {
-          type: "integer",
-          description: "Max accounts to return (1-100, default 20).",
-          minimum: 1,
-          maximum: ACCOUNTS_LIST_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListAccountsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof ListAccountsInputSchema>, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", ACCOUNTS_LIST_SORTS) ??
         DEFAULT_ACCOUNTS_LIST_SORT;
@@ -8153,24 +7955,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "net_flow_90d -- StakeAdded minus StakeRemoved, #6886/#6887). The " +
       "coldkey/balance-centric counterpart to list_accounts. Mirrors GET " +
       "/api/v1/accounts/top-holders.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        sort: {
-          type: "string",
-          enum: TOP_HOLDERS_SORTS,
-          description: "Ranking key (default total_tao).",
-        },
-        limit: {
-          type: "integer",
-          description: "Max accounts to return (1-100, default 20).",
-          minimum: 1,
-          maximum: TOP_HOLDERS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetTopHoldersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetTopHoldersInputSchema>, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", TOP_HOLDERS_SORTS) ??
         DEFAULT_TOP_HOLDERS_SORT;
@@ -11024,38 +10812,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "precompile but the calldata's 4-byte selector doesn't match any of " +
       "its declared functions, function is null but precompile/address are " +
       "still populated.",
-    inputSchema: {
-      type: "object",
-      required: ["to", "input"],
-      properties: {
-        to: {
-          type: "string",
-          pattern: "^0x[0-9a-fA-F]{40}$",
-          description:
-            "The transaction's target H160 address (20 bytes, 0x-prefixed hex).",
-        },
-        input: {
-          type: "string",
-          pattern: "^0x[0-9a-fA-F]*$",
-          description:
-            "The transaction's raw calldata: a 4-byte selector plus ABI-encoded args, 0x-prefixed hex.",
-        },
-      },
-      additionalProperties: false,
-    },
-    outputSchema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["precompile", "address", "function"],
-      properties: {
-        precompile: { type: ["string", "null"] },
-        address: { type: ["string", "null"] },
-        function: { type: ["string", "null"] },
-        signature: { type: "string" },
-        args: { type: "object" },
-      },
-    },
-    async handler(args: Row) {
+    inputSchema: z.toJSONSchema(DecodeEvmCallInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(DecodeEvmCallOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof DecodeEvmCallInputSchema>) {
       if (
         typeof args?.to !== "string" ||
         !/^0x[0-9a-fA-F]{40}$/.test(args.to)
@@ -11092,30 +10855,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(#6725/#6728) -- a deterministic function of the runtime's configured " +
       "mapping algorithm, queried live rather than replicated client-side. " +
       "Mirrors GET /api/v1/evm/address/{h160}. ss58 is null on RPC failure.",
-    inputSchema: {
-      type: "object",
-      required: ["h160"],
-      properties: {
-        h160: {
-          type: "string",
-          pattern: "^0x[0-9a-fA-F]{40}$",
-          description: "The EVM address (20 bytes, 0x-prefixed hex).",
-        },
-      },
-      additionalProperties: false,
-    },
-    outputSchema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["schema_version", "h160", "ss58", "queried_at"],
-      properties: {
-        schema_version: { type: "integer" },
-        h160: { type: "string" },
-        ss58: { type: ["string", "null"] },
-        queried_at: { type: ["string", "null"] },
-      },
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetEvmAddressMappingInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(GetEvmAddressMappingOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetEvmAddressMappingInputSchema>,
+      ctx: McpCtx,
+    ) {
       if (typeof args?.h160 !== "string" || !H160_PATTERN.test(args.h160)) {
         throw toolError(
           "invalid_params",
@@ -12399,371 +12148,54 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_account_stake_flow: z.toJSONSchema(GetAccountStakeFlowOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_account_stake_moves: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_movements",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_movements: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of StakeMoved events across subnets: 1 means
-      // all movements on one subnet; null when the account has no movements.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "movements",
-            "first_moved_at",
-            "last_moved_at",
-            "price_tao_at_last_move",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            movements: { type: "integer" },
-            first_moved_at: NULLABLE_STRING,
-            last_moved_at: NULLABLE_STRING,
-            // Alpha price on the day of the most recent move (#4332/6.3),
-            // from the daily subnet_snapshots rollup; null when that day has
-            // no snapshot yet or there was no move to date from.
-            price_tao_at_last_move: { type: ["number", "null"] },
-          },
-        },
-      },
+  get_account_stake_moves: z.toJSONSchema(GetAccountStakeMovesOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_account_axon_removals: z.toJSONSchema(
+    GetAccountAxonRemovalsOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_account_axon_removals: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_removals",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_removals: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of AxonInfoRemoved events across subnets: 1
-      // means all removals on one subnet; null when the account has no removals.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "removals",
-            "first_removed_at",
-            "last_removed_at",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            removals: { type: "integer" },
-            first_removed_at: NULLABLE_STRING,
-            last_removed_at: NULLABLE_STRING,
-          },
-        },
-      },
+  ),
+  get_account_prometheus: z.toJSONSchema(GetAccountPrometheusOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_account_registrations: z.toJSONSchema(
+    GetAccountRegistrationsOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_account_prometheus: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_announcements",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_announcements: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of PrometheusServed events across subnets: 1
-      // means all announcements on one subnet; null when the account has none.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "announcements",
-            "first_announced_at",
-            "last_announced_at",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            announcements: { type: "integer" },
-            first_announced_at: NULLABLE_STRING,
-            last_announced_at: NULLABLE_STRING,
-          },
-        },
-      },
+  ),
+  get_account_weight_setters: z.toJSONSchema(
+    GetAccountWeightSettersOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_account_registrations: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_registrations",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_registrations: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of NeuronRegistered events across subnets: 1
-      // means all registrations on one subnet; null when the account has none.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "registrations",
-            "first_registered_at",
-            "last_registered_at",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            registrations: { type: "integer" },
-            first_registered_at: NULLABLE_STRING,
-            last_registered_at: NULLABLE_STRING,
-          },
-        },
-      },
+  ),
+  get_account_serving: z.toJSONSchema(GetAccountServingOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_account_deregistrations: z.toJSONSchema(
+    GetAccountDeregistrationsOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_account_weight_setters: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_weight_sets",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_weight_sets: { type: "integer" },
-      subnet_count: { type: "integer" },
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["netuid", "weight_sets", "first_set_at", "last_set_at"],
-          properties: {
-            netuid: { type: "integer" },
-            weight_sets: { type: "integer" },
-            first_set_at: NULLABLE_STRING,
-            last_set_at: NULLABLE_STRING,
-          },
-        },
-      },
+  ),
+  get_account_history: z.toJSONSchema(GetAccountHistoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_account_extrinsics: z.toJSONSchema(GetAccountExtrinsicsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_account_transfers: z.toJSONSchema(GetAccountTransfersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_account_counterparties: z.toJSONSchema(
+    GetAccountCounterpartiesOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_account_serving: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_announcements",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_announcements: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of AxonServed events across subnets: 1 means all
-      // announcements on one subnet; null when the account has none.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "announcements",
-            "first_served_at",
-            "last_served_at",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            announcements: { type: "integer" },
-            first_served_at: NULLABLE_STRING,
-            last_served_at: NULLABLE_STRING,
-          },
-        },
-      },
-    },
-  },
-  get_account_deregistrations: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_deregistrations",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_deregistrations: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of NeuronDeregistered events across subnets: 1
-      // means all deregistrations on one subnet; null when the account has none.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "deregistrations",
-            "first_deregistered_at",
-            "last_deregistered_at",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            deregistrations: { type: "integer" },
-            first_deregistered_at: NULLABLE_STRING,
-            last_deregistered_at: NULLABLE_STRING,
-          },
-        },
-      },
-    },
-  },
-  get_account_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ss58", "day_count", "days"],
-    properties: {
-      schema_version: { type: "integer" },
-      ss58: { type: "string" },
-      day_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      days: objectItems({
-        day: NULLABLE_STRING,
-        netuid: NULLABLE_INT,
-        event_count: NULLABLE_INT,
-        event_kinds: { type: "array", items: { type: "string" } },
-        first_block: NULLABLE_INT,
-        last_block: NULLABLE_INT,
-      }),
-    },
-  },
-  get_account_extrinsics: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ss58", "extrinsic_count", "extrinsics"],
-    properties: {
-      schema_version: { type: "integer" },
-      ss58: { type: "string" },
-      extrinsic_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      extrinsics: objectItems(EXTRINSIC_ITEM),
-    },
-  },
-  get_account_transfers: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ss58", "transfer_count", "transfers"],
-    properties: {
-      schema_version: { type: "integer" },
-      ss58: { type: "string" },
-      transfer_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      transfers: objectItems({
-        block_number: NULLABLE_INT,
-        event_index: NULLABLE_INT,
-        from: NULLABLE_STRING,
-        to: NULLABLE_STRING,
-        amount_tao: ANY,
-        direction: NULLABLE_STRING,
-        observed_at: NULLABLE_STRING,
-      }),
-    },
-  },
-  get_account_counterparties: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ss58", "counterparty_count", "counterparties"],
-    properties: {
-      schema_version: { type: "integer" },
-      ss58: { type: "string" },
-      counterparty_count: { type: "integer" },
-      transfers_scanned: NULLABLE_INT,
-      scan_capped: { type: "boolean" },
-      total_sent_tao: ANY,
-      total_received_tao: ANY,
-      counterparties: objectItems({
-        address: NULLABLE_STRING,
-        sent_tao: ANY,
-        received_tao: ANY,
-        net_tao: ANY,
-        transfer_count: NULLABLE_INT,
-        last_block: NULLABLE_INT,
-      }),
-      // Present only in counterparty='<ss58>' drilldown mode (the per-pair detail).
-      relationship: { type: "object", additionalProperties: true },
-    },
-  },
+  ),
   list_blocks: {
     type: "object",
     additionalProperties: true,
@@ -12928,55 +12360,12 @@ const TOOL_OUTPUT_SCHEMAS = {
       }),
     },
   },
-  list_accounts: {
-    type: "object",
-    additionalProperties: true,
-    required: ["sort", "limit", "account_count", "accounts"],
-    properties: {
-      schema_version: { type: "integer" },
-      sort: { type: "string", enum: ACCOUNTS_LIST_SORTS },
-      limit: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      account_count: { type: "integer" },
-      accounts: objectItems({
-        hotkey: { type: "string" },
-        coldkey: NULLABLE_STRING,
-        coldkey_count: { type: "integer" },
-        subnet_count: { type: "integer" },
-        uid_count: { type: "integer" },
-        validator_count: { type: "integer" },
-        miner_count: { type: "integer" },
-        total_stake_tao: ANY,
-        total_emission_tao: ANY,
-        latest_captured_at: NULLABLE_STRING,
-        latest_block_number: NULLABLE_INT,
-        subnets: { type: "array", items: { type: "object" } },
-      }),
-    },
-  },
-  get_top_holders: {
-    type: "object",
-    additionalProperties: true,
-    required: ["sort", "limit", "account_count", "accounts"],
-    properties: {
-      schema_version: { type: "integer" },
-      sort: { type: "string", enum: TOP_HOLDERS_SORTS },
-      limit: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      account_count: { type: "integer" },
-      accounts: objectItems({
-        ss58: { type: "string" },
-        free_tao: ANY,
-        delegated_tao: ANY,
-        total_tao: ANY,
-        net_flow_7d: ANY,
-        net_flow_30d: ANY,
-        net_flow_90d: ANY,
-        last_updated: NULLABLE_STRING,
-      }),
-    },
-  },
+  list_accounts: z.toJSONSchema(ListAccountsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_top_holders: z.toJSONSchema(GetTopHoldersOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_block_chain_events: {
     type: "object",
     additionalProperties: true,

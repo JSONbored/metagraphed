@@ -318,6 +318,48 @@ import {
   GetAccountStakeFlowInputSchema,
   GetAccountStakeFlowOutputSchema,
 } from "../schemas-src/mcp-tools/account-stake-flow.ts";
+import {
+  GetAccountStakeMovesInputSchema,
+  GetAccountStakeMovesOutputSchema,
+  GetAccountAxonRemovalsInputSchema,
+  GetAccountAxonRemovalsOutputSchema,
+  GetAccountPrometheusInputSchema,
+  GetAccountPrometheusOutputSchema,
+  GetAccountRegistrationsInputSchema,
+  GetAccountRegistrationsOutputSchema,
+  GetAccountWeightSettersInputSchema,
+  GetAccountWeightSettersOutputSchema,
+  GetAccountServingInputSchema,
+  GetAccountServingOutputSchema,
+  GetAccountDeregistrationsInputSchema,
+  GetAccountDeregistrationsOutputSchema,
+} from "../schemas-src/mcp-tools/account-footprints.ts";
+import {
+  GetAccountHistoryInputSchema,
+  GetAccountHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/account-history.ts";
+import {
+  GetAccountExtrinsicsInputSchema,
+  GetAccountExtrinsicsOutputSchema,
+} from "../schemas-src/mcp-tools/account-extrinsics.ts";
+import {
+  GetAccountTransfersInputSchema,
+  GetAccountTransfersOutputSchema,
+  GetAccountCounterpartiesInputSchema,
+  GetAccountCounterpartiesOutputSchema,
+} from "../schemas-src/mcp-tools/account-transfers.ts";
+import {
+  ListAccountsInputSchema,
+  ListAccountsOutputSchema,
+  GetTopHoldersInputSchema,
+  GetTopHoldersOutputSchema,
+} from "../schemas-src/mcp-tools/accounts-leaderboards.ts";
+import {
+  DecodeEvmCallInputSchema,
+  DecodeEvmCallOutputSchema,
+  GetEvmAddressMappingInputSchema,
+  GetEvmAddressMappingOutputSchema,
+} from "../schemas-src/mcp-tools/evm.ts";
 
 type Row = Record<string, unknown>;
 
@@ -532,6 +574,33 @@ const NOMINATOR_SORTS = ["net_staked", "gross_staked", "last_activity"];
 // SS58_PATTERN_SOURCE), cross-checked against the actual runtime value at the
 // time of writing.
 const SS58_PATTERN = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
+
+// Batch 6 (#8070) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (each account-footprint tool's own
+// src/account-*.ts *_WINDOWS constant, src/accounts-list.ts's
+// ACCOUNTS_LIST_SORTS, src/top-holders.ts's TOP_HOLDERS_SORTS), cross-checked
+// against the actual runtime source at the time of writing. Mirrors
+// src/mcp-server.ts's H160_PATTERN.source for the two EVM tools.
+const ACCOUNT_FOOTPRINT_WINDOWS_3 = ["7d", "30d", "90d"];
+const ACCOUNT_WEIGHT_SETTERS_WINDOWS_2 = ["7d", "30d"];
+const ACCOUNTS_LIST_SORTS = [
+  "total_stake",
+  "total_emission",
+  "subnet_count",
+  "uid_count",
+  "validator_count",
+  "stake_dominance",
+  "last_active",
+];
+const TOP_HOLDERS_SORTS = [
+  "total_tao",
+  "free_tao",
+  "delegated_tao",
+  "net_flow_7d",
+  "net_flow_30d",
+  "net_flow_90d",
+];
+const H160_PATTERN = "^0x[0-9a-fA-F]{40}$";
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -3379,6 +3448,616 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_account_stake_moves: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_FOOTPRINT_WINDOWS_3 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_movements",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_movements: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "movements",
+              "first_moved_at",
+              "last_moved_at",
+              "price_tao_at_last_move",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              movements: { type: "integer" },
+              first_moved_at: NULLABLE_STRING,
+              last_moved_at: NULLABLE_STRING,
+              price_tao_at_last_move: { type: ["number", "null"] },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_axon_removals: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_FOOTPRINT_WINDOWS_3 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_removals",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_removals: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "removals",
+              "first_removed_at",
+              "last_removed_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              removals: { type: "integer" },
+              first_removed_at: NULLABLE_STRING,
+              last_removed_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_prometheus: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_FOOTPRINT_WINDOWS_3 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_announcements",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_announcements: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "announcements",
+              "first_announced_at",
+              "last_announced_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              announcements: { type: "integer" },
+              first_announced_at: NULLABLE_STRING,
+              last_announced_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_registrations: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_FOOTPRINT_WINDOWS_3 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_registrations",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_registrations: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "registrations",
+              "first_registered_at",
+              "last_registered_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              registrations: { type: "integer" },
+              first_registered_at: NULLABLE_STRING,
+              last_registered_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_weight_setters: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_WEIGHT_SETTERS_WINDOWS_2 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_weight_sets",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_weight_sets: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["netuid", "weight_sets", "first_set_at", "last_set_at"],
+            properties: {
+              netuid: { type: "integer" },
+              weight_sets: { type: "integer" },
+              first_set_at: NULLABLE_STRING,
+              last_set_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_serving: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_FOOTPRINT_WINDOWS_3 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_announcements",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_announcements: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "announcements",
+              "first_served_at",
+              "last_served_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              announcements: { type: "integer" },
+              first_served_at: NULLABLE_STRING,
+              last_served_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_deregistrations: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ACCOUNT_FOOTPRINT_WINDOWS_3 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_deregistrations",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_deregistrations: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "deregistrations",
+              "first_deregistered_at",
+              "last_deregistered_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              deregistrations: { type: "integer" },
+              first_deregistered_at: NULLABLE_STRING,
+              last_deregistered_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_account_history: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        netuid: { type: "integer", minimum: 0 },
+        from: { type: "string" },
+        to: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "day_count", "days"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        day_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        days: objectItems({
+          day: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          event_count: NULLABLE_INT,
+          event_kinds: { type: "array", items: { type: "string" } },
+          first_block: NULLABLE_INT,
+          last_block: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  get_account_extrinsics: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "extrinsic_count", "extrinsics"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        extrinsic_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        extrinsics: objectItems({
+          block_number: NULLABLE_INT,
+          extrinsic_index: NULLABLE_INT,
+          extrinsic_hash: NULLABLE_STRING,
+          signer: NULLABLE_STRING,
+          call_module: NULLABLE_STRING,
+          call_function: NULLABLE_STRING,
+          call_args: ANY,
+          success: { type: ["boolean", "null"] },
+          fee_tao: ANY,
+          tip_tao: ANY,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_account_transfers: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        direction: { type: "string", enum: ["sent", "received"] },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "transfer_count", "transfers"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        transfer_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        transfers: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          from: NULLABLE_STRING,
+          to: NULLABLE_STRING,
+          amount_tao: ANY,
+          direction: NULLABLE_STRING,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_account_counterparties: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        counterparty: { type: "string", pattern: SS58_PATTERN },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "counterparty_count", "counterparties"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        counterparty_count: { type: "integer" },
+        transfers_scanned: NULLABLE_INT,
+        scan_capped: { type: "boolean" },
+        total_sent_tao: ANY,
+        total_received_tao: ANY,
+        counterparties: objectItems({
+          address: NULLABLE_STRING,
+          sent_tao: ANY,
+          received_tao: ANY,
+          net_tao: ANY,
+          transfer_count: NULLABLE_INT,
+          last_block: NULLABLE_INT,
+        }),
+        relationship: { type: "object", additionalProperties: true },
+      },
+    },
+  },
+  list_accounts: {
+    input: {
+      type: "object",
+      properties: {
+        sort: { type: "string", enum: ACCOUNTS_LIST_SORTS },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["sort", "limit", "account_count", "accounts"],
+      properties: {
+        schema_version: { type: "integer" },
+        sort: { type: "string", enum: ACCOUNTS_LIST_SORTS },
+        limit: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        account_count: { type: "integer" },
+        accounts: objectItems({
+          hotkey: { type: "string" },
+          coldkey: NULLABLE_STRING,
+          coldkey_count: { type: "integer" },
+          subnet_count: { type: "integer" },
+          uid_count: { type: "integer" },
+          validator_count: { type: "integer" },
+          miner_count: { type: "integer" },
+          total_stake_tao: ANY,
+          total_emission_tao: ANY,
+          latest_captured_at: NULLABLE_STRING,
+          latest_block_number: NULLABLE_INT,
+          subnets: { type: "array", items: { type: "object" } },
+        }),
+      },
+    },
+  },
+  get_top_holders: {
+    input: {
+      type: "object",
+      properties: {
+        sort: { type: "string", enum: TOP_HOLDERS_SORTS },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["sort", "limit", "account_count", "accounts"],
+      properties: {
+        schema_version: { type: "integer" },
+        sort: { type: "string", enum: TOP_HOLDERS_SORTS },
+        limit: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        account_count: { type: "integer" },
+        accounts: objectItems({
+          ss58: { type: "string" },
+          free_tao: ANY,
+          delegated_tao: ANY,
+          total_tao: ANY,
+          net_flow_7d: ANY,
+          net_flow_30d: ANY,
+          net_flow_90d: ANY,
+          last_updated: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  decode_evm_call: {
+    input: {
+      type: "object",
+      required: ["to", "input"],
+      properties: {
+        to: { type: "string", pattern: H160_PATTERN },
+        input: { type: "string", pattern: "^0x[0-9a-fA-F]*$" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: false,
+      required: ["precompile", "address", "function"],
+      properties: {
+        precompile: { type: ["string", "null"] },
+        address: { type: ["string", "null"] },
+        function: { type: ["string", "null"] },
+        signature: { type: "string" },
+        args: { type: "object" },
+      },
+    },
+  },
+  get_evm_address_mapping: {
+    input: {
+      type: "object",
+      required: ["h160"],
+      properties: {
+        h160: { type: "string", pattern: H160_PATTERN },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: false,
+      required: ["schema_version", "h160", "ss58", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        h160: { type: "string" },
+        ss58: { type: ["string", "null"] },
+        queried_at: { type: ["string", "null"] },
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -3722,6 +4401,66 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
   get_account_stake_flow: {
     input: GetAccountStakeFlowInputSchema,
     output: GetAccountStakeFlowOutputSchema,
+  },
+  get_account_stake_moves: {
+    input: GetAccountStakeMovesInputSchema,
+    output: GetAccountStakeMovesOutputSchema,
+  },
+  get_account_axon_removals: {
+    input: GetAccountAxonRemovalsInputSchema,
+    output: GetAccountAxonRemovalsOutputSchema,
+  },
+  get_account_prometheus: {
+    input: GetAccountPrometheusInputSchema,
+    output: GetAccountPrometheusOutputSchema,
+  },
+  get_account_registrations: {
+    input: GetAccountRegistrationsInputSchema,
+    output: GetAccountRegistrationsOutputSchema,
+  },
+  get_account_weight_setters: {
+    input: GetAccountWeightSettersInputSchema,
+    output: GetAccountWeightSettersOutputSchema,
+  },
+  get_account_serving: {
+    input: GetAccountServingInputSchema,
+    output: GetAccountServingOutputSchema,
+  },
+  get_account_deregistrations: {
+    input: GetAccountDeregistrationsInputSchema,
+    output: GetAccountDeregistrationsOutputSchema,
+  },
+  get_account_history: {
+    input: GetAccountHistoryInputSchema,
+    output: GetAccountHistoryOutputSchema,
+  },
+  get_account_extrinsics: {
+    input: GetAccountExtrinsicsInputSchema,
+    output: GetAccountExtrinsicsOutputSchema,
+  },
+  get_account_transfers: {
+    input: GetAccountTransfersInputSchema,
+    output: GetAccountTransfersOutputSchema,
+  },
+  get_account_counterparties: {
+    input: GetAccountCounterpartiesInputSchema,
+    output: GetAccountCounterpartiesOutputSchema,
+  },
+  list_accounts: {
+    input: ListAccountsInputSchema,
+    output: ListAccountsOutputSchema,
+  },
+  get_top_holders: {
+    input: GetTopHoldersInputSchema,
+    output: GetTopHoldersOutputSchema,
+  },
+  decode_evm_call: {
+    input: DecodeEvmCallInputSchema,
+    output: DecodeEvmCallOutputSchema,
+  },
+  get_evm_address_mapping: {
+    input: GetEvmAddressMappingInputSchema,
+    output: GetEvmAddressMappingOutputSchema,
   },
 };
 
