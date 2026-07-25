@@ -54,6 +54,11 @@ budget — keep new dependencies/imports lean.
 - **Data fetching** goes through the query helpers in `src/lib/metagraphed/queries.ts`
   and `useSuspenseQuery` / error boundaries — don't fetch ad hoc in components.
 - **Components** live in `src/components/metagraphed/`; route trees in `src/routes/`.
+- **`/design/primitives`** (`src/routes/design.primitives.tsx`) is the canonical, live showcase
+  of every value exported from `@jsonbored/ui-kit`'s public barrel — Tokens, Layout, Data
+  display, Interaction, Feedback, each with a rendered example and its import line. Check there
+  before reaching for a raw value or reinventing something that already exists; a component
+  landing in the barrel should get a section there in the same PR.
 - Reuse existing design tokens (`src/styles.css`, `packages/ui-kit/src/styles.css`) and
   shared components instead of inventing new one-off styles. The "Bone & Ink" rules,
   mechanically flagged (as warnings — see `eslint.config.ts`) by `no-restricted-syntax`:
