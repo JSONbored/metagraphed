@@ -56,9 +56,11 @@ export function SurfaceFixture({
       </button>
       {open ? (
         <div className="space-y-2 border-t border-border px-2 py-2">
-          {isLoading ? <span className="text-[11px] text-ink-muted">Loading sample…</span> : null}
+          {isLoading ? (
+            <span className="mg-type-caption text-ink-muted">Loading sample…</span>
+          ) : null}
           {isError ? (
-            <span className="text-[11px] text-ink-muted">Sample unavailable right now.</span>
+            <span className="mg-type-caption text-ink-muted">Sample unavailable right now.</span>
           ) : null}
           {fixture ? (
             <>
@@ -91,7 +93,7 @@ export function SurfaceFixture({
                     {bodyText}
                   </pre>
                 ) : (
-                  <span className="text-[11px] text-ink-muted">Empty response body.</span>
+                  <span className="mg-type-caption text-ink-muted">Empty response body.</span>
                 )}
               </div>
             </>

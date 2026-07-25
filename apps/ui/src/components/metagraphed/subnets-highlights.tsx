@@ -74,8 +74,13 @@ function Card({
       </span>
       <div className="min-w-0 flex-1">
         <div className="mg-type-micro text-ink-muted">{eyebrow}</div>
-        <div className="font-display text-[15px] font-medium text-ink-strong">{value}</div>
-        {hint ? <div className="text-[11px] leading-snug text-ink-muted">{hint}</div> : null}
+        <div
+          className="font-display font-medium text-ink-strong"
+          style={{ fontSize: "var(--mg-type-body-lg)" }}
+        >
+          {value}
+        </div>
+        {hint ? <div className="mg-type-caption leading-snug text-ink-muted">{hint}</div> : null}
         <div className="mt-2 -mb-0.5">
           <Sparkline
             values={spark ?? []}
