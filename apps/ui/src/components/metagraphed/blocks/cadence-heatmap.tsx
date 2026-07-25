@@ -105,9 +105,9 @@ function Legend() {
     { label: ">48s", cls: "bg-health-down/80" },
   ];
   return (
-    <div className="mt-3 flex items-center gap-3 border-t border-border/60 pt-2.5 mg-type-micro text-ink-muted">
+    <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-2.5 mg-type-micro text-ink-muted">
       <span>faster</span>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {items.map((i) => (
           <span key={i.label} className="inline-flex items-center gap-1">
             <span className={classNames("inline-block h-2 w-3 rounded-[2px]", i.cls)} />
