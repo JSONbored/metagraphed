@@ -7,6 +7,7 @@
 // recordSubnetIdentityChanges' own header comment). Pure + injectable for
 // tests.
 
+import * as Sentry from "@sentry/cloudflare";
 import { encodeCursor, decodeCursor } from "./cursor.ts";
 import {
   sanitizeIdentityHistoryFields,
@@ -18,6 +19,7 @@ import {
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import { recordExceptionEvent } from "./usage-telemetry.ts";
 
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -294,6 +296,18 @@ export async function recordSubnetIdentityChanges(
     // #4832 gap-closure follow-up: a swallowed read error here dark-served
     // the identity-history diff for an unknown stretch before anyone
     // noticed -- same failure class d1All was originally hardened against.
+    // metagraphed#8081: capture it instead of only logging, matching
+    // src/graphql.ts's handleGraphQLRequest -- no ExecutionContext reaches
+    // this cron-tick call path (writeSubnetSnapshot -> here), so this is
+    // awaited inline rather than fire-and-forget via waitUntil.
+    Sentry.captureException(error, {
+      tags: { route: "subnet-identity-history-diff" },
+    });
+    await recordExceptionEvent(env, {
+      error,
+      route: "subnet-identity-history-diff",
+      errorCode: "read_failed",
+    });
     console.error(
       "[recordSubnetIdentityChanges]",
       String((error as Error)?.message ?? error),
