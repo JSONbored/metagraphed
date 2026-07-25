@@ -9764,8 +9764,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         );
       }
       let normalizedMethod: string | undefined;
-      if (hasMethod && typeof args.method === "string") {
-        normalizedMethod = args.method.toUpperCase();
+      if (hasMethod) {
+        // hasMethod already proved args.method is a non-empty string.
+        normalizedMethod = (args.method as string).toUpperCase();
         if (!["GET", "HEAD", "POST", "PUT"].includes(normalizedMethod)) {
           throw toolError(
             "invalid_params",
@@ -9825,13 +9826,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
             );
           }
-          if (!hasStringCredentialArg || typeof args.credential !== "string") {
+          if (!hasStringCredentialArg) {
             throw toolError(
               "invalid_params",
               `This surface's auth.scheme ("${scheme}") requires \`credential\` to be a single string, not an object.`,
             );
           }
-          credentialPlacement = { location, name, value: args.credential };
+          // hasStringCredentialArg already proved this at runtime.
+          credentialPlacement = {
+            location,
+            name,
+            value: args.credential as string,
+          };
         } else if (scheme === "signature") {
           const names = Array.isArray(surface.auth?.names)
             ? surface.auth.names
@@ -9849,17 +9855,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               "This surface's auth mechanism (location/names) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
             );
           }
-          if (
-            !hasObjectCredentialArg ||
-            typeof args.credential !== "object" ||
-            args.credential === null
-          ) {
+          if (!hasObjectCredentialArg) {
             throw toolError(
               "invalid_params",
               `This surface's auth.scheme ("signature") requires \`credential\` to be an object mapping each of ${JSON.stringify(names)} to a value you have already computed -- this tool does not sign requests itself.`,
             );
           }
-          const suppliedNames = Object.keys(args.credential);
+          // hasObjectCredentialArg already proved this at runtime.
+          const credentialObj = args.credential as Record<string, unknown>;
+          const suppliedNames = Object.keys(credentialObj);
           const missing = names.filter(
             (n: unknown) => !suppliedNames.includes(n as string),
           );
@@ -9876,7 +9880,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
                   : ""),
             );
           }
-          for (const [key, value] of Object.entries(args.credential)) {
+          for (const [key, value] of Object.entries(credentialObj)) {
             if (typeof value !== "string" || value.length === 0) {
               throw toolError(
                 "invalid_params",
@@ -9887,7 +9891,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           // The loop above has just verified every value is a non-empty
           // string, so this is Record<string, string> despite the wider
           // Record<string, unknown> inferred from the input schema.
-          const credentialValues = args.credential as Record<string, string>;
+          const credentialValues = credentialObj as Record<string, string>;
           if (
             location === "body" &&
             !(
@@ -9939,16 +9943,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       }
       let requestBody;
       let requestContentType;
-      if (hasPath && typeof args.path === "string") {
-        if (!normalizedMethod) {
-          // Unreachable: the `hasPath !== hasMethod` check above guarantees
-          // hasMethod (and therefore normalizedMethod) is set whenever
-          // hasPath is true -- narrows normalizedMethod to `string` below.
-          throw toolError(
-            "invalid_params",
-            "`method` must be supplied together with `path`.",
-          );
-        }
+      if (hasPath) {
         const schemaArtifactId =
           surface.schema_source?.surface_id || surface.surface_id;
         const schema = await loadOptionalArtifact(
@@ -9961,10 +9956,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             "This surface has no captured schema, so path/method execution is not available for it -- omit path/method to call its single declared url instead.",
           );
         }
+        // hasPath already proved args.path is a string; the `hasPath !==
+        // hasMethod` check above guarantees normalizedMethod is set
+        // whenever hasPath is true.
         const match: Row | null = matchSchemaOperation(
           schema.document,
-          args.path,
-          normalizedMethod,
+          args.path as string,
+          normalizedMethod as string,
         );
         if (!match) {
           throw toolError(
@@ -9987,14 +9985,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               `"${normalizedMethod} ${args.path}" does not declare a request body in its schema.`,
             );
           }
-          if (hasContentTypeArg && typeof args.content_type === "string") {
-            if (!declaredMediaTypes.includes(args.content_type)) {
+          if (hasContentTypeArg) {
+            // hasContentTypeArg already proved this is a non-empty string.
+            const contentType = args.content_type as string;
+            if (!declaredMediaTypes.includes(contentType)) {
               throw toolError(
                 "invalid_params",
-                `content_type "${args.content_type}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
+                `content_type "${contentType}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
               );
             }
-            requestContentType = args.content_type;
+            requestContentType = contentType;
           } else if (declaredMediaTypes.includes("application/json")) {
             requestContentType = "application/json";
           } else if (declaredMediaTypes.length === 1) {
