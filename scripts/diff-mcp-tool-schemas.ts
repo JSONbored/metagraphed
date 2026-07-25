@@ -400,6 +400,70 @@ import {
   GetExtrinsicChainEventsInputSchema,
   GetExtrinsicChainEventsOutputSchema,
 } from "../schemas-src/mcp-tools/chain-events.ts";
+import {
+  GetChainConcentrationInputSchema,
+  GetChainConcentrationOutputSchema,
+  GetChainPerformanceInputSchema,
+  GetChainPerformanceOutputSchema,
+  GetChainIdleStakeInputSchema,
+  GetChainIdleStakeOutputSchema,
+  GetChainYieldInputSchema,
+  GetChainYieldOutputSchema,
+} from "../schemas-src/mcp-tools/chain-scorecards.ts";
+import {
+  GetChainIdentityHistoryInputSchema,
+  GetChainIdentityHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/chain-identity-history.ts";
+import {
+  GetChainTurnoverInputSchema,
+  GetChainTurnoverOutputSchema,
+  GetChainStakeFlowInputSchema,
+  GetChainStakeFlowOutputSchema,
+  GetChainAlphaVolumeInputSchema,
+  GetChainAlphaVolumeOutputSchema,
+  GetChainWeightsInputSchema,
+  GetChainWeightsOutputSchema,
+  GetChainWeightSettersInputSchema,
+  GetChainWeightSettersOutputSchema,
+  GetChainStakeMovesInputSchema,
+  GetChainStakeMovesOutputSchema,
+  GetChainStakeTransfersInputSchema,
+  GetChainStakeTransfersOutputSchema,
+  GetChainAxonRemovalsInputSchema,
+  GetChainAxonRemovalsOutputSchema,
+  GetChainServingInputSchema,
+  GetChainServingOutputSchema,
+  GetChainPrometheusInputSchema,
+  GetChainPrometheusOutputSchema,
+} from "../schemas-src/mcp-tools/chain-leaderboards.ts";
+import {
+  GetChainRegistrationsInputSchema,
+  GetChainRegistrationsOutputSchema,
+  GetChainDeregistrationsInputSchema,
+  GetChainDeregistrationsOutputSchema,
+} from "../schemas-src/mcp-tools/chain-registrations.ts";
+import {
+  GetChainActivityInputSchema,
+  GetChainActivityOutputSchema,
+  ListChainEventsInputSchema,
+  ListChainEventsOutputSchema,
+  GetNetworkActivityInputSchema,
+  GetNetworkActivityOutputSchema,
+} from "../schemas-src/mcp-tools/chain-events-activity.ts";
+import {
+  GetChainCallsInputSchema,
+  GetChainCallsOutputSchema,
+  GetChainSignersInputSchema,
+  GetChainSignersOutputSchema,
+  GetChainFeesInputSchema,
+  GetChainFeesOutputSchema,
+} from "../schemas-src/mcp-tools/chain-calls-fees.ts";
+import {
+  GetChainTransfersInputSchema,
+  GetChainTransfersOutputSchema,
+  GetChainTransferPairsInputSchema,
+  GetChainTransferPairsOutputSchema,
+} from "../schemas-src/mcp-tools/chain-transfers.ts";
 
 type Row = Record<string, unknown>;
 
@@ -641,6 +705,35 @@ const TOP_HOLDERS_SORTS = [
   "net_flow_90d",
 ];
 const H160_PATTERN = "^0x[0-9a-fA-F]{40}$";
+
+// Batch 9 (#8072) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (each chain-* leaderboard tool's own
+// src/chain-*.ts *_WINDOWS/*_LIMIT_MAX/*_LIMIT_DEFAULT constants, cross-
+// checked against the actual runtime source at the time of writing).
+// get_chain_calls/signers/fees/registrations/network_activity/list_chain_events
+// use a LITERAL inline ["7d","30d"] enum in their own hand-written originals
+// (no symbolic *_WINDOWS import there either) -- CHAIN_ANALYTICS_WINDOWS_2
+// covers both cases since the values are identical.
+const CHAIN_ANALYTICS_WINDOWS_2 = ["7d", "30d"];
+// The 8-field distribution-stats shape (count/mean/min/p25/median/p75/p90/
+// max) 9 of this batch's "chain leaderboard" tools use identically for their
+// `*_distribution` field -- mirrors schemas-src/mcp-tools/shared.ts's
+// DistributionStatsSchema.
+const DISTRIBUTION_STATS = {
+  type: "object",
+  additionalProperties: false,
+  required: ["count", "mean", "min", "p25", "median", "p75", "p90", "max"],
+  properties: {
+    count: { type: "integer" },
+    mean: { type: "number" },
+    min: { type: "number" },
+    p25: { type: "number" },
+    median: { type: "number" },
+    p75: { type: "number" },
+    p90: { type: "number" },
+    max: { type: "number" },
+  },
+};
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -4565,6 +4658,1153 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_chain_concentration: {
+    input: { type: "object", properties: {}, additionalProperties: false },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "neuron_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        subnet_count: { type: "integer" },
+        neuron_count: { type: "integer" },
+        entity_count: { type: "integer" },
+        uids_per_entity: { type: ["number", "null"] },
+        captured_at: NULLABLE_STRING,
+        stake: { type: ["object", "null"] },
+        emission: { type: ["object", "null"] },
+        entity_stake: { type: ["object", "null"] },
+        entity_emission: { type: ["object", "null"] },
+        validator_stake: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_chain_performance: {
+    input: { type: "object", properties: {}, additionalProperties: false },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "neuron_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        subnet_count: { type: "integer" },
+        neuron_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        active_count: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        incentive: { type: ["object", "null"] },
+        dividends: { type: ["object", "null"] },
+        trust: { type: ["object", "null"] },
+        consensus: { type: ["object", "null"] },
+        validator_trust: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_chain_idle_stake: {
+    input: { type: "object", properties: {}, additionalProperties: false },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "total_idle_stake_tao", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        total_idle_stake_tao: { type: "number" },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            required: [
+              "netuid",
+              "neuron_count",
+              "idle_neuron_count",
+              "idle_stake_tao",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              neuron_count: { type: "integer" },
+              idle_neuron_count: { type: "integer" },
+              idle_stake_tao: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_identity_history: {
+    input: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", minimum: 1, maximum: 200 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["schema_version", "count", "subnet_count", "changes"],
+      properties: {
+        schema_version: { type: "integer" },
+        count: { type: "integer" },
+        subnet_count: { type: "integer" },
+        changes: objectItems({
+          netuid: NULLABLE_INT,
+          block_number: NULLABLE_INT,
+          observed_at: NULLABLE_STRING,
+          subnet_name: NULLABLE_STRING,
+          symbol: NULLABLE_STRING,
+          description: NULLABLE_STRING,
+          github_repo: NULLABLE_STRING,
+          subnet_url: NULLABLE_STRING,
+          discord: NULLABLE_STRING,
+          logo_url: NULLABLE_STRING,
+          identity_hash: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_chain_yield: {
+    input: { type: "object", properties: {}, additionalProperties: false },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "neuron_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        subnet_count: { type: "integer" },
+        neuron_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        miner_count: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        total_stake_tao: { type: "number" },
+        total_emission_tao: { type: "number" },
+        network_yield: { type: ["number", "null"] },
+        validator_yield: { type: ["number", "null"] },
+        miner_yield: { type: ["number", "null"] },
+        distribution: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_chain_turnover: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: ["7d", "30d", "90d"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["comparable", "subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        start_date: NULLABLE_STRING,
+        end_date: NULLABLE_STRING,
+        comparable: { type: "boolean" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "validators_start",
+            "validators_end",
+            "validators_entered",
+            "validators_exited",
+            "validator_retention",
+            "stability_score",
+          ],
+          properties: {
+            validators_start: { type: "integer" },
+            validators_end: { type: "integer" },
+            validators_entered: { type: "integer" },
+            validators_exited: { type: "integer" },
+            validator_retention: { type: ["number", "null"] },
+            stability_score: { type: ["integer", "null"] },
+          },
+        },
+        stability_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "validators_start",
+              "validators_end",
+              "validators_entered",
+              "validators_exited",
+              "validator_retention",
+              "stability_score",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              validators_start: { type: "integer" },
+              validators_end: { type: "integer" },
+              validators_entered: { type: "integer" },
+              validators_exited: { type: "integer" },
+              validator_retention: { type: "number" },
+              stability_score: { type: "integer" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_stake_flow: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "total_staked_tao",
+            "total_unstaked_tao",
+            "net_flow_tao",
+            "gross_flow_tao",
+            "stake_events",
+            "unstake_events",
+            "gaining",
+            "losing",
+            "flat",
+          ],
+          properties: {
+            total_staked_tao: { type: "number" },
+            total_unstaked_tao: { type: "number" },
+            net_flow_tao: { type: "number" },
+            gross_flow_tao: { type: "number" },
+            stake_events: { type: "integer" },
+            unstake_events: { type: "integer" },
+            gaining: { type: "integer" },
+            losing: { type: "integer" },
+            flat: { type: "integer" },
+          },
+        },
+        net_flow_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "total_staked_tao",
+              "total_unstaked_tao",
+              "net_flow_tao",
+              "gross_flow_tao",
+              "stake_events",
+              "unstake_events",
+              "direction",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              total_staked_tao: { type: "number" },
+              total_unstaked_tao: { type: "number" },
+              net_flow_tao: { type: "number" },
+              gross_flow_tao: { type: "number" },
+              stake_events: { type: "integer" },
+              unstake_events: { type: "integer" },
+              direction: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_alpha_volume: {
+    input: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "buy_volume_alpha",
+            "sell_volume_alpha",
+            "total_volume_alpha",
+            "buy_volume_tao",
+            "sell_volume_tao",
+            "total_volume_tao",
+            "buy_count",
+            "sell_count",
+            "net_volume_alpha",
+            "sentiment_ratio",
+            "sentiment",
+          ],
+          properties: {
+            buy_volume_alpha: ANY,
+            sell_volume_alpha: ANY,
+            total_volume_alpha: ANY,
+            buy_volume_tao: ANY,
+            sell_volume_tao: ANY,
+            total_volume_tao: ANY,
+            buy_count: { type: "integer" },
+            sell_count: { type: "integer" },
+            net_volume_alpha: ANY,
+            sentiment_ratio: { type: ["number", "null"] },
+            sentiment: { type: "string" },
+          },
+        },
+        volume_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            required: ["netuid", "window"],
+            properties: {
+              schema_version: { type: "integer" },
+              netuid: { type: "integer" },
+              window: { type: "string" },
+              buy_volume_alpha: ANY,
+              sell_volume_alpha: ANY,
+              total_volume_alpha: ANY,
+              buy_volume_tao: ANY,
+              sell_volume_tao: ANY,
+              total_volume_tao: ANY,
+              buy_count: { type: "integer" },
+              sell_count: { type: "integer" },
+              net_volume_alpha: ANY,
+              sentiment_ratio: { type: ["number", "null"] },
+              sentiment: NULLABLE_STRING,
+              vol_mcap_ratio: { type: ["number", "null"] },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_weights: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: ["distinct_setters", "weight_sets", "sets_per_setter"],
+          properties: {
+            distinct_setters: { type: "integer" },
+            weight_sets: { type: "integer" },
+            sets_per_setter: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_setters",
+              "weight_sets",
+              "sets_per_setter",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_setters: { type: "integer" },
+              weight_sets: { type: "integer" },
+              sets_per_setter: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_weight_setters: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "window",
+        "distinct_setters",
+        "weight_sets",
+        "setter_count",
+        "setters",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        distinct_setters: { type: "integer" },
+        weight_sets: { type: "integer" },
+        setter_count: { type: "integer" },
+        setters: objectItems({
+          hotkey: NULLABLE_STRING,
+          uid: NULLABLE_INT,
+          weight_sets: { type: "integer" },
+          share: ANY,
+          first_set_at: NULLABLE_STRING,
+          last_set_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_chain_stake_moves: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: ["distinct_movers", "movements", "movements_per_mover"],
+          properties: {
+            distinct_movers: { type: "integer" },
+            movements: { type: "integer" },
+            movements_per_mover: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_movers",
+              "movements",
+              "movements_per_mover",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_movers: { type: "integer" },
+              movements: { type: "integer" },
+              movements_per_mover: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_stake_transfers: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: ["distinct_senders", "transfers", "transfers_per_sender"],
+          properties: {
+            distinct_senders: { type: "integer" },
+            transfers: { type: "integer" },
+            transfers_per_sender: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_senders",
+              "transfers",
+              "transfers_per_sender",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_senders: { type: "integer" },
+              transfers: { type: "integer" },
+              transfers_per_sender: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_axon_removals: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: ["distinct_removers", "removals", "removals_per_remover"],
+          properties: {
+            distinct_removers: { type: "integer" },
+            removals: { type: "integer" },
+            removals_per_remover: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_removers",
+              "removals",
+              "removals_per_remover",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_removers: { type: "integer" },
+              removals: { type: "integer" },
+              removals_per_remover: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_serving: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "distinct_servers",
+            "announcements",
+            "announcements_per_server",
+          ],
+          properties: {
+            distinct_servers: { type: "integer" },
+            announcements: { type: "integer" },
+            announcements_per_server: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_servers",
+              "announcements",
+              "announcements_per_server",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_servers: { type: "integer" },
+              announcements: { type: "integer" },
+              announcements_per_server: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_prometheus: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "distinct_exporters",
+            "announcements",
+            "announcements_per_exporter",
+          ],
+          properties: {
+            distinct_exporters: { type: "integer" },
+            announcements: { type: "integer" },
+            announcements_per_exporter: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_exporters",
+              "announcements",
+              "announcements_per_exporter",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_exporters: { type: "integer" },
+              announcements: { type: "integer" },
+              announcements_per_exporter: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_activity: {
+    input: {
+      type: "object",
+      properties: {
+        blocks: { type: "integer", minimum: 1, maximum: 5000 },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window_blocks", "groups", "activity"],
+      properties: {
+        window_blocks: { type: "integer" },
+        groups: { type: "integer" },
+        activity: objectItems({
+          pallet: NULLABLE_STRING,
+          method: NULLABLE_STRING,
+          count: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  list_chain_events: {
+    input: {
+      type: "object",
+      properties: {
+        pallet: { type: "string" },
+        method: { type: "string" },
+        block: { type: "integer", minimum: 0 },
+        extrinsic: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+        before: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 200 },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["count", "events"],
+      properties: {
+        count: { type: "integer" },
+        next_before: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          pallet: NULLABLE_STRING,
+          method: NULLABLE_STRING,
+          args: ANY,
+          phase: ANY,
+          extrinsic_index: NULLABLE_INT,
+          observed_at: ANY,
+        }),
+      },
+    },
+  },
+  get_chain_calls: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        group_by: { type: "string", enum: ["module", "module_function"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        call_module: { type: "string" },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "schema_version",
+        "window",
+        "group_by",
+        "total_extrinsics",
+        "call_count",
+        "calls",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        group_by: { type: "string" },
+        observed_at: NULLABLE_STRING,
+        total_extrinsics: { type: "integer" },
+        call_count: { type: "integer" },
+        calls: objectItems({
+          call_module: NULLABLE_STRING,
+          call_function: NULLABLE_STRING,
+          count: NULLABLE_INT,
+          share: ANY,
+        }),
+      },
+    },
+  },
+  get_chain_signers: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        sort: { type: "string", enum: ["tx_count", "total_fee_tao"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        call_module: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window", "sort", "signer_count", "signers"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        sort: { type: "string", enum: ["tx_count", "total_fee_tao"] },
+        observed_at: NULLABLE_STRING,
+        signer_count: { type: "integer" },
+        signers: objectItems({
+          signer: NULLABLE_STRING,
+          tx_count: NULLABLE_INT,
+          total_fee_tao: { type: ["number", "null"] },
+          total_tip_tao: { type: ["number", "null"] },
+          last_tx_block: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  get_chain_fees: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        call_module: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window", "day_count", "daily", "top_fee_payers"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: NULLABLE_STRING,
+        day_count: { type: "integer" },
+        daily: objectItems({
+          day: NULLABLE_STRING,
+          extrinsic_count: NULLABLE_INT,
+          total_fee_tao: { type: ["number", "null"] },
+          avg_fee_tao: { type: ["number", "null"] },
+          median_fee_tao: { type: ["number", "null"] },
+          total_tip_tao: { type: ["number", "null"] },
+          avg_tip_tao: { type: ["number", "null"] },
+          median_tip_tao: { type: ["number", "null"] },
+        }),
+        top_fee_payers: objectItems({
+          signer: NULLABLE_STRING,
+          total_fee_tao: { type: ["number", "null"] },
+          total_tip_tao: { type: ["number", "null"] },
+          extrinsic_count: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  get_chain_registrations: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window", "subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          properties: {
+            distinct_registrants: NULLABLE_INT,
+            registrations: NULLABLE_INT,
+            registrations_per_registrant: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: { type: ["object", "null"] },
+        subnets: objectItems({
+          netuid: NULLABLE_INT,
+          distinct_registrants: NULLABLE_INT,
+          registrations: NULLABLE_INT,
+          registrations_per_registrant: { type: ["number", "null"] },
+        }),
+      },
+    },
+  },
+  get_chain_deregistrations: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "network", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "distinct_deregistered_hotkeys",
+            "deregistrations",
+            "deregistrations_per_hotkey",
+          ],
+          properties: {
+            distinct_deregistered_hotkeys: { type: "integer" },
+            deregistrations: { type: "integer" },
+            deregistrations_per_hotkey: { type: ["number", "null"] },
+          },
+        },
+        intensity_distribution: {
+          ...DISTRIBUTION_STATS,
+          type: ["object", "null"],
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "netuid",
+              "distinct_deregistered_hotkeys",
+              "deregistrations",
+              "deregistrations_per_hotkey",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              distinct_deregistered_hotkeys: { type: "integer" },
+              deregistrations: { type: "integer" },
+              deregistrations_per_hotkey: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_transfers: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "total_volume_tao",
+        "transfer_count",
+        "unique_senders",
+        "unique_receivers",
+        "top_sender_share",
+        "top_senders",
+        "top_receivers",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: {
+          type: ["string", "null"],
+          enum: [...CHAIN_ANALYTICS_WINDOWS_2, null],
+        },
+        observed_at: NULLABLE_STRING,
+        total_volume_tao: { type: "number" },
+        transfer_count: { type: "integer", minimum: 0 },
+        unique_senders: { type: "integer", minimum: 0 },
+        unique_receivers: { type: "integer", minimum: 0 },
+        top_sender_share: { type: ["number", "null"] },
+        top_senders: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["address", "volume_tao", "transfer_count"],
+            properties: {
+              address: { type: "string" },
+              volume_tao: { type: "number" },
+              transfer_count: { type: "integer", minimum: 0 },
+            },
+          },
+        },
+        top_receivers: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["address", "volume_tao", "transfer_count"],
+            properties: {
+              address: { type: "string" },
+              volume_tao: { type: "number" },
+              transfer_count: { type: "integer", minimum: 0 },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_chain_transfer_pairs: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+        sort: { type: "string", enum: ["volume", "count"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "schema_version",
+        "window",
+        "sort",
+        "observed_at",
+        "total_volume_tao",
+        "transfer_count",
+        "unique_pairs",
+        "pair_count",
+        "top_pair_share",
+        "pairs",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: {
+          type: ["string", "null"],
+          enum: [...CHAIN_ANALYTICS_WINDOWS_2, null],
+        },
+        sort: { type: "string", enum: ["volume", "count"] },
+        observed_at: NULLABLE_STRING,
+        total_volume_tao: { type: "number" },
+        transfer_count: { type: "integer", minimum: 0 },
+        unique_pairs: { type: "integer", minimum: 0 },
+        pair_count: { type: "integer", minimum: 0 },
+        top_pair_share: { type: ["number", "null"] },
+        pairs: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "from",
+              "to",
+              "volume_tao",
+              "transfer_count",
+              "last_block",
+              "last_observed_at",
+            ],
+            properties: {
+              from: { type: "string" },
+              to: { type: "string" },
+              volume_tao: { type: "number" },
+              transfer_count: { type: "integer", minimum: 0 },
+              last_block: { type: ["integer", "null"] },
+              last_observed_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_network_activity: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: CHAIN_ANALYTICS_WINDOWS_2 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window", "day_count", "days"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: NULLABLE_STRING,
+        day_count: { type: "integer" },
+        days: objectItems({
+          day: NULLABLE_STRING,
+          block_count: NULLABLE_INT,
+          extrinsic_count: NULLABLE_INT,
+          event_count: NULLABLE_INT,
+          successful_extrinsics: NULLABLE_INT,
+          success_rate: { type: ["number", "null"] },
+          unique_signers: NULLABLE_INT,
+        }),
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -5025,6 +6265,106 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
     input: GetExtrinsicChainEventsInputSchema,
     output: GetExtrinsicChainEventsOutputSchema,
   },
+  get_chain_concentration: {
+    input: GetChainConcentrationInputSchema,
+    output: GetChainConcentrationOutputSchema,
+  },
+  get_chain_performance: {
+    input: GetChainPerformanceInputSchema,
+    output: GetChainPerformanceOutputSchema,
+  },
+  get_chain_idle_stake: {
+    input: GetChainIdleStakeInputSchema,
+    output: GetChainIdleStakeOutputSchema,
+  },
+  get_chain_identity_history: {
+    input: GetChainIdentityHistoryInputSchema,
+    output: GetChainIdentityHistoryOutputSchema,
+  },
+  get_chain_yield: {
+    input: GetChainYieldInputSchema,
+    output: GetChainYieldOutputSchema,
+  },
+  get_chain_turnover: {
+    input: GetChainTurnoverInputSchema,
+    output: GetChainTurnoverOutputSchema,
+  },
+  get_chain_stake_flow: {
+    input: GetChainStakeFlowInputSchema,
+    output: GetChainStakeFlowOutputSchema,
+  },
+  get_chain_alpha_volume: {
+    input: GetChainAlphaVolumeInputSchema,
+    output: GetChainAlphaVolumeOutputSchema,
+  },
+  get_chain_weights: {
+    input: GetChainWeightsInputSchema,
+    output: GetChainWeightsOutputSchema,
+  },
+  get_chain_weight_setters: {
+    input: GetChainWeightSettersInputSchema,
+    output: GetChainWeightSettersOutputSchema,
+  },
+  get_chain_stake_moves: {
+    input: GetChainStakeMovesInputSchema,
+    output: GetChainStakeMovesOutputSchema,
+  },
+  get_chain_stake_transfers: {
+    input: GetChainStakeTransfersInputSchema,
+    output: GetChainStakeTransfersOutputSchema,
+  },
+  get_chain_axon_removals: {
+    input: GetChainAxonRemovalsInputSchema,
+    output: GetChainAxonRemovalsOutputSchema,
+  },
+  get_chain_serving: {
+    input: GetChainServingInputSchema,
+    output: GetChainServingOutputSchema,
+  },
+  get_chain_prometheus: {
+    input: GetChainPrometheusInputSchema,
+    output: GetChainPrometheusOutputSchema,
+  },
+  get_chain_activity: {
+    input: GetChainActivityInputSchema,
+    output: GetChainActivityOutputSchema,
+  },
+  list_chain_events: {
+    input: ListChainEventsInputSchema,
+    output: ListChainEventsOutputSchema,
+  },
+  get_chain_calls: {
+    input: GetChainCallsInputSchema,
+    output: GetChainCallsOutputSchema,
+  },
+  get_chain_signers: {
+    input: GetChainSignersInputSchema,
+    output: GetChainSignersOutputSchema,
+  },
+  get_chain_fees: {
+    input: GetChainFeesInputSchema,
+    output: GetChainFeesOutputSchema,
+  },
+  get_chain_registrations: {
+    input: GetChainRegistrationsInputSchema,
+    output: GetChainRegistrationsOutputSchema,
+  },
+  get_chain_deregistrations: {
+    input: GetChainDeregistrationsInputSchema,
+    output: GetChainDeregistrationsOutputSchema,
+  },
+  get_chain_transfers: {
+    input: GetChainTransfersInputSchema,
+    output: GetChainTransfersOutputSchema,
+  },
+  get_chain_transfer_pairs: {
+    input: GetChainTransferPairsInputSchema,
+    output: GetChainTransferPairsOutputSchema,
+  },
+  get_network_activity: {
+    input: GetNetworkActivityInputSchema,
+    output: GetNetworkActivityOutputSchema,
+  },
 };
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -5071,6 +6411,16 @@ function normalize(node: unknown, path: string): unknown {
   // scripts/diff-openapi-zod-components.ts's equivalent rule.
   if (Array.isArray(obj.type) && obj.type.length > 1) {
     const { type: _t, ...siblings } = obj;
+    // A hand-written `enum:[...values, null]` sibling on a `type:[X,"null"]`
+    // node (e.g. batch 9's get_chain_transfers.window: `{type:["string",
+    // "null"], enum:[...CHAIN_TRANSFER_WINDOW_KEYS, null]}`) carries a
+    // redundant literal `null` into the non-null branch once split -- the
+    // null case is already the separate `{type:"null"}` branch below, and
+    // Zod's own `z.enum(...).nullable()` output never repeats it there.
+    // Strip it so both sides produce the same anyOf shape.
+    if (Array.isArray(siblings.enum) && obj.type.includes("null")) {
+      siblings.enum = siblings.enum.filter((v: unknown) => v !== null);
+    }
     return normalize(
       {
         anyOf: obj.type.map((t, i) =>

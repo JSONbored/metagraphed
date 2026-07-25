@@ -672,6 +672,70 @@ import {
   GetExtrinsicChainEventsOutputSchema,
 } from "../schemas-src/mcp-tools/chain-events.ts";
 import {
+  GetChainConcentrationInputSchema,
+  GetChainConcentrationOutputSchema,
+  GetChainPerformanceInputSchema,
+  GetChainPerformanceOutputSchema,
+  GetChainIdleStakeInputSchema,
+  GetChainIdleStakeOutputSchema,
+  GetChainYieldInputSchema,
+  GetChainYieldOutputSchema,
+} from "../schemas-src/mcp-tools/chain-scorecards.ts";
+import {
+  GetChainIdentityHistoryInputSchema,
+  GetChainIdentityHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/chain-identity-history.ts";
+import {
+  GetChainTurnoverInputSchema,
+  GetChainTurnoverOutputSchema,
+  GetChainStakeFlowInputSchema,
+  GetChainStakeFlowOutputSchema,
+  GetChainAlphaVolumeInputSchema,
+  GetChainAlphaVolumeOutputSchema,
+  GetChainWeightsInputSchema,
+  GetChainWeightsOutputSchema,
+  GetChainWeightSettersInputSchema,
+  GetChainWeightSettersOutputSchema,
+  GetChainStakeMovesInputSchema,
+  GetChainStakeMovesOutputSchema,
+  GetChainStakeTransfersInputSchema,
+  GetChainStakeTransfersOutputSchema,
+  GetChainAxonRemovalsInputSchema,
+  GetChainAxonRemovalsOutputSchema,
+  GetChainServingInputSchema,
+  GetChainServingOutputSchema,
+  GetChainPrometheusInputSchema,
+  GetChainPrometheusOutputSchema,
+} from "../schemas-src/mcp-tools/chain-leaderboards.ts";
+import {
+  GetChainRegistrationsInputSchema,
+  GetChainRegistrationsOutputSchema,
+  GetChainDeregistrationsInputSchema,
+  GetChainDeregistrationsOutputSchema,
+} from "../schemas-src/mcp-tools/chain-registrations.ts";
+import {
+  GetChainActivityInputSchema,
+  GetChainActivityOutputSchema,
+  ListChainEventsInputSchema,
+  ListChainEventsOutputSchema,
+  GetNetworkActivityInputSchema,
+  GetNetworkActivityOutputSchema,
+} from "../schemas-src/mcp-tools/chain-events-activity.ts";
+import {
+  GetChainCallsInputSchema,
+  GetChainCallsOutputSchema,
+  GetChainSignersInputSchema,
+  GetChainSignersOutputSchema,
+  GetChainFeesInputSchema,
+  GetChainFeesOutputSchema,
+} from "../schemas-src/mcp-tools/chain-calls-fees.ts";
+import {
+  GetChainTransfersInputSchema,
+  GetChainTransfersOutputSchema,
+  GetChainTransferPairsInputSchema,
+  GetChainTransferPairsOutputSchema,
+} from "../schemas-src/mcp-tools/chain-transfers.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -3626,11 +3690,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "subnets counts once), and validator-only distributions, plus the " +
       "subnet_count the snapshot spans. The network-level companion of " +
       "get_subnet_concentration. Mirrors GET /api/v1/chain/concentration.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetChainConcentrationInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -3653,11 +3715,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "the snapshot spans. The network-level companion of get_subnet_performance " +
       "and the reward-flow companion of get_chain_concentration. Mirrors GET " +
       "/api/v1/chain/performance.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetChainPerformanceInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -3677,11 +3737,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "idle_stake_tao descending, plus the network total. The network-level " +
       "companion of get_subnet_idle_stake and the idle-delegation companion of " +
       "get_chain_performance. Mirrors GET /api/v1/chain/idle-stake.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetChainIdleStakeInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -3705,19 +3763,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ") and reporting the distinct subnet_count the feed spans. The network-level " +
       "companion of get_subnet_identity_history. Mirrors GET " +
       "/api/v1/chain/identity-history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: {
-          type: "integer",
-          description: `Max changes to return (1-${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}, default ${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainIdentityHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainIdentityHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       // Mirrors REST's handleChainIdentityHistory: same tryPostgresTier
       // contract, same METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST
       // route (#4832), so this tool and GET /api/v1/chain/identity-history
@@ -3744,11 +3796,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "and the subnet_count the snapshot spans. The network-level companion of " +
       "get_subnet_yield and the return-rate companion of get_chain_performance. " +
       "Mirrors GET /api/v1/chain/yield.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetChainYieldInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -3772,24 +3822,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "The network-level companion of get_subnet_turnover, mirroring how " +
       "get_chain_concentration companions get_subnet_concentration. Mirrors " +
       "GET /api/v1/chain/turnover.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_TURNOVER_WINDOW_KEYS,
-          description: `Comparison window (default ${DEFAULT_CHAIN_TURNOVER_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the turnover leaderboard (1-${CHAIN_TURNOVER_LIMIT_MAX}, default ${CHAIN_TURNOVER_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_TURNOVER_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainTurnoverInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainTurnoverInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
       if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
@@ -3831,24 +3870,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "summed live from the account_events stream. The network-level companion " +
       "of get_subnet_stake_flow, mirroring how get_chain_concentration " +
       "companions get_subnet_concentration. Mirrors GET /api/v1/chain/stake-flow.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_STAKE_FLOW_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_STAKE_FLOW_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the stake-flow leaderboard (1-${CHAIN_STAKE_FLOW_LIMIT_MAX}, default ${CHAIN_STAKE_FLOW_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_STAKE_FLOW_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainStakeFlowInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainStakeFlowInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
       if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, window)) {
@@ -3892,19 +3920,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "companion of get_subnet_volume, mirroring how get_chain_stake_flow companions " +
       "get_subnet_stake_flow. Fixed 24h window, no window parameter. Mirrors GET " +
       "/api/v1/chain/alpha-volume.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: {
-          type: "integer",
-          description: `Max subnets in the alpha-volume leaderboard (1-${CHAIN_ALPHA_VOLUME_LIMIT_MAX}, default ${CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainAlphaVolumeInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainAlphaVolumeInputSchema>,
+      ctx: McpCtx,
+    ) {
       const limit = clampLimit(
         args?.limit,
         CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
@@ -3932,24 +3954,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "consensus-maintenance companion to get_chain_stake_flow (capital) and " +
       "get_chain_turnover (validator churn). Use get_chain_weight_setters for the " +
       "setter-level leaderboard drill-in. Mirrors GET /api/v1/chain/weights.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_WEIGHTS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_WEIGHTS_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the weight-setting leaderboard (1-${CHAIN_WEIGHTS_LIMIT_MAX}, default ${CHAIN_WEIGHTS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_WEIGHTS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainWeightsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainWeightsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
       if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, window)) {
@@ -3992,24 +4003,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "The network-wide drill-in behind get_chain_weights — use " +
       "get_subnet_weight_setters for one subnet's setter leaderboard. Mirrors GET " +
       "/api/v1/chain/weights/setters.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_WEIGHT_SETTERS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max setters in the leaderboard (1-${CHAIN_WEIGHT_SETTERS_LIMIT_MAX}, default ${CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainWeightSettersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainWeightSettersInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
       if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, window)) {
@@ -4052,24 +4052,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "hotkeys/subnets without unstaking — it measures re-delegation churn, not " +
       "net capital flow (that is get_chain_stake_flow). Mirrors GET " +
       "/api/v1/chain/stake-moves.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_STAKE_MOVES_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_STAKE_MOVES_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the stake-movement leaderboard (1-${CHAIN_STAKE_MOVES_LIMIT_MAX}, default ${CHAIN_STAKE_MOVES_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_STAKE_MOVES_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainStakeMovesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainStakeMovesInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
       if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, window)) {
@@ -4112,24 +4101,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "coldkey to another on the same hotkey — it relocates ownership, not net " +
       "capital (get_chain_stake_flow) or re-delegation churn (get_chain_stake_moves). " +
       "Mirrors GET /api/v1/chain/stake-transfers.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_STAKE_TRANSFERS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the stake-transfer leaderboard (1-${CHAIN_STAKE_TRANSFERS_LIMIT_MAX}, default ${CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainStakeTransfersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainStakeTransfersInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
       if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, window)) {
@@ -4172,24 +4150,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "removed — the teardown-side companion to get_chain_serving (axon " +
       "announcements) and get_subnet_axon_removals (one subnet). Mirrors GET " +
       "/api/v1/chain/axon-removals.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_AXON_REMOVALS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_AXON_REMOVALS_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the axon-removal leaderboard (1-${CHAIN_AXON_REMOVALS_LIMIT_MAX}, default ${CHAIN_AXON_REMOVALS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_AXON_REMOVALS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainAxonRemovalsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainAxonRemovalsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
       if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, window)) {
@@ -4233,24 +4200,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "get_chain_prometheus (Prometheus telemetry announcements) and " +
       "get_chain_axon_removals (AxonInfoRemoved teardown). Mirrors GET " +
       "/api/v1/chain/serving.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_SERVING_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_SERVING_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the axon serving leaderboard (1-${CHAIN_SERVING_LIMIT_MAX}, default ${CHAIN_SERVING_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_SERVING_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainServingInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainServingInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_SERVING_WINDOW;
       if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, window)) {
@@ -4294,24 +4250,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "telemetry-endpoint companion to get_chain_serving (axon announcements) " +
       "and get_subnet_prometheus (one subnet). Mirrors GET " +
       "/api/v1/chain/prometheus.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_PROMETHEUS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_PROMETHEUS_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the Prometheus serving leaderboard (1-${CHAIN_PROMETHEUS_LIMIT_MAX}, default ${CHAIN_PROMETHEUS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_PROMETHEUS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainPrometheusInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainPrometheusInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
       if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, window)) {
@@ -7781,22 +7726,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "been doing lately — which pallets and calls dominate recent traffic — " +
       "before drilling into specific blocks (get_block) or extrinsics " +
       "(list_extrinsics). Mirrors GET /api/v1/chain-events/stats.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        blocks: {
-          type: "integer",
-          description:
-            "How many of the most recent blocks to aggregate over (1-5000, " +
-            "default 1000).",
-          minimum: 1,
-          maximum: 5000,
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainActivityInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainActivityInputSchema>,
+      ctx: McpCtx,
+    ) {
       const blocks = optionalBlocksWindow(args);
       return loadChainActivity(ctx, blocks);
     },
@@ -7813,58 +7749,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "keyset cursor, or the legacy before=block_number cursor. The event-level " +
       "companion to list_extrinsics and get_chain_activity (the pallet.method " +
       "distribution). Mirrors GET /api/v1/chain-events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        pallet: {
-          type: "string",
-          description:
-            "Filter to one pallet (e.g. 'SubtensorModule'); 1-64 letters, digits, " +
-            "or underscores, starting with a letter.",
-        },
-        method: {
-          type: "string",
-          description:
-            "Filter to one event method (e.g. 'WeightsSet'); requires pallet unless " +
-            "block is set.",
-        },
-        block: {
-          type: "integer",
-          description: "Scope to one block_number.",
-          minimum: 0,
-        },
-        extrinsic: {
-          type: "integer",
-          description:
-            "Scope to the events emitted by one extrinsic (its extrinsic_index); " +
-            "requires block.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor, for stable " +
-            "deep pagination over (block_number, event_index). Preferred over before " +
-            "when both are set.",
-        },
-        before: {
-          type: "integer",
-          description:
-            "Legacy block_number-only cursor: return events strictly before this " +
-            "block. Prefer cursor for deep pagination; ignored when cursor is set.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max events to return (1-200, default 50).",
-          minimum: 1,
-          maximum: 200,
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListChainEventsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListChainEventsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadChainEventsFeed(ctx, {
         pallet: optionalString(args, "pallet"),
         method: optionalString(args, "method"),
@@ -7886,36 +7777,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "call_module. Use it to see which pallets and calls dominate on-chain traffic " +
       "before drilling into specific blocks (get_block) or extrinsics " +
       "(list_extrinsics). Mirrors GET /api/v1/chain/calls.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Aggregation window (default 7d).",
-        },
-        group_by: {
-          type: "string",
-          enum: ["module", "module_function"],
-          description:
-            "Group by call_module only (default) or by call_module + call_function.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max call groups returned (1-100, default 50).",
-          minimum: 1,
-          maximum: 100,
-        },
-        call_module: {
-          type: "string",
-          description:
-            "Optional pallet filter (e.g. Balances); omit for all modules.",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainCallsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetChainCallsInputSchema>, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -7961,35 +7826,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "extrinsic count (default) or total fees over the requested window " +
       "(7d or 30d), with total fees, tips, and last signed block. Optionally " +
       "scope to one pallet via call_module. Mirrors GET /api/v1/chain/signers.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Lookback window (default 7d).",
-        },
-        sort: {
-          type: "string",
-          enum: ["tx_count", "total_fee_tao"],
-          description:
-            "Rank signers by extrinsic count (default) or total fees paid.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max signers to return (1-100, default 50).",
-          minimum: 1,
-          maximum: 100,
-        },
-        call_module: {
-          type: "string",
-          description:
-            "Optional pallet filter (e.g. Balances); omit for all modules.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainSignersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainSignersInputSchema>,
+      ctx: McpCtx,
+    ) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -8035,29 +7878,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "per-UTC-day fee series (totals + averages) plus a top-fee-payer list. " +
       "Optionally scope to one pallet via call_module. Mirrors " +
       "GET /api/v1/chain/fees.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Lookback window (default 7d).",
-        },
-        limit: {
-          type: "integer",
-          description: "Max top fee payers to return (1-100, default 25).",
-          minimum: 1,
-          maximum: 100,
-        },
-        call_module: {
-          type: "string",
-          description:
-            "Optional pallet filter (e.g. Balances); omit for all modules.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainFeesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetChainFeesInputSchema>, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -8100,24 +7924,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "NeuronRegistered count) plus the network rollup, computed live from the " +
       "account_events NeuronRegistered stream. limit caps the leaderboard " +
       "(1-100, default 20). Mirrors GET /api/v1/chain/registrations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Lookback window (default 7d).",
-        },
-        limit: {
-          type: "integer",
-          description: "Max leaderboard subnets to return (1-100, default 20).",
-          minimum: 1,
-          maximum: 100,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainRegistrationsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainRegistrationsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -8157,24 +7970,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "activity — the exit-side companion to get_chain_registrations " +
       "(NeuronRegistered demand) and get_subnet_deregistrations (one subnet). " +
       "Mirrors GET /api/v1/chain/deregistrations.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_DEREGISTRATIONS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max subnets in the deregistration leaderboard (1-${CHAIN_DEREGISTRATIONS_LIMIT_MAX}, default ${CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainDeregistrationsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainDeregistrationsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
       if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, window)) {
@@ -8213,24 +8015,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "of total volume (a concentration signal). The network-level companion of " +
       "get_account_transfers and get_account_counterparties. Mirrors " +
       "GET /api/v1/chain/transfers.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_TRANSFER_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_TRANSFER_WINDOW}).`,
-        },
-        limit: {
-          type: "integer",
-          description: `Max top senders/receivers to return (1-${CHAIN_TRANSFER_LIMIT_MAX}, default ${CHAIN_TRANSFER_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_TRANSFER_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainTransfersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainTransfersInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
       if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, window)) {
@@ -8277,30 +8068,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "get_chain_transfers (top individual senders/receivers) and " +
       "get_account_counterparties (one account's relationships). Mirrors GET " +
       "/api/v1/chain/transfer-pairs.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: CHAIN_TRANSFER_PAIR_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW}).`,
-        },
-        sort: {
-          type: "string",
-          enum: CHAIN_TRANSFER_PAIR_SORTS,
-          description:
-            "Rank corridors by total TAO volume (default) or transfer count.",
-        },
-        limit: {
-          type: "integer",
-          description: `Max corridors to return (1-${CHAIN_TRANSFER_PAIR_LIMIT_MAX}, default ${CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT}).`,
-          minimum: 1,
-          maximum: CHAIN_TRANSFER_PAIR_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetChainTransferPairsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainTransferPairsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
       if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, window)) {
@@ -8345,18 +8119,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "unique signers, newest day first. Use it for a network-at-a-glance view " +
       "before drilling into call-mix (get_chain_calls) or fee markets " +
       "(get_chain_fees). Mirrors GET /api/v1/chain/activity.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Lookback window (default 7d).",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetNetworkActivityInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetNetworkActivityInputSchema>,
+      ctx: McpCtx,
+    ) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -10617,16 +10386,6 @@ const objectItems = (properties = {}) => ({
   type: "array",
   items: { type: "object", additionalProperties: true, properties },
 });
-const CHAIN_TRANSFER_PARTY_ITEM = {
-  type: "object",
-  additionalProperties: false,
-  required: ["address", "volume_tao", "transfer_count"],
-  properties: {
-    address: { type: "string" },
-    volume_tao: { type: "number" },
-    transfer_count: { type: "integer", minimum: 0 },
-  },
-};
 // RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
 // schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
 const RPC_USAGE_LATENCY_MS = {
@@ -10763,866 +10522,57 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_subnet_idle_stake: z.toJSONSchema(GetSubnetIdleStakeOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_chain_concentration: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "neuron_count"],
-    properties: {
-      schema_version: { type: "integer" },
-      subnet_count: { type: "integer" },
-      neuron_count: { type: "integer" },
-      entity_count: { type: "integer" },
-      uids_per_entity: { type: ["number", "null"] },
-      captured_at: NULLABLE_STRING,
-      stake: { type: ["object", "null"] },
-      emission: { type: ["object", "null"] },
-      entity_stake: { type: ["object", "null"] },
-      entity_emission: { type: ["object", "null"] },
-      validator_stake: { type: ["object", "null"] },
+  get_chain_concentration: z.toJSONSchema(GetChainConcentrationOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_performance: z.toJSONSchema(GetChainPerformanceOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_idle_stake: z.toJSONSchema(GetChainIdleStakeOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_identity_history: z.toJSONSchema(
+    GetChainIdentityHistoryOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_chain_performance: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "neuron_count"],
-    properties: {
-      schema_version: { type: "integer" },
-      subnet_count: { type: "integer" },
-      neuron_count: { type: "integer" },
-      validator_count: { type: "integer" },
-      active_count: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      incentive: { type: ["object", "null"] },
-      dividends: { type: ["object", "null"] },
-      trust: { type: ["object", "null"] },
-      consensus: { type: ["object", "null"] },
-      validator_trust: { type: ["object", "null"] },
+  ),
+  get_chain_yield: z.toJSONSchema(GetChainYieldOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_turnover: z.toJSONSchema(GetChainTurnoverOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_stake_flow: z.toJSONSchema(GetChainStakeFlowOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_alpha_volume: z.toJSONSchema(GetChainAlphaVolumeOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_weights: z.toJSONSchema(GetChainWeightsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_weight_setters: z.toJSONSchema(GetChainWeightSettersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_stake_moves: z.toJSONSchema(GetChainStakeMovesOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_stake_transfers: z.toJSONSchema(
+    GetChainStakeTransfersOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_chain_idle_stake: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "total_idle_stake_tao", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      total_idle_stake_tao: { type: "number" },
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: true,
-          required: [
-            "netuid",
-            "neuron_count",
-            "idle_neuron_count",
-            "idle_stake_tao",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            neuron_count: { type: "integer" },
-            idle_neuron_count: { type: "integer" },
-            idle_stake_tao: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_identity_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["schema_version", "count", "subnet_count", "changes"],
-    properties: {
-      schema_version: { type: "integer" },
-      count: { type: "integer" },
-      subnet_count: { type: "integer" },
-      changes: objectItems({
-        netuid: NULLABLE_INT,
-        block_number: NULLABLE_INT,
-        observed_at: NULLABLE_STRING,
-        subnet_name: NULLABLE_STRING,
-        symbol: NULLABLE_STRING,
-        description: NULLABLE_STRING,
-        github_repo: NULLABLE_STRING,
-        subnet_url: NULLABLE_STRING,
-        discord: NULLABLE_STRING,
-        logo_url: NULLABLE_STRING,
-        identity_hash: NULLABLE_STRING,
-      }),
-    },
-  },
-  get_chain_yield: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "neuron_count"],
-    properties: {
-      schema_version: { type: "integer" },
-      subnet_count: { type: "integer" },
-      neuron_count: { type: "integer" },
-      validator_count: { type: "integer" },
-      miner_count: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      total_stake_tao: { type: "number" },
-      total_emission_tao: { type: "number" },
-      network_yield: { type: ["number", "null"] },
-      validator_yield: { type: ["number", "null"] },
-      miner_yield: { type: ["number", "null"] },
-      distribution: { type: ["object", "null"] },
-    },
-  },
-  get_chain_turnover: {
-    type: "object",
-    additionalProperties: true,
-    required: ["comparable", "subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      start_date: NULLABLE_STRING,
-      end_date: NULLABLE_STRING,
-      comparable: { type: "boolean" },
-      subnet_count: { type: "integer" },
-      // Network rollup over the union validator set. retention/stability are
-      // null only on the cold/single-snapshot empty block.
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "validators_start",
-          "validators_end",
-          "validators_entered",
-          "validators_exited",
-          "validator_retention",
-          "stability_score",
-        ],
-        properties: {
-          validators_start: { type: "integer" },
-          validators_end: { type: "integer" },
-          validators_entered: { type: "integer" },
-          validators_exited: { type: "integer" },
-          validator_retention: { type: ["number", "null"] },
-          stability_score: { type: ["integer", "null"] },
-        },
-      },
-      // Spread of per-subnet stability over EVERY comparable subnet; null when
-      // nothing is comparable.
-      stability_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "integer" },
-          p25: { type: "integer" },
-          median: { type: "integer" },
-          p75: { type: "integer" },
-          p90: { type: "integer" },
-          max: { type: "integer" },
-        },
-      },
-      // Per-subnet turnover leaderboard, most volatile first.
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "validators_start",
-            "validators_end",
-            "validators_entered",
-            "validators_exited",
-            "validator_retention",
-            "stability_score",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            validators_start: { type: "integer" },
-            validators_end: { type: "integer" },
-            validators_entered: { type: "integer" },
-            validators_exited: { type: "integer" },
-            validator_retention: { type: "number" },
-            stability_score: { type: "integer" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_stake_flow: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that moved stake in the window, plus
-      // gaining/losing/flat subnet counts from each subnet's direction label.
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "total_staked_tao",
-          "total_unstaked_tao",
-          "net_flow_tao",
-          "gross_flow_tao",
-          "stake_events",
-          "unstake_events",
-          "gaining",
-          "losing",
-          "flat",
-        ],
-        properties: {
-          total_staked_tao: { type: "number" },
-          total_unstaked_tao: { type: "number" },
-          net_flow_tao: { type: "number" },
-          gross_flow_tao: { type: "number" },
-          stake_events: { type: "integer" },
-          unstake_events: { type: "integer" },
-          gaining: { type: "integer" },
-          losing: { type: "integer" },
-          flat: { type: "integer" },
-        },
-      },
-      // Spread of per-subnet net flow (TAO) over EVERY active subnet; null when
-      // no subnet moved stake in the window.
-      net_flow_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet capital-flow leaderboard, biggest net inflow first.
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "total_staked_tao",
-            "total_unstaked_tao",
-            "net_flow_tao",
-            "gross_flow_tao",
-            "stake_events",
-            "unstake_events",
-            "direction",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            total_staked_tao: { type: "number" },
-            total_unstaked_tao: { type: "number" },
-            net_flow_tao: { type: "number" },
-            gross_flow_tao: { type: "number" },
-            stake_events: { type: "integer" },
-            unstake_events: { type: "integer" },
-            direction: { type: "string" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_alpha_volume: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: { type: "string" },
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that had volume in the window, plus a network-wide
-      // net/gross sentiment reading derived from the same totals.
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "buy_volume_alpha",
-          "sell_volume_alpha",
-          "total_volume_alpha",
-          "buy_volume_tao",
-          "sell_volume_tao",
-          "total_volume_tao",
-          "buy_count",
-          "sell_count",
-          "net_volume_alpha",
-          "sentiment_ratio",
-          "sentiment",
-        ],
-        properties: {
-          buy_volume_alpha: ANY,
-          sell_volume_alpha: ANY,
-          total_volume_alpha: ANY,
-          buy_volume_tao: ANY,
-          sell_volume_tao: ANY,
-          total_volume_tao: ANY,
-          buy_count: { type: "integer" },
-          sell_count: { type: "integer" },
-          net_volume_alpha: ANY,
-          sentiment_ratio: { type: ["number", "null"] },
-          sentiment: { type: "string" },
-        },
-      },
-      // Spread of per-subnet total_volume_tao over EVERY subnet with volume; null when no
-      // subnet had volume in the window.
-      volume_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet alpha-volume leaderboard, biggest total volume first -- each entry is a
-      // full get_subnet_volume-shaped scorecard.
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: true,
-          required: ["netuid", "window"],
-          properties: {
-            schema_version: { type: "integer" },
-            netuid: { type: "integer" },
-            window: { type: "string" },
-            buy_volume_alpha: ANY,
-            sell_volume_alpha: ANY,
-            total_volume_alpha: ANY,
-            buy_volume_tao: ANY,
-            sell_volume_tao: ANY,
-            total_volume_tao: ANY,
-            buy_count: { type: "integer" },
-            sell_count: { type: "integer" },
-            net_volume_alpha: ANY,
-            sentiment_ratio: { type: ["number", "null"] },
-            sentiment: NULLABLE_STRING,
-            vol_mcap_ratio: { type: ["number", "null"] },
-          },
-        },
-      },
-    },
-  },
-  get_chain_weights: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that set weights in the window.
-      // sets_per_setter is null when the network-wide distinct-setter count is
-      // unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: ["distinct_setters", "weight_sets", "sets_per_setter"],
-        properties: {
-          distinct_setters: { type: "integer" },
-          weight_sets: { type: "integer" },
-          sets_per_setter: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet update intensity (WeightsSet events per setter) over
-      // EVERY subnet that set weights; null when no subnet set weights in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet weight-setting leaderboard, most WeightsSet events first. Each
-      // listed subnet has at least one distinct setter, so sets_per_setter is
-      // always a finite number here (never divide-by-zero).
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_setters",
-            "weight_sets",
-            "sets_per_setter",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_setters: { type: "integer" },
-            weight_sets: { type: "integer" },
-            sets_per_setter: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_weight_setters: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "window",
-      "distinct_setters",
-      "weight_sets",
-      "setter_count",
-      "setters",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      distinct_setters: { type: "integer" },
-      weight_sets: { type: "integer" },
-      setter_count: { type: "integer" },
-      setters: objectItems({
-        hotkey: NULLABLE_STRING,
-        uid: NULLABLE_INT,
-        weight_sets: { type: "integer" },
-        share: ANY,
-        first_set_at: NULLABLE_STRING,
-        last_set_at: NULLABLE_STRING,
-      }),
-    },
-  },
-  get_chain_stake_moves: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that saw a StakeMoved event. A coldkey
-      // moving stake out of several subnets counts once in distinct_movers.
-      // movements_per_mover is null when the network-wide distinct-mover count
-      // is unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: ["distinct_movers", "movements", "movements_per_mover"],
-        properties: {
-          distinct_movers: { type: "integer" },
-          movements: { type: "integer" },
-          movements_per_mover: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet re-move intensity (StakeMoved events per mover) over
-      // EVERY subnet that saw a move; null when no subnet saw a move in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet stake-movement leaderboard, most StakeMoved events first. Each
-      // listed subnet has at least one distinct mover, so movements_per_mover is
-      // always a finite number here (never divide-by-zero).
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_movers",
-            "movements",
-            "movements_per_mover",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_movers: { type: "integer" },
-            movements: { type: "integer" },
-            movements_per_mover: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_stake_transfers: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that saw a StakeTransferred event. A
-      // coldkey transferring stake out of several subnets counts once in
-      // distinct_senders. transfers_per_sender is null when the network-wide
-      // distinct-sender count is unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: ["distinct_senders", "transfers", "transfers_per_sender"],
-        properties: {
-          distinct_senders: { type: "integer" },
-          transfers: { type: "integer" },
-          transfers_per_sender: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet transfer intensity (StakeTransferred events per
-      // sender) over EVERY subnet that saw a transfer; null when no subnet saw
-      // a transfer in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet stake-transfer leaderboard, most StakeTransferred events
-      // first. Each listed subnet has at least one distinct sender, so
-      // transfers_per_sender is always a finite number here (never divide-by-zero).
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_senders",
-            "transfers",
-            "transfers_per_sender",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_senders: { type: "integer" },
-            transfers: { type: "integer" },
-            transfers_per_sender: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_axon_removals: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that saw an AxonInfoRemoved event. A
-      // hotkey removing an axon on several subnets counts once in distinct_removers.
-      // removals_per_remover is null when the network-wide distinct-remover count
-      // is unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: ["distinct_removers", "removals", "removals_per_remover"],
-        properties: {
-          distinct_removers: { type: "integer" },
-          removals: { type: "integer" },
-          removals_per_remover: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet re-teardown intensity (AxonInfoRemoved events per
-      // remover) over EVERY subnet that saw a removal; null when no subnet saw
-      // a removal in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet axon-removal leaderboard, most AxonInfoRemoved events first.
-      // Each listed subnet has at least one distinct remover, so removals_per_remover
-      // is always a finite number here (never divide-by-zero).
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_removers",
-            "removals",
-            "removals_per_remover",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_removers: { type: "integer" },
-            removals: { type: "integer" },
-            removals_per_remover: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_serving: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that saw an AxonServed event. A hotkey
-      // announcing on several subnets counts once in distinct_servers.
-      // announcements_per_server is null when the network-wide distinct-server
-      // count is unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "distinct_servers",
-          "announcements",
-          "announcements_per_server",
-        ],
-        properties: {
-          distinct_servers: { type: "integer" },
-          announcements: { type: "integer" },
-          announcements_per_server: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet re-announcement intensity (AxonServed events per
-      // server) over EVERY subnet that saw an announcement; null when no subnet
-      // saw serving activity in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet axon serving leaderboard, most AxonServed events first. Each
-      // listed subnet has at least one distinct server, so announcements_per_server
-      // is always a finite number here.
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_servers",
-            "announcements",
-            "announcements_per_server",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_servers: { type: "integer" },
-            announcements: { type: "integer" },
-            announcements_per_server: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_prometheus: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that saw a PrometheusServed event. A
-      // hotkey announcing on several subnets counts once in distinct_exporters.
-      // announcements_per_exporter is null when the network-wide distinct-exporter
-      // count is unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "distinct_exporters",
-          "announcements",
-          "announcements_per_exporter",
-        ],
-        properties: {
-          distinct_exporters: { type: "integer" },
-          announcements: { type: "integer" },
-          announcements_per_exporter: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet re-announcement intensity (PrometheusServed events
-      // per exporter) over EVERY subnet that saw an announcement; null when no
-      // subnet saw Prometheus activity in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet Prometheus serving leaderboard, most PrometheusServed events
-      // first. Each listed subnet has at least one distinct exporter, so
-      // announcements_per_exporter is always a finite number here.
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_exporters",
-            "announcements",
-            "announcements_per_exporter",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_exporters: { type: "integer" },
-            announcements: { type: "integer" },
-            announcements_per_exporter: { type: "number" },
-          },
-        },
-      },
-    },
-  },
+  ),
+  get_chain_axon_removals: z.toJSONSchema(GetChainAxonRemovalsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_serving: z.toJSONSchema(GetChainServingOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_prometheus: z.toJSONSchema(GetChainPrometheusOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_blocks_summary: z.toJSONSchema(GetBlocksSummaryOutputSchema, {
     target: "draft-2020-12",
   }),
@@ -11922,329 +10872,39 @@ const TOOL_OUTPUT_SCHEMAS = {
       target: "draft-2020-12",
     },
   ),
-  get_chain_activity: {
-    type: "object",
-    additionalProperties: true,
-    required: ["window_blocks", "groups", "activity"],
-    properties: {
-      window_blocks: { type: "integer" },
-      groups: { type: "integer" },
-      activity: objectItems({
-        pallet: NULLABLE_STRING,
-        method: NULLABLE_STRING,
-        count: NULLABLE_INT,
-      }),
+  get_chain_activity: z.toJSONSchema(GetChainActivityOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_chain_events: z.toJSONSchema(ListChainEventsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_calls: z.toJSONSchema(GetChainCallsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_signers: z.toJSONSchema(GetChainSignersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_fees: z.toJSONSchema(GetChainFeesOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_registrations: z.toJSONSchema(GetChainRegistrationsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_deregistrations: z.toJSONSchema(
+    GetChainDeregistrationsOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  list_chain_events: {
-    type: "object",
-    additionalProperties: true,
-    required: ["count", "events"],
-    properties: {
-      count: { type: "integer" },
-      next_before: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      events: objectItems({
-        block_number: NULLABLE_INT,
-        event_index: NULLABLE_INT,
-        pallet: NULLABLE_STRING,
-        method: NULLABLE_STRING,
-        args: ANY,
-        phase: ANY,
-        extrinsic_index: NULLABLE_INT,
-        observed_at: ANY,
-      }),
-    },
-  },
-  get_chain_calls: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "schema_version",
-      "window",
-      "group_by",
-      "total_extrinsics",
-      "call_count",
-      "calls",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      window: { type: "string" },
-      group_by: { type: "string" },
-      observed_at: NULLABLE_STRING,
-      total_extrinsics: { type: "integer" },
-      call_count: { type: "integer" },
-      calls: objectItems({
-        call_module: NULLABLE_STRING,
-        call_function: NULLABLE_STRING,
-        count: NULLABLE_INT,
-        share: ANY,
-      }),
-    },
-  },
-  get_chain_signers: {
-    type: "object",
-    additionalProperties: true,
-    required: ["window", "sort", "signer_count", "signers"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: { type: "string" },
-      sort: { type: "string", enum: ["tx_count", "total_fee_tao"] },
-      observed_at: NULLABLE_STRING,
-      signer_count: { type: "integer" },
-      signers: objectItems({
-        signer: NULLABLE_STRING,
-        tx_count: NULLABLE_INT,
-        total_fee_tao: { type: ["number", "null"] },
-        total_tip_tao: { type: ["number", "null"] },
-        last_tx_block: NULLABLE_INT,
-      }),
-    },
-  },
-  get_chain_fees: {
-    type: "object",
-    additionalProperties: true,
-    required: ["window", "day_count", "daily", "top_fee_payers"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: { type: "string" },
-      observed_at: NULLABLE_STRING,
-      day_count: { type: "integer" },
-      daily: objectItems({
-        day: NULLABLE_STRING,
-        extrinsic_count: NULLABLE_INT,
-        total_fee_tao: { type: ["number", "null"] },
-        avg_fee_tao: { type: ["number", "null"] },
-        median_fee_tao: { type: ["number", "null"] },
-        total_tip_tao: { type: ["number", "null"] },
-        avg_tip_tao: { type: ["number", "null"] },
-        median_tip_tao: { type: ["number", "null"] },
-      }),
-      top_fee_payers: objectItems({
-        signer: NULLABLE_STRING,
-        total_fee_tao: { type: ["number", "null"] },
-        total_tip_tao: { type: ["number", "null"] },
-        extrinsic_count: NULLABLE_INT,
-      }),
-    },
-  },
-  get_chain_registrations: {
-    type: "object",
-    additionalProperties: true,
-    required: ["window", "subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      network: {
-        type: "object",
-        properties: {
-          distinct_registrants: NULLABLE_INT,
-          registrations: NULLABLE_INT,
-          registrations_per_registrant: { type: ["number", "null"] },
-        },
-      },
-      intensity_distribution: { type: ["object", "null"] },
-      subnets: objectItems({
-        netuid: NULLABLE_INT,
-        distinct_registrants: NULLABLE_INT,
-        registrations: NULLABLE_INT,
-        registrations_per_registrant: { type: ["number", "null"] },
-      }),
-    },
-  },
-  get_chain_deregistrations: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "network", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      // Network rollup over every subnet that saw a NeuronDeregistered event. A
-      // hotkey deregistered on several subnets counts once in
-      // distinct_deregistered_hotkeys. deregistrations_per_hotkey is null when
-      // the network-wide distinct-hotkey count is unavailable/zero (no divide-by-zero).
-      network: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "distinct_deregistered_hotkeys",
-          "deregistrations",
-          "deregistrations_per_hotkey",
-        ],
-        properties: {
-          distinct_deregistered_hotkeys: { type: "integer" },
-          deregistrations: { type: "integer" },
-          deregistrations_per_hotkey: { type: ["number", "null"] },
-        },
-      },
-      // Spread of per-subnet re-deregistration intensity (NeuronDeregistered
-      // events per hotkey) over EVERY subnet that saw a deregistration; null when
-      // no subnet saw a deregistration in the window.
-      intensity_distribution: {
-        type: ["object", "null"],
-        additionalProperties: false,
-        required: [
-          "count",
-          "mean",
-          "min",
-          "p25",
-          "median",
-          "p75",
-          "p90",
-          "max",
-        ],
-        properties: {
-          count: { type: "integer" },
-          mean: { type: "number" },
-          min: { type: "number" },
-          p25: { type: "number" },
-          median: { type: "number" },
-          p75: { type: "number" },
-          p90: { type: "number" },
-          max: { type: "number" },
-        },
-      },
-      // Per-subnet deregistration leaderboard, most NeuronDeregistered events
-      // first. Each listed subnet has at least one distinct deregistered hotkey,
-      // so deregistrations_per_hotkey is always a finite number here.
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "netuid",
-            "distinct_deregistered_hotkeys",
-            "deregistrations",
-            "deregistrations_per_hotkey",
-          ],
-          properties: {
-            netuid: { type: "integer" },
-            distinct_deregistered_hotkeys: { type: "integer" },
-            deregistrations: { type: "integer" },
-            deregistrations_per_hotkey: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_chain_transfers: {
-    type: "object",
-    additionalProperties: false,
-    required: [
-      "schema_version",
-      "window",
-      "observed_at",
-      "total_volume_tao",
-      "transfer_count",
-      "unique_senders",
-      "unique_receivers",
-      "top_sender_share",
-      "top_senders",
-      "top_receivers",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      window: {
-        type: ["string", "null"],
-        enum: [...CHAIN_TRANSFER_WINDOW_KEYS, null],
-      },
-      observed_at: NULLABLE_STRING,
-      total_volume_tao: { type: "number" },
-      transfer_count: { type: "integer", minimum: 0 },
-      unique_senders: { type: "integer", minimum: 0 },
-      unique_receivers: { type: "integer", minimum: 0 },
-      top_sender_share: { type: ["number", "null"] },
-      top_senders: {
-        type: "array",
-        items: CHAIN_TRANSFER_PARTY_ITEM,
-      },
-      top_receivers: {
-        type: "array",
-        items: CHAIN_TRANSFER_PARTY_ITEM,
-      },
-    },
-  },
-  get_chain_transfer_pairs: {
-    type: "object",
-    additionalProperties: false,
-    required: [
-      "schema_version",
-      "window",
-      "sort",
-      "observed_at",
-      "total_volume_tao",
-      "transfer_count",
-      "unique_pairs",
-      "pair_count",
-      "top_pair_share",
-      "pairs",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      window: {
-        type: ["string", "null"],
-        enum: [...CHAIN_TRANSFER_PAIR_WINDOW_KEYS, null],
-      },
-      sort: { type: "string", enum: CHAIN_TRANSFER_PAIR_SORTS },
-      observed_at: NULLABLE_STRING,
-      total_volume_tao: { type: "number" },
-      transfer_count: { type: "integer", minimum: 0 },
-      unique_pairs: { type: "integer", minimum: 0 },
-      pair_count: { type: "integer", minimum: 0 },
-      // Top corridor's share of total volume (0..1), clamped below a flat 1 for a
-      // near-monopoly; null when there is no volume in the window.
-      top_pair_share: { type: ["number", "null"] },
-      // Directed sender->receiver corridors, ranked by the requested sort.
-      pairs: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "from",
-            "to",
-            "volume_tao",
-            "transfer_count",
-            "last_block",
-            "last_observed_at",
-          ],
-          properties: {
-            from: { type: "string" },
-            to: { type: "string" },
-            volume_tao: { type: "number" },
-            transfer_count: { type: "integer", minimum: 0 },
-            last_block: { type: ["integer", "null"] },
-            last_observed_at: NULLABLE_STRING,
-          },
-        },
-      },
-    },
-  },
-  get_network_activity: {
-    type: "object",
-    additionalProperties: true,
-    required: ["window", "day_count", "days"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: { type: "string" },
-      observed_at: NULLABLE_STRING,
-      day_count: { type: "integer" },
-      days: objectItems({
-        day: NULLABLE_STRING,
-        block_count: NULLABLE_INT,
-        extrinsic_count: NULLABLE_INT,
-        event_count: NULLABLE_INT,
-        successful_extrinsics: NULLABLE_INT,
-        success_rate: { type: ["number", "null"] },
-        unique_signers: NULLABLE_INT,
-      }),
-    },
-  },
+  ),
+  get_chain_transfers: z.toJSONSchema(GetChainTransfersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_transfer_pairs: z.toJSONSchema(GetChainTransferPairsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_network_activity: z.toJSONSchema(GetNetworkActivityOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_rpc_usage: {
     type: "object",
     additionalProperties: true,

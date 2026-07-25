@@ -59,3 +59,25 @@ export const AccountEventItemSchema = z
     extrinsic_index: z.int().nullable().optional(),
   })
   .passthrough();
+
+// The 8-field distribution-stats shape (count/mean/min/p25/median/p75/p90/
+// max) 10 of types-epic E batch 9's (#8072) "chain leaderboard" tools use
+// identically for their `*_distribution` field (get_chain_turnover's
+// stability_distribution, get_chain_stake_flow's net_flow_distribution,
+// get_chain_alpha_volume's volume_distribution, and the intensity_distribution
+// on get_chain_weights/stake_moves/stake_transfers/axon_removals/serving/
+// prometheus/deregistrations) -- hoisted here rather than defined 10 times,
+// unlike every other nested shape in this epic which stayed tool-local
+// (those never repeated verbatim across more than 2 tools).
+export const DistributionStatsSchema = z
+  .object({
+    count: z.int(),
+    mean: z.number(),
+    min: z.number(),
+    p25: z.number(),
+    median: z.number(),
+    p75: z.number(),
+    p90: z.number(),
+    max: z.number(),
+  })
+  .strict();
