@@ -115,6 +115,28 @@ import {
   SubnetProfileSchema,
 } from "./routes/subnet-profile.ts";
 import { SubnetOverviewArtifactSchema } from "./routes/subnet-overview.ts";
+import { EconomicsTrendsArtifactSchema } from "./routes/economics-trends.ts";
+import {
+  SubnetConcentrationArtifactSchema,
+  SubnetConcentrationHistoryArtifactSchema,
+} from "./routes/subnet-concentration.ts";
+import { SubnetTurnoverArtifactSchema } from "./routes/subnet-turnover.ts";
+import { SubnetStakeFlowArtifactSchema } from "./routes/subnet-stake-flow.ts";
+import { SubnetStakeMovesArtifactSchema } from "./routes/subnet-stake-moves.ts";
+import { SubnetStakeTransfersArtifactSchema } from "./routes/subnet-stake-transfers.ts";
+import { SubnetOhlcArtifactSchema } from "./routes/subnet-ohlc.ts";
+import {
+  SubnetYieldArtifactSchema,
+  SubnetYieldHistoryArtifactSchema,
+} from "./routes/subnet-yield.ts";
+import { SubnetMoversArtifactSchema } from "./routes/subnet-movers.ts";
+import { SubnetTrajectoryArtifactSchema } from "./routes/subnet-trajectory.ts";
+import {
+  SubnetLeaseArtifactSchema,
+  SubnetLeaseHistoryArtifactSchema,
+} from "./routes/subnet-lease.ts";
+import { SubnetOwnershipHistoryArtifactSchema } from "./routes/subnet-ownership-history.ts";
+import { SubnetConvictionArtifactSchema } from "./routes/subnet-conviction.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -170,6 +192,30 @@ register(SubnetProfileIdentityEvidenceSchema, "SubnetProfileIdentityEvidence");
 register(SubnetProfileSchema, "SubnetProfile");
 register(SubnetOverviewArtifactSchema, "SubnetOverviewArtifact");
 
+// Batch 2 (#8056) additions.
+register(EconomicsTrendsArtifactSchema, "EconomicsTrendsArtifact");
+register(SubnetConcentrationArtifactSchema, "SubnetConcentrationArtifact");
+register(
+  SubnetConcentrationHistoryArtifactSchema,
+  "SubnetConcentrationHistoryArtifact",
+);
+register(SubnetTurnoverArtifactSchema, "SubnetTurnoverArtifact");
+register(SubnetStakeFlowArtifactSchema, "SubnetStakeFlowArtifact");
+register(SubnetStakeMovesArtifactSchema, "SubnetStakeMovesArtifact");
+register(SubnetStakeTransfersArtifactSchema, "SubnetStakeTransfersArtifact");
+register(SubnetOhlcArtifactSchema, "SubnetOhlcArtifact");
+register(SubnetYieldArtifactSchema, "SubnetYieldArtifact");
+register(SubnetYieldHistoryArtifactSchema, "SubnetYieldHistoryArtifact");
+register(SubnetMoversArtifactSchema, "SubnetMoversArtifact");
+register(SubnetTrajectoryArtifactSchema, "SubnetTrajectoryArtifact");
+register(SubnetLeaseArtifactSchema, "SubnetLeaseArtifact");
+register(SubnetLeaseHistoryArtifactSchema, "SubnetLeaseHistoryArtifact");
+register(
+  SubnetOwnershipHistoryArtifactSchema,
+  "SubnetOwnershipHistoryArtifact",
+);
+register(SubnetConvictionArtifactSchema, "SubnetConvictionArtifact");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -220,6 +266,22 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetProfileIdentityEvidence",
   "SubnetProfile",
   "SubnetOverviewArtifact",
+  "EconomicsTrendsArtifact",
+  "SubnetConcentrationArtifact",
+  "SubnetConcentrationHistoryArtifact",
+  "SubnetTurnoverArtifact",
+  "SubnetStakeFlowArtifact",
+  "SubnetStakeMovesArtifact",
+  "SubnetStakeTransfersArtifact",
+  "SubnetOhlcArtifact",
+  "SubnetYieldArtifact",
+  "SubnetYieldHistoryArtifact",
+  "SubnetMoversArtifact",
+  "SubnetTrajectoryArtifact",
+  "SubnetLeaseArtifact",
+  "SubnetLeaseHistoryArtifact",
+  "SubnetOwnershipHistoryArtifact",
+  "SubnetConvictionArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -237,6 +299,15 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
 // registry entry (matches the SubnetEconomics precedent exactly); their
 // hand-edited keys become orphaned the moment their one referrer is
 // Zod-owned and inlines them instead.
+// Batch 2 (#8056) additions: EconomicsTrendsDay/SubnetOhlcCandle/SubnetLease/
+// SubnetLeaseEvent/SubnetOwnershipChange/SubnetConvictionEntry are each
+// referenced only by the one hand-edited component this batch replaces
+// (EconomicsTrendsArtifact/SubnetOhlcArtifact/SubnetLeaseArtifact/
+// SubnetLeaseHistoryArtifact/SubnetOwnershipHistoryArtifact/
+// SubnetConvictionArtifact respectively -- verified via repo-wide $ref grep,
+// same test as the batch 1 additions above). Not worth a standalone registry
+// entry; their hand-edited keys become orphaned the moment their one
+// referrer is Zod-owned and inlines them instead.
 export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "SubnetEconomics",
   "SubnetProfileNativeIdentity",
@@ -247,4 +318,10 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "SubnetEventCategorySummary",
   "SubnetEventKindSummary",
   "SubnetIdentityHistoryEntry",
+  "EconomicsTrendsDay",
+  "SubnetOhlcCandle",
+  "SubnetLease",
+  "SubnetLeaseEvent",
+  "SubnetOwnershipChange",
+  "SubnetConvictionEntry",
 ] as const;
