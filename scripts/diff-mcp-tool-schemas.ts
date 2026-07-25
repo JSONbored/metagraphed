@@ -1,5 +1,5 @@
 // Equivalence-diff audit for the Zod-generated MCP tool schemas (types-epic
-// E, #7863 requirement 3): compares each pilot-batch tool's Zod-generated
+// E, #7863 requirement 3): compares each converted tool's Zod-generated
 // input/output JSON Schema against the hand-written literal it replaces,
 // after normalizing the specific cosmetic differences z.toJSONSchema()
 // introduces (documented inline below, mirroring
@@ -7,14 +7,22 @@
 // Anything left after normalization is a real difference and must be
 // resolved before merge, not silenced here.
 //
-// The "old" schemas are hand-transcribed from the literals this PR's
-// conversion commit replaced (see that commit's diff for
-// src/mcp-server.ts / src/global-operational-health.ts /
-// src/network-economics.ts) -- there is no structured old artifact to read
+// The "old" schemas are hand-transcribed from the literals each batch's
+// conversion commit replaced (see that commit's diff for src/mcp-server.ts /
+// src/global-operational-health.ts / src/network-economics.ts /
+// src/health-history-mcp.ts) -- there is no structured old artifact to read
 // (unlike B's hand-edited JSON Schema files), since the originals were
 // inline JS object literals inside .ts source, not their own JSON files.
 // Kept here as the audit's fixed baseline; add a new OLD_SCHEMAS entry
 // (never edit an existing one) for each future batch under this issue.
+// Batch 1 (pilot, #7863, PR #8087): search_subnets, list_subnets,
+// get_subnet, get_network_health, get_subnet_stake_quote, get_economics.
+// Batch 2 (#8065): find_subnets_by_capability, get_subnet_detail,
+// get_subnet_snapshot, get_subnet_health(+trends/percentiles/incidents),
+// get_health_trends, get_subnet_economics, get_stake_action_preview,
+// get_subnet_trajectory, get_subnet_concentration, get_subnet_performance,
+// get_subnet_idle_stake, get_subnet_movers, get_subnet_uptime,
+// get_health_history.
 import { z } from "zod";
 import {
   SearchSubnetsInputSchema,
@@ -40,11 +48,80 @@ import {
   GetEconomicsInputSchema,
   GetEconomicsOutputSchema,
 } from "../schemas-src/mcp-tools/get-economics.ts";
+import {
+  FindSubnetsByCapabilityInputSchema,
+  FindSubnetsByCapabilityOutputSchema,
+} from "../schemas-src/mcp-tools/find-subnets-by-capability.ts";
+import {
+  GetSubnetDetailInputSchema,
+  GetSubnetDetailOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-detail.ts";
+import {
+  GetSubnetSnapshotInputSchema,
+  GetSubnetSnapshotOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-snapshot.ts";
+import {
+  GetSubnetHealthInputSchema,
+  GetSubnetHealthOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health.ts";
+import {
+  GetSubnetHealthTrendsInputSchema,
+  GetSubnetHealthTrendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health-trends.ts";
+import {
+  GetHealthTrendsInputSchema,
+  GetHealthTrendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-health-trends.ts";
+import {
+  GetSubnetHealthPercentilesInputSchema,
+  GetSubnetHealthPercentilesOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health-percentiles.ts";
+import {
+  GetSubnetHealthIncidentsInputSchema,
+  GetSubnetHealthIncidentsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-health-incidents.ts";
+import {
+  GetSubnetEconomicsInputSchema,
+  GetSubnetEconomicsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-economics.ts";
+import {
+  GetStakeActionPreviewInputSchema,
+  GetStakeActionPreviewOutputSchema,
+} from "../schemas-src/mcp-tools/get-stake-action-preview.ts";
+import {
+  GetSubnetTrajectoryInputSchema,
+  GetSubnetTrajectoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-trajectory.ts";
+import {
+  GetSubnetConcentrationInputSchema,
+  GetSubnetConcentrationOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-concentration.ts";
+import {
+  GetSubnetPerformanceInputSchema,
+  GetSubnetPerformanceOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-performance.ts";
+import {
+  GetSubnetIdleStakeInputSchema,
+  GetSubnetIdleStakeOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-idle-stake.ts";
+import {
+  GetSubnetMoversInputSchema,
+  GetSubnetMoversOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-movers.ts";
+import {
+  GetSubnetUptimeInputSchema,
+  GetSubnetUptimeOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-uptime.ts";
+import {
+  GetHealthHistoryInputSchema,
+  GetHealthHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-health-history.ts";
 
 type Row = Record<string, unknown>;
 
 const NULLABLE_STRING = { type: ["string", "null"] };
 const NULLABLE_INT = { type: ["integer", "null"] };
+const ANY = {};
 const objectItems = (properties: Row = {}) => ({
   type: "array",
   items: { type: "object", additionalProperties: true, properties },
@@ -93,6 +170,58 @@ const ECONOMICS_SORT_FIELDS = [
   "subnet_volume_tao",
   "total_stake_tao",
   "validator_count",
+];
+// Batch-2 (#8065) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/movers.ts's MOVERS_WINDOWS/MOVERS_SORTS,
+// src/contracts.ts's QUERY_ENUMS/API_QUERY_COLLECTIONS), cross-checked
+// against the actual runtime source at the time of writing.
+const HEALTH_WINDOWS = ["7d", "30d"];
+const UPTIME_WINDOWS = ["90d", "1y"];
+const MOVERS_WINDOW_KEYS = ["7d", "30d", "90d"];
+const MOVERS_SORTS = ["stake", "emission", "validators", "neurons"];
+const MOVERS_LIMIT_MAX = 100;
+const SURFACE_KIND = [
+  "archive",
+  "dashboard",
+  "data-artifact",
+  "docs",
+  "example",
+  "openapi",
+  "repo-registry",
+  "sdk",
+  "source-repo",
+  "sse",
+  "subnet-api",
+  "subtensor-rpc",
+  "subtensor-wss",
+  "website",
+];
+const HEALTH_STATUS = ["ok", "degraded", "failed", "unknown"];
+const HEALTH_CLASSIFICATION = [
+  "auth-required",
+  "content-mismatch",
+  "dead",
+  "live",
+  "rate-limited",
+  "redirected",
+  "timeout",
+  "transient",
+  "unsupported",
+  "unsafe",
+  "wrong-chain",
+];
+const HEALTH_SURFACE_SORT_FIELDS = [
+  "classification",
+  "kind",
+  "last_checked",
+  "last_ok",
+  "latency_ms",
+  "netuid",
+  "provider",
+  "status",
+  "status_code",
+  "surface_id",
+  "verified_at",
 ];
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
@@ -345,6 +474,512 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  find_subnets_by_capability: {
+    input: {
+      type: "object",
+      properties: {
+        capability: { type: "string" },
+        cursor: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 50 },
+      },
+      required: ["capability"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "capability",
+        "total",
+        "count",
+        "cursor",
+        "limit",
+        "next_cursor",
+        "results",
+      ],
+      properties: {
+        capability: { type: "string" },
+        total: { type: "integer" },
+        count: { type: "integer" },
+        cursor: { type: "integer" },
+        limit: { type: "integer" },
+        next_cursor: { type: ["integer", "null"] },
+        results: objectItems({
+          netuid: { type: "integer" },
+          slug: { type: "string" },
+          name: NULLABLE_STRING,
+          categories: { type: "array" },
+          service_kinds: { type: "array" },
+          callable_count: { type: "integer" },
+          integration_readiness: ANY,
+        }),
+      },
+    },
+  },
+  get_subnet_detail: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet"],
+      properties: {
+        schema_version: { type: "integer" },
+        generated_at: NULLABLE_STRING,
+        subnet: { type: "object" },
+        candidate_surfaces: { type: "array" },
+        candidates: { type: "array" },
+        endpoints: { type: "array" },
+        gaps: ANY,
+        surfaces: { type: "array" },
+        verified_surfaces: { type: "array" },
+        economics: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_subnet_snapshot: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        top_validators_limit: { type: "integer", minimum: 1 },
+        recent_events_limit: { type: "integer", minimum: 1, maximum: 1000 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "hyperparameters",
+        "concentration",
+        "performance",
+        "top_validators",
+        "recent_events",
+      ],
+      properties: {
+        netuid: { type: "integer" },
+        hyperparameters: { type: "object" },
+        concentration: { type: "object" },
+        performance: { type: "object" },
+        top_validators: { type: "object" },
+        recent_events: { type: "object" },
+      },
+    },
+  },
+  get_subnet_health: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "summary", "surfaces"],
+      properties: {
+        netuid: { type: "integer" },
+        summary: { type: "object" },
+        operational_observed_at: NULLABLE_STRING,
+        surfaces: objectItems({
+          surface_id: { type: "string" },
+          netuid: { type: "integer" },
+          kind: NULLABLE_STRING,
+          status: { type: "string" },
+          latency_ms: NULLABLE_INT,
+          last_checked: NULLABLE_STRING,
+          last_ok: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_subnet_health_trends: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "windows"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        observed_at: NULLABLE_STRING,
+        source: NULLABLE_STRING,
+        windows: { type: "object" },
+      },
+    },
+  },
+  get_health_trends: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["windows"],
+      properties: {
+        schema_version: { type: "integer" },
+        observed_at: NULLABLE_STRING,
+        source: NULLABLE_STRING,
+        windows: { type: "object" },
+      },
+    },
+  },
+  get_subnet_health_percentiles: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HEALTH_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "surfaces"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        source: NULLABLE_STRING,
+        surfaces: objectItems({
+          surface_id: NULLABLE_STRING,
+          samples: { type: "integer" },
+          latency_ms: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              p50: NULLABLE_INT,
+              p95: NULLABLE_INT,
+              p99: NULLABLE_INT,
+              avg: NULLABLE_INT,
+              min: NULLABLE_INT,
+              max: NULLABLE_INT,
+            },
+          },
+        }),
+      },
+    },
+  },
+  get_subnet_health_incidents: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HEALTH_WINDOWS },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "surfaces"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        source: NULLABLE_STRING,
+        surfaces: objectItems({
+          surface_id: NULLABLE_STRING,
+          samples: { type: "integer" },
+          uptime_ratio: { type: ["number", "null"] },
+          incident_count: { type: "integer" },
+          downtime_ms: { type: "integer" },
+          incidents: objectItems({
+            started_at: NULLABLE_INT,
+            ended_at: NULLABLE_INT,
+            duration_ms: NULLABLE_INT,
+            failed_samples: { type: "integer" },
+          }),
+        }),
+      },
+    },
+  },
+  get_subnet_economics: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "economics"],
+      properties: {
+        netuid: { type: "integer" },
+        source: NULLABLE_STRING,
+        captured_at: NULLABLE_STRING,
+        summary: { type: ["object", "null"] },
+        economics: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_stake_action_preview: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        amount: { type: "number", exclusiveMinimum: 0 },
+        direction: { type: "string", enum: STAKE_QUOTE_DIRECTIONS },
+      },
+      required: ["netuid", "amount"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer" },
+        direction: { type: "string" },
+        amount: { type: "number" },
+        summary: { type: "string" },
+        estimated_out: {
+          type: "object",
+          properties: {
+            amount: { type: "number" },
+            unit: { type: "string" },
+          },
+          required: ["amount", "unit"],
+          additionalProperties: false,
+        },
+        spot_price_tao: { type: "number" },
+        effective_price_tao: { type: "number" },
+        price_impact_pct: { type: "number" },
+        warnings: { type: "array", items: { type: "string" } },
+        ok: { type: "boolean" },
+        disclaimer: { type: "string" },
+      },
+      required: [
+        "netuid",
+        "direction",
+        "amount",
+        "summary",
+        "warnings",
+        "ok",
+        "disclaimer",
+      ],
+      additionalProperties: true,
+    },
+  },
+  get_subnet_trajectory: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        point_count: { type: "integer" },
+        points: { type: "array", items: { type: "object" } },
+        deltas: { type: "object" },
+      },
+    },
+  },
+  get_subnet_concentration: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "neuron_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        neuron_count: { type: "integer" },
+        entity_count: { type: "integer" },
+        uids_per_entity: { type: ["number", "null"] },
+        captured_at: NULLABLE_STRING,
+        stake: { type: ["object", "null"] },
+        emission: { type: ["object", "null"] },
+        entity_stake: { type: ["object", "null"] },
+        entity_emission: { type: ["object", "null"] },
+        validator_stake: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_subnet_performance: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "neuron_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        neuron_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        active_count: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        incentive: { type: ["object", "null"] },
+        dividends: { type: ["object", "null"] },
+        trust: { type: ["object", "null"] },
+        consensus: { type: ["object", "null"] },
+        validator_trust: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_subnet_idle_stake: {
+    input: {
+      type: "object",
+      properties: { netuid: { type: "integer", minimum: 0 } },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "netuid",
+        "neuron_count",
+        "idle_neuron_count",
+        "idle_stake_tao",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        neuron_count: { type: "integer" },
+        idle_neuron_count: { type: "integer" },
+        idle_stake_tao: { type: "number" },
+      },
+    },
+  },
+  get_subnet_movers: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: MOVERS_WINDOW_KEYS },
+        sort: { type: "string", enum: MOVERS_SORTS },
+        limit: { type: "integer", minimum: 1, maximum: MOVERS_LIMIT_MAX },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["window", "sort", "subnet_count", "movers"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        start_date: NULLABLE_STRING,
+        end_date: NULLABLE_STRING,
+        sort: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        movers: objectItems({
+          netuid: { type: "integer" },
+          stake_start_tao: ANY,
+          stake_end_tao: ANY,
+          stake_delta_tao: ANY,
+          stake_pct_change: { type: ["number", "null"] },
+          emission_start_tao: ANY,
+          emission_end_tao: ANY,
+          emission_delta_tao: ANY,
+          emission_pct_change: { type: ["number", "null"] },
+          validators_start: { type: "integer" },
+          validators_end: { type: "integer" },
+          validators_delta: { type: "integer" },
+          neurons_start: { type: "integer" },
+          neurons_end: { type: "integer" },
+          neurons_delta: { type: "integer" },
+        }),
+      },
+    },
+  },
+  get_subnet_uptime: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: UPTIME_WINDOWS },
+        min_samples: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window", "surfaces"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        surfaces: { type: "array", items: { type: "object" } },
+        reliability: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_health_history: {
+    input: {
+      type: "object",
+      properties: {
+        date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        status: { type: "string", enum: HEALTH_STATUS },
+        classification: { type: "string", enum: HEALTH_CLASSIFICATION },
+        sort: { type: "string", enum: HEALTH_SURFACE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["date"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["date", "surfaces"],
+      properties: {
+        date: NULLABLE_STRING,
+        summary: { type: ["object", "null"] },
+        surfaces: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -368,6 +1003,74 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
   get_economics: {
     input: GetEconomicsInputSchema,
     output: GetEconomicsOutputSchema,
+  },
+  find_subnets_by_capability: {
+    input: FindSubnetsByCapabilityInputSchema,
+    output: FindSubnetsByCapabilityOutputSchema,
+  },
+  get_subnet_detail: {
+    input: GetSubnetDetailInputSchema,
+    output: GetSubnetDetailOutputSchema,
+  },
+  get_subnet_snapshot: {
+    input: GetSubnetSnapshotInputSchema,
+    output: GetSubnetSnapshotOutputSchema,
+  },
+  get_subnet_health: {
+    input: GetSubnetHealthInputSchema,
+    output: GetSubnetHealthOutputSchema,
+  },
+  get_subnet_health_trends: {
+    input: GetSubnetHealthTrendsInputSchema,
+    output: GetSubnetHealthTrendsOutputSchema,
+  },
+  get_health_trends: {
+    input: GetHealthTrendsInputSchema,
+    output: GetHealthTrendsOutputSchema,
+  },
+  get_subnet_health_percentiles: {
+    input: GetSubnetHealthPercentilesInputSchema,
+    output: GetSubnetHealthPercentilesOutputSchema,
+  },
+  get_subnet_health_incidents: {
+    input: GetSubnetHealthIncidentsInputSchema,
+    output: GetSubnetHealthIncidentsOutputSchema,
+  },
+  get_subnet_economics: {
+    input: GetSubnetEconomicsInputSchema,
+    output: GetSubnetEconomicsOutputSchema,
+  },
+  get_stake_action_preview: {
+    input: GetStakeActionPreviewInputSchema,
+    output: GetStakeActionPreviewOutputSchema,
+  },
+  get_subnet_trajectory: {
+    input: GetSubnetTrajectoryInputSchema,
+    output: GetSubnetTrajectoryOutputSchema,
+  },
+  get_subnet_concentration: {
+    input: GetSubnetConcentrationInputSchema,
+    output: GetSubnetConcentrationOutputSchema,
+  },
+  get_subnet_performance: {
+    input: GetSubnetPerformanceInputSchema,
+    output: GetSubnetPerformanceOutputSchema,
+  },
+  get_subnet_idle_stake: {
+    input: GetSubnetIdleStakeInputSchema,
+    output: GetSubnetIdleStakeOutputSchema,
+  },
+  get_subnet_movers: {
+    input: GetSubnetMoversInputSchema,
+    output: GetSubnetMoversOutputSchema,
+  },
+  get_subnet_uptime: {
+    input: GetSubnetUptimeInputSchema,
+    output: GetSubnetUptimeOutputSchema,
+  },
+  get_health_history: {
+    input: GetHealthHistoryInputSchema,
+    output: GetHealthHistoryOutputSchema,
   },
 };
 
