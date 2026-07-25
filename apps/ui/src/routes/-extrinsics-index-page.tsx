@@ -1,0 +1,408 @@
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { SuccessBadge } from "@/components/metagraphed/success-badge";
+import { useRefetchInterval } from "@/hooks/use-refetch-interval";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import {
+  PageSizeSelect,
+  ResetFiltersButton,
+  SearchInput,
+  SelectFilter,
+} from "@/components/metagraphed/table-controls";
+import { AccountAddress } from "@/components/metagraphed/account-address";
+import {
+  TimeAgo,
+  ListShell,
+  ShareButton,
+  ActionBar,
+  CopyableCode,
+  CopyButton,
+  DownloadCsvButton,
+  Sparkline,
+} from "@jsonbored/ui-kit";
+import { AsyncPanel, PageMasthead, PagerFooter, Panel } from "@/components/metagraphed/primitives";
+import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
+import { buildUrl } from "@/lib/metagraphed/client";
+import { shortHash } from "@/lib/metagraphed/blocks";
+import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
+import { API_BASE } from "@/lib/metagraphed/config";
+import type { Extrinsic } from "@/lib/metagraphed/types";
+import type { ExtrinsicsSearch } from "./extrinsics.index";
+
+function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string | number> {
+  const queryParams: Record<string, string | number> = {
+    limit: search.limit,
+    offset: search.offset,
+  };
+  if (search.signer) queryParams.signer = search.signer;
+  if (search.call_module) queryParams.call_module = search.call_module;
+  if (search.call_function) queryParams.call_function = search.call_function;
+  if (search.success) queryParams.success = search.success;
+  return queryParams;
+}
+
+export function ExtrinsicsPage() {
+  const search = useSearch({ from: "/extrinsics/" });
+  const extrinsicsCsvUrl = buildUrl("/api/v1/extrinsics", extrinsicsQueryParams(search));
+
+  return (
+    <AppShell>
+      <PageMasthead
+        eyebrow="Explorer"
+        live
+        title="Extrinsics"
+        description="Recent Bittensor extrinsics (transactions) indexed directly from the chain — newest first, with call, signer, and success."
+        actions={
+          <>
+            <ActionBar>
+              <DownloadCsvButton url={extrinsicsCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
+          </>
+        }
+      />
+      <AsyncPanel
+        context="fees trend"
+        fallback={<Skeleton className="mb-6 h-24 w-full" />}
+        retryQueryKeys={[chainFeesQuery("7d").queryKey]}
+      >
+        <FeesTrendCard />
+      </AsyncPanel>
+      <AsyncPanel context="extrinsics" fallback={<Skeleton className="h-96 w-full" />}>
+        <ExtrinsicsTable />
+      </AsyncPanel>
+      <ApiSourceFooter
+        paths={["/api/v1/extrinsics", "/api/v1/chain/fees"]}
+        artifacts={["/metagraph/extrinsics.json"]}
+      />
+    </AppShell>
+  );
+}
+
+/**
+ * Fees-over-time sparkline (#3385) — reuses chainFeesQuery + Sparkline the same
+ * way explorer.tsx charts "Total fees". Fixed 7d window; no ?window= toggle here.
+ */
+function FeesTrendCard() {
+  const fees = useSuspenseQuery(chainFeesQuery("7d")).data.data;
+  const feeChrono = [...fees.daily].reverse();
+  const values = feeChrono.map((d) => d.total_fee_tao);
+  const latest = values.length > 0 ? values[values.length - 1]! : null;
+
+  return (
+    <Panel as="section" flush className="mb-6">
+      <div className="p-4 sm:p-6">
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <h2 className="mg-type-micro text-ink-muted">Fees, last 7d</h2>
+            <span className="mg-type-data text-ink-muted">{fees.day_count} days</span>
+          </div>
+          <span className="mg-type-data tabular-nums text-ink-strong">
+            {latest == null ? "—" : formatTao(latest)}
+          </span>
+        </div>
+        <Sparkline
+          values={values}
+          points={feeChrono.map((d) => ({ t: d.day, v: d.total_fee_tao }))}
+          width={640}
+          height={48}
+          color="var(--accent)"
+          ariaLabel="Daily total fees"
+          formatValue={formatTao}
+        />
+      </div>
+    </Panel>
+  );
+}
+
+function ExtrinsicsTable() {
+  const search = useSearch({ from: "/extrinsics/" });
+  const navigate = useNavigate({ from: "/extrinsics/" });
+
+  // Only send filters the user actually set, so an empty bar is the plain feed.
+  const queryParams = extrinsicsQueryParams(search);
+
+  // Extrinsics turn over as fast as blocks — poll the first page only, so
+  // paging through older extrinsics (offset > 0) isn't yanked or reflowed mid-read.
+  const refetchInterval = useRefetchInterval(15_000, search.offset === 0);
+  const rows = (useSuspenseQuery({ ...extrinsicsQuery(queryParams), refetchInterval }).data.data ??
+    []) as Extrinsic[];
+
+  // Offset pagination: the API returns newest-first pages with no total. A full
+  // page (rows === limit) implies more may exist; a short page is the tail.
+  const hasPrev = search.offset > 0;
+  const hasNext = rows.length === search.limit;
+
+  const setSearch = (patch: Record<string, unknown>) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
+      resetScroll: false,
+    });
+
+  const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
+  const goNext = () => setSearch({ offset: search.offset + search.limit });
+
+  const rowKey = (x: Extrinsic) =>
+    x.extrinsic_hash || `${x.block_number ?? "?"}-${x.extrinsic_index ?? "?"}`;
+
+  const filtersActive = Boolean(
+    search.signer || search.call_module || search.call_function || search.success,
+  );
+
+  const activeCount = activeFilterCount([
+    search.signer,
+    search.call_module,
+    search.call_function,
+    search.success,
+  ]);
+  // Same treatment as /blocks (#5323) — a lighter four-filter bar, but it still
+  // pushed the first extrinsic row down on a 375px viewport.
+  const [filtersOpen, setFiltersOpen] = useState(activeCount > 0);
+
+  const filters = (
+    <>
+      <button
+        type="button"
+        onClick={() => setFiltersOpen((open) => !open)}
+        aria-expanded={filtersOpen}
+        aria-controls="extrinsics-filter-fields"
+        className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
+      >
+        <SlidersHorizontal className="size-3" aria-hidden="true" />
+        {filterToggleLabel(activeCount)}
+      </button>
+      {/* `md:contents` dissolves this wrapper at md and up, so the fields lay out
+          as direct children of the filter bar exactly as they did before. */}
+      <div
+        id="extrinsics-filter-fields"
+        className={classNames(
+          "w-full flex-wrap items-center gap-2 md:contents",
+          filtersOpen ? "flex" : "hidden",
+        )}
+      >
+        <SearchInput
+          value={search.signer}
+          onChange={(v) => setSearch({ signer: v, offset: 0 })}
+          placeholder="Signer ss58…"
+        />
+        <SearchInput
+          value={search.call_module}
+          onChange={(v) => setSearch({ call_module: v, offset: 0 })}
+          placeholder="Call module…"
+        />
+        <SearchInput
+          value={search.call_function}
+          onChange={(v) => setSearch({ call_function: v, offset: 0 })}
+          placeholder="Call function…"
+        />
+        <SelectFilter
+          label="Result"
+          value={search.success}
+          onChange={(v) => setSearch({ success: v, offset: 0 })}
+          options={[
+            { value: "true", label: "ok" },
+            { value: "false", label: "fail" },
+          ]}
+        />
+        <PageSizeSelect
+          value={search.limit}
+          onChange={(n) => setSearch({ limit: n, offset: 0 })}
+          options={[10, 25, 50, 100]}
+        />
+        <ResetFiltersButton
+          active={filtersActive}
+          onReset={() =>
+            setSearch({
+              signer: "",
+              call_module: "",
+              call_function: "",
+              success: "",
+              offset: 0,
+            })
+          }
+        />
+      </div>
+    </>
+  );
+
+  const emptyNode = (
+    <EmptyState
+      title="No extrinsics indexed yet"
+      description="The chain poller fills this every few minutes — check back shortly, or open the API directly."
+      action={{
+        label: "Open /api/v1/extrinsics",
+        href: `${API_BASE}/api/v1/extrinsics`,
+        external: true,
+      }}
+    />
+  );
+
+  const footerNode = (
+    <div className="px-4 py-2">
+      <PagerFooter
+        summary={
+          rows.length
+            ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
+            : "0"
+        }
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        onPrev={goPrev}
+        onNext={goNext}
+      />
+    </div>
+  );
+
+  return (
+    <ListShell
+      filters={filters}
+      isEmpty={rows.length === 0}
+      empty={emptyNode}
+      cards={rows.map((x) => (
+        <HashCardOrLink key={rowKey(x)} x={x} />
+      ))}
+      table={
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 z-[var(--mg-z-sticky)] mg-glass shadow-[var(--mg-shadow-hairline)]">
+            <tr>
+              <th className="px-4 py-2.5">Hash</th>
+              <th className="px-4 py-2.5">Block</th>
+              <th className="px-4 py-2.5">Call</th>
+              <th className="px-4 py-2.5">Signer</th>
+              <th className="px-4 py-2.5">Result</th>
+              <th className="px-4 py-2.5 text-right">Observed</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((x) => (
+              <tr key={rowKey(x)} className="mg-row-accent hover:bg-surface/40">
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                  {x.extrinsic_hash ? (
+                    <span className="inline-flex items-center gap-1 min-w-0">
+                      <Link
+                        to="/extrinsics/$hash"
+                        params={{ hash: x.extrinsic_hash }}
+                        className="font-medium text-ink-strong hover:underline truncate"
+                        title={x.extrinsic_hash}
+                      >
+                        {shortHash(x.extrinsic_hash)}
+                      </Link>
+                      <CopyButton value={x.extrinsic_hash} label="extrinsic hash" compact />
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 font-mono mg-type-caption">
+                  {x.block_number != null ? (
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: String(x.block_number) }}
+                      className="text-ink hover:underline"
+                    >
+                      #{formatNumber(x.block_number)}
+                      {x.extrinsic_index != null ? (
+                        <span className="text-ink-muted">·{x.extrinsic_index}</span>
+                      ) : null}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 mg-type-data text-ink">
+                  {extrinsicCall(x.call_module, x.call_function)}
+                </td>
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
+                  <AccountAddress
+                    ss58={x.signer}
+                    compact
+                    fallback={
+                      x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"
+                    }
+                  />
+                </td>
+                <td className="px-4 py-2.5 mg-type-data">
+                  <SuccessBadge success={x.success} />
+                </td>
+                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+                  <TimeAgo at={x.observed_at} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      }
+      footer={footerNode}
+    />
+  );
+}
+
+function HashCardOrLink({ x }: { x: Extrinsic }) {
+  const className = "block rounded border border-border bg-card p-3 min-h-11 active:bg-surface";
+  const inner = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          {x.extrinsic_hash ? (
+            <>
+              <span className="font-mono mg-type-caption font-medium text-ink-strong truncate">
+                {shortHash(x.extrinsic_hash)}
+              </span>
+              <span
+                role="presentation"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <CopyButton value={x.extrinsic_hash} label="extrinsic hash" compact />
+              </span>
+            </>
+          ) : (
+            <span className="font-mono mg-type-caption font-medium text-ink-strong">(no hash)</span>
+          )}
+        </div>
+        <span className="mg-type-data text-ink-muted shrink-0">
+          <TimeAgo at={x.observed_at} />
+        </span>
+      </div>
+      <div className="mt-1 mg-type-data text-ink truncate">
+        {extrinsicCall(x.call_module, x.call_function)}
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
+        <span className="shrink-0">
+          {x.block_number != null ? `#${formatNumber(x.block_number)}` : "—"}
+        </span>
+        {x.signer ? (
+          <span
+            role="presentation"
+            className="min-w-0 max-w-[55%]"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <CopyableCode value={x.signer} className="w-full" />
+          </span>
+        ) : (
+          <span>no signer</span>
+        )}
+        <SuccessBadge success={x.success} />
+      </div>
+    </>
+  );
+  return x.extrinsic_hash ? (
+    <Link to="/extrinsics/$hash" params={{ hash: x.extrinsic_hash }} className={className}>
+      {inner}
+    </Link>
+  ) : (
+    <div className={className}>{inner}</div>
+  );
+}
