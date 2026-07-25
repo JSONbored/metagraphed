@@ -113,6 +113,45 @@ shape/format should be mirrored, per `.claude/skills/metagraphed/reference.md`'s
 Before publishing any batch, reread each finished issue body end-to-end — not just the diff of what
 changed — to catch exactly this class of self-contradiction.
 
+## Full-scope completeness is mandatory — no partial-credit issues (reinforced 2026-07-25)
+
+Maintainer's own words, 2026-07-25: "contributors will throw their AI tools at this for the least
+path of resistance and submit the shittiest / lowest quality stuff possible to get it completed as
+fast as possible unless we are extremely explicit on exactly what we expect... I expect the entire
+issue done flawlessly start to finish, not broken up into smaller pieces and nothing skipped."
+
+This extends the "Reuse-existing-pattern is mandatory" rule above from *which shape to follow* to
+*how much of it must ship*. Every generated issue must leave zero room for a contributor's AI-harness
+agent to rationally conclude that implementing a subset of the Deliverables checklist, or the
+laziest-possible interpretation of a Requirement, satisfies the issue.
+
+**How to apply when authoring a new issue:**
+
+- **Requirements must be concrete and testable, never open to interpretation.** Not "add filters to
+  X" — name every filter param, its type, its validation behavior, and cite the exact sibling
+  route/field whose parameter-handling to mirror (per the precedent-callout rule above).
+- **Every item in the Deliverables checklist ships together, in one PR, or the issue is not done.**
+  Say this explicitly in the issue body (a fixed closing line, see the template below) — don't rely on
+  the checklist format alone to imply it. A PR that completes 2 of 4 checklist items and asks to land
+  is a partial delivery, not a done issue.
+- **Expected Outcome must be a falsifiable end-state, not a vague direction.** Someone (or an
+  automated reviewer) must be able to check yes/no from the PR diff alone — "the field now supports a
+  `sort` and `order` param, matching `<sibling route>`'s validation" is falsifiable; "the field is
+  improved" is not.
+- **Don't under-scope a coherent unit of work just to make the issue look more approachable** — an
+  issue whose own Requirements are incomplete, or whose Deliverables can be half-satisfied and still
+  plausibly read as "done," invites exactly the shortcut-taking this section exists to prevent. This is
+  separate from splitting a genuinely large epic into multiple *sequential, individually-complete*
+  issues (e.g. the `types-epic B batch N` family) — each batch issue is itself fully scoped and
+  independently completable end to end, and that decomposition is fine. What's not fine is a single
+  issue that itself ships incomplete or half-satisfiable.
+- Before publishing, reread the finished issue body and ask: "if a contributor did the least possible
+  work that could arguably satisfy this text, would that match what the maintainer actually wants
+  shipped?" If there's daylight between those two, tighten the text until there isn't.
+
+Applies to every new issue from Pass 2 and Pass 3, and to any existing issue's body that Pass 1
+rewrites for clarity — this is a standing authoring bar, not a one-time pass.
+
 ## Issue body template
 
 ```md
@@ -129,9 +168,12 @@ changed — to catch exactly this class of self-contradiction.
 - [ ] <concrete artifact 1>
 - [ ] <concrete artifact 2>
 
+All of the above ship together in one PR — a PR that completes only some of these items does not
+satisfy this issue.
+
 ## Expected Outcome
 
-<what's true after this ships that wasn't true before>
+<what's true after this ships that wasn't true before — falsifiable from the PR diff alone>
 
 ## Links & Resources
 
