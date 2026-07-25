@@ -2,7 +2,12 @@
 // Serves the baked /metagraph/adapters/{slug}.json artifact (adapter-backed
 // public metrics for one subnet slug).
 
+import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
+import {
+  GetAdapterInputSchema,
+  GetAdapterOutputSchema,
+} from "../schemas-src/mcp-tools/get-adapter.ts";
 
 export const ADAPTER_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -94,39 +99,14 @@ export const GET_ADAPTER_MCP_TOOL = {
     "captured adapter snapshot, extension metadata, and netuid linkage. Use it " +
     "after list_candidates or get_subnet to inspect how a subnet's public metrics " +
     "are adapter-projected. Mirrors GET /api/v1/adapters/{slug}.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      slug: {
-        type: "string",
-        pattern: "^[a-z0-9-]+$",
-        description: "Adapter slug, e.g. 'gittensor', 'allways', or 'sn-64'.",
-      },
-    },
-    required: ["slug"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetAdapterInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const GET_ADAPTER_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["schema_version", "slug"],
-  properties: {
-    schema_version: { type: "integer" },
-    contract_version: NULLABLE_STRING,
-    generated_at: NULLABLE_STRING,
-    slug: { type: "string" },
-    subnet: NULLABLE_STRING,
-    netuid: NULLABLE_INT,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    snapshot: { type: ["object", "null"] },
-    extensions: { type: ["object", "null"] },
+export const GET_ADAPTER_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetAdapterOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

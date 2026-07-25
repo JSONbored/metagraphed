@@ -145,7 +145,8 @@ describe("agent-resources-mcp", () => {
     assert.equal(GET_AGENT_RESOURCES_MCP_TOOL.name, "get_agent_resources");
     assert.match(GET_AGENT_RESOURCES_INSTRUCTIONS, /get_agent_resources/);
     assert.deepEqual(
-      Object.keys(GET_AGENT_RESOURCES_MCP_TOOL.inputSchema.properties),
+      // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
+      Object.keys(GET_AGENT_RESOURCES_MCP_TOOL.inputSchema.properties ?? {}),
       [],
     );
     assert.ok(

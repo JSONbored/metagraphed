@@ -807,6 +807,47 @@ import {
   ListProviderEndpointsInputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 import {
+  GetLineageInputSchema,
+  GetLineageOutputSchema,
+  GetFreshnessInputSchema,
+  GetFreshnessOutputSchema,
+  GetSourceHealthInputSchema,
+  GetSourceHealthOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
+import {
+  GetCoverageDepthInputSchema,
+  GetCoverageDepthOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import { GetFeedInputSchema } from "../schemas-src/mcp-tools/feed.ts";
+import { GetAdapterInputSchema } from "../schemas-src/mcp-tools/get-adapter.ts";
+import {
+  GetAgentCatalogInputSchema,
+  GetAgentCatalogOutputSchema,
+} from "../schemas-src/mcp-tools/agent-catalog-resources.ts";
+import {
+  GetRpcUsageInputSchema,
+  GetRpcUsageOutputSchema,
+  GetBestRpcEndpointInputSchema,
+  GetBestRpcEndpointOutputSchema,
+  CallRpcInputSchema,
+  CallRpcOutputSchema,
+} from "../schemas-src/mcp-tools/rpc-tools.ts";
+import {
+  QueryGraphqlInputSchema,
+  QueryGraphqlOutputSchema,
+  RunSavedQueryInputSchema,
+  RunSavedQueryOutputSchema,
+} from "../schemas-src/mcp-tools/query-tools.ts";
+import {
+  RegistrySummaryInputSchema,
+  RegistrySummaryOutputSchema,
+  ListEnrichmentTargetsInputSchema,
+  ListEnrichmentTargetsOutputSchema,
+  GetSubnetGapsInputSchema,
+  GetSubnetGapsOutputSchema,
+  ListSubnetGapsInputSchema,
+} from "../schemas-src/mcp-tools/registry-summary-gaps.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -2960,6 +3001,17 @@ const ENDPOINTS_QUERY_FILTER_NAMES = [
   "publication_state",
   "status",
 ];
+
+// z.toJSONSchema() always injects a `$schema` key. get_coverage_depth's own
+// pre-existing test (#6983, predates the Zod-conversion epic) asserts its
+// inputSchema strictly equals the bare {type,properties,additionalProperties}
+// shape the hand-written literal always had, with no such key present -- this
+// strips it for that one call site rather than editing that intentionally
+// strict, unrelated test (types-epic E batch 12, #8075).
+function withoutSchemaMeta(schema: Row): Row {
+  const { $schema: _schema, ...rest } = schema;
+  return rest;
+}
 
 // ---------------------------------------------------------------------------
 // Tool registry. Each tool is a thin wrapper over artifact/KV reads.
@@ -8787,11 +8839,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "subnets have graduated to mainnet (mainnet ↔ testnet pairs with the match " +
       "evidence), plus any flagged broken links. Use it to map a mainnet subnet " +
       "to its testnet counterpart or vice versa. Mirrors GET /api/v1/lineage.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetLineageInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/lineage.json");
     },
@@ -8806,11 +8856,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "health, etc.). The operational surface-health source is overlaid with the " +
       "live 15-minute prober's last run. Use it to judge how current the data is " +
       "before relying on it. Mirrors GET /api/v1/freshness.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetFreshnessInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadFreshness(ctx);
     },
@@ -8830,11 +8878,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "/ dead), endpoint and RPC-endpoint counts, verification-result count, and " +
       "an overall status. Use it to see which providers are publishing healthy, " +
       "still-reachable surfaces. Mirrors GET /api/v1/source-health.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetSourceHealthInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/source-health.json");
     },
@@ -8847,7 +8893,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_FEED_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof GetFeedInputSchema>, ctx: McpCtx) {
       return loadFeedItems(asMcpLoaderCtx(ctx), args, {
         // Same cross-subnet incident ledger + wiring get_global_incidents uses
         // (mcpObservedAt), widest window (30d) -- get_feed's own since/until
@@ -8869,7 +8915,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_ADAPTER_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof GetAdapterInputSchema>, ctx: McpCtx) {
       return loadAdapter(asMcpLoaderCtx(ctx), args);
     },
   },
@@ -8880,18 +8926,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the machine-readable agent capability catalog. With no argument " +
       "returns the global index of subnets exposing callable services; with a " +
       "netuid returns that subnet's full per-service catalog.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: {
-          type: "integer",
-          description: "Optional subnet netuid for the per-subnet catalog.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAgentCatalogInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAgentCatalogInputSchema>,
+      ctx: McpCtx,
+    ) {
       const live = await mcpLiveHealth(ctx);
       if (args?.netuid === undefined || args?.netuid === null) {
         const index = await loadArtifactData(
@@ -8925,19 +8966,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "rpc_proxy_events D1 telemetry. Use alongside get_best_rpc_endpoint to see " +
       "which endpoints are actually carrying traffic. Mirrors " +
       "GET /api/v1/rpc/usage.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Aggregation window (default 7d).",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetRpcUsageInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetRpcUsageInputSchema>, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -8963,19 +8995,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Return the best currently-eligible Bittensor base-layer RPC/WSS " +
       "endpoint(s), scored and filtered by live health (down endpoints are " +
       "excluded). Use this to pick a node endpoint for on-chain reads.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: {
-          type: "integer",
-          description: "Max endpoints to return (1-10, default 3).",
-          minimum: 1,
-          maximum: 10,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetBestRpcEndpointInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetBestRpcEndpointInputSchema>,
+      ctx: McpCtx,
+    ) {
       const limit = clampLimit(args?.limit, 3, 10);
       const poolData = await loadArtifactData(ctx, "/metagraph/rpc/pools.json");
       const liveRpcPool = ctx.readHealthKv
@@ -9041,29 +9067,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "rate limiting, and endpoint failover as the public proxy. Use " +
       "get_best_rpc_endpoint to pick a node for direct WSS access instead. " +
       "Mirrors POST /rpc/v1/{network}.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        method: {
-          type: "string",
-          description:
-            "The JSON-RPC method name, e.g. 'chain_getBlockHash' or 'state_getStorage'.",
-        },
-        params: {
-          type: "array",
-          description:
-            "JSON-RPC positional params for the method. Omit for none.",
-        },
-        network: {
-          type: "string",
-          enum: ["finney", "test"],
-          description: "Bittensor network to query (default 'finney').",
-        },
-      },
-      required: ["method"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(CallRpcInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof CallRpcInputSchema>, ctx: McpCtx) {
       if (typeof args?.method !== "string" || !args.method) {
         throw toolError(
           "invalid_params",
@@ -9158,43 +9165,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "REST GraphQL endpoint -- a query that exceeds them is rejected. Pass the " +
       "query string in `query` and any GraphQL variables as an object in " +
       "`variables`.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "The GraphQL query document, e.g. '{ subnet(netuid: 1) { name } }'.",
-        },
-        variables: {
-          type: "object",
-          description:
-            "Optional GraphQL variables keyed by name, e.g. { netuid: 1 }.",
-          additionalProperties: true,
-        },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-    outputSchema: {
-      type: "object",
-      properties: {
-        data: {
-          type: "object",
-          description: "The query result, or null when the query errored.",
-          additionalProperties: true,
-          nullable: true,
-        },
-        errors: {
-          type: "array",
-          description:
-            "GraphQL errors (validation, depth/complexity, or resolver), when any.",
-          items: { type: "object", additionalProperties: true },
-        },
-      },
-      additionalProperties: true,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(QueryGraphqlInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(QueryGraphqlOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof QueryGraphqlInputSchema>, ctx: McpCtx) {
       const query = requireString(args, "query");
       if (
         args?.variables !== undefined &&
@@ -9253,11 +9230,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the registry-wide summary: overall completeness, the most " +
       "complete subnets, coverage-level counts, and the latest registry " +
       "changes. A fast orientation for the whole Bittensor application layer.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(RegistrySummaryInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/registry-summary.json");
     },
@@ -9276,11 +9251,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "enrichment queue: per-subnet tier/score/priority rows plus the ranked " +
       "queue of enrichment targets. The raw passthrough companion of the " +
       "filtered list_enrichment_targets tool. Mirrors GET /api/v1/coverage-depth.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: withoutSchemaMeta(
+      z.toJSONSchema(GetCoverageDepthInputSchema, {
+        target: "draft-2020-12",
+      }),
+    ),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/coverage-depth.json");
     },
@@ -9293,49 +9268,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "subnets need schema, fixture, example/SDK, provenance, candidate-review, " +
       "or hard-blocker follow-up next. Use this for curation/work-planning, not " +
       "live uptime; call get_subnet_health for current health.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: {
-          type: "integer",
-          description: "Max targets to return (1-50, default 10).",
-          minimum: 1,
-          maximum: 50,
-        },
-        tier: {
-          type: "string",
-          enum: COVERAGE_DEPTH_TIERS,
-          description:
-            "Optional coverage-depth tier filter, e.g. machine-usable.",
-        },
-        severity: {
-          type: "string",
-          enum: COVERAGE_DEPTH_SEVERITIES,
-          description:
-            "Optional gap severity filter: missing-data, needs-review, or hard.",
-        },
-        gap_code: {
-          type: "string",
-          description:
-            "Optional stable gap code filter, e.g. missing-fixture or missing-schema.",
-          pattern: "^[a-z0-9-]+$",
-        },
-        agent_status: {
-          type: "string",
-          enum: QUERY_ENUMS.agentReadinessStatus,
-          description:
-            "Optional agent-readiness filter: callable, base-layer, candidate, needs-evidence, or blocked.",
-        },
-        netuid: {
-          type: "integer",
-          description:
-            "Optional subnet netuid. When present, returns that subnet's scorecard row instead of only ranked-queue entries.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListEnrichmentTargetsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListEnrichmentTargetsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const limit = clampLimit(args?.limit, 10, 50);
       const tier = optionalEnum(args, "tier", COVERAGE_DEPTH_TIERS);
       const severity = optionalEnum(
@@ -9415,19 +9354,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "view behind GET /api/v1/subnets/{netuid}/gaps — distinct from " +
       "list_enrichment_targets, which ranks the registry-wide coverage-depth " +
       "scorecard.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: {
-          type: "integer",
-          description: "Subnet netuid.",
-          minimum: 0,
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetGapsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetSubnetGapsInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const gaps = await loadOptionalArtifact(
         ctx,
@@ -9445,7 +9375,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...LIST_SUBNET_GAPS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof ListSubnetGapsInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadSubnetGapsList(asMcpLoaderCtx(ctx), args);
     },
   },
@@ -10268,34 +10201,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
                 .join(", ")}.`
             : " No params."),
       ).join(" | "),
-    inputSchema: {
-      type: "object",
-      required: ["query_id"],
-      properties: {
-        query_id: {
-          type: "string",
-          enum: SAVED_QUERY_TEMPLATES.map((template) => template.id),
-          description: "Which curated template to run.",
-        },
-        params: {
-          type: "object",
-          description:
-            "The chosen template's own params (see the tool description). Omit for a template with no required params.",
-        },
-      },
-      additionalProperties: false,
-    },
-    outputSchema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["query_id", "params", "data"],
-      properties: {
-        query_id: { type: "string" },
-        params: { type: "object" },
-        data: {},
-      },
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(RunSavedQueryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(RunSavedQueryOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof RunSavedQueryInputSchema>, ctx: McpCtx) {
       if (typeof args?.query_id !== "string" || !args.query_id) {
         throw toolError("invalid_params", "Argument `query_id` is required.");
       }
@@ -10397,79 +10309,6 @@ const objectItems = (properties = {}) => ({
   type: "array",
   items: { type: "object", additionalProperties: true, properties },
 });
-// RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
-// schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
-const RPC_USAGE_LATENCY_MS = {
-  type: "object",
-  additionalProperties: true,
-  required: ["p50", "p95", "avg"],
-  properties: {
-    p50: NULLABLE_INT,
-    p95: NULLABLE_INT,
-    avg: NULLABLE_INT,
-  },
-};
-const RPC_USAGE_SUMMARY = {
-  type: "object",
-  additionalProperties: true,
-  required: ["total_requests", "ok_requests", "error_requests", "latency_ms"],
-  properties: {
-    total_requests: { type: "integer", minimum: 0 },
-    ok_requests: { type: "integer", minimum: 0 },
-    error_requests: { type: "integer", minimum: 0 },
-    error_rate: { type: ["number", "null"] },
-    failover_requests: { type: "integer", minimum: 0 },
-    failover_rate: { type: ["number", "null"] },
-    cache_hits: { type: "integer", minimum: 0 },
-    cache_hit_rate: { type: ["number", "null"] },
-    latency_ms: RPC_USAGE_LATENCY_MS,
-  },
-};
-const RPC_USAGE_ENDPOINTS = {
-  type: "array",
-  items: {
-    type: "object",
-    additionalProperties: true,
-    required: ["endpoint_id", "requests", "ok_requests"],
-    properties: {
-      rank: { type: "integer", minimum: 1 },
-      endpoint_id: NULLABLE_STRING,
-      provider: NULLABLE_STRING,
-      requests: { type: "integer", minimum: 0 },
-      ok_requests: { type: "integer", minimum: 0 },
-      error_rate: { type: ["number", "null"] },
-      avg_latency_ms: NULLABLE_INT,
-    },
-  },
-};
-const RPC_USAGE_NETWORKS = {
-  type: "array",
-  items: {
-    type: "object",
-    additionalProperties: true,
-    required: ["network", "requests", "ok_requests"],
-    properties: {
-      network: { type: "string" },
-      requests: { type: "integer", minimum: 0 },
-      ok_requests: { type: "integer", minimum: 0 },
-      error_rate: { type: ["number", "null"] },
-    },
-  },
-};
-const RPC_USAGE_BUCKETS = {
-  type: "array",
-  items: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ts", "requests", "errors", "avg_latency_ms"],
-    properties: {
-      ts: { type: "integer", minimum: 0 },
-      requests: { type: "integer", minimum: 0 },
-      errors: { type: "integer", minimum: 0 },
-      avg_latency_ms: NULLABLE_INT,
-    },
-  },
-};
 const TOOL_OUTPUT_SCHEMAS = {
   search_subnets: z.toJSONSchema(SearchSubnetsOutputSchema, {
     target: "draft-2020-12",
@@ -10916,29 +10755,9 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_network_activity: z.toJSONSchema(GetNetworkActivityOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_rpc_usage: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "schema_version",
-      "source",
-      "summary",
-      "endpoints",
-      "networks",
-      "buckets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      bucket_granularity: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      source: { type: "string" },
-      summary: RPC_USAGE_SUMMARY,
-      endpoints: RPC_USAGE_ENDPOINTS,
-      networks: RPC_USAGE_NETWORKS,
-      buckets: RPC_USAGE_BUCKETS,
-    },
-  },
+  get_rpc_usage: z.toJSONSchema(GetRpcUsageOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_subnet_apis: z.toJSONSchema(ListSubnetApisOutputSchema, {
     target: "draft-2020-12",
   }),
@@ -10997,169 +10816,43 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   list_provider_endpoints: LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
-  get_lineage: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      link_count: { type: "integer" },
-      graduated_subnet_count: { type: "integer" },
-      broken_link_count: { type: "integer" },
-      links: { type: "array", items: { type: "object" } },
-      broken_links: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-    },
-  },
-  get_freshness: {
-    type: "object",
-    additionalProperties: true,
-    required: ["sources"],
-    properties: {
-      schema_version: { type: "integer" },
-      sources: { type: "array", items: { type: "object" } },
-      summary: { type: ["object", "null"] },
-      generated_at: NULLABLE_STRING,
-    },
-  },
+  get_lineage: z.toJSONSchema(GetLineageOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_freshness: z.toJSONSchema(GetFreshnessOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_contracts: GET_CONTRACTS_OUTPUT_SCHEMA,
-  get_source_health: {
-    type: "object",
-    additionalProperties: true,
-    required: ["providers"],
-    properties: {
-      providers: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-    },
-  },
+  get_source_health: z.toJSONSchema(GetSourceHealthOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
   get_feed: GET_FEED_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
   get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
-  get_agent_catalog: {
-    // Two shapes: the global index (no netuid) and a single-subnet catalog
-    // (with a netuid). They share few keys, so nothing is required; the
-    // properties below describe the global index when present.
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      subnet_count: { type: "integer" },
-      total_subnet_count: { type: "integer" },
-      callable_service_count: { type: "integer" },
-      content_hash: NULLABLE_STRING,
-      generated_at: NULLABLE_STRING,
-      published_at: NULLABLE_STRING,
-      subnets: { type: "array", items: { type: "object" } },
-      operational_observed_at: NULLABLE_STRING,
-      health_source: NULLABLE_STRING,
-    },
-  },
+  get_agent_catalog: z.toJSONSchema(GetAgentCatalogOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_agent_resources: GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
-  get_best_rpc_endpoint: {
-    type: "object",
-    additionalProperties: true,
-    required: ["eligible_count", "endpoints"],
-    properties: {
-      eligible_count: { type: "integer" },
-      live_health: ANY,
-      endpoints: objectItems({
-        id: { type: "string" },
-        url: NULLABLE_STRING,
-        provider: NULLABLE_STRING,
-        kind: NULLABLE_STRING,
-        score: ANY,
-        latency_ms: NULLABLE_INT,
-        status: NULLABLE_STRING,
-        health_source: NULLABLE_STRING,
-      }),
-    },
-  },
-  call_rpc: {
-    type: "object",
-    additionalProperties: true,
-    required: ["network", "method", "jsonrpc"],
-    properties: {
-      network: { type: "string" },
-      method: { type: "string" },
-      jsonrpc: { type: "string" },
-      result: ANY,
-      error: { type: ["object", "null"] },
-      endpoint_id: NULLABLE_STRING,
-      provider: NULLABLE_STRING,
-      cache: NULLABLE_STRING,
-    },
-  },
-  registry_summary: {
-    type: "object",
-    additionalProperties: true,
-    required: ["subnet_count", "counts"],
-    properties: {
-      subnet_count: { type: "integer" },
-      counts: { type: "object" },
-      coverage: { type: "object" },
-      curation_level_counts: { type: "object" },
-      profile_level_counts: { type: "object" },
-      recent_changes: { type: "object" },
-      top_subnets: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-    },
-  },
+  get_best_rpc_endpoint: z.toJSONSchema(GetBestRpcEndpointOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  call_rpc: z.toJSONSchema(CallRpcOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  registry_summary: z.toJSONSchema(RegistrySummaryOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_coverage: GET_COVERAGE_OUTPUT_SCHEMA,
-  get_coverage_depth: {
-    type: "object",
-    additionalProperties: true,
-    properties: {
-      schema_version: { type: "integer" },
-      generated_at: NULLABLE_STRING,
-      coverage_depth_version: { type: ["string", "null"] },
-      rows: { type: "array", items: { type: "object" } },
-      ranked_queue: { type: "array", items: { type: "object" } },
-    },
-  },
-  list_enrichment_targets: {
-    type: "object",
-    additionalProperties: true,
-    required: ["total_rows", "queue_count", "returned", "targets"],
-    properties: {
-      generated_at: NULLABLE_STRING,
-      coverage_depth_version: ANY,
-      total_rows: { type: "integer" },
-      queue_count: { type: "integer" },
-      returned: { type: "integer" },
-      filters: { type: "object" },
-      note: { type: "string" },
-      targets: objectItems({
-        rank: NULLABLE_INT,
-        netuid: { type: "integer" },
-        slug: NULLABLE_STRING,
-        name: NULLABLE_STRING,
-        tier: { type: "string" },
-        score: { type: "integer" },
-        priority_score: { type: "integer" },
-        agent_status: { type: "string" },
-        blocker_level: { type: "string" },
-        top_gap_codes: { type: "array" },
-        top_gaps: { type: "array", items: { type: "object" } },
-        recommended_next_action: NULLABLE_STRING,
-        dimensions: { type: "object" },
-      }),
-    },
-  },
-  get_subnet_gaps: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "priorities", "enrichment_queue"],
-    properties: {
-      schema_version: { type: "integer" },
-      contract_version: NULLABLE_STRING,
-      generated_at: NULLABLE_STRING,
-      netuid: { type: "integer" },
-      slug: NULLABLE_STRING,
-      name: NULLABLE_STRING,
-      priorities: { type: "array", items: { type: "object" } },
-      enrichment_queue: { type: "array", items: { type: "object" } },
-    },
-  },
+  get_coverage_depth: z.toJSONSchema(GetCoverageDepthOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_enrichment_targets: z.toJSONSchema(ListEnrichmentTargetsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_gaps: z.toJSONSchema(GetSubnetGapsOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_subnet_gaps: LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
   find_subnet_for_task: {
     type: "object",

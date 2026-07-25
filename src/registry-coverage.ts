@@ -1,7 +1,12 @@
 // Registry coverage loader for MCP parity on GET /api/v1/coverage.
 // Serves the baked /metagraph/coverage.json artifact (surface counts,
 // completeness aggregate, domain breakdown).
+import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
+import {
+  GetCoverageInputSchema,
+  GetCoverageOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
 
 export const REGISTRY_COVERAGE_ARTIFACT = "/metagraph/coverage.json";
 
@@ -64,29 +69,14 @@ export const GET_COVERAGE_MCP_TOOL = {
     "Use for a fast registry-wide coverage snapshot before drilling into " +
     "list_enrichment_targets (coverage-depth queue) or registry_summary. " +
     "Mirrors GET /api/v1/coverage.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetCoverageInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-
-export const GET_COVERAGE_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["surface_count", "completeness"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    surface_count: { type: "integer" },
-    official_surface_count: { type: "integer" },
-    first_party_subnet_count: { type: "integer" },
-    chain_subnet_count: { type: "integer" },
-    candidate_count: { type: "integer" },
-    probed_count: { type: "integer" },
-    domain_coverage: { type: "object" },
-    completeness: { type: "object" },
-    subnets_without_official_surface: { type: "integer" },
+export const GET_COVERAGE_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetCoverageOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

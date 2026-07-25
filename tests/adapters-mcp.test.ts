@@ -169,9 +169,11 @@ describe("adapters-mcp", () => {
   test("MCP tool metadata and outputSchema compile", () => {
     assert.equal(GET_ADAPTER_MCP_TOOL.name, "get_adapter");
     assert.match(GET_ADAPTER_INSTRUCTIONS, /get_adapter/);
-    assert.deepEqual(Object.keys(GET_ADAPTER_MCP_TOOL.inputSchema.properties), [
-      "slug",
-    ]);
+    assert.deepEqual(
+      // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
+      Object.keys(GET_ADAPTER_MCP_TOOL.inputSchema.properties ?? {}),
+      ["slug"],
+    );
     assert.ok(
       new Ajv2020({ strict: false }).compile(GET_ADAPTER_OUTPUT_SCHEMA),
     );

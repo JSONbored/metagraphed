@@ -3,9 +3,14 @@
 // as the REST route over the baked /metagraph/review/gaps/{netuid}.json
 // artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListSubnetGapsInputSchema,
+  ListSubnetGapsOutputSchema,
+} from "../schemas-src/mcp-tools/registry-summary-gaps.ts";
 
 // The REST route pages this artifact through the review-gap-priorities
 // collection (rows live under `priorities`), not the network-wide `gaps`
@@ -216,77 +221,14 @@ export const LIST_SUBNET_GAPS_MCP_TOOL = {
     "or review_state; sort with sort + order; and page with limit (1-100) / " +
     "cursor. Distinct from get_subnet_gaps (raw artifact dump, which also " +
     "carries the enrichment queue). Mirrors GET /api/v1/subnets/{netuid}/gaps.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-      curation_level: {
-        type: "string",
-        enum: CURATION_LEVELS,
-        description: "Filter by the subnet's curation level.",
-      },
-      missing_kinds: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Filter to rows missing this surface kind.",
-      },
-      review_state: {
-        type: "string",
-        description: "Filter by review state.",
-      },
-      sort: {
-        type: "string",
-        enum: GAP_PRIORITY_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of gap-priority row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    required: ["netuid"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListSubnetGapsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_SUBNET_GAPS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["priorities"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    netuid: NULLABLE_INT,
-    priorities: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_SUBNET_GAPS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListSubnetGapsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

@@ -103,7 +103,8 @@ describe("registry-coverage", () => {
     assert.equal(GET_COVERAGE_MCP_TOOL.name, "get_coverage");
     assert.match(GET_COVERAGE_INSTRUCTIONS, /get_coverage/);
     assert.deepEqual(
-      Object.keys(GET_COVERAGE_MCP_TOOL.inputSchema.properties),
+      // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
+      Object.keys(GET_COVERAGE_MCP_TOOL.inputSchema.properties ?? {}),
       [],
     );
     assert.ok(

@@ -12,6 +12,7 @@
 // wiring instead of a second path that would bypass the module's
 // injected-KV convention (see mcp-server.mjs's header comment).
 
+import { z } from "zod";
 import {
   FEED_MAX_ITEMS,
   filterByTag,
@@ -25,6 +26,10 @@ import {
 } from "./feeds.ts";
 import { loadChangelog } from "./changelog-mcp.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
+import {
+  GetFeedInputSchema,
+  GetFeedOutputSchema,
+} from "../schemas-src/mcp-tools/feed.ts";
 
 export const FEED_KINDS = ["registry", "incidents", "gaps", "subnet"];
 const ENRICHMENT_QUEUE_ARTIFACT = "/metagraph/review/enrichment-queue.json";
@@ -247,85 +252,11 @@ export const GET_FEED_MCP_TOOL = {
     "polling instead of re-fetching and diffing the full registry. Mirrors the " +
     "JSON Feed variant of GET /api/v1/feeds/registry, /api/v1/feeds/incidents, " +
     "/api/v1/feeds/gaps, and /api/v1/feeds/subnets/{netuid}.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      kind: {
-        type: "string",
-        enum: FEED_KINDS,
-        description:
-          "Which feed to fetch. `subnet` requires netuid and combines that " +
-          "subnet's registry changes + incidents.",
-      },
-      netuid: {
-        type: "integer",
-        description:
-          "Subnet netuid. Required when kind is `subnet`, unused otherwise.",
-        minimum: 0,
-      },
-      tag: {
-        type: "string",
-        description:
-          "Optional tag filter, e.g. incident, coverage, added, removed, renamed.",
-      },
-      since: {
-        type: "string",
-        description:
-          "Optional ISO-8601 date or date-time lower bound, e.g. 2026-06-01 or 2026-06-01T00:00:00Z.",
-      },
-      until: {
-        type: "string",
-        description:
-          "Optional ISO-8601 date or date-time upper bound (a bare date is inclusive of the whole day).",
-      },
-      limit: {
-        type: "integer",
-        description: `Max items to return (1-${FEED_MAX_ITEMS}, default ${FEED_MAX_ITEMS}).`,
-        minimum: 1,
-        maximum: FEED_MAX_ITEMS,
-      },
-    },
-    required: ["kind"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetFeedInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const GET_FEED_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["kind", "returned", "items"],
-  properties: {
-    kind: { type: "string", enum: FEED_KINDS },
-    netuid: NULLABLE_INT,
-    filters: {
-      type: "object",
-      additionalProperties: true,
-      properties: {
-        tag: NULLABLE_STRING,
-        since: NULLABLE_STRING,
-        until: NULLABLE_STRING,
-        limit: { type: "integer" },
-      },
-    },
-    returned: { type: "integer" },
-    items: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: true,
-        required: ["id", "url", "title", "summary", "timestamp", "tags"],
-        properties: {
-          id: { type: "string" },
-          url: { type: "string" },
-          title: { type: "string" },
-          summary: { type: "string" },
-          timestamp: { type: "string" },
-          tags: { type: "array", items: { type: "string" } },
-        },
-      },
-    },
-  },
-};
+export const GET_FEED_OUTPUT_SCHEMA = z.toJSONSchema(GetFeedOutputSchema, {
+  target: "draft-2020-12",
+});

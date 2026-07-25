@@ -116,7 +116,8 @@ describe("build-mcp", () => {
     assert.equal(GET_BUILD_MCP_TOOL.name, "get_build");
     assert.match(GET_BUILD_INSTRUCTIONS, /get_build/);
     assert.deepEqual(
-      Object.keys(GET_BUILD_MCP_TOOL.inputSchema.properties),
+      // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
+      Object.keys(GET_BUILD_MCP_TOOL.inputSchema.properties ?? {}),
       [],
     );
     assert.ok(new Ajv2020({ strict: false }).compile(GET_BUILD_OUTPUT_SCHEMA));
