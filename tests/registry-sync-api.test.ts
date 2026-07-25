@@ -627,6 +627,30 @@ test("maps a DB failure to a clean 502 instead of throwing", async () => {
   expect((await jsonBody(res)).error).toBe("write failed");
 });
 
+test("captures a write failure as a PostHog $exception (previously only console.error, no Sentry/PostHog capture at all)", async () => {
+  failure.error = new Error("connection reset");
+  const calls: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_url: unknown, init: Row) => {
+    calls.push(JSON.parse(init.body));
+    return { ok: true };
+  }) as unknown as typeof fetch;
+  try {
+    const res = await worker.fetch(
+      post({ providers: [provider()] }, { secret: SECRET }),
+      baseEnv({ POSTHOG_PROJECT_TOKEN: "phc_test" }),
+    );
+    expect(res.status).toBe(502);
+  } finally {
+    globalThis.fetch = original;
+  }
+  expect(calls.length).toBe(1);
+  expect(calls[0].event).toBe("$exception");
+  expect(calls[0].properties.route).toBe("registry-sync");
+  expect(calls[0].properties.error_code).toBe("internal_error");
+  expect(calls[0].properties.$exception_list[0].value).toBe("connection reset");
+});
+
 test("retries with a fresh client after a Hyperdrive CONNECTION_CLOSED and lands the batch (METAGRAPHED-7 second recurrence)", async () => {
   connectionFailure.remainingFailures = 1;
   const res = await worker.fetch(
