@@ -651,6 +651,85 @@ test("captures a write failure as a PostHog $exception (previously only console.
   expect(calls[0].properties.$exception_list[0].value).toBe("connection reset");
 });
 
+// metagraphed#7768: PostHog distributed tracing -- one root span per
+// request, awaited directly (this Worker's fetch has no ExecutionContext to
+// waitUntil against). Off by default (see src/tracing.ts's own header);
+// this is the one representative case proving the wiring fires end-to-end
+// when sampled, on a clean success so it's not conflated with the
+// $exception test above.
+test("emits a PostHog trace span for the request when sampled", async () => {
+  const calls: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown, init: Row) => {
+    calls.push({ url: String(url), body: JSON.parse(init.body) });
+    return { ok: true };
+  }) as unknown as typeof fetch;
+  try {
+    const res = await worker.fetch(
+      post({ providers: [provider()] }, { secret: SECRET }),
+      baseEnv({
+        POSTHOG_PROJECT_TOKEN: "phc_test",
+        POSTHOG_TRACES_SAMPLE_RATE: "1",
+      }),
+    );
+    expect(res.status).toBe(200);
+  } finally {
+    globalThis.fetch = original;
+  }
+  expect(calls.length).toBe(1);
+  expect(calls[0].url.endsWith("/i/v1/traces")).toBe(true);
+  const span = calls[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+  expect(span.name).toBe("registry-sync");
+  expect(span.status.code).toBe(1); // OK
+});
+
+// dispatchRegistrySyncRequest's own auth/validation/DB-write logic all
+// returns a controlled error Response rather than throwing -- the only
+// realistic way for the default export's try/catch (ok = false; throw
+// error;) to actually run is something genuinely unexpected escaping past
+// all of that, like the body stream itself erroring mid-read (`await
+// request.text()` is not wrapped in its own try/catch).
+test("a body stream that errors mid-read still records ok:false on the trace span, and propagates", async () => {
+  const calls: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown, init: Row) => {
+    calls.push({ url: String(url), body: JSON.parse(init.body) });
+    return { ok: true };
+  }) as unknown as typeof fetch;
+  const brokenBody = new ReadableStream({
+    start(controller) {
+      controller.error(new Error("client disconnected mid-upload"));
+    },
+  });
+  const request = new Request("https://registry-sync.internal/", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-registry-sync-token": SECRET,
+    },
+    // @ts-expect-error -- duplex is required by undici for a streaming body
+    // but isn't in the RequestInit type this codebase targets.
+    duplex: "half",
+    body: brokenBody,
+  });
+  try {
+    await expect(
+      worker.fetch(
+        request,
+        baseEnv({
+          POSTHOG_PROJECT_TOKEN: "phc_test",
+          POSTHOG_TRACES_SAMPLE_RATE: "1",
+        }),
+      ),
+    ).rejects.toThrow();
+  } finally {
+    globalThis.fetch = original;
+  }
+  expect(calls.length).toBe(1);
+  const span = calls[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+  expect(span.status.code).toBe(2); // ERROR
+});
+
 test("retries with a fresh client after a Hyperdrive CONNECTION_CLOSED and lands the batch (METAGRAPHED-7 second recurrence)", async () => {
   connectionFailure.remainingFailures = 1;
   const res = await worker.fetch(

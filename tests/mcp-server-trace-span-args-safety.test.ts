@@ -114,3 +114,71 @@ test("the credential value never appears anywhere in the span-recording call", a
   const serialized = JSON.stringify(recordTraceSpanCalls);
   assert.ok(!serialized.includes("super-secret-abc123"));
 });
+
+test("a rejected recordTraceSpan call never surfaces into the tool result", async () => {
+  vi.doMock("../src/tracing.ts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/tracing.ts")>();
+    return {
+      ...actual,
+      recordTraceSpan: async () => {
+        throw new Error("posthog traces endpoint unreachable");
+      },
+    };
+  });
+  vi.resetModules();
+  const { handleMcpRequest: handleMcpRequestRejecting } = await import(
+    "../src/mcp-server.ts"
+  );
+  const of = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response("{}", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  try {
+    const response = await handleMcpRequestRejecting(
+      new Request("https://metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "call_subnet_surface",
+            arguments: { surface_id: "x:api:1" },
+          },
+        }),
+      }),
+      { POSTHOG_TRACES_SAMPLE_RATE: "1" } as unknown as Env,
+      {
+        readArtifact: async (_e: unknown, path: string) => {
+          if (path === "/metagraph/operational-surfaces.json") {
+            return {
+              ok: true,
+              data: {
+                surfaces: [
+                  {
+                    surface_id: "x:api:1",
+                    netuid: 5,
+                    kind: "subnet-api",
+                    url: "https://x.example/admin",
+                    auth_required: false,
+                    probe: { method: "GET", enabled: true },
+                  },
+                ],
+              },
+            };
+          }
+          return { ok: false, status: 404 };
+        },
+      },
+    );
+    const result = ((await response.json()) as Row).result;
+    assert.equal(result.isError, false);
+  } finally {
+    globalThis.fetch = of;
+    vi.doUnmock("../src/tracing.ts");
+    vi.resetModules();
+  }
+});

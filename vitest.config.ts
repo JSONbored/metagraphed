@@ -100,6 +100,21 @@ export default defineConfig({
         // scope), exercised in-process by tests/zod-schemas.test.ts.
         "schemas-src/**/*.ts",
       ],
+      // workers/api.entry.ts (metagraphed#7766, replacing the old
+      // workers/api.sentry.ts wrapper) can't even be IMPORTED in this
+      // plain-Node vitest environment, let alone covered -- confirmed
+      // empirically: `import("./workers/api.entry.ts")` throws "Only URLs
+      // with a scheme in: file, data, and node are supported by the default
+      // ESM loader. Received protocol 'cloudflare:'", because
+      // @cloudflare/workers-oauth-provider's own runtime file imports
+      // `cloudflare:workers` at module scope (same root cause
+      // src/github-oauth.ts's defaultGetOAuthHelpers documents for the
+      // lazy-import it needs for the same reason). The real logic this file
+      // wires together (isAnonymousMcpRequest, buildOAuthProviderOptions)
+      // is fully covered directly in tests/github-oauth.test.ts; this file
+      // itself is a thin, mechanical composition layer with nothing of its
+      // own worth testing.
+      exclude: ["workers/api.entry.ts"],
       // BACKSTOP floors only — NOT the primary gate. The real PR coverage gate is
       // Codecov (delta-based project + patch coverage, see codecov.yml). That
       // avoids the fixed-pin churn where every PR must match a near-peak absolute

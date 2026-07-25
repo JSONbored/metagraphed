@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
+import { POSTHOG_TRACES_SAMPLE_RATE_ENV } from "../src/tracing.ts";
 import worker, { usageRouteLabel, withUsageTelemetry } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
@@ -402,6 +403,163 @@ describe("withUsageTelemetry", () => {
       assert.equal(await response.text(), "ok");
       assert.equal(spy.events.length, 1);
     }
+  });
+
+  // metagraphed#7768: the trace-span emission has no injectable-deps seam of
+  // its own (scheduleTraceSpan calls recordTraceSpan(env, span) with no
+  // third arg), so this stubs globalThis.fetch directly -- the same
+  // technique src/tracing.ts's own header documents discovering the
+  // flakiness risk of (a real POSTHOG_PROJECT_TOKEN + a non-zero sample rate
+  // makes the trace span fire through the SAME mocked fetch a naive test
+  // might also use for the usage-event assertion, hence why the rate
+  // defaults to 0 everywhere else in this suite).
+  describe("distributed tracing", () => {
+    const realFetch = globalThis.fetch;
+    afterEach(() => {
+      globalThis.fetch = realFetch;
+    });
+
+    test("emits a trace span alongside the usage event when sampled", async () => {
+      const calls: Row[] = [];
+      globalThis.fetch = (async (url: unknown, init: Row) => {
+        calls.push({ url: String(url), init });
+        return new Response(null, { status: 200 });
+      }) as typeof fetch;
+
+      const spy = recorder();
+      const ctx = fakeCtx();
+      await withUsageTelemetry(
+        req("/api/v1/subnets/74"),
+        {
+          ...CONFIGURED_ENV,
+          [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1",
+        } as unknown as Env,
+        ctx,
+        async () => new Response("ok"),
+        spy,
+      );
+      // scheduleUsageEvent's own promise + the trace span's, both drained
+      // through waitUntil.
+      await Promise.all(ctx.scheduled);
+
+      assert.equal(calls.length, 1);
+      assert.ok(calls[0].url.endsWith("/i/v1/traces"));
+      const body = JSON.parse(calls[0].init.body);
+      const span = body.resourceSpans[0].scopeSpans[0].spans[0];
+      assert.equal(span.name, "subnet-detail");
+      assert.equal(span.status.code, 1); // OK
+    });
+
+    test("emits no trace span when the sample rate is 0 (the default)", async () => {
+      const calls: Row[] = [];
+      globalThis.fetch = (async (url: unknown, init: Row) => {
+        calls.push({ url: String(url), init });
+        return new Response(null, { status: 200 });
+      }) as typeof fetch;
+
+      const ctx = fakeCtx();
+      await withUsageTelemetry(
+        req(),
+        CONFIGURED_ENV as unknown as Env,
+        ctx,
+        async () => new Response("ok"),
+        recorder(),
+      );
+      await Promise.all(ctx.scheduled);
+
+      assert.equal(calls.length, 0);
+    });
+
+    // scheduleTraceSpan's own `if (typeof ctx?.waitUntil === "function")`
+    // guard covers the case where sampling fires but this Worker's own
+    // ExecutionContext isn't usable (matches the equivalent guard the usage
+    // event scheduler already has, and the equivalent
+    // "no usable ExecutionContext" test above for that scheduler) -- the
+    // span is still fired-and-forgotten via recordTraceSpan itself, just
+    // never registered with waitUntil, so the response must still serve
+    // cleanly regardless.
+    test("still returns the response cleanly when sampled but no usable ExecutionContext is supplied", async () => {
+      globalThis.fetch = (async () => new Response(null, { status: 200 })) as typeof fetch;
+
+      const response = await withUsageTelemetry(
+        req(),
+        {
+          ...CONFIGURED_ENV,
+          [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1",
+        } as unknown as Env,
+        {},
+        async () => new Response("ok"),
+        recorder(),
+      );
+
+      assert.equal(await response.text(), "ok");
+    });
+
+    test("a trace-span emission failure never surfaces into the response", async () => {
+      globalThis.fetch = (async () => {
+        throw new Error("posthog traces endpoint unreachable");
+      }) as typeof fetch;
+
+      const ctx = fakeCtx();
+      const response = await withUsageTelemetry(
+        req(),
+        {
+          ...CONFIGURED_ENV,
+          [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1",
+        } as unknown as Env,
+        ctx,
+        async () => new Response("ok"),
+        recorder(),
+      );
+
+      assert.equal(response.status, 200);
+      assert.equal(await response.text(), "ok");
+      // Doesn't reject even though the underlying fetch throws.
+      await Promise.all(ctx.scheduled);
+    });
+
+    // scheduleTraceSpan's own .catch(() => false) is a defensive outer layer
+    // on top of recordTraceSpan's own no-throw contract (which already turns
+    // every failure, including a thrown fetch, into a resolved `false` --
+    // see the test above). Reaching THIS line needs recordTraceSpan itself
+    // to reject, which the real function's own try/catch never does --
+    // mock it directly, the same technique
+    // tests/mcp-server-trace-span-args-safety.test.ts uses for the
+    // equivalent line in src/mcp-server.ts's scheduleTraceSpan.
+    test("survives recordTraceSpan itself rejecting, not just its own internal failures", async () => {
+      vi.doMock("../src/tracing.ts", async (importOriginal) => {
+        const actual =
+          await importOriginal<typeof import("../src/tracing.ts")>();
+        return {
+          ...actual,
+          recordTraceSpan: async () => {
+            throw new Error("recordTraceSpan itself rejected");
+          },
+        };
+      });
+      vi.resetModules();
+      try {
+        const { withUsageTelemetry: withUsageTelemetryRejecting } =
+          await import("../workers/api.ts");
+        const ctx = fakeCtx();
+        const response = await withUsageTelemetryRejecting(
+          req(),
+          {
+            ...CONFIGURED_ENV,
+            [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1",
+          } as unknown as Env,
+          ctx,
+          async () => new Response("ok"),
+          recorder(),
+        );
+        assert.equal(response.status, 200);
+        assert.equal(await response.text(), "ok");
+        await Promise.all(ctx.scheduled);
+      } finally {
+        vi.doUnmock("../src/tracing.ts");
+        vi.resetModules();
+      }
+    });
   });
 });
 
