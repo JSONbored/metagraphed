@@ -287,12 +287,12 @@ function Cell({ cell }: { cell: Cell }) {
           {cell.downCount > 0 || cell.warnCount > 0 ? (
             <span className="absolute top-0.5 right-0.5 flex items-center gap-0.5" aria-hidden>
               {cell.downCount > 0 ? (
-                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded-sm bg-health-down/95 px-0.5 text-[9px] font-mono leading-none text-paper">
+                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-down/95 px-0.5 text-[9px] font-mono leading-none text-paper">
                   {cell.downCount}
                 </span>
               ) : null}
               {cell.warnCount > 0 ? (
-                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded-sm bg-health-warn/95 px-0.5 text-[9px] font-mono leading-none text-paper">
+                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-warn/95 px-0.5 text-[9px] font-mono leading-none text-paper">
                   {cell.warnCount}
                 </span>
               ) : null}
@@ -430,7 +430,7 @@ function LegendBucket({ cls, label, hint }: { cls: string; label: string; hint: 
           tabIndex={0}
           role="listitem"
         >
-          <span className={`size-2 rounded-sm ${cls}`} aria-hidden />
+          <span className={`size-2 rounded ${cls}`} aria-hidden />
           {label}
         </span>
       </TooltipTrigger>

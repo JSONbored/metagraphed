@@ -59,7 +59,7 @@ function Card({
     <Link
       to={href}
       className={classNames(
-        "group flex items-start gap-3 rounded-lg border p-3 transition-colors hover:border-ink/30",
+        "group flex items-start gap-3 rounded-md border p-3 transition-colors hover:border-ink/30",
         TONE[tone],
       )}
     >

@@ -100,7 +100,7 @@ export function DelegatePage() {
 
 function TrustCell({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-border mg-glass-soft px-4 py-3">
+    <div className="rounded-md border border-border mg-glass-soft px-4 py-3">
       <div className="flex items-center gap-2 text-ink-strong">
         <span className="text-accent" aria-hidden>
           {icon}

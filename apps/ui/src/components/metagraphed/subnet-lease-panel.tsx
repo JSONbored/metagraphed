@@ -225,7 +225,7 @@ function LeaseHistorySection({
           {events.map((ev, i) => (
             <li
               key={`${ev.block_number ?? i}-${ev.event_kind ?? i}-${ev.observed_at ?? i}`}
-              className="rounded-lg border border-border bg-card p-3"
+              className="rounded-md border border-border bg-card p-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">

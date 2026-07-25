@@ -113,7 +113,7 @@ function AgentsBody() {
           title="Connect over MCP"
           intro={`One command in Claude Code, Cursor, or any MCP client. ${mcp.tools.length} tools over ${mcp.transport} — search the registry, find a subnet for a task, get a callable RPC endpoint, ask a grounded question.`}
         />
-        <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent-surface px-4 py-3.5">
+        <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent-surface px-4 py-3.5">
           <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
           <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono mg-type-caption-lg text-ink-strong">
             {mcp.install}
@@ -183,7 +183,7 @@ function AgentsBody() {
               href={CLAUDE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-3.5 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15"
+              className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3.5 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15"
             >
               Open in Claude <ArrowUpRight className="size-3.5" />
             </a>
@@ -191,7 +191,7 @@ function AgentsBody() {
               href={CHATGPT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 mg-type-caption-lg font-medium text-ink-strong hover:border-ink/30"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3.5 py-2 mg-type-caption-lg font-medium text-ink-strong hover:border-ink/30"
             >
               Open in ChatGPT <ArrowUpRight className="size-3.5" />
             </a>
@@ -212,7 +212,7 @@ function AgentsBody() {
           title="Everything else, fetchable directly"
           intro={`A paste-ready agent prompt, a Bittensor skill, llms.txt, the OpenAPI contract, grounded Q&A, semantic search, and bulk data — ${res.summary.callable_service_count} callable services across ${res.summary.subnet_count} subnets, all indexed at /api/v1/agent-resources.`}
         />
-        <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+        <div className="divide-y divide-border overflow-hidden rounded-md border border-border">
           {res.resources.map((r) => {
             const meta = kindMeta(r.kind);
             const Icon = meta.icon;

@@ -99,7 +99,7 @@ export function LiveBlockRail() {
                 params={{ ref: String(b.block_number) }}
                 title={`#${formatNumber(b.block_number)} · ${formatNumber(ext)} ext`}
                 className={classNames(
-                  "block w-[6px] min-w-[6px] rounded-sm transition-colors",
+                  "block w-[6px] min-w-[6px] rounded transition-colors",
                   isLatest ? "bg-accent" : "bg-ink-strong/25 hover:bg-ink-strong/50",
                 )}
                 style={{ height: `${h}%` }}

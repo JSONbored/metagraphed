@@ -50,7 +50,7 @@ export function sourceCountLabel(contextCount: number, model: string): string {
 
 function AskResult({ result }: { result: AskAnswerData }) {
   return (
-    <div className="mt-4 space-y-3 rounded-lg border border-accent/30 bg-accent-surface p-4">
+    <div className="mt-4 space-y-3 rounded-md border border-accent/30 bg-accent-surface p-4">
       <p className="mg-type-caption-lg leading-relaxed text-ink-strong">{result.answer}</p>
       {result.citations.length > 0 ? (
         <ul className="divide-y divide-border rounded border border-border bg-card">
@@ -90,14 +90,14 @@ export function AskBox() {
             placeholder="Which subnet does image generation?"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
           />
         </label>
         <button
           type="submit"
           disabled={mutation.isPending || !question.trim()}
           className={classNames(
-            "shrink-0 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
+            "shrink-0 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >

@@ -90,6 +90,28 @@ const DESIGN_RULES = [
     message:
       "Raw bg-card opacity. Use .mg-glass or .mg-glass-soft (see styles.css).",
   },
+  {
+    // #7843: rounded-sm/rounded-lg were eliminated (snapped to rounded /
+    // rounded-md) and rounded-3xl was never used -- see
+    // apps/ui/CONTRIBUTING.md's radius table for the approved 5-step scale.
+    // Message deliberately avoids spelling out the banned classes as
+    // contiguous "rounded-X" tokens -- doing so would self-match this same
+    // selector inside this config file (a real 2026-07-24 false positive).
+    selector: "Literal[value=/\\brounded-(?:sm|lg|3xl)\\b/]",
+    message:
+      "This radius step was eliminated from the approved scale. Use rounded (base), rounded-md, rounded-xl, or rounded-2xl (hero/mg-card-glow only) -- see apps/ui/CONTRIBUTING.md.",
+  },
+  {
+    // Arbitrary bracketed radius outside the scale. The dense-grid
+    // micro-radius sites (heatmap/mosaic/uptime-bar cells at 1-2px) still
+    // warn here rather than getting a file exemption -- same
+    // residual-worklist convention the z-index rule's compare-drawer sites
+    // already use. Message avoids a literal bracket-closed example (same
+    // self-match hazard as above).
+    selector: "Literal[value=/\\brounded-\\[[^\\]]+\\]/]",
+    message:
+      "Arbitrary bracketed radius value outside the approved scale. Use rounded-full, rounded, rounded-md, rounded-xl, or rounded-2xl -- see apps/ui/CONTRIBUTING.md.",
+  },
 ];
 
 // SSR footguns -- see apps/ui/docs/ssr-safety.md. ui-kit's own components

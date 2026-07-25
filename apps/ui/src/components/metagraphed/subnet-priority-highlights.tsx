@@ -45,7 +45,7 @@ function Tile({
     <a
       href={href}
       className={classNames(
-        "group flex items-start gap-3 rounded-lg border p-3 transition-colors hover:border-ink/30 mg-focus-ring",
+        "group flex items-start gap-3 rounded-md border p-3 transition-colors hover:border-ink/30 mg-focus-ring",
         TONE[tone],
       )}
     >

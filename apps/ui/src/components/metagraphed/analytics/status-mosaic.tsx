@@ -75,7 +75,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                 >
                   {k !== "all" ? (
                     <span
-                      className={classNames("inline-block size-1.5 rounded-sm", TONE[k])}
+                      className={classNames("inline-block size-1.5 rounded", TONE[k])}
                       aria-hidden
                     />
                   ) : null}

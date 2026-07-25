@@ -46,7 +46,7 @@ export function Ss58ToolPage() {
             placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
             spellCheck={false}
             autoComplete="off"
-            className="w-full rounded-lg border border-border bg-card px-4 py-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/50 focus:border-accent/50 focus:outline-none"
+            className="w-full rounded-md border border-border bg-card px-4 py-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/50 focus:border-accent/50 focus:outline-none"
           />
         </div>
 
@@ -161,7 +161,7 @@ function ResultCard({
   return (
     <div
       className={classNames(
-        "rounded-lg border p-4",
+        "rounded-md border p-4",
         tone === "ok" && "border-health-ok/30 bg-health-ok/5",
         tone === "warn" && "border-health-warn/30 bg-health-warn/5",
         tone === "error" && "border-health-down/30 bg-health-down/5",

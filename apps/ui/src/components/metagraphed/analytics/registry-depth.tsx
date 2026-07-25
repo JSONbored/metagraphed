@@ -194,7 +194,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
 function Swatch({ color, label }: { color: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="inline-block size-2 rounded-sm" style={{ background: color }} aria-hidden />
+      <span className="inline-block size-2 rounded" style={{ background: color }} aria-hidden />
       {label}
     </span>
   );

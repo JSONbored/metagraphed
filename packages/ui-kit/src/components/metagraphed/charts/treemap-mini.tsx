@@ -168,7 +168,7 @@ export function TreemapMini({
           }}
         >
           <div
-            className="flex h-full w-full flex-col justify-between rounded-sm border border-background/40 p-1.5"
+            className="flex h-full w-full flex-col justify-between rounded border border-background/40 p-1.5"
             style={{ background: t.color ?? "var(--accent)" }}
           >
             {t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? (

@@ -64,7 +64,7 @@ export function ProxyHero() {
   const proxyUrl = `${API_BASE}/rpc/v1/${chain}`;
   const curlExample = curlFor(proxyUrl);
   return (
-    <div className="rounded-lg border border-accent/30 bg-accent-surface p-4">
+    <div className="rounded-md border border-accent/30 bg-accent-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 mg-type-micro text-health-ok">
           <span className="size-1.5 rounded-full bg-health-ok" />

@@ -225,7 +225,7 @@ function EconomicsDrilldown({
 function DeltaTile({ label, value, tip }: { label: string; value: string; tip?: string }) {
   return (
     <div
-      className="rounded-lg border border-border bg-paper/50 p-3"
+      className="rounded-md border border-border bg-paper/50 p-3"
       title={tip}
       aria-label={tip ? `${label}: ${value}. ${tip}` : `${label}: ${value}`}
     >

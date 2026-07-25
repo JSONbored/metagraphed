@@ -269,7 +269,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                       <div className="flex items-center gap-1.5">
                         <span
                           aria-hidden
-                          className="inline-block size-2 rounded-sm"
+                          className="inline-block size-2 rounded"
                           style={{ background: "var(--accent)" }}
                         />
                         <span className="text-ink">In</span>
@@ -280,7 +280,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                       <div className="flex items-center gap-1.5">
                         <span
                           aria-hidden
-                          className="inline-block size-2 rounded-sm"
+                          className="inline-block size-2 rounded"
                           style={{ background: "var(--health-warn)" }}
                         />
                         <span className="text-ink">Out</span>

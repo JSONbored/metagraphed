@@ -42,7 +42,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
         >
           <span
             aria-hidden
-            className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-border bg-paper text-ink-strong"
+            className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border border-border bg-paper text-ink-strong"
           >
             <Coins className="size-4" />
           </span>
@@ -88,7 +88,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
       >
         <span
           aria-hidden
-          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-accent/60 bg-paper text-accent"
+          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border border-accent/60 bg-paper text-accent"
         >
           <Sparkles className="size-4" />
         </span>

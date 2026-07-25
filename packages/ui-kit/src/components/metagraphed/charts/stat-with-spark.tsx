@@ -261,7 +261,7 @@ export function NoDataSpark({
             tabIndex={0}
             role="img"
             aria-label={`${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`}
-            className="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex w-full items-center gap-1.5 rounded border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             style={{ height }}
           >
             <span

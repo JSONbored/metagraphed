@@ -733,7 +733,7 @@ function IdentityHistoryList({ netuid }: { netuid: number }) {
       {entries.map((entry, i) => (
         <li
           key={`${entry.identity_hash}-${i}`}
-          className="rounded-lg border border-border bg-card p-3"
+          className="rounded-md border border-border bg-card p-3"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="font-display text-sm font-semibold text-ink-strong">
@@ -1401,7 +1401,7 @@ function AgentReadinessCard({
 function ServiceCard({ service }: { service: AgentCatalogService }) {
   const callable = service.eligibility?.callable;
   return (
-    <li className="rounded-lg border border-border bg-card p-4">
+    <li className="rounded-md border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="mg-type-micro inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-[10px] text-accent-text">
           {service.kind ?? "service"}
@@ -2160,7 +2160,7 @@ function HyperparamsHistoryList({ netuid }: { netuid: number }) {
       {entries.map((entry) => {
         const expanded = expandedHash === entry.hyperparams_hash;
         return (
-          <li key={entry.hyperparams_hash} className="rounded-lg border border-border bg-card p-3">
+          <li key={entry.hyperparams_hash} className="rounded-md border border-border bg-card p-3">
             <button
               type="button"
               onClick={() => setExpandedHash(expanded ? null : entry.hyperparams_hash)}
@@ -2235,7 +2235,7 @@ function SurfacesList({ netuid }: { netuid: number }) {
           </div>
           <ul className="space-y-2">
             {items.map((s) => (
-              <li key={s.id} className="rounded-lg border border-border bg-card p-3 mg-row-hover">
+              <li key={s.id} className="rounded-md border border-border bg-card p-3 mg-row-hover">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -2299,7 +2299,7 @@ function CandidatesList({ netuid }: { netuid: number }) {
   return (
     <ul className="space-y-2">
       {rows.map((c) => (
-        <li key={c.id} className="rounded-lg border border-dashed border-ink-subtle bg-paper p-3">
+        <li key={c.id} className="rounded-md border border-dashed border-ink-subtle bg-paper p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

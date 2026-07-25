@@ -42,7 +42,7 @@ export function SubnetHealthMatrix() {
     return (
       <div className="grid grid-cols-[repeat(auto-fill,minmax(28px,1fr))] gap-1.5">
         {Array.from({ length: 128 }).map((_, i) => (
-          <div key={i} className="aspect-square rounded-sm bg-surface-2/60 animate-pulse" />
+          <div key={i} className="aspect-square rounded bg-surface-2/60 animate-pulse" />
         ))}
       </div>
     );
@@ -61,7 +61,7 @@ export function SubnetHealthMatrix() {
                     to="/subnets/$netuid"
                     params={{ netuid: s.netuid }}
                     className={classNames(
-                      "group flex aspect-square items-center justify-center rounded-sm transition-all duration-150 ring-0 hover:ring-2 hover:ring-accent/40 hover:scale-110",
+                      "group flex aspect-square items-center justify-center rounded transition-all duration-150 ring-0 hover:ring-2 hover:ring-accent/40 hover:scale-110",
                       tone,
                       TONE_TEXT[s.health ?? "unknown"],
                     )}
@@ -100,7 +100,7 @@ function Legend() {
     <div className="flex flex-wrap items-center gap-3 mg-type-micro text-ink-muted">
       {items.map((i) => (
         <span key={i.state} className="inline-flex items-center gap-1.5">
-          <span className={classNames("size-2 rounded-sm", TONE[i.state])} aria-hidden />
+          <span className={classNames("size-2 rounded", TONE[i.state])} aria-hidden />
           {i.label}
         </span>
       ))}

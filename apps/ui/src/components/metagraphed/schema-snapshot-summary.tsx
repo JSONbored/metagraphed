@@ -104,7 +104,7 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
       </div>
 
       {/* Hash transition (the registry's canonical drift signal). */}
-      <div className="rounded-lg border border-border bg-paper p-3 mg-type-data">
+      <div className="rounded-md border border-border bg-paper p-3 mg-type-data">
         {hashChanged ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-muted">{schema.previous_hash!.slice(0, 12)}</span>

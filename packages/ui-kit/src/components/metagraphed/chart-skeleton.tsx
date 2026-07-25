@@ -41,7 +41,7 @@ export function ChartSkeleton({
           {Array.from({ length: 16 }).map((_, i) => (
             <div
               key={i}
-              className="flex-1 rounded-sm bg-ink-strong/10 animate-pulse"
+              className="flex-1 rounded bg-ink-strong/10 animate-pulse"
               style={{ height: `${20 + ((i * 17) % 70)}%` }}
             />
           ))}

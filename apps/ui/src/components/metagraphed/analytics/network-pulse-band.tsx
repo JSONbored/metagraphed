@@ -203,7 +203,7 @@ export function NetworkPulseBand({ className }: { className?: string }) {
 function Legend({ swatch, label }: { swatch: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1 mg-type-data-sm text-ink-muted">
-      <span className={classNames("inline-block size-2 rounded-sm", swatch)} aria-hidden />
+      <span className={classNames("inline-block size-2 rounded", swatch)} aria-hidden />
       {label}
     </span>
   );

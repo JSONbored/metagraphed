@@ -203,7 +203,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                   <div className="flex items-center gap-2">
                     <span
                       className={classNames(
-                        "inline-block size-2 rounded-sm",
+                        "inline-block size-2 rounded",
                         SEVERITY_TINT[r.worst] ?? SEVERITY_TINT.unknown,
                       )}
                       aria-hidden
@@ -289,7 +289,7 @@ function TimelineTrack({
           <span
             key={i.id}
             className={classNames(
-              "absolute top-1 bottom-1 rounded-sm transition-all",
+              "absolute top-1 bottom-1 rounded transition-all",
               tone,
               ongoing && "ring-1 ring-paper/40",
             )}

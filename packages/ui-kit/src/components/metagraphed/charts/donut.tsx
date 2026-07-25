@@ -122,7 +122,7 @@ export function DonutLegend({ segments }: { segments: DonutSegment[] }) {
         >
           <span
             aria-hidden
-            className="inline-block size-2 rounded-sm"
+            className="inline-block size-2 rounded"
             style={{ background: s.color }}
           />
           <span className="text-ink">{s.label}</span>

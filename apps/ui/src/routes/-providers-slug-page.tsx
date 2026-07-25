@@ -327,7 +327,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: netuid }}
-                className="flex items-center gap-2.5 rounded-lg border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
+                className="flex items-center gap-2.5 rounded-md border border-border bg-card p-3 hover:border-ink/30 mg-row-hover"
               >
                 <BrandIcon
                   url={sn?.website}

@@ -407,7 +407,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                       key={r.to}
                       to={r.to}
                       onClick={() => setOpen(false)}
-                      className="group/jump flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 hover:border-accent/40 hover:bg-surface transition-colors"
+                      className="group/jump flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 hover:bg-surface transition-colors"
                     >
                       <r.Icon className="size-3.5 shrink-0 text-ink-muted group-hover/jump:text-accent transition-colors" />
                       <span className="min-w-0">
@@ -421,7 +421,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                 </div>
               </div>
 
-              <div className="mx-3 mb-2 rounded-lg border border-border/60 mg-glass-soft px-3 py-2">
+              <div className="mx-3 mb-2 rounded-md border border-border/60 mg-glass-soft px-3 py-2">
                 <p className="text-[11px] text-ink-muted leading-relaxed">
                   <span className="font-medium text-ink">Paste anything:</span> wallet address
                   (ss58), block number, transaction hash (0x…) or block hash to jump directly.
@@ -490,7 +490,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                         onMouseEnter={() => setActive(i)}
                         onClick={() => commit(n)}
                         className={classNames(
-                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
+                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left transition-colors",
                           isActive ? "bg-surface" : "hover:bg-surface/60",
                         )}
                       >
@@ -544,7 +544,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                               onMouseEnter={() => setActive(idx)}
                               onClick={() => commit({ kind: "hit", hit: h })}
                               className={classNames(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
                                 isActive ? "bg-surface" : "hover:bg-surface/60",
                               )}
                             >
@@ -579,7 +579,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                     onMouseEnter={() => setActive(flat.length - 1)}
                     onClick={() => commit({ kind: "action" })}
                     className={classNames(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
                       active === flat.length - 1 ? "bg-surface" : "hover:bg-surface/60",
                     )}
                   >

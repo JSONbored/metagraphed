@@ -236,7 +236,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
                     >
                       <span
                         aria-hidden
-                        className="inline-block size-2 shrink-0 rounded-sm"
+                        className="inline-block size-2 shrink-0 rounded"
                         style={{ background: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length] }}
                       />
                       <span
