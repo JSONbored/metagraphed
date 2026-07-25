@@ -205,6 +205,24 @@ import {
   RandomnessArtifactSchema,
   SudoKeyArtifactSchema,
 } from "./routes/network-singletons.ts";
+import {
+  BlocksFeedArtifactSchema,
+  BlockDetailArtifactSchema,
+} from "./routes/blocks.ts";
+import { BlocksSummaryArtifactSchema } from "./routes/blocks-summary.ts";
+import { RuntimeVersionsArtifactSchema } from "./routes/runtime-versions.ts";
+import {
+  ExtrinsicsFeedArtifactSchema,
+  ExtrinsicDetailArtifactSchema,
+} from "./routes/extrinsics.ts";
+import { BlockExtrinsicsArtifactSchema } from "./routes/block-extrinsics.ts";
+import { BlockEventsArtifactSchema } from "./routes/block-events.ts";
+import { BlockChainEventsArtifactSchema } from "./routes/block-chain-events.ts";
+import { GlobalValidatorsArtifactSchema } from "./routes/global-validators.ts";
+import { ValidatorDetailArtifactSchema } from "./routes/validator-detail.ts";
+import { CompareValidatorsArtifactSchema } from "./routes/compare-validators.ts";
+import { ValidatorHistoryArtifactSchema } from "./routes/validator-history.ts";
+import { ValidatorNominatorsArtifactSchema } from "./routes/validator-nominators.ts";
 
 import {
   ChainActivityArtifactSchema,
@@ -401,11 +419,27 @@ register(EvmAddressMappingArtifactSchema, "EvmAddressMappingArtifact");
 register(NetworkParametersArtifactSchema, "NetworkParametersArtifact");
 register(RandomnessArtifactSchema, "RandomnessArtifact");
 register(SudoKeyArtifactSchema, "SudoKeyArtifact");
+register(BlocksFeedArtifactSchema, "BlocksFeedArtifact");
+register(BlockDetailArtifactSchema, "BlockDetailArtifact");
+register(BlocksSummaryArtifactSchema, "BlocksSummaryArtifact");
+register(RuntimeVersionsArtifactSchema, "RuntimeVersionsArtifact");
+register(ExtrinsicsFeedArtifactSchema, "ExtrinsicsFeedArtifact");
+register(ExtrinsicDetailArtifactSchema, "ExtrinsicDetailArtifact");
+register(BlockExtrinsicsArtifactSchema, "BlockExtrinsicsArtifact");
+register(BlockEventsArtifactSchema, "BlockEventsArtifact");
+register(BlockChainEventsArtifactSchema, "BlockChainEventsArtifact");
+register(GlobalValidatorsArtifactSchema, "GlobalValidatorsArtifact");
+register(ValidatorDetailArtifactSchema, "ValidatorDetailArtifact");
+register(CompareValidatorsArtifactSchema, "CompareValidatorsArtifact");
+register(ValidatorHistoryArtifactSchema, "ValidatorHistoryArtifact");
+register(ValidatorNominatorsArtifactSchema, "ValidatorNominatorsArtifact");
 // ConcentrationMetrics/ScoreDistribution: still referenced by name from
-// AccountPortfolioArtifact/BlocksSummaryArtifact/ChainConcentrationArtifact/
-// ChainPerformanceArtifact, all still hand-edited (verified via repo-wide
-// $ref grep) -- unlike this batch's other shared sub-shapes, these must stay
-// registered, not orphaned.
+// AccountPortfolioArtifact/ChainConcentrationArtifact/ChainPerformanceArtifact,
+// all still hand-edited (verified via repo-wide $ref grep) -- unlike this
+// batch's other shared sub-shapes, these must stay registered, not orphaned.
+// (BlocksSummaryArtifact used to be a 4th referrer before this batch/#8061
+// converted it -- it now imports ConcentrationMetricsSchema directly instead
+// of $ref'ing the hand-edited component, so it no longer counts.)
 register(ConcentrationMetricsSchema, "ConcentrationMetrics");
 register(ScoreDistributionSchema, "ScoreDistribution");
 
@@ -544,6 +578,20 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "ChainTurnoverArtifact",
   "ChainWeightSettersArtifact",
   "ChainYieldArtifact",
+  "BlocksFeedArtifact",
+  "BlockDetailArtifact",
+  "BlocksSummaryArtifact",
+  "RuntimeVersionsArtifact",
+  "ExtrinsicsFeedArtifact",
+  "ExtrinsicDetailArtifact",
+  "BlockExtrinsicsArtifact",
+  "BlockEventsArtifact",
+  "BlockChainEventsArtifact",
+  "GlobalValidatorsArtifact",
+  "ValidatorDetailArtifact",
+  "CompareValidatorsArtifact",
+  "ValidatorHistoryArtifact",
+  "ValidatorNominatorsArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -646,11 +694,16 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   // component this batch replaces (verified via repo-wide $ref grep --
   // ChainTransferParty's two refs are both within ChainTransfersArtifact
   // itself, an intra-component reuse, not a cross-component one). `Extrinsic`
-  // and `ChainEvent` deliberately stay registered/untouched -- both have
-  // referrers outside this batch (block/extrinsic-detail routes, out of
-  // scope until batch 7) -- this batch's own chain-events.ts models
-  // ChainEvent's shape with a local unregistered copy instead (same pattern
-  // batch 5 used for Extrinsic/EntityLabel).
+  // deliberately stays registered/untouched here -- it still has referrers
+  // outside this batch (block/extrinsic-detail routes, out of scope until
+  // batch 7) -- this batch's own chain-events.ts models ChainEvent's shape
+  // with a local unregistered copy instead (same pattern batch 5 used for
+  // Extrinsic/EntityLabel). `ChainEvent` WAS in the same situation (its
+  // other referrer, BlockChainEventsArtifact, was batch 7/#8061, not yet
+  // merged when this batch was originally written) but batch 7 has since
+  // merged, and both its referrers now inline it locally rather than $ref
+  // it -- so ChainEvent is added below too, as part of resolving batch 7's
+  // rebase conflict against this batch.
   "ChainActivityDay",
   "ChainCallEntry",
   "ChainSignerEntry",
@@ -661,4 +714,38 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "ChainTransferPair",
   "ChainTransferParty",
   "YieldDistribution",
+  "ChainEvent",
+  // Batch 7 (#8061) additions: Block/Extrinsic are each referenced only by
+  // this batch's own converted routes (Block: BlocksFeedArtifact,
+  // BlockDetailArtifact; Extrinsic: ExtrinsicsFeedArtifact,
+  // ExtrinsicDetailArtifact, BlockExtrinsicsArtifact -- all converted
+  // together here, verified via repo-wide $ref grep), so both hand-edited
+  // component keys become fully orphaned. AccountEvent is NOT listed -- it's
+  // already a registered Zod component (batch 1/#8055's subnet-events.ts),
+  // reused directly by block-events.ts/extrinsics.ts, not $ref'd by name.
+  // BlockTimeDistribution/RuntimeVersionTransition/ValidatorNominatorEntry
+  // are each referenced only by the one hand-edited component this batch
+  // replaces (verified via repo-wide $ref grep). ColdkeyIdentity/
+  // GlobalValidatorSubnet/ValidatorDetailSubnet are each referenced only by
+  // this batch's own converted routes (ColdkeyIdentity: GlobalValidatorEntry,
+  // ValidatorDetailArtifact, CompareValidatorEntry; GlobalValidatorSubnet:
+  // GlobalValidatorEntry; ValidatorDetailSubnet: ValidatorDetailArtifact,
+  // CompareValidatorEntry -- all converted together here), so all three
+  // become fully orphaned too. GlobalValidatorEntry/CompareValidatorEntry
+  // are each referenced only by the one hand-edited component this batch
+  // replaces (GlobalValidatorsArtifact/CompareValidatorsArtifact
+  // respectively -- verified via repo-wide $ref grep). None of these twelve
+  // are worth a standalone registry entry; their hand-edited keys become
+  // orphaned the moment their referrer(s) are Zod-owned and inline them
+  // instead.
+  "Block",
+  "Extrinsic",
+  "BlockTimeDistribution",
+  "RuntimeVersionTransition",
+  "ValidatorNominatorEntry",
+  "ColdkeyIdentity",
+  "GlobalValidatorSubnet",
+  "ValidatorDetailSubnet",
+  "GlobalValidatorEntry",
+  "CompareValidatorEntry",
 ] as const;

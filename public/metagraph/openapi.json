@@ -4613,82 +4613,123 @@
         ],
         "type": "string"
       },
-      "Block": {
-        "additionalProperties": false,
-        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time.",
-        "properties": {
-          "author": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "block_hash": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "block_number": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "event_count": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "extrinsic_count": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "parent_hash": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "spec_version": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "block_number"
-        ],
-        "type": "object"
-      },
       "BlockChainEventsArtifact": {
-        "additionalProperties": true,
-        "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{block_number}/chain-events. Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           },
           "count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "events": {
             "items": {
-              "$ref": "#/components/schemas/ChainEvent"
+              "additionalProperties": false,
+              "properties": {
+                "args": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "event_index": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_index": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "method": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pallet": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "phase": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "event_index",
+                "pallet",
+                "method"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -4701,13 +4742,113 @@
         "type": "object"
       },
       "BlockDetailArtifact": {
-        "additionalProperties": true,
-        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null).",
+        "additionalProperties": {},
         "properties": {
           "block": {
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/Block"
+                "additionalProperties": false,
+                "properties": {
+                  "author": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "block_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "block_number": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "event_count": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "extrinsic_count": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "parent_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "spec_version": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "block_number",
+                  "block_hash",
+                  "parent_hash",
+                  "author",
+                  "extrinsic_count",
+                  "event_count",
+                  "spec_version",
+                  "observed_at"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -4715,44 +4856,71 @@
             ]
           },
           "next_block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "prev_block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "ref": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
         "required": [
           "schema_version",
-          "block"
+          "ref",
+          "block",
+          "prev_block_number",
+          "next_block_number"
         ],
         "type": "object"
       },
       "BlockEventsArtifact": {
-        "additionalProperties": true,
-        "description": "The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "event_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -4763,119 +4931,400 @@
             "type": "array"
           },
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ref": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
         "required": [
           "schema_version",
           "ref",
+          "block_number",
           "event_count",
+          "limit",
+          "offset",
           "events"
         ],
         "type": "object"
       },
       "BlockExtrinsicsArtifact": {
-        "additionalProperties": true,
-        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "extrinsic_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "extrinsics": {
             "items": {
-              "$ref": "#/components/schemas/Extrinsic"
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_args": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_function": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_module": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_index": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fee_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "signer": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "success": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tip_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "extrinsic_index",
+                "extrinsic_hash",
+                "signer",
+                "call_module",
+                "call_function",
+                "call_args",
+                "success",
+                "fee_tao",
+                "tip_tao",
+                "observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ref": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
         "required": [
           "schema_version",
           "ref",
+          "block_number",
           "extrinsic_count",
+          "limit",
+          "offset",
           "extrinsics"
         ],
         "type": "object"
       },
       "BlocksFeedArtifact": {
-        "additionalProperties": true,
-        "description": "Recent-block feed (newest first) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks (no static file).",
+        "additionalProperties": {},
         "properties": {
           "block_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "blocks": {
             "items": {
-              "$ref": "#/components/schemas/Block"
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "block_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "event_count": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_count": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "parent_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "spec_version": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "block_hash",
+                "parent_hash",
+                "author",
+                "extrinsic_count",
+                "event_count",
+                "spec_version",
+                "observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "limit": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
         "required": [
           "schema_version",
           "block_count",
+          "limit",
+          "offset",
+          "next_cursor",
           "blocks"
         ],
         "type": "object"
       },
       "BlocksSummaryArtifact": {
-        "additionalProperties": true,
-        "description": "Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file).",
+        "additionalProperties": {},
         "properties": {
           "author_concentration": {
             "anyOf": [
@@ -4885,82 +5334,176 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site."
+            ]
           },
           "block_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "block_time": {
-            "$ref": "#/components/schemas/BlockTimeDistribution"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "max_ms": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "mean_ms": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "min_ms": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "p50_ms": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "p90_ms": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "mean_ms",
+                  "min_ms",
+                  "max_ms",
+                  "p50_ms",
+                  "p90_ms"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "distinct_authors": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "distinct_spec_versions": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "first_block": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "first_observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_block": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latest_spec_version": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "throughput": {
-            "additionalProperties": true,
-            "properties": {
-              "max_extrinsics_in_block": {
-                "minimum": 0,
-                "type": "integer"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "max_extrinsics_in_block": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "mean_events_per_block": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "mean_extrinsics_per_block": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "total_events": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "total_extrinsics": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "total_extrinsics",
+                  "total_events",
+                  "mean_extrinsics_per_block",
+                  "mean_events_per_block",
+                  "max_extrinsics_in_block"
+                ],
+                "type": "object"
               },
-              "mean_events_per_block": {
-                "type": "number"
-              },
-              "mean_extrinsics_per_block": {
-                "type": "number"
-              },
-              "total_events": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "total_extrinsics": {
-                "minimum": 0,
-                "type": "integer"
+              {
+                "type": "null"
               }
-            },
-            "type": [
-              "object",
-              "null"
             ]
           }
         },
@@ -4979,50 +5522,6 @@
           "latest_spec_version"
         ],
         "type": "object"
-      },
-      "BlockTimeDistribution": {
-        "additionalProperties": true,
-        "description": "Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present.",
-        "properties": {
-          "count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "max_ms": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "mean_ms": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "min_ms": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "p50_ms": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "p90_ms": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "type": [
-          "object",
-          "null"
-        ]
       },
       "BuildSummaryArtifact": {
         "allOf": [
@@ -9309,71 +9808,6 @@
         ],
         "type": "string"
       },
-      "ColdkeyIdentity": {
-        "additionalProperties": false,
-        "description": "Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data.",
-        "properties": {
-          "additional": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "discord": {
-            "maxLength": 200,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "github": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "has_identity": {
-            "type": "boolean"
-          },
-          "image": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "has_identity"
-        ],
-        "type": "object"
-      },
       "CompareArtifact": {
         "additionalProperties": true,
         "properties": {
@@ -9549,127 +9983,431 @@
         ],
         "type": "object"
       },
-      "CompareValidatorEntry": {
-        "additionalProperties": false,
-        "description": "One validator's side-by-side entry in GET /api/v1/compare/validators (composeValidatorComparison) -- a decision-relevant projection of ValidatorDetailArtifact for one hotkey, with fields copied verbatim from the already-loaded detail.",
-        "properties": {
-          "apy_estimate": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "apy_estimate_eligible_subnet_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "avg_validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "coldkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "coldkey_identity": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ColdkeyIdentity"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "hotkey": {
-            "type": "string"
-          },
-          "max_validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "nominator_count": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "subnet_context": {
-            "description": "This validator's membership row in the ?netuid= subnet context, or null when netuid wasn't requested or the validator holds no permit there.",
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/ValidatorDetailSubnet"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "subnet_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "take": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "total_emission_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "total_stake_tao": {
-            "minimum": 0,
-            "type": "number"
-          }
-        },
-        "required": [
-          "hotkey",
-          "coldkey",
-          "coldkey_identity",
-          "take",
-          "apy_estimate",
-          "apy_estimate_eligible_subnet_count",
-          "nominator_count",
-          "total_stake_tao",
-          "total_emission_tao",
-          "avg_validator_trust",
-          "max_validator_trust",
-          "subnet_count",
-          "subnet_context"
-        ],
-        "type": "object"
-      },
       "CompareValidatorsArtifact": {
-        "additionalProperties": true,
-        "description": "Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates -- the decision-relevant projection of ValidatorDetailArtifact for every requested hotkey (composeValidatorComparison), computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
+        "additionalProperties": {},
         "properties": {
           "netuid": {
-            "description": "Optional subnet context requested via ?netuid=; null when not requested. When set, each validator entry's subnet_context carries its membership row in this subnet.",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "validator_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "validators": {
             "items": {
-              "$ref": "#/components/schemas/CompareValidatorEntry"
+              "additionalProperties": false,
+              "properties": {
+                "apy_estimate": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "apy_estimate_eligible_subnet_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "avg_validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey_identity": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "additional": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "captured_at": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "discord": {
+                          "anyOf": [
+                            {
+                              "maxLength": 200,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "github": {
+                          "anyOf": [
+                            {
+                              "format": "uri",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "has_identity": {
+                          "type": "boolean"
+                        },
+                        "image": {
+                          "anyOf": [
+                            {
+                              "format": "uri",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "url": {
+                          "anyOf": [
+                            {
+                              "format": "uri",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "has_identity",
+                        "name",
+                        "url",
+                        "github",
+                        "image",
+                        "discord",
+                        "description",
+                        "additional",
+                        "captured_at"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hotkey": {
+                  "type": "string"
+                },
+                "max_validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "nominator_count": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_context": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "axon": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "coldkey": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "consensus": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "dividends": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "emission_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "hotkey": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "incentive": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "is_immunity_period": {
+                          "type": "boolean"
+                        },
+                        "netuid": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "rank": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "registered_at_block": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stake_tao": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "take": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "trust": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "uid": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "validator_permit": {
+                          "type": "boolean"
+                        },
+                        "validator_trust": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "netuid",
+                        "uid",
+                        "hotkey",
+                        "coldkey",
+                        "active",
+                        "validator_permit",
+                        "rank",
+                        "trust",
+                        "validator_trust",
+                        "consensus",
+                        "incentive",
+                        "dividends",
+                        "emission_tao",
+                        "stake_tao",
+                        "registered_at_block",
+                        "is_immunity_period",
+                        "axon",
+                        "take"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "total_emission_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "total_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "hotkey",
+                "coldkey",
+                "coldkey_identity",
+                "take",
+                "apy_estimate",
+                "apy_estimate_eligible_subnet_count",
+                "nominator_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "avg_validator_trust",
+                "max_validator_trust",
+                "subnet_count",
+                "subnet_context"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -12169,88 +12907,8 @@
         ],
         "type": "object"
       },
-      "Extrinsic": {
-        "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
-        "properties": {
-          "block_number": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "call_args": {
-            "type": [
-              "object",
-              "array",
-              "null"
-            ]
-          },
-          "call_function": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "call_module": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "extrinsic_hash": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "extrinsic_index": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "fee_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "signer": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "success": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "tip_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "block_number",
-          "extrinsic_index"
-        ],
-        "type": "object"
-      },
       "ExtrinsicDetailArtifact": {
-        "additionalProperties": true,
-        "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file).",
+        "additionalProperties": {},
         "properties": {
           "events": {
             "items": {
@@ -12259,9 +12917,151 @@
             "type": "array"
           },
           "extrinsic": {
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/Extrinsic"
+                "additionalProperties": false,
+                "properties": {
+                  "block_number": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "call_args": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": {},
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          {
+                            "items": {},
+                            "type": "array"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "call_function": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "call_module": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "extrinsic_hash": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "extrinsic_index": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fee_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "signer": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "success": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tip_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "block_number",
+                  "extrinsic_index",
+                  "extrinsic_hash",
+                  "signer",
+                  "call_module",
+                  "call_function",
+                  "call_args",
+                  "success",
+                  "fee_tao",
+                  "tip_tao",
+                  "observed_at"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -12269,60 +13069,217 @@
             ]
           },
           "ref": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
         "required": [
           "schema_version",
-          "extrinsic"
+          "ref",
+          "extrinsic",
+          "events"
         ],
         "type": "object"
       },
       "ExtrinsicsFeedArtifact": {
-        "additionalProperties": true,
-        "description": "Recent-extrinsic feed (newest first) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics (no static file).",
+        "additionalProperties": {},
         "properties": {
           "extrinsic_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "extrinsics": {
             "items": {
-              "$ref": "#/components/schemas/Extrinsic"
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_args": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_function": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "call_module": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "extrinsic_index": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fee_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "signer": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "success": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tip_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "extrinsic_index",
+                "extrinsic_hash",
+                "signer",
+                "call_module",
+                "call_function",
+                "call_args",
+                "success",
+                "fee_tao",
+                "tip_tao",
+                "observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "limit": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
         "required": [
           "schema_version",
           "extrinsic_count",
+          "limit",
+          "offset",
+          "next_cursor",
           "extrinsics"
         ],
         "type": "object"
@@ -13001,196 +13958,29 @@
         ],
         "type": "object"
       },
-      "GlobalValidatorEntry": {
-        "additionalProperties": false,
-        "description": "One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. `featured` (#5166) reflects a maintainer-toggled DB pin (featured_validators, keyed by hotkey) -- true moves the row to the front of the default (unsorted) view; an explicit non-default ?sort= keeps its normal rank while `featured` stays true.",
+      "GlobalValidatorsArtifact": {
+        "additionalProperties": {},
         "properties": {
-          "alpha_stake_tao": {
-            "description": "total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao.",
-            "minimum": 0,
-            "type": "number"
-          },
-          "apy_estimate": {
-            "description": "Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0.",
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "apy_estimate_eligible_subnet_count": {
-            "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0.",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "avg_validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "coldkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "coldkey_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "coldkey_identity": {
-            "description": "The row's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat.",
-            "oneOf": [
+          "block_number": {
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/ColdkeyIdentity"
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "featured": {
-            "type": "boolean"
-          },
-          "hotkey": {
-            "type": "string"
-          },
-          "latest_block_number": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "latest_captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "max_validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "nominator_count": {
-            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0.",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "realized_return_1d": {
-            "description": "Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "realized_return_1m": {
-            "description": "Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "realized_return_1w": {
-            "description": "Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "root_stake_tao": {
-            "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao.",
-            "minimum": 0,
-            "type": "number"
-          },
-          "stake_dominance": {
-            "maximum": 1,
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "subnet_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "subnets": {
-            "items": {
-              "$ref": "#/components/schemas/GlobalValidatorSubnet"
-            },
-            "maxItems": 10,
-            "type": "array"
-          },
-          "take": {
-            "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Global per-hotkey. Null if no SubtensorModule::Delegates entry existed at capture time.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "total_emission_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "total_stake_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "uid_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "hotkey",
-          "featured",
-          "coldkey",
-          "coldkey_identity",
-          "coldkey_count",
-          "subnet_count",
-          "uid_count",
-          "take",
-          "total_stake_tao",
-          "root_stake_tao",
-          "alpha_stake_tao",
-          "total_emission_tao",
-          "nominator_count",
-          "apy_estimate",
-          "apy_estimate_eligible_subnet_count",
-          "realized_return_1d",
-          "realized_return_1w",
-          "realized_return_1m",
-          "stake_dominance",
-          "avg_validator_trust",
-          "max_validator_trust",
-          "latest_captured_at",
-          "latest_block_number",
-          "subnets"
-        ],
-        "type": "object"
-      },
-      "GlobalValidatorsArtifact": {
-        "additionalProperties": true,
-        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, served live from the neurons D1 tier at /api/v1/validators (no static file).",
-        "properties": {
-          "block_number": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "limit": {
@@ -13199,6 +13989,8 @@
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "sort": {
@@ -13214,12 +14006,367 @@
             "type": "string"
           },
           "validator_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "validators": {
             "items": {
-              "$ref": "#/components/schemas/GlobalValidatorEntry"
+              "additionalProperties": false,
+              "properties": {
+                "alpha_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "apy_estimate": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "apy_estimate_eligible_subnet_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "avg_validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "coldkey_identity": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "additional": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "captured_at": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "discord": {
+                          "anyOf": [
+                            {
+                              "maxLength": 200,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "github": {
+                          "anyOf": [
+                            {
+                              "format": "uri",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "has_identity": {
+                          "type": "boolean"
+                        },
+                        "image": {
+                          "anyOf": [
+                            {
+                              "format": "uri",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "url": {
+                          "anyOf": [
+                            {
+                              "format": "uri",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "has_identity",
+                        "name",
+                        "url",
+                        "github",
+                        "image",
+                        "discord",
+                        "description",
+                        "additional",
+                        "captured_at"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "featured": {
+                  "type": "boolean"
+                },
+                "hotkey": {
+                  "type": "string"
+                },
+                "latest_block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "latest_captured_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "max_validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "nominator_count": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "realized_return_1d": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "realized_return_1m": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "realized_return_1w": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "root_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "stake_dominance": {
+                  "anyOf": [
+                    {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "subnets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "emission_tao": {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "netuid": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "stake_tao": {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "uid": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "validator_trust": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "netuid",
+                      "uid",
+                      "stake_tao",
+                      "emission_tao",
+                      "validator_trust"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 10,
+                  "type": "array"
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "total_emission_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "total_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "uid_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "hotkey",
+                "featured",
+                "coldkey",
+                "coldkey_identity",
+                "coldkey_count",
+                "subnet_count",
+                "uid_count",
+                "take",
+                "total_stake_tao",
+                "root_stake_tao",
+                "alpha_stake_tao",
+                "total_emission_tao",
+                "nominator_count",
+                "apy_estimate",
+                "apy_estimate_eligible_subnet_count",
+                "realized_return_1d",
+                "realized_return_1w",
+                "realized_return_1m",
+                "stake_dominance",
+                "avg_validator_trust",
+                "max_validator_trust",
+                "latest_captured_at",
+                "latest_block_number",
+                "subnets"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -13228,44 +14375,10 @@
           "schema_version",
           "sort",
           "limit",
+          "block_number",
+          "captured_at",
           "validator_count",
           "validators"
-        ],
-        "type": "object"
-      },
-      "GlobalValidatorSubnet": {
-        "additionalProperties": false,
-        "description": "One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint.",
-        "properties": {
-          "emission_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stake_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "uid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "netuid",
-          "uid",
-          "stake_tao",
-          "emission_tao",
-          "validator_trust"
         ],
         "type": "object"
       },
@@ -18158,39 +19271,83 @@
         "type": "object"
       },
       "RuntimeVersionsArtifact": {
-        "additionalProperties": true,
-        "description": "Site-wide runtime spec-version transition timeline (#4316/3.1), computed live off the blocks D1 tier's spec_version column (migrations/0017) — the earliest known block at each distinct spec_version. spec_version is best-effort/nullable on blocks (null on RPC failure or a pruned block) and was only added 2026-06-25: a block row written before that date, or on any RPC failure, has a permanently-unfilled spec_version (INSERT OR IGNORE never back-fills it), so a version already active before coverage_from_block is invisible here, not reported as absent. Served live at /api/v1/runtime (no static file).",
+        "additionalProperties": {},
         "properties": {
           "coverage_from_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "coverage_from_block": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "current_spec_version": {
-            "description": "The spec_version of the latest block that carries a reading — not necessarily the chain's live runtime version: if the most recent blocks failed the spec_version RPC call (best-effort/nullable, see the artifact description), this reports the latest KNOWN reading, which can lag behind an upgrade that already happened.",
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "transition_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "transitions": {
             "items": {
-              "$ref": "#/components/schemas/RuntimeVersionTransition"
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "spec_version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "spec_version",
+                "block_number",
+                "observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -18202,32 +19359,6 @@
           "current_spec_version",
           "coverage_from_block",
           "coverage_from_at"
-        ],
-        "type": "object"
-      },
-      "RuntimeVersionTransition": {
-        "additionalProperties": false,
-        "description": "The earliest known block observed at a given runtime spec_version — one entry per distinct spec_version seen on the blocks D1 tier, ascending by block_number.",
-        "properties": {
-          "block_number": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "spec_version": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "spec_version",
-          "block_number"
         ],
         "type": "object"
       },
@@ -27952,61 +29083,180 @@
         "type": "object"
       },
       "ValidatorDetailArtifact": {
-        "additionalProperties": true,
-        "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators.",
+        "additionalProperties": {},
         "properties": {
           "alpha_stake_tao": {
-            "description": "total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao.",
             "minimum": 0,
             "type": "number"
           },
           "apy_estimate": {
-            "description": "Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0.",
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "apy_estimate_eligible_subnet_count": {
-            "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0.",
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "avg_validator_trust": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "coldkey": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "coldkey_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "coldkey_identity": {
-            "description": "The validator's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat.",
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/ColdkeyIdentity"
+                "additionalProperties": false,
+                "properties": {
+                  "additional": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "captured_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "discord": {
+                    "anyOf": [
+                      {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "github": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "has_identity": {
+                    "type": "boolean"
+                  },
+                  "image": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "has_identity",
+                  "name",
+                  "url",
+                  "github",
+                  "image",
+                  "discord",
+                  "description",
+                  "additional",
+                  "captured_at"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -28017,63 +29267,259 @@
             "type": "string"
           },
           "max_validator_trust": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "nominator_count": {
-            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0.",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "realized_return_1d": {
-            "description": "Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'.",
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "realized_return_1m": {
-            "description": "Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back.",
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "realized_return_1w": {
-            "description": "Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back.",
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "root_stake_tao": {
-            "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao.",
             "minimum": 0,
             "type": "number"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "subnets": {
             "items": {
-              "$ref": "#/components/schemas/ValidatorDetailSubnet"
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "axon": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "consensus": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hotkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "incentive": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "is_immunity_period": {
+                  "type": "boolean"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "registered_at_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_permit": {
+                  "type": "boolean"
+                },
+                "validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "netuid",
+                "uid",
+                "hotkey",
+                "coldkey",
+                "active",
+                "validator_permit",
+                "rank",
+                "trust",
+                "validator_trust",
+                "consensus",
+                "incentive",
+                "dividends",
+                "emission_tao",
+                "stake_tao",
+                "registered_at_block",
+                "is_immunity_period",
+                "axon",
+                "take"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "take": {
-            "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Null if no SubtensorModule::Delegates entry existed at capture time.",
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "total_emission_tao": {
@@ -28111,125 +29557,14 @@
         ],
         "type": "object"
       },
-      "ValidatorDetailSubnet": {
-        "additionalProperties": false,
-        "description": "One subnet membership (a validator_permit=1 neuron row) in a validator's cross-subnet detail view (#4334/7.1). Same shape as Neuron, plus the netuid it belongs to; unlike GlobalValidatorSubnet this is not capped at ten — a detail page's whole point is the full per-subnet performance table.",
-        "properties": {
-          "active": {
-            "type": "boolean"
-          },
-          "axon": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "coldkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "consensus": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "dividends": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "emission_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "hotkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "incentive": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "is_immunity_period": {
-            "type": "boolean"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "rank": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "registered_at_block": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "stake_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "take": {
-            "description": "Validator take/commission (#2548), 0..1 fraction. Global per-hotkey, identical across every subnet membership row here.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "uid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "validator_permit": {
-            "type": "boolean"
-          },
-          "validator_trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "netuid",
-          "uid",
-          "hotkey",
-          "coldkey",
-          "active",
-          "validator_permit"
-        ],
-        "type": "object"
-      },
       "ValidatorHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator (#4334/7.3): one point per day, summed across every subnet it operates in that day, served live from the neuron_daily D1 rollup tier at /api/v1/validators/{hotkey}/history (no static file).",
+        "additionalProperties": {},
         "properties": {
           "hotkey": {
             "type": "string"
           },
           "point_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -28238,106 +29573,89 @@
               "additionalProperties": false,
               "properties": {
                 "rewards_per_1000_tao": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "snapshot_date": {
                   "type": "string"
                 },
                 "subnet_count": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "total_emission_tao": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "total_stake_tao": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
               "required": [
-                "snapshot_date"
+                "snapshot_date",
+                "subnet_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "rewards_per_1000_tao"
               ],
               "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
         "required": [
           "schema_version",
           "hotkey",
+          "window",
           "point_count",
           "points"
         ],
         "type": "object"
       },
-      "ValidatorNominatorEntry": {
-        "additionalProperties": false,
-        "description": "One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2).",
-        "properties": {
-          "coldkey": {
-            "type": "string"
-          },
-          "event_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "gross_staked_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "last_observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "net_staked_tao": {
-            "type": "number"
-          },
-          "staked_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "unstaked_tao": {
-            "minimum": 0,
-            "type": "number"
-          }
-        },
-        "required": [
-          "coldkey",
-          "staked_tao",
-          "unstaked_tao",
-          "net_staked_tao",
-          "gross_staked_tao",
-          "event_count",
-          "last_observed_at"
-        ],
-        "type": "object"
-      },
       "ValidatorNominatorsArtifact": {
-        "additionalProperties": true,
-        "description": "Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, served live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file). Cold/absent hotkey returns an empty list, never a 404.",
+        "additionalProperties": {},
         "properties": {
           "hotkey": {
             "type": "string"
@@ -28348,20 +29666,69 @@
             "type": "integer"
           },
           "nominator_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "nominators": {
             "items": {
-              "$ref": "#/components/schemas/ValidatorNominatorEntry"
+              "additionalProperties": false,
+              "properties": {
+                "coldkey": {
+                  "type": "string"
+                },
+                "event_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "gross_staked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "last_observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "net_staked_tao": {
+                  "type": "number"
+                },
+                "staked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "unstaked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "coldkey",
+                "staked_tao",
+                "unstaked_tao",
+                "net_staked_tao",
+                "gross_staked_tao",
+                "event_count",
+                "last_observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "offset": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "sort": {
@@ -28373,9 +29740,13 @@
             "type": "string"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -34016,7 +35387,14 @@
                     "block_count": 5000000,
                     "blocks": [
                       {
-                        "block_number": 5000000
+                        "author": "example",
+                        "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "block_number": 5000000,
+                        "event_count": 1,
+                        "extrinsic_count": 1,
+                        "observed_at": "2026-06-01T00:00:00.000Z",
+                        "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "spec_version": 1
                       }
                     ],
                     "limit": 1,
@@ -34613,7 +35991,16 @@
                     "extrinsics": [
                       {
                         "block_number": 5000000,
-                        "extrinsic_index": 1
+                        "call_args": {},
+                        "call_function": "example",
+                        "call_module": "example",
+                        "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "extrinsic_index": 1,
+                        "fee_tao": 0.5,
+                        "observed_at": "2026-06-01T00:00:00.000Z",
+                        "signer": "example",
+                        "success": false,
+                        "tip_tao": 0.5
                       }
                     ],
                     "limit": 1,
@@ -40221,18 +41608,38 @@
                         "avg_validator_trust": 0.5,
                         "coldkey": "example",
                         "coldkey_identity": {
-                          "has_identity": false
+                          "additional": "example",
+                          "captured_at": "2026-06-01T00:00:00.000Z",
+                          "description": "Example description.",
+                          "discord": "example",
+                          "github": "https://api.metagraph.sh/example",
+                          "has_identity": false,
+                          "image": "https://api.metagraph.sh/example",
+                          "name": "Example Subnet",
+                          "url": "https://api.metagraph.sh/example"
                         },
                         "hotkey": "example",
                         "max_validator_trust": 0.5,
                         "nominator_count": 1,
                         "subnet_context": {
                           "active": false,
+                          "axon": "example",
                           "coldkey": "example",
+                          "consensus": 0.5,
+                          "dividends": 0.5,
+                          "emission_tao": 0.5,
                           "hotkey": "example",
+                          "incentive": 0.5,
+                          "is_immunity_period": false,
                           "netuid": 7,
+                          "rank": 0.5,
+                          "registered_at_block": 5000000,
+                          "stake_tao": 0.5,
+                          "take": 0.5,
+                          "trust": 0.5,
                           "uid": 1,
-                          "validator_permit": false
+                          "validator_permit": false,
+                          "validator_trust": 0.5
                         },
                         "subnet_count": 1,
                         "take": 0.5,
@@ -43400,7 +44807,16 @@
                     "extrinsics": [
                       {
                         "block_number": 5000000,
-                        "extrinsic_index": 1
+                        "call_args": {},
+                        "call_function": "example",
+                        "call_module": "example",
+                        "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "extrinsic_index": 1,
+                        "fee_tao": 0.5,
+                        "observed_at": "2026-06-01T00:00:00.000Z",
+                        "signer": "example",
+                        "success": false,
+                        "tip_tao": 0.5
                       }
                     ],
                     "limit": 1,
@@ -44449,7 +45865,16 @@
                     "extrinsics": [
                       {
                         "block_number": 5000000,
-                        "extrinsic_index": 1
+                        "call_args": {},
+                        "call_function": "example",
+                        "call_module": "example",
+                        "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "extrinsic_index": 1,
+                        "fee_tao": 0.5,
+                        "observed_at": "2026-06-01T00:00:00.000Z",
+                        "signer": "example",
+                        "success": false,
+                        "tip_tao": 0.5
                       }
                     ],
                     "limit": 1,
@@ -50538,6 +51963,7 @@
                     "transitions": [
                       {
                         "block_number": 5000000,
+                        "observed_at": "2026-06-01T00:00:00.000Z",
                         "spec_version": 1
                       }
                     ]
@@ -61902,7 +63328,16 @@
                     "extrinsics": [
                       {
                         "block_number": 5000000,
-                        "extrinsic_index": 1
+                        "call_args": {},
+                        "call_function": "example",
+                        "call_module": "example",
+                        "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "extrinsic_index": 1,
+                        "fee_tao": 0.5,
+                        "observed_at": "2026-06-01T00:00:00.000Z",
+                        "signer": "example",
+                        "success": false,
+                        "tip_tao": 0.5
                       }
                     ],
                     "limit": 1,
@@ -62466,7 +63901,15 @@
                         "coldkey": "example",
                         "coldkey_count": 1,
                         "coldkey_identity": {
-                          "has_identity": false
+                          "additional": "example",
+                          "captured_at": "2026-06-01T00:00:00.000Z",
+                          "description": "Example description.",
+                          "discord": "example",
+                          "github": "https://api.metagraph.sh/example",
+                          "has_identity": false,
+                          "image": "https://api.metagraph.sh/example",
+                          "name": "Example Subnet",
+                          "url": "https://api.metagraph.sh/example"
                         },
                         "featured": false,
                         "hotkey": "example",
@@ -62640,7 +64083,7 @@
                       "captured_at": "2026-06-01T00:00:00.000Z",
                       "description": "Example description.",
                       "discord": "example",
-                      "github": "example",
+                      "github": "https://api.metagraph.sh/example",
                       "has_identity": false,
                       "image": "https://api.metagraph.sh/example",
                       "name": "Example Subnet",
@@ -62658,11 +64101,23 @@
                     "subnets": [
                       {
                         "active": false,
+                        "axon": "example",
                         "coldkey": "example",
+                        "consensus": 0.5,
+                        "dividends": 0.5,
+                        "emission_tao": 0.5,
                         "hotkey": "example",
+                        "incentive": 0.5,
+                        "is_immunity_period": false,
                         "netuid": 7,
+                        "rank": 0.5,
+                        "registered_at_block": 5000000,
+                        "stake_tao": 0.5,
+                        "take": 0.5,
+                        "trust": 0.5,
                         "uid": 1,
-                        "validator_permit": false
+                        "validator_permit": false,
+                        "validator_trust": 0.5
                       }
                     ],
                     "take": 0.5,
@@ -62813,7 +64268,11 @@
                     "point_count": 1,
                     "points": [
                       {
-                        "snapshot_date": "example"
+                        "rewards_per_1000_tao": 0.5,
+                        "snapshot_date": "example",
+                        "subnet_count": 1,
+                        "total_emission_tao": 0.5,
+                        "total_stake_tao": 0.5
                       }
                     ],
                     "schema_version": 1,

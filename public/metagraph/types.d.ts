@@ -3838,77 +3838,108 @@ export interface components {
         Authority: "official" | "provider-claimed" | "community" | "registry-observed";
         /** @enum {string} */
         BittensorNetwork: "finney" | "test" | "local";
-        /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time. */
-        Block: {
-            author?: string | null;
-            block_hash?: string | null;
-            block_number: number | null;
-            event_count?: number | null;
-            extrinsic_count?: number | null;
-            /** Format: date-time */
-            observed_at?: string | null;
-            parent_hash?: string | null;
-            spec_version?: number | null;
-        };
-        /** @description Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{block_number}/chain-events. Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs. */
         BlockChainEventsArtifact: {
-            block_number: number | null;
+            block_number: number;
             count: number;
-            events: components["schemas"]["ChainEvent"][];
+            events: {
+                args?: {
+                    [key: string]: unknown;
+                } | null;
+                block_number: number | null;
+                event_index: number | null;
+                extrinsic_index?: number | null;
+                method: string | null;
+                observed_at?: number | null;
+                pallet: string | null;
+                phase?: string | null;
+            }[];
         } & {
             [key: string]: unknown;
         };
-        /** @description Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null). */
         BlockDetailArtifact: {
-            block: components["schemas"]["Block"] | null;
-            next_block_number?: number | null;
-            prev_block_number?: number | null;
-            ref?: string | null;
+            block: {
+                author: string | null;
+                block_hash: string | null;
+                block_number: number | null;
+                event_count: number | null;
+                extrinsic_count: number | null;
+                observed_at: string | null;
+                parent_hash: string | null;
+                spec_version: number | null;
+            } | null;
+            next_block_number: number | null;
+            prev_block_number: number | null;
+            ref: string | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file). */
         BlockEventsArtifact: {
-            block_number?: number | null;
+            block_number: number | null;
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
-            limit?: number;
-            offset?: number;
+            limit: number;
+            offset: number;
             ref: string | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file). */
         BlockExtrinsicsArtifact: {
-            block_number?: number | null;
+            block_number: number | null;
             extrinsic_count: number;
-            extrinsics: components["schemas"]["Extrinsic"][];
-            limit?: number;
-            offset?: number;
+            extrinsics: {
+                block_number: number | null;
+                call_args: ({
+                    [key: string]: unknown;
+                } | unknown[]) | null;
+                call_function: string | null;
+                call_module: string | null;
+                extrinsic_hash: string | null;
+                extrinsic_index: number | null;
+                fee_tao: number | null;
+                observed_at: string | null;
+                signer: string | null;
+                success: boolean | null;
+                tip_tao: number | null;
+            }[];
+            limit: number;
+            offset: number;
             ref: string | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description Recent-block feed (newest first) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks (no static file). */
         BlocksFeedArtifact: {
             block_count: number;
-            blocks: components["schemas"]["Block"][];
-            limit?: number | null;
-            next_cursor?: string | null;
-            offset?: number | null;
+            blocks: {
+                author: string | null;
+                block_hash: string | null;
+                block_number: number | null;
+                event_count: number | null;
+                extrinsic_count: number | null;
+                observed_at: string | null;
+                parent_hash: string | null;
+                spec_version: number | null;
+            }[];
+            limit: number;
+            next_cursor: string | null;
+            offset: number;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file). */
         BlocksSummaryArtifact: {
-            /** @description Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site. */
             author_concentration: components["schemas"]["ConcentrationMetrics"] | null;
             block_count: number;
-            block_time: components["schemas"]["BlockTimeDistribution"];
+            block_time: {
+                count: number;
+                max_ms: number;
+                mean_ms: number;
+                min_ms: number;
+                p50_ms: number;
+                p90_ms: number;
+            } | null;
             distinct_authors: number;
             distinct_spec_versions: number;
             first_block: number | null;
@@ -3917,29 +3948,16 @@ export interface components {
             last_observed_at: string | null;
             latest_spec_version: number | null;
             schema_version: number;
-            throughput: ({
-                max_extrinsics_in_block?: number;
-                mean_events_per_block?: number;
-                mean_extrinsics_per_block?: number;
-                total_events?: number;
-                total_extrinsics?: number;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            throughput: {
+                max_extrinsics_in_block: number;
+                mean_events_per_block: number;
+                mean_extrinsics_per_block: number;
+                total_events: number;
+                total_extrinsics: number;
+            } | null;
         } & {
             [key: string]: unknown;
         };
-        /** @description Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present. */
-        BlockTimeDistribution: ({
-            count?: number;
-            max_ms?: number | null;
-            mean_ms?: number | null;
-            min_ms?: number | null;
-            p50_ms?: number | null;
-            p90_ms?: number | null;
-        } & {
-            [key: string]: unknown;
-        }) | null;
         BuildSummaryArtifact: components["schemas"]["ArtifactBase"] & ({
             artifact_budgets?: components["schemas"]["ArtifactSizeBudget"][];
             artifact_count: number;
@@ -4663,21 +4681,6 @@ export interface components {
         });
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
-        /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
-        ColdkeyIdentity: {
-            additional?: string | null;
-            /** Format: date-time */
-            captured_at?: string | null;
-            description?: string | null;
-            discord?: string | null;
-            github?: string | null;
-            has_identity: boolean;
-            /** Format: uri */
-            image?: string | null;
-            name?: string | null;
-            /** Format: uri */
-            url?: string | null;
-        };
         CompareArtifact: {
             dimensions?: string[];
             observed_at?: string | null;
@@ -4716,30 +4719,54 @@ export interface components {
                 surface_count?: number;
             } | null;
         };
-        /** @description One validator's side-by-side entry in GET /api/v1/compare/validators (composeValidatorComparison) -- a decision-relevant projection of ValidatorDetailArtifact for one hotkey, with fields copied verbatim from the already-loaded detail. */
-        CompareValidatorEntry: {
-            apy_estimate: number | null;
-            apy_estimate_eligible_subnet_count: number;
-            avg_validator_trust: number | null;
-            coldkey: string | null;
-            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
-            hotkey: string;
-            max_validator_trust: number | null;
-            nominator_count: number | null;
-            /** @description This validator's membership row in the ?netuid= subnet context, or null when netuid wasn't requested or the validator holds no permit there. */
-            subnet_context: components["schemas"]["ValidatorDetailSubnet"] | null;
-            subnet_count: number;
-            take: number | null;
-            total_emission_tao: number;
-            total_stake_tao: number;
-        };
-        /** @description Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates -- the decision-relevant projection of ValidatorDetailArtifact for every requested hotkey (composeValidatorComparison), computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool. */
         CompareValidatorsArtifact: {
-            /** @description Optional subnet context requested via ?netuid=; null when not requested. When set, each validator entry's subnet_context carries its membership row in this subnet. */
             netuid: number | null;
             schema_version: number;
             validator_count: number;
-            validators: components["schemas"]["CompareValidatorEntry"][];
+            validators: {
+                apy_estimate: number | null;
+                apy_estimate_eligible_subnet_count: number;
+                avg_validator_trust: number | null;
+                coldkey: string | null;
+                coldkey_identity: {
+                    additional: string | null;
+                    captured_at: string | null;
+                    description: string | null;
+                    discord: string | null;
+                    github: string | null;
+                    has_identity: boolean;
+                    image: string | null;
+                    name: string | null;
+                    url: string | null;
+                } | null;
+                hotkey: string;
+                max_validator_trust: number | null;
+                nominator_count: number | null;
+                subnet_context: {
+                    active: boolean;
+                    axon: string | null;
+                    coldkey: string | null;
+                    consensus: number | null;
+                    dividends: number | null;
+                    emission_tao: number | null;
+                    hotkey: string | null;
+                    incentive: number | null;
+                    is_immunity_period: boolean;
+                    netuid: number;
+                    rank: number | null;
+                    registered_at_block: number | null;
+                    stake_tao: number | null;
+                    take: number | null;
+                    trust: number | null;
+                    uid: number;
+                    validator_permit: boolean;
+                    validator_trust: number | null;
+                } | null;
+                subnet_count: number;
+                take: number | null;
+                total_emission_tao: number;
+                total_stake_tao: number;
+            }[];
         } & {
             [key: string]: unknown;
         };
@@ -5228,37 +5255,48 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
-        Extrinsic: {
-            block_number: number | null;
-            call_args?: Record<string, never> | unknown[] | null;
-            call_function?: string | null;
-            call_module?: string | null;
-            extrinsic_hash?: string | null;
-            extrinsic_index: number | null;
-            fee_tao?: number | null;
-            /** Format: date-time */
-            observed_at?: string | null;
-            signer?: string | null;
-            success?: boolean | null;
-            tip_tao?: number | null;
-        };
-        /** @description Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file). */
         ExtrinsicDetailArtifact: {
-            events?: components["schemas"]["AccountEvent"][];
-            extrinsic: components["schemas"]["Extrinsic"] | null;
-            ref?: string | null;
+            events: components["schemas"]["AccountEvent"][];
+            extrinsic: {
+                block_number: number | null;
+                call_args: ({
+                    [key: string]: unknown;
+                } | unknown[]) | null;
+                call_function: string | null;
+                call_module: string | null;
+                extrinsic_hash: string | null;
+                extrinsic_index: number | null;
+                fee_tao: number | null;
+                observed_at: string | null;
+                signer: string | null;
+                success: boolean | null;
+                tip_tao: number | null;
+            } | null;
+            ref: string | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description Recent-extrinsic feed (newest first) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics (no static file). */
         ExtrinsicsFeedArtifact: {
             extrinsic_count: number;
-            extrinsics: components["schemas"]["Extrinsic"][];
-            limit?: number | null;
-            next_cursor?: string | null;
-            offset?: number | null;
+            extrinsics: {
+                block_number: number | null;
+                call_args: ({
+                    [key: string]: unknown;
+                } | unknown[]) | null;
+                call_function: string | null;
+                call_module: string | null;
+                extrinsic_hash: string | null;
+                extrinsic_index: number | null;
+                fee_tao: number | null;
+                observed_at: string | null;
+                signer: string | null;
+                success: boolean | null;
+                tip_tao: number | null;
+            }[];
+            limit: number;
+            next_cursor: string | null;
+            offset: number;
             schema_version: number;
         } & {
             [key: string]: unknown;
@@ -5426,65 +5464,58 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. `featured` (#5166) reflects a maintainer-toggled DB pin (featured_validators, keyed by hotkey) -- true moves the row to the front of the default (unsorted) view; an explicit non-default ?sort= keeps its normal rank while `featured` stays true. */
-        GlobalValidatorEntry: {
-            /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
-            alpha_stake_tao: number;
-            /** @description Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0. */
-            apy_estimate: number | null;
-            /** @description Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0. */
-            apy_estimate_eligible_subnet_count: number;
-            avg_validator_trust: number | null;
-            coldkey: string | null;
-            coldkey_count: number;
-            /** @description The row's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat. */
-            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
-            featured: boolean;
-            hotkey: string;
-            latest_block_number: number | null;
-            /** Format: date-time */
-            latest_captured_at: string | null;
-            max_validator_trust: number | null;
-            /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
-            nominator_count: number | null;
-            /** @description Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'. */
-            realized_return_1d: number | null;
-            /** @description Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back. */
-            realized_return_1m: number | null;
-            /** @description Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back. */
-            realized_return_1w: number | null;
-            /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
-            root_stake_tao: number;
-            stake_dominance: number | null;
-            subnet_count: number;
-            subnets: components["schemas"]["GlobalValidatorSubnet"][];
-            /** @description Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Global per-hotkey. Null if no SubtensorModule::Delegates entry existed at capture time. */
-            take: number | null;
-            total_emission_tao: number;
-            total_stake_tao: number;
-            uid_count: number;
-        };
-        /** @description Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, served live from the neurons D1 tier at /api/v1/validators (no static file). */
         GlobalValidatorsArtifact: {
-            block_number?: number | null;
-            /** Format: date-time */
-            captured_at?: string | null;
+            block_number: number | null;
+            captured_at: string | null;
             limit: number;
             schema_version: number;
             /** @enum {string} */
             sort: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
             validator_count: number;
-            validators: components["schemas"]["GlobalValidatorEntry"][];
+            validators: {
+                alpha_stake_tao: number;
+                apy_estimate: number | null;
+                apy_estimate_eligible_subnet_count: number;
+                avg_validator_trust: number | null;
+                coldkey: string | null;
+                coldkey_count: number;
+                coldkey_identity: {
+                    additional: string | null;
+                    captured_at: string | null;
+                    description: string | null;
+                    discord: string | null;
+                    github: string | null;
+                    has_identity: boolean;
+                    image: string | null;
+                    name: string | null;
+                    url: string | null;
+                } | null;
+                featured: boolean;
+                hotkey: string;
+                latest_block_number: number | null;
+                latest_captured_at: string | null;
+                max_validator_trust: number | null;
+                nominator_count: number | null;
+                realized_return_1d: number | null;
+                realized_return_1m: number | null;
+                realized_return_1w: number | null;
+                root_stake_tao: number;
+                stake_dominance: number | null;
+                subnet_count: number;
+                subnets: {
+                    emission_tao: number;
+                    netuid: number;
+                    stake_tao: number;
+                    uid: number;
+                    validator_trust: number | null;
+                }[];
+                take: number | null;
+                total_emission_tao: number;
+                total_stake_tao: number;
+                uid_count: number;
+            }[];
         } & {
             [key: string]: unknown;
-        };
-        /** @description One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint. */
-        GlobalValidatorSubnet: {
-            emission_tao: number;
-            netuid: number;
-            stake_tao: number;
-            uid: number;
-            validator_trust: number | null;
         };
         HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
             color: string;
@@ -6641,25 +6672,19 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Site-wide runtime spec-version transition timeline (#4316/3.1), computed live off the blocks D1 tier's spec_version column (migrations/0017) — the earliest known block at each distinct spec_version. spec_version is best-effort/nullable on blocks (null on RPC failure or a pruned block) and was only added 2026-06-25: a block row written before that date, or on any RPC failure, has a permanently-unfilled spec_version (INSERT OR IGNORE never back-fills it), so a version already active before coverage_from_block is invisible here, not reported as absent. Served live at /api/v1/runtime (no static file). */
         RuntimeVersionsArtifact: {
-            /** Format: date-time */
             coverage_from_at: string | null;
             coverage_from_block: number | null;
-            /** @description The spec_version of the latest block that carries a reading — not necessarily the chain's live runtime version: if the most recent blocks failed the spec_version RPC call (best-effort/nullable, see the artifact description), this reports the latest KNOWN reading, which can lag behind an upgrade that already happened. */
             current_spec_version: number | null;
             schema_version: number;
             transition_count: number;
-            transitions: components["schemas"]["RuntimeVersionTransition"][];
+            transitions: {
+                block_number: number;
+                observed_at: string | null;
+                spec_version: number;
+            }[];
         } & {
             [key: string]: unknown;
-        };
-        /** @description The earliest known block observed at a given runtime spec_version — one entry per distinct spec_version seen on the blocks D1 tier, ascending by block_number. */
-        RuntimeVersionTransition: {
-            block_number: number;
-            /** Format: date-time */
-            observed_at?: string | null;
-            spec_version: number;
         };
         SchemaDriftArtifact: components["schemas"]["ArtifactBase"] & ({
             openapi_surface_count: number;
@@ -8295,99 +8320,89 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators. */
         ValidatorDetailArtifact: {
-            /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
             alpha_stake_tao: number;
-            /** @description Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0. */
             apy_estimate: number | null;
-            /** @description Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0. */
             apy_estimate_eligible_subnet_count: number;
             avg_validator_trust: number | null;
             block_number: number | null;
-            /** Format: date-time */
             captured_at: string | null;
             coldkey: string | null;
             coldkey_count: number;
-            /** @description The validator's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat. */
-            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
+            coldkey_identity: {
+                additional: string | null;
+                captured_at: string | null;
+                description: string | null;
+                discord: string | null;
+                github: string | null;
+                has_identity: boolean;
+                image: string | null;
+                name: string | null;
+                url: string | null;
+            } | null;
             hotkey: string;
             max_validator_trust: number | null;
-            /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
             nominator_count: number | null;
-            /** @description Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'. */
             realized_return_1d: number | null;
-            /** @description Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back. */
             realized_return_1m: number | null;
-            /** @description Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back. */
             realized_return_1w: number | null;
-            /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             schema_version: number;
             subnet_count: number;
-            subnets: components["schemas"]["ValidatorDetailSubnet"][];
-            /** @description Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Null if no SubtensorModule::Delegates entry existed at capture time. */
+            subnets: {
+                active: boolean;
+                axon: string | null;
+                coldkey: string | null;
+                consensus: number | null;
+                dividends: number | null;
+                emission_tao: number | null;
+                hotkey: string | null;
+                incentive: number | null;
+                is_immunity_period: boolean;
+                netuid: number;
+                rank: number | null;
+                registered_at_block: number | null;
+                stake_tao: number | null;
+                take: number | null;
+                trust: number | null;
+                uid: number;
+                validator_permit: boolean;
+                validator_trust: number | null;
+            }[];
             take: number | null;
             total_emission_tao: number;
             total_stake_tao: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description One subnet membership (a validator_permit=1 neuron row) in a validator's cross-subnet detail view (#4334/7.1). Same shape as Neuron, plus the netuid it belongs to; unlike GlobalValidatorSubnet this is not capped at ten — a detail page's whole point is the full per-subnet performance table. */
-        ValidatorDetailSubnet: {
-            active: boolean;
-            axon?: string | null;
-            coldkey: string | null;
-            consensus?: number | null;
-            dividends?: number | null;
-            emission_tao?: number | null;
-            hotkey: string | null;
-            incentive?: number | null;
-            is_immunity_period?: boolean;
-            netuid: number;
-            rank?: number | null;
-            registered_at_block?: number | null;
-            stake_tao?: number | null;
-            /** @description Validator take/commission (#2548), 0..1 fraction. Global per-hotkey, identical across every subnet membership row here. */
-            take?: number | null;
-            trust?: number | null;
-            uid: number;
-            validator_permit: boolean;
-            validator_trust?: number | null;
-        };
-        /** @description Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator (#4334/7.3): one point per day, summed across every subnet it operates in that day, served live from the neuron_daily D1 rollup tier at /api/v1/validators/{hotkey}/history (no static file). */
         ValidatorHistoryArtifact: {
             hotkey: string;
             point_count: number;
             points: {
-                rewards_per_1000_tao?: number | null;
+                rewards_per_1000_tao: number | null;
                 snapshot_date: string;
-                subnet_count?: number | null;
-                total_emission_tao?: number | null;
-                total_stake_tao?: number | null;
+                subnet_count: number | null;
+                total_emission_tao: number | null;
+                total_stake_tao: number | null;
             }[];
             schema_version: number;
-            window?: string | null;
+            window: string | null;
         } & {
             [key: string]: unknown;
         };
-        /** @description One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2). */
-        ValidatorNominatorEntry: {
-            coldkey: string;
-            event_count: number;
-            gross_staked_tao: number;
-            /** Format: date-time */
-            last_observed_at: string | null;
-            net_staked_tao: number;
-            staked_tao: number;
-            unstaked_tao: number;
-        };
-        /** @description Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, served live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file). Cold/absent hotkey returns an empty list, never a 404. */
         ValidatorNominatorsArtifact: {
             hotkey: string;
             limit: number;
             nominator_count: number;
-            nominators: components["schemas"]["ValidatorNominatorEntry"][];
+            nominators: {
+                coldkey: string;
+                event_count: number;
+                gross_staked_tao: number;
+                last_observed_at: string | null;
+                net_staked_tao: number;
+                staked_tao: number;
+                unstaked_tao: number;
+            }[];
             offset: number;
             schema_version: number;
             /** @enum {string} */
@@ -12470,7 +12485,14 @@ export interface operations {
                      *         "block_count": 5000000,
                      *         "blocks": [
                      *           {
-                     *             "block_number": 5000000
+                     *             "author": "example",
+                     *             "block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "block_number": 5000000,
+                     *             "event_count": 1,
+                     *             "extrinsic_count": 1,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "spec_version": 1
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -12929,7 +12951,16 @@ export interface operations {
                      *         "extrinsics": [
                      *           {
                      *             "block_number": 5000000,
-                     *             "extrinsic_index": 1
+                     *             "call_args": {},
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "extrinsic_index": 1,
+                     *             "fee_tao": 0.5,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "signer": "example",
+                     *             "success": false,
+                     *             "tip_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -17077,18 +17108,38 @@ export interface operations {
                      *             "avg_validator_trust": 0.5,
                      *             "coldkey": "example",
                      *             "coldkey_identity": {
-                     *               "has_identity": false
+                     *               "additional": "example",
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "description": "Example description.",
+                     *               "discord": "example",
+                     *               "github": "https://api.metagraph.sh/example",
+                     *               "has_identity": false,
+                     *               "image": "https://api.metagraph.sh/example",
+                     *               "name": "Example Subnet",
+                     *               "url": "https://api.metagraph.sh/example"
                      *             },
                      *             "hotkey": "example",
                      *             "max_validator_trust": 0.5,
                      *             "nominator_count": 1,
                      *             "subnet_context": {
                      *               "active": false,
+                     *               "axon": "example",
                      *               "coldkey": "example",
+                     *               "consensus": 0.5,
+                     *               "dividends": 0.5,
+                     *               "emission_tao": 0.5,
                      *               "hotkey": "example",
+                     *               "incentive": 0.5,
+                     *               "is_immunity_period": false,
                      *               "netuid": 7,
+                     *               "rank": 0.5,
+                     *               "registered_at_block": 5000000,
+                     *               "stake_tao": 0.5,
+                     *               "take": 0.5,
+                     *               "trust": 0.5,
                      *               "uid": 1,
-                     *               "validator_permit": false
+                     *               "validator_permit": false,
+                     *               "validator_trust": 0.5
                      *             },
                      *             "subnet_count": 1,
                      *             "take": 0.5,
@@ -19053,7 +19104,16 @@ export interface operations {
                      *         "extrinsics": [
                      *           {
                      *             "block_number": 5000000,
-                     *             "extrinsic_index": 1
+                     *             "call_args": {},
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "extrinsic_index": 1,
+                     *             "fee_tao": 0.5,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "signer": "example",
+                     *             "success": false,
+                     *             "tip_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -19797,7 +19857,16 @@ export interface operations {
                      *         "extrinsics": [
                      *           {
                      *             "block_number": 5000000,
-                     *             "extrinsic_index": 1
+                     *             "call_args": {},
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "extrinsic_index": 1,
+                     *             "fee_tao": 0.5,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "signer": "example",
+                     *             "success": false,
+                     *             "tip_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -23360,6 +23429,7 @@ export interface operations {
                      *         "transitions": [
                      *           {
                      *             "block_number": 5000000,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "spec_version": 1
                      *           }
                      *         ]
@@ -31368,7 +31438,16 @@ export interface operations {
                      *         "extrinsics": [
                      *           {
                      *             "block_number": 5000000,
-                     *             "extrinsic_index": 1
+                     *             "call_args": {},
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "extrinsic_index": 1,
+                     *             "fee_tao": 0.5,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "signer": "example",
+                     *             "success": false,
+                     *             "tip_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
@@ -31732,7 +31811,15 @@ export interface operations {
                      *             "coldkey": "example",
                      *             "coldkey_count": 1,
                      *             "coldkey_identity": {
-                     *               "has_identity": false
+                     *               "additional": "example",
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "description": "Example description.",
+                     *               "discord": "example",
+                     *               "github": "https://api.metagraph.sh/example",
+                     *               "has_identity": false,
+                     *               "image": "https://api.metagraph.sh/example",
+                     *               "name": "Example Subnet",
+                     *               "url": "https://api.metagraph.sh/example"
                      *             },
                      *             "featured": false,
                      *             "hotkey": "example",
@@ -31879,7 +31966,7 @@ export interface operations {
                      *           "captured_at": "2026-06-01T00:00:00.000Z",
                      *           "description": "Example description.",
                      *           "discord": "example",
-                     *           "github": "example",
+                     *           "github": "https://api.metagraph.sh/example",
                      *           "has_identity": false,
                      *           "image": "https://api.metagraph.sh/example",
                      *           "name": "Example Subnet",
@@ -31897,11 +31984,23 @@ export interface operations {
                      *         "subnets": [
                      *           {
                      *             "active": false,
+                     *             "axon": "example",
                      *             "coldkey": "example",
+                     *             "consensus": 0.5,
+                     *             "dividends": 0.5,
+                     *             "emission_tao": 0.5,
                      *             "hotkey": "example",
+                     *             "incentive": 0.5,
+                     *             "is_immunity_period": false,
                      *             "netuid": 7,
+                     *             "rank": 0.5,
+                     *             "registered_at_block": 5000000,
+                     *             "stake_tao": 0.5,
+                     *             "take": 0.5,
+                     *             "trust": 0.5,
                      *             "uid": 1,
-                     *             "validator_permit": false
+                     *             "validator_permit": false,
+                     *             "validator_trust": 0.5
                      *           }
                      *         ],
                      *         "take": 0.5,
@@ -32013,7 +32112,11 @@ export interface operations {
                      *         "point_count": 1,
                      *         "points": [
                      *           {
-                     *             "snapshot_date": "example"
+                     *             "rewards_per_1000_tao": 0.5,
+                     *             "snapshot_date": "example",
+                     *             "subnet_count": 1,
+                     *             "total_emission_tao": 0.5,
+                     *             "total_stake_tao": 0.5
                      *           }
                      *         ],
                      *         "schema_version": 1,
