@@ -19,8 +19,10 @@
 // endpoint; the database itself stays exactly as private as it already was
 // (bound to 127.0.0.1 on its host, reachable only via the Cloudflare Tunnel
 // + Workers VPC Service + Hyperdrive path already proven for reads).
+import * as Sentry from "@sentry/cloudflare";
 import type postgres from "postgres";
 import { syncBeginWithConnectionRetry } from "./hyperdrive-sync-retry.ts";
+import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
 
@@ -85,6 +87,21 @@ function json(
 
 function isValidRow(row: unknown): row is Record<string, unknown> {
   return Boolean(row) && typeof row === "object" && !Array.isArray(row);
+}
+
+// This Worker's Sentry wrap (registry-sync-api.sentry.ts's withSentry())
+// only ever sees an exception that escapes fetch() entirely -- the write
+// batch below is already caught and converted to a clean 502, so nothing
+// reached Sentry OR PostHog for the write-failure path until now. Same gap,
+// same fix, as workers/api.ts's captureAiRouteError / workers/data-api.ts's
+// captureDataApiError.
+async function captureRegistrySyncError(error: unknown, env: Env) {
+  Sentry.captureException(error, { tags: { route: "registry-sync" } });
+  await recordExceptionEvent(env, {
+    error,
+    route: "registry-sync",
+    errorCode: "internal_error",
+  });
 }
 
 export default {
@@ -375,6 +392,7 @@ export default {
       });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
+      await captureRegistrySyncError(err, env);
       return json({ error: "write failed" }, 502);
     }
     // No sql.end() here: Hyperdrive automatically cleans up the connection
