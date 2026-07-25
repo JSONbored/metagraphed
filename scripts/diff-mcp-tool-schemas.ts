@@ -272,6 +272,52 @@ import {
   GetNeuronHistoryInputSchema,
   GetNeuronHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/neurons.ts";
+import {
+  GetAccountInputSchema,
+  GetAccountOutputSchema,
+  GetAccountEntitiesInputSchema,
+  GetAccountEntitiesOutputSchema,
+  GetAccountEventsInputSchema,
+  GetAccountEventsOutputSchema,
+  GetAccountSubnetsInputSchema,
+  GetAccountSubnetsOutputSchema,
+} from "../schemas-src/mcp-tools/account-summary.ts";
+import {
+  GetAccountBalanceInputSchema,
+  GetAccountBalanceOutputSchema,
+} from "../schemas-src/mcp-tools/account-balance.ts";
+import {
+  GetAccountRootClaimInputSchema,
+  GetAccountRootClaimOutputSchema,
+} from "../schemas-src/mcp-tools/account-root-claim.ts";
+import {
+  GetAccountChildrenInputSchema,
+  GetAccountChildrenOutputSchema,
+  GetAccountParentsInputSchema,
+  GetAccountParentsOutputSchema,
+} from "../schemas-src/mcp-tools/account-delegation.ts";
+import {
+  GetAccountPortfolioInputSchema,
+  GetAccountPortfolioOutputSchema,
+  GetAccountPositionsInputSchema,
+  GetAccountPositionsOutputSchema,
+  GetAccountSnapshotInputSchema,
+  GetAccountSnapshotOutputSchema,
+} from "../schemas-src/mcp-tools/account-portfolio.ts";
+import {
+  GetAccountIdentityInputSchema,
+  GetAccountIdentityOutputSchema,
+  GetAccountIdentityHistoryInputSchema,
+  GetAccountIdentityHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/account-identity.ts";
+import {
+  GetAccountPositionHistoryInputSchema,
+  GetAccountPositionHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/account-position-history.ts";
+import {
+  GetAccountStakeFlowInputSchema,
+  GetAccountStakeFlowOutputSchema,
+} from "../schemas-src/mcp-tools/account-stake-flow.ts";
 
 type Row = Record<string, unknown>;
 
@@ -2767,6 +2813,572 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_account: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "ss58",
+        "event_count",
+        "subnet_count",
+        "event_kinds",
+        "registrations",
+        "recent_events",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        event_count: { type: "integer" },
+        subnet_count: { type: "integer" },
+        first_block: NULLABLE_INT,
+        last_block: NULLABLE_INT,
+        first_seen_at: NULLABLE_STRING,
+        last_seen_at: NULLABLE_STRING,
+        event_kinds: objectItems({
+          kind: { type: "string" },
+          count: { type: "integer" },
+        }),
+        registrations: objectItems({
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          stake_tao: ANY,
+          validator_permit: { type: "boolean" },
+          active: { type: "boolean" },
+        }),
+        recent_events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          event_kind: NULLABLE_STRING,
+          hotkey: NULLABLE_STRING,
+          coldkey: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          observed_at: NULLABLE_STRING,
+          extrinsic_index: NULLABLE_INT,
+        }),
+        activity: { type: "object", additionalProperties: true },
+        labels: objectItems({
+          name: NULLABLE_STRING,
+          category: NULLABLE_STRING,
+          notes: NULLABLE_STRING,
+          source_urls: { type: "array", items: { type: "string" } },
+        }),
+      },
+    },
+  },
+  get_account_entities: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "labels", "ownership_tie_count", "ownership_ties"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        labels: objectItems({
+          name: NULLABLE_STRING,
+          category: NULLABLE_STRING,
+          notes: NULLABLE_STRING,
+          source_urls: { type: "array", items: { type: "string" } },
+        }),
+        ownership_tie_count: { type: "integer" },
+        ownership_ties: objectItems({
+          netuid: NULLABLE_INT,
+          role: { type: "string" },
+          block_number: NULLABLE_INT,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_account_balance: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "balance_tao", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        balance_tao: { type: ["number", "null"] },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_account_root_claim: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        claim_type: {
+          anyOf: [
+            {
+              type: "object",
+              additionalProperties: false,
+              required: ["kind"],
+              properties: {
+                kind: { type: "string" },
+                subnets: {
+                  type: "array",
+                  items: { type: "integer" },
+                },
+              },
+            },
+            { type: "null" },
+          ],
+        },
+        hotkeys: {
+          type: ["array", "null"],
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["hotkey", "entries"],
+            properties: {
+              hotkey: { type: "string" },
+              entries: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "netuid",
+                    "claimable_rate",
+                    "claimed",
+                    "threshold",
+                  ],
+                  properties: {
+                    netuid: { type: "integer" },
+                    claimable_rate: { type: "number" },
+                    claimed: { type: "string" },
+                    threshold: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_account_children: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["account"],
+      properties: {
+        schema_version: { type: "integer" },
+        account: { type: "string" },
+        subnets: {
+          type: ["array", "null"],
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              netuid: { type: "integer" },
+              entries: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    child: { type: ["string", "null"] },
+                    proportion: { type: "string" },
+                    proportion_fraction: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_account_parents: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["account"],
+      properties: {
+        schema_version: { type: "integer" },
+        account: { type: "string" },
+        subnets: {
+          type: ["array", "null"],
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              netuid: { type: "integer" },
+              entries: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    parent: { type: ["string", "null"] },
+                    proportion: { type: "string" },
+                    proportion_fraction: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_account_events: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        kind: { type: "string" },
+        netuid: { type: "integer", minimum: 0 },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "event_count", "events"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        event_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          event_kind: NULLABLE_STRING,
+          hotkey: NULLABLE_STRING,
+          coldkey: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          observed_at: NULLABLE_STRING,
+          extrinsic_index: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  get_account_subnets: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "subnet_count", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        subnet_count: { type: "integer" },
+        subnets: objectItems({
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          stake_tao: ANY,
+          validator_permit: { type: "boolean" },
+          active: { type: "boolean" },
+        }),
+      },
+    },
+  },
+  get_account_portfolio: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "position_count", "positions"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        captured_at: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        position_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        miner_count: { type: "integer" },
+        total_stake_tao: { type: "number" },
+        total_emission_tao: { type: "number" },
+        overall_yield: { type: ["number", "null"] },
+        stake_concentration: { type: ["object", "null"] },
+        positions: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_account_positions: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "position_count", "total_stake_tao", "positions"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        captured_at: NULLABLE_STRING,
+        position_count: { type: "integer" },
+        total_stake_tao: { type: "number" },
+        positions: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_account_snapshot: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        recent_events_limit: { type: "integer", minimum: 1, maximum: 1000 },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "ss58",
+        "balance",
+        "portfolio",
+        "subnets",
+        "positions",
+        "recent_events",
+      ],
+      properties: {
+        ss58: { type: "string" },
+        balance: { type: "object" },
+        portfolio: { type: "object" },
+        subnets: { type: "object" },
+        positions: { type: "object" },
+        recent_events: { type: "object" },
+      },
+    },
+  },
+  get_account_identity: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["account", "has_identity"],
+      properties: {
+        schema_version: { type: "integer" },
+        account: { type: "string" },
+        has_identity: { type: "boolean" },
+        name: NULLABLE_STRING,
+        url: NULLABLE_STRING,
+        github: NULLABLE_STRING,
+        image: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        additional: NULLABLE_STRING,
+        captured_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_account_identity_history: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["account", "entry_count", "entries"],
+      properties: {
+        schema_version: { type: "integer" },
+        account: { type: "string" },
+        entry_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        entries: objectItems({
+          observed_at: NULLABLE_STRING,
+          name: NULLABLE_STRING,
+          url: NULLABLE_STRING,
+          github: NULLABLE_STRING,
+          image: NULLABLE_STRING,
+          discord: NULLABLE_STRING,
+          description: NULLABLE_STRING,
+          additional: NULLABLE_STRING,
+          identity_hash: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_account_position_history: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_5 },
+      },
+      required: ["ss58", "netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ss58", "netuid", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_account_stake_flow: {
+    input: {
+      type: "object",
+      properties: {
+        ss58: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: ["7d", "30d", "90d"] },
+        direction: { type: "string", enum: ["all", "in", "out"] },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "address",
+        "window",
+        "total_staked_tao",
+        "total_unstaked_tao",
+        "net_flow_tao",
+        "gross_flow_tao",
+        "direction",
+        "stake_events",
+        "unstake_events",
+        "subnet_count",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: NULLABLE_STRING,
+        total_staked_tao: ANY,
+        total_unstaked_tao: ANY,
+        net_flow_tao: ANY,
+        gross_flow_tao: ANY,
+        flow_ratio: { type: ["number", "null"] },
+        direction: NULLABLE_STRING,
+        stake_events: { type: "integer" },
+        unstake_events: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: NULLABLE_INT,
+        subnets: objectItems({
+          netuid: { type: "integer" },
+          staked_tao: ANY,
+          unstaked_tao: ANY,
+          net_flow_tao: ANY,
+          gross_flow_tao: ANY,
+          flow_ratio: { type: ["number", "null"] },
+          direction: NULLABLE_STRING,
+          stake_events: { type: "integer" },
+          unstake_events: { type: "integer" },
+        }),
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -3050,6 +3662,66 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
   get_neuron_history: {
     input: GetNeuronHistoryInputSchema,
     output: GetNeuronHistoryOutputSchema,
+  },
+  get_account: {
+    input: GetAccountInputSchema,
+    output: GetAccountOutputSchema,
+  },
+  get_account_entities: {
+    input: GetAccountEntitiesInputSchema,
+    output: GetAccountEntitiesOutputSchema,
+  },
+  get_account_balance: {
+    input: GetAccountBalanceInputSchema,
+    output: GetAccountBalanceOutputSchema,
+  },
+  get_account_root_claim: {
+    input: GetAccountRootClaimInputSchema,
+    output: GetAccountRootClaimOutputSchema,
+  },
+  get_account_children: {
+    input: GetAccountChildrenInputSchema,
+    output: GetAccountChildrenOutputSchema,
+  },
+  get_account_parents: {
+    input: GetAccountParentsInputSchema,
+    output: GetAccountParentsOutputSchema,
+  },
+  get_account_events: {
+    input: GetAccountEventsInputSchema,
+    output: GetAccountEventsOutputSchema,
+  },
+  get_account_subnets: {
+    input: GetAccountSubnetsInputSchema,
+    output: GetAccountSubnetsOutputSchema,
+  },
+  get_account_portfolio: {
+    input: GetAccountPortfolioInputSchema,
+    output: GetAccountPortfolioOutputSchema,
+  },
+  get_account_positions: {
+    input: GetAccountPositionsInputSchema,
+    output: GetAccountPositionsOutputSchema,
+  },
+  get_account_snapshot: {
+    input: GetAccountSnapshotInputSchema,
+    output: GetAccountSnapshotOutputSchema,
+  },
+  get_account_identity: {
+    input: GetAccountIdentityInputSchema,
+    output: GetAccountIdentityOutputSchema,
+  },
+  get_account_identity_history: {
+    input: GetAccountIdentityHistoryInputSchema,
+    output: GetAccountIdentityHistoryOutputSchema,
+  },
+  get_account_position_history: {
+    input: GetAccountPositionHistoryInputSchema,
+    output: GetAccountPositionHistoryOutputSchema,
+  },
+  get_account_stake_flow: {
+    input: GetAccountStakeFlowInputSchema,
+    output: GetAccountStakeFlowOutputSchema,
   },
 };
 
