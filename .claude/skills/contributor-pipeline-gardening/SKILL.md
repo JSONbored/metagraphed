@@ -64,22 +64,23 @@ work. Confirm sync every run; never assume a previous run's freshness carried ov
 
 **metagraphed-specific things to check while doing this:**
 
-- Milestone **#9 "Wave 3 — Frontend (post-consolidation)"**: checked 2026-07-15, it is **not**
-  actually drained (11 open issues at that point, not the 0/480 an earlier snapshot of this doc
-  claimed) — re-verify its open-issue count fresh each run rather than trusting either number here,
-  this repo's milestones fill back up between runs.
-- **Unmilestoned-issue count**: checked 2026-07-15, only 23 of ~94 open issues were unmilestoned, and
-  all 23 were legitimately standalone (the Enrich-SNxx rolling-intake family, which is correctly
-  unmilestoned per its own separate automation, plus the bot-managed Dependency Dashboard) — not an
-  orphan-hygiene gap the way the original "74 of 142" snapshot implied. Re-verify fresh each run
-  rather than assuming either the old or new number still holds; if genuine orphans turn up (a
-  real code/schema/data issue with no milestone, not Enrich-SNxx or the Dependency Dashboard), fold
-  them into the closest fit (`Foundations & Infra`, `Wave 4 — Docs & Dev Surface`, `Partner Flywheel
-Hardening`) same as before.
-- The **native-staking feature work** (`gittensor:feature`/`maintainer-only` issues in the low-5200s
-  numbering, "take/commission management," "move/re-delegate stake flow," "risk disclosure copy") is
-  active and security-sensitive — treat anything touching real stake movement, phishing surface, or
-  the pre-launch security review as `maintainer-only` by default; don't second-guess that boundary.
+- **2026-07-25: total open issues dropped to 28 (from ~94-142 historically), and Wave 1-4 all closed
+  as milestones** — see `reference.md`'s milestone-taxonomy correction for the full picture. Milestone
+  **#9 "Wave 3 — Frontend (post-consolidation)"** went from 11 open (2026-07-15) to 0 open / milestone
+  itself CLOSED (2026-07-25) in the space of 10 days — this repo's milestones can drain completely
+  between runs just as easily as they can fill back up. Re-verify every run via
+  `gh api graphql milestones(states:[OPEN,CLOSED])`, never trust a cached count here.
+- **Unmilestoned-issue count**: 7 of 28 open issues as of 2026-07-25 (#507 Dependency Dashboard, plus
+  6 standalone maintainer explorations/design-spikes: #6646, #6971, #7002, #7003, #7007, #8133) — the
+  Enrich-SNxx family currently has **zero open issues** (its own separate automation's queue is
+  temporarily empty, not evidence of a hygiene gap). Re-verify fresh each run; if genuine orphans turn
+  up (a real code/schema/data issue with no milestone, not Enrich-SNxx or the Dependency Dashboard),
+  fold them into the closest fit (`Foundations & Infra`, `Partner Flywheel Hardening`) same as before.
+- The **native-staking feature work** (epic #5229, "take/commission management," "move/re-delegate
+  stake flow," "risk disclosure copy") **fully closed as of 2026-07-25** — no open low-5200s
+  native-staking issues remain. If new native-staking work reopens (a v2/follow-on epic), treat
+  anything touching real stake movement, phishing surface, or a pre-launch security review as
+  `maintainer-only` by default; don't second-guess that boundary.
 
 ### MCP execute "verify + wire SN*" family — special stale-sweep rule (added 2026-07-21)
 
