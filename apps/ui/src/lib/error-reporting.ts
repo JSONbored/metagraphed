@@ -16,13 +16,10 @@ import { captureException as capturePostHogException } from "./analytics";
  *     build time via vite.config.ts's `define` -- see vite.config.ts's own
  *     comment) and `environment` (production/development from Vite's own
  *     `import.meta.env.PROD`), so a regression can be traced to the deploy
- *     that introduced it. Source maps for this release are uploaded by
- *     `@sentry/vite-plugin` (also wired in vite.config.ts), gated on
- *     `SENTRY_AUTH_TOKEN` being set -- absent everywhere except a production
- *     Cloudflare Workers Build that has it configured (a real Sentry API
- *     token, unlike the DSN below, so it can't have a code-level default
- *     the same way -- sourcemap upload stays opt-in until a maintainer sets
- *     it as a Workers Builds dashboard build variable).
+ *     that introduced it. Source maps are NOT uploaded to Sentry for this
+ *     sink -- `@sentry/vite-plugin` was removed once PostHog's sourcemap
+ *     upload (below) covered the same need; a Sentry stack trace here
+ *     resolves against the minified bundle, not original source.
  *  2. PostHog (metagraphed#7759) — a second, PARALLEL sink, not a
  *     replacement; enabled whenever `VITE_POSTHOG_PROJECT_TOKEN` is
  *     configured (see analytics.ts). Reuses analytics.ts's own

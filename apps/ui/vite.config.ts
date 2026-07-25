@@ -8,7 +8,6 @@ import { defineConfig, type LovableViteTanstackOptions } from "@lovable.dev/vite
 import type { NitroPluginConfig } from "nitro/vite";
 import type { NormalizedOutputOptions, OutputBundle, Plugin, PluginContext } from "rollup";
 import mdx from "fumadocs-mdx/vite";
-import { sentryVitePlugin } from "@sentry/vite-plugin";
 import posthogRollupPlugin from "@posthog/rollup-plugin";
 
 // Cloudflare Workers Builds auto-injects this (no manual dashboard step) --
@@ -17,6 +16,11 @@ import posthogRollupPlugin from "@posthog/rollup-plugin";
 // error reporting, for example, Sentry" is its documented purpose. Absent
 // locally/in PR CI, where it's simply undefined -- Sentry accepts an
 // undefined release (just omits release tagging), not an error condition.
+// STILL USED: bridged into VITE_SENTRY_RELEASE below for the RUNTIME Sentry
+// SDK's release tagging (src/lib/error-reporting.ts's `Sentry.init`) -- that
+// is a live-error-tracking concern, separate from the build-time sourcemap
+// *upload* this file no longer does (removed alongside sentryVitePlugin
+// below; PostHog's posthogRollupPlugin is now the only sourcemap uploader).
 const commitSha = process.env.WORKERS_CI_COMMIT_SHA;
 
 // @posthog/rollup-plugin's own `writeBundle` hook (the step that actually
@@ -81,48 +85,15 @@ export default defineConfig({
   // (dev + a real Cloudflare production build) in JSONbored/loopover's
   // identical @lovable.dev/vite-tanstack-config setup, PR #6271.
   //
-  // sentryVitePlugin is appended LAST (Sentry's own documented ordering
-  // requirement -- "Put the Sentry vite plugin after all other plugins",
-  // it needs to see every other plugin's final output to inject debug IDs
-  // and produce accurate source maps) and returns an ARRAY of plugins
-  // (spread, not pushed as a single entry). Verified empirically (real
-  // `vite build` with no authToken) that this degrades gracefully to a
-  // warning-only no-upload, not a build failure -- `disable` below is still
-  // set explicitly so it's a true no-op (no plugin hooks run at all, no
-  // telemetry ping) rather than relying on that fallback everywhere a token
-  // isn't configured, i.e. every PR/local build today.
+  // sentryVitePlugin (build-time sourcemap upload) was removed here once
+  // PostHog's posthogRollupPlugin below became the sole sourcemap uploader
+  // -- Sentry's own RUNTIME error capture (src/lib/error-reporting.ts,
+  // `@sentry/browser`) is untouched by this; only the build-time upload
+  // step moved to PostHog.
   plugins: [
     ...mdx(),
-    ...sentryVitePlugin({
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      disable: !process.env.SENTRY_AUTH_TOKEN,
-      telemetry: false,
-      release: commitSha ? { name: commitSha } : undefined,
-      // By default this plugin THROWS (failing the whole build) when an
-      // upload genuinely fails with a token present -- a different failure
-      // mode than the graceful warn-and-skip when no token exists at all.
-      // A transient Sentry API hiccup or an expired token must never block
-      // shipping real product code -- the same tolerant-by-design principle
-      // already applied to every box-side observability integration in
-      // this rollout (e.g. scripts/refresh-native-snapshot.ts's own
-      // comment: "a transient chain RPC failure must not block the
-      // publish").
-      errorHandler: (err) => {
-        console.warn("[sentry-vite-plugin] source map upload failed:", err);
-      },
-      sourcemaps: {
-        // Uploaded to Sentry, then stripped from the deployed output --
-        // don't publicly serve the app's own source maps alongside the
-        // built JS.
-        filesToDeleteAfterUpload: ["**/*.js.map"],
-      },
-    }),
-    // PostHog error tracking (metagraphed#7759) source-map upload --
-    // independent of sentryVitePlugin above (no documented ordering
-    // requirement between the two; each only touches its own upload step),
-    // wrapped for the two build-safety gaps documented above this file's
+    // PostHog error tracking (metagraphed#7759) source-map upload, wrapped
+    // for the two build-safety gaps documented above this file's
     // `posthogSourcemapsEnabled` const.
     withTolerantSourcemapUpload(
       posthogRollupPlugin({
@@ -130,9 +101,10 @@ export default defineConfig({
         projectId: posthogProjectId,
         sourcemaps: {
           enabled: posthogSourcemapsEnabled,
-          // Same release-correlation value as Sentry's `release.name` above
-          // (Cloudflare Workers Builds' own commit SHA) -- undefined locally/
-          // in PR CI, where sourcemaps.enabled is already false anyway.
+          // Same value the runtime Sentry SDK's `release` tag uses
+          // (Cloudflare Workers Builds' own commit SHA, see VITE_SENTRY_RELEASE
+          // below) -- undefined locally/in PR CI, where sourcemaps.enabled is
+          // already false anyway.
           releaseName: commitSha,
           // Same "don't publicly serve the app's own source maps" rationale
           // as Sentry's filesToDeleteAfterUpload above -- this plugin's own
@@ -146,7 +118,7 @@ export default defineConfig({
   ],
   // `vite: { ... }` is this preset's own documented passthrough for plain
   // Vite options beyond plugins (see the header comment above) --
-  // sourcemap generation must be on for sentryVitePlugin to have anything
+  // sourcemap generation must be on for posthogRollupPlugin to have anything
   // to upload, and `define` bridges WORKERS_CI_COMMIT_SHA (a build-time-
   // only process.env var, not exposed to browser code) into
   // import.meta.env.VITE_SENTRY_RELEASE, the same client-exposed-env-var
