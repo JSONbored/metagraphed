@@ -91,7 +91,7 @@ export function GraphiqlExplorerBody({
   return (
     <div
       className={classNames(
-        "mg-graphiql-frame overflow-hidden rounded-lg border border-border",
+        "mg-graphiql-frame overflow-hidden rounded-md border border-border",
         heightClassName,
       )}
     >

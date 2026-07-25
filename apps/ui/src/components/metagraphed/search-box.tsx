@@ -83,7 +83,7 @@ function SearchResults({ results }: { results: SemanticSearchResult[] }) {
     );
   }
   return (
-    <ul className="mt-4 divide-y divide-border rounded-lg border border-border bg-card">
+    <ul className="mt-4 divide-y divide-border rounded-md border border-border bg-card">
       {results.map((r, i) => (
         // Results have no stable id in the schema; index is safe since this list
         // is fully replaced (not reordered/filtered in place) on every new query.
@@ -119,14 +119,14 @@ export function SearchBox() {
             placeholder="video generation"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
           />
         </label>
         <button
           type="submit"
           disabled={isFetching || !query.trim()}
           className={classNames(
-            "shrink-0 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
+            "shrink-0 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >

@@ -44,7 +44,7 @@ export function PageSection({
       className={classNames(
         "mg-section",
         tone === "muted" &&
-          "rounded-2xl bg-surface-2/40 px-5 md:px-8 py-8 md:py-10",
+          "rounded-xl bg-surface-2/40 px-5 md:px-8 py-8 md:py-10",
         className,
       )}
     >

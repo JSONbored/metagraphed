@@ -234,7 +234,7 @@ function AtAGlance() {
           <li key={label}>
             <Link
               to={to}
-              className="group flex items-center gap-3 rounded-lg border border-transparent hover:border-border hover:bg-surface/40 px-2 py-1.5 -mx-2 transition-colors"
+              className="group flex items-center gap-3 rounded-md border border-transparent hover:border-border hover:bg-surface/40 px-2 py-1.5 -mx-2 transition-colors"
             >
               <span className="inline-flex size-7 items-center justify-center rounded-md bg-surface/70 text-ink shrink-0">
                 <Icon className="size-3.5" />

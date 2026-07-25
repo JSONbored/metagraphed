@@ -29,7 +29,7 @@ export function TopActiveAccountRowLink({ row }: TopActiveAccountRowLinkProps) {
           to="/accounts/$ss58"
           params={{ ss58: row.ss58 }}
           title={row.ss58}
-          className="min-w-0 truncate rounded-sm hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 group-hover:text-accent"
+          className="min-w-0 truncate rounded hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 group-hover:text-accent"
           preload="intent"
         >
           {label}

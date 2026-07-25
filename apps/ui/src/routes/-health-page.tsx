@@ -71,7 +71,7 @@ export function HealthPage() {
   const activeSectionId =
     VIEW_SECTION_ID[search.view as HealthView] ?? (search.status !== "all" ? "incidents" : null);
   const sectionRing = (id: string) =>
-    activeSectionId === id ? "ring-1 ring-accent/40 rounded-2xl" : undefined;
+    activeSectionId === id ? "ring-1 ring-accent/40 rounded-xl" : undefined;
 
   useEffect(() => {
     if (!activeSectionId) return;
@@ -476,7 +476,7 @@ function Cell({
   format?: (n: number) => string;
 }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-paper/40 px-3 py-2.5">
+    <div className="rounded-md border border-border/60 bg-paper/40 px-3 py-2.5">
       <div className="mg-type-micro text-[10px] text-ink-muted">{label}</div>
       <div
         className={`mt-1 font-display text-lg font-semibold tabular-nums leading-none ${accent ?? "text-ink-strong"}`}

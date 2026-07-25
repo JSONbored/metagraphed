@@ -98,7 +98,7 @@ export function ContinueExploring() {
               <Link
                 key={`${v.kind}-${v.id}`}
                 to={v.href}
-                className="mg-recent-card group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors min-w-0"
+                className="mg-recent-card group flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors min-w-0"
               >
                 {v.kind === "subnet" ? (
                   <BrandIcon

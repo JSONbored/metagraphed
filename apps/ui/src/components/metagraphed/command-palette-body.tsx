@@ -681,7 +681,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   <button
                     type="button"
                     onClick={filterSubnetsByQuery}
-                    className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
                   >
                     <Search className="size-4 shrink-0 text-ink-muted" />
                     <span>Filter /subnets by "{debounced}"</span>
@@ -691,7 +691,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   <button
                     type="button"
                     onClick={filterEndpointsByQuery}
-                    className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
                   >
                     <Wifi className="size-4 shrink-0 text-ink-muted" />
                     <span>Filter /endpoints by "{debounced}"</span>

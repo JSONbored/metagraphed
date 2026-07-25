@@ -321,7 +321,7 @@ function KindLegend({ kind }: { kind: DriftKind }) {
   const t = KIND_TONE[kind];
   return (
     <span className="inline-flex items-center gap-1">
-      <span className={classNames("inline-block size-2 rounded-sm", t.dot)} aria-hidden />
+      <span className={classNames("inline-block size-2 rounded", t.dot)} aria-hidden />
       {t.label.toLowerCase()}
     </span>
   );

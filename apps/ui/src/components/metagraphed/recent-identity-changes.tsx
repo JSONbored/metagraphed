@@ -47,7 +47,7 @@ export function RecentIdentityChanges() {
   }
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+    <ul className="divide-y divide-border rounded-md border border-border bg-card">
       {changes.map((c) => (
         <li key={`${c.netuid}-${c.identity_hash}`} className="flex items-center gap-3 px-4 py-3">
           <Link

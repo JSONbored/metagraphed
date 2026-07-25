@@ -548,7 +548,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                   to="/providers/$slug"
                   params={{ slug: p.slug }}
                   className={classNames(
-                    "group block rounded-lg border border-border bg-card p-4 transition-colors",
+                    "group block rounded-md border border-border bg-card p-4 transition-colors",
                     "hover:border-accent/60 hover:shadow-[var(--mg-shadow-ring-accent)]",
                   )}
                 >

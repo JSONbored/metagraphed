@@ -43,7 +43,7 @@ export function NetworkMoodGauge() {
     <Link
       id="network-mood-gauge"
       to="/subnets"
-      className="mg-fade-in mg-fade-in-delay-3 mt-3 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 hover:border-ink/30 transition-colors"
+      className="mg-fade-in mg-fade-in-delay-3 mt-3 flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2.5 hover:border-ink/30 transition-colors"
       title={`Network mood: ${meta.label} (ratio ${sentiment_ratio.toFixed(2)}) -- net/gross 24h alpha buy vs sell volume across ${formatNumber(subnet_count)} subnets.`}
     >
       <Icon aria-hidden className="size-4 shrink-0" style={{ color: meta.color }} />

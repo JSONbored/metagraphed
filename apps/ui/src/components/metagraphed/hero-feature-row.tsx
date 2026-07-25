@@ -83,7 +83,7 @@ function ChainThroughputCard() {
             className="w-full"
           />
         ) : (
-          <div className="h-[180px] w-full animate-pulse rounded-lg bg-surface-2" />
+          <div className="h-[180px] w-full animate-pulse rounded-md bg-surface-2" />
         )}
       </div>
 

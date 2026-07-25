@@ -256,7 +256,7 @@ function Legend({ cell, count }: { cell: Cell; count: number }) {
   return (
     <span className="inline-flex items-center gap-1">
       <span
-        className={classNames("inline-block size-2 rounded-sm", tone.bg.split(" ")[0])}
+        className={classNames("inline-block size-2 rounded", tone.bg.split(" ")[0])}
         aria-hidden
       />
       <span>{tone.label.toLowerCase()}</span>

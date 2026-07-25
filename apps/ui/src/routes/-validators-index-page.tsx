@@ -153,7 +153,7 @@ function ValidatorsTable({
       </div>
 
       {validators.length > 0 ? (
-        <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
+        <div className="hidden md:block overflow-x-auto rounded-md border border-border">
           <table
             className={classNames(
               "w-full text-left text-sm",

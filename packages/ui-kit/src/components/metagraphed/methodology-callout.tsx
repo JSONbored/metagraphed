@@ -29,7 +29,7 @@ export function MethodologyCallout({
   return (
     <aside
       aria-label="Data freshness and methodology"
-      className="mb-6 rounded-lg border border-border mg-glass-soft"
+      className="mb-6 rounded-md border border-border mg-glass-soft"
     >
       <button
         type="button"

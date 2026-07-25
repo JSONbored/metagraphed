@@ -50,7 +50,7 @@ export function SubnetOwnershipHistory({ netuid }: { netuid: number }) {
       {changes.map((change, i) => (
         <li
           key={`${change.block_number ?? i}-${change.new_coldkey ?? i}`}
-          className="rounded-lg border border-border bg-card p-3"
+          className="rounded-md border border-border bg-card p-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">

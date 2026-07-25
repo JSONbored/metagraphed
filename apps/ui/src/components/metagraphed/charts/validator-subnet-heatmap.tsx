@@ -57,9 +57,9 @@ export function ValidatorSubnetHeatmap() {
         <div className="flex flex-wrap items-center gap-2.5 font-mono text-[9.5px] text-ink-muted">
           <span>top {rows.length} validators · top 10 subnets each (server-capped)</span>
           <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent/20" />
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent/50" />
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent/80" />
+            <span className="inline-block h-2.5 w-2.5 rounded bg-accent/20" />
+            <span className="inline-block h-2.5 w-2.5 rounded bg-accent/50" />
+            <span className="inline-block h-2.5 w-2.5 rounded bg-accent/80" />
             more stake
           </span>
         </div>
@@ -112,7 +112,7 @@ export function ValidatorSubnetHeatmap() {
                                 role="img"
                                 aria-label={summary}
                                 className={classNames(
-                                  "block h-6 rounded-sm cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+                                  "block h-6 rounded cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
                                   stakeTone(ratio),
                                 )}
                               />

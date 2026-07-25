@@ -140,6 +140,34 @@ const GLASS_SURFACE_RULES = [
   },
 ];
 
+// #7843: `rounded-sm`/`rounded-lg` were eliminated (snapped to `rounded` /
+// `rounded-md`) and `rounded-3xl` was never used -- the approved 5-step scale
+// is rounded-full / rounded (base) / rounded-md / rounded-xl / rounded-2xl
+// (the last confined to the homepage hero family and the documented
+// .mg-card-glow detail-page panel pattern, #6398 -- see CONTRIBUTING.md's
+// radius table). Arbitrary `rounded-[…]` is flagged too, except the
+// documented dense-grid micro-radius residual (heatmap/mosaic/uptime-bar
+// cells at 1-2px, far below any named step) -- those still warn here rather
+// than getting a file exemption, same residual-worklist convention as the
+// z-index rule's compare-drawer sites.
+const RADIUS_RULES = [
+  {
+    // Message deliberately avoids spelling out the banned classes as
+    // contiguous "rounded-X" tokens -- doing so would self-match this same
+    // selector inside this config file (a real 2026-07-24 false positive).
+    selector: "Literal[value=/\\brounded-(?:sm|lg|3xl)\\b/]",
+    message:
+      "This radius step was eliminated from the approved scale. Use rounded (base), rounded-md, rounded-xl, or rounded-2xl (hero/mg-card-glow only) -- see CONTRIBUTING.md.",
+  },
+  {
+    // Same self-match hazard as above -- the message avoids a literal
+    // bracket-closed "rounded-[...]" example.
+    selector: "Literal[value=/\\brounded-\\[[^\\]]+\\]/]",
+    message:
+      "Arbitrary bracketed radius value outside the approved scale. Use rounded-full, rounded, rounded-md, rounded-xl, or rounded-2xl -- see CONTRIBUTING.md.",
+  },
+];
+
 // The full Bone & Ink rule set applied to src/**/*.{ts,tsx} (the "warn" block
 // below) -- named so the #7851 ratchet block can apply the identical set at
 // "error" without duplicating the array.
@@ -151,6 +179,7 @@ const FULL_DESIGN_RULES = [
   ...ELEVATION_RULES,
   ...Z_INDEX_RULES,
   ...GLASS_SURFACE_RULES,
+  ...RADIUS_RULES,
 ];
 
 // #7851: one-way lint ratchet. A directory enters this list only once it's

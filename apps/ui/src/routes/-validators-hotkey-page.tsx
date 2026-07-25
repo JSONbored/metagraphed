@@ -80,7 +80,7 @@ function SubnetPerformanceTable({
   }
   const sorted = [...subnets].sort((a, b) => (b.stake_tao ?? 0) - (a.stake_tao ?? 0));
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-md border border-border">
       <table className="w-full text-left text-sm">
         <thead className="bg-surface/50">
           <tr>

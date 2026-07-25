@@ -311,7 +311,7 @@ function MobileCard({
   const { copied, copy } = useCopy({ label: "endpoint url" });
   const safeUrl = safeExternalUrl(e.url ?? undefined);
   return (
-    <li className="rounded-lg border border-border bg-card p-3">
+    <li className="rounded-md border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">

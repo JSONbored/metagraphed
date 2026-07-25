@@ -76,7 +76,7 @@ export function QuickActionsRow() {
               <div className="flex items-start justify-between">
                 <span
                   aria-hidden
-                  className="mg-quick-icon inline-flex size-9 items-center justify-center rounded-lg border border-border bg-surface/60 text-ink-strong"
+                  className="mg-quick-icon inline-flex size-9 items-center justify-center rounded-md border border-border bg-surface/60 text-ink-strong"
                 >
                   <Icon className="size-4" />
                 </span>

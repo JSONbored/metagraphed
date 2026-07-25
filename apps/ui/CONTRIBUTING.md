@@ -95,6 +95,25 @@ budget — keep new dependencies/imports lean.
     raw `z-[1]`/`z-[2]` for micro-stacking inside the table's own local
     stacking context — not a global layer, so it doesn't belong on this scale.
 
+  - Border radius: use one of the 5 approved steps, never `rounded-sm`/`rounded-lg`/
+    `rounded-3xl` or an arbitrary `rounded-[…]` value:
+
+    | Token          | Use for                                                                                                                                                             |
+    | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | `rounded-full` | Pills, badges, dots, avatars, circular icon buttons                                                                                                                 |
+    | `rounded`      | Inputs, buttons, chips, kbd, small controls, table-corner clips                                                                                                     |
+    | `rounded-md`   | Cards/panels not using `<Panel>`, popover/menu surfaces                                                                                                             |
+    | `rounded-xl`   | Drawers, modals, sheets, command palette, `<PageSection>`'s content shells                                                                                          |
+    | `rounded-2xl`  | Homepage hero/marketing tiles, and detail-page KPI panels using the documented `.mg-card-glow`/`.mg-card-glow-accent` soft-elevation variant (#6398) — nowhere else |
+
+    Two standing exceptions: dense visualization grids (heatmaps, the status
+    mosaic, the endpoint-uptime bar) use a sub-token `rounded-[1px]`/
+    `rounded-[2px]` micro-radius on their per-cell fills — every named step
+    above is visually much larger and would materially change these grids, so
+    this is a documented residual, not drift (still flagged as a warning to
+    stay visible). `rounded-sm`/`rounded-lg` were fully eliminated (snapped to
+    `rounded`/`rounded-md`) in the 2026-07-24 sweep — see #7843.
+
   - See `docs/ssr-safety.md` for the hydration-safety rules (also partly ESLint-enforced).
 
   **Lint ratchet.** `no-restricted-syntax` is warn-tier everywhere by default — a

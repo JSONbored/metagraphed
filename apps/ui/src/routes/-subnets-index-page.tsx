@@ -1501,7 +1501,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
               aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
               title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
               className={classNames(
-                "mg-pulse-cell flex aspect-square items-center justify-center rounded-sm mg-type-data-sm font-medium transition-transform",
+                "mg-pulse-cell flex aspect-square items-center justify-center rounded mg-type-data-sm font-medium transition-transform",
                 HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
                 HEALTH_TEXT[s.health ?? "unknown"] ?? HEALTH_TEXT.unknown,
               )}
@@ -1518,7 +1518,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
 function Legend({ color, label }: { color: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <span className={classNames("size-2 rounded-sm", color)} />
+      <span className={classNames("size-2 rounded", color)} />
       {label}
     </span>
   );

@@ -2436,7 +2436,7 @@ function AccountFootprintSection({
 
       <ul className="space-y-2 md:hidden">
         {rows.map((r) => (
-          <li key={`${r.netuid}-${r.uid}`} className="rounded-lg border border-border bg-card p-3">
+          <li key={`${r.netuid}-${r.uid}`} className="rounded-md border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 {r.netuid != null ? (

@@ -157,7 +157,7 @@ function SegmentBtn({
       aria-label={label}
       title={title ?? label}
       className={classNames(
-        "flex-1 inline-flex items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-[11px] font-medium transition-colors min-h-8",
+        "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-[11px] font-medium transition-colors min-h-8",
         active ? "bg-card text-ink-strong shadow-sm" : "text-ink-muted hover:text-ink-strong",
       )}
     >

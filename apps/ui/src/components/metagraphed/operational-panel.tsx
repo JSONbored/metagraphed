@@ -283,7 +283,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                   context="recent incidents"
                 />
               ) : incidents.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border bg-paper/40 px-3 py-6 text-center">
+                <div className="rounded-md border border-dashed border-border bg-paper/40 px-3 py-6 text-center">
                   <div className="mg-type-micro text-ink-muted">Clean history</div>
                   <div className="mt-1 text-[11px] text-ink-muted">
                     No incidents recorded for this subnet.
@@ -296,7 +296,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                     return (
                       <li
                         key={`${inc.surface_id}-${inc.started_at ?? i}`}
-                        className="flex items-start gap-2 rounded-lg border border-border bg-surface/30 px-2.5 py-2"
+                        className="flex items-start gap-2 rounded-md border border-border bg-surface/30 px-2.5 py-2"
                       >
                         <span className="shrink-0 mt-0.5">{sevIcon(inc.severity)}</span>
                         <div className="min-w-0 flex-1">
