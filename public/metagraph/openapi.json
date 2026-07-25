@@ -18,63 +18,6 @@
       }
     },
     "schemas": {
-      "AccountActivity": {
-        "additionalProperties": false,
-        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Aggregates are bounded to the newest retained signer rows, not all-time. tx_count is the count of sampled extrinsics this account signed; modules_called is the top call_modules by frequency within that bounded sample.",
-        "properties": {
-          "last_tx_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "last_tx_block": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "modules_called": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "call_module": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "count": {
-                  "minimum": 0,
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "call_module",
-                "count"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "total_fee_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "tx_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "tx_count",
-          "modules_called"
-        ],
-        "type": "object"
-      },
       "AccountAxonRemovalsArtifact": {
         "additionalProperties": false,
         "description": "One account's axon-removal footprint per subnet over a recent window, from the account_events AxonInfoRemoved stream: per-subnet removal count with the first/last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet. The teardown-side complement to /accounts/{ss58}/serving (axon announcements) and the account-level companion to /api/v1/chain/axon-removals and /api/v1/subnets/{netuid}/axon-removals, orthogonal to /accounts/{ss58}/subnets (registration state).",
@@ -169,23 +112,31 @@
         "type": "object"
       },
       "AccountBalanceArtifact": {
-        "additionalProperties": true,
-        "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
+        "additionalProperties": {},
         "properties": {
           "balance_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -802,24 +753,6 @@
         ],
         "type": "object"
       },
-      "AccountEventKindCount": {
-        "additionalProperties": false,
-        "description": "Per-kind event tally for an account (#1347).",
-        "properties": {
-          "count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "kind": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "kind",
-          "count"
-        ],
-        "type": "object"
-      },
       "AccountEventsArtifact": {
         "additionalProperties": true,
         "description": "Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file).",
@@ -945,67 +878,97 @@
       },
       "AccountIdentityArtifact": {
         "additionalProperties": false,
-        "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false — and every field null — for the common case of an account that has never called set_identity; that's not an error. Operator-controlled untrusted data.",
         "properties": {
           "account": {
             "type": "string"
           },
           "additional": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "description": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "discord": {
-            "maxLength": 200,
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "github": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "has_identity": {
             "type": "boolean"
           },
           "image": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "name": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -1017,44 +980,150 @@
         "type": "object"
       },
       "AccountIdentityHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "additionalProperties": {},
         "properties": {
           "account": {
             "type": "string"
           },
           "entries": {
             "items": {
-              "$ref": "#/components/schemas/AccountIdentityHistoryEntry"
+              "additionalProperties": false,
+              "properties": {
+                "additional": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "description": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "discord": {
+                  "anyOf": [
+                    {
+                      "maxLength": 200,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "github": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "identity_hash": {
+                  "type": "string"
+                },
+                "image": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observed_at",
+                "identity_hash"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "entry_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "limit": {
-            "maximum": 1000,
-            "minimum": 1,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 1000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -1063,72 +1132,6 @@
           "account",
           "entry_count",
           "entries"
-        ],
-        "type": "object"
-      },
-      "AccountIdentityHistoryEntry": {
-        "additionalProperties": false,
-        "description": "One observed personal chain identity snapshot for an account (epic #4301/5.2). Operator-controlled untrusted data.",
-        "properties": {
-          "additional": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "discord": {
-            "maxLength": 200,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "github": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "identity_hash": {
-            "type": "string"
-          },
-          "image": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "observed_at",
-          "identity_hash"
         ],
         "type": "object"
       },
@@ -1170,52 +1173,156 @@
         "type": "object"
       },
       "AccountPortfolioArtifact": {
-        "additionalProperties": true,
-        "description": "A wallet's cross-subnet neuron portfolio from the neurons D1 tier: every position registered under the hotkey with its economics + yield, plus wallet-level aggregates (totals, subnet/validator counts, overall return, and how concentrated the wallet's stake is across its subnets). Richer than AccountSubnetsArtifact. Served live at /api/v1/accounts/{ss58}/portfolio (no static file).",
+        "additionalProperties": {},
         "properties": {
           "captured_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "miner_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "overall_yield": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "position_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "positions": {
-            "items": {
-              "$ref": "#/components/schemas/PortfolioPosition"
-            },
-            "type": "array"
-          },
-          "schema_version": {
-            "type": "integer"
-          },
-          "ss58": {
-            "type": "string"
-          },
-          "stake_concentration": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ConcentrationMetrics"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ]
           },
+          "miner_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "overall_yield": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "positions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_tao": {
+                  "type": "number"
+                },
+                "incentive": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "role": {
+                  "enum": [
+                    "validator",
+                    "miner"
+                  ],
+                  "type": "string"
+                },
+                "stake_tao": {
+                  "type": "number"
+                },
+                "trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "yield": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "netuid",
+                "uid",
+                "role",
+                "active",
+                "stake_tao",
+                "emission_tao",
+                "rank",
+                "trust",
+                "incentive",
+                "dividends",
+                "yield"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "stake_concentration": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -1226,6 +1333,7 @@
             "type": "number"
           },
           "validator_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
@@ -1247,50 +1355,159 @@
         "type": "object"
       },
       "AccountPositionHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "One wallet's position on one subnet over time (block-explorer Tier-1, epic #4329/6.2 — the 'Alpha Holdings chart'), served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file). Each point is the wallet's position economics on that subnet on one snapshot_date, in the same field shape as AccountPortfolioArtifact's PortfolioPosition entries (minus netuid, fixed for the whole series).",
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "point_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "points": {
             "items": {
-              "additionalProperties": true,
-              "description": "The wallet's position on this subnet on one snapshot_date (position-economics fields plus snapshot_date/captured_at).",
+              "additionalProperties": false,
               "properties": {
+                "active": {
+                  "type": "boolean"
+                },
                 "captured_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
+                },
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_tao": {
+                  "type": "number"
+                },
+                "incentive": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "role": {
+                  "enum": [
+                    "validator",
+                    "miner"
+                  ],
+                  "type": "string"
                 },
                 "snapshot_date": {
                   "type": "string"
+                },
+                "stake_tao": {
+                  "type": "number"
+                },
+                "trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "yield": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
-                "snapshot_date"
+                "snapshot_date",
+                "captured_at",
+                "uid",
+                "coldkey",
+                "role",
+                "active",
+                "stake_tao",
+                "emission_tao",
+                "rank",
+                "trust",
+                "incentive",
+                "dividends",
+                "yield"
               ],
               "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
             "type": "string"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -1304,28 +1521,58 @@
         "type": "object"
       },
       "AccountPositionsArtifact": {
-        "additionalProperties": true,
-        "description": "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from AccountPortfolioArtifact's hotkey-scoped view (a pure delegator shows near-zero there since its stake lives on someone ELSE's hotkey row). Sourced from nominator_positions, a share-fraction ledger populated by the same SubtensorModule::Alpha scan as validator_nominator_counts (#2549), joined against live neurons stake_tao. Served live at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is NOT covered -- root has no alpha pool (#2550) and Alpha carries no root data at all, so an account that only holds root-delegated stake shows an empty positions[] here, not because it holds nothing but because this source can't see it yet.",
+        "additionalProperties": {},
         "properties": {
           "captured_at": {
-            "description": "The most recent nominator_positions.captured_at across this account's positions -- when the source Alpha scan last observed them, not when neurons.stake_tao (used for the stake_tao join) last refreshed.",
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "position_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "positions": {
             "items": {
-              "$ref": "#/components/schemas/NominatorPosition"
+              "additionalProperties": false,
+              "properties": {
+                "hotkey": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "share_fraction": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "hotkey",
+                "netuid",
+                "share_fraction",
+                "stake_tao"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -1348,28 +1595,39 @@
       },
       "AccountPrometheusArtifact": {
         "additionalProperties": false,
-        "description": "One account's Prometheus-endpoint serving footprint per subnet over a recent window, from the account_events PrometheusServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet. Operational activity (announcing a Prometheus telemetry endpoint) — the telemetry sibling of /accounts/{ss58}/serving and the account-level companion to /api/v1/chain/prometheus and /api/v1/subnets/{netuid}/prometheus, orthogonal to /accounts/{ss58}/subnets (registration state).",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -1378,24 +1636,32 @@
               "additionalProperties": false,
               "properties": {
                 "announcements": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "first_announced_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_announced_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -1411,19 +1677,23 @@
             "type": "array"
           },
           "total_announcements": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -1436,38 +1706,6 @@
           "concentration",
           "dominant_netuid",
           "subnets"
-        ],
-        "type": "object"
-      },
-      "AccountRegistration": {
-        "additionalProperties": false,
-        "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",
-        "properties": {
-          "active": {
-            "type": "boolean"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stake_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "uid": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "validator_permit": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "netuid"
         ],
         "type": "object"
       },
@@ -1565,13 +1803,34 @@
         "type": "object"
       },
       "AccountRootClaimArtifact": {
-        "additionalProperties": true,
-        "description": "Live root-claim current state for one Finney ss58 account (#7229) — claim type, per-hotkey claimable rates, cumulative claimed watermarks, and per-netuid thresholds — queried from finney RPC at request time with 120s KV cache. claim_type and hotkeys are null on RPC failure (schema-stable), distinct from a confirmed empty hotkeys list. Read-only; never submits claim_root.",
+        "additionalProperties": {},
         "properties": {
           "claim_type": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/RootClaimType"
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "Swap",
+                      "Keep",
+                      "KeepSubnets"
+                    ],
+                    "type": "string"
+                  },
+                  "subnets": {
+                    "items": {
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -1582,7 +1841,46 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/RootClaimHotkey"
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "claimable_rate": {
+                            "type": "number"
+                          },
+                          "claimed": {
+                            "type": "string"
+                          },
+                          "netuid": {
+                            "maximum": 65535,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "threshold": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "netuid",
+                          "claimable_rate",
+                          "claimed",
+                          "threshold"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "hotkey": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "hotkey",
+                    "entries"
+                  ],
+                  "type": "object"
                 },
                 "type": "array"
               },
@@ -1592,13 +1890,18 @@
             ]
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
@@ -1613,28 +1916,39 @@
       },
       "AccountServingArtifact": {
         "additionalProperties": false,
-        "description": "One account's axon-serving footprint per subnet over a recent window, from the account_events AxonServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet. Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving and /api/v1/subnets/{netuid}/serving, orthogonal to /accounts/{ss58}/subnets (registration state) and /accounts/{ss58}/registrations (registration events).",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -1643,24 +1957,32 @@
               "additionalProperties": false,
               "properties": {
                 "announcements": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "first_served_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_served_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 }
@@ -1676,19 +1998,23 @@
             "type": "array"
           },
           "total_announcements": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -1705,30 +2031,171 @@
         "type": "object"
       },
       "AccountsListArtifact": {
-        "additionalProperties": true,
-        "description": "Site-wide accounts leaderboard (#4324/5.3): every currently-registered hotkey (miners included) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, served live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators, generalized to every account.",
+        "additionalProperties": {},
         "properties": {
           "account_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "accounts": {
             "items": {
-              "$ref": "#/components/schemas/AccountsListEntry"
+              "additionalProperties": false,
+              "properties": {
+                "coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "coldkey_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "hotkey": {
+                  "type": "string"
+                },
+                "latest_block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "latest_captured_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "miner_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_dominance": {
+                  "anyOf": [
+                    {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "subnets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "emission_tao": {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "netuid": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "stake_tao": {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "uid": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "netuid",
+                      "uid",
+                      "stake_tao",
+                      "emission_tao"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 10,
+                  "type": "array"
+                },
+                "total_emission_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "total_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "uid_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "hotkey",
+                "coldkey",
+                "coldkey_count",
+                "subnet_count",
+                "uid_count",
+                "validator_count",
+                "miner_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "stake_dominance",
+                "latest_captured_at",
+                "latest_block_number",
+                "subnets"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "limit": {
@@ -1737,6 +2204,8 @@
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "sort": {
@@ -1761,133 +2230,20 @@
         ],
         "type": "object"
       },
-      "AccountsListEntry": {
-        "additionalProperties": false,
-        "description": "One account row grouped by hotkey across every current neurons-tier registration — every currently-registered hotkey, not just validator_permit=1 ones (see GlobalValidatorEntry for the validator-only leaderboard). total_stake_tao is the closest analog to a taostats-style 'Delegated' column this D1-only route can derive; there is no 'Free'/spendable-balance or 'Total' column here (no balance-tracking tier exists to source them, see the artifact description).",
-        "properties": {
-          "coldkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "coldkey_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "hotkey": {
-            "type": "string"
-          },
-          "latest_block_number": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "latest_captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "miner_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stake_dominance": {
-            "maximum": 1,
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "subnet_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "subnets": {
-            "items": {
-              "$ref": "#/components/schemas/AccountsListSubnet"
-            },
-            "maxItems": 10,
-            "type": "array"
-          },
-          "total_emission_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "total_stake_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "uid_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "validator_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "hotkey",
-          "coldkey",
-          "coldkey_count",
-          "subnet_count",
-          "uid_count",
-          "validator_count",
-          "miner_count",
-          "total_stake_tao",
-          "total_emission_tao",
-          "stake_dominance",
-          "latest_captured_at",
-          "latest_block_number",
-          "subnets"
-        ],
-        "type": "object"
-      },
-      "AccountsListSubnet": {
-        "additionalProperties": false,
-        "description": "One current subnet membership for an account in the site-wide accounts leaderboard (#4324/5.3). Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The leaderboard returns at most the top ten memberships per account, ranked by membership stake, while subnet_count/uid_count describe the full footprint.",
-        "properties": {
-          "emission_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "stake_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "uid": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "netuid",
-          "uid",
-          "stake_tao",
-          "emission_tao"
-        ],
-        "type": "object"
-      },
       "AccountStakeFlowArtifact": {
         "additionalProperties": false,
-        "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "direction": {
@@ -1900,16 +2256,25 @@
             "type": "string"
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "flow_ratio": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "gross_flow_tao": {
@@ -1919,13 +2284,17 @@
             "type": "number"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "stake_events": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -1943,9 +2312,13 @@
                   "type": "string"
                 },
                 "flow_ratio": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "gross_flow_tao": {
@@ -1955,10 +2328,12 @@
                   "type": "number"
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "stake_events": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -1966,6 +2341,7 @@
                   "type": "number"
                 },
                 "unstake_events": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -1995,19 +2371,23 @@
             "type": "number"
           },
           "unstake_events": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -2032,28 +2412,39 @@
       },
       "AccountStakeMovesArtifact": {
         "additionalProperties": false,
-        "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup — a known daily-granularity precision limit, not a bug), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow.",
         "properties": {
           "address": {
             "type": "string"
           },
           "concentration": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "dominant_netuid": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -2062,31 +2453,43 @@
               "additionalProperties": false,
               "properties": {
                 "first_moved_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "last_moved_at": {
-                  "format": "date-time",
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "movements": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "price_tao_at_last_move": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -2102,19 +2505,23 @@
             "type": "array"
           },
           "total_movements": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              "90d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d",
+                  "90d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -2131,22 +2538,67 @@
         "type": "object"
       },
       "AccountSubnetsArtifact": {
-        "additionalProperties": true,
-        "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",
+        "additionalProperties": {},
         "properties": {
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
             "type": "string"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "subnets": {
             "items": {
-              "$ref": "#/components/schemas/AccountRegistration"
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validator_permit": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "netuid",
+                "uid",
+                "stake_tao",
+                "validator_permit",
+                "active"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -2160,59 +2612,208 @@
         "type": "object"
       },
       "AccountSummaryArtifact": {
-        "additionalProperties": true,
-        "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). The event aggregates (event_count, subnet_count, event_kinds, first_*) are computed over the account's most recent events, bounded for cost; when event_scan_capped is true they are a lower bound over that window, not all-time totals.",
+        "additionalProperties": {},
         "properties": {
           "activity": {
-            "$ref": "#/components/schemas/AccountActivity"
+            "additionalProperties": false,
+            "properties": {
+              "last_tx_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "last_tx_block": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "modules_called": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "call_module": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "call_module",
+                    "count"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "total_fee_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tx_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "tx_count",
+              "last_tx_block",
+              "last_tx_at",
+              "total_fee_tao",
+              "modules_called"
+            ],
+            "type": "object"
           },
           "event_count": {
-            "description": "Number of account_events counted. A lower bound over the account's most recent events (not an all-time total) when event_scan_capped is true.",
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "event_kinds": {
-            "description": "Per-kind event counts over the counted events; a lower bound over the most recent events when event_scan_capped is true.",
             "items": {
-              "$ref": "#/components/schemas/AccountEventKindCount"
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "count"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "event_scan_capped": {
-            "description": "True when the event aggregates hit the newest-events scan cap: event_count / subnet_count / event_kinds are then a lower bound over the account's most recent events, not all-time totals, and first_block / first_seen_at are null.",
             "type": "boolean"
           },
           "first_block": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "first_seen_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "labels": {
-            "description": "Community-contributed entity labels for this address (#6737/#6739), joined live from the entities.json artifact. Empty when the address has no contributed label.",
             "items": {
-              "$ref": "#/components/schemas/EntityLabel"
+              "additionalProperties": {},
+              "properties": {
+                "category": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "exchange",
+                        "foundation",
+                        "operator",
+                        "other"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "notes": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "source_urls": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
             },
             "type": "array"
           },
           "last_block": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_seen_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "recent_events": {
@@ -2223,18 +2824,63 @@
           },
           "registrations": {
             "items": {
-              "$ref": "#/components/schemas/AccountRegistration"
+              "additionalProperties": false,
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validator_permit": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "netuid",
+                "uid",
+                "stake_tao",
+                "validator_permit",
+                "active"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "ss58": {
             "type": "string"
           },
           "subnet_count": {
-            "description": "Distinct subnets across the counted events. A lower bound over the most recent events when event_scan_capped is true.",
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
@@ -13163,37 +13809,6 @@
         ],
         "type": "object"
       },
-      "NominatorPosition": {
-        "additionalProperties": false,
-        "description": "One (hotkey, netuid) delegation this account holds, reconstructed from nominator_positions (#5233) joined against the live neurons stake_tao for that (hotkey, netuid).",
-        "properties": {
-          "hotkey": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "share_fraction": {
-            "description": "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1) -- a dimensionless ratio, not a TAO amount. Every delegator's share_fraction for the same (hotkey, netuid) sums to exactly 1.0.",
-            "maximum": 1,
-            "minimum": 0,
-            "type": "number"
-          },
-          "stake_tao": {
-            "description": "share_fraction * the hotkey's current stake_tao for this netuid. Derived at serve time from the live neurons snapshot, so it moves as that snapshot refreshes even between nominator_positions scans.",
-            "minimum": 0,
-            "type": "number"
-          }
-        },
-        "required": [
-          "hotkey",
-          "netuid",
-          "share_fraction",
-          "stake_tao"
-        ],
-        "type": "object"
-      },
       "OpenApiArtifact": {
         "additionalProperties": true,
         "properties": {
@@ -13456,82 +14071,6 @@
         "enum": [
           "pilot"
         ]
-      },
-      "PortfolioPosition": {
-        "additionalProperties": true,
-        "description": "One neuron position a wallet holds on a subnet: its economics and emission/stake yield. Score fields are null when the cell is absent; yield is null with zero stake.",
-        "properties": {
-          "active": {
-            "type": "boolean"
-          },
-          "dividends": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "emission_tao": {
-            "type": "number"
-          },
-          "incentive": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "rank": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "role": {
-            "enum": [
-              "validator",
-              "miner"
-            ],
-            "type": "string"
-          },
-          "stake_tao": {
-            "type": "number"
-          },
-          "trust": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "uid": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "yield": {
-            "type": [
-              "number",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "netuid",
-          "uid",
-          "role",
-          "active",
-          "stake_tao",
-          "emission_tao",
-          "rank",
-          "trust",
-          "incentive",
-          "dividends",
-          "yield"
-        ],
-        "type": "object"
       },
       "ProbeConfig": {
         "additionalProperties": false,
@@ -15835,80 +16374,6 @@
           "stale"
         ],
         "type": "string"
-      },
-      "RootClaimEntry": {
-        "additionalProperties": false,
-        "description": "One netuid's root-claim accounting for a (hotkey, account) pair (#7229). claimable_rate is RootClaimable's I96F32 rate; claimed is RootClaimed's u128 watermark (string); threshold is RootClaimableThreshold.",
-        "properties": {
-          "claimable_rate": {
-            "type": "number"
-          },
-          "claimed": {
-            "type": "string"
-          },
-          "netuid": {
-            "maximum": 65535,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "threshold": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "netuid",
-          "claimable_rate",
-          "claimed",
-          "threshold"
-        ],
-        "type": "object"
-      },
-      "RootClaimHotkey": {
-        "additionalProperties": false,
-        "description": "Root-claim rows for one staking/owned hotkey of the queried account (#7229).",
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/RootClaimEntry"
-            },
-            "type": "array"
-          },
-          "hotkey": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "hotkey",
-          "entries"
-        ],
-        "type": "object"
-      },
-      "RootClaimType": {
-        "additionalProperties": false,
-        "description": "Per-account RootClaimTypeEnum (#7229): Swap alpha→TAO, Keep alpha, or KeepSubnets for a listed set.",
-        "properties": {
-          "kind": {
-            "enum": [
-              "Swap",
-              "Keep",
-              "KeepSubnets"
-            ],
-            "type": "string"
-          },
-          "subnets": {
-            "description": "Present only when kind is KeepSubnets.",
-            "items": {
-              "maximum": 65535,
-              "minimum": 0,
-              "type": "integer"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "kind"
-        ],
-        "type": "object"
       },
       "RpcEndpoint": {
         "additionalProperties": false,
@@ -26139,24 +26604,74 @@
         ]
       },
       "TopHoldersArtifact": {
-        "additionalProperties": true,
-        "description": "Balance-based top-holder leaderboard (#6741/#6743): every account with a nonzero free balance and/or delegated stake position, ranked by total_tao (free + delegated) by default, served live at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts (which is hotkey/neuron-centric and explicitly does not carry Free/Total columns -- see AccountsListArtifact's own description for why). Sourced from account_balances (a direct chain-state scan, not event-reconstructed) joined with nominator_positions x neurons for the delegated-stake side.",
+        "additionalProperties": {},
         "properties": {
           "account_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "accounts": {
             "items": {
-              "$ref": "#/components/schemas/TopHoldersEntry"
+              "additionalProperties": false,
+              "properties": {
+                "delegated_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "free_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "last_updated": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "net_flow_30d": {
+                  "type": "number"
+                },
+                "net_flow_7d": {
+                  "type": "number"
+                },
+                "net_flow_90d": {
+                  "type": "number"
+                },
+                "ss58": {
+                  "type": "string"
+                },
+                "total_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "ss58",
+                "free_tao",
+                "delegated_tao",
+                "total_tao",
+                "net_flow_7d",
+                "net_flow_30d",
+                "net_flow_90d",
+                "last_updated"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "captured_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "limit": {
@@ -26165,13 +26680,18 @@
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "sort": {
             "enum": [
               "total_tao",
               "free_tao",
-              "delegated_tao"
+              "delegated_tao",
+              "net_flow_7d",
+              "net_flow_30d",
+              "net_flow_90d"
             ],
             "type": "string"
           }
@@ -26182,54 +26702,6 @@
           "limit",
           "account_count",
           "accounts"
-        ],
-        "type": "object"
-      },
-      "TopHoldersEntry": {
-        "additionalProperties": false,
-        "description": "One coldkey/account row in the balance-based top-holder leaderboard (#6741/#6743) -- the taostats-style Account/Free/Delegated/Total columns AccountsListEntry cannot derive (see that schema's own description). free_tao/last_updated come from account_balances (a direct System::Account chain-state scan, scripts/fetch-account-balances.py -- see that script's own docstring for why this is ground-truth rather than event-reconstructed). delegated_tao is this account's own total stake positions across every hotkey/subnet (nominator_positions.share_fraction x neurons.stake_tao, the SAME computation GET /api/v1/accounts/:ss58/positions already does per-account, here aggregated across all accounts). total_tao is free_tao + delegated_tao only (reserved balance is NOT included, matching the cited benchmark's own Total = Free + Delegated definition). An account can appear here from either source alone -- e.g. an account with real free balance that has never delegated shows delegated_tao: 0, and vice versa. net_flow_7d/30d/90d (#6886/#6887) extend this same leaderboard with a cross-subnet stake-flow ranking (StakeAdded - StakeRemoved over the window, from the wallet_flow_daily rollup) rather than shipping as a separate feature; unlike the balance fields these are signed -- a negative value is a real net outflow, not a missing/cold value (which is 0, same as the balance fields).",
-        "properties": {
-          "delegated_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "free_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "last_updated": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "net_flow_30d": {
-            "type": "number"
-          },
-          "net_flow_7d": {
-            "type": "number"
-          },
-          "net_flow_90d": {
-            "type": "number"
-          },
-          "ss58": {
-            "type": "string"
-          },
-          "total_tao": {
-            "minimum": 0,
-            "type": "number"
-          }
-        },
-        "required": [
-          "ss58",
-          "free_tao",
-          "delegated_tao",
-          "total_tao",
-          "net_flow_7d",
-          "net_flow_30d",
-          "net_flow_90d",
-          "last_updated"
         ],
         "type": "object"
       },
@@ -27557,7 +28029,11 @@
                     ],
                     "registrations": [
                       {
-                        "netuid": 7
+                        "active": false,
+                        "netuid": 7,
+                        "stake_tao": 0.5,
+                        "uid": 1,
+                        "validator_permit": false
                       }
                     ],
                     "schema_version": 1,
@@ -29226,7 +29702,7 @@
                     "discord": "example",
                     "github": "example",
                     "has_identity": false,
-                    "image": "https://api.metagraph.sh/example",
+                    "image": "example",
                     "name": "Example Subnet",
                     "schema_version": 1,
                     "url": "https://api.metagraph.sh/example"
@@ -30931,7 +31407,11 @@
                     "subnet_count": 1,
                     "subnets": [
                       {
-                        "netuid": 7
+                        "active": false,
+                        "netuid": 7,
+                        "stake_tao": 0.5,
+                        "uid": 1,
+                        "validator_permit": false
                       }
                     ]
                   },
@@ -31088,7 +31568,19 @@
                     "point_count": 1,
                     "points": [
                       {
-                        "snapshot_date": "example"
+                        "active": false,
+                        "captured_at": "2026-06-01T00:00:00.000Z",
+                        "coldkey": "example",
+                        "dividends": 0.5,
+                        "emission_tao": 0.5,
+                        "incentive": 0.5,
+                        "rank": 0.5,
+                        "role": "validator",
+                        "snapshot_date": "example",
+                        "stake_tao": 0.5,
+                        "trust": 0.5,
+                        "uid": 1,
+                        "yield": 0.5
                       }
                     ],
                     "schema_version": 1,
