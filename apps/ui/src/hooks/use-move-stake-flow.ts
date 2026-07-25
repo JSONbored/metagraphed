@@ -17,10 +17,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiPromise } from "@polkadot/api";
 import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { DEFAULT_TOLERANCE_PCT } from "./use-stake-flow";
+import { useFlowSession, useFeeEstimate } from "./use-flow-session";
 import { subnetStakeQuoteQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import type { SubnetStakeQuote, Subnet } from "@/lib/metagraphed/types";
 import {
@@ -40,15 +40,9 @@ import {
   type SwapStakeLimitParams,
   type StakeValidationIssue,
 } from "@/lib/metagraphed/stake-extrinsics";
-import {
-  getApi,
-  getMinStake,
-  getNextNonce,
-  buildExtrinsic,
-} from "@/lib/metagraphed/chain-connection";
+import { getMinStake, getNextNonce, buildExtrinsic } from "@/lib/metagraphed/chain-connection";
 import { getSigner } from "@/lib/metagraphed/wallet-injected";
 import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
-import { estimateFee } from "@/lib/metagraphed/tx-fee";
 
 export type MoveStakeFlowPhase =
   "connect" | "amount" | "confirm" | "signing" | "broadcasting" | "failed" | "done";
@@ -281,28 +275,8 @@ export function useMoveStakeFlow(
   const [tolerancePct, setTolerancePct] = useState(DEFAULT_TOLERANCE_PCT);
   const [confirmed, setConfirmed] = useState(false);
 
-  // Generated client-only -- see use-stake-flow.ts's identical pattern for
-  // why (avoids an SSR/CSR hydration mismatch).
-  const [sessionId, setSessionId] = useState("");
-  useEffect(() => {
-    setSessionId(crypto.randomUUID());
-  }, []);
-
-  const [api, setApi] = useState<ApiPromise | null>(null);
-  useEffect(() => {
-    if (wallet.status !== "connected") return;
-    let cancelled = false;
-    getApi()
-      .then((connected) => {
-        if (!cancelled) setApi(connected);
-      })
-      .catch(() => {
-        /* best-effort; minStake/submit simply stay unavailable */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.status]);
+  // Shared across all three stake/take flows -- see use-flow-session.ts.
+  const { sessionId, api } = useFlowSession(wallet.status);
 
   const [minStakeRao, setMinStakeRao] = useState<Rao | null>(null);
   useEffect(() => {
@@ -425,24 +399,7 @@ export function useMoveStakeFlow(
   // Fee dry-run for the PreSignConfirmation screen -- identical posture to
   // use-stake-flow.ts's: only fetched once the user has reached "confirm"
   // with a resolved, idle tx.
-  const [feeRao, setFeeRao] = useState<Rao | null>(null);
-  useEffect(() => {
-    setFeeRao(null);
-    if (!confirmed || txStatus.status !== "idle") return;
-    if (!api || !wallet.wallet || !params) return;
-    let cancelled = false;
-    const extrinsic = buildExtrinsic(api, params);
-    estimateFee(extrinsic, wallet.wallet.address)
-      .then((fee) => {
-        if (!cancelled) setFeeRao(fee);
-      })
-      .catch(() => {
-        /* best-effort; the confirm screen just keeps showing "Estimating..." */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [confirmed, txStatus.status, api, wallet.wallet, params]);
+  const feeRao = useFeeEstimate(confirmed, txStatus.status, api, wallet.wallet, params);
 
   const confirm = useCallback(() => setConfirmed(true), []);
   const editAmount = useCallback(() => {

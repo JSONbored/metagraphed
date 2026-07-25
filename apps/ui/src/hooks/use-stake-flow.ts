@@ -10,9 +10,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiPromise } from "@polkadot/api";
 import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
+import { useFlowSession, useFeeEstimate } from "./use-flow-session";
 import {
   subnetStakeQuoteQuery,
   economicsQuery,
@@ -31,7 +31,6 @@ import {
   type StakeValidationIssue,
 } from "@/lib/metagraphed/stake-extrinsics";
 import {
-  getApi,
   getMinStake,
   getFreeBalance,
   getNextNonce,
@@ -39,7 +38,6 @@ import {
 } from "@/lib/metagraphed/chain-connection";
 import { getSigner } from "@/lib/metagraphed/wallet-injected";
 import { computeIdempotencyKey } from "@/lib/metagraphed/broadcast";
-import { estimateFee } from "@/lib/metagraphed/tx-fee";
 
 export type StakeFlowAction = "stake" | "unstake";
 export type StakeFlowUnit = "tao" | "alpha";
@@ -275,30 +273,8 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   const [tolerancePct, setTolerancePct] = useState(DEFAULT_TOLERANCE_PCT);
   const [confirmed, setConfirmed] = useState(false);
 
-  // Generated client-only (never in the render body) to avoid an SSR/CSR
-  // hydration mismatch -- see wallet-injected.ts's header comment for why
-  // this file's SSR-safety convention applies here too, even though this
-  // value itself never touches @polkadot/*.
-  const [sessionId, setSessionId] = useState("");
-  useEffect(() => {
-    setSessionId(crypto.randomUUID());
-  }, []);
-
-  const [api, setApi] = useState<ApiPromise | null>(null);
-  useEffect(() => {
-    if (wallet.status !== "connected") return;
-    let cancelled = false;
-    getApi()
-      .then((connected) => {
-        if (!cancelled) setApi(connected);
-      })
-      .catch(() => {
-        /* best-effort; freeBalance/minStake/submit simply stay unavailable */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.status]);
+  // Shared across all three stake/take flows -- see use-flow-session.ts.
+  const { sessionId, api } = useFlowSession(wallet.status);
 
   const [freeBalanceRao, setFreeBalanceRao] = useState<Rao | null>(null);
   const [minStakeRao, setMinStakeRao] = useState<Rao | null>(null);
@@ -418,24 +394,7 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   // Fee dry-run for the PreSignConfirmation screen -- only ever fetched once
   // the user has reached "confirm" with a resolved, idle tx, so an amount
   // that's still being edited never fires a paymentInfo() round-trip.
-  const [feeRao, setFeeRao] = useState<Rao | null>(null);
-  useEffect(() => {
-    setFeeRao(null);
-    if (!confirmed || txStatus.status !== "idle") return;
-    if (!api || !wallet.wallet || !params) return;
-    let cancelled = false;
-    const extrinsic = buildExtrinsic(api, params);
-    estimateFee(extrinsic, wallet.wallet.address)
-      .then((fee) => {
-        if (!cancelled) setFeeRao(fee);
-      })
-      .catch(() => {
-        /* best-effort; the confirm screen just keeps showing "Estimating..." */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [confirmed, txStatus.status, api, wallet.wallet, params]);
+  const feeRao = useFeeEstimate(confirmed, txStatus.status, api, wallet.wallet, params);
 
   const applyMaxStake = useCallback(() => {
     if (maxStakeRao != null) setAmountInput(raoToTao(maxStakeRao));
