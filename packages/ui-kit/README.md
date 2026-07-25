@@ -13,6 +13,12 @@ components, and the chart primitives have all migrated
 ([#4861](https://github.com/JSONbored/metagraphed/issues/4861)-[#4864](https://github.com/JSONbored/metagraphed/issues/4864)).
 `apps/ui` consumes everything from `@jsonbored/ui-kit`.
 
+**Visual reference:** the `/design/primitives` route (`apps/ui/src/routes/design.primitives.tsx`)
+is the canonical, live showcase of every value exported from this package's public barrel —
+organized into Tokens / Layout / Data display / Interaction / Feedback, each with a rendered
+example and its import line. Check there before reaching for a raw value or re-implementing
+something that already exists.
+
 ## Boundary rule: no app-specific imports
 
 This package must stay a real, standalone, dependency-free library — the moment a component here
