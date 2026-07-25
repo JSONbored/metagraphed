@@ -176,6 +176,70 @@ import {
   GetEconomicsTrendsInputSchema,
   GetEconomicsTrendsOutputSchema,
 } from "../schemas-src/mcp-tools/get-economics-trends.ts";
+import {
+  GetRegistryLeaderboardsInputSchema,
+  GetRegistryLeaderboardsOutputSchema,
+} from "../schemas-src/mcp-tools/get-registry-leaderboards.ts";
+import {
+  GetDomainSummaryInputSchema,
+  GetDomainSummaryOutputSchema,
+} from "../schemas-src/mcp-tools/get-domain-summary.ts";
+import {
+  ListProfilesInputSchema,
+  ListProfilesOutputSchema,
+  GetSubnetProfileInputSchema,
+  GetSubnetProfileOutputSchema,
+} from "../schemas-src/mcp-tools/profiles.ts";
+import {
+  CompareSubnetsInputSchema,
+  CompareSubnetsOutputSchema,
+} from "../schemas-src/mcp-tools/compare-subnets.ts";
+import {
+  GetSubnetMetagraphInputSchema,
+  GetSubnetMetagraphOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-metagraph.ts";
+import {
+  GetSubnetHistoryInputSchema,
+  GetSubnetHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-history.ts";
+import {
+  GetSubnetIdentityHistoryInputSchema,
+  GetSubnetIdentityHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-identity-history.ts";
+import {
+  GetSubnetEventsInputSchema,
+  GetSubnetEventsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-events.ts";
+import {
+  GetSubnetHyperparamsInputSchema,
+  GetSubnetHyperparamsOutputSchema,
+  GetSubnetHyperparamsHistoryInputSchema,
+  GetSubnetHyperparamsHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-hyperparams.ts";
+import {
+  GetSubnetVolumeInputSchema,
+  GetSubnetVolumeOutputSchema,
+  GetSubnetOhlcInputSchema,
+  GetSubnetOhlcOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-volume-ohlc.ts";
+import {
+  GetSubnetOwnershipHistoryInputSchema,
+  GetSubnetOwnershipHistoryOutputSchema,
+  GetSubnetConvictionInputSchema,
+  GetSubnetConvictionOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-ownership-conviction.ts";
+import {
+  GetSubnetRecycledInputSchema,
+  GetSubnetRecycledOutputSchema,
+  GetSubnetBurnInputSchema,
+  GetSubnetBurnOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-recycled-burn.ts";
+import {
+  GetSubnetLeaseInputSchema,
+  GetSubnetLeaseOutputSchema,
+  GetSubnetLeaseHistoryInputSchema,
+  GetSubnetLeaseHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-lease.ts";
 
 type Row = Record<string, unknown>;
 
@@ -294,6 +358,73 @@ const HISTORY_WINDOWS_3 = ["7d", "30d", "90d"];
 const HISTORY_WINDOWS_5 = ["7d", "30d", "90d", "1y", "all"];
 const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"];
 const STAKE_FLOW_DIRECTIONS = ["all", "in", "out"];
+// Batch 4 (#8067) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/health-serving.ts's LEADERBOARD_BOARDS,
+// src/domain-tags.ts's DOMAIN_TAGS, src/contracts.ts's QUERY_ENUMS + the
+// "profiles" query collection's sort_fields, src/subnet-ohlc.ts's
+// OHLC_INTERVALS, src/neuron-history.ts's HISTORY_WINDOWS), cross-checked
+// against the actual runtime source at the time of writing.
+const LEADERBOARD_BOARDS = [
+  "healthiest",
+  "fastest-rpc",
+  "most-complete",
+  "most-enriched",
+  "fastest-growing",
+  "most-reliable",
+  "open-slots",
+  "cheapest-registration",
+  "highest-emission",
+  "validator-headroom",
+  "biggest-alpha-gain-1d",
+  "biggest-alpha-gain-7d",
+];
+const DOMAIN_TAGS = [
+  "agents",
+  "compute",
+  "data",
+  "finance",
+  "inference",
+  "media",
+  "prediction",
+  "privacy",
+  "robotics",
+  "science",
+  "search",
+  "security",
+  "storage",
+  "training",
+];
+const PROFILE_SUBNET_TYPE = ["root", "application"];
+const PROFILE_CURATION_LEVEL = [
+  "native",
+  "candidate-discovered",
+  "community-seeded",
+  "machine-verified",
+  "maintainer-reviewed",
+  "adapter-backed",
+];
+const PROFILE_LEVEL = [
+  "directory-only",
+  "identity-partial",
+  "identity-complete",
+  "operational",
+  "adapter-backed",
+];
+const PROFILES_SORT_FIELDS_4 = [
+  "candidate_count",
+  "completeness_score",
+  "curation_level",
+  "interface_count",
+  "missing_critical_count",
+  "name",
+  "netuid",
+  "operational_interface_count",
+  "profile_level",
+  "review_state",
+];
+const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
+const HISTORY_WINDOWS_4 = ["7d", "30d", "90d", "1y", "all"];
+const OHLC_INTERVALS_4 = ["1h", "1d"];
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -1640,6 +1771,591 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_registry_leaderboards: {
+    input: {
+      type: "object",
+      properties: {
+        board: { type: "string", enum: LEADERBOARD_BOARDS },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["boards"],
+      properties: {
+        schema_version: { type: "integer" },
+        board: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        boards: { type: "object" },
+      },
+    },
+  },
+  get_domain_summary: {
+    input: {
+      type: "object",
+      properties: {
+        domain: { type: "string", enum: DOMAIN_TAGS },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["schema_version"],
+      properties: {
+        schema_version: { type: "integer" },
+        domain: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        netuids: { type: "array", items: { type: "integer" } },
+        total_stake_tao: { type: ["number", "null"] },
+        total_emission_share: { type: ["number", "null"] },
+        emission_concentration: { type: ["object", "null"] },
+        domain_count: { type: "integer" },
+        domains: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  list_profiles: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        subnet_type: { type: "string", enum: PROFILE_SUBNET_TYPE },
+        curation_level: { type: "string", enum: PROFILE_CURATION_LEVEL },
+        review_state: { type: "string" },
+        confidence: { type: "string", enum: ["low", "medium", "high"] },
+        profile_level: { type: "string", enum: PROFILE_LEVEL },
+        q: { type: "string" },
+        sort: { type: "string", enum: PROFILES_SORT_FIELDS_4 },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["profiles"],
+      properties: {
+        captured_at: NULLABLE_STRING,
+        profiles: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_profile: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      properties: {
+        schema_version: { type: "integer" },
+        contract_version: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        subnet: { type: ["object", "null"] },
+        profile: { type: ["object", "null"] },
+        surfaces: { type: "array", items: { type: "object" } },
+        endpoints: { type: "array", items: { type: "object" } },
+        gaps: { type: ["object", "null"] },
+      },
+    },
+  },
+  compare_subnets: {
+    input: {
+      type: "object",
+      properties: {
+        netuids: {
+          type: "array",
+          items: { type: "integer", minimum: 0 },
+          minItems: 1,
+          maxItems: 128,
+        },
+        dimensions: {
+          type: "array",
+          items: { type: "string", enum: COMPARE_DIMENSIONS },
+        },
+      },
+      required: ["netuids"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["requested_netuids", "subnets", "dimensions"],
+      properties: {
+        schema_version: { type: "integer" },
+        requested_netuids: { type: "array", items: { type: "integer" } },
+        dimensions: { type: "array", items: { type: "string" } },
+        subnets: { type: "array", items: { type: "object" } },
+        observed_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_metagraph: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        validator_permit: { type: "boolean" },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "neuron_count", "neurons"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        neuron_count: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        neurons: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_subnet_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_4 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: objectItems({
+          snapshot_date: NULLABLE_STRING,
+          neuron_count: NULLABLE_INT,
+          validator_count: NULLABLE_INT,
+          total_stake_tao: ANY,
+          total_emission_tao: ANY,
+        }),
+      },
+    },
+  },
+  get_subnet_identity_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["schema_version", "netuid", "entry_count", "entries"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        entry_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        entries: objectItems({
+          block_number: NULLABLE_INT,
+          observed_at: NULLABLE_STRING,
+          subnet_name: NULLABLE_STRING,
+          symbol: NULLABLE_STRING,
+          description: NULLABLE_STRING,
+          github_repo: NULLABLE_STRING,
+          subnet_url: NULLABLE_STRING,
+          discord: NULLABLE_STRING,
+          logo_url: NULLABLE_STRING,
+          identity_hash: { type: "string" },
+        }),
+      },
+    },
+  },
+  get_subnet_events: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string" },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "event_count", "events"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        event_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          event_kind: NULLABLE_STRING,
+          hotkey: NULLABLE_STRING,
+          coldkey: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          observed_at: NULLABLE_STRING,
+          extrinsic_index: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  get_subnet_hyperparams: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        hyperparameters: {
+          type: ["object", "null"],
+          additionalProperties: true,
+        },
+      },
+    },
+  },
+  get_subnet_hyperparams_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "entry_count", "entries"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        entry_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        entries: objectItems({
+          block_number: NULLABLE_INT,
+          observed_at: NULLABLE_STRING,
+          hyperparameters: {
+            type: ["object", "null"],
+            additionalProperties: true,
+          },
+          hyperparams_hash: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_subnet_volume: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "window"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        window: { type: "string" },
+        buy_volume_alpha: ANY,
+        sell_volume_alpha: ANY,
+        total_volume_alpha: ANY,
+        buy_volume_tao: ANY,
+        sell_volume_tao: ANY,
+        total_volume_tao: ANY,
+        buy_count: { type: "integer" },
+        sell_count: { type: "integer" },
+        net_volume_alpha: ANY,
+        sentiment_ratio: { type: ["number", "null"] },
+        sentiment: NULLABLE_STRING,
+        vol_mcap_ratio: { type: ["number", "null"] },
+      },
+    },
+  },
+  get_subnet_ohlc: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        interval: { type: "string", enum: OHLC_INTERVALS_4 },
+        days: { type: "integer", minimum: 1, maximum: 365 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "interval", "candles", "root_excluded"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        interval: { type: "string" },
+        candles: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              bucket_start: { type: "integer" },
+              bucket_start_iso: { type: "string" },
+              open: ANY,
+              high: ANY,
+              low: ANY,
+              close: ANY,
+              volume_alpha: ANY,
+              volume_tao: ANY,
+              event_count: { type: "integer" },
+            },
+          },
+        },
+        root_excluded: { type: "boolean" },
+      },
+    },
+  },
+  get_subnet_ownership_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "count", "ownership_changes"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        count: { type: "integer" },
+        ownership_changes: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              netuid: { type: ["integer", "null"] },
+              old_coldkey: { type: ["string", "null"] },
+              new_coldkey: { type: ["string", "null"] },
+              block_number: { type: ["integer", "null"] },
+              observed_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_subnet_conviction: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "count", "leaderboard"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        queried_at_block: { type: ["integer", "null"] },
+        unlock_rate: { type: ["integer", "null"] },
+        maturity_rate: { type: ["integer", "null"] },
+        king: { type: ["string", "null"] },
+        count: { type: "integer" },
+        leaderboard: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              hotkey: { type: "string" },
+              is_owner: { type: "boolean" },
+              locked_mass: { type: "number" },
+              conviction: { type: "number" },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_subnet_recycled: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        recycled_tao: { type: ["number", "null"] },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_burn: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        burn_tao: { type: ["number", "null"] },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_lease: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "leased"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        leased: { type: ["boolean", "null"] },
+        lease: {
+          type: ["object", "null"],
+          additionalProperties: true,
+          properties: {
+            lease_id: { type: "integer" },
+            beneficiary: { type: "string" },
+            coldkey: { type: "string" },
+            hotkey: { type: "string" },
+            emissions_share_percent: { type: "integer" },
+            end_block: { type: ["integer", "null"] },
+            netuid: { type: "integer" },
+            cost_tao: { type: "number" },
+            accumulated_dividends_alpha: { type: ["number", "null"] },
+          },
+        },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_lease_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "count", "lease_events"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        count: { type: "integer" },
+        lease_events: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              event_kind: { type: "string" },
+              beneficiary: { type: ["string", "null"] },
+              block_number: { type: ["integer", "null"] },
+              observed_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -1804,6 +2520,82 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
     input: GetEconomicsTrendsInputSchema,
     output: GetEconomicsTrendsOutputSchema,
   },
+  get_registry_leaderboards: {
+    input: GetRegistryLeaderboardsInputSchema,
+    output: GetRegistryLeaderboardsOutputSchema,
+  },
+  get_domain_summary: {
+    input: GetDomainSummaryInputSchema,
+    output: GetDomainSummaryOutputSchema,
+  },
+  list_profiles: {
+    input: ListProfilesInputSchema,
+    output: ListProfilesOutputSchema,
+  },
+  get_subnet_profile: {
+    input: GetSubnetProfileInputSchema,
+    output: GetSubnetProfileOutputSchema,
+  },
+  compare_subnets: {
+    input: CompareSubnetsInputSchema,
+    output: CompareSubnetsOutputSchema,
+  },
+  get_subnet_metagraph: {
+    input: GetSubnetMetagraphInputSchema,
+    output: GetSubnetMetagraphOutputSchema,
+  },
+  get_subnet_history: {
+    input: GetSubnetHistoryInputSchema,
+    output: GetSubnetHistoryOutputSchema,
+  },
+  get_subnet_identity_history: {
+    input: GetSubnetIdentityHistoryInputSchema,
+    output: GetSubnetIdentityHistoryOutputSchema,
+  },
+  get_subnet_events: {
+    input: GetSubnetEventsInputSchema,
+    output: GetSubnetEventsOutputSchema,
+  },
+  get_subnet_hyperparams: {
+    input: GetSubnetHyperparamsInputSchema,
+    output: GetSubnetHyperparamsOutputSchema,
+  },
+  get_subnet_hyperparams_history: {
+    input: GetSubnetHyperparamsHistoryInputSchema,
+    output: GetSubnetHyperparamsHistoryOutputSchema,
+  },
+  get_subnet_volume: {
+    input: GetSubnetVolumeInputSchema,
+    output: GetSubnetVolumeOutputSchema,
+  },
+  get_subnet_ohlc: {
+    input: GetSubnetOhlcInputSchema,
+    output: GetSubnetOhlcOutputSchema,
+  },
+  get_subnet_ownership_history: {
+    input: GetSubnetOwnershipHistoryInputSchema,
+    output: GetSubnetOwnershipHistoryOutputSchema,
+  },
+  get_subnet_conviction: {
+    input: GetSubnetConvictionInputSchema,
+    output: GetSubnetConvictionOutputSchema,
+  },
+  get_subnet_recycled: {
+    input: GetSubnetRecycledInputSchema,
+    output: GetSubnetRecycledOutputSchema,
+  },
+  get_subnet_burn: {
+    input: GetSubnetBurnInputSchema,
+    output: GetSubnetBurnOutputSchema,
+  },
+  get_subnet_lease: {
+    input: GetSubnetLeaseInputSchema,
+    output: GetSubnetLeaseOutputSchema,
+  },
+  get_subnet_lease_history: {
+    input: GetSubnetLeaseHistoryInputSchema,
+    output: GetSubnetLeaseHistoryOutputSchema,
+  },
 };
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -1840,13 +2632,24 @@ function normalize(node: unknown, path: string): unknown {
   const obj = node as Row;
 
   // `type: [X, Y, ...]` (hand-written, one schema node, N-way union of bare
-  // types) vs Zod's `anyOf: [{type:X}, {type:Y}, ...]` (a flat union of
-  // single-type schemas -- verified this batch never nests further, see
-  // get-network-health.ts's contract_version comment on avoiding the nested
-  // anyOf-of-anyOf z.union([...]).nullable() would otherwise produce).
-  // Rewrite the hand-written side into the same flat anyOf shape.
+  // types), possibly with sibling constraint keys that apply ONLY to the
+  // non-null branch (e.g. batch 4's get_subnet_lease.lease:
+  // {type:["object","null"], properties:{...9 fields...}}) vs Zod's
+  // `anyOf: [{type:X, ...siblings}, {type:Y}, ...]`. Earlier batches never
+  // exercised the sibling case (their type:[X,Y] nodes were always bare,
+  // e.g. NULLABLE_STRING) so this rewrite used to drop siblings outright;
+  // batch 4 needs them carried into the first (non-null) branch, mirroring
+  // scripts/diff-openapi-zod-components.ts's equivalent rule.
   if (Array.isArray(obj.type) && obj.type.length > 1) {
-    return normalize({ anyOf: obj.type.map((t) => ({ type: t })) }, path);
+    const { type: _t, ...siblings } = obj;
+    return normalize(
+      {
+        anyOf: obj.type.map((t, i) =>
+          i === 0 ? { type: t, ...siblings } : { type: t },
+        ),
+      },
+      path,
+    );
   }
 
   const out: Row = {};

@@ -2,13 +2,18 @@
 // GET /api/v1/subnets/{netuid}/profile. Artifact-backed list-query over
 // profiles.json and per-netuid profile detail snapshots.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListProfilesInputSchema,
+  ListProfilesOutputSchema,
+  GetSubnetProfileInputSchema,
+  GetSubnetProfileOutputSchema,
+} from "../schemas-src/mcp-tools/profiles.ts";
 
 const PROFILES_SORT_FIELDS = API_QUERY_COLLECTIONS.profiles.sort_fields;
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
 
 export interface ProfilesMcpError extends Error {
   profilesMcp: true;
@@ -211,73 +216,9 @@ export const LIST_PROFILES_MCP_TOOL = {
     "review_state, confidence, or profile_level; search by name/slug/project " +
     "(q); sort with sort + order; page with limit (1-1000) / cursor. Mirrors " +
     "GET /api/v1/profiles.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      subnet_type: {
-        type: "string",
-        enum: QUERY_ENUMS.subnetType,
-        description: "Filter by subnet type.",
-      },
-      curation_level: {
-        type: "string",
-        enum: QUERY_ENUMS.curationLevel,
-        description: "Filter by curation level.",
-      },
-      review_state: {
-        type: "string",
-        description: "Filter by review state.",
-      },
-      confidence: {
-        type: "string",
-        enum: ["low", "medium", "high"],
-        description: "Filter by profile confidence.",
-      },
-      profile_level: {
-        type: "string",
-        enum: QUERY_ENUMS.profileLevel,
-        description: "Filter by profile completeness level.",
-      },
-      q: {
-        type: "string",
-        description:
-          "Search subnet name, slug, project name, team, or categories.",
-      },
-      sort: {
-        type: "string",
-        enum: PROFILES_SORT_FIELDS,
-        description:
-          "Field to sort by (bare name only). Pair with order for direction.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of profile row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max profile rows to return (1-1000). Enables pagination.",
-        minimum: 1,
-        maximum: 1000,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListProfilesInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
 export const GET_SUBNET_PROFILE_MCP_TOOL = {
@@ -288,48 +229,17 @@ export const GET_SUBNET_PROFILE_MCP_TOOL = {
     "score, curation and review metadata, native identity signals, surface " +
     "counts, and contributor-facing enrichment context. Mirrors " +
     "GET /api/v1/subnets/{netuid}/profile.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-    },
-    required: ["netuid"],
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetSubnetProfileInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-export const LIST_PROFILES_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["profiles"],
-  properties: {
-    captured_at: NULLABLE_STRING,
-    profiles: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
-  },
-};
+export const LIST_PROFILES_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListProfilesOutputSchema,
+  { target: "draft-2020-12" },
+);
 
-export const GET_SUBNET_PROFILE_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  properties: {
-    schema_version: { type: "integer" },
-    contract_version: NULLABLE_STRING,
-    generated_at: NULLABLE_STRING,
-    subnet: { type: ["object", "null"] },
-    profile: { type: ["object", "null"] },
-    surfaces: { type: "array", items: { type: "object" } },
-    endpoints: { type: "array", items: { type: "object" } },
-    gaps: { type: ["object", "null"] },
-  },
-};
+export const GET_SUBNET_PROFILE_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetSubnetProfileOutputSchema,
+  { target: "draft-2020-12" },
+);

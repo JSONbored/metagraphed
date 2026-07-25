@@ -453,6 +453,68 @@ import {
 } from "./health-history-mcp.ts";
 import { GetHealthHistoryInputSchema } from "../schemas-src/mcp-tools/get-health-history.ts";
 import {
+  GetRegistryLeaderboardsInputSchema,
+  GetRegistryLeaderboardsOutputSchema,
+} from "../schemas-src/mcp-tools/get-registry-leaderboards.ts";
+import {
+  GetDomainSummaryInputSchema,
+  GetDomainSummaryOutputSchema,
+} from "../schemas-src/mcp-tools/get-domain-summary.ts";
+import {
+  ListProfilesInputSchema,
+  GetSubnetProfileInputSchema,
+} from "../schemas-src/mcp-tools/profiles.ts";
+import {
+  CompareSubnetsInputSchema,
+  CompareSubnetsOutputSchema,
+} from "../schemas-src/mcp-tools/compare-subnets.ts";
+import {
+  GetSubnetMetagraphInputSchema,
+  GetSubnetMetagraphOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-metagraph.ts";
+import {
+  GetSubnetHistoryInputSchema,
+  GetSubnetHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-history.ts";
+import {
+  GetSubnetIdentityHistoryInputSchema,
+  GetSubnetIdentityHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-identity-history.ts";
+import {
+  GetSubnetEventsInputSchema,
+  GetSubnetEventsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-events.ts";
+import {
+  GetSubnetHyperparamsInputSchema,
+  GetSubnetHyperparamsOutputSchema,
+  GetSubnetHyperparamsHistoryInputSchema,
+  GetSubnetHyperparamsHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-hyperparams.ts";
+import {
+  GetSubnetVolumeInputSchema,
+  GetSubnetVolumeOutputSchema,
+  GetSubnetOhlcInputSchema,
+  GetSubnetOhlcOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-volume-ohlc.ts";
+import {
+  GetSubnetOwnershipHistoryInputSchema,
+  GetSubnetOwnershipHistoryOutputSchema,
+  GetSubnetConvictionInputSchema,
+  GetSubnetConvictionOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-ownership-conviction.ts";
+import {
+  GetSubnetRecycledInputSchema,
+  GetSubnetRecycledOutputSchema,
+  GetSubnetBurnInputSchema,
+  GetSubnetBurnOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-recycled-burn.ts";
+import {
+  GetSubnetLeaseInputSchema,
+  GetSubnetLeaseOutputSchema,
+  GetSubnetLeaseHistoryInputSchema,
+  GetSubnetLeaseHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-lease.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -4861,24 +4923,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "opportunity boards (open-slots, cheapest-registration, highest-emission, " +
       "validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d). Omit " +
       "board for all boards. Mirrors GET /api/v1/registry/leaderboards.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        board: {
-          type: "string",
-          enum: [...LEADERBOARD_BOARDS],
-          description: "Optional single board. Omit to return all boards.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max subnets per board (1-100, default 20).",
-          minimum: 1,
-          maximum: 100,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetRegistryLeaderboardsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetRegistryLeaderboardsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const board = optionalEnum(args, "board", LEADERBOARD_BOARDS);
       const limit = clampLimit(args?.limit, 20, 100);
       const profiles =
@@ -4903,19 +4954,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "and within-domain emission concentration, per domain tag. Pass `domain` " +
       "for one tag's own rollup (mirrors GET /api/v1/domains/{tag}/summary); " +
       "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        domain: {
-          type: "string",
-          enum: DOMAIN_TAGS,
-          description:
-            "Optional single domain tag. Omit to return every tag's rollup.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetDomainSummaryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetDomainSummaryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const domain = optionalEnum(args, "domain", DOMAIN_TAGS);
       // A cold/missing subnets index degrades to an empty rollup (like
       // loadEconomicsSubnetRows' own graceful fallback below), not a thrown
@@ -4932,7 +4977,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...LIST_PROFILES_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof ListProfilesInputSchema>, ctx: McpCtx) {
       try {
         return await loadProfilesList(asMcpLoaderCtx(ctx), args, {
           readOptionalArtifact: loadOptionalArtifact,
@@ -4948,7 +4993,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_SUBNET_PROFILE_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(
+      args: z.infer<typeof GetSubnetProfileInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       try {
         return await loadSubnetProfile(asMcpLoaderCtx(ctx), netuid, {
@@ -4970,29 +5018,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Place several subnets side by side across registry structure, economics, " +
       "and live probe health in one call. Choose dimensions to limit the payload " +
       "(structure, economics, health — default all). Mirrors GET /api/v1/compare.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuids: {
-          type: "array",
-          items: { type: "integer", minimum: 0 },
-          minItems: 1,
-          maxItems: 128,
-          description: "Subnet netuids to compare, in display order.",
-        },
-        dimensions: {
-          type: "array",
-          items: {
-            type: "string",
-            enum: ["structure", "economics", "health"],
-          },
-          description: "Optional subset of compare dimensions (default all).",
-        },
-      },
-      required: ["netuids"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(CompareSubnetsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof CompareSubnetsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuids = parseCompareNetuidList(args?.netuids);
       if (!netuids) {
         throw toolError(
@@ -5133,20 +5165,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "emission, validator permit, immunity, and axon, ordered by UID. Set " +
       "validator_permit to true to return only permit-holding validators. " +
       "Captured from the chain on a schedule; empty when no snapshot exists yet.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        validator_permit: {
-          type: "boolean",
-          description:
-            "When true, return only neurons that hold a validator permit.",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetMetagraphInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetMetagraphInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       // validator_permit is validated for REST-parity but, like the D1 filter it
       // used to bound, has nothing left to filter now that neurons is retired
@@ -5663,20 +5688,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "snapshot_date, newest first. Choose the window (7d, 30d, 90d, 1y, all; " +
       "default 30d). Use it to chart how a subnet's size, stake, and emission " +
       "have moved over time. Mirrors GET /api/v1/subnets/{netuid}/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        window: {
-          type: "string",
-          enum: ["7d", "30d", "90d", "1y", "all"],
-          description: "History window (default 30d).",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
     },
@@ -5691,31 +5709,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Newest first. Page with limit (1-1000, default 100) / offset, or follow " +
       "next_cursor for stable keyset pagination. Mirrors " +
       "GET /api/v1/subnets/{netuid}/identity-history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        limit: {
-          type: "integer",
-          description: "Max entries to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description: "Deprecated offset fallback when cursor is omitted.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a prior response's next_cursor.",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetIdentityHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetIdentityHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadSubnetIdentityHistoryTool(ctx, netuid, {
         limit: args?.limit,
@@ -5770,50 +5770,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Optionally constrain block height with block_start/block_end (inclusive). " +
       "Use it to watch what is happening on one subnet right now. Events are " +
       "decoded directly from the chain. Mirrors GET /api/v1/subnets/{netuid}/events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        kind: {
-          type: "string",
-          description:
-            "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
-            "Omit for all kinds; unsupported kinds are rejected.",
-        },
-        block_start: {
-          type: "integer",
-          description:
-            "Optional inclusive lower block bound; omit for no lower limit.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description:
-            "Optional inclusive upper block bound; omit for no upper limit.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max events to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset into the stream. Default 0.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor; takes " +
-            "precedence over offset for stable deep pagination.",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetEventsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetEventsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
@@ -5825,7 +5788,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const cursor = optionalString(args, "cursor");
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
+        ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       return (
         (await tryPostgresTier(
@@ -5857,15 +5820,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "rest of the SubtensorModule hyperparameter set). hyperparameters:null " +
       "when the subnet has never been captured. Mirrors " +
       "GET /api/v1/subnets/{netuid}/hyperparameters.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHyperparamsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHyperparamsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -5885,31 +5846,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "exist from when diff-on-change tracking started. Page with limit " +
       "(1-1000, default 100) / offset, or follow next_cursor. Mirrors " +
       "GET /api/v1/subnets/{netuid}/hyperparameters/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        limit: {
-          type: "integer",
-          description: "Max entries to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description: "Deprecated offset fallback when cursor is omitted.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a prior response's next_cursor.",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetHyperparamsHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHyperparamsHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
@@ -5942,15 +5885,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "alpha volume, unsigned (buy + sell, never netted) — a canonical market-" +
       "depth figure, not a windowed analytics view. Mirrors " +
       "GET /api/v1/subnets/{netuid}/volume.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetVolumeInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetVolumeInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const netEconomics = await loadSubnetEconomics(ctx, netuid);
       const marketCapTao =
@@ -5982,26 +5923,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and " +
       "returns an empty, root_excluded series rather than a meaningless " +
       "flat line. Mirrors GET /api/v1/subnets/{netuid}/ohlc.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        interval: {
-          type: "string",
-          enum: Object.keys(OHLC_INTERVALS),
-          description: `Candle width (default ${OHLC_INTERVAL_DEFAULT}).`,
-        },
-        days: {
-          type: "integer",
-          description: `Lookback window in days (default ${DEFAULT_OHLC_WINDOW_DAYS}).`,
-          minimum: 1,
-          maximum: MAX_OHLC_WINDOW_DAYS,
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetOhlcInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetSubnetOhlcInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const interval =
         optionalString(args, "interval") ?? OHLC_INTERVAL_DEFAULT;
@@ -6047,15 +5972,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "owner cooperation required). A subnet that has never changed hands " +
       "returns an empty list, not an error. Mirrors GET " +
       "/api/v1/subnets/{netuid}/ownership-history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetOwnershipHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetOwnershipHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadSubnetOwnershipHistory(ctx, netuid);
     },
@@ -6075,15 +5998,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "governance-adjustable. A subnet with no active challengers/owner " +
       "lock returns an empty leaderboard, not an error. Mirrors GET " +
       "/api/v1/subnets/{netuid}/conviction.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetConvictionInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetConvictionInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadSubnetConviction(ctx, netuid);
     },
@@ -6096,15 +6017,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "queried directly from the chain's RAORecycledForRegistration storage at " +
       "request time (not a rollup). recycled_tao is null on an RPC failure. " +
       "Mirrors GET /api/v1/subnets/{netuid}/recycled.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetRecycledInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetRecycledInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
         throw toolError(
@@ -6135,15 +6054,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "queried directly from the chain's Burn storage at request time (not a " +
       "rollup). burn_tao is null on an RPC failure. Mirrors GET " +
       "/api/v1/subnets/{netuid}/burn.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetBurnInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetSubnetBurnInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
         throw toolError(
@@ -6179,15 +6093,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "request time (not a rollup). leased is null (not false) on an RPC " +
       "failure, distinct from a confirmed no-lease (leased:false). Mirrors " +
       "GET /api/v1/subnets/{netuid}/lease.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetLeaseInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetLeaseInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
         throw toolError(
@@ -6222,15 +6134,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "account_events row. A subnet that has never been leased returns an " +
       "empty list, not an error. Mirrors GET " +
       "/api/v1/subnets/{netuid}/lease/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetLeaseHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetLeaseHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       return loadSubnetLeaseHistory(ctx, netuid);
     },
@@ -12652,51 +12562,16 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_subnet_uptime: z.toJSONSchema(GetSubnetUptimeOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_registry_leaderboards: {
-    type: "object",
-    additionalProperties: true,
-    required: ["boards"],
-    properties: {
-      schema_version: { type: "integer" },
-      board: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      boards: { type: "object" },
-    },
-  },
-  get_domain_summary: {
-    type: "object",
-    additionalProperties: true,
-    // Two possible shapes depending on whether `domain` was passed -- a single
-    // DomainSummaryArtifact (domain/subnet_count/netuids/...) or the
-    // DomainsArtifact overview (domain_count/domains). Only schema_version is
-    // common to both, so this schema stays loose rather than forcing one
-    // shape's required fields onto the other (the established convention for
-    // composite/nested sections, per get_subnet_snapshot's own precedent).
-    required: ["schema_version"],
-    properties: {
-      schema_version: { type: "integer" },
-      domain: NULLABLE_STRING,
-      subnet_count: { type: "integer" },
-      netuids: { type: "array", items: { type: "integer" } },
-      total_stake_tao: { type: ["number", "null"] },
-      total_emission_share: { type: ["number", "null"] },
-      emission_concentration: { type: ["object", "null"] },
-      domain_count: { type: "integer" },
-      domains: { type: "array", items: { type: "object" } },
-    },
-  },
-  compare_subnets: {
-    type: "object",
-    additionalProperties: true,
-    required: ["requested_netuids", "subnets", "dimensions"],
-    properties: {
-      schema_version: { type: "integer" },
-      requested_netuids: { type: "array", items: { type: "integer" } },
-      dimensions: { type: "array", items: { type: "string" } },
-      subnets: { type: "array", items: { type: "object" } },
-      observed_at: NULLABLE_STRING,
-    },
-  },
+  get_registry_leaderboards: z.toJSONSchema(
+    GetRegistryLeaderboardsOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_domain_summary: z.toJSONSchema(GetDomainSummaryOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  compare_subnets: z.toJSONSchema(CompareSubnetsOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_global_incidents: {
     type: "object",
     additionalProperties: true,
@@ -12717,19 +12592,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       order: NULLABLE_STRING,
     },
   },
-  get_subnet_metagraph: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "neuron_count", "neurons"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      neuron_count: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      neurons: { type: "array", items: { type: "object" } },
-    },
-  },
+  get_subnet_metagraph: z.toJSONSchema(GetSubnetMetagraphOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_subnet_validators: {
     type: "object",
     additionalProperties: true,
@@ -12895,256 +12760,45 @@ const TOOL_OUTPUT_SCHEMAS = {
       neuron: { type: ["object", "null"] },
     },
   },
-  get_subnet_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "point_count", "points"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: NULLABLE_STRING,
-      point_count: { type: "integer" },
-      points: objectItems({
-        snapshot_date: NULLABLE_STRING,
-        neuron_count: NULLABLE_INT,
-        validator_count: NULLABLE_INT,
-        total_stake_tao: ANY,
-        total_emission_tao: ANY,
-      }),
-    },
-  },
-  get_subnet_identity_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["schema_version", "netuid", "entry_count", "entries"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      entry_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      entries: objectItems({
-        block_number: NULLABLE_INT,
-        observed_at: NULLABLE_STRING,
-        subnet_name: NULLABLE_STRING,
-        symbol: NULLABLE_STRING,
-        description: NULLABLE_STRING,
-        github_repo: NULLABLE_STRING,
-        subnet_url: NULLABLE_STRING,
-        discord: NULLABLE_STRING,
-        logo_url: NULLABLE_STRING,
-        identity_hash: { type: "string" },
-      }),
-    },
-  },
-  get_subnet_hyperparams: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      hyperparameters: { type: ["object", "null"], additionalProperties: true },
-    },
-  },
-  get_subnet_hyperparams_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "entry_count", "entries"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      entry_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      entries: objectItems({
-        block_number: NULLABLE_INT,
-        observed_at: NULLABLE_STRING,
-        hyperparameters: {
-          type: ["object", "null"],
-          additionalProperties: true,
-        },
-        hyperparams_hash: NULLABLE_STRING,
-      }),
-    },
-  },
-  get_subnet_volume: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "window"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: { type: "string" },
-      buy_volume_alpha: ANY,
-      sell_volume_alpha: ANY,
-      total_volume_alpha: ANY,
-      buy_volume_tao: ANY,
-      sell_volume_tao: ANY,
-      total_volume_tao: ANY,
-      buy_count: { type: "integer" },
-      sell_count: { type: "integer" },
-      net_volume_alpha: ANY,
-      sentiment_ratio: { type: ["number", "null"] },
-      sentiment: NULLABLE_STRING,
-      vol_mcap_ratio: { type: ["number", "null"] },
-    },
-  },
-  get_subnet_ohlc: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "interval", "candles", "root_excluded"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      interval: { type: "string" },
-      candles: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: true,
-          properties: {
-            bucket_start: { type: "integer" },
-            bucket_start_iso: { type: "string" },
-            open: ANY,
-            high: ANY,
-            low: ANY,
-            close: ANY,
-            volume_alpha: ANY,
-            volume_tao: ANY,
-            event_count: { type: "integer" },
-          },
-        },
-      },
-      root_excluded: { type: "boolean" },
-    },
-  },
-  get_subnet_ownership_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "count", "ownership_changes"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      count: { type: "integer" },
-      ownership_changes: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: true,
-          properties: {
-            netuid: { type: ["integer", "null"] },
-            old_coldkey: { type: ["string", "null"] },
-            new_coldkey: { type: ["string", "null"] },
-            block_number: { type: ["integer", "null"] },
-            observed_at: NULLABLE_STRING,
-          },
-        },
-      },
-    },
-  },
-  get_subnet_conviction: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "count", "leaderboard"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      queried_at_block: { type: ["integer", "null"] },
-      unlock_rate: { type: ["integer", "null"] },
-      maturity_rate: { type: ["integer", "null"] },
-      king: { type: ["string", "null"] },
-      count: { type: "integer" },
-      leaderboard: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: true,
-          properties: {
-            hotkey: { type: "string" },
-            is_owner: { type: "boolean" },
-            locked_mass: { type: "number" },
-            conviction: { type: "number" },
-          },
-        },
-      },
-    },
-  },
-  get_subnet_recycled: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "queried_at"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      recycled_tao: { type: ["number", "null"] },
-      queried_at: NULLABLE_STRING,
-    },
-  },
-  get_subnet_burn: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "queried_at"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      burn_tao: { type: ["number", "null"] },
-      queried_at: NULLABLE_STRING,
-    },
-  },
-  get_subnet_lease: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "leased"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      leased: { type: ["boolean", "null"] },
-      lease: {
-        type: ["object", "null"],
-        additionalProperties: true,
-        properties: {
-          lease_id: { type: "integer" },
-          beneficiary: { type: "string" },
-          coldkey: { type: "string" },
-          hotkey: { type: "string" },
-          emissions_share_percent: { type: "integer" },
-          end_block: { type: ["integer", "null"] },
-          netuid: { type: "integer" },
-          cost_tao: { type: "number" },
-          accumulated_dividends_alpha: { type: ["number", "null"] },
-        },
-      },
-      queried_at: NULLABLE_STRING,
-    },
-  },
-  get_subnet_lease_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "count", "lease_events"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      count: { type: "integer" },
-      lease_events: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: true,
-          properties: {
-            event_kind: { type: "string" },
-            beneficiary: { type: ["string", "null"] },
-            block_number: { type: ["integer", "null"] },
-            observed_at: NULLABLE_STRING,
-          },
-        },
-      },
-    },
-  },
+  get_subnet_history: z.toJSONSchema(GetSubnetHistoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_identity_history: z.toJSONSchema(
+    GetSubnetIdentityHistoryOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_subnet_hyperparams: z.toJSONSchema(GetSubnetHyperparamsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_hyperparams_history: z.toJSONSchema(
+    GetSubnetHyperparamsHistoryOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_subnet_volume: z.toJSONSchema(GetSubnetVolumeOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_ohlc: z.toJSONSchema(GetSubnetOhlcOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_ownership_history: z.toJSONSchema(
+    GetSubnetOwnershipHistoryOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_subnet_conviction: z.toJSONSchema(GetSubnetConvictionOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_recycled: z.toJSONSchema(GetSubnetRecycledOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_burn: z.toJSONSchema(GetSubnetBurnOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_lease: z.toJSONSchema(GetSubnetLeaseOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_lease_history: z.toJSONSchema(GetSubnetLeaseHistoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_neuron_history: {
     type: "object",
     additionalProperties: true,
@@ -13158,20 +12812,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       points: { type: "array", items: { type: "object" } },
     },
   },
-  get_subnet_events: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "event_count", "events"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      event_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      events: objectItems(ACCOUNT_EVENT_ITEM),
-    },
-  },
+  get_subnet_events: z.toJSONSchema(GetSubnetEventsOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_account: {
     type: "object",
     additionalProperties: true,
