@@ -10,15 +10,14 @@
  * it's configured once in `loadPostHog`'s `session_recording` block below
  * and otherwise runs itself (posthog-js's own recorder), except for the
  * exception-linked force-record call inside `captureException`.
- * `captureException` is called from error-reporting.ts's `reportError` -- a
- * second, parallel sink alongside the existing Sentry one there, sharing
- * THIS module's one `posthog-js` instance rather than each maintaining its
- * own. Additive alongside the existing self-hosted Umami tracker
- * (src/server.ts) and Sentry while parity is proven -- see the
- * consolidation epic (metagraphed#7757) for the decommission plan.
+ * `captureException` is called from error-reporting.ts's `reportError` --
+ * metagraphed#7766: Sentry (formerly a parallel sink there) is fully removed
+ * now that parity was proven; this module's `posthog-js` instance is the
+ * only exception-capture sink left. The self-hosted Umami tracker
+ * (src/server.ts) is a separate, still-gated decommission (#7767) -- see the
+ * consolidation epic (metagraphed#7757) for the full history.
  *
- * `posthog-js` is loaded via a DYNAMIC import, mirroring error-reporting.ts's
- * exact Sentry-loading pattern: this keeps it out of the initial client
+ * `posthog-js` is loaded via a DYNAMIC import: this keeps it out of the initial client
  * bundle the CI bundle-size-budget gate measures (that check only counts the
  * entry's STATIC-import closure -- dynamic `import()` chunks are explicitly
  * excluded, confirmed against .github/workflows/validate.yml's own "Bundle
@@ -46,16 +45,14 @@
 
 import type { PostHog } from "posthog-js";
 
-// Same VITE_*-prefixed / build-time-injected convention error-reporting.ts's
-// VITE_SENTRY_DSN already uses. Unlike the Sentry DSN, there's no code-level
-// fallback here: a PostHog project token IS safe to embed client-side (same
-// "write-only ingest token" reasoning as the Sentry DSN -- see
+// Same VITE_*-prefixed / build-time-injected convention as every other
+// client-exposed env var this app reads. A PostHog project token IS safe to
+// embed client-side ("write-only ingest token" -- see
 // src/usage-telemetry.ts's own header comment on the backend's project
 // token), but this module doesn't have the real value to hardcode. Set
 // VITE_POSTHOG_PROJECT_TOKEN as a Cloudflare Workers Builds dashboard build
-// variable to enable capture -- the same opt-in mechanism SENTRY_AUTH_TOKEN
-// already uses for source-map upload. Absent everywhere until then, which is
-// a safe no-op (see every exported function below).
+// variable to enable capture. Absent everywhere until then, which is a safe
+// no-op (see every exported function below).
 const POSTHOG_TOKEN =
   (import.meta.env?.VITE_POSTHOG_PROJECT_TOKEN as string | undefined) || undefined;
 

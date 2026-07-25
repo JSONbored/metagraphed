@@ -13,14 +13,11 @@ import posthogRollupPlugin from "@posthog/rollup-plugin";
 // Cloudflare Workers Builds auto-injects this (no manual dashboard step) --
 // confirmed via Cloudflare's own docs (workers/ci-cd/builds/configuration/,
 // changelog/2025-06-10-default-env-vars/): "Passing current commit ID to
-// error reporting, for example, Sentry" is its documented purpose. Absent
-// locally/in PR CI, where it's simply undefined -- Sentry accepts an
-// undefined release (just omits release tagging), not an error condition.
-// STILL USED: bridged into VITE_SENTRY_RELEASE below for the RUNTIME Sentry
-// SDK's release tagging (src/lib/error-reporting.ts's `Sentry.init`) -- that
-// is a live-error-tracking concern, separate from the build-time sourcemap
-// *upload* this file no longer does (removed alongside sentryVitePlugin
-// below; PostHog's posthogRollupPlugin is now the only sourcemap uploader).
+// error reporting, for example, Sentry" is its documented purpose (Sentry
+// itself is fully removed here, #7766 -- Cloudflare's own doc wording is
+// just what it is). Used below as posthogRollupPlugin's sourcemap
+// `releaseName` -- undefined locally/in PR CI, where sourcemaps.enabled is
+// already false anyway.
 const commitSha = process.env.WORKERS_CI_COMMIT_SHA;
 
 // @posthog/rollup-plugin's own `writeBundle` hook (the step that actually
@@ -58,8 +55,7 @@ function withTolerantSourcemapUpload(plugin: Plugin): Plugin {
 // POSTHOG_API_KEY (a personal API key, NOT the VITE_POSTHOG_PROJECT_TOKEN
 // client-side ingest token from src/lib/analytics.ts -- that one is
 // write-only/public-safe, this one is a real secret with read access) and
-// POSTHOG_PROJECT_ID gate sourcemap upload the same opt-in way
-// SENTRY_AUTH_TOKEN gates Sentry's above: both env vars must be present, or
+// POSTHOG_PROJECT_ID gate sourcemap upload: both env vars must be present, or
 // this stays a true no-op. Explicit `sourcemaps.enabled` (rather than relying
 // on @posthog/plugin-utils' own default) is load-bearing here -- resolveConfig
 // THROWS SYNCHRONOUSLY at plugin-construction time (i.e. this very module's
@@ -87,9 +83,8 @@ export default defineConfig({
   //
   // sentryVitePlugin (build-time sourcemap upload) was removed here once
   // PostHog's posthogRollupPlugin below became the sole sourcemap uploader
-  // -- Sentry's own RUNTIME error capture (src/lib/error-reporting.ts,
-  // `@sentry/browser`) is untouched by this; only the build-time upload
-  // step moved to PostHog.
+  // (Sentry's own runtime error capture, src/lib/error-reporting.ts's
+  // `@sentry/browser` sink, is also fully removed now -- #7766).
   plugins: [
     ...mdx(),
     // PostHog error tracking (metagraphed#7759) source-map upload, wrapped
@@ -119,19 +114,14 @@ export default defineConfig({
   // `vite: { ... }` is this preset's own documented passthrough for plain
   // Vite options beyond plugins (see the header comment above) --
   // sourcemap generation must be on for posthogRollupPlugin to have anything
-  // to upload, and `define` bridges WORKERS_CI_COMMIT_SHA (a build-time-
-  // only process.env var, not exposed to browser code) into
-  // import.meta.env.VITE_SENTRY_RELEASE, the same client-exposed-env-var
-  // convention src/lib/error-reporting.ts's existing VITE_SENTRY_DSN read
-  // already uses -- the preset's own "VITE_* env injection" (see the header
-  // comment) only covers vars already present in an actual .env file /
-  // process.env at that name, not one bridged in from a differently-named
-  // source like this.
+  // to upload. metagraphed#7766: the `define` block that used to bridge
+  // WORKERS_CI_COMMIT_SHA into import.meta.env.VITE_SENTRY_RELEASE for the
+  // runtime Sentry SDK's release tag is gone -- no client-side code reads a
+  // release/commit value anymore now that Sentry's runtime capture is
+  // removed; commitSha above is still used directly (Node-side, no bridge
+  // needed) as posthogRollupPlugin's own `releaseName`.
   vite: {
     build: { sourcemap: true },
-    define: {
-      "import.meta.env.VITE_SENTRY_RELEASE": JSON.stringify(commitSha ?? ""),
-    },
   },
   // Force-enable the nitro deploy plugin. By default it only runs inside
   // Lovable's CI ("No Lovable context detected — skipping nitro deploy
