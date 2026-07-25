@@ -560,6 +560,64 @@ import {
   ListProviderEndpointsInputSchema,
   ListProviderEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
+import {
+  GetLineageInputSchema,
+  GetLineageOutputSchema,
+  GetFreshnessInputSchema,
+  GetFreshnessOutputSchema,
+  GetContractsInputSchema,
+  GetContractsOutputSchema,
+  GetSourceHealthInputSchema,
+  GetSourceHealthOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
+import {
+  GetChangelogInputSchema,
+  GetChangelogOutputSchema,
+  GetBuildInputSchema,
+  GetBuildOutputSchema,
+  GetCoverageInputSchema,
+  GetCoverageOutputSchema,
+  GetCoverageDepthInputSchema,
+  GetCoverageDepthOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import {
+  GetFeedInputSchema,
+  GetFeedOutputSchema,
+} from "../schemas-src/mcp-tools/feed.ts";
+import {
+  GetAdapterInputSchema,
+  GetAdapterOutputSchema,
+} from "../schemas-src/mcp-tools/get-adapter.ts";
+import {
+  GetAgentCatalogInputSchema,
+  GetAgentCatalogOutputSchema,
+  GetAgentResourcesInputSchema,
+  GetAgentResourcesOutputSchema,
+} from "../schemas-src/mcp-tools/agent-catalog-resources.ts";
+import {
+  GetRpcUsageInputSchema,
+  GetRpcUsageOutputSchema,
+  GetBestRpcEndpointInputSchema,
+  GetBestRpcEndpointOutputSchema,
+  CallRpcInputSchema,
+  CallRpcOutputSchema,
+} from "../schemas-src/mcp-tools/rpc-tools.ts";
+import {
+  QueryGraphqlInputSchema,
+  QueryGraphqlOutputSchema,
+  RunSavedQueryInputSchema,
+  RunSavedQueryOutputSchema,
+} from "../schemas-src/mcp-tools/query-tools.ts";
+import {
+  RegistrySummaryInputSchema,
+  RegistrySummaryOutputSchema,
+  ListEnrichmentTargetsInputSchema,
+  ListEnrichmentTargetsOutputSchema,
+  GetSubnetGapsInputSchema,
+  GetSubnetGapsOutputSchema,
+  ListSubnetGapsInputSchema,
+  ListSubnetGapsOutputSchema,
+} from "../schemas-src/mcp-tools/registry-summary-gaps.ts";
 
 type Row = Record<string, unknown>;
 
@@ -1068,6 +1126,45 @@ const INCIDENT_SORT_FIELDS = [
   "severity",
   "state",
   "status",
+];
+
+// Batch 12 (#8075) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/contracts.ts's
+// QUERY_ENUMS.agentReadinessStatus, mcp-server.ts's own
+// COVERAGE_DEPTH_TIERS/COVERAGE_DEPTH_SEVERITIES constants, src/feed-mcp.ts's
+// FEED_KINDS/FEED_MAX_ITEMS, and src/saved-queries.ts's
+// SAVED_QUERY_TEMPLATES.map((t) => t.id)), cross-checked against the actual
+// runtime source at the time of writing. Reuses SURFACE_KIND/CURATION_LEVEL
+// already defined above (batches 1-4) -- confirmed identical to this
+// batch's own symbolic references, not just reused by name.
+const AGENT_READINESS_STATUSES = [
+  "callable",
+  "base-layer",
+  "candidate",
+  "needs-evidence",
+  "blocked",
+];
+const COVERAGE_DEPTH_TIERS_12 = [
+  "agent-ready",
+  "machine-usable",
+  "candidate-review",
+  "needs-evidence",
+  "hard-blocked",
+  "missing-interface",
+];
+const COVERAGE_DEPTH_SEVERITIES_12 = ["hard", "missing-data", "needs-review"];
+const FEED_KINDS = ["registry", "incidents", "gaps", "subnet"];
+const FEED_MAX_ITEMS = 50;
+const SAVED_QUERY_IDS = ["subnet-leaderboard", "chain-registrations-window"];
+const GAP_PRIORITY_SORT_FIELDS = [
+  "candidate_count",
+  "curation_level",
+  "missing_kinds",
+  "name",
+  "netuid",
+  "priority_score",
+  "surface_count",
+  "verified_candidate_count",
 ];
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
@@ -7360,6 +7457,640 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_lineage: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        link_count: { type: "integer" },
+        graduated_subnet_count: { type: "integer" },
+        broken_link_count: { type: "integer" },
+        links: { type: "array", items: { type: "object" } },
+        broken_links: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_freshness: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["sources"],
+      properties: {
+        schema_version: { type: "integer" },
+        sources: { type: "array", items: { type: "object" } },
+        summary: { type: ["object", "null"] },
+        generated_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_contracts: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["schema_version", "artifacts"],
+      properties: {
+        schema_version: { type: "integer" },
+        contract_version: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        base_path: NULLABLE_STRING,
+        primary_domain: NULLABLE_STRING,
+        openapi_url: NULLABLE_STRING,
+        type_definitions_url: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        artifacts: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_source_health: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["providers"],
+      properties: {
+        providers: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_changelog: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["source", "summary", "artifacts", "subnets"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        source: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        summary: { type: "object" },
+        artifacts: { type: "object" },
+        subnets: { type: "object" },
+        coverage_delta: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_feed: {
+    input: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: FEED_KINDS },
+        netuid: { type: "integer", minimum: 0 },
+        tag: { type: "string" },
+        since: { type: "string" },
+        until: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: FEED_MAX_ITEMS },
+      },
+      required: ["kind"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["kind", "returned", "items"],
+      properties: {
+        kind: { type: "string", enum: FEED_KINDS },
+        netuid: NULLABLE_INT,
+        filters: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            tag: NULLABLE_STRING,
+            since: NULLABLE_STRING,
+            until: NULLABLE_STRING,
+            limit: { type: "integer" },
+          },
+        },
+        returned: { type: "integer" },
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            required: ["id", "url", "title", "summary", "timestamp", "tags"],
+            properties: {
+              id: { type: "string" },
+              url: { type: "string" },
+              title: { type: "string" },
+              summary: { type: "string" },
+              timestamp: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_build: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["schema_version", "artifact_count"],
+      properties: {
+        schema_version: { type: "integer" },
+        contract_version: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        published_at: NULLABLE_STRING,
+        adapter_count: { type: ["integer", "null"] },
+        artifact_count: { type: "integer" },
+        artifact_size_bytes: { type: ["integer", "null"] },
+        subnet_count: { type: ["integer", "null"] },
+        surface_count: { type: ["integer", "null"] },
+        provider_count: { type: ["integer", "null"] },
+        artifacts: {
+          type: ["array", "null"],
+          items: { type: "object" },
+        },
+        coverage: { type: ["object", "null"] },
+        artifact_budget_summary: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_adapter: {
+    input: {
+      type: "object",
+      properties: {
+        slug: { type: "string", pattern: "^[a-z0-9-]+$" },
+      },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["schema_version", "slug"],
+      properties: {
+        schema_version: { type: "integer" },
+        contract_version: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        slug: { type: "string" },
+        subnet: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        snapshot: { type: ["object", "null"] },
+        extensions: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_agent_catalog: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        subnet_count: { type: "integer" },
+        total_subnet_count: { type: "integer" },
+        callable_service_count: { type: "integer" },
+        content_hash: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        published_at: NULLABLE_STRING,
+        subnets: { type: "array", items: { type: "object" } },
+        operational_observed_at: NULLABLE_STRING,
+        health_source: NULLABLE_STRING,
+      },
+    },
+  },
+  get_agent_resources: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["resources", "mcp"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        published_at: NULLABLE_STRING,
+        content_hash: NULLABLE_STRING,
+        summary: { type: "object" },
+        copyable_agent: { type: "object" },
+        mcp: { type: "object" },
+        resources: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_rpc_usage: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: ["7d", "30d"] },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "schema_version",
+        "source",
+        "summary",
+        "endpoints",
+        "networks",
+        "buckets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        bucket_granularity: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        source: { type: "string" },
+        summary: {
+          type: "object",
+          additionalProperties: true,
+          required: [
+            "total_requests",
+            "ok_requests",
+            "error_requests",
+            "latency_ms",
+          ],
+          properties: {
+            total_requests: { type: "integer", minimum: 0 },
+            ok_requests: { type: "integer", minimum: 0 },
+            error_requests: { type: "integer", minimum: 0 },
+            error_rate: { type: ["number", "null"] },
+            failover_requests: { type: "integer", minimum: 0 },
+            failover_rate: { type: ["number", "null"] },
+            cache_hits: { type: "integer", minimum: 0 },
+            cache_hit_rate: { type: ["number", "null"] },
+            latency_ms: {
+              type: "object",
+              additionalProperties: true,
+              required: ["p50", "p95", "avg"],
+              properties: {
+                p50: NULLABLE_INT,
+                p95: NULLABLE_INT,
+                avg: NULLABLE_INT,
+              },
+            },
+          },
+        },
+        endpoints: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            required: ["endpoint_id", "requests", "ok_requests"],
+            properties: {
+              rank: { type: "integer", minimum: 1 },
+              endpoint_id: NULLABLE_STRING,
+              provider: NULLABLE_STRING,
+              requests: { type: "integer", minimum: 0 },
+              ok_requests: { type: "integer", minimum: 0 },
+              error_rate: { type: ["number", "null"] },
+              avg_latency_ms: NULLABLE_INT,
+            },
+          },
+        },
+        networks: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            required: ["network", "requests", "ok_requests"],
+            properties: {
+              network: { type: "string" },
+              requests: { type: "integer", minimum: 0 },
+              ok_requests: { type: "integer", minimum: 0 },
+              error_rate: { type: ["number", "null"] },
+            },
+          },
+        },
+        buckets: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+            required: ["ts", "requests", "errors", "avg_latency_ms"],
+            properties: {
+              ts: { type: "integer", minimum: 0 },
+              requests: { type: "integer", minimum: 0 },
+              errors: { type: "integer", minimum: 0 },
+              avg_latency_ms: NULLABLE_INT,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_best_rpc_endpoint: {
+    input: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", minimum: 1, maximum: 10 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["eligible_count", "endpoints"],
+      properties: {
+        eligible_count: { type: "integer" },
+        live_health: ANY,
+        endpoints: objectItems({
+          id: { type: "string" },
+          url: NULLABLE_STRING,
+          provider: NULLABLE_STRING,
+          kind: NULLABLE_STRING,
+          score: ANY,
+          latency_ms: NULLABLE_INT,
+          status: NULLABLE_STRING,
+          health_source: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  call_rpc: {
+    input: {
+      type: "object",
+      properties: {
+        method: { type: "string" },
+        params: { type: "array" },
+        network: { type: "string", enum: ["finney", "test"] },
+      },
+      required: ["method"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["network", "method", "jsonrpc"],
+      properties: {
+        network: { type: "string" },
+        method: { type: "string" },
+        jsonrpc: { type: "string" },
+        result: ANY,
+        error: { type: ["object", "null"] },
+        endpoint_id: NULLABLE_STRING,
+        provider: NULLABLE_STRING,
+        cache: NULLABLE_STRING,
+      },
+    },
+  },
+  query_graphql: {
+    input: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        variables: { type: "object", additionalProperties: true },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      properties: {
+        data: {
+          type: "object",
+          additionalProperties: true,
+          nullable: true,
+        },
+        errors: {
+          type: "array",
+          items: { type: "object", additionalProperties: true },
+        },
+      },
+      additionalProperties: true,
+    },
+  },
+  registry_summary: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["subnet_count", "counts"],
+      properties: {
+        subnet_count: { type: "integer" },
+        counts: { type: "object" },
+        coverage: { type: "object" },
+        curation_level_counts: { type: "object" },
+        profile_level_counts: { type: "object" },
+        recent_changes: { type: "object" },
+        top_subnets: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_coverage: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surface_count", "completeness"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        surface_count: { type: "integer" },
+        official_surface_count: { type: "integer" },
+        first_party_subnet_count: { type: "integer" },
+        chain_subnet_count: { type: "integer" },
+        candidate_count: { type: "integer" },
+        probed_count: { type: "integer" },
+        domain_coverage: { type: "object" },
+        completeness: { type: "object" },
+        subnets_without_official_surface: { type: "integer" },
+      },
+    },
+  },
+  get_coverage_depth: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      properties: {
+        schema_version: { type: "integer" },
+        generated_at: NULLABLE_STRING,
+        coverage_depth_version: { type: ["string", "null"] },
+        rows: { type: "array", items: { type: "object" } },
+        ranked_queue: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  list_enrichment_targets: {
+    input: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", minimum: 1, maximum: 50 },
+        tier: { type: "string", enum: COVERAGE_DEPTH_TIERS_12 },
+        severity: { type: "string", enum: COVERAGE_DEPTH_SEVERITIES_12 },
+        gap_code: { type: "string", pattern: "^[a-z0-9-]+$" },
+        agent_status: { type: "string", enum: AGENT_READINESS_STATUSES },
+        netuid: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["total_rows", "queue_count", "returned", "targets"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        coverage_depth_version: ANY,
+        total_rows: { type: "integer" },
+        queue_count: { type: "integer" },
+        returned: { type: "integer" },
+        filters: { type: "object" },
+        note: { type: "string" },
+        targets: objectItems({
+          rank: NULLABLE_INT,
+          netuid: { type: "integer" },
+          slug: NULLABLE_STRING,
+          name: NULLABLE_STRING,
+          tier: { type: "string" },
+          score: { type: "integer" },
+          priority_score: { type: "integer" },
+          agent_status: { type: "string" },
+          blocker_level: { type: "string" },
+          top_gap_codes: { type: "array" },
+          top_gaps: { type: "array", items: { type: "object" } },
+          recommended_next_action: NULLABLE_STRING,
+          dimensions: { type: "object" },
+        }),
+      },
+    },
+  },
+  get_subnet_gaps: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "priorities", "enrichment_queue"],
+      properties: {
+        schema_version: { type: "integer" },
+        contract_version: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        netuid: { type: "integer" },
+        slug: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        priorities: { type: "array", items: { type: "object" } },
+        enrichment_queue: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  list_subnet_gaps: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        curation_level: { type: "string", enum: CURATION_LEVEL },
+        missing_kinds: { type: "string", enum: SURFACE_KIND },
+        review_state: { type: "string" },
+        sort: { type: "string", enum: GAP_PRIORITY_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["priorities"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        priorities: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  run_saved_query: {
+    input: {
+      type: "object",
+      required: ["query_id"],
+      properties: {
+        query_id: { type: "string", enum: SAVED_QUERY_IDS },
+        params: { type: "object" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: false,
+      required: ["query_id", "params", "data"],
+      properties: {
+        query_id: { type: "string" },
+        params: { type: "object" },
+        data: {},
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -8064,6 +8795,90 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
     input: ListProviderEndpointsInputSchema,
     output: ListProviderEndpointsOutputSchema,
   },
+  get_lineage: {
+    input: GetLineageInputSchema,
+    output: GetLineageOutputSchema,
+  },
+  get_freshness: {
+    input: GetFreshnessInputSchema,
+    output: GetFreshnessOutputSchema,
+  },
+  get_contracts: {
+    input: GetContractsInputSchema,
+    output: GetContractsOutputSchema,
+  },
+  get_source_health: {
+    input: GetSourceHealthInputSchema,
+    output: GetSourceHealthOutputSchema,
+  },
+  get_changelog: {
+    input: GetChangelogInputSchema,
+    output: GetChangelogOutputSchema,
+  },
+  get_feed: {
+    input: GetFeedInputSchema,
+    output: GetFeedOutputSchema,
+  },
+  get_build: {
+    input: GetBuildInputSchema,
+    output: GetBuildOutputSchema,
+  },
+  get_adapter: {
+    input: GetAdapterInputSchema,
+    output: GetAdapterOutputSchema,
+  },
+  get_agent_catalog: {
+    input: GetAgentCatalogInputSchema,
+    output: GetAgentCatalogOutputSchema,
+  },
+  get_agent_resources: {
+    input: GetAgentResourcesInputSchema,
+    output: GetAgentResourcesOutputSchema,
+  },
+  get_rpc_usage: {
+    input: GetRpcUsageInputSchema,
+    output: GetRpcUsageOutputSchema,
+  },
+  get_best_rpc_endpoint: {
+    input: GetBestRpcEndpointInputSchema,
+    output: GetBestRpcEndpointOutputSchema,
+  },
+  call_rpc: {
+    input: CallRpcInputSchema,
+    output: CallRpcOutputSchema,
+  },
+  query_graphql: {
+    input: QueryGraphqlInputSchema,
+    output: QueryGraphqlOutputSchema,
+  },
+  registry_summary: {
+    input: RegistrySummaryInputSchema,
+    output: RegistrySummaryOutputSchema,
+  },
+  get_coverage: {
+    input: GetCoverageInputSchema,
+    output: GetCoverageOutputSchema,
+  },
+  get_coverage_depth: {
+    input: GetCoverageDepthInputSchema,
+    output: GetCoverageDepthOutputSchema,
+  },
+  list_enrichment_targets: {
+    input: ListEnrichmentTargetsInputSchema,
+    output: ListEnrichmentTargetsOutputSchema,
+  },
+  get_subnet_gaps: {
+    input: GetSubnetGapsInputSchema,
+    output: GetSubnetGapsOutputSchema,
+  },
+  list_subnet_gaps: {
+    input: ListSubnetGapsInputSchema,
+    output: ListSubnetGapsOutputSchema,
+  },
+  run_saved_query: {
+    input: RunSavedQueryInputSchema,
+    output: RunSavedQueryOutputSchema,
+  },
 };
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -8083,6 +8898,17 @@ const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
 // bare MCP output schema never declared. None can ever reject a REAL
 // response (computeStakeQuote() cannot produce a value outside these
 // bounds) -- verified, not assumed.
+// query_graphql.output.data's hand-written original declares `nullable:
+// true` -- an OpenAPI-3.0-ism with NO effect under JSON Schema draft
+// 2020-12 (which has no `nullable` keyword at all), so under the target
+// spec's own semantics `data` was already (inertly) a plain non-nullable
+// object. The Zod conversion (batch 12, #8075) declares `data` as a plain
+// non-nullable object to match that literal 2020-12 reading, rather than
+// translating the inert marker into a real `.nullable()` -- doing so would
+// make the NEW schema accept something the OLD one's actual declared
+// semantics didn't, the wrong direction for this epic's wire-compatibility
+// mandate. Stripping the dead `nullable` key here just lets both sides
+// compare as the equivalent-under-2020-12 objects they already are.
 const ACCEPTED_TIGHTENINGS = new Set([
   "get_subnet_stake_quote.output.amount",
   "get_subnet_stake_quote.output.effective_price_tao",
@@ -8090,6 +8916,7 @@ const ACCEPTED_TIGHTENINGS = new Set([
   "get_subnet_stake_quote.output.price_impact_pct",
   "get_subnet_stake_quote.output.spot_price_tao",
   "get_subnet_stake_quote.output.netuid",
+  "query_graphql.output.data",
 ]);
 
 function normalize(node: unknown, path: string): unknown {
@@ -8148,7 +8975,7 @@ function normalize(node: unknown, path: string): unknown {
 
     if (
       ACCEPTED_TIGHTENINGS.has(path) &&
-      (key === "exclusiveMinimum" || key === "minimum")
+      (key === "exclusiveMinimum" || key === "minimum" || key === "nullable")
     ) {
       continue;
     }

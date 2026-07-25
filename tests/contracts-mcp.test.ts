@@ -119,7 +119,8 @@ describe("contracts-mcp", () => {
     assert.equal(GET_CONTRACTS_MCP_TOOL.name, "get_contracts");
     assert.match(GET_CONTRACTS_INSTRUCTIONS, /get_contracts/);
     assert.deepEqual(
-      Object.keys(GET_CONTRACTS_MCP_TOOL.inputSchema.properties),
+      // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
+      Object.keys(GET_CONTRACTS_MCP_TOOL.inputSchema.properties ?? {}),
       [],
     );
     assert.ok(

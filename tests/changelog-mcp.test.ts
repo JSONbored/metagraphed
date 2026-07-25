@@ -117,7 +117,8 @@ describe("changelog-mcp", () => {
     assert.equal(GET_CHANGELOG_MCP_TOOL.name, "get_changelog");
     assert.match(GET_CHANGELOG_INSTRUCTIONS, /get_changelog/);
     assert.deepEqual(
-      Object.keys(GET_CHANGELOG_MCP_TOOL.inputSchema.properties),
+      // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
+      Object.keys(GET_CHANGELOG_MCP_TOOL.inputSchema.properties ?? {}),
       [],
     );
     assert.ok(

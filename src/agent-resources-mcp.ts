@@ -2,7 +2,12 @@
 // Serves the baked /metagraph/agent-resources.json artifact (copyable agent,
 // MCP install metadata, skill/OpenAPI links, and the agent-facing API index).
 
+import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
+import {
+  GetAgentResourcesInputSchema,
+  GetAgentResourcesOutputSchema,
+} from "../schemas-src/mcp-tools/agent-catalog-resources.ts";
 
 export const AGENT_RESOURCES_ARTIFACT = "/metagraph/agent-resources.json";
 
@@ -72,26 +77,14 @@ export const GET_AGENT_RESOURCES_MCP_TOOL = {
     "semantic search, ask, fixtures, lineage). Use it to bootstrap an agent " +
     "integration session before calling get_agent_catalog or list_fixtures. " +
     "Mirrors GET /api/v1/agent-resources.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetAgentResourcesInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-
-export const GET_AGENT_RESOURCES_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["resources", "mcp"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    published_at: NULLABLE_STRING,
-    content_hash: NULLABLE_STRING,
-    summary: { type: "object" },
-    copyable_agent: { type: "object" },
-    mcp: { type: "object" },
-    resources: { type: "array", items: { type: "object" } },
+export const GET_AGENT_RESOURCES_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetAgentResourcesOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

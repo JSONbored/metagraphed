@@ -2,7 +2,12 @@
 // Serves the baked /metagraph/build-summary.json artifact (artifact inventory,
 // counts, and publish metadata).
 
+import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
+import {
+  GetBuildInputSchema,
+  GetBuildOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
 
 export const BUILD_SUMMARY_ARTIFACT = "/metagraph/build-summary.json";
 
@@ -60,35 +65,11 @@ export const GET_BUILD_MCP_TOOL = {
     "subnet/provider/surface totals, coverage rollup, and publish metadata. " +
     "Use it to inspect the latest registry publish footprint before drilling " +
     "into get_changelog or get_freshness. Mirrors GET /api/v1/build.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetBuildInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-
-export const GET_BUILD_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["schema_version", "artifact_count"],
-  properties: {
-    schema_version: { type: "integer" },
-    contract_version: NULLABLE_STRING,
-    generated_at: NULLABLE_STRING,
-    published_at: NULLABLE_STRING,
-    adapter_count: { type: ["integer", "null"] },
-    artifact_count: { type: "integer" },
-    artifact_size_bytes: { type: ["integer", "null"] },
-    subnet_count: { type: ["integer", "null"] },
-    surface_count: { type: ["integer", "null"] },
-    provider_count: { type: ["integer", "null"] },
-    artifacts: {
-      type: ["array", "null"],
-      items: { type: "object" },
-    },
-    coverage: { type: ["object", "null"] },
-    artifact_budget_summary: { type: ["object", "null"] },
-  },
-};
+export const GET_BUILD_OUTPUT_SCHEMA = z.toJSONSchema(GetBuildOutputSchema, {
+  target: "draft-2020-12",
+});

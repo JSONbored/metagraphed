@@ -2,7 +2,12 @@
 // Serves the baked /metagraph/contracts.json artifact (public artifact
 // contract metadata for registry consumers).
 
+import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
+import {
+  GetContractsInputSchema,
+  GetContractsOutputSchema,
+} from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
 
 export const CONTRACTS_ARTIFACT = "/metagraph/contracts.json";
 
@@ -63,35 +68,14 @@ export const GET_CONTRACTS_MCP_TOOL = {
     "artifact path, storage tier, schema reference, and consumer notes. Use it " +
     "to discover which artifacts exist and how to read them before calling " +
     "get_api_schema or list_schemas. Mirrors GET /api/v1/contracts.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetContractsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-
-export const GET_CONTRACTS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["schema_version", "artifacts"],
-  properties: {
-    schema_version: { type: "integer" },
-    contract_version: NULLABLE_STRING,
-    generated_at: NULLABLE_STRING,
-    name: NULLABLE_STRING,
-    base_path: NULLABLE_STRING,
-    primary_domain: NULLABLE_STRING,
-    openapi_url: NULLABLE_STRING,
-    type_definitions_url: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    artifacts: {
-      type: "array",
-      items: { type: "object" },
-    },
+export const GET_CONTRACTS_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetContractsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);
