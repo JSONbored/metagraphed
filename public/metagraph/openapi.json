@@ -6177,12 +6177,18 @@
         "additionalProperties": false,
         "properties": {
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -6193,16 +6199,16 @@
               "additionalProperties": false,
               "properties": {
                 "days": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "granularity": {
-                  "enum": [
-                    "1d"
-                  ],
+                  "const": "1d",
                   "type": "string"
                 },
                 "subnet_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -6211,17 +6217,24 @@
                     "additionalProperties": false,
                     "properties": {
                       "avg_latency_ms": {
-                        "minimum": 0,
-                        "type": [
-                          "integer",
-                          "null"
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       },
                       "latency_sample_count": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "netuid": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
@@ -6230,10 +6243,15 @@
                           "additionalProperties": false,
                           "properties": {
                             "avg_latency_ms": {
-                              "minimum": 0,
-                              "type": [
-                                "integer",
-                                "null"
+                              "anyOf": [
+                                {
+                                  "maximum": 9007199254740991,
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
                               ]
                             },
                             "date": {
@@ -6241,19 +6259,25 @@
                               "type": "string"
                             },
                             "latency_sample_count": {
+                              "maximum": 9007199254740991,
                               "minimum": 0,
                               "type": "integer"
                             },
                             "samples": {
+                              "maximum": 9007199254740991,
                               "minimum": 0,
                               "type": "integer"
                             },
                             "uptime_ratio": {
-                              "maximum": 1,
-                              "minimum": 0,
-                              "type": [
-                                "number",
-                                "null"
+                              "anyOf": [
+                                {
+                                  "maximum": 1,
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
                               ]
                             }
                           },
@@ -6269,15 +6293,20 @@
                         "type": "array"
                       },
                       "samples": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "uptime_ratio": {
-                        "maximum": 1,
-                        "minimum": 0,
-                        "type": [
-                          "number",
-                          "null"
+                        "anyOf": [
+                          {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       }
                     },
@@ -6302,6 +6331,9 @@
               ],
               "type": "object"
             },
+            "propertyNames": {
+              "type": "string"
+            },
             "type": "object"
           }
         },
@@ -6320,26 +6352,44 @@
         ]
       },
       "CandidatesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateSurface"
+            },
+            "type": "array"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "candidates": {
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/CandidateSurface"
+                  "type": "string"
                 },
                 "type": "array"
               }
-            },
-            "required": [
-              "candidates"
-            ],
-            "type": "object"
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "candidates"
+        ],
+        "type": "object"
       },
       "CandidateState": {
         "enum": [
@@ -13149,7 +13199,8 @@
               "probe-derived",
               "missing-probe",
               "not-monitored"
-            ]
+            ],
+            "type": "string"
           },
           "health_stale": {
             "type": "boolean"
@@ -13161,28 +13212,41 @@
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_ok": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "operator": {
@@ -13202,16 +13266,19 @@
               "critical",
               "warning",
               "info"
-            ]
+            ],
+            "type": "string"
           },
           "source": {
-            "const": "probe-derived"
+            "const": "probe-derived",
+            "type": "string"
           },
           "state": {
             "enum": [
               "active",
               "resolved"
-            ]
+            ],
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
@@ -13226,7 +13293,6 @@
             "type": "string"
           },
           "surface_key": {
-            "description": "Stable surface identity (#1005): hash of netuid|kind|url for the affected surface.",
             "type": "string"
           },
           "user_reported": {
@@ -13261,61 +13327,88 @@
         "type": "object"
       },
       "EndpointIncidentsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "incidents": {
+          "generated_at": {
+            "type": "string"
+          },
+          "incidents": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointIncident"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/EndpointIncident"
+                  "type": "string"
                 },
                 "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "const": "endpoint-resource-probes",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "active_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "summary": {
-                "$ref": "#/components/schemas/EndpointIncidentSummary"
+              "by_kind": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_layer": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_provider": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_severity": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_status": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "incident_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "summary",
-              "incidents"
+              "incident_count",
+              "active_count",
+              "by_kind",
+              "by_layer",
+              "by_provider",
+              "by_severity",
+              "by_status"
             ],
             "type": "object"
           }
-        ]
-      },
-      "EndpointIncidentSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "active_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "by_kind": {
-            "$ref": "#/components/schemas/CountMap"
-          },
-          "by_layer": {
-            "$ref": "#/components/schemas/CountMap"
-          },
-          "by_provider": {
-            "$ref": "#/components/schemas/CountMap"
-          },
-          "by_severity": {
-            "$ref": "#/components/schemas/CountMap"
-          },
-          "by_status": {
-            "$ref": "#/components/schemas/CountMap"
-          },
-          "incident_count": {
-            "minimum": 0,
-            "type": "integer"
-          }
         },
         "required": [
-          "incident_count",
-          "active_count"
+          "generated_at",
+          "schema_version",
+          "source",
+          "summary",
+          "incidents"
         ],
         "type": "object"
       },
@@ -13379,7 +13472,175 @@
         "type": "object"
       },
       "EndpointPoolsArtifact": {
-        "$ref": "#/components/schemas/RpcPoolsArtifact"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
+          },
+          "disabled_proxy_contract": {
+            "additionalProperties": {},
+            "properties": {
+              "allowed_methods": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "denied_method_patterns": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "feature_flag": {
+                "type": "string"
+              },
+              "rate_limit_required": {
+                "type": "boolean"
+              },
+              "waf_required": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "eligibility_policy": {
+            "additionalProperties": {},
+            "properties": {
+              "eligible_layers": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "required_status": {
+                "type": "string"
+              },
+              "requires_no_auth": {
+                "type": "boolean"
+              },
+              "requires_public_safe": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "string"
+              },
+              "user_reports_can_change_health": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "pools": {
+            "items": {
+              "$ref": "#/components/schemas/RpcPool"
+            },
+            "type": "array"
+          },
+          "provider_scores": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "average_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "degraded_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "endpoint_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "failed_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "monitored_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ok_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "operational_score": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "pool_eligible_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "provider": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "provider",
+                "endpoint_count",
+                "monitored_count",
+                "ok_count",
+                "failed_count",
+                "degraded_count",
+                "pool_eligible_count",
+                "average_score",
+                "operational_score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "enum": [
+              "endpoint-resource-probes",
+              "rpc-endpoint-probes"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "source",
+          "pools"
+        ],
+        "type": "object"
       },
       "EndpointPublicationState": {
         "enum": [
@@ -13673,30 +13934,65 @@
         "type": "object"
       },
       "EndpointsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "endpoints": {
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointResource"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "health_source": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/EndpointResource"
+                  "type": "string"
                 },
                 "type": "array"
-              },
-              "summary": {
-                "$ref": "#/components/schemas/EndpointSummary"
               }
-            },
-            "required": [
-              "summary",
-              "endpoints"
-            ],
-            "type": "object"
+            ]
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EndpointSummary"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "source",
+          "summary",
+          "endpoints"
+        ],
+        "type": "object"
       },
       "EndpointScoreReason": {
         "additionalProperties": false,
@@ -13720,29 +14016,72 @@
         "additionalProperties": false,
         "properties": {
           "by_kind": {
-            "$ref": "#/components/schemas/CountMap"
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "by_layer": {
-            "$ref": "#/components/schemas/CountMap"
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "by_provider": {
-            "$ref": "#/components/schemas/CountMap"
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "by_publication_state": {
-            "$ref": "#/components/schemas/CountMap"
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "by_status": {
-            "$ref": "#/components/schemas/CountMap"
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "endpoint_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "monitored_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "pool_eligible_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
@@ -13806,7 +14145,8 @@
               "low",
               "medium",
               "high"
-            ]
+            ],
+            "type": "string"
           },
           "limits": {
             "type": "string"
@@ -13827,9 +14167,13 @@
             "type": "string"
           },
           "verified_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -13846,26 +14190,77 @@
         "type": "object"
       },
       "EvidenceLedgerArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceClaim"
+            },
+            "type": "array"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "claims": {
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/EvidenceClaim"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_claim_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "claim_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_claim_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_claim_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
             },
             "required": [
-              "claims"
+              "candidate_claim_count",
+              "claim_count",
+              "subnet_claim_count",
+              "surface_claim_count"
             ],
             "type": "object"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "summary",
+          "claims"
+        ],
+        "type": "object"
       },
       "EvmAddressMappingArtifact": {
         "additionalProperties": {},
@@ -15041,29 +15436,36 @@
         ]
       },
       "GlobalIncidentsArtifact": {
-        "additionalProperties": true,
-        "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",
+        "additionalProperties": {},
         "properties": {
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
             "type": "string"
           },
           "summary": {
-            "additionalProperties": true,
+            "additionalProperties": {},
             "properties": {
               "affected_surface_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "incident_count": {
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               }
@@ -15076,45 +15478,55 @@
           },
           "surfaces": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "downtime_ms": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "incident_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "incidents": {
                   "items": {
-                    "additionalProperties": true,
+                    "additionalProperties": {},
                     "properties": {
                       "duration_ms": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "ended_at": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
                         "type": "integer"
                       },
                       "failed_samples": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "started_at": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
                         "type": "integer"
                       }
                     },
                     "required": [
                       "started_at",
                       "ended_at",
-                      "duration_ms"
+                      "duration_ms",
+                      "failed_samples"
                     ],
                     "type": "object"
                   },
                   "type": "array"
                 },
                 "netuid": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -15126,6 +15538,7 @@
                 "netuid",
                 "surface_id",
                 "incident_count",
+                "downtime_ms",
                 "incidents"
               ],
               "type": "object"
@@ -15133,9 +15546,13 @@
             "type": "array"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -15613,157 +16030,221 @@
         ]
       },
       "HealthHistoryArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "date": {
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
                 "type": "string"
               },
-              "probe_finished_at": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "probe_started_at": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "source": {
-                "type": "string"
-              },
-              "summary": {
-                "additionalProperties": true,
-                "description": "Aggregate probe outcome counts for the day.",
-                "properties": {
-                  "classification_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "status_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "surface_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
-              },
-              "surfaces": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/HealthHistorySurface"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "probe_finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "probe_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {
+              "classification_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "status_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
             },
             "required": [
-              "date",
-              "summary",
-              "surfaces"
+              "surface_count",
+              "status_counts",
+              "classification_counts"
             ],
             "type": "object"
-          }
-        ]
-      },
-      "HealthHistorySurface": {
-        "additionalProperties": false,
-        "properties": {
-          "classification": {
-            "$ref": "#/components/schemas/Classification"
           },
-          "error_class": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "kind": {
-            "$ref": "#/components/schemas/SurfaceKind"
-          },
-          "last_checked": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "last_ok": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "latency_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/HealthStatus"
-          },
-          "status_code": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "surface_id": {
-            "type": "string"
-          },
-          "verified_at": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "surfaces": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "classification": {
+                  "$ref": "#/components/schemas/Classification"
+                },
+                "error_class": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/SurfaceKind"
+                },
+                "last_checked": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_ok": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "latency_ms": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "verified_at": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "surface_id",
+                "netuid",
+                "kind",
+                "provider",
+                "status",
+                "classification",
+                "latency_ms",
+                "status_code",
+                "last_checked",
+                "last_ok",
+                "verified_at",
+                "error_class"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "surface_id",
-          "netuid",
-          "kind",
-          "provider",
-          "status",
-          "classification"
+          "generated_at",
+          "schema_version",
+          "date",
+          "source",
+          "probe_started_at",
+          "probe_finished_at",
+          "summary",
+          "surfaces"
         ],
         "type": "object"
       },
       "HealthIncidentsArtifact": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -15771,32 +16252,40 @@
           },
           "surfaces": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "downtime_ms": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "incident_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "incidents": {
                   "items": {
-                    "additionalProperties": true,
+                    "additionalProperties": {},
                     "properties": {
                       "duration_ms": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "ended_at": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
                         "type": "integer"
                       },
                       "failed_samples": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "started_at": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
                         "type": "integer"
                       }
                     },
@@ -15811,6 +16300,7 @@
                   "type": "array"
                 },
                 "samples": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -15818,9 +16308,13 @@
                   "type": "string"
                 },
                 "uptime_ratio": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -15837,9 +16331,13 @@
             "type": "array"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -15887,19 +16385,26 @@
         ]
       },
       "HealthPercentilesArtifact": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -15907,51 +16412,96 @@
           },
           "surfaces": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "latency_ms": {
-                  "additionalProperties": true,
+                  "additionalProperties": {},
                   "properties": {
                     "avg": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "max": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "min": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "p50": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "p95": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "p99": {
-                      "type": [
-                        "integer",
-                        "null"
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
                       ]
                     }
                   },
+                  "required": [
+                    "p50",
+                    "p95",
+                    "p99",
+                    "avg",
+                    "min",
+                    "max"
+                  ],
                   "type": "object"
                 },
                 "samples": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -15969,9 +16519,13 @@
             "type": "array"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -15993,16 +16547,19 @@
         "type": "string"
       },
       "HealthSubnetArtifact": {
-        "additionalProperties": true,
-        "description": "Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact.",
+        "additionalProperties": {},
         "properties": {
           "contract_version": {
             "type": "string"
           },
           "generated_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "health_source": {
@@ -16012,16 +16569,23 @@
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "operational_observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "slug": {
@@ -16032,7 +16596,90 @@
           },
           "surfaces": {
             "items": {
-              "$ref": "#/components/schemas/HealthSurface"
+              "additionalProperties": false,
+              "properties": {
+                "classification": {
+                  "$ref": "#/components/schemas/Classification"
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/SurfaceKind"
+                },
+                "last_checked": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_ok": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "latency_ms": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "observed_by": {
+                  "const": "live-cron-prober",
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "surface_id",
+                "netuid",
+                "kind",
+                "provider",
+                "url",
+                "status",
+                "observed_by"
+              ],
+              "type": "object"
             },
             "type": "array"
           }
@@ -16200,9 +16847,13 @@
         "additionalProperties": false,
         "properties": {
           "archive_support": {
-            "type": [
-              "boolean",
-              "null"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "auth_required": {
@@ -16212,56 +16863,90 @@
             "$ref": "#/components/schemas/Classification"
           },
           "content_type": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "error": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "error_class": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_ok": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latency_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latest_block": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "method_results": {
             "additionalProperties": {
-              "additionalProperties": true,
+              "additionalProperties": {},
+              "properties": {},
               "type": "object"
+            },
+            "propertyNames": {
+              "type": "string"
             },
             "type": "object"
           },
@@ -16269,10 +16954,13 @@
             "type": "string"
           },
           "methods_supported": {
-            "oneOf": [
+            "anyOf": [
               {
                 "additionalProperties": {
                   "type": "boolean"
+                },
+                "propertyNames": {
+                  "type": "string"
                 },
                 "type": "object"
               },
@@ -16288,6 +16976,7 @@
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16301,26 +16990,40 @@
             "type": "boolean"
           },
           "redirect_target": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "rpc_method_count": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
           },
           "status_code": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "subnet_name": {
@@ -16333,21 +17036,28 @@
             "type": "string"
           },
           "uptime_sample_ratio": {
-            "maximum": 1,
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "url": {
-            "format": "uri",
             "type": "string"
           },
           "verified_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -16361,19 +17071,26 @@
         "type": "object"
       },
       "HealthTrendsArtifact": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -16381,55 +17098,88 @@
           },
           "windows": {
             "additionalProperties": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "latency_sample_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "samples": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "surfaces": {
                   "items": {
-                    "additionalProperties": true,
+                    "additionalProperties": {},
                     "properties": {
                       "avg_latency_ms": {
-                        "type": [
-                          "integer",
-                          "null"
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       },
                       "latency_ms": {
-                        "additionalProperties": true,
+                        "additionalProperties": {},
                         "properties": {
                           "p50": {
-                            "type": [
-                              "integer",
-                              "null"
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
                             ]
                           },
                           "p95": {
-                            "type": [
-                              "integer",
-                              "null"
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
                             ]
                           },
                           "p99": {
-                            "type": [
-                              "integer",
-                              "null"
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
                             ]
                           }
                         },
+                        "required": [
+                          "p50",
+                          "p95",
+                          "p99"
+                        ],
                         "type": "object"
                       },
                       "latency_sample_count": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "samples": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
@@ -16437,9 +17187,13 @@
                         "type": "string"
                       },
                       "uptime_ratio": {
-                        "type": [
-                          "number",
-                          "null"
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       }
                     },
@@ -16456,9 +17210,13 @@
                   "type": "array"
                 },
                 "uptime_ratio": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -16469,6 +17227,9 @@
                 "surfaces"
               ],
               "type": "object"
+            },
+            "propertyNames": {
+              "type": "string"
             },
             "type": "object"
           }
@@ -17685,85 +18446,7 @@
             "type": "string"
           },
           "endpoint_summary": {
-            "additionalProperties": false,
-            "properties": {
-              "by_kind": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_layer": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_provider": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_publication_state": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_status": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "endpoint_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "monitored_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "pool_eligible_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "endpoint_count",
-              "monitored_count",
-              "pool_eligible_count"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/EndpointSummary"
           },
           "generated_at": {
             "type": "string"
@@ -17847,85 +18530,7 @@
             "type": "number"
           },
           "summary": {
-            "additionalProperties": false,
-            "properties": {
-              "by_kind": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_layer": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_provider": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_publication_state": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "by_status": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "endpoint_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "monitored_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "pool_eligible_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "endpoint_count",
-              "monitored_count",
-              "pool_eligible_count"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/EndpointSummary"
           }
         },
         "required": [
@@ -18316,75 +18921,6 @@
           "subnet_count",
           "counts",
           "top_subnets"
-        ],
-        "type": "object"
-      },
-      "ReliabilityScore": {
-        "additionalProperties": true,
-        "description": "Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists.",
-        "properties": {
-          "avg_latency_ms": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "computed_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "day_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "grade": {
-            "enum": [
-              "A",
-              "B",
-              "C",
-              "D",
-              "F"
-            ],
-            "type": "string"
-          },
-          "latency_sample_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "sample_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "surface_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "uptime_ratio": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "window": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "score",
-          "grade",
-          "uptime_ratio",
-          "sample_count",
-          "latency_sample_count"
         ],
         "type": "object"
       },
@@ -20953,6 +21489,13 @@
           "schema_version": {
             "const": 1,
             "type": "number"
+          },
+          "source": {
+            "enum": [
+              "endpoint-resource-probes",
+              "rpc-endpoint-probes"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -22497,7 +23040,56 @@
         "type": "object"
       },
       "SubnetCandidatesArtifact": {
-        "$ref": "#/components/schemas/CandidatesArtifact"
+        "additionalProperties": {},
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateSurface"
+            },
+            "type": "array"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "candidates"
+        ],
+        "type": "object"
       },
       "SubnetConcentrationArtifact": {
         "additionalProperties": {},
@@ -24175,41 +24767,73 @@
         "type": "object"
       },
       "SubnetEndpointsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "endpoints": {
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointResource"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "health_source": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/EndpointResource"
+                  "type": "string"
                 },
                 "type": "array"
-              },
-              "name": {
-                "type": "string"
-              },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "slug": {
-                "type": "string"
-              },
-              "summary": {
-                "$ref": "#/components/schemas/EndpointSummary"
               }
-            },
-            "required": [
-              "netuid",
-              "summary",
-              "endpoints"
-            ],
-            "type": "object"
+            ]
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EndpointSummary"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "summary",
+          "endpoints"
+        ],
+        "type": "object"
       },
       "SubnetEventsArtifact": {
         "additionalProperties": {},
@@ -24556,7 +25180,56 @@
         "type": "object"
       },
       "SubnetEvidenceArtifact": {
-        "$ref": "#/components/schemas/EvidenceLedgerArtifact"
+        "additionalProperties": {},
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceClaim"
+            },
+            "type": "array"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "claims"
+        ],
+        "type": "object"
       },
       "SubnetGapsArtifact": {
         "additionalProperties": {},
@@ -29251,7 +29924,56 @@
         ]
       },
       "SubnetSurfacesArtifact": {
-        "$ref": "#/components/schemas/SurfacesArtifact"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/Surface"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "SubnetTrajectoryArtifact": {
         "additionalProperties": {},
@@ -31047,26 +31769,44 @@
         "type": "string"
       },
       "SurfacesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "surfaces": {
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/Surface"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/Surface"
             },
-            "required": [
-              "surfaces"
-            ],
-            "type": "object"
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "TopHoldersArtifact": {
         "additionalProperties": {},
@@ -31171,16 +31911,105 @@
         "type": "object"
       },
       "UptimeArtifact": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "reliability": {
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/ReliabilityScore"
+                "additionalProperties": {},
+                "properties": {
+                  "avg_latency_ms": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "computed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "day_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "grade": {
+                    "enum": [
+                      "A",
+                      "B",
+                      "C",
+                      "D",
+                      "F"
+                    ],
+                    "type": "string"
+                  },
+                  "latency_sample_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "sample_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surface_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "uptime_ratio": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "window": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "score",
+                  "grade",
+                  "uptime_ratio",
+                  "avg_latency_ms",
+                  "sample_count",
+                  "latency_sample_count"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -31188,6 +32017,8 @@
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "source": {
@@ -31195,54 +32026,81 @@
           },
           "surfaces": {
             "items": {
-              "additionalProperties": true,
+              "additionalProperties": {},
               "properties": {
                 "day_count": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
                 "days": {
                   "items": {
-                    "additionalProperties": true,
+                    "additionalProperties": {},
                     "properties": {
                       "avg_latency_ms": {
-                        "type": [
-                          "integer",
-                          "null"
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       },
                       "day": {
                         "type": "string"
                       },
                       "latency_ms": {
-                        "additionalProperties": true,
+                        "additionalProperties": {},
                         "properties": {
                           "p50": {
-                            "type": [
-                              "integer",
-                              "null"
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
                             ]
                           },
                           "p95": {
-                            "type": [
-                              "integer",
-                              "null"
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
                             ]
                           },
                           "p99": {
-                            "type": [
-                              "integer",
-                              "null"
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
                             ]
                           }
                         },
                         "type": "object"
                       },
                       "latency_sample_count": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
                       "samples": {
+                        "maximum": 9007199254740991,
                         "minimum": 0,
                         "type": "integer"
                       },
@@ -31250,9 +32108,13 @@
                         "type": "string"
                       },
                       "uptime_ratio": {
-                        "type": [
-                          "number",
-                          "null"
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       }
                     },
@@ -31267,9 +32129,97 @@
                   "type": "array"
                 },
                 "reliability": {
-                  "oneOf": [
+                  "anyOf": [
                     {
-                      "$ref": "#/components/schemas/ReliabilityScore"
+                      "additionalProperties": {},
+                      "properties": {
+                        "avg_latency_ms": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "computed_at": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "day_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "grade": {
+                          "enum": [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "F"
+                          ],
+                          "type": "string"
+                        },
+                        "latency_sample_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "sample_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "score": {
+                          "maximum": 100,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "surface_count": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "uptime_ratio": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "window": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "score",
+                        "grade",
+                        "uptime_ratio",
+                        "avg_latency_ms",
+                        "sample_count",
+                        "latency_sample_count"
+                      ],
+                      "type": "object"
                     },
                     {
                       "type": "null"
@@ -31277,6 +32227,7 @@
                   ]
                 },
                 "samples": {
+                  "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
                 },
@@ -31284,9 +32235,13 @@
                   "type": "string"
                 },
                 "uptime_ratio": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -31302,9 +32257,13 @@
             "type": "array"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -31312,6 +32271,7 @@
           "schema_version",
           "netuid",
           "source",
+          "reliability",
           "surfaces"
         ],
         "type": "object"
@@ -45838,6 +46798,7 @@
                     ],
                     "notes": "Example description.",
                     "schema_version": 1,
+                    "source": "endpoint-resource-probes",
                     "summary": {
                       "active_count": 1,
                       "by_kind": {},
@@ -46135,7 +47096,8 @@
                         "provider": "example-provider"
                       }
                     ],
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "source": "endpoint-resource-probes"
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -46489,8 +47451,11 @@
                       }
                     ],
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "health_source": "probe-derived",
                     "notes": "Example description.",
+                    "operational_observed_at": "2026-06-01T00:00:00.000Z",
                     "schema_version": 1,
+                    "source": "live-cron-prober",
                     "summary": {
                       "by_kind": {},
                       "by_layer": {},
@@ -46703,7 +47668,13 @@
                     "contract_version": "2026-06-29.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
                     "notes": "Example description.",
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "summary": {
+                      "candidate_claim_count": 1,
+                      "claim_count": 1,
+                      "subnet_claim_count": 1,
+                      "surface_claim_count": 1
+                    }
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -48670,11 +49641,17 @@
                     "surfaces": [
                       {
                         "classification": "live",
+                        "error_class": "example",
                         "kind": "archive",
+                        "last_checked": "2026-06-01T00:00:00.000Z",
+                        "last_ok": "2026-06-01T00:00:00.000Z",
+                        "latency_ms": 120,
                         "netuid": 7,
                         "provider": "example-provider",
                         "status": "ok",
-                        "surface_id": "example"
+                        "status_code": 1,
+                        "surface_id": "example",
+                        "verified_at": "2026-06-01T00:00:00.000Z"
                       }
                     ]
                   },
@@ -49024,11 +50001,13 @@
                     },
                     "surfaces": [
                       {
+                        "downtime_ms": 1,
                         "incident_count": 1,
                         "incidents": [
                           {
                             "duration_ms": 1,
                             "ended_at": 1,
+                            "failed_samples": 1,
                             "started_at": 1
                           }
                         ],
@@ -53956,7 +54935,8 @@
                         "provider": "example-provider"
                       }
                     ],
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "source": "endpoint-resource-probes"
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -56534,8 +57514,11 @@
                     ],
                     "contract_version": "2026-06-29.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "name": "Example Subnet",
+                    "netuid": 7,
                     "notes": "Example description.",
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "slug": "example-subnet"
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -57550,9 +58533,11 @@
                       }
                     ],
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "health_source": "probe-derived",
                     "name": "Example Subnet",
                     "netuid": 7,
                     "notes": "Example description.",
+                    "operational_observed_at": "2026-06-01T00:00:00.000Z",
                     "schema_version": 1,
                     "slug": "example-subnet",
                     "summary": {
@@ -58172,8 +59157,11 @@
                     ],
                     "contract_version": "2026-06-29.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "name": "Example Subnet",
+                    "netuid": 7,
                     "notes": "Example description.",
-                    "schema_version": 1
+                    "schema_version": 1,
+                    "slug": "example-subnet"
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -58807,8 +59795,10 @@
                     },
                     "surfaces": [
                       {
-                        "classification": "live",
+                        "kind": "archive",
                         "netuid": 7,
+                        "observed_by": "live-cron-prober",
+                        "provider": "example-provider",
                         "status": "ok",
                         "surface_id": "example",
                         "url": "https://api.metagraph.sh/example"
@@ -59121,7 +60111,14 @@
                     "source": "live-cron-prober",
                     "surfaces": [
                       {
-                        "latency_ms": {},
+                        "latency_ms": {
+                          "avg": 1,
+                          "max": 1,
+                          "min": 1,
+                          "p50": 1,
+                          "p95": 1,
+                          "p99": 1
+                        },
                         "samples": 1,
                         "surface_id": "example"
                       }
@@ -59266,7 +60263,11 @@
                         "surfaces": [
                           {
                             "avg_latency_ms": 120,
-                            "latency_ms": {},
+                            "latency_ms": {
+                              "p50": 1,
+                              "p95": 1,
+                              "p99": 1
+                            },
                             "latency_sample_count": 120,
                             "samples": 1,
                             "surface_id": "example",
@@ -63690,8 +64691,11 @@
                   "data": {
                     "contract_version": "2026-06-29.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
+                    "name": "Example Subnet",
+                    "netuid": 7,
                     "notes": "Example description.",
                     "schema_version": 1,
+                    "slug": "example-subnet",
                     "surfaces": [
                       {
                         "auth_required": true,

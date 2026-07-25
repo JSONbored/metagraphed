@@ -4058,7 +4058,7 @@ export interface components {
             windows: {
                 [key: string]: {
                     days: number;
-                    /** @enum {string} */
+                    /** @constant */
                     granularity: "1d";
                     subnet_count: number;
                     subnets: {
@@ -4080,11 +4080,16 @@ export interface components {
         };
         /** @enum {unknown} */
         CacheProfile: "short" | "standard" | "static";
-        CandidatesArtifact: components["schemas"]["ArtifactBase"] & ({
+        CandidatesArtifact: {
             candidates: components["schemas"]["CandidateSurface"][];
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
+        };
         /** @enum {unknown} */
         CandidateState: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
         CandidateSurface: {
@@ -5209,7 +5214,7 @@ export interface components {
             classification: components["schemas"]["Classification"];
             detected_at: string;
             endpoint_id: string;
-            /** @enum {unknown} */
+            /** @enum {string} */
             health_source: "probe-derived" | "missing-probe" | "not-monitored";
             health_stale: boolean;
             id: string;
@@ -5223,34 +5228,39 @@ export interface components {
             pool_eligible: boolean;
             provider: string;
             reason: string;
-            /** @enum {unknown} */
+            /** @enum {string} */
             severity: "critical" | "warning" | "info";
             /** @constant */
             source: "probe-derived";
-            /** @enum {unknown} */
+            /** @enum {string} */
             state: "active" | "resolved";
             status: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;
             surface_id: string;
-            /** @description Stable surface identity (#1005): hash of netuid|kind|url for the affected surface. */
             surface_key: string;
             user_reported: boolean;
         };
-        EndpointIncidentsArtifact: components["schemas"]["ArtifactBase"] & ({
+        EndpointIncidentsArtifact: {
+            contract_version?: string;
+            generated_at: string;
             incidents: components["schemas"]["EndpointIncident"][];
-            summary: components["schemas"]["EndpointIncidentSummary"];
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            /** @constant */
+            source: "endpoint-resource-probes";
+            summary: {
+                active_count: number;
+                by_kind: components["schemas"]["CountMap"];
+                by_layer: components["schemas"]["CountMap"];
+                by_provider: components["schemas"]["CountMap"];
+                by_severity: components["schemas"]["CountMap"];
+                by_status: components["schemas"]["CountMap"];
+                incident_count: number;
+            };
         } & {
             [key: string]: unknown;
-        });
-        EndpointIncidentSummary: {
-            active_count: number;
-            by_kind?: components["schemas"]["CountMap"];
-            by_layer?: components["schemas"]["CountMap"];
-            by_provider?: components["schemas"]["CountMap"];
-            by_severity?: components["schemas"]["CountMap"];
-            by_status?: components["schemas"]["CountMap"];
-            incident_count: number;
         };
         /** @enum {string} */
         EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
@@ -5261,7 +5271,50 @@ export interface components {
             source: string;
             timeout_ms?: number | null;
         };
-        EndpointPoolsArtifact: components["schemas"]["RpcPoolsArtifact"];
+        EndpointPoolsArtifact: {
+            contract_version?: string;
+            disabled_proxy_contract?: {
+                allowed_methods?: string[];
+                denied_method_patterns?: string[];
+                enabled?: boolean;
+                feature_flag?: string;
+                rate_limit_required?: boolean;
+                waf_required?: boolean;
+            } & {
+                [key: string]: unknown;
+            };
+            eligibility_policy?: {
+                eligible_layers?: string[];
+                notes?: string;
+                required_status?: string;
+                requires_no_auth?: boolean;
+                requires_public_safe?: boolean;
+                source?: string;
+                user_reports_can_change_health?: boolean;
+            } & {
+                [key: string]: unknown;
+            };
+            generated_at: string;
+            notes?: string | string[];
+            pools: components["schemas"]["RpcPool"][];
+            provider_scores?: {
+                average_score: number;
+                degraded_count: number;
+                endpoint_count: number;
+                failed_count: number;
+                monitored_count: number;
+                ok_count: number;
+                operational_score: number;
+                pool_eligible_count: number;
+                provider: string;
+            }[];
+            /** @constant */
+            schema_version: 1;
+            /** @enum {string} */
+            source: "endpoint-resource-probes" | "rpc-endpoint-probes";
+        } & {
+            [key: string]: unknown;
+        };
         /** @enum {unknown} */
         EndpointPublicationState: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
         EndpointResource: {
@@ -5313,22 +5366,40 @@ export interface components {
             /** Format: uri */
             url: string;
         };
-        EndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
+        EndpointsArtifact: {
+            contract_version?: string;
             endpoints: components["schemas"]["EndpointResource"][];
+            generated_at: string;
+            health_source?: string;
+            notes?: string | string[];
+            operational_observed_at?: string | null;
+            /** @constant */
+            schema_version: 1;
+            source: string;
             summary: components["schemas"]["EndpointSummary"];
         } & {
             [key: string]: unknown;
-        });
+        };
         EndpointScoreReason: {
             points: number;
             reason: string;
         };
         EndpointSummary: {
-            by_kind?: components["schemas"]["CountMap"];
-            by_layer?: components["schemas"]["CountMap"];
-            by_provider?: components["schemas"]["CountMap"];
-            by_publication_state?: components["schemas"]["CountMap"];
-            by_status?: components["schemas"]["CountMap"];
+            by_kind?: {
+                [key: string]: number;
+            };
+            by_layer?: {
+                [key: string]: number;
+            };
+            by_provider?: {
+                [key: string]: number;
+            };
+            by_publication_state?: {
+                [key: string]: number;
+            };
+            by_status?: {
+                [key: string]: number;
+            };
             endpoint_count: number;
             monitored_count: number;
             pool_eligible_count: number;
@@ -5347,7 +5418,7 @@ export interface components {
         };
         EvidenceClaim: {
             claim: string;
-            /** @enum {unknown} */
+            /** @enum {string} */
             confidence: "low" | "medium" | "high";
             limits: string;
             source_tier: components["schemas"]["SourceTier"];
@@ -5357,11 +5428,22 @@ export interface components {
             support_summary: string;
             verified_at?: string | null;
         };
-        EvidenceLedgerArtifact: components["schemas"]["ArtifactBase"] & ({
+        EvidenceLedgerArtifact: {
             claims: components["schemas"]["EvidenceClaim"][];
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            summary: {
+                candidate_claim_count: number;
+                claim_count: number;
+                subnet_claim_count: number;
+                surface_claim_count: number;
+            };
         } & {
             [key: string]: unknown;
-        });
+        };
         EvmAddressMappingArtifact: {
             h160: string;
             queried_at?: string | null;
@@ -5560,7 +5642,6 @@ export interface components {
             generated_at?: "1970-01-01T00:00:00.000Z";
         };
         GenericArtifact: components["schemas"]["ArtifactBase"];
-        /** @description Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window. */
         GlobalIncidentsArtifact: {
             observed_at?: string | null;
             schema_version: number;
@@ -5572,12 +5653,12 @@ export interface components {
                 [key: string]: unknown;
             };
             surfaces: ({
-                downtime_ms?: number;
+                downtime_ms: number;
                 incident_count: number;
                 incidents: ({
                     duration_ms: number;
                     ended_at: number;
-                    failed_samples?: number;
+                    failed_samples: number;
                     started_at: number;
                 } & {
                     [key: string]: unknown;
@@ -5654,40 +5735,39 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        HealthHistoryArtifact: components["schemas"]["ArtifactBase"] & ({
+        HealthHistoryArtifact: {
+            contract_version?: string;
             date: string;
-            probe_finished_at?: string | null;
-            probe_started_at?: string | null;
-            source?: string;
-            /** @description Aggregate probe outcome counts for the day. */
+            generated_at: string;
+            notes?: string | string[];
+            probe_finished_at: string | null;
+            probe_started_at: string | null;
+            /** @constant */
+            schema_version: 1;
+            source: string;
             summary: {
-                classification_counts?: {
-                    [key: string]: number;
-                };
-                status_counts?: {
-                    [key: string]: number;
-                };
-                surface_count?: number;
+                classification_counts: components["schemas"]["CountMap"];
+                status_counts: components["schemas"]["CountMap"];
+                surface_count: number;
             } & {
                 [key: string]: unknown;
             };
-            surfaces: components["schemas"]["HealthHistorySurface"][];
+            surfaces: {
+                classification: components["schemas"]["Classification"];
+                error_class: string | null;
+                kind: components["schemas"]["SurfaceKind"];
+                last_checked: string | null;
+                last_ok: string | null;
+                latency_ms: number | null;
+                netuid: number;
+                provider: string;
+                status: components["schemas"]["HealthStatus"];
+                status_code: number | null;
+                surface_id: string;
+                verified_at: string | null;
+            }[];
         } & {
             [key: string]: unknown;
-        });
-        HealthHistorySurface: {
-            classification: components["schemas"]["Classification"];
-            error_class?: string | null;
-            kind: components["schemas"]["SurfaceKind"];
-            last_checked?: string | null;
-            last_ok?: string | null;
-            latency_ms?: number | null;
-            netuid: number;
-            provider: string;
-            status: components["schemas"]["HealthStatus"];
-            status_code?: number | null;
-            surface_id: string;
-            verified_at?: string | null;
         };
         HealthIncidentsArtifact: {
             netuid: number;
@@ -5732,12 +5812,12 @@ export interface components {
             source: string;
             surfaces: ({
                 latency_ms: {
-                    avg?: number | null;
-                    max?: number | null;
-                    min?: number | null;
-                    p50?: number | null;
-                    p95?: number | null;
-                    p99?: number | null;
+                    avg: number | null;
+                    max: number | null;
+                    min: number | null;
+                    p50: number | null;
+                    p95: number | null;
+                    p99: number | null;
                 } & {
                     [key: string]: unknown;
                 };
@@ -5752,7 +5832,6 @@ export interface components {
         };
         /** @enum {string} */
         HealthStatus: "ok" | "degraded" | "failed" | "unknown";
-        /** @description Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact. */
         HealthSubnetArtifact: {
             contract_version?: string;
             generated_at?: string | null;
@@ -5763,7 +5842,21 @@ export interface components {
             schema_version: number;
             slug?: string;
             summary: components["schemas"]["HealthSubnetSummary"];
-            surfaces: components["schemas"]["HealthSurface"][];
+            surfaces: {
+                classification?: components["schemas"]["Classification"];
+                kind: components["schemas"]["SurfaceKind"];
+                last_checked?: string | null;
+                last_ok?: string | null;
+                latency_ms?: number | null;
+                netuid: number;
+                /** @constant */
+                observed_by: "live-cron-prober";
+                provider: string;
+                status: components["schemas"]["HealthStatus"];
+                status_code?: number | null;
+                surface_id: string;
+                url: string;
+            }[];
         } & {
             [key: string]: unknown;
         };
@@ -5822,7 +5915,6 @@ export interface components {
             private_redirect_blocked?: boolean;
             provider?: string;
             public_safe?: boolean;
-            /** Format: uri */
             redirect_target?: string | null;
             rpc_method_count?: number | null;
             status: components["schemas"]["HealthStatus"];
@@ -5831,7 +5923,6 @@ export interface components {
             subnet_slug?: string;
             surface_id: string;
             uptime_sample_ratio?: number | null;
-            /** Format: uri */
             url: string;
             verified_at?: string | null;
         };
@@ -5847,9 +5938,9 @@ export interface components {
                     surfaces: ({
                         avg_latency_ms: number | null;
                         latency_ms: {
-                            p50?: number | null;
-                            p95?: number | null;
-                            p99?: number | null;
+                            p50: number | null;
+                            p95: number | null;
+                            p99: number | null;
                         } & {
                             [key: string]: unknown;
                         };
@@ -6110,26 +6201,7 @@ export interface components {
         };
         ProviderArtifact: {
             contract_version?: string;
-            endpoint_summary?: {
-                by_kind?: {
-                    [key: string]: number;
-                };
-                by_layer?: {
-                    [key: string]: number;
-                };
-                by_provider?: {
-                    [key: string]: number;
-                };
-                by_publication_state?: {
-                    [key: string]: number;
-                };
-                by_status?: {
-                    [key: string]: number;
-                };
-                endpoint_count: number;
-                monitored_count: number;
-                pool_eligible_count: number;
-            };
+            endpoint_summary?: components["schemas"]["EndpointSummary"];
             generated_at: string;
             notes?: string | string[];
             provider: components["schemas"]["Provider"];
@@ -6153,26 +6225,7 @@ export interface components {
             };
             /** @constant */
             schema_version: 1;
-            summary: {
-                by_kind?: {
-                    [key: string]: number;
-                };
-                by_layer?: {
-                    [key: string]: number;
-                };
-                by_provider?: {
-                    [key: string]: number;
-                };
-                by_publication_state?: {
-                    [key: string]: number;
-                };
-                by_status?: {
-                    [key: string]: number;
-                };
-                endpoint_count: number;
-                monitored_count: number;
-                pool_eligible_count: number;
-            };
+            summary: components["schemas"]["EndpointSummary"];
         } & {
             [key: string]: unknown;
         };
@@ -6264,22 +6317,6 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-        } & {
-            [key: string]: unknown;
-        };
-        /** @description Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists. */
-        ReliabilityScore: {
-            avg_latency_ms?: number | null;
-            computed_at?: string | null;
-            day_count?: number;
-            /** @enum {string} */
-            grade: "A" | "B" | "C" | "D" | "F";
-            latency_sample_count: number;
-            sample_count: number;
-            score: number;
-            surface_count?: number;
-            uptime_ratio: number | null;
-            window?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -6799,6 +6836,8 @@ export interface components {
             }[];
             /** @constant */
             schema_version: 1;
+            /** @enum {string} */
+            source?: "endpoint-resource-probes" | "rpc-endpoint-probes";
         } & {
             [key: string]: unknown;
         };
@@ -7098,7 +7137,19 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        SubnetCandidatesArtifact: components["schemas"]["CandidatesArtifact"];
+        SubnetCandidatesArtifact: {
+            candidates: components["schemas"]["CandidateSurface"][];
+            contract_version?: string;
+            generated_at: string;
+            name?: string;
+            netuid: number;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            slug?: string;
+        } & {
+            [key: string]: unknown;
+        };
         SubnetConcentrationArtifact: {
             captured_at?: string | null;
             emission: ({
@@ -7339,15 +7390,22 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        SubnetEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
+        SubnetEndpointsArtifact: {
+            contract_version?: string;
             endpoints: components["schemas"]["EndpointResource"][];
+            generated_at: string;
+            health_source?: string;
             name?: string;
             netuid: number;
+            notes?: string | string[];
+            operational_observed_at?: string | null;
+            /** @constant */
+            schema_version: 1;
             slug?: string;
             summary: components["schemas"]["EndpointSummary"];
         } & {
             [key: string]: unknown;
-        });
+        };
         SubnetEventsArtifact: {
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
@@ -7400,7 +7458,19 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        SubnetEvidenceArtifact: components["schemas"]["EvidenceLedgerArtifact"];
+        SubnetEvidenceArtifact: {
+            claims: components["schemas"]["EvidenceClaim"][];
+            contract_version?: string;
+            generated_at: string;
+            name?: string;
+            netuid: number;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            slug?: string;
+        } & {
+            [key: string]: unknown;
+        };
         SubnetGapsArtifact: {
             contract_version?: string;
             enrichment_queue: {
@@ -8153,7 +8223,19 @@ export interface components {
         };
         /** @enum {unknown} */
         SubnetStatus: "active" | "inactive" | "unknown";
-        SubnetSurfacesArtifact: components["schemas"]["SurfacesArtifact"];
+        SubnetSurfacesArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            name?: string;
+            netuid: number;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            slug?: string;
+            surfaces: components["schemas"]["Surface"][];
+        } & {
+            [key: string]: unknown;
+        };
         SubnetTrajectoryArtifact: {
             deltas: {
                 [key: string]: {
@@ -8457,11 +8539,16 @@ export interface components {
         });
         /** @enum {string} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
-        SurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
+        SurfacesArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             surfaces: components["schemas"]["Surface"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         TopHoldersArtifact: {
             account_count: number;
             accounts: {
@@ -8484,7 +8571,21 @@ export interface components {
         };
         UptimeArtifact: {
             netuid: number;
-            reliability?: components["schemas"]["ReliabilityScore"] | null;
+            reliability: ({
+                avg_latency_ms: number | null;
+                computed_at?: string | null;
+                day_count?: number;
+                /** @enum {string} */
+                grade: "A" | "B" | "C" | "D" | "F";
+                latency_sample_count: number;
+                sample_count: number;
+                score: number;
+                surface_count?: number;
+                uptime_ratio: number | null;
+                window?: string | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             schema_version: number;
             source: string;
             surfaces: ({
@@ -8506,7 +8607,21 @@ export interface components {
                 } & {
                     [key: string]: unknown;
                 })[];
-                reliability?: components["schemas"]["ReliabilityScore"] | null;
+                reliability?: ({
+                    avg_latency_ms: number | null;
+                    computed_at?: string | null;
+                    day_count?: number;
+                    /** @enum {string} */
+                    grade: "A" | "B" | "C" | "D" | "F";
+                    latency_sample_count: number;
+                    sample_count: number;
+                    score: number;
+                    surface_count?: number;
+                    uptime_ratio: number | null;
+                    window?: string | null;
+                } & {
+                    [key: string]: unknown;
+                }) | null;
                 samples: number;
                 surface_id: string;
                 uptime_ratio: number | null;
@@ -18648,6 +18763,7 @@ export interface operations {
                      *         ],
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
+                     *         "source": "endpoint-resource-probes",
                      *         "summary": {
                      *           "active_count": 1,
                      *           "by_kind": {},
@@ -18830,7 +18946,8 @@ export interface operations {
                      *             "provider": "example-provider"
                      *           }
                      *         ],
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "source": "endpoint-resource-probes"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -18982,8 +19099,11 @@ export interface operations {
                      *           }
                      *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
                      *         "summary": {
                      *           "by_kind": {},
                      *           "by_layer": {},
@@ -19121,7 +19241,13 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "summary": {
+                     *           "candidate_claim_count": 1,
+                     *           "claim_count": 1,
+                     *           "subnet_claim_count": 1,
+                     *           "surface_claim_count": 1
+                     *         }
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -20377,11 +20503,17 @@ export interface operations {
                      *         "surfaces": [
                      *           {
                      *             "classification": "live",
+                     *             "error_class": "example",
                      *             "kind": "archive",
+                     *             "last_checked": "2026-06-01T00:00:00.000Z",
+                     *             "last_ok": "2026-06-01T00:00:00.000Z",
+                     *             "latency_ms": 120,
                      *             "netuid": 7,
                      *             "provider": "example-provider",
                      *             "status": "ok",
-                     *             "surface_id": "example"
+                     *             "status_code": 1,
+                     *             "surface_id": "example",
+                     *             "verified_at": "2026-06-01T00:00:00.000Z"
                      *           }
                      *         ]
                      *       },
@@ -20627,11 +20759,13 @@ export interface operations {
                      *         },
                      *         "surfaces": [
                      *           {
+                     *             "downtime_ms": 1,
                      *             "incident_count": 1,
                      *             "incidents": [
                      *               {
                      *                 "duration_ms": 1,
                      *                 "ended_at": 1,
+                     *                 "failed_samples": 1,
                      *                 "started_at": 1
                      *               }
                      *             ],
@@ -23445,7 +23579,8 @@ export interface operations {
                      *             "provider": "example-provider"
                      *           }
                      *         ],
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "source": "endpoint-resource-probes"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -25123,8 +25258,11 @@ export interface operations {
                      *         ],
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
                      *         "notes": "Example description.",
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -25795,9 +25933,11 @@ export interface operations {
                      *           }
                      *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "name": "Example Subnet",
                      *         "netuid": 7,
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "slug": "example-subnet",
                      *         "summary": {
@@ -26209,8 +26349,11 @@ export interface operations {
                      *         ],
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
                      *         "notes": "Example description.",
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "slug": "example-subnet"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -26562,8 +26705,10 @@ export interface operations {
                      *         },
                      *         "surfaces": [
                      *           {
-                     *             "classification": "live",
+                     *             "kind": "archive",
                      *             "netuid": 7,
+                     *             "observed_by": "live-cron-prober",
+                     *             "provider": "example-provider",
                      *             "status": "ok",
                      *             "surface_id": "example",
                      *             "url": "https://api.metagraph.sh/example"
@@ -26801,7 +26946,14 @@ export interface operations {
                      *         "source": "live-cron-prober",
                      *         "surfaces": [
                      *           {
-                     *             "latency_ms": {},
+                     *             "latency_ms": {
+                     *               "avg": 1,
+                     *               "max": 1,
+                     *               "min": 1,
+                     *               "p50": 1,
+                     *               "p95": 1,
+                     *               "p99": 1
+                     *             },
                      *             "samples": 1,
                      *             "surface_id": "example"
                      *           }
@@ -26918,7 +27070,11 @@ export interface operations {
                      *             "surfaces": [
                      *               {
                      *                 "avg_latency_ms": 120,
-                     *                 "latency_ms": {},
+                     *                 "latency_ms": {
+                     *                   "p50": 1,
+                     *                   "p95": 1,
+                     *                   "p99": 1
+                     *                 },
                      *                 "latency_sample_count": 120,
                      *                 "samples": 1,
                      *                 "surface_id": "example",
@@ -30302,8 +30458,11 @@ export interface operations {
                      *       "data": {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
+                     *         "slug": "example-subnet",
                      *         "surfaces": [
                      *           {
                      *             "auth_required": true,

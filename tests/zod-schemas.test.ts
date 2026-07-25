@@ -317,17 +317,52 @@ import {
   summarizeArtifactBudgets,
 } from "../scripts/artifact-budgets.ts";
 import { publishedAt } from "../scripts/lib.ts";
-import { mergeFreshness, formatRpcUsage } from "../src/health-serving.ts";
+import {
+  mergeFreshness,
+  formatRpcUsage,
+  overlaySubnetHealth,
+  formatBulkTrends,
+  formatGlobalIncidents,
+  formatIncidents,
+  formatPercentiles,
+  formatTrends,
+  formatUptime,
+} from "../src/health-serving.ts";
 import {
   buildEndpointResourceArtifact,
   buildRpcEndpointArtifact,
   buildEndpointPoolArtifact,
+  buildEndpointIncidentArtifact,
 } from "../scripts/lib/endpoint-artifacts.ts";
 import {
   subnetIntegrationReadiness,
   buildAgentReadiness,
 } from "../scripts/lib/build-readiness.ts";
 import { listToolDefinitions } from "../src/mcp-server.ts";
+import {
+  HealthHistoryArtifactSchema,
+  BulkHealthTrendsArtifactSchema,
+  GlobalIncidentsArtifactSchema,
+  HealthSubnetArtifactSchema,
+  HealthIncidentsArtifactSchema,
+  HealthPercentilesArtifactSchema,
+  HealthTrendsArtifactSchema,
+  UptimeArtifactSchema,
+} from "../schemas-src/routes/health-surfaces.ts";
+import {
+  SurfacesArtifactSchema,
+  SubnetSurfacesArtifactSchema,
+  EndpointsArtifactSchema,
+  SubnetEndpointsArtifactSchema,
+  EndpointIncidentsArtifactSchema,
+  EndpointPoolsArtifactSchema,
+} from "../schemas-src/routes/endpoints-pools.ts";
+import {
+  CandidatesArtifactSchema,
+  SubnetCandidatesArtifactSchema,
+  EvidenceLedgerArtifactSchema,
+  SubnetEvidenceArtifactSchema,
+} from "../schemas-src/routes/candidates-evidence.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -3809,6 +3844,649 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
   });
   test("agent-resources: AgentResourcesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = AgentResourcesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+});
+
+// Batch 9 (#8063) -- health/surfaces/endpoints/candidates/evidence routes.
+// D1 is fully retired; 6 of these 8 health-* routes are proxied to the
+// DATA_API service Worker (same pattern as batch 2's DATA_API-proxied block
+// above) -- driven directly against the real format*() functions in
+// src/health-serving.ts with Postgres-row-shaped fixtures. health-history
+// and endpoint-incidents/endpoint-pools have no isolated exported per-
+// request builder (buildHealthHistoryArtifact is duplicated, unexported, in
+// scripts/build-artifacts.ts and scripts/probes-smoke.ts; candidates/
+// evidence are assembled inline in scripts/build-artifacts.ts with no
+// wrapping function at all, same as batch 8's Lineage precedent) -- those
+// cases use hand-composed fixtures that mirror the real transformation/
+// sample shapes exactly (candidates/evidence fixtures are drawn from real
+// captured production responses, api.metagraph.sh, 2026-07-25).
+const GENERATED_AT_9 = "2026-07-25T00:00:00.000Z";
+const CONTRACT_9 = "2026-07-03.2";
+
+describe("batch 9 (#8063) route artifact schemas parse real builder output", () => {
+  test("health-history: HealthHistoryArtifactSchema.parse(...) succeeds (hand-composed, matches buildHealthHistoryArtifact()'s field mapping)", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_9,
+      generated_at: GENERATED_AT_9,
+      date: "2026-07-24",
+      probe_started_at: "2026-07-24T06:00:00.000Z",
+      probe_finished_at: "2026-07-24T06:00:12.000Z",
+      source: "cron-prober",
+      summary: {
+        surface_count: 1,
+        status_counts: { ok: 1 },
+        classification_counts: { live: 1 },
+      },
+      surfaces: [
+        {
+          surface_id: "sn-7-example",
+          netuid: 7,
+          kind: "openapi",
+          provider: "allways",
+          status: "ok",
+          classification: "live",
+          latency_ms: 120,
+          status_code: 200,
+          last_checked: "2026-07-24T06:00:00.000Z",
+          last_ok: "2026-07-24T06:00:00.000Z",
+          verified_at: "2026-07-24T06:00:00.000Z",
+          error_class: null,
+        },
+      ],
+    };
+    const parsed = HealthHistoryArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("health-history: HealthHistoryArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = HealthHistoryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("health-trends-bulk: BulkHealthTrendsArtifactSchema.parse(formatBulkTrends(...)) succeeds", () => {
+    const data = formatBulkTrends({
+      observedAt: "2026-06-11T00:00:00.000Z",
+      windowDays: { "7d": 7, "30d": 30 },
+      windows: {
+        "7d": [
+          {
+            netuid: 8,
+            date: "2026-06-10",
+            total: 4,
+            ok_count: 2,
+            avg_latency_ms: 10.2,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-11",
+            total: 10,
+            ok_count: 9,
+            avg_latency_ms: 50.4,
+          },
+          {
+            netuid: 7,
+            date: "2026-06-10",
+            total: 5,
+            ok_count: 5,
+            avg_latency_ms: 30,
+          },
+        ],
+        "30d": [],
+      },
+    });
+    const parsed = BulkHealthTrendsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("health-trends-bulk: BulkHealthTrendsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BulkHealthTrendsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("incidents: GlobalIncidentsArtifactSchema.parse(formatGlobalIncidents(...)) succeeds", () => {
+    const data = formatGlobalIncidents({
+      window: "30d",
+      observedAt: "2026-06-13T00:00:00.000Z",
+      maxIncidents: 1000,
+      incidentRows: [
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 1000,
+          ended_at: 5000,
+          failed_samples: 3,
+        },
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 20000,
+          ended_at: 26000,
+          failed_samples: 2,
+        },
+        {
+          netuid: 23,
+          surface_id: "b",
+          started_at: 8000,
+          ended_at: 9000,
+          failed_samples: 1,
+        },
+      ],
+    });
+    const parsed = GlobalIncidentsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("incidents: GlobalIncidentsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = GlobalIncidentsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-health: HealthSubnetArtifactSchema.parse(overlaySubnetHealth(...)) succeeds (warm live snapshot)", () => {
+    const data = overlaySubnetHealth(
+      null,
+      {
+        last_run_at: "2026-06-11T00:00:00.000Z",
+        surfaces: [
+          {
+            surface_id: "sn7-api",
+            netuid: 7,
+            kind: "subnet-api",
+            provider: "allways",
+            url: "https://api.all-ways.io",
+            status: "ok",
+            classification: "live",
+            latency_ms: 50,
+            last_checked: "2026-06-11T00:00:00.000Z",
+            last_ok: "2026-06-11T00:00:00.000Z",
+          },
+        ],
+      },
+      7,
+    );
+    const parsed = HealthSubnetArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.equal(parsed.surfaces[0].observed_by, "live-cron-prober");
+  });
+  test("subnet-health: HealthSubnetArtifactSchema.parse(unknownSubnetHealth(...)-shaped) succeeds (cold store)", () => {
+    // unknownSubnetHealth() (workers/api.ts) is the real cold-store fallback
+    // -- not exported, but a trivial fixed literal (no branching), hand-typed
+    // here to match it exactly.
+    const data = {
+      schema_version: 1,
+      netuid: 7,
+      summary: {
+        status: "unknown",
+        surface_count: 0,
+        ok_count: 0,
+        degraded_count: 0,
+        failed_count: 0,
+        unknown_count: 0,
+        last_checked: null,
+        last_ok: null,
+        avg_latency_ms: null,
+      },
+      operational_observed_at: null,
+      health_source: "unavailable",
+      surfaces: [],
+    };
+    const parsed = HealthSubnetArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-health: HealthSubnetArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = HealthSubnetArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-health-incidents: HealthIncidentsArtifactSchema.parse(formatIncidents(...)) succeeds", () => {
+    const data = formatIncidents({
+      netuid: 7,
+      window: "7d",
+      observedAt: null,
+      slaRows: [{ surface_id: "x", total: 100, ok_count: 96 }],
+      incidentRows: [
+        {
+          surface_id: "x",
+          started_at: 1_000_000_000_000,
+          ended_at: 1_000_000_240_000,
+          failed_samples: 3,
+        },
+        {
+          surface_id: "x",
+          started_at: 1_000_000_720_000,
+          ended_at: 1_000_000_840_000,
+          failed_samples: 2,
+        },
+      ],
+    });
+    const parsed = HealthIncidentsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-health-incidents: HealthIncidentsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = HealthIncidentsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-health-percentiles: HealthPercentilesArtifactSchema.parse(formatPercentiles(...)) succeeds", () => {
+    const data = formatPercentiles({
+      netuid: 7,
+      window: "7d",
+      observedAt: "2026-06-10T00:00:00Z",
+      rows: [
+        {
+          surface_id: "b",
+          samples: 100,
+          p50: 120.4,
+          p95: 410.9,
+          p99: 800,
+          avg_latency_ms: 150.6,
+          min_latency_ms: 40,
+          max_latency_ms: 900,
+        },
+        {
+          surface_id: "a",
+          samples: 50,
+          p50: 90,
+          p95: 200,
+          p99: null,
+          avg_latency_ms: 110,
+          min_latency_ms: 30,
+          max_latency_ms: 500,
+        },
+      ],
+    });
+    const parsed = HealthPercentilesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-health-percentiles: HealthPercentilesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = HealthPercentilesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-health-trends: HealthTrendsArtifactSchema.parse(formatTrends(...)) succeeds", () => {
+    const data = formatTrends({
+      netuid: 7,
+      observedAt: "2026-06-11T00:00:00Z",
+      windows: {
+        "7d": [
+          {
+            surface_id: "a",
+            total: 100,
+            ok_count: 96,
+            latency_samples: 96,
+            avg_latency_ms: 50.4,
+            p50: 40.6,
+            p95: 410.2,
+            p99: 900,
+          },
+        ],
+        "30d": [
+          { surface_id: "a", total: 400, ok_count: 380, avg_latency_ms: 60.9 },
+        ],
+      },
+    });
+    const parsed = HealthTrendsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-health-trends: HealthTrendsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = HealthTrendsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-uptime: UptimeArtifactSchema.parse(formatUptime(...)) succeeds (with reliability)", () => {
+    const data = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "b",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 100,
+          uptime_ratio: 1,
+          avg_latency_ms: 50,
+          status: "ok",
+        },
+        {
+          surface_id: "a",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 90,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 70,
+          status: "degraded",
+        },
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          uptime_ratio: 0.8,
+          avg_latency_ms: 60,
+          status: "degraded",
+        },
+      ],
+    });
+    const parsed = UptimeArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.notEqual(parsed.reliability, null);
+  });
+  test("subnet-uptime: UptimeArtifactSchema.parse(formatUptime(...)) succeeds (empty rows, null reliability)", () => {
+    const data = formatUptime({ netuid: 7, window: "1y", rows: [] });
+    const parsed = UptimeArtifactSchema.parse(data);
+    assert.equal(parsed.reliability, null);
+    assert.deepEqual(parsed.surfaces, []);
+  });
+  test("subnet-uptime: UptimeArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = UptimeArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // surfaces/subnet-surfaces: no isolated builder (surfaces[] is a plain
+  // Map.get() slice of the same top-level array the pilot's
+  // SubnetDetailArtifact.surfaces[] already validates) -- hand-composed
+  // fixture matching SurfaceSchema exactly.
+  const SAMPLE_SURFACE_9 = {
+    auth_required: false,
+    authority: "official",
+    id: "sn-7-example-api",
+    kind: "subnet-api",
+    netuid: 7,
+    provider: "allways",
+    public_safe: true,
+    url: "https://api.all-ways.io",
+    status: "ok",
+  };
+
+  test("surfaces: SurfacesArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      generated_at: GENERATED_AT_9,
+      notes:
+        "Curated and verified public interface surfaces only. Native-only subnet stubs do not invent surfaces.",
+      surfaces: [SAMPLE_SURFACE_9],
+    };
+    const parsed = SurfacesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("surfaces: SurfacesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SurfacesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-surfaces: SubnetSurfacesArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_9,
+      generated_at: GENERATED_AT_9,
+      netuid: 7,
+      slug: "sn-7",
+      name: "Allways",
+      surfaces: [SAMPLE_SURFACE_9],
+    };
+    const parsed = SubnetSurfacesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-surfaces: SubnetSurfacesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SubnetSurfacesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // endpoints/subnet-endpoints/endpoint-incidents/endpoint-pools all chain
+  // off the same real buildEndpointResourceArtifact() output (one surface
+  // ok+archive-eligible, one degraded) -- exercising the real
+  // surface->endpoint->incident->pool pipeline end to end, not four
+  // independent hand-typed guesses.
+  const ENDPOINT_SURFACES_9 = [
+    {
+      id: "sn-1-example-rpc",
+      netuid: 1,
+      subnet_slug: "sn-1",
+      subnet_name: "Apex",
+      kind: "subtensor-rpc",
+      url: "https://rpc.example.com",
+      provider: "example",
+      authority: "official",
+      auth_required: false,
+      public_safe: true,
+      probe: { enabled: true, method: "POST", expect: "json" },
+    },
+    {
+      id: "sn-1-example-api",
+      netuid: 1,
+      subnet_slug: "sn-1",
+      subnet_name: "Apex",
+      kind: "subnet-api",
+      url: "https://api.example.com",
+      provider: "example",
+      authority: "official",
+      auth_required: false,
+      public_safe: true,
+      probe: { enabled: true, method: "GET", expect: "json" },
+    },
+  ];
+  const ENDPOINT_HEALTH_SURFACES_9 = [
+    {
+      surface_id: "sn-1-example-rpc",
+      status: "ok",
+      classification: "live",
+      latency_ms: 80,
+      verified_at: "2026-07-24T00:00:00Z",
+      archive_support: true,
+      latest_block: 8600000,
+    },
+    {
+      surface_id: "sn-1-example-api",
+      status: "degraded",
+      classification: "transient",
+      latency_ms: 900,
+      verified_at: "2026-07-24T00:00:00Z",
+      error: "slow response",
+    },
+  ];
+
+  function buildSampleEndpointArtifact9() {
+    return buildEndpointResourceArtifact({
+      surfaces: ENDPOINT_SURFACES_9,
+      healthSurfaces: ENDPOINT_HEALTH_SURFACES_9,
+      generatedAt: GENERATED_AT_9,
+      contractVersion: CONTRACT_9,
+      source: "artifact-build",
+    });
+  }
+
+  test("endpoints: EndpointsArtifactSchema.parse(buildEndpointResourceArtifact(...)) succeeds", () => {
+    const data = buildSampleEndpointArtifact9();
+    const parsed = EndpointsArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.equal(parsed.endpoints.length, 2);
+  });
+  test("endpoints: EndpointsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = EndpointsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-endpoints: SubnetEndpointsArtifactSchema.parse(...) succeeds", () => {
+    const endpointArtifact = buildSampleEndpointArtifact9();
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_9,
+      generated_at: GENERATED_AT_9,
+      netuid: 1,
+      slug: "sn-1",
+      name: "Apex",
+      summary: endpointArtifact.summary,
+      endpoints: endpointArtifact.endpoints,
+    };
+    const parsed = SubnetEndpointsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-endpoints: SubnetEndpointsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SubnetEndpointsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("endpoint-incidents: EndpointIncidentsArtifactSchema.parse(buildEndpointIncidentArtifact(...)) succeeds", () => {
+    const endpointArtifact = buildSampleEndpointArtifact9();
+    const data = buildEndpointIncidentArtifact({
+      endpointArtifact,
+      generatedAt: GENERATED_AT_9,
+      contractVersion: CONTRACT_9,
+    });
+    const parsed = EndpointIncidentsArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.equal(parsed.incidents.length, 1);
+    assert.equal(parsed.incidents[0].severity, "warning");
+  });
+  test("endpoint-incidents: EndpointIncidentsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = EndpointIncidentsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("endpoint-pools: EndpointPoolsArtifactSchema.parse(buildEndpointPoolArtifact(...)) succeeds", () => {
+    const endpointArtifact = buildSampleEndpointArtifact9();
+    const data = buildEndpointPoolArtifact({
+      generatedAt: GENERATED_AT_9,
+      contractVersion: CONTRACT_9,
+      endpointArtifact,
+    });
+    const parsed = EndpointPoolsArtifactSchema.parse(data);
+    assert.ok(parsed);
+    assert.equal(parsed.source, "endpoint-resource-probes");
+  });
+  test("endpoint-pools: EndpointPoolsArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = EndpointPoolsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  // candidates/subnet-candidates/evidence/subnet-evidence: assembled inline
+  // in scripts/build-artifacts.ts with no wrapping function (candidates) or
+  // an unexported one (buildEvidenceLedger) -- fixtures below are drawn
+  // from real captured production responses (api.metagraph.sh, 2026-07-25),
+  // not hand-typed guesses.
+  const SAMPLE_CANDIDATE_9 = {
+    auth_required: false,
+    confidence: "medium",
+    confirmed_by: ["backprop.finance"],
+    id: "sn-0-backprop-dashboard",
+    kind: "dashboard",
+    name: "root Backprop Finance dashboard",
+    netuid: 0,
+    provider: "backprop-finance",
+    public_safe: true,
+    rate_limit_notes:
+      "Candidate only; no recurring probe is configured until maintainer review.",
+    review_notes:
+      "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+    schema_version: 1,
+    source_tier: "third-party-index",
+    source_type: "backprop-dashboard",
+    source_url: "https://backprop.finance/dtao/subnets/0-root",
+    source_urls: ["https://backprop.finance/dtao/subnets/0-root"],
+    state: "schema-valid",
+    subnet_name: "root",
+    superseded_by: "sn-0-backprop-dashboard",
+    url: "https://backprop.finance/dtao/subnets/0-root",
+    verification: null,
+  };
+
+  test("candidates: CandidatesArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      generated_at: GENERATED_AT_9,
+      notes:
+        "Unverified candidate surfaces from public source discovery and community intake. Candidates are not verified registry surfaces.",
+      candidates: [SAMPLE_CANDIDATE_9],
+    };
+    const parsed = CandidatesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("candidates: CandidatesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = CandidatesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-candidates: SubnetCandidatesArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_9,
+      generated_at: GENERATED_AT_9,
+      netuid: 0,
+      slug: "sn-0",
+      name: "root",
+      candidates: [SAMPLE_CANDIDATE_9],
+    };
+    const parsed = SubnetCandidatesArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-candidates: SubnetCandidatesArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SubnetCandidatesArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  const SAMPLE_CLAIMS_9 = [
+    {
+      claim: "SN0 is an active root netuid on Finney.",
+      confidence: "high",
+      limits:
+        "Native chain state is canonical for active existence only; off-chain interfaces come from overlays and candidates.",
+      source_tier: "native-chain",
+      source_type: "bittensor-sdk",
+      source_url: "registry/native/finney-subnets.json",
+      subject: "subnet:0",
+      support_summary: "Captured from native snapshot at block 8404076.",
+      verified_at: "2026-06-14T09:03:28Z",
+    },
+    {
+      claim: "Allways API health is a public subnet-api surface for SN7.",
+      confidence: "medium",
+      limits:
+        "Surface was recorded as public-safe; availability is tracked by health probes.",
+      source_tier: "community-docs",
+      source_type: "provider-claimed",
+      source_url: "https://api.all-ways.io/health",
+      subject: "surface:allways-api-health",
+      support_summary: "Listed in curated overlay for allways.",
+      verified_at: null,
+    },
+  ];
+
+  test("evidence: EvidenceLedgerArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_9,
+      generated_at: GENERATED_AT_9,
+      notes:
+        "Evidence ledger uses public source URLs and generated registry provenance only. Candidate entries are capped to keep the public artifact compact.",
+      summary: {
+        candidate_claim_count: 0,
+        claim_count: SAMPLE_CLAIMS_9.length,
+        subnet_claim_count: 1,
+        surface_claim_count: 1,
+      },
+      claims: SAMPLE_CLAIMS_9,
+    };
+    const parsed = EvidenceLedgerArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("evidence: EvidenceLedgerArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = EvidenceLedgerArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("subnet-evidence: SubnetEvidenceArtifactSchema.parse(...) succeeds", () => {
+    const data = {
+      schema_version: 1,
+      contract_version: CONTRACT_9,
+      generated_at: GENERATED_AT_9,
+      netuid: 7,
+      slug: "sn-7",
+      name: "Allways",
+      claims: [SAMPLE_CLAIMS_9[1]],
+    };
+    const parsed = SubnetEvidenceArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("subnet-evidence: SubnetEvidenceArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = SubnetEvidenceArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
 });

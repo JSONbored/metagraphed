@@ -81,7 +81,12 @@ export const ProviderSchema = z
   })
   .strict();
 
-const EndpointSummarySchema = z
+// Exported (batch 9, #8063): field-for-field identical to the hand-edited
+// EndpointSummary component that EndpointsArtifact/SubnetEndpointsArtifact
+// (schemas-src/routes/endpoints-pools.ts) also $ref -- reused by import
+// there rather than redefined, same free-upgrade pattern this file's own
+// header describes for EndpointResource/Surface.
+export const EndpointSummarySchema = z
   .object({
     endpoint_count: z.int().min(0),
     monitored_count: z.int().min(0),
@@ -214,7 +219,12 @@ export const RpcPoolSchema = z
   })
   .strict();
 
-const EndpointProviderScoreSchema = z
+// Exported (batch 9, #8063): field-for-field identical to the shape
+// endpointProviderScores() (scripts/lib/endpoint-artifacts.ts) produces for
+// EndpointPoolsArtifact.provider_scores[] too (same function builds both
+// artifacts) -- reused by import there, same treatment as EndpointSummary
+// above.
+export const EndpointProviderScoreSchema = z
   .object({
     provider: z.string(),
     endpoint_count: z.int().min(0),
@@ -229,6 +239,14 @@ const EndpointProviderScoreSchema = z
   .strict();
 
 export const RpcPoolsArtifactSchema = ArtifactBaseSchema.extend({
+  // Bucket (b), found while re-reading this function for batch 9 (#8063)'s
+  // EndpointPoolsArtifact reuse: buildEndpointPoolArtifact() always sets
+  // `source` (either literal, never omitted) -- this batch's own schema
+  // never declared it. Purely additive (ArtifactBase is .passthrough(), so
+  // this was already tolerated, just undocumented).
+  source: z
+    .enum(["endpoint-resource-probes", "rpc-endpoint-probes"])
+    .optional(),
   disabled_proxy_contract: z
     .object({
       enabled: z.boolean().optional(),
