@@ -464,6 +464,50 @@ import {
   GetChainTransferPairsInputSchema,
   GetChainTransferPairsOutputSchema,
 } from "../schemas-src/mcp-tools/chain-transfers.ts";
+import {
+  ListSubnetApisInputSchema,
+  ListSubnetApisOutputSchema,
+  GetApiSchemaInputSchema,
+  GetApiSchemaOutputSchema,
+  GetFixtureInputSchema,
+  GetFixtureOutputSchema,
+  GetProviderDetailInputSchema,
+  GetProviderDetailOutputSchema,
+} from "../schemas-src/mcp-tools/catalog-detail.ts";
+import {
+  ListEndpointsInputSchema,
+  ListEndpointsOutputSchema,
+  GetSubnetEndpointsInputSchema,
+  GetSubnetEndpointsOutputSchema,
+} from "../schemas-src/mcp-tools/endpoints-catalog.ts";
+import {
+  ListProvidersInputSchema,
+  ListProvidersOutputSchema,
+  ListSurfacesInputSchema,
+  ListSurfacesOutputSchema,
+  ListCandidatesInputSchema,
+  ListCandidatesOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
+import {
+  ListEvidenceInputSchema,
+  ListEvidenceOutputSchema,
+  ListRpcEndpointsInputSchema,
+  ListRpcEndpointsOutputSchema,
+  ListRpcPoolsInputSchema,
+  ListRpcPoolsOutputSchema,
+  ListSourceSnapshotsInputSchema,
+  ListSourceSnapshotsOutputSchema,
+  ListProfileCompletenessInputSchema,
+  ListProfileCompletenessOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
+import {
+  ListSubnetEndpointsInputSchema,
+  ListSubnetEndpointsOutputSchema,
+  ListSubnetSurfacesInputSchema,
+  ListSubnetSurfacesOutputSchema,
+  ListSubnetHealthInputSchema,
+  ListSubnetHealthOutputSchema,
+} from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
 
 type Row = Record<string, unknown>;
 
@@ -734,6 +778,99 @@ const DISTRIBUTION_STATS = {
     max: { type: "number" },
   },
 };
+
+// Batch 9 (#8073) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/contracts.ts's QUERY_ENUMS.* and
+// API_QUERY_COLLECTIONS.{providers,curated-surfaces,candidates,claims,
+// rpc-pools,sources,profile-completeness}.sort_fields), cross-checked
+// against the actual runtime source at the time of writing. Reuses
+// SURFACE_KIND/HEALTH_STATUS/HEALTH_CLASSIFICATION/HEALTH_SURFACE_SORT_FIELDS/
+// PROFILE_LEVEL already defined above (batches 2-4) -- confirmed identical to
+// this batch's own QUERY_ENUMS.surfaceKind/healthStatus/healthClassification/
+// API_QUERY_COLLECTIONS["health-surfaces"].sort_fields/QUERY_ENUMS.profileLevel
+// values, not just reused by name.
+const PROVIDER_KINDS = [
+  "data-provider",
+  "docs-provider",
+  "infrastructure-provider",
+  "registry",
+  "subnet-team",
+];
+const PROVIDER_AUTHORITIES = [
+  "community",
+  "official",
+  "provider-claimed",
+  "registry-observed",
+];
+const PROVIDER_SORT_FIELDS = ["authority", "id", "kind", "name"];
+const SURFACE_SORT_FIELDS = ["id", "kind", "name", "netuid", "provider"];
+const CANDIDATE_STATES = [
+  "schema-invalid",
+  "schema-valid",
+  "maintainer-review",
+  "verified",
+  "stale",
+  "rejected",
+];
+const CONFIDENCE_LEVELS = ["low", "medium", "high"];
+const CANDIDATES_SORT_FIELDS = [
+  "confidence",
+  "id",
+  "kind",
+  "name",
+  "netuid",
+  "provider",
+  "state",
+];
+const CLAIM_SORT_FIELDS = ["claim", "source_url", "subject", "verified_at"];
+const ENDPOINT_LAYERS = [
+  "bittensor-base",
+  "data-provider",
+  "docs-provider",
+  "subnet-app",
+];
+const ENDPOINT_PUBLICATION_STATES = [
+  "candidate",
+  "verified",
+  "monitored",
+  "pool-eligible",
+  "disabled",
+  "rejected",
+];
+const ENDPOINT_SORT_FIELDS = [
+  "kind",
+  "last_checked",
+  "latency_ms",
+  "layer",
+  "netuid",
+  "pool_eligible",
+  "provider",
+  "publication_state",
+  "score",
+  "status",
+];
+const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"];
+const POOL_SORT_FIELDS = ["eligible_count", "endpoint_count", "id", "kind"];
+const SOURCE_SORT_FIELDS = ["id", "kind", "path", "record_count"];
+const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"];
+const NATIVE_NAME_QUALITIES = ["chain", "placeholder", "empty"];
+const PROFILE_SORT_FIELDS = [
+  "candidate_count",
+  "completeness_score",
+  "identity_level",
+  "identity_promotion_kind_count",
+  "identity_surface_count",
+  "live_identity_candidate_kind_count",
+  "missing_critical_count",
+  "name",
+  "native_identity_signal_count",
+  "native_name_quality",
+  "netuid",
+  "priority_score",
+  "profile_level",
+  "stale_identity_candidate_kind_count",
+];
+const BOOLEAN_STRINGS = ["true", "false"];
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -5805,6 +5942,582 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  list_subnet_apis: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "service_count", "services"],
+      properties: {
+        netuid: { type: "integer" },
+        service_count: { type: "integer" },
+        services: { type: "array", items: { type: "object" } },
+        operational_observed_at: NULLABLE_STRING,
+        health_source: NULLABLE_STRING,
+      },
+    },
+  },
+  get_api_schema: {
+    input: {
+      type: "object",
+      properties: {
+        surface_id: { type: "string" },
+      },
+      required: ["surface_id"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surface_id"],
+      properties: {
+        surface_id: { type: "string" },
+        kind: NULLABLE_STRING,
+        base_url: NULLABLE_STRING,
+        auth_required: { type: ["boolean", "null"] },
+        auth_schemes: { type: "array" },
+        drift_status: NULLABLE_STRING,
+        document: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_fixture: {
+    input: {
+      type: "object",
+      properties: {
+        surface_id: { type: "string" },
+      },
+      required: ["surface_id"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surface_id"],
+      properties: { surface_id: { type: "string" } },
+    },
+  },
+  get_provider_detail: {
+    input: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        include_endpoints: { type: "boolean" },
+      },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        id: NULLABLE_STRING,
+        slug: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        authority: NULLABLE_STRING,
+        kind: NULLABLE_STRING,
+        provider: { type: ["object", "null"] },
+        endpoints: { type: ["object", "array", "null"] },
+      },
+    },
+  },
+  list_providers: {
+    input: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        kind: { type: "string", enum: PROVIDER_KINDS },
+        authority: { type: "string", enum: PROVIDER_AUTHORITIES },
+        sort: { type: "string", enum: PROVIDER_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["providers"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+        providers: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_surfaces: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        id: { type: "string" },
+        sort: { type: "string", enum: SURFACE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surfaces"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+        surfaces: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_candidates: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        state: { type: "string", enum: CANDIDATE_STATES },
+        id: { type: "string" },
+        confidence: { type: "string", enum: CONFIDENCE_LEVELS },
+        sort: { type: "string", enum: CANDIDATES_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["candidates"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        schema_version: { type: ["string", "integer", "null"] },
+        candidates: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_endpoints: {
+    input: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: SURFACE_KIND },
+        layer: { type: "string", enum: ENDPOINT_LAYERS },
+        netuid: { type: "integer", minimum: 0 },
+        provider: { type: "string" },
+        publication_state: {
+          type: "string",
+          enum: ENDPOINT_PUBLICATION_STATES,
+        },
+        status: { type: "string", enum: HEALTH_STATUS },
+        pool_eligible: { type: "boolean" },
+        min_latency_ms: { type: "number" },
+        max_latency_ms: { type: "number" },
+        min_score: { type: "number" },
+        max_score: { type: "number" },
+        sort: { type: "string", enum: ENDPOINT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        endpoints: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        cursor: { type: "integer" },
+        limit: { type: "integer" },
+        next_cursor: { type: ["integer", "null"] },
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+      },
+    },
+  },
+  list_evidence: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        sort: { type: "string", enum: CLAIM_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["claims"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+        summary: { type: ["object", "null"] },
+        claims: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_rpc_endpoints: {
+    input: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: SURFACE_KIND },
+        layer: { type: "string", enum: ENDPOINT_LAYERS },
+        netuid: { type: "integer", minimum: 0 },
+        provider: { type: "string" },
+        publication_state: {
+          type: "string",
+          enum: ENDPOINT_PUBLICATION_STATES,
+        },
+        status: { type: "string", enum: HEALTH_STATUS },
+        pool_eligible: { type: "boolean" },
+        min_latency_ms: { type: "number" },
+        max_latency_ms: { type: "number" },
+        min_score: { type: "number" },
+        max_score: { type: "number" },
+        sort: { type: "string", enum: ENDPOINT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: {
+          oneOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" } },
+          ],
+        },
+        limit: { type: "integer", minimum: 1 },
+        cursor: {
+          oneOf: [{ type: "integer", minimum: 0 }, { type: "string" }],
+        },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["endpoints"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        schema_version: NULLABLE_INT,
+        summary: { type: ["object", "null"] },
+        source: NULLABLE_STRING,
+        operational_observed_at: NULLABLE_STRING,
+        endpoints: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_source_snapshots: {
+    input: {
+      type: "object",
+      properties: {
+        q: { type: "string" },
+        sort: { type: "string", enum: SOURCE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["sources"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+        summary: { type: ["object", "null"] },
+        sources: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_profile_completeness: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        profile_level: { type: "string", enum: PROFILE_LEVEL },
+        confidence: { type: "string", enum: CONFIDENCE_LEVELS },
+        identity_level: { type: "string", enum: IDENTITY_LEVELS },
+        identity_promotion_kinds: { type: "string", enum: SURFACE_KIND },
+        native_name_quality: { type: "string", enum: NATIVE_NAME_QUALITIES },
+        sort: { type: "string", enum: PROFILE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["profiles"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        summary: { type: ["object", "null"], additionalProperties: true },
+        profiles: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_rpc_pools: {
+    input: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        kind: { type: "string", enum: POOL_KINDS },
+        min_eligible_count: { type: "number" },
+        max_eligible_count: { type: "number" },
+        min_endpoint_count: { type: "number" },
+        max_endpoint_count: { type: "number" },
+        sort: { type: "string", enum: POOL_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["pools"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        notes: {
+          type: ["array", "string", "null"],
+          items: { type: "string" },
+        },
+        source: NULLABLE_STRING,
+        operational_observed_at: NULLABLE_STRING,
+        pools: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  get_subnet_endpoints: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [],
+      properties: {
+        netuid: { type: ["integer", "null"] },
+        endpoints: { type: "array", items: { type: "object" } },
+        generated_at: NULLABLE_STRING,
+        schema_version: { type: ["string", "integer", "null"] },
+      },
+    },
+  },
+  list_subnet_endpoints: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        layer: { type: "string", enum: ENDPOINT_LAYERS },
+        provider: { type: "string" },
+        publication_state: {
+          type: "string",
+          enum: ENDPOINT_PUBLICATION_STATES,
+        },
+        status: { type: "string", enum: HEALTH_STATUS },
+        pool_eligible: { type: "string", enum: BOOLEAN_STRINGS },
+        min_latency_ms: { type: "number" },
+        max_latency_ms: { type: "number" },
+        min_score: { type: "number" },
+        max_score: { type: "number" },
+        sort: { type: "string", enum: ENDPOINT_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        fields: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["endpoints"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        endpoints: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_subnet_surfaces: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        id: { type: "string" },
+        sort: { type: "string", enum: SURFACE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surfaces"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        surfaces: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_subnet_health: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        kind: { type: "string", enum: SURFACE_KIND },
+        provider: { type: "string" },
+        status: { type: "string", enum: HEALTH_STATUS },
+        classification: { type: "string", enum: HEALTH_CLASSIFICATION },
+        sort: { type: "string", enum: HEALTH_SURFACE_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["surfaces"],
+      properties: {
+        generated_at: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        surfaces: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -6365,6 +7078,74 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
     input: GetNetworkActivityInputSchema,
     output: GetNetworkActivityOutputSchema,
   },
+  list_subnet_apis: {
+    input: ListSubnetApisInputSchema,
+    output: ListSubnetApisOutputSchema,
+  },
+  get_api_schema: {
+    input: GetApiSchemaInputSchema,
+    output: GetApiSchemaOutputSchema,
+  },
+  get_fixture: {
+    input: GetFixtureInputSchema,
+    output: GetFixtureOutputSchema,
+  },
+  get_provider_detail: {
+    input: GetProviderDetailInputSchema,
+    output: GetProviderDetailOutputSchema,
+  },
+  list_providers: {
+    input: ListProvidersInputSchema,
+    output: ListProvidersOutputSchema,
+  },
+  list_surfaces: {
+    input: ListSurfacesInputSchema,
+    output: ListSurfacesOutputSchema,
+  },
+  list_candidates: {
+    input: ListCandidatesInputSchema,
+    output: ListCandidatesOutputSchema,
+  },
+  list_endpoints: {
+    input: ListEndpointsInputSchema,
+    output: ListEndpointsOutputSchema,
+  },
+  list_evidence: {
+    input: ListEvidenceInputSchema,
+    output: ListEvidenceOutputSchema,
+  },
+  list_rpc_endpoints: {
+    input: ListRpcEndpointsInputSchema,
+    output: ListRpcEndpointsOutputSchema,
+  },
+  list_source_snapshots: {
+    input: ListSourceSnapshotsInputSchema,
+    output: ListSourceSnapshotsOutputSchema,
+  },
+  list_profile_completeness: {
+    input: ListProfileCompletenessInputSchema,
+    output: ListProfileCompletenessOutputSchema,
+  },
+  list_rpc_pools: {
+    input: ListRpcPoolsInputSchema,
+    output: ListRpcPoolsOutputSchema,
+  },
+  get_subnet_endpoints: {
+    input: GetSubnetEndpointsInputSchema,
+    output: GetSubnetEndpointsOutputSchema,
+  },
+  list_subnet_endpoints: {
+    input: ListSubnetEndpointsInputSchema,
+    output: ListSubnetEndpointsOutputSchema,
+  },
+  list_subnet_surfaces: {
+    input: ListSubnetSurfacesInputSchema,
+    output: ListSubnetSurfacesOutputSchema,
+  },
+  list_subnet_health: {
+    input: ListSubnetHealthInputSchema,
+    output: ListSubnetHealthOutputSchema,
+  },
 };
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -6436,6 +7217,17 @@ function normalize(node: unknown, path: string): unknown {
     if (key === "$schema" || key === "$id") continue;
     if (key === "description") continue; // issue-sanctioned cosmetic (#7863's own wording)
 
+    // `oneOf` (hand-written, e.g. batch 9's list_rpc_endpoints fields/cursor
+    // params: string-or-array, integer-or-string) vs Zod's `anyOf` for the
+    // equivalent z.union([...]). For branches of distinct JSON Schema
+    // `type`s, the two keywords accept exactly the same values here -- a
+    // value can never simultaneously match two different-`type` branches --
+    // so treat the keyword itself as cosmetic rather than a real difference.
+    if (key === "oneOf") {
+      out.anyOf = normalize(value, `${path}.anyOf`);
+      continue;
+    }
+
     if (
       ACCEPTED_TIGHTENINGS.has(path) &&
       (key === "exclusiveMinimum" || key === "minimum")
@@ -6502,9 +7294,33 @@ function normalize(node: unknown, path: string): unknown {
     out[key] = normalize(value, key === "properties" ? path : `${path}.${key}`);
   }
 
-  if (Array.isArray(out.anyOf) && out.anyOf.length === 1) {
-    Object.assign(out, out.anyOf[0]);
-    delete out.anyOf;
+  if (Array.isArray(out.anyOf)) {
+    // Flatten a nested `anyOf: [{anyOf: [...]}, ...]` -- Zod's
+    // `z.union([A, B, ...]).nullable()` always produces this nested shape
+    // (the union's own anyOf, wrapped in an outer anyOf with the null
+    // branch), where the hand-written original instead declares one flat
+    // N-way `type: [...]` array (already rewritten to a single flat anyOf by
+    // the type-split rule above, e.g. batch 9's schema_version:
+    // {type:["string","integer","null"]} vs
+    // z.union([z.string(), z.int()]).nullable()). OR distributes over OR, so
+    // a nested and a flattened anyOf accept exactly the same values --
+    // splice a branch's own sub-list into the parent when that branch is
+    // NOTHING but an anyOf (no other sibling keys that would make inlining
+    // lossy), batch 9, #8073.
+    const flattened = (out.anyOf as unknown[]).flatMap((branch) =>
+      branch &&
+      typeof branch === "object" &&
+      !Array.isArray(branch) &&
+      Object.keys(branch as Row).length === 1 &&
+      Array.isArray((branch as Row).anyOf)
+        ? ((branch as Row).anyOf as unknown[])
+        : [branch],
+    );
+    out.anyOf = flattened;
+    if (flattened.length === 1) {
+      Object.assign(out, flattened[0]);
+      delete out.anyOf;
+    }
   }
 
   return sortKeys(out);

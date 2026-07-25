@@ -7,11 +7,16 @@
 // endpoint-pools-mcp.ts (the generalized sibling collection), which has no
 // live-overlay step of its own.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
 import { overlayRpcPoolEligibility } from "./health-serving.ts";
+import {
+  ListRpcPoolsInputSchema,
+  ListRpcPoolsOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 
@@ -248,86 +253,14 @@ export const LIST_RPC_POOLS_MCP_TOOL = {
     "list_rpc_endpoints (the individual endpoints), get_best_rpc_endpoint (the " +
     "pick-one shortcut), and list_endpoint_pools (the generalized sibling). " +
     "Mirrors GET /api/v1/rpc/pools.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Filter to one pool id, e.g. 'finney-rpc'.",
-      },
-      kind: {
-        type: "string",
-        enum: POOL_KINDS,
-        description: "Filter by pool kind.",
-      },
-      min_eligible_count: {
-        type: "number",
-        description: "Keep pools with eligible_count >= this bound.",
-      },
-      max_eligible_count: {
-        type: "number",
-        description: "Keep pools with eligible_count <= this bound.",
-      },
-      min_endpoint_count: {
-        type: "number",
-        description: "Keep pools with endpoint_count >= this bound.",
-      },
-      max_endpoint_count: {
-        type: "number",
-        description: "Keep pools with endpoint_count <= this bound.",
-      },
-      sort: {
-        type: "string",
-        enum: POOL_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description: "Comma-separated projection of pool row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListRpcPoolsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_RPC_POOLS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["pools"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    source: NULLABLE_STRING,
-    operational_observed_at: NULLABLE_STRING,
-    pools: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_RPC_POOLS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListRpcPoolsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

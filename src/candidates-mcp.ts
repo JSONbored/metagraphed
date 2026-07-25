@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/candidates.json artifact (mirrors gaps-mcp.ts for GET /api/v1/gaps).
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListCandidatesInputSchema,
+  ListCandidatesOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
 
 export const CANDIDATES_ARTIFACT = "/metagraph/candidates.json";
 
@@ -210,92 +215,14 @@ export const LIST_CANDIDATES_MCP_TOOL = {
     "Filter by netuid/kind/provider/state/id/confidence, sort with sort + order, " +
     "and page with limit (1-1000) / cursor — the full catalog can be large. " +
     "Mirrors GET /api/v1/candidates.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Subnet netuid.",
-        minimum: 0,
-      },
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Surface kind, e.g. 'openapi' or 'subnet-api'.",
-      },
-      provider: {
-        type: "string",
-        description: "Provider slug, e.g. 'datura'.",
-      },
-      state: {
-        type: "string",
-        enum: CANDIDATE_STATES,
-        description: "Review state, e.g. 'schema-valid' or 'verified'.",
-      },
-      id: {
-        type: "string",
-        description:
-          "Exact candidate surface id match (case-insensitive), e.g. 'sn-7-openapi'.",
-      },
-      confidence: {
-        type: "string",
-        enum: CONFIDENCE_LEVELS,
-        description: "Confidence level: low, medium, or high.",
-      },
-      sort: {
-        type: "string",
-        enum: CANDIDATES_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of candidate row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description:
-          "Max candidates to return (1-1000). Omit for the full filtered list.",
-        minimum: 1,
-        maximum: 1000,
-      },
-      cursor: {
-        type: "integer",
-        description:
-          "Pagination cursor from a prior response's next_cursor. Default 0.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListCandidatesInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_CANDIDATES_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["candidates"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    schema_version: { type: ["string", "integer", "null"] },
-    candidates: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_CANDIDATES_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListCandidatesOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

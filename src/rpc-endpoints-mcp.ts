@@ -8,11 +8,16 @@
 // mirrors provider-endpoints-mcp.ts (endpoints collection filters) and
 // rpc-pools-mcp.ts (live overlay before filter).
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
 import { mergeRpcEndpoints } from "./health-serving.ts";
+import {
+  ListRpcEndpointsInputSchema,
+  ListRpcEndpointsOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 
 export const RPC_ENDPOINTS_ARTIFACT = "/metagraph/rpc-endpoints.json";
 
@@ -309,126 +314,14 @@ export const LIST_RPC_ENDPOINTS_MCP_TOOL = {
     "with limit / cursor. This is the full-catalog view; use " +
     "get_best_rpc_endpoint instead to pick one live-healthy endpoint. " +
     "Mirrors GET /api/v1/rpc/endpoints.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      kind: {
-        type: "string",
-        enum: SURFACE_KINDS,
-        description: "Surface kind, e.g. 'subtensor-rpc' or 'subtensor-wss'.",
-      },
-      layer: {
-        type: "string",
-        enum: ENDPOINT_LAYERS,
-        description: "Endpoint layer, e.g. 'bittensor-base'.",
-      },
-      netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      provider: {
-        type: "string",
-        description: "Provider slug, e.g. 'opentensor'.",
-      },
-      publication_state: {
-        type: "string",
-        enum: PUBLICATION_STATES,
-        description: "Filter by publication state.",
-      },
-      status: {
-        type: "string",
-        enum: HEALTH_STATUSES,
-        description: "Filter by probe-derived health status.",
-      },
-      pool_eligible: {
-        type: "boolean",
-        description: "Only endpoints eligible (or not) for RPC pooling.",
-      },
-      min_latency_ms: {
-        type: "number",
-        description: "Keep endpoints with latency_ms >= this bound.",
-      },
-      max_latency_ms: {
-        type: "number",
-        description: "Keep endpoints with latency_ms <= this bound.",
-      },
-      min_score: {
-        type: "number",
-        description: "Keep endpoints with score >= this bound.",
-      },
-      max_score: {
-        type: "number",
-        description: "Keep endpoints with score <= this bound.",
-      },
-      sort: {
-        type: "string",
-        enum: ENDPOINT_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        oneOf: [
-          {
-            type: "string",
-            description:
-              "Comma-separated projection of endpoint row fields to return.",
-          },
-          {
-            type: "array",
-            items: { type: "string" },
-            description: "Field names to return.",
-          },
-        ],
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (clamped to REST parity).",
-        minimum: 1,
-      },
-      cursor: {
-        oneOf: [
-          {
-            type: "integer",
-            description:
-              "Pagination cursor from a prior response's next_cursor.",
-            minimum: 0,
-          },
-          {
-            type: "string",
-            description: "String-form pagination cursor.",
-          },
-        ],
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListRpcEndpointsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["endpoints"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    notes: {
-      type: ["array", "string", "null"],
-      items: { type: "string" },
-    },
-    schema_version: NULLABLE_INT,
-    summary: { type: ["object", "null"] },
-    source: NULLABLE_STRING,
-    operational_observed_at: NULLABLE_STRING,
-    endpoints: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListRpcEndpointsOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);

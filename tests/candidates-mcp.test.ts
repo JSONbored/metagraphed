@@ -400,9 +400,13 @@ describe("candidates-mcp (#7889)", () => {
     assert.ok(tool);
     assert.equal(tool.name, LIST_CANDIDATES_MCP_TOOL.name);
     assert.equal(tool.title, "List unpromoted candidate surfaces");
-    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties.id);
-    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties.confidence);
-    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties.sort);
-    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties.order);
+    // inputSchema is now z.toJSONSchema(...) output (types-epic E, #8073):
+    // `properties` is structurally optional on the generic JSON Schema type,
+    // even though it's always present in practice for this tool -- optional
+    // chaining satisfies tsc without changing what's actually asserted.
+    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties?.id);
+    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties?.confidence);
+    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties?.sort);
+    assert.ok(LIST_CANDIDATES_MCP_TOOL.inputSchema.properties?.order);
   });
 });

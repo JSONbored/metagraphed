@@ -2,9 +2,14 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/providers.json artifact.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
+import {
+  ListProvidersInputSchema,
+  ListProvidersOutputSchema,
+} from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
 
 export const PROVIDERS_ARTIFACT = "/metagraph/providers.json";
 
@@ -187,70 +192,14 @@ export const LIST_PROVIDERS_MCP_TOOL = {
     "project with fields; and page with limit (1-100) / cursor. This is the list " +
     "counterpart to get_provider_detail (one provider by slug). Mirrors " +
     "GET /api/v1/providers.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: {
-        type: "string",
-        description: "Provider slug, e.g. 'datura'.",
-      },
-      kind: {
-        type: "string",
-        enum: PROVIDER_KINDS,
-        description: "Provider kind, e.g. 'data-provider' or 'registry'.",
-      },
-      authority: {
-        type: "string",
-        enum: PROVIDER_AUTHORITIES,
-        description: "Trust authority, e.g. 'official' or 'community'.",
-      },
-      sort: {
-        type: "string",
-        enum: PROVIDER_SORT_FIELDS,
-        description: "Field to sort by before paging.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description: "Comma-separated projection of provider fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max rows to return (1-100). Enables pagination.",
-        minimum: 1,
-        maximum: 100,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(ListProvidersInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
-
-export const LIST_PROVIDERS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["providers"],
-  properties: {
-    generated_at: NULLABLE_STRING,
-    schema_version: { type: ["string", "integer", "null"] },
-    providers: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
+export const LIST_PROVIDERS_OUTPUT_SCHEMA = z.toJSONSchema(
+  ListProvidersOutputSchema,
+  {
+    target: "draft-2020-12",
   },
-};
+);
