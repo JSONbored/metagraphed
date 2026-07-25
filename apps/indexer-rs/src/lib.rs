@@ -14,6 +14,8 @@ use subxt::config::PolkadotConfig;
 use subxt::OnlineClient;
 use tokio::sync::RwLock;
 
+pub mod observability;
+
 pub type Api = OnlineClient<PolkadotConfig>;
 /// A client snapshotted at one block -- what `api.at_current_block()` returns.
 /// Fetch this ONCE per unit of work and reuse it for every storage call in
