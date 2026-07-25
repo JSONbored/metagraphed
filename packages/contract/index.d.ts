@@ -4195,17 +4195,6 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
-        /** @description One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer. */
-        ChainEvent: {
-            args?: Record<string, never> | unknown[] | null;
-            block_number: number | null;
-            event_index: number | null;
-            extrinsic_index?: number | null;
-            method: string | null;
-            observed_at?: number | null;
-            pallet: string | null;
-            phase?: string | null;
-        };
         ChainEventsFeedArtifact: {
             count: number;
             events: {
