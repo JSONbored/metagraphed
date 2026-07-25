@@ -539,6 +539,13 @@ interface AskDeps {
     input: { subnets: unknown[] },
     liveHealth: unknown,
   ) => { subnets?: unknown[] } | null | undefined;
+  // metagraphed#7153: threaded from the MCP ask tool's McpCtx.distinctId
+  // (resolved from a validated GitHub OAuth identity when present) so an
+  // authenticated caller's $ai_generation events attribute to them instead
+  // of the shared anonymous fallback. undefined for the REST /api/v1/ask
+  // route (no caller identity concept there) and every unauthenticated MCP
+  // call -- recordAiGenerationEvent's own anonymous fallback handles both.
+  distinctId?: string;
 }
 
 // Builds a netuid → {callable_count, base_url, health} lookup from the
@@ -652,35 +659,43 @@ export async function askQuestion(
     messages,
     max_tokens: ASK_MAX_TOKENS,
   }).catch(async (error) => {
-    await recordAiGenerationEvent(env, {
-      provider: ASK_PROVIDER,
-      model: ASK_MODEL,
-      traceName: ASK_TRACE_NAME,
-      latencyMs: Date.now() - generationStart,
-      isError: true,
-      error,
-      modelParameters,
-      input: messages,
-    });
+    await recordAiGenerationEvent(
+      env,
+      {
+        provider: ASK_PROVIDER,
+        model: ASK_MODEL,
+        traceName: ASK_TRACE_NAME,
+        latencyMs: Date.now() - generationStart,
+        isError: true,
+        error,
+        modelParameters,
+        input: messages,
+      },
+      { distinctId: deps.distinctId },
+    );
     throw error;
   });
   const inputTokens = completion?.usage?.prompt_tokens;
   const outputTokens = completion?.usage?.completion_tokens;
   const answer = (completion?.response || "").trim();
-  await recordAiGenerationEvent(env, {
-    provider: ASK_PROVIDER,
-    model: ASK_MODEL,
-    traceName: ASK_TRACE_NAME,
-    latencyMs: Date.now() - generationStart,
-    isError: false,
-    inputTokens,
-    outputTokens,
-    inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
-    outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
-    modelParameters,
-    input: messages,
-    outputChoices: [{ role: "assistant", content: answer }],
-  });
+  await recordAiGenerationEvent(
+    env,
+    {
+      provider: ASK_PROVIDER,
+      model: ASK_MODEL,
+      traceName: ASK_TRACE_NAME,
+      latencyMs: Date.now() - generationStart,
+      isError: false,
+      inputTokens,
+      outputTokens,
+      inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
+      outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
+      modelParameters,
+      input: messages,
+      outputChoices: [{ role: "assistant", content: answer }],
+    },
+    { distinctId: deps.distinctId },
+  );
   return {
     question: q,
     answer,

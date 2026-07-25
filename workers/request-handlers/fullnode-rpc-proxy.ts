@@ -36,12 +36,57 @@ import {
   type RpcEndpoint,
   type RpcHealthMap,
 } from "./rpc-proxy.ts";
+import type { EdgeCacheCtx } from "./analytics.ts";
 import {
   DENIED_RPC_PREFIXES,
   MAX_RPC_BODY_BYTES,
   resolveClientIp,
   SAFE_RPC_METHODS,
 } from "../config.ts";
+import { recordUsageEvent } from "../../src/usage-telemetry.ts";
+
+// PostHog usage telemetry for this gate (metagraphed#7153): excluded from the
+// generic withUsageTelemetry chokepoint (workers/api.ts's usageRouteLabel
+// explicitly treats "the RPC proxy" as not API usage -- it has its own
+// Postgres-backed rpc_proxy_events analytics instead, see rpc-proxy.ts's
+// recordRpcUsage), so this route records its own event directly. Unlike the
+// public pool, every caller here already authenticates with a real mg_...
+// key (validateApiKey), so distinct_id is the actual rpc_accounts.id rather
+// than the shared USAGE_EVENT_DISTINCT_ID fallback every anonymous surface
+// is stuck with -- this is real per-caller identity, not proxy volume/
+// failover analytics, so it's a deliberate second, PostHog-side event
+// alongside (not a replacement for) recordRpcUsage.
+function recordFullnodeRpcUsage(
+  env: Env,
+  ctx: EdgeCacheCtx | undefined,
+  event: {
+    ok: boolean;
+    durationMs: number;
+    errorCode?: string;
+    accountId: string;
+  },
+) {
+  try {
+    // recordUsageEvent never throws/rejects (its own header comment) -- no
+    // .catch() needed here, unlike workers/api.ts's scheduleUsageEvent, which
+    // wraps an INJECTABLE recorder a caller/test could swap for one that does.
+    const pending = recordUsageEvent(
+      env,
+      {
+        route: "fullnode_rpc",
+        ok: event.ok,
+        durationMs: event.durationMs,
+        ...(event.errorCode ? { errorCode: event.errorCode } : {}),
+      },
+      { distinctId: `account:${event.accountId}` },
+    );
+    if (typeof ctx?.waitUntil === "function") {
+      ctx.waitUntil(pending);
+    }
+  } catch {
+    // Telemetry must never surface into the request path.
+  }
+}
 
 const FULLNODE_EXTRA_SAFE_METHODS = new Set(["author_submitExtrinsic"]);
 
@@ -148,6 +193,7 @@ export async function handleFullnodeRpcProxyRequest(
   request: Request,
   env: Env,
   url: URL,
+  ctx?: EdgeCacheCtx,
 ): Promise<Response> {
   if (request.method !== "POST") {
     return errorResponse(
@@ -181,6 +227,9 @@ export async function handleFullnodeRpcProxyRequest(
   const rawKey = url.searchParams.get("authorization") || "";
   const auth = await validateApiKey(env, rawKey);
   if (!auth.ok) {
+    // No accountId to attribute an event to yet -- an unauthenticated guess
+    // is exactly what FULLNODE_RPC_GUESS_RATE_LIMITER above already bounds
+    // the cost of, not a real caller worth recording.
     return errorResponse(
       "fullnode_rpc_unauthorized",
       auth.code === "key_revoked"
@@ -190,6 +239,22 @@ export async function handleFullnodeRpcProxyRequest(
     );
   }
 
+  const startedAt = Date.now();
+  const response = await runAuthenticatedFullnodeRpc(request, env, auth);
+  recordFullnodeRpcUsage(env, ctx, {
+    ok: response.status < 500,
+    durationMs: Date.now() - startedAt,
+    errorCode: response.headers.get("x-metagraph-error-code") ?? undefined,
+    accountId: String(auth.accountId),
+  });
+  return response;
+}
+
+async function runAuthenticatedFullnodeRpc(
+  request: Request,
+  env: Env,
+  auth: { ok: true; tier: unknown; accountId: unknown },
+): Promise<Response> {
   // auth.tier is `unknown` (validateApiKey's success-shape tier comes straight
   // from Unkey's own untyped JSON response) -- rateLimitPolicyForTier's own
   // `|| FULLNODE_RPC_TIER_RATE_LIMITS.free` fallback already handles a

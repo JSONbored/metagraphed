@@ -1107,7 +1107,25 @@ interface McpCtx {
   clientIp?: string | null;
   readArtifact?: AnyFn;
   readHealthKv?: AnyFn;
-  executionCtx?: { waitUntil?: (p: Promise<unknown>) => void };
+  // props: set by @cloudflare/workers-oauth-provider on the ExecutionContext
+  // it hands to apiHandler once it has already validated a Bearer token
+  // (src/github-oauth.ts's buildOAuthProviderOptions/completeAuthorization) --
+  // absent on every anonymous /mcp request (the common case) and on every
+  // direct-call test, hence optional throughout.
+  executionCtx?: {
+    waitUntil?: (p: Promise<unknown>) => void;
+    props?: {
+      githubUserId?: unknown;
+      githubLogin?: unknown;
+      accountId?: unknown;
+    };
+  };
+  // Resolved once in buildContext from executionCtx.props.githubLogin, namespaced
+  // ("github:<login>") so it can never collide with a distinct_id minted by a
+  // different identity system (e.g. Unkey's rpc_accounts-derived one). undefined
+  // for every anonymous call -- recordX's own `deps.distinctId ?? <anonymous
+  // fallback>` handles that case, this module never invents a fallback itself.
+  distinctId?: string;
   recordUsageEvent?: AnyFn;
   chainSignersCache?: Map<string, unknown>;
   recordMcpToolCallEvent?: AnyFn;
@@ -9789,7 +9807,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           question,
           { type: args?.type },
-          { readArtifact: ctx.readArtifact },
+          { readArtifact: ctx.readArtifact, distinctId: ctx.distinctId },
         ),
       );
     },
@@ -13278,7 +13296,9 @@ function scheduleToolUsageEvent(ctx: McpCtx, event: Row) {
   try {
     if (!isUsageTelemetryConfigured(ctx?.env)) return;
     const record = ctx?.recordUsageEvent ?? recordUsageEvent;
-    const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    const pending = Promise.resolve(
+      record(ctx.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
@@ -13288,7 +13308,9 @@ function scheduleToolUsageEvent(ctx: McpCtx, event: Row) {
 function scheduleMcpToolCallEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpToolCallEvent ?? recordMcpToolCallEvent;
-    const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
@@ -13298,7 +13320,9 @@ function scheduleMcpToolCallEvent(ctx: McpCtx, event: Row) {
 function scheduleMcpInitializeEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpInitializeEvent ?? recordMcpInitializeEvent;
-    const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
@@ -13311,7 +13335,9 @@ function scheduleMcpInitializeEvent(ctx: McpCtx, event: Row) {
 function scheduleExceptionEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordExceptionEvent ?? recordExceptionEvent;
-    const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
@@ -13523,6 +13549,18 @@ function buildContext(request: Request, env: Env, deps: Row) {
   // presence) is already enforced by handleMcpRequest before this is called,
   // so a malformed header never reaches here as a truthy value.
   const rawSessionId = request.headers.get("mcp-session-id");
+  // metagraphed#7153: a validated GitHub identity (present only when the
+  // request carried a Bearer token @cloudflare/workers-oauth-provider itself
+  // already accepted -- see executionCtx's own type comment) becomes the
+  // caller's PostHog distinct_id. Anonymous requests (no props, or a
+  // malformed/non-string login) resolve to undefined here on purpose --
+  // recordX's own anonymous-fallback constant is the single place that
+  // decision lives, not duplicated here.
+  const githubLogin = deps.executionCtx?.props?.githubLogin;
+  const distinctId =
+    typeof githubLogin === "string" && githubLogin
+      ? `github:${githubLogin}`
+      : undefined;
   return {
     env,
     domain,
@@ -13534,7 +13572,17 @@ function buildContext(request: Request, env: Env, deps: Row) {
     // real fetch entry does, so it stays optional and every direct-call test
     // keeps working. Used solely to drain usage telemetry (#6031).
     executionCtx: deps.executionCtx,
+    distinctId,
     recordUsageEvent: deps.recordUsageEvent,
+    // Pre-existing gap fixed alongside #7153: these three were declared on
+    // McpCtx and read by their own schedulers (scheduleMcpToolCallEvent/
+    // scheduleMcpInitializeEvent/scheduleExceptionEvent) but never actually
+    // copied from deps here, so a test-injected override always silently
+    // fell through to the real recorder instead of the double the test meant
+    // to exercise. Same test-injection convention as recordUsageEvent above.
+    recordMcpToolCallEvent: deps.recordMcpToolCallEvent,
+    recordMcpInitializeEvent: deps.recordMcpInitializeEvent,
+    recordExceptionEvent: deps.recordExceptionEvent,
   };
 }
 
