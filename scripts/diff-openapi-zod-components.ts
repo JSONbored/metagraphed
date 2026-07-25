@@ -19,6 +19,11 @@ const OLD_COMPONENT_FILES = [
   "schemas/components/05-subnets.schema.json",
   "schemas/components/06-health.schema.json",
   "schemas/components/07-endpoints-rpc.schema.json",
+  // Batch 8 (#8062) additions: AdapterArtifact/the review/enrichment-*
+  // family live in these two files, previously never read by this script
+  // since no earlier batch's components lived there.
+  "schemas/components/09-schemas-adapters-r2.schema.json",
+  "schemas/components/11-review-intake.schema.json",
 ];
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -211,15 +216,21 @@ function normalize(
       continue;
     }
 
-    // additionalProperties: {} (Zod's .passthrough()) vs additionalProperties:
-    // true (hand-edited) -- both mean "any extra properties allowed".
+    // additionalProperties: {} (Zod's .passthrough()) and
+    // additionalProperties: true (hand-edited) both mean "any extra
+    // properties allowed" -- the SAME as omitting the key entirely (JSON
+    // Schema's own default). Drop it outright rather than coercing to
+    // `true`, so a bare `{type:"object"}` (hand-edited, no properties/
+    // additionalProperties at all, e.g. RegistrySummaryArtifact.coverage,
+    // types-epic B batch 8/#8062) compares equal to Zod's `{type:"object",
+    // properties:{}, additionalProperties:{}}` for the same
+    // empty-passthrough-object case. Mirrors
+    // scripts/diff-mcp-tool-schemas.ts's identical rule for the MCP epic.
     if (
       key === "additionalProperties" &&
-      value &&
-      typeof value === "object" &&
-      Object.keys(value).length === 0
+      (value === true ||
+        (value && typeof value === "object" && Object.keys(value).length === 0))
     ) {
-      out[key] = true;
       continue;
     }
 

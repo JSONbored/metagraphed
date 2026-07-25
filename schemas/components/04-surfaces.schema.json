@@ -50,11 +50,26 @@
                   "current_surface_count"
                 ],
                 "properties": {
-                  "alias_count": { "type": "integer", "minimum": 0 },
-                  "carried_alias_count": { "type": "integer", "minimum": 0 },
-                  "new_alias_count": { "type": "integer", "minimum": 0 },
-                  "previous_surface_count": { "type": "integer", "minimum": 0 },
-                  "current_surface_count": { "type": "integer", "minimum": 0 }
+                  "alias_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "carried_alias_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "new_alias_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "previous_surface_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "current_surface_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
                 },
                 "additionalProperties": false
               },
@@ -64,12 +79,25 @@
                   "type": "object",
                   "required": ["deprecated_id", "surface_key", "current_id"],
                   "properties": {
-                    "deprecated_id": { "type": "string" },
-                    "surface_key": { "type": "string" },
-                    "current_id": { "type": "string" },
-                    "netuid": { "type": ["integer", "null"], "minimum": 0 },
-                    "kind": { "type": ["string", "null"] },
-                    "url": { "type": ["string", "null"] }
+                    "deprecated_id": {
+                      "type": "string"
+                    },
+                    "surface_key": {
+                      "type": "string"
+                    },
+                    "current_id": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    },
+                    "kind": {
+                      "type": ["string", "null"]
+                    },
+                    "url": {
+                      "type": ["string", "null"]
+                    }
                   },
                   "additionalProperties": false
                 }
@@ -114,10 +142,15 @@
             "type": "object",
             "required": ["surface_count", "kinds", "surfaces"],
             "properties": {
-              "surface_count": { "type": "integer", "minimum": 0 },
+              "surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
               "kinds": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               },
               "surfaces": {
                 "type": "array",
@@ -125,23 +158,50 @@
                   "type": "object",
                   "required": ["surface_id", "netuid", "kind", "url", "probe"],
                   "properties": {
-                    "surface_id": { "type": "string" },
-                    "netuid": { "type": "integer", "minimum": 0 },
-                    "subnet_slug": { "type": "string" },
-                    "subnet_name": { "type": "string" },
-                    "kind": { "type": "string" },
-                    "provider": { "type": "string" },
-                    "authority": { "type": "string" },
-                    "url": { "type": "string" },
-                    "auth_required": { "type": "boolean" },
-                    "public_safe": { "type": "boolean" },
+                    "surface_id": {
+                      "type": "string"
+                    },
+                    "netuid": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "subnet_slug": {
+                      "type": "string"
+                    },
+                    "subnet_name": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "authority": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "auth_required": {
+                      "type": "boolean"
+                    },
+                    "public_safe": {
+                      "type": "boolean"
+                    },
                     "probe": {
                       "type": "object",
                       "required": ["method", "expect"],
                       "properties": {
-                        "method": { "type": "string" },
-                        "expect": { "type": "string" },
-                        "timeout_ms": { "type": ["integer", "null"] }
+                        "method": {
+                          "type": "string"
+                        },
+                        "expect": {
+                          "type": "string"
+                        },
+                        "timeout_ms": {
+                          "type": ["integer", "null"]
+                        }
                       },
                       "additionalProperties": true
                     }
@@ -153,32 +213,6 @@
             "additionalProperties": true
           }
         ]
-      },
-
-      "AgentReadinessBlocker": {
-        "type": "object",
-        "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
-        "required": ["code", "severity", "message", "field", "next_action"],
-        "additionalProperties": false,
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "Stable blocker code, e.g. missing-callable-service or missing-schema."
-          },
-          "severity": {
-            "type": "string",
-            "enum": ["hard", "missing-data", "needs-review"]
-          },
-          "message": { "type": "string" },
-          "field": {
-            "type": "string",
-            "description": "Registry field, artifact family, or evidence surface that needs attention."
-          },
-          "next_action": {
-            "type": "string",
-            "description": "Concrete maintainer/contributor action to clear or explain the blocker."
-          }
-        }
       },
       "AgentReadinessStatus": {
         "type": "object",
@@ -208,7 +242,9 @@
           },
           "missing_fields": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -274,22 +310,42 @@
               "unsupported-kind"
             ]
           },
-          "reason": { "type": ["string", "null"] },
-          "artifact_path": { "type": ["string", "null"] },
-          "captured_at": { "type": ["string", "null"] }
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "artifact_path": {
+            "type": ["string", "null"]
+          },
+          "captured_at": {
+            "type": ["string", "null"]
+          }
         }
       },
       "AgentCatalogArtifact": {
         "allOf": [
-          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
           {
             "type": "object",
             "required": ["subnet_count", "subnets"],
             "properties": {
-              "total_subnet_count": { "type": "integer", "minimum": 0 },
-              "subnet_count": { "type": "integer", "minimum": 0 },
-              "blocked_subnet_count": { "type": "integer", "minimum": 0 },
-              "callable_service_count": { "type": "integer", "minimum": 0 },
+              "total_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "blocked_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "callable_service_count": {
+                "type": "integer",
+                "minimum": 0
+              },
               "blocker_summary": {
                 "type": "object",
                 "additionalProperties": true
@@ -300,15 +356,28 @@
                   "type": "object",
                   "required": ["netuid", "service_count"],
                   "properties": {
-                    "netuid": { "type": "integer", "minimum": 0 },
-                    "slug": { "type": "string" },
-                    "name": { "type": "string" },
+                    "netuid": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
                     "categories": {
                       "type": "array",
-                      "items": { "type": "string" }
+                      "items": {
+                        "type": "string"
+                      }
                     },
-                    "subnet_type": { "type": ["string", "null"] },
-                    "completeness_score": { "type": ["number", "null"] },
+                    "subnet_type": {
+                      "type": ["string", "null"]
+                    },
+                    "completeness_score": {
+                      "type": ["number", "null"]
+                    },
                     "integration_readiness": {
                       "type": "integer",
                       "minimum": 0,
@@ -320,17 +389,31 @@
                     "agent_readiness": {
                       "$ref": "#/components/schemas/AgentReadinessStatus"
                     },
-                    "service_count": { "type": "integer", "minimum": 0 },
-                    "callable_count": { "type": "integer", "minimum": 0 },
+                    "service_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "callable_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
                     "service_kinds": {
                       "type": "array",
-                      "items": { "type": "string" }
+                      "items": {
+                        "type": "string"
+                      }
                     },
-                    "base_url": { "type": ["string", "null"] },
-                    "health": { "type": "string" },
+                    "base_url": {
+                      "type": ["string", "null"]
+                    },
+                    "health": {
+                      "type": "string"
+                    },
                     "previously_known_as": {
                       "type": "array",
-                      "items": { "type": "string" },
+                      "items": {
+                        "type": "string"
+                      },
                       "description": "Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name."
                     }
                   },
@@ -343,23 +426,44 @@
                   "type": "object",
                   "required": ["netuid", "agent_readiness"],
                   "properties": {
-                    "netuid": { "type": "integer", "minimum": 0 },
-                    "slug": { "type": "string" },
-                    "name": { "type": "string" },
+                    "netuid": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
                     "categories": {
                       "type": "array",
-                      "items": { "type": "string" }
+                      "items": {
+                        "type": "string"
+                      }
                     },
-                    "subnet_type": { "type": ["string", "null"] },
-                    "completeness_score": { "type": ["number", "null"] },
+                    "subnet_type": {
+                      "type": ["string", "null"]
+                    },
+                    "completeness_score": {
+                      "type": ["number", "null"]
+                    },
                     "integration_readiness": {
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 100
                     },
-                    "readiness_tier": { "type": "string" },
-                    "service_count": { "type": "integer", "minimum": 0 },
-                    "callable_count": { "type": "integer", "minimum": 0 },
+                    "readiness_tier": {
+                      "type": "string"
+                    },
+                    "service_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "callable_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
                     "agent_readiness": {
                       "$ref": "#/components/schemas/AgentReadinessStatus"
                     }
@@ -386,8 +490,12 @@
             "type": "object",
             "required": ["method", "url"],
             "properties": {
-              "method": { "type": "string" },
-              "url": { "type": ["string", "null"] }
+              "method": {
+                "type": "string"
+              },
+              "url": {
+                "type": ["string", "null"]
+              }
             },
             "additionalProperties": false
           },
@@ -395,8 +503,12 @@
             "type": "object",
             "required": ["status"],
             "properties": {
-              "status": { "type": ["integer", "null"] },
-              "content_type": { "type": ["string", "null"] }
+              "status": {
+                "type": ["integer", "null"]
+              },
+              "content_type": {
+                "type": ["string", "null"]
+              }
             },
             "additionalProperties": false
           },
@@ -409,25 +521,42 @@
       },
       "AgentCatalogSubnetArtifact": {
         "allOf": [
-          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
           {
             "type": "object",
             "required": ["netuid", "service_count", "services"],
             "properties": {
-              "netuid": { "type": "integer", "minimum": 0 },
-              "slug": { "type": "string" },
-              "name": { "type": "string" },
+              "netuid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
               "previously_known_as": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name."
               },
               "categories": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               },
-              "subnet_type": { "type": ["string", "null"] },
-              "completeness_score": { "type": ["number", "null"] },
+              "subnet_type": {
+                "type": ["string", "null"]
+              },
+              "completeness_score": {
+                "type": ["number", "null"]
+              },
               "integration_readiness": {
                 "type": "integer",
                 "minimum": 0,
@@ -439,30 +568,57 @@
               "agent_readiness": {
                 "$ref": "#/components/schemas/AgentReadinessStatus"
               },
-              "service_count": { "type": "integer", "minimum": 0 },
+              "service_count": {
+                "type": "integer",
+                "minimum": 0
+              },
               "services": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "required": ["surface_id", "kind", "base_url"],
                   "properties": {
-                    "surface_id": { "type": "string" },
-                    "kind": { "type": "string" },
-                    "capability": { "type": "string" },
-                    "description": { "type": ["string", "null"] },
-                    "base_url": { "type": "string" },
-                    "provider": { "type": ["string", "null"] },
-                    "authority": { "type": ["string", "null"] },
-                    "auth_required": { "type": "boolean" },
-                    "schema_url": { "type": ["string", "null"] },
-                    "schema_status": { "type": ["string", "null"] },
-                    "schema_artifact": { "type": ["string", "null"] },
+                    "surface_id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "capability": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": ["string", "null"]
+                    },
+                    "base_url": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": ["string", "null"]
+                    },
+                    "authority": {
+                      "type": ["string", "null"]
+                    },
+                    "auth_required": {
+                      "type": "boolean"
+                    },
+                    "schema_url": {
+                      "type": ["string", "null"]
+                    },
+                    "schema_status": {
+                      "type": ["string", "null"]
+                    },
+                    "schema_artifact": {
+                      "type": ["string", "null"]
+                    },
                     "schema_source": {
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/AgentServiceSchemaSource"
                         },
-                        { "type": "null" }
+                        {
+                          "type": "null"
+                        }
                       ]
                     },
                     "health": {

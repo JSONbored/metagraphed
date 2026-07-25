@@ -3558,14 +3558,18 @@ export interface components {
             total_weight_sets: number;
             window: ("7d" | "30d") | null;
         };
-        AdapterArtifact: components["schemas"]["ArtifactBase"] & ({
-            /** @description Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific. */
+        AdapterArtifact: {
+            contract_version?: string;
             extensions: {
                 [key: string]: {
                     [key: string]: unknown;
                 };
             };
+            generated_at: string;
             netuid: number;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             slug: string;
             snapshot?: {
                 [key: string]: unknown;
@@ -3573,7 +3577,7 @@ export interface components {
             subnet: string;
         } & {
             [key: string]: unknown;
-        });
+        };
         AgentCatalogArtifact: components["schemas"]["ArtifactBase"] & ({
             blocked_subnet_count?: number;
             blocked_subnets?: ({
@@ -3660,14 +3664,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet. */
         AgentReadinessBlocker: {
-            /** @description Stable blocker code, e.g. missing-callable-service or missing-schema. */
             code: string;
-            /** @description Registry field, artifact family, or evidence surface that needs attention. */
             field: string;
             message: string;
-            /** @description Concrete maintainer/contributor action to clear or explain the blocker. */
             next_action: string;
             /** @enum {string} */
             severity: "hard" | "missing-data" | "needs-review";
@@ -4676,37 +4676,35 @@ export interface components {
             requested_netuids?: number[];
             schema_version: number;
             source: string;
-            subnets: components["schemas"]["CompareSubnetEntry"][];
+            subnets: {
+                economics?: {
+                    alpha_price_tao?: number | null;
+                    emission_share?: number | null;
+                    miner_count?: number;
+                    miner_readiness?: number | null;
+                    open_slots?: number | null;
+                    registration_allowed?: boolean;
+                    registration_cost_tao?: number | null;
+                    total_stake_tao?: number | null;
+                    validator_count?: number;
+                } | null;
+                found: boolean;
+                health?: {
+                    avg_latency_ms?: number | null;
+                    ok_count?: number;
+                    surface_count?: number;
+                } | null;
+                name: string | null;
+                netuid: number;
+                slug: string | null;
+                structure?: {
+                    completeness_score?: number | null;
+                    operational_interface_count?: number;
+                    surface_count?: number;
+                } | null;
+            }[];
         } & {
             [key: string]: unknown;
-        };
-        /** @description One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row. */
-        CompareSubnetEntry: {
-            economics?: {
-                alpha_price_tao?: number | null;
-                emission_share?: number | null;
-                miner_count?: number;
-                miner_readiness?: number | null;
-                open_slots?: number | null;
-                registration_allowed?: boolean;
-                registration_cost_tao?: number | null;
-                total_stake_tao?: number | null;
-                validator_count?: number;
-            } | null;
-            found: boolean;
-            health?: {
-                avg_latency_ms?: number | null;
-                ok_count?: number;
-                surface_count?: number;
-            } | null;
-            name: string | null;
-            netuid: number;
-            slug: string | null;
-            structure?: {
-                completeness_score?: number | null;
-                operational_interface_count?: number;
-                surface_count?: number;
-            } | null;
         };
         CompareValidatorsArtifact: {
             netuid: number | null;
@@ -4793,12 +4791,11 @@ export interface components {
         CountMap: {
             [key: string]: number;
         };
-        CoverageArtifact: components["schemas"]["ArtifactBase"] & ({
+        CoverageArtifact: {
             application_subnet_count: number;
             candidate_count: number;
             candidate_subnet_count: number;
             chain_subnet_count: number;
-            /** @description Aggregate trustworthy-coverage-completeness scoreboard derived from per-subnet completeness scores. The per-subnet leaderboard is /api/v1/profiles?sort=completeness_score. */
             completeness?: {
                 average_score?: number;
                 dimension_coverage?: {
@@ -4817,17 +4814,22 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+            contract_version?: string;
             curated_overlay_count: number;
             curation_level_counts: components["schemas"]["CountMap"];
+            generated_at: string;
             manifested_count: number;
             native_only_count: number;
             native_only_with_candidates: number;
             native_only_without_candidates: number;
             native_snapshot_captured_at: string;
             network: components["schemas"]["BittensorNetwork"];
+            notes?: string | string[];
             probed_count: number;
             probed_surface_count: number;
             root_subnet_count: number;
+            /** @constant */
+            schema_version: 1;
             source: {
                 candidates: string;
                 native: string | {
@@ -4838,16 +4840,33 @@ export interface components {
             surface_count: number;
         } & {
             [key: string]: unknown;
-        });
+        };
         CoverageDelta: {
             after: number;
             before: number;
             delta: number;
         };
-        CoverageDepthArtifact: components["schemas"]["ArtifactBase"] & ({
+        CoverageDepthArtifact: {
+            contract_version?: string;
             coverage_depth_version: number;
-            ranked_queue: components["schemas"]["CoverageDepthQueueEntry"][];
+            generated_at: string;
+            notes?: string | string[];
+            ranked_queue: {
+                name: string;
+                netuid: number;
+                priority_score: number;
+                rank: number;
+                recommended_next_action: string;
+                score: number;
+                /** @enum {string} */
+                severity: "hard" | "missing-data" | "needs-review";
+                slug: string;
+                tier: string;
+                top_gap_codes: string[];
+            }[];
             rows: components["schemas"]["CoverageDepthRow"][];
+            /** @constant */
+            schema_version: 1;
             scoring: {
                 methodology: string;
                 weights: {
@@ -4879,19 +4898,6 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
-        CoverageDepthQueueEntry: {
-            name: string;
-            netuid: number;
-            priority_score: number;
-            rank: number;
-            recommended_next_action: string;
-            score: number;
-            /** @enum {string} */
-            severity: "hard" | "missing-data" | "needs-review";
-            slug: string;
-            tier: string;
-            top_gap_codes: string[];
         };
         CoverageDepthRow: {
             /** @enum {string} */
@@ -4938,29 +4944,30 @@ export interface components {
             top_gap_codes: string[];
             top_gaps: components["schemas"]["AgentReadinessBlocker"][];
         };
-        /**
-         * @description How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         CoverageLevel: "native-only" | "manifested" | "probed";
-        CurationArtifact: components["schemas"]["ArtifactBase"] & ({
-            curation: components["schemas"]["CurationEntry"][];
+        CurationArtifact: {
+            contract_version?: string;
+            curation: {
+                candidate_count: number;
+                coverage_level: components["schemas"]["CoverageLevel"];
+                curation: components["schemas"]["CurationMetadata"];
+                description?: string | null;
+                gap_count?: number;
+                gaps: components["schemas"]["Gaps"];
+                /** @enum {string} */
+                lifecycle?: "active" | "deprecated" | "parked" | "pending";
+                name: string;
+                netuid: number;
+                slug: string;
+                surface_count: number;
+            }[];
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
-        CurationEntry: {
-            candidate_count: number;
-            coverage_level: components["schemas"]["CoverageLevel"];
-            curation: components["schemas"]["CurationMetadata"];
-            description?: string | null;
-            gap_count?: number;
-            gaps: components["schemas"]["Gaps"];
-            /** @enum {string} */
-            lifecycle?: "active" | "deprecated" | "parked" | "pending";
-            name: string;
-            netuid: number;
-            slug: string;
-            surface_count: number;
         };
         /** @enum {string} */
         CurationLevel: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
@@ -5290,12 +5297,13 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Captured, sanitized live request/response sample for one no-auth GET surface. */
-        FixtureArtifact: components["schemas"]["ArtifactBase"] & ({
-            /** Format: date-time */
+        FixtureArtifact: {
             captured_at?: string | null;
+            contract_version?: string;
+            generated_at: string;
             kind: components["schemas"]["SurfaceKind"];
             netuid: number;
+            notes?: string | string[];
             request: {
                 /** @constant */
                 method: "GET";
@@ -5305,21 +5313,23 @@ export interface components {
                 [key: string]: unknown;
             };
             response: {
-                /** @description Sanitized JSON response body; sensitive fields and private URLs are redacted before publish. */
                 body: components["schemas"]["JsonObject"] | unknown[] | string | number | boolean | null;
                 content_type?: string | null;
                 status: number;
             } & {
                 [key: string]: unknown;
             };
+            /** @constant */
+            schema_version: 1;
             subnet_name?: string | null;
             subnet_slug?: string | null;
             surface_id: string;
         } & {
             [key: string]: unknown;
-        });
-        FixturesIndexArtifact: components["schemas"]["ArtifactBase"] & ({
+        };
+        FixturesIndexArtifact: {
             candidate_count?: number;
+            contract_version?: string;
             coverage?: ({
                 artifact_path?: string | null;
                 captured_at?: string | null;
@@ -5345,14 +5355,18 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            generated_at: string;
             missing_count?: number;
+            notes?: string | string[];
             published_at?: string | null;
+            /** @constant */
+            schema_version: 1;
             status_counts?: {
                 [key: string]: number;
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         FreshnessArtifact: components["schemas"]["ArtifactBase"] & ({
             sources: components["schemas"]["FreshnessSource"][];
             summary: {
@@ -5397,25 +5411,25 @@ export interface components {
             missing_kinds: components["schemas"]["SurfaceKind"][];
             supported_kinds: components["schemas"]["SurfaceKind"][];
         };
-        GapsArtifact: components["schemas"]["ArtifactBase"] & ({
-            gaps: components["schemas"]["GapsEntry"][];
+        GapsArtifact: {
+            contract_version?: string;
+            gaps: {
+                coverage_level: components["schemas"]["CoverageLevel"];
+                curation_level: components["schemas"]["CurationLevel"];
+                gap_priority?: number;
+                /** @enum {string} */
+                gap_severity?: "critical" | "warning" | "info";
+                gaps: components["schemas"]["Gaps"];
+                name: string;
+                netuid: number;
+                slug: string;
+            }[];
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
-        GapsEntry: {
-            coverage_level: components["schemas"]["CoverageLevel"];
-            curation_level: components["schemas"]["CurationLevel"];
-            /** @description 0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving. */
-            gap_priority?: number;
-            /**
-             * @description Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale.
-             * @enum {unknown}
-             */
-            gap_severity?: "critical" | "warning" | "info";
-            gaps: components["schemas"]["Gaps"];
-            name: string;
-            netuid: number;
-            slug: string;
         };
         GeneratedOpenApiMarker: {
             /** @constant */
@@ -5751,22 +5765,24 @@ export interface components {
         JsonObject: {
             [key: string]: unknown;
         };
-        LineageArtifact: components["schemas"]["ArtifactBase"] & ({
+        LineageArtifact: {
             broken_link_count?: number;
             broken_links?: {
                 conflicts_with_source_netuid?: number | null;
-                /** @enum {unknown} */
+                /** @enum {string} */
                 reason: "invalid-approval" | "source-netuid-missing" | "target-netuid-missing" | "target-netuid-conflict";
                 source_netuid: number | null;
                 target_netuid: number | null;
             }[];
+            contract_version?: string;
+            generated_at: string;
             graduated_subnet_count?: number;
             link_count: number;
             links: ({
                 mainnet_name?: string | null;
                 mainnet_netuid: number;
                 mainnet_slug?: string | null;
-                /** @enum {unknown} */
+                /** @enum {string} */
                 matched_by: "github_repo" | "chain_name";
                 testnet_name?: string | null;
                 testnet_netuid: number;
@@ -5776,13 +5792,16 @@ export interface components {
             matched_by_counts?: {
                 [key: string]: number;
             };
+            notes?: string | string[];
             published_at?: string | null;
+            /** @constant */
+            schema_version: 1;
             source_network: string;
             target_network: string;
             testnet_only_count?: number;
         } & {
             [key: string]: unknown;
-        });
+        };
         NetworkParametersArtifact: {
             pending_childkey_cooldown_blocks?: number | null;
             queried_at?: string | null;
@@ -6081,7 +6100,8 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        RegistrySummaryArtifact: components["schemas"]["ArtifactBase"] & ({
+        RegistrySummaryArtifact: {
+            contract_version?: string;
             counts: {
                 candidates: number;
                 endpoints: number;
@@ -6090,10 +6110,18 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            coverage?: Record<string, never> | null;
+            coverage?: {
+                [key: string]: unknown;
+            } | null;
             curation_level_counts?: components["schemas"]["CountMap"];
+            generated_at: string;
+            notes?: string | string[];
             profile_level_counts?: components["schemas"]["CountMap"];
-            recent_changes?: Record<string, never>;
+            recent_changes?: {
+                [key: string]: unknown;
+            };
+            /** @constant */
+            schema_version: 1;
             subnet_count: number;
             top_subnets: ({
                 completeness_score: number;
@@ -6107,7 +6135,7 @@ export interface components {
             })[];
         } & {
             [key: string]: unknown;
-        });
+        };
         /** @description Composite reliability score (0-100) from durable uptime history: sample-weighted uptime with a mild latency penalty. Null when no probe data exists. */
         ReliabilityScore: {
             avg_latency_ms?: number | null;
@@ -6169,13 +6197,18 @@ export interface components {
             operational_surface_ids: string[];
             priority_score: number;
             reason_codes: string[];
-            /** @enum {unknown} */
+            /** @enum {string} */
             recommended_adapter_kind: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
             slug: string;
             suggested_next_action: string;
         };
-        ReviewAdapterCandidatesArtifact: components["schemas"]["ArtifactBase"] & ({
+        ReviewAdapterCandidatesArtifact: {
             candidates: components["schemas"]["ReviewAdapterCandidate"][];
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             summary: {
                 adapter_backed_count: number;
                 by_curation_level: components["schemas"]["CountMap"];
@@ -6189,26 +6222,6 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
-        ReviewCandidateEvidence: {
-            candidate_count: number;
-            classifications: components["schemas"]["CountMap"];
-            live_or_redirected_count: number;
-            reviewable_count: number;
-            sample_candidate_ids: string[];
-            stale_or_failed_count: number;
-            unverified_count: number;
-        };
-        ReviewCandidateEvidenceSummary: {
-            candidate_count: number;
-            kinds_with_candidates: components["schemas"]["SurfaceKind"][];
-            live_kinds: components["schemas"]["SurfaceKind"][];
-            live_or_redirected_count: number;
-            reviewable_count: number;
-            stale_kinds: components["schemas"]["SurfaceKind"][];
-            stale_or_failed_count: number;
-            unverified_count: number;
-            unverified_kinds: components["schemas"]["SurfaceKind"][];
         };
         ReviewCurationArtifact: components["schemas"]["ArtifactBase"] & ({
             adapter_candidates: components["schemas"]["ReviewAdapterCandidate"][];
@@ -6240,9 +6253,46 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        ReviewEnrichmentEvidenceArtifact: components["schemas"]["ArtifactBase"] & ({
-            entries: components["schemas"]["ReviewEnrichmentEvidenceEntry"][];
+        ReviewEnrichmentEvidenceArtifact: {
+            contract_version?: string;
+            entries: {
+                candidate_evidence_by_kind: {
+                    [key: string]: {
+                        candidate_count: number;
+                        classifications: components["schemas"]["CountMap"];
+                        live_or_redirected_count: number;
+                        reviewable_count: number;
+                        sample_candidate_ids: string[];
+                        stale_or_failed_count: number;
+                        unverified_count: number;
+                    };
+                };
+                candidate_evidence_summary: {
+                    candidate_count: number;
+                    kinds_with_candidates: components["schemas"]["SurfaceKind"][];
+                    live_kinds: components["schemas"]["SurfaceKind"][];
+                    live_or_redirected_count: number;
+                    reviewable_count: number;
+                    stale_kinds: components["schemas"]["SurfaceKind"][];
+                    stale_or_failed_count: number;
+                    unverified_count: number;
+                    unverified_kinds: components["schemas"]["SurfaceKind"][];
+                };
+                direct_submission_kinds: components["schemas"]["SurfaceKind"][];
+                /** @enum {string} */
+                evidence_action: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                /** @enum {string} */
+                lane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                missing_kinds: components["schemas"]["SurfaceKind"][];
+                name: string;
+                netuid: number;
+                priority_score: number;
+                slug: string;
+            }[];
+            generated_at: string;
             notes: string;
+            /** @constant */
+            schema_version: 1;
             summary: {
                 entry_count: number;
                 evidence_action_counts: components["schemas"]["CountMap"];
@@ -6252,26 +6302,61 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
-        ReviewEnrichmentEvidenceEntry: {
-            candidate_evidence_by_kind: {
-                [key: string]: components["schemas"]["ReviewCandidateEvidence"];
-            };
-            candidate_evidence_summary: components["schemas"]["ReviewCandidateEvidenceSummary"];
-            direct_submission_kinds: components["schemas"]["SurfaceKind"][];
-            evidence_action: components["schemas"]["ReviewEvidenceAction"];
-            lane: components["schemas"]["ReviewEnrichmentLane"];
-            missing_kinds: components["schemas"]["SurfaceKind"][];
-            name: string;
-            netuid: number;
-            priority_score: number;
-            slug: string;
         };
-        /** @enum {unknown} */
-        ReviewEnrichmentLane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
-        ReviewEnrichmentQueueArtifact: components["schemas"]["ArtifactBase"] & ({
+        ReviewEnrichmentQueueArtifact: {
+            contract_version?: string;
+            generated_at: string;
             notes: string;
-            queue: components["schemas"]["ReviewEnrichmentQueueEntry"][];
+            queue: {
+                adapter_score: number;
+                candidate_count: number;
+                candidate_evidence_summary: {
+                    candidate_count: number;
+                    kinds_with_candidates: components["schemas"]["SurfaceKind"][];
+                    live_kinds: components["schemas"]["SurfaceKind"][];
+                    live_or_redirected_count: number;
+                    reviewable_count: number;
+                    stale_kinds: components["schemas"]["SurfaceKind"][];
+                    stale_or_failed_count: number;
+                    unverified_count: number;
+                    unverified_kinds: components["schemas"]["SurfaceKind"][];
+                };
+                completeness_score: number;
+                contribution_hint: string;
+                curation_level: components["schemas"]["CurationLevel"];
+                direct_submission_kinds: components["schemas"]["SurfaceKind"][];
+                endpoint_count: number;
+                /** @enum {string} */
+                evidence_action: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                /** @enum {string} */
+                identity_level: "none" | "directory" | "partial" | "complete";
+                identity_surface_count: number;
+                /** @enum {string} */
+                lane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                manual_review_required: boolean;
+                missing_identity: components["schemas"]["SurfaceKind"][];
+                missing_kinds: components["schemas"]["SurfaceKind"][];
+                name: string;
+                netuid: number;
+                operational_interface_count: number;
+                priority_score: number;
+                /** @enum {string} */
+                profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                reason_codes: string[];
+                recommended_action: string;
+                review_state: components["schemas"]["ReviewState"];
+                sample_candidate_ids: string[];
+                sample_live_candidate_ids: string[];
+                sample_stale_candidate_ids: string[];
+                sample_target_candidate_ids: string[];
+                slug: string;
+                source_urls: string[];
+                stale_candidate_count: number;
+                surface_count: number;
+                verified_candidate_count: number;
+            }[];
+            /** @constant */
+            schema_version: 1;
             summary: {
                 adapter_candidate_count: number;
                 baseline_monitoring_count: number;
@@ -6288,107 +6373,23 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
-        ReviewEnrichmentQueueEntry: {
-            adapter_score: number;
-            candidate_count: number;
-            candidate_evidence_summary: components["schemas"]["ReviewCandidateEvidenceSummary"];
-            completeness_score: number;
-            contribution_hint: string;
-            curation_level: components["schemas"]["CurationLevel"];
-            direct_submission_kinds: components["schemas"]["SurfaceKind"][];
-            endpoint_count: number;
-            evidence_action: components["schemas"]["ReviewEvidenceAction"];
-            /** @enum {unknown} */
-            identity_level: "none" | "directory" | "partial" | "complete";
-            identity_surface_count: number;
-            lane: components["schemas"]["ReviewEnrichmentLane"];
-            manual_review_required: boolean;
-            missing_identity: components["schemas"]["SurfaceKind"][];
-            missing_kinds: components["schemas"]["SurfaceKind"][];
-            name: string;
-            netuid: number;
-            operational_interface_count: number;
-            priority_score: number;
-            /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
-            reason_codes: string[];
-            recommended_action: string;
-            review_state: components["schemas"]["ReviewState"];
-            sample_candidate_ids: string[];
-            sample_live_candidate_ids: string[];
-            sample_stale_candidate_ids: string[];
-            sample_target_candidate_ids: string[];
-            slug: string;
-            source_urls: string[];
-            stale_candidate_count: number;
-            surface_count: number;
-            verified_candidate_count: number;
         };
-        /** @enum {unknown} */
-        ReviewEnrichmentSubmissionRoute: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
-        ReviewEnrichmentTarget: {
-            auto_review_candidate: boolean;
-            candidate_command: string | null;
-            candidate_evidence: components["schemas"]["ReviewCandidateEvidence"] | null;
-            contribution_prompt: string;
-            evidence_action: components["schemas"]["ReviewEvidenceAction"];
-            /** @enum {unknown} */
-            identity_level: "none" | "directory" | "partial" | "complete";
-            kind: components["schemas"]["SurfaceKind"] | null;
-            lane: components["schemas"]["ReviewEnrichmentLane"];
-            manual_review_required: boolean;
-            missing_kinds: components["schemas"]["SurfaceKind"][];
-            name: string;
-            netuid: number;
-            priority_score: number;
-            /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
-            queue_context: components["schemas"]["ReviewEnrichmentTargetQueueContext"];
-            reason_codes: string[];
-            recommended_action: string;
-            sample_live_candidate_ids: string[];
-            sample_stale_candidate_ids: string[];
-            sample_target_candidate_ids: string[];
-            slug: string;
-            source_requirements: string[];
-            source_urls: string[];
-            submission_route: components["schemas"]["ReviewEnrichmentSubmissionRoute"];
-            target_action: components["schemas"]["ReviewEnrichmentTargetAction"];
-            target_id: string;
-            target_type: components["schemas"]["ReviewEnrichmentTargetType"];
-        };
-        /** @enum {unknown} */
-        ReviewEnrichmentTargetAction: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
-        ReviewEnrichmentTargetGroup: {
-            auto_review_candidate_count: number;
-            kind: components["schemas"]["SurfaceKind"] | null;
-            manual_review_required_count: number;
-            target_count: number;
-            target_ids: string[];
-            target_type: components["schemas"]["ReviewEnrichmentTargetType"];
-            top_netuids: number[];
-        };
-        ReviewEnrichmentTargetQueueContext: {
-            adapter_score: number;
-            candidate_count: number;
-            completeness_score: number;
-            curation_level: components["schemas"]["CurationLevel"];
-            direct_submission_kind_count: number;
-            endpoint_count: number;
-            identity_surface_count: number;
-            operational_interface_count: number;
-            /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
-            review_state: components["schemas"]["ReviewState"];
-            source_url_count: number;
-            stale_candidate_count: number;
-            surface_count: number;
-            verified_candidate_count: number;
-        };
-        ReviewEnrichmentTargetsArtifact: components["schemas"]["ArtifactBase"] & ({
-            groups: components["schemas"]["ReviewEnrichmentTargetGroup"][];
+        ReviewEnrichmentTargetsArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            groups: {
+                auto_review_candidate_count: number;
+                kind: components["schemas"]["SurfaceKind"] | null;
+                manual_review_required_count: number;
+                target_count: number;
+                target_ids: string[];
+                /** @enum {string} */
+                target_type: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                top_netuids: number[];
+            }[];
             notes: string;
+            /** @constant */
+            schema_version: 1;
             summary: {
                 auto_review_candidate_count: number;
                 by_evidence_action: components["schemas"]["CountMap"];
@@ -6401,19 +6402,79 @@ export interface components {
                 subnet_count: number;
                 target_count: number;
             };
-            targets: components["schemas"]["ReviewEnrichmentTarget"][];
+            targets: {
+                auto_review_candidate: boolean;
+                candidate_command: string | null;
+                candidate_evidence: {
+                    candidate_count: number;
+                    classifications: components["schemas"]["CountMap"];
+                    live_or_redirected_count: number;
+                    reviewable_count: number;
+                    sample_candidate_ids: string[];
+                    stale_or_failed_count: number;
+                    unverified_count: number;
+                } | null;
+                contribution_prompt: string;
+                /** @enum {string} */
+                evidence_action: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                /** @enum {string} */
+                identity_level: "none" | "directory" | "partial" | "complete";
+                kind: components["schemas"]["SurfaceKind"] | null;
+                /** @enum {string} */
+                lane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                manual_review_required: boolean;
+                missing_kinds: components["schemas"]["SurfaceKind"][];
+                name: string;
+                netuid: number;
+                priority_score: number;
+                /** @enum {string} */
+                profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                queue_context: {
+                    adapter_score: number;
+                    candidate_count: number;
+                    completeness_score: number;
+                    curation_level: components["schemas"]["CurationLevel"];
+                    direct_submission_kind_count: number;
+                    endpoint_count: number;
+                    identity_surface_count: number;
+                    operational_interface_count: number;
+                    /** @enum {string} */
+                    profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                    review_state: components["schemas"]["ReviewState"];
+                    source_url_count: number;
+                    stale_candidate_count: number;
+                    surface_count: number;
+                    verified_candidate_count: number;
+                };
+                reason_codes: string[];
+                recommended_action: string;
+                sample_live_candidate_ids: string[];
+                sample_stale_candidate_ids: string[];
+                sample_target_candidate_ids: string[];
+                slug: string;
+                source_requirements: string[];
+                source_urls: string[];
+                /** @enum {string} */
+                submission_route: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
+                /** @enum {string} */
+                target_action: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                target_id: string;
+                /** @enum {string} */
+                target_type: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+            }[];
         } & {
             [key: string]: unknown;
-        });
-        /** @enum {unknown} */
-        ReviewEnrichmentTargetType: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
-        /** @enum {unknown} */
-        ReviewEvidenceAction: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
-        ReviewGapPrioritiesArtifact: components["schemas"]["ArtifactBase"] & ({
+        };
+        ReviewGapPrioritiesArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
             priorities: components["schemas"]["ReviewGapPriority"][];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
+        };
         ReviewGapPriority: {
             candidate_count: number;
             curation_level: components["schemas"]["CurationLevel"];
@@ -6427,8 +6488,46 @@ export interface components {
             surface_count: number;
             verified_candidate_count: number;
         };
-        ReviewProfileCompletenessArtifact: components["schemas"]["ArtifactBase"] & ({
-            profiles: components["schemas"]["ReviewProfileCompletenessEntry"][];
+        ReviewProfileCompletenessArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            profiles: {
+                candidate_count: number;
+                completeness_score: number;
+                /** @enum {string} */
+                confidence: "low" | "medium" | "high";
+                curation_level: components["schemas"]["CurationLevel"];
+                gap_reasons: string[];
+                identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
+                /** @enum {string} */
+                identity_level: "none" | "directory" | "partial" | "complete";
+                identity_promotion_kind_count: number;
+                identity_promotion_kinds: components["schemas"]["SurfaceKind"][];
+                identity_surface_count: number;
+                live_identity_candidate_kind_count: number;
+                missing_critical_count: number;
+                missing_identity: components["schemas"]["SurfaceKind"][];
+                missing_operational: components["schemas"]["SurfaceKind"][];
+                missing_required: components["schemas"]["SurfaceKind"][];
+                name: string;
+                native_identity_signal_count: number;
+                /** @enum {string} */
+                native_name_quality: "chain" | "placeholder" | "empty";
+                netuid: number;
+                operational_interface_count: number;
+                priority_score: number;
+                /** @enum {string} */
+                profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                review_state: components["schemas"]["ReviewState"];
+                slug: string;
+                source_count: number;
+                stale_identity_candidate_kind_count: number;
+                suggested_next_action: string;
+                supported_interface_kinds: components["schemas"]["SurfaceKind"][];
+            }[];
+            /** @constant */
+            schema_version: 1;
             summary: {
                 average_completeness_score: number;
                 by_confidence: components["schemas"]["CountMap"];
@@ -6444,40 +6543,6 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
-        });
-        ReviewProfileCompletenessEntry: {
-            candidate_count: number;
-            completeness_score: number;
-            /** @enum {unknown} */
-            confidence: "low" | "medium" | "high";
-            curation_level: components["schemas"]["CurationLevel"];
-            gap_reasons: string[];
-            identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
-            /** @enum {unknown} */
-            identity_level: "none" | "directory" | "partial" | "complete";
-            identity_promotion_kind_count: number;
-            identity_promotion_kinds: components["schemas"]["SurfaceKind"][];
-            identity_surface_count: number;
-            live_identity_candidate_kind_count: number;
-            missing_critical_count: number;
-            missing_identity: components["schemas"]["SurfaceKind"][];
-            missing_operational: components["schemas"]["SurfaceKind"][];
-            missing_required: components["schemas"]["SurfaceKind"][];
-            name: string;
-            native_identity_signal_count: number;
-            /** @enum {unknown} */
-            native_name_quality: "chain" | "placeholder" | "empty";
-            netuid: number;
-            operational_interface_count: number;
-            priority_score: number;
-            /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
-            review_state: components["schemas"]["ReviewState"];
-            slug: string;
-            source_count: number;
-            stale_identity_candidate_kind_count: number;
-            suggested_next_action: string;
-            supported_interface_kinds: components["schemas"]["SurfaceKind"][];
         };
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
@@ -7243,15 +7308,67 @@ export interface components {
             [key: string]: unknown;
         };
         SubnetEvidenceArtifact: components["schemas"]["EvidenceLedgerArtifact"];
-        SubnetGapsArtifact: components["schemas"]["ArtifactBase"] & ({
-            enrichment_queue: components["schemas"]["ReviewEnrichmentQueueEntry"][];
+        SubnetGapsArtifact: {
+            contract_version?: string;
+            enrichment_queue: {
+                adapter_score: number;
+                candidate_count: number;
+                candidate_evidence_summary: {
+                    candidate_count: number;
+                    kinds_with_candidates: components["schemas"]["SurfaceKind"][];
+                    live_kinds: components["schemas"]["SurfaceKind"][];
+                    live_or_redirected_count: number;
+                    reviewable_count: number;
+                    stale_kinds: components["schemas"]["SurfaceKind"][];
+                    stale_or_failed_count: number;
+                    unverified_count: number;
+                    unverified_kinds: components["schemas"]["SurfaceKind"][];
+                };
+                completeness_score: number;
+                contribution_hint: string;
+                curation_level: components["schemas"]["CurationLevel"];
+                direct_submission_kinds: components["schemas"]["SurfaceKind"][];
+                endpoint_count: number;
+                /** @enum {string} */
+                evidence_action: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                /** @enum {string} */
+                identity_level: "none" | "directory" | "partial" | "complete";
+                identity_surface_count: number;
+                /** @enum {string} */
+                lane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                manual_review_required: boolean;
+                missing_identity: components["schemas"]["SurfaceKind"][];
+                missing_kinds: components["schemas"]["SurfaceKind"][];
+                name: string;
+                netuid: number;
+                operational_interface_count: number;
+                priority_score: number;
+                /** @enum {string} */
+                profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                reason_codes: string[];
+                recommended_action: string;
+                review_state: components["schemas"]["ReviewState"];
+                sample_candidate_ids: string[];
+                sample_live_candidate_ids: string[];
+                sample_stale_candidate_ids: string[];
+                sample_target_candidate_ids: string[];
+                slug: string;
+                source_urls: string[];
+                stale_candidate_count: number;
+                surface_count: number;
+                verified_candidate_count: number;
+            }[];
+            generated_at: string;
             name?: string;
             netuid: number;
+            notes?: string | string[];
             priorities: components["schemas"]["ReviewGapPriority"][];
+            /** @constant */
+            schema_version: 1;
             slug?: string;
         } & {
             [key: string]: unknown;
-        });
+        };
         SubnetHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -11945,7 +12062,9 @@ export interface operations {
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
                      *         "slug": "example-subnet",
-                     *         "snapshot": {},
+                     *         "snapshot": {
+                     *           "example": null
+                     *         },
                      *         "subnet": "example"
                      *       },
                      *       "meta": {
@@ -21736,7 +21855,9 @@ export interface operations {
                      *           "providers": 1,
                      *           "surfaces": 1
                      *         },
-                     *         "coverage": {},
+                     *         "coverage": {
+                     *           "example": null
+                     *         },
                      *         "curation_level_counts": {
                      *           "example": 1
                      *         },
@@ -21745,7 +21866,9 @@ export interface operations {
                      *         "profile_level_counts": {
                      *           "example": 1
                      *         },
-                     *         "recent_changes": {},
+                     *         "recent_changes": {
+                     *           "example": null
+                     *         },
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
                      *         "top_subnets": [

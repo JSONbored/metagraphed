@@ -27,12 +27,8 @@
           "rejected"
         ]
       },
-      "CoverageLevel": {
-        "description": "How much of a subnet's interface metagraphed has observed, low→high: native-only (chain identity only) · manifested (declared surfaces) · probed (surfaces confirmed live by the health prober).",
-        "enum": ["native-only", "manifested", "probed"]
-      },
       "PartnershipTier": {
-        "description": "Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.",
+        "description": "Display/placement tier for a subnet \u2014 e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.",
         "enum": ["pilot"]
       },
       "CandidateState": {

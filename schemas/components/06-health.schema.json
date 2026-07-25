@@ -706,7 +706,7 @@
       },
       "ScoreDistribution": {
         "type": ["object", "null"],
-        "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
+        "description": "Distribution summary of a 0\u20131 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
         "properties": {
           "count": {
             "type": "integer",
@@ -785,7 +785,7 @@
       },
       "SubnetYieldHistoryArtifact": {
         "type": "object",
-        "description": "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup.",
+        "description": "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot \u2014 the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup.",
         "required": ["schema_version", "netuid", "point_count", "points"],
         "properties": {
           "schema_version": {
@@ -1262,35 +1262,6 @@
                 }
               },
               "additionalProperties": true
-            }
-          }
-        },
-        "additionalProperties": true
-      },
-      "RegistryLeaderboardsArtifact": {
-        "type": "object",
-        "required": ["schema_version", "source", "boards"],
-        "properties": {
-          "schema_version": {
-            "type": "integer"
-          },
-          "board": {
-            "type": ["string", "null"]
-          },
-          "observed_at": {
-            "type": ["string", "null"]
-          },
-          "source": {
-            "type": "string"
-          },
-          "boards": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": true
-              }
             }
           }
         },

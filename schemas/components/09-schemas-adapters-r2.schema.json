@@ -237,42 +237,6 @@
           }
         ]
       },
-      "AdapterArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          },
-          {
-            "type": "object",
-            "required": ["netuid", "subnet", "slug", "extensions"],
-            "properties": {
-              "netuid": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "subnet": {
-                "type": "string"
-              },
-              "slug": {
-                "type": "string"
-              },
-              "extensions": {
-                "type": "object",
-                "description": "Per-adapter extension metadata, keyed by provider id; each value's shape is adapter-specific.",
-                "additionalProperties": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              },
-              "snapshot": {
-                "type": ["object", "null"],
-                "additionalProperties": true
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      },
       "R2ManifestArtifact": {
         "allOf": [
           {
