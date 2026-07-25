@@ -51,11 +51,11 @@ Set up source map uploading automatically with our wizard by running this comman
 
     If you are using the CLI in a CI/CD environment such as GitHub Actions, you can set environment variables to authenticate:
 
-    | Environment Variable | Description | Source |
-    | --- | --- | --- |
-    | POSTHOG_CLI_HOST | The PostHog host to connect to [default: https://us.posthog.com] | [Project settings](https://app.posthog.com/settings/project#variables) |
-    | POSTHOG_CLI_PROJECT_ID | PostHog project ID | [Project settings](https://app.posthog.com/settings/project#variables) |
-    | POSTHOG_CLI_API_KEY | Personal API key with error tracking write and organization read scopes | [API key settings](https://app.posthog.com/settings/user-api-keys#variables) |
+    | Environment Variable   | Description                                                             | Source                                                                       |
+    | ---------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+    | POSTHOG_CLI_HOST       | The PostHog host to connect to [default: https://us.posthog.com]        | [Project settings](https://app.posthog.com/settings/project#variables)       |
+    | POSTHOG_CLI_PROJECT_ID | PostHog project ID                                                      | [Project settings](https://app.posthog.com/settings/project#variables)       |
+    | POSTHOG_CLI_API_KEY    | Personal API key with error tracking write and organization read scopes | [API key settings](https://app.posthog.com/settings/user-api-keys#variables) |
 
     You can also use the `--host` option instead of the `POSTHOG_CLI_HOST` environment variable to target a different PostHog instance or region. For EU users:
 
@@ -125,11 +125,11 @@ Set up source map uploading automatically with our wizard by running this comman
 
     Required
 
-    You *must* serve the injected assets in deployed production app. The injected metadata is used during error capture to identify the correct source map to use.
+    You _must_ serve the injected assets in deployed production app. The injected metadata is used during error capture to identify the correct source map to use.
 
     If you serve a copy of the bundled assets as they were prior to running `posthog-cli sourcemap inject`, we won't be able to use the uploaded sourcemap to unminify or demangle your stack traces.
 
-7.  ## Verify source maps upload
+6.  ## Verify source maps upload
 
     Checkpoint
 

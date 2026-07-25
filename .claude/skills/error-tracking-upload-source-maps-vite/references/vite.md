@@ -60,11 +60,11 @@ Set up source map uploading automatically with our wizard by running this comman
 
     Set the following environment variables:
 
-    | Environment variable | Description |
-    | --- | --- |
-    | POSTHOG_API_KEY | [Personal API key](https://app.posthog.com/settings/user-api-keys#variables) with at least write access on error tracking |
-    | POSTHOG_PROJECT_ID | Project ID you can find in your [project settings](https://app.posthog.com/settings/project#variables) |
-    | POSTHOG_HOST | (optional) Your PostHog instance URL. Defaults to https://us.i.posthog.com |
+    | Environment variable | Description                                                                                                               |
+    | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+    | POSTHOG_API_KEY      | [Personal API key](https://app.posthog.com/settings/user-api-keys#variables) with at least write access on error tracking |
+    | POSTHOG_PROJECT_ID   | Project ID you can find in your [project settings](https://app.posthog.com/settings/project#variables)                    |
+    | POSTHOG_HOST         | (optional) Your PostHog instance URL. Defaults to https://us.i.posthog.com                                                |
 
     **Using CI/CD?**
 

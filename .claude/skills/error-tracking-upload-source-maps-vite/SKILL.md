@@ -28,6 +28,7 @@ The stages of wiring up source map upload, in order. Each step has a short overv
 Source map upload authenticates with a **personal API key**, not the public project API key the SDK uses at runtime. The key needs error-tracking write access; the quickest path is the "Source map upload" preset on PostHog's personal API keys settings page.
 
 #### Tips
+
 - The public project key (the one in your SDK `init`) will **not** work for uploads — it has no write scope for symbol sets.
 - Never hardcode the key in source. It belongs in an environment variable read at build time (see "Write credentials to the env file").
 - Keys can't be minted programmatically — create them by hand in PostHog settings, then store the value as a secret.
@@ -37,15 +38,17 @@ Source map upload authenticates with a **personal API key**, not the public proj
 Wire source map generation, chunk-ID injection, and upload into your **production build** so every deploy ships matching maps. Depending on the platform this is either a build/bundler plugin, or a `posthog-cli sourcemap process` step run after the build (it injects chunk IDs and uploads in one pass). Follow the Vite reference for the exact wiring.
 
 #### Tips
+
 - If you wire `posthog-cli` directly (no framework or bundler plugin), generating the maps is **your** responsibility — the CLI only injects chunk IDs into, and uploads, maps your build already produced. Two things must be true before `posthog-cli sourcemap process` works:
   - Source maps are emitted next to your output bundles (e.g. `.js.map` files).
   - The maps include `sourcesContent` (the original source embedded inside the map). Without it PostHog has the line/column mappings but not the code, so traces can't be fully resolved.
-- **Inject before deploy**: the *injected* bundles must be the ones shipped to production. Bundles missing the `//# chunkId=…` comment can't be matched to uploaded maps.
+- **Inject before deploy**: the _injected_ bundles must be the ones shipped to production. Bundles missing the `//# chunkId=…` comment can't be matched to uploaded maps.
 - Wire injection + upload into the build itself (plugin, post-build script, or CI step) — manual uploads drift from deployed code.
 - **Don't ship source maps publicly**: omit `.map` files from the deployed artifact, or use hidden source maps. Uploaded maps live in PostHog, not on your origin.
 - **Link each release to its commit.** The CLI auto-detects the commit from the CI's git env vars — see "Associate the release with a git commit" for making those reachable in Docker/CI builds.
 
 #### Examples
+
 - **Node / tsc** Emit maps with embedded sources by setting both in `tsconfig.json`: `"sourceMap": true` and `"inlineSources": true`. Then run `posthog-cli sourcemap process` against the build output dir as a post-build step — it injects chunk IDs and uploads in one pass, and needs the upload credentials (see "Make credentials available at build time").
 - **Vite / Webpack / Rollup** Prefer the bundler plugin from the reference over hand-rolling the CLI — it injects and uploads in one pass. Make sure the bundler is configured to emit source maps.
 - **iOS (Xcode)** iOS uploads **dSYM debug symbols**, not source maps. Required target changes:
@@ -54,7 +57,7 @@ Wire source map generation, chunk-ID injection, and upload into your **productio
   3. A Run Script phase, ordered last, with `$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Resources/DWARF/$(EXECUTABLE_NAME)` in its Input Files, calling the SDK's bundled script — do not hand-roll the upload:
      - SPM: `POSTHOG_INCLUDE_SOURCE=1 POSTHOG_CLI_DOTENV_FILE="${SRCROOT}/.env" "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/posthog-ios/build-tools/upload-symbols.sh"`
      - CocoaPods: `POSTHOG_INCLUDE_SOURCE=1 POSTHOG_CLI_DOTENV_FILE="${SRCROOT}/.env" "${PODS_ROOT}/PostHog/build-tools/upload-symbols.sh"`
-  Copy the invocation verbatim — the `POSTHOG_INCLUDE_SOURCE=1` and `POSTHOG_CLI_DOTENV_FILE` prefixes HAVE to be there. This needs a recent `posthog-cli` (older ones silently ignore `POSTHOG_CLI_DOTENV_FILE`); the PostHog wizard installs it for you, so do not run `npm install -g` yourself.
+       Copy the invocation verbatim — the `POSTHOG_INCLUDE_SOURCE=1` and `POSTHOG_CLI_DOTENV_FILE` prefixes HAVE to be there. This needs a recent `posthog-cli` (older ones silently ignore `POSTHOG_CLI_DOTENV_FILE`); the PostHog wizard installs it for you, so do not run `npm install -g` yourself.
 - **Android (Gradle)** Android uploads **ProGuard/R8 mapping files**, not source maps. Apply the `com.posthog.android` Gradle plugin on the **app module's** `build.gradle(.kts)` (never the root project), per the reference — the plugin hooks the build and uploads automatically, do not hand-roll a `posthog-cli` step. Gotchas:
   1. The plugin only hooks minified variants — if the release build type has `isMinifyEnabled = false`, set it to `true` (keep the existing `proguardFiles` line) or nothing is uploaded.
   2. The upload shells out to `posthog-cli` on the `PATH` (v0.7.4+); the PostHog wizard installs it for you, so do not run `npm install -g` yourself.
@@ -67,22 +70,24 @@ Wire source map generation, chunk-ID injection, and upload into your **productio
 The upload credentials must be readable **by the build pipeline at build time**, not merely present in a `.env` file. Whether `.env` is auto-loaded depends on the technology.
 
 #### Tips
+
 - **Auto-loads `.env`**: Next.js, Nuxt and similar frameworks read `.env` into the build for you — nothing extra to do.
 - **Vite is a partial exception**: it auto-loads `.env` into `import.meta.env` for client code (only `VITE_`-prefixed vars), but does **not** put vars in `process.env` for your config to read. The upload credentials (`POSTHOG_*`, not `VITE_`-prefixed) are read when the plugin is constructed, so load them yourself — see the Vite example below.
 - **Does NOT auto-load `.env`**: Rollup, plain webpack, and plain Node scripts. Load it explicitly — add `dotenv` (`require('dotenv').config()`, or `import 'dotenv/config'` for ESM) at the top of the bundler/config file.
-- **Separate-process gotcha**: if `posthog-cli sourcemap process` runs as its own `package.json` step (after the bundler), the CLI call is a **separate child process** and will *not* see env vars a loader set inside the bundler config. Point the CLI at the file directly: `posthog-cli --dotenv-file <relative-path> sourcemap process …` (the flag goes before the subcommand).
+- **Separate-process gotcha**: if `posthog-cli sourcemap process` runs as its own `package.json` step (after the bundler), the CLI call is a **separate child process** and will _not_ see env vars a loader set inside the bundler config. Point the CLI at the file directly: `posthog-cli --dotenv-file <relative-path> sourcemap process …` (the flag goes before the subcommand).
 - **`process` authenticates from the start.** `posthog-cli sourcemap process` resolves credentials before it injects chunk IDs — the inject phase needs them too, not just the upload — and fails without them. Always pass `--dotenv-file` to the `process` invocation. (It can still appear to work if the developer once ran `posthog-cli login`, which leaves credentials in `~/.posthog` — that won't exist in CI or on a teammate's machine.)
 - **iOS / Xcode** No loader — the Run Script phase's `POSTHOG_CLI_DOTENV_FILE="${SRCROOT}/.env"` prefix points posthog-cli at the gitignored `.env`. `POSTHOG_CLI_HOST` is the API host (`https://us.posthog.com`), never the `*.i.posthog.com` ingestion host.
 - **Android / Gradle** Gradle does not read `.env` — bridge it in the app module's build script (see the Android example). Unset properties fall back to real `POSTHOG_CLI_*` environment variables, so the same wiring works in CI. The host var follows the same API-host rule as iOS above.
 
 #### Examples
+
 - **Next.js / Nuxt** Auto-load `.env` at build time; put the vars there and you're done.
 - **Vite** Export `vite.config` as a function and merge `loadEnv` into `process.env` so the config (and the PostHog plugin) can read the upload credentials. Pass `''` as the third arg so non-`VITE_` vars like `POSTHOG_API_KEY` are included — the default `'VITE_'` prefix skips them:
   ```ts
-  import { defineConfig, loadEnv } from 'vite';
+  import { defineConfig, loadEnv } from "vite";
 
   export default ({ mode }) => {
-    process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
+    process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "") };
     // process.env.POSTHOG_API_KEY is now readable by the plugins below
     return defineConfig({
       plugins: [/* … posthog source map plugin … */],
@@ -118,6 +123,7 @@ The upload credentials must be readable **by the build pipeline at build time**,
 Write the personal API key and project identifiers into the env file your build reads. Reuse the file the project already uses — don't introduce a second one.
 
 #### Tips
+
 - Picking the file: if an env file already contains PostHog vars (`POSTHOG_*` / `NEXT_PUBLIC_POSTHOG_*`), use that one. Otherwise, if exactly one env file exists use it; if several exist prefer `.env`. Only create a new file when none exists.
 - Variable names depend on which uploader you wired:
   - `posthog-cli` direct upload → `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, `POSTHOG_CLI_HOST`
@@ -130,10 +136,12 @@ Write the personal API key and project identifiers into the env file your build 
 Resolve two concrete commands for this project: the production **build** command (the one that uploads source maps) and the **run** command that launches the built app (so a test error can be triggered against the real artifact).
 
 #### Tips
+
 - Resolve real commands from the project's actual scripts/config — substitute the correct package manager. Never leave a generic "start the app".
-- When a build artifact is involved, prefer the command that serves the *production* build over the dev server.
+- When a build artifact is involved, prefer the command that serves the _production_ build over the dev server.
 
 #### Examples
+
 - **Next.js** Build: `npm run build` (`next build`). Run: `npm run start` (`next start`).
 - **Vite** Build: `npm run build`. Run: `npm run preview`.
 - **Plain Node** Build: `npm run build`. Run: `node <built entry>` — read package.json `main`/`bin` and the build output dir to name the real file (e.g. `node dist/index.js`).
@@ -156,7 +164,8 @@ Source maps are only uploaded when the **production build** runs, so the environ
 4. No `Dockerfile`, no CI config, no build step you can trace? Don't guess — tell the user where the creds need to be (see "Untraceable setup" under Examples).
 
 #### Tips
-- **A deploy file for another package is not license to author one for this one.** In a monorepo especially, finding a workflow that deploys a *sibling* package (e.g. a `deploy-backend.yml`, or a `Dockerfile`/pipeline for another app) does **not** mean you should create a matching `deploy-frontend.yml` (or any new CI file) for the project you're instrumenting. Wire credentials only into the existing file that builds *this* project. If this project has no build/deploy config you can open and edit, it is untraceable: make no CI changes and hand the requirement to the user (see "Untraceable setup") — do **not** invent one.
+
+- **A deploy file for another package is not license to author one for this one.** In a monorepo especially, finding a workflow that deploys a _sibling_ package (e.g. a `deploy-backend.yml`, or a `Dockerfile`/pipeline for another app) does **not** mean you should create a matching `deploy-frontend.yml` (or any new CI file) for the project you're instrumenting. Wire credentials only into the existing file that builds _this_ project. If this project has no build/deploy config you can open and edit, it is untraceable: make no CI changes and hand the requirement to the user (see "Untraceable setup") — do **not** invent one.
 - Reuse the **exact variable names** from "Write credentials to the env file" — the build reads the same names locally and in CI. (`POSTHOG_CLI_*` for direct `posthog-cli`; `POSTHOG_*` for bundler-plugin uploaders.)
 - **In CI, credentials travel as environment variables — never as a file.** Do not materialize a `.env` on the runner (e.g. `printf … > .env` before the build), and never copy or un-ignore one into a Docker image: it's redundant, and a secrets file on disk can leak into artifacts, caches, or image layers. A build script that passes `--dotenv-file .env` to `posthog-cli` works unchanged in CI even though `.env` doesn't exist there: real environment variables take precedence over the file, and a missing file is skipped with a warning.
 - **Never commit secret values.** Reference credentials by name only: Docker `ARG`/`ENV` or BuildKit secret ids, `${{ secrets.* }}` in GitHub Actions. The personal API key stays out of version control.
@@ -164,13 +173,14 @@ Source maps are only uploaded when the **production build** runs, so the environ
 - **Multi-stage Dockerfiles:** put the `ARG`/`ENV` in the **build stage** (where the build command runs), never the runtime stage. That's both correct (the build needs them) and safer (the creds don't get baked into the shipped image).
 - **Single-stage Dockerfiles:** with no separate build stage, `ARG`/`ENV` would bake the API key into the shipped image (`docker inspect` reveals `ENV`; `docker history` can reveal build args). Mount the key as a **BuildKit secret** on the build `RUN` instead — it exists for that command only and is never written to a layer (see the single-stage example). Plain `ARG`/`ENV` stays fine for the non-secret project ID and host.
 - **Composite / reusable actions can't read `secrets`.** Inside a `.github/actions/*/action.yml` only `${{ inputs.* }}` is available. Add an `inputs:` entry per credential, reference `${{ inputs.* }}` there, and pass `${{ secrets.* }}` from the calling workflow's `with:` block.
-- **Build over SSH:** the runner's env doesn't reach the remote box. Set the vars inline immediately before the build command inside the `script:`. `${{ secrets.* }}` is substituted by Actions *before* the script is sent, so the value travels with the script.
+- **Build over SSH:** the runner's env doesn't reach the remote box. Set the vars inline immediately before the build command inside the `script:`. `${{ secrets.* }}` is substituted by Actions _before_ the script is sent, so the value travels with the script.
 - **The worked examples are exemplars, not an allowlist.** For any provider not shown (GitLab CI, CircleCI, Jenkins, Bitbucket, Azure Pipelines, …), apply the same principle with your knowledge of that provider: find the job that runs the production build, expose the credentials there via the provider's native secret mechanism (GitLab project CI/CD variables, CircleCI project env vars / contexts, Jenkins credentials + `withCredentials`, …), and cross the same boundaries the same way — Docker builds still need `--build-arg`, SSH sessions still need inline vars.
 - **Make only the edits the provider actually needs.** Some providers inject project-level variables straight into every job's environment — GitLab CI/CD variables work this way — so an inline build step may need **no functional pipeline change at all**. When that's the conclusion, still add a short comment on the build job naming the required variables and where to create them (see the GitLab example) — the requirement must be visible in the repo, not only in your hand-off — and tell the user exactly which variables to create and where.
 - You can't create CI secrets. Whenever the pipeline reads a credential, tell the user where to add it before their next deploy — GitHub: **Settings → Secrets and variables → Actions**; GitLab: **Settings → CI/CD → Variables**; other providers: their equivalent secret store. The pipeline can't read a secret that doesn't exist yet.
 
 #### Examples
-- **Dockerfile build stage (e.g. `Dockerfile`, no CI)** Declare the credentials as build args and promote them to env vars *before* the build `RUN`, in the build stage:
+
+- **Dockerfile build stage (e.g. `Dockerfile`, no CI)** Declare the credentials as build args and promote them to env vars _before_ the build `RUN`, in the build stage:
   ```dockerfile
   FROM node:22-slim AS build
   WORKDIR /app
@@ -286,9 +296,11 @@ Source maps are only uploaded when the **production build** runs, so the environ
 `posthog-cli` links the release to a **git commit, branch and repo** so Error Tracking can show which deploy an error came from. It auto-detects that from the CI's git env vars or a local `.git` directory — you never touch the CLI invocation itself (it's usually baked into `npm run build` or a bundler plugin), you just make the git context available in the build environment. A `docker build` is where this breaks: it sees **neither** the env vars nor `.git` (the same boundary credentials hit), so the release ends up linked to nothing unless you forward the vars in.
 
 #### Tips
+
 - **Forward GitHub's git env vars into the Docker build** the same way you forwarded credentials. Declare each as an `ARG` **and** promote it to `ENV` — `ARG` alone isn't visible to the CLI's env lookup. That's all auto-detection needs; no CLI flags, no `.git`.
 
 #### Examples
+
 - **GitHub Actions → docker build** Forward GitHub's git vars into the build stage and the CLI auto-detects branch + repo + commit:
   ```yaml
   build-args: |
@@ -306,13 +318,15 @@ Source maps are only uploaded when the **production build** runs, so the environ
 Optionally add a temporary, clearly-labeled affordance that captures one test exception, so you can confirm errors arrive in Error Tracking with a source-resolved stack trace after the next production build. Always remove it afterwards.
 
 #### Tips
+
 - The handler must call the SDK's exception-capture method **directly** — do **not** `throw`. Throwing depends on the global error handler and shows a dev overlay; a direct capture is deterministic across platforms.
 - Pass a single Error (or platform-equivalent throwable). No custom message beyond the Error, no extra properties, no second argument — the Error's stack trace is what gets resolved.
 - Use distinctive copy on the trigger (button label / route path) so the resulting event is easy to find in the UI.
 - Read any file before editing it and capture its exact contents; after testing, restore every file the affordance touched — the affordance only, leave the upload and credential wiring in place — and re-read to confirm nothing is left behind. Never leave the affordance in place — even if the test "didn't work", revert first.
-- The upload only happens on the *production build*: build, run, trigger the error, then confirm the stack trace in Error Tracking points at real source files, not minified bundle paths.
+- The upload only happens on the _production build_: build, run, trigger the error, then confirm the stack trace in Error Tracking points at real source files, not minified bundle paths.
 
 #### Examples
+
 - **Browser / SPA / SSR (web, react, nextjs, nuxt, angular, vite, webpack, rollup)** Add a button such as "Test PostHog Error Tracking" on the home/root page whose onClick calls `posthog.captureException(new Error("PostHog source maps test"))`.
 - **Node.js** Add a temporary route (e.g. `GET /__posthog-test-error`) on the existing server that calls `posthog.captureException(new Error("PostHog source maps test"))` and returns 200. With no HTTP layer, add the capture to the existing entry script where the client is initialised rather than creating a new file. Tell the user the exact command/URL to hit.
 - **React Native** Add a visible `Button` on the main screen whose onPress calls `posthog.captureException(new Error("PostHog source maps test"))`.
@@ -340,12 +354,14 @@ Optionally add a temporary, clearly-labeled affordance that captures one test ex
 Confirm the upload landed and report what changed.
 
 #### Tips
+
 - Source maps upload during the **production build** — the build must actually run for a symbol set to appear.
 - Verify in PostHog Error Tracking settings on the **Symbol sets** page: a new symbol set should appear after the build completes.
 - When handing off, list the files you edited (paths only), the env-var **key** names you set (never values), whether a test affordance was added and reverted, and the exact build command to run.
 - If you wired CI, list the pipeline files you changed (`Dockerfile`, workflow, pipeline config) and spell out every manual follow-up — e.g. the secrets the user must add in their CI provider's settings before their next deploy, or the note that their build path couldn't be traced.
 
 ## General tips
+
 - The reference files for Vite are authoritative — if this page and a reference disagree on an API, follow the reference.
 - Two different keys, two different jobs: a **personal API key** uploads maps at build time; the **public project key** powers the SDK at runtime. Don't swap them.
 - Keep build artifacts and uploaded maps in sync — every deploy should inject + upload within the same build so stack traces always resolve.
