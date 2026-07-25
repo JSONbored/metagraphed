@@ -24,7 +24,7 @@ import {
   buildTimestamp,
 } from "./lib.ts";
 import {
-  initSentry,
+  initObservability,
   endSessionAndFlush,
   captureFatalAndExit,
 } from "./observability.ts";
@@ -299,7 +299,7 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  initSentry("discover-testnet-surfaces");
+  initObservability("discover-testnet-surfaces");
   main()
     .then(async () => {
       await endSessionAndFlush();
@@ -308,11 +308,11 @@ if (
       console.error(
         `testnet discovery failed: ${(error as Error)?.message || error}`,
       );
-      // Explicit capture required here (not left to @sentry/node's default
-      // OnUnhandledRejection integration, see observability.ts's own
-      // comment): Node stops considering a promise "unhandled" once
-      // something calls .catch() on it, which this script already did
-      // before Sentry instrumentation existed.
+      // Explicit capture required here (not left to observability.ts's
+      // process-level uncaughtException/unhandledRejection handlers): Node
+      // stops considering a promise "unhandled" once something calls
+      // .catch() on it, which this script already did before those handlers
+      // would ever see it.
       await captureFatalAndExit(error);
     });
 }

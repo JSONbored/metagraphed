@@ -48,11 +48,11 @@ else
   # Deliberately NO `git clean -fdx` here, unlike the sibling JS entrypoints
   # -- scripts/.venv (uv's own dependency cache, persisted across runs on
   # this same volume so a daily/weekly cron tick doesn't pay a full
-  # bittensor + sentry-sdk install every single time) is untracked and would
-  # otherwise be wiped on every refresh, defeating the point of the
-  # persistent volume. Nothing else in this checkout is ever written to
-  # locally (these scripts write their OUTPUT to the separately-mounted
-  # /out, never anywhere inside $REPO_DIR), so there's no equivalent risk of
+  # bittensor install every single time) is untracked and would otherwise be
+  # wiped on every refresh, defeating the point of the persistent volume.
+  # Nothing else in this checkout is ever written to locally (these scripts
+  # write their OUTPUT to the separately-mounted /out, never anywhere inside
+  # $REPO_DIR), so there's no equivalent risk of
   # stale local state the other entrypoints' git clean actually guards
   # against.
 fi
@@ -61,12 +61,5 @@ cd "$REPO_DIR/scripts"
 echo "entrypoint: uv sync --locked"
 uv sync --locked
 
-# Reports the ACTUAL commit this run's code came from -- computed here, not
-# injected by metagraphed-infra's Ansible, since that repo no longer holds
-# any copy of this code to derive a meaningful SHA from at all. An explicit
-# override still wins if one is somehow already set.
-: "${SENTRY_RELEASE:=$(git -C "$REPO_DIR" rev-parse HEAD)}"
-export SENTRY_RELEASE
-
-echo "entrypoint: uv run python ${SCRIPT} (release=${SENTRY_RELEASE})"
+echo "entrypoint: uv run python ${SCRIPT} (release=$(git -C "$REPO_DIR" rev-parse HEAD))"
 exec uv run python "${SCRIPT}"

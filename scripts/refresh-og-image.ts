@@ -37,10 +37,13 @@ import { html } from "satori-html";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 import { buildStatParts, renderMarkup } from "../src/og-image.ts";
 import { repoRoot, stableStringify } from "./lib.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
-import * as Sentry from "@sentry/node";
+import {
+  initObservability,
+  endSessionAndFlush,
+  captureExceptionAndContinue,
+} from "./observability.ts";
 
-initSentry("refresh-og-image");
+initObservability("refresh-og-image");
 
 const CARD_WIDTH = 1200;
 const CARD_HEIGHT = 630;
@@ -70,8 +73,7 @@ try {
     }),
   );
 } catch (error) {
-  Sentry.captureException(error);
-  await Sentry.flush(2000);
+  await captureExceptionAndContinue(error);
   console.warn(
     `::warning::og-image render failed (${summarizeError(error)}); leaving the previously published card in place.`,
   );
