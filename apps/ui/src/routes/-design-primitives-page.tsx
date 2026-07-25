@@ -233,7 +233,7 @@ function Show({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-2 rounded border border-border bg-card p-3">
+    <div className="min-w-0 space-y-2 rounded border border-border bg-card p-3">
       <div className="mg-type-micro text-ink-muted">{name}</div>
       <div>{children}</div>
       <CopyableCode value={`import { ${name} } from "${from}";`} truncate={false} />
