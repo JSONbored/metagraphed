@@ -519,11 +519,27 @@ import { SDL } from "./graphql-sdl.ts";
 // here, not the Resolver wrapper. Same class of codegen/runtime-convention
 // mismatch the epic already anticipated for the Subscription resolver.
 import type {
+  QueryAgent_CatalogArgs,
+  QueryCandidatesArgs,
   QueryEconomicsArgs,
+  QueryFixtureArgs,
+  QuerySaved_QueryArgs,
+  QuerySearchArgs,
   QuerySubnetArgs,
   QuerySubnetsArgs,
+  QuerySubnet_DeregistrationsArgs,
   QuerySubnet_HealthArgs,
+  QuerySubnet_Health_IncidentsArgs,
+  QuerySubnet_Health_PercentilesArgs,
+  QuerySubnet_Health_TrendsArgs,
+  QuerySubnet_HyperparametersArgs,
+  QuerySubnet_Hyperparameters_HistoryArgs,
+  QuerySubnet_RegistrationsArgs,
+  QuerySubnet_ServingArgs,
   QuerySubnet_Stake_QuoteArgs,
+  QuerySubnet_UptimeArgs,
+  QuerySubnet_VolumeArgs,
+  QueryTop_HoldersArgs,
 } from "../generated/graphql/types.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1663,12 +1679,14 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
 }
 
 // Row-erased: pending D batch N (types-epic D, #7862 tracks follow-up
-// batches). Only the 5 Query fields with a Zod-covered REST mirror from
+// batches). The 5 pilot Query fields with a Zod-covered REST mirror from
 // types-epic A (subnets, subnet, subnet_health, subnet_stake_quote,
-// economics) are typed against the generated Args types below; the
-// remaining ~150 root fields on this object keep their `Row`-typed
-// destructured params for now, adopted incrementally in later batches
-// rather than all at once here.
+// economics) plus batch 1's 20 discovery & subnet-lifecycle fields (#8158)
+// are typed against the generated Args types below (no-arg fields in that
+// batch keep an `unknown` args param, since the SDL declares them no-argument
+// and codegen emits no Args type for them); the remaining root fields on this
+// object keep their `Row`-typed destructured params for now, adopted
+// incrementally in later batches rather than all at once here.
 const rootValue = {
   subnets(
     {
@@ -1733,7 +1751,10 @@ const rootValue = {
     });
   },
 
-  async subnet_hyperparameters({ netuid }: Row, context: GqlContext) {
+  async subnet_hyperparameters(
+    { netuid }: QuerySubnet_HyperparametersArgs,
+    context: GqlContext,
+  ) {
     // Same tryPostgresTier(METAGRAPH_SUBNET_HYPERPARAMS_SOURCE) -> buildSubnetHyperparams
     // fallback contract handleSubnetHyperparams uses. The D1 write path is retired, so a
     // cold tier is an expected steady state, not an error: it yields a schema-stable card
@@ -1760,7 +1781,7 @@ const rootValue = {
   },
 
   async subnet_hyperparameters_history(
-    { netuid, limit, offset, cursor }: Row,
+    { netuid, limit, offset, cursor }: QuerySubnet_Hyperparameters_HistoryArgs,
     context: GqlContext,
   ) {
     // Same FEED_PAGINATION bounds parsePagination applies for REST, so a GraphQL
@@ -1870,7 +1891,7 @@ const rootValue = {
   // included, matching GET /api/v1/candidates. An invalid filter/sort value or a
   // cold/absent artifact throws, becoming a GraphQL error (matching the sibling
   // gaps / subnet_candidates convention), rather than a silent default.
-  candidates(args: Row, context: GqlContext) {
+  candidates(args: QueryCandidatesArgs, context: GqlContext) {
     return loadCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -1883,7 +1904,7 @@ const rootValue = {
   // path as REST GET /api/v1/fixtures/{surface_id}. invalid_params becomes
   // BAD_USER_INPUT; any other loader miss (not_found / cold R2) resolves to
   // null, matching adapter's cold/absent convention.
-  async fixture(args: Row, context: GqlContext) {
+  async fixture(args: QueryFixtureArgs, context: GqlContext) {
     try {
       return await loadFixture(mcpCtx(context), args, { readArtifact });
     } catch (rawErr) {
@@ -1898,7 +1919,7 @@ const rootValue = {
     }
   },
 
-  async agent_catalog({ netuid }: Row, context: GqlContext) {
+  async agent_catalog({ netuid }: QueryAgent_CatalogArgs, context: GqlContext) {
     const live = await loadLiveHealth(context);
     if (netuid == null) {
       const index = await loadArtifact(
@@ -1925,7 +1946,10 @@ const rootValue = {
     return mergeFreshness(base, meta) ?? base;
   },
 
-  async top_holders({ sort, limit }: Row, context: GqlContext) {
+  async top_holders(
+    { sort, limit }: QueryTop_HoldersArgs,
+    context: GqlContext,
+  ) {
     // Same allowlist REST enforces -- an unknown sort is BAD_USER_INPUT rather
     // than silently falling back, mirroring the route's invalid_query 400.
     if (sort != null && !TOP_HOLDERS_SORTS.includes(sort)) {
@@ -1979,7 +2003,10 @@ const rootValue = {
     };
   },
 
-  async subnet_registrations({ netuid, window }: Row, context: GqlContext) {
+  async subnet_registrations(
+    { netuid, window }: QuerySubnet_RegistrationsArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetRegistrations uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -2017,7 +2044,10 @@ const rootValue = {
     };
   },
 
-  async subnet_deregistrations({ netuid, window }: Row, context: GqlContext) {
+  async subnet_deregistrations(
+    { netuid, window }: QuerySubnet_DeregistrationsArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetDeregistrations uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -2055,7 +2085,10 @@ const rootValue = {
     };
   },
 
-  async subnet_serving({ netuid, window }: Row, context: GqlContext) {
+  async subnet_serving(
+    { netuid, window }: QuerySubnet_ServingArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetServing uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_SERVING_WINDOW;
@@ -3087,7 +3120,7 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/registry-summary.json");
   },
 
-  async saved_query({ id, params }: Row, context: GqlContext) {
+  async saved_query({ id, params }: QuerySaved_QueryArgs, context: GqlContext) {
     // #7642: the same maintainer-curated template executor the REST route and
     // run_saved_query MCP tool share (src/saved-queries.ts) -- template
     // lookup, param coercion/validation, and execution are all its. Its
@@ -3095,7 +3128,9 @@ const rootValue = {
     // BAD_USER_INPUT, matching this file's invalid-argument convention; any
     // other executor failure surfaces as a normal GraphQL error.
     try {
-      return await runSavedQuery(context.env, id, params ?? {});
+      // params is the SDL's opaque JSON scalar (typed `unknown`); runSavedQuery
+      // owns its coercion/validation, so it is handed through as an opaque Row.
+      return await runSavedQuery(context.env, id, (params ?? {}) as Row);
     } catch (rawErr) {
       const err = rawErr as Row;
       if (
@@ -3378,7 +3413,7 @@ const rootValue = {
   // list-query transforms REST and MCP already apply -- so the GraphQL search
   // field cannot drift from them. An unsupported filter/sort or a cold artifact
   // is a GraphQL error, matching source_snapshots/evidence/profiles.
-  search(args: Row, context: GqlContext) {
+  search(args: QuerySearchArgs, context: GqlContext) {
     return loadSearchList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3484,7 +3519,7 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/coverage-depth.json");
   },
 
-  async subnet_volume({ netuid }: Row, context: GqlContext) {
+  async subnet_volume({ netuid }: QuerySubnet_VolumeArgs, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3637,7 +3672,7 @@ const rootValue = {
   },
 
   async subnet_health_percentiles(
-    { netuid, window }: Row,
+    { netuid, window }: QuerySubnet_Health_PercentilesArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's percentiles handler
@@ -3916,7 +3951,10 @@ const rootValue = {
     }
   },
 
-  async subnet_health_incidents({ netuid, window }: Row, context: GqlContext) {
+  async subnet_health_incidents(
+    { netuid, window }: QuerySubnet_Health_IncidentsArgs,
+    context: GqlContext,
+  ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleHealthIncidents
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
@@ -6752,7 +6790,10 @@ const rootValue = {
     };
   },
 
-  async subnet_health_trends({ netuid }: Row, context: GqlContext) {
+  async subnet_health_trends(
+    { netuid }: QuerySubnet_Health_TrendsArgs,
+    context: GqlContext,
+  ) {
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetHealthTrends D1
     // fallback contract REST's handleHealthTrends and the
     // get_subnet_health_trends MCP tool share -- the route takes no window arg
@@ -6878,7 +6919,7 @@ const rootValue = {
   },
 
   async subnet_uptime(
-    { netuid, window, min_samples: minSamples }: Row,
+    { netuid, window, min_samples: minSamples }: QuerySubnet_UptimeArgs,
     context: GqlContext,
   ) {
     // Same 90d/1y window validation handleUptime / get_subnet_uptime use -- an
