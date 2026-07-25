@@ -9,6 +9,41 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.11.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.10.0...ui-v0.11.0) (2026-07-25)
+
+
+### Features
+
+* **observability:** add PostHog feature flags (Workers HTTP+KV, UI client) ([#7816](https://github.com/JSONbored/metagraphed/issues/7816)) ([a523400](https://github.com/JSONbored/metagraphed/commit/a5234009f44c6cf93c4af154b545c7af148e78a1))
+* **ui-kit:** Panel API — rest-prop forwarding, ok tone, tintBorderOnly, glow ([#8080](https://github.com/JSONbored/metagraphed/issues/8080)) ([e20268e](https://github.com/JSONbored/metagraphed/commit/e20268e7cb74a442473cd1a472f86b94eaf8c705))
+* **ui:** adopt AsyncPanel across remaining routes (Phase 11 batch 5) ([#7805](https://github.com/JSONbored/metagraphed/issues/7805)) ([30ef8ca](https://github.com/JSONbored/metagraphed/commit/30ef8caa8a83c65a51f53b481046b254536ad84d))
+* **ui:** adopt PageMasthead on design.primitives.tsx (Phase 11 batch 3) ([#7799](https://github.com/JSONbored/metagraphed/issues/7799)) ([939ad33](https://github.com/JSONbored/metagraphed/commit/939ad334cc52704eda6371cbf072696b1b029374))
+* **ui:** adopt PageMasthead on graphql.explorer.tsx (Phase 11 batch 2) ([#7797](https://github.com/JSONbored/metagraphed/issues/7797)) ([9c052a5](https://github.com/JSONbored/metagraphed/commit/9c052a53d4e0c8e868736824e1c7730bb4c060f3))
+* **ui:** adopt PageMasthead/AsyncPanel on domains + about (Phase 11 batch 1) ([#7796](https://github.com/JSONbored/metagraphed/issues/7796)) ([586c7bd](https://github.com/JSONbored/metagraphed/commit/586c7bde3d112c3e027ae7d94c429192f57f2803))
+* **ui:** adopt PageMasthead/AsyncPanel on leaderboards.tsx (Phase 11 batch 4) ([#7802](https://github.com/JSONbored/metagraphed/issues/7802)) ([92428fc](https://github.com/JSONbored/metagraphed/commit/92428fcd35984fcb2875d34debbad75c499dda15))
+* **ui:** design tokens 4/5 — semantic border-radius scale ([#8102](https://github.com/JSONbored/metagraphed/issues/8102)) ([41ddc9b](https://github.com/JSONbored/metagraphed/commit/41ddc9bf7f273194dfd81de6e7c07e61d63bc60d))
+* **ui:** lint ratchet — promote Bone & Ink rules from warn to error, directory by directory ([#8101](https://github.com/JSONbored/metagraphed/issues/8101)) ([c367ff9](https://github.com/JSONbored/metagraphed/commit/c367ff924fe33ea087754f6ed883f78814d2f7f8))
+* **ui:** PostHog source-map upload replaces Sentry's throwaway build ([#8129](https://github.com/JSONbored/metagraphed/issues/8129)) ([b7ae865](https://github.com/JSONbored/metagraphed/commit/b7ae865e98bba6b144a2d909d83a609196322d0d))
+* **ui:** UX polish 2/3 — make /design/primitives the complete design-system reference ([#8104](https://github.com/JSONbored/metagraphed/issues/8104)) ([6acdac7](https://github.com/JSONbored/metagraphed/commit/6acdac7160ad753a6718719f0eff550c7a94d09d))
+
+
+### Bug Fixes
+
+* **ui-kit:** CopyableCode truncate={false} now actually constrains width ([#8117](https://github.com/JSONbored/metagraphed/issues/8117)) ([099e58f](https://github.com/JSONbored/metagraphed/commit/099e58fac6e681ee7c4fb8ef608aade9542b323b))
+* **ui:** /blocks cadence-heatmap legend no longer overflows at mobile ([#8120](https://github.com/JSONbored/metagraphed/issues/8120)) ([d693848](https://github.com/JSONbored/metagraphed/commit/d69384862f4d431af92f39031f59414f5a131749))
+* **ui:** /status incident rows no longer overflow at mobile ([#8118](https://github.com/JSONbored/metagraphed/issues/8118)) ([702cfa5](https://github.com/JSONbored/metagraphed/commit/702cfa5b6ead07313f083f20d26def30496f0515))
+* **ui:** annotate SegmentedToggle onChange param to fix a typecheck break ([#7795](https://github.com/JSONbored/metagraphed/issues/7795)) ([cbec5e7](https://github.com/JSONbored/metagraphed/commit/cbec5e7e612d5d038dea35f3e14914e2914194eb))
+* **ui:** de-duplicate breadcrumbs on subnet/provider/block detail pages ([#8046](https://github.com/JSONbored/metagraphed/issues/8046)) ([8deadcb](https://github.com/JSONbored/metagraphed/commit/8deadcb6f9174b916b6e658b81c891f0cfea96e8)), closes [#7853](https://github.com/JSONbored/metagraphed/issues/7853)
+* **ui:** fix all 19 react-hooks/exhaustive-deps warnings ([#8042](https://github.com/JSONbored/metagraphed/issues/8042)) ([241dabd](https://github.com/JSONbored/metagraphed/commit/241dabd371e80cbbf7f40224c51ec1dedde9613a))
+* **ui:** harden the analytics proxy defensively; enable pageleave + native web vitals ([#7804](https://github.com/JSONbored/metagraphed/issues/7804)) ([311fa7c](https://github.com/JSONbored/metagraphed/commit/311fa7cad1fbc667352292bae5e9104ec53efd7f))
+* **ui:** homepage chain-throughput card CTA no longer wraps at mobile ([#8119](https://github.com/JSONbored/metagraphed/issues/8119)) ([8d435b3](https://github.com/JSONbored/metagraphed/commit/8d435b3fc27dc13d49eb91d6d6068129fefbd7cf))
+* **ui:** move flex/grid layout classes onto Panel's bodyClassName, not className ([#7819](https://github.com/JSONbored/metagraphed/issues/7819)) ([3240a19](https://github.com/JSONbored/metagraphed/commit/3240a19c793ba2b7b694f0ea7a6a67e7b0ad1b38))
+* **ui:** PageMasthead title no longer collapses vs busy actions row ([#8115](https://github.com/JSONbored/metagraphed/issues/8115)) ([6c85dee](https://github.com/JSONbored/metagraphed/commit/6c85dee19d299feaa0d8f4f2708422fe6b032deb))
+* **ui:** reserve the site-wide incident strip for major outages only ([#7821](https://github.com/JSONbored/metagraphed/issues/7821)) ([af9e80d](https://github.com/JSONbored/metagraphed/commit/af9e80d82243568838dd71ae9f2fdbc219446ecc))
+* **ui:** stop a background cache.put() rejection from 500ing the response ([#7794](https://github.com/JSONbored/metagraphed/issues/7794)) ([0696823](https://github.com/JSONbored/metagraphed/commit/0696823b0278e0c300cba54db633e249349fb4d8))
+* **ui:** stop assuming ctx is a valid ExecutionContext in the analytics proxy ([#7807](https://github.com/JSONbored/metagraphed/issues/7807)) ([efa52d9](https://github.com/JSONbored/metagraphed/commit/efa52d98089c44e6e2a5263317fec787ce570943))
+* **ui:** tighten raw-hex-color ESLint guardrail (Lovable sync 11.4) ([#7813](https://github.com/JSONbored/metagraphed/issues/7813)) ([baafe7f](https://github.com/JSONbored/metagraphed/commit/baafe7ffe39c44ec7e174437f251d63ca4c73989))
+
 ## [0.10.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.9.0...ui-v0.10.0) (2026-07-23)
 
 
