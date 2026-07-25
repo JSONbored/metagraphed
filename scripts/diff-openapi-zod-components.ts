@@ -185,6 +185,32 @@ function normalize(
       continue;
     }
 
+    // A hand-edited `type: [X, "null"], enum: [...literal values..., null]`
+    // (batch 1, #8055: the 7d/30d window fields) carries `null` as BOTH a
+    // type-array member AND a literal enum member -- redundant, since the
+    // nullable-with-siblings rewrite above already produces a separate
+    // `{type:"null"}` anyOf branch for it. Zod's z.enum([...]).nullable()
+    // only ever emits the type-array form, never duplicates null inside the
+    // enum's own value list. Strip a `null` enum member wherever found (both
+    // sides) so this redundant-but-equivalent hand-edited authoring style
+    // compares equal to Zod's non-redundant one.
+    if (key === "enum" && Array.isArray(value) && value.includes(null)) {
+      out[key] = (value as unknown[]).filter((v) => v !== null);
+      continue;
+    }
+
+    // `items: {}` (Zod's z.array(z.unknown())) means "any item type" -- the
+    // same as omitting `items` entirely (a hand-edited `{type:"array"}` with
+    // no items constraint, e.g. SubnetOverviewArtifact's gap_priorities).
+    if (
+      key === "items" &&
+      value &&
+      typeof value === "object" &&
+      Object.keys(value).length === 0
+    ) {
+      continue;
+    }
+
     // additionalProperties: {} (Zod's .passthrough()) vs additionalProperties:
     // true (hand-edited) -- both mean "any extra properties allowed".
     if (

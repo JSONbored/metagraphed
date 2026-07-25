@@ -86,6 +86,35 @@ import {
   HealthSubnetSummarySchema,
 } from "./routes/health.ts";
 import { SubnetStakeQuoteArtifactSchema } from "./routes/stake-quote.ts";
+import { SubnetAlphaVolumeArtifactSchema } from "./routes/subnet-alpha-volume.ts";
+import {
+  SubnetAxonRemovalsArtifactSchema,
+  SubnetDeregistrationsArtifactSchema,
+  SubnetRegistrationsArtifactSchema,
+  SubnetServingArtifactSchema,
+} from "./routes/subnet-activity.ts";
+import {
+  SubnetBurnArtifactSchema,
+  SubnetRecycledArtifactSchema,
+} from "./routes/subnet-registration-cost.ts";
+import {
+  AccountEventSchema,
+  SubnetEventsArtifactSchema,
+} from "./routes/subnet-events.ts";
+import { SubnetEventSummaryArtifactSchema } from "./routes/subnet-event-summary.ts";
+import { SubnetHistoryArtifactSchema } from "./routes/subnet-history.ts";
+import { SubnetIdentityHistoryArtifactSchema } from "./routes/subnet-identity-history.ts";
+import { SubnetIdleStakeArtifactSchema } from "./routes/subnet-idle-stake.ts";
+import {
+  DomainSummaryArtifactSchema,
+  DomainsArtifactSchema,
+} from "./routes/domains.ts";
+import {
+  IntegrationReadinessSchema,
+  SubnetProfileIdentityEvidenceSchema,
+  SubnetProfileSchema,
+} from "./routes/subnet-profile.ts";
+import { SubnetOverviewArtifactSchema } from "./routes/subnet-overview.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -120,6 +149,27 @@ register(BittensorNetworkSchema, "BittensorNetwork");
 register(HealthStatusSchema, "HealthStatus");
 register(CurationLevelSchema, "CurationLevel");
 
+// Batch 1 (#8055) additions.
+register(SubnetAlphaVolumeArtifactSchema, "SubnetAlphaVolumeArtifact");
+register(SubnetAxonRemovalsArtifactSchema, "SubnetAxonRemovalsArtifact");
+register(SubnetDeregistrationsArtifactSchema, "SubnetDeregistrationsArtifact");
+register(SubnetRegistrationsArtifactSchema, "SubnetRegistrationsArtifact");
+register(SubnetServingArtifactSchema, "SubnetServingArtifact");
+register(SubnetBurnArtifactSchema, "SubnetBurnArtifact");
+register(SubnetRecycledArtifactSchema, "SubnetRecycledArtifact");
+register(AccountEventSchema, "AccountEvent");
+register(SubnetEventsArtifactSchema, "SubnetEventsArtifact");
+register(SubnetEventSummaryArtifactSchema, "SubnetEventSummaryArtifact");
+register(SubnetHistoryArtifactSchema, "SubnetHistoryArtifact");
+register(SubnetIdentityHistoryArtifactSchema, "SubnetIdentityHistoryArtifact");
+register(SubnetIdleStakeArtifactSchema, "SubnetIdleStakeArtifact");
+register(DomainSummaryArtifactSchema, "DomainSummaryArtifact");
+register(DomainsArtifactSchema, "DomainsArtifact");
+register(IntegrationReadinessSchema, "IntegrationReadiness");
+register(SubnetProfileIdentityEvidenceSchema, "SubnetProfileIdentityEvidence");
+register(SubnetProfileSchema, "SubnetProfile");
+register(SubnetOverviewArtifactSchema, "SubnetOverviewArtifact");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -151,11 +201,50 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "BittensorNetwork",
   "HealthStatus",
   "CurationLevel",
+  "SubnetAlphaVolumeArtifact",
+  "SubnetAxonRemovalsArtifact",
+  "SubnetDeregistrationsArtifact",
+  "SubnetRegistrationsArtifact",
+  "SubnetServingArtifact",
+  "SubnetBurnArtifact",
+  "SubnetRecycledArtifact",
+  "AccountEvent",
+  "SubnetEventsArtifact",
+  "SubnetEventSummaryArtifact",
+  "SubnetHistoryArtifact",
+  "SubnetIdentityHistoryArtifact",
+  "SubnetIdleStakeArtifact",
+  "DomainSummaryArtifact",
+  "DomainsArtifact",
+  "IntegrationReadiness",
+  "SubnetProfileIdentityEvidence",
+  "SubnetProfile",
+  "SubnetOverviewArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
 // component key must still be dropped -- nothing references it by name
 // anymore once EconomicsArtifact/SubnetDetailArtifact are Zod-owned.
+//
+// Batch 1 (#8055) additions: SubnetProfileNativeIdentity/PrimaryLinks/
+// SurfaceSummary/Completeness/Provenance, SubnetEventCategorySummary/
+// KindSummary, and SubnetIdentityHistoryEntry are each referenced only by
+// the one hand-edited component this batch replaces (SubnetProfile,
+// SubnetEventSummaryArtifact, SubnetIdentityHistoryArtifact respectively --
+// verified via repo-wide $ref grep, unlike SubnetProfile/IntegrationReadiness/
+// SubnetProfileIdentityEvidence above, which stay registered because other
+// still-hand-edited components reference them too). Not worth a standalone
+// registry entry (matches the SubnetEconomics precedent exactly); their
+// hand-edited keys become orphaned the moment their one referrer is
+// Zod-owned and inlines them instead.
 export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "SubnetEconomics",
+  "SubnetProfileNativeIdentity",
+  "SubnetProfilePrimaryLinks",
+  "SubnetProfileSurfaceSummary",
+  "SubnetProfileCompleteness",
+  "SubnetProfileProvenance",
+  "SubnetEventCategorySummary",
+  "SubnetEventKindSummary",
+  "SubnetIdentityHistoryEntry",
 ] as const;

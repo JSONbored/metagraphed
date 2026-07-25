@@ -672,73 +672,127 @@
       },
       "AccountEvent": {
         "additionalProperties": false,
-        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); alpha_amount (#1856) is the alpha leg of a stake swap in TAO units (StakeAdded/StakeRemoved only, else null); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
         "properties": {
           "alpha_amount": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "amount_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "block_number": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "coldkey": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "event_index": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "event_kind": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "extrinsic_index": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "hotkey": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "uid": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -8747,9 +8801,9 @@
       },
       "DomainsArtifact": {
         "additionalProperties": false,
-        "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration -- computed live from the subnets index + economics tier at GET /api/v1/domains (buildDomainOverview, no static file).",
         "properties": {
           "domain_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -8760,6 +8814,8 @@
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -8772,42 +8828,183 @@
       },
       "DomainSummaryArtifact": {
         "additionalProperties": false,
-        "description": "One domain/capability tag's own rollup at GET /api/v1/domains/{tag}/summary (buildDomainSummary, no static file). emission_concentration is computeConcentration over the domain's own member subnets' emission_share values -- null when the domain has no subnet with a positive emission share.",
         "properties": {
           "domain": {
             "type": "string"
           },
           "emission_concentration": {
-            "additionalProperties": true,
-            "type": [
-              "object",
-              "null"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "entropy": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "entropy_normalized": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "gini": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hhi": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hhi_normalized": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "holders": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "nakamoto_coefficient": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "top_10pct_share": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "top_1pct_share": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "top_20pct_share": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "top_5pct_share": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "total": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "holders",
+                  "total",
+                  "gini",
+                  "hhi",
+                  "hhi_normalized",
+                  "nakamoto_coefficient",
+                  "top_1pct_share",
+                  "top_5pct_share",
+                  "top_10pct_share",
+                  "top_20pct_share",
+                  "entropy",
+                  "entropy_normalized"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuids": {
             "items": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "subnet_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "total_emission_share": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "total_stake_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -12164,7 +12361,6 @@
       },
       "IntegrationReadiness": {
         "additionalProperties": false,
-        "description": "Codified, objective build-time readiness for building on a subnet (0-100). Deterministic; live up/down status is separate (get_subnet_health). See docs/integration-readiness.md.",
         "properties": {
           "components": {
             "additionalProperties": false,
@@ -12200,7 +12396,6 @@
             "type": "object"
           },
           "readiness_tier": {
-            "description": "Categorical readiness gradient (#356): buildable = verified callable API; emerging = candidate API or public docs but not yet verified; identity-only = source repo / active presence but no interface; dormant = none. Ranks the large API-less tail that otherwise cliffs at one score.",
             "enum": [
               "buildable",
               "emerging",
@@ -12210,10 +12405,10 @@
             "type": "string"
           },
           "readiness_verified": {
-            "description": "Serve-time only (#357): true when ≥1 catalogued surface was probed healthy (status \"ok\") by the live cron — so an agent never treats a catalogued-but-dead API as ready. Absent on the static build artifact (no live truth there); overlaid on live agent-catalog detail responses. The numeric score stays a deterministic build value; this is the live verification gate on top of it.",
             "type": "boolean"
           },
           "readiness_version": {
+            "maximum": 9007199254740991,
             "minimum": 1,
             "type": "integer"
           },
@@ -16841,9 +17036,9 @@
       },
       "SubnetAlphaVolumeArtifact": {
         "additionalProperties": false,
-        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data.",
         "properties": {
           "buy_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16857,13 +17052,17 @@
             "type": "number"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "sell_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -16882,9 +17081,13 @@
             "type": "string"
           },
           "sentiment_ratio": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "total_volume_alpha": {
@@ -16894,10 +17097,13 @@
             "type": "number"
           },
           "vol_mcap_ratio": {
-            "description": "total_volume_tao / alpha_market_cap_tao. Null when the live economics tier has no market-cap figure for this subnet (cold KV and no committed fallback row) — never implies zero turnover.",
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "window": {
@@ -16928,46 +17134,62 @@
       },
       "SubnetAxonRemovalsArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet axon-removal activity over a 7d/30d window: the distinct removers (hotkeys), AxonInfoRemoved event count, and removals per remover for ONE subnet. Raw axon-teardown activity from the account_events AxonInfoRemoved stream — the removal-side companion to the AxonServed announcement activity in /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns) — served live at /api/v1/subnets/{netuid}/axon-removals (no static file); zeroed when the subnet has no AxonInfoRemoved events in the window.",
         "properties": {
           "distinct_removers": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "removals": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "removals_per_remover": {
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -16983,13 +17205,16 @@
         "type": "object"
       },
       "SubnetBurnArtifact": {
-        "additionalProperties": true,
-        "description": "Live current registration/burn cost for one subnet (#6321) — the dynamic price between min_burn_tao/max_burn_tao's static bounds, queried from the chain's own Burn storage map at request time and cached for 120s (moves within minutes during registration bursts). burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0, not null.",
+        "additionalProperties": {},
         "properties": {
           "burn_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
@@ -16998,13 +17223,20 @@
             "type": "integer"
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -17615,46 +17847,62 @@
       },
       "SubnetDeregistrationsArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet neuron-deregistration activity over a 7d/30d window: the distinct deregistered hotkeys, NeuronDeregistered event count, and deregistrations per hotkey for ONE subnet. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume) — served live at /api/v1/subnets/{netuid}/deregistrations (no static file); zeroed when the subnet has no NeuronDeregistered events in the window.",
         "properties": {
           "deregistrations": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "deregistrations_per_hotkey": {
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "distinct_deregistered_hotkeys": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -18650,172 +18898,11 @@
           }
         ]
       },
-      "SubnetEventCategorySummary": {
-        "additionalProperties": false,
-        "description": "One coarse event-category aggregate in a subnet's windowed account_events summary.",
-        "properties": {
-          "alpha_amount": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "amount_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "category": {
-            "enum": [
-              "registration",
-              "stake",
-              "serving",
-              "consensus",
-              "delegation",
-              "identity",
-              "governance",
-              "transfer",
-              "other"
-            ],
-            "type": "string"
-          },
-          "event_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "first_block": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "first_observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "kind_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "last_block": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "last_observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "category",
-          "event_count",
-          "kind_count",
-          "amount_tao",
-          "alpha_amount",
-          "first_block",
-          "last_block",
-          "first_observed_at",
-          "last_observed_at"
-        ],
-        "type": "object"
-      },
-      "SubnetEventKindSummary": {
-        "additionalProperties": false,
-        "description": "One event-kind aggregate in a subnet's windowed account_events summary.",
-        "properties": {
-          "alpha_amount": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "amount_tao": {
-            "minimum": 0,
-            "type": "number"
-          },
-          "category": {
-            "enum": [
-              "registration",
-              "stake",
-              "serving",
-              "consensus",
-              "delegation",
-              "identity",
-              "governance",
-              "transfer",
-              "other"
-            ],
-            "type": "string"
-          },
-          "coldkey_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "event_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "event_kind": {
-            "type": "string"
-          },
-          "first_block": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "first_observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "hotkey_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "last_block": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "last_observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "event_kind",
-          "category",
-          "event_count",
-          "hotkey_count",
-          "coldkey_count",
-          "amount_tao",
-          "alpha_amount",
-          "first_block",
-          "last_block",
-          "first_observed_at",
-          "last_observed_at"
-        ],
-        "type": "object"
-      },
       "SubnetEventsArtifact": {
-        "additionalProperties": true,
-        "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
+        "additionalProperties": {},
         "properties": {
           "event_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18826,21 +18913,33 @@
             "type": "array"
           },
           "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -18853,26 +18952,225 @@
         "type": "object"
       },
       "SubnetEventSummaryArtifact": {
-        "additionalProperties": true,
-        "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice. Served live at /api/v1/subnets/{netuid}/event-summary (no static file).",
+        "additionalProperties": {},
         "properties": {
           "categories": {
             "items": {
-              "$ref": "#/components/schemas/SubnetEventCategorySummary"
+              "additionalProperties": false,
+              "properties": {
+                "alpha_amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "amount_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "category": {
+                  "enum": [
+                    "registration",
+                    "stake",
+                    "serving",
+                    "consensus",
+                    "delegation",
+                    "identity",
+                    "governance",
+                    "transfer",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                "event_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "first_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "first_observed_at": {
+                  "anyOf": [
+                    {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "last_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_observed_at": {
+                  "anyOf": [
+                    {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "category",
+                "event_count",
+                "kind_count",
+                "amount_tao",
+                "alpha_amount",
+                "first_block",
+                "last_block",
+                "first_observed_at",
+                "last_observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "category_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "event_kinds": {
             "items": {
-              "$ref": "#/components/schemas/SubnetEventKindSummary"
+              "additionalProperties": false,
+              "properties": {
+                "alpha_amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "amount_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "category": {
+                  "enum": [
+                    "registration",
+                    "stake",
+                    "serving",
+                    "consensus",
+                    "delegation",
+                    "identity",
+                    "governance",
+                    "transfer",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                "coldkey_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "event_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "event_kind": {
+                  "type": "string"
+                },
+                "first_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "first_observed_at": {
+                  "anyOf": [
+                    {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hotkey_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "last_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_observed_at": {
+                  "anyOf": [
+                    {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "event_kind",
+                "category",
+                "event_count",
+                "hotkey_count",
+                "coldkey_count",
+                "amount_tao",
+                "alpha_amount",
+                "first_block",
+                "last_block",
+                "first_observed_at",
+                "last_observed_at"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "kind_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18882,16 +19180,24 @@
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "recent_event_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18902,9 +19208,12 @@
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "total_events": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18977,14 +19286,15 @@
         ]
       },
       "SubnetHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Per-subnet daily aggregate history (count + totals) for sparklines (#1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+        "additionalProperties": {},
         "properties": {
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "point_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18993,30 +19303,50 @@
               "additionalProperties": false,
               "properties": {
                 "neuron_count": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "snapshot_date": {
                   "type": "string"
                 },
                 "total_emission_tao": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "total_stake_tao": {
-                  "type": [
-                    "number",
-                    "null"
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "validator_count": {
-                  "type": [
-                    "integer",
-                    "null"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -19028,12 +19358,18 @@
             "type": "array"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -19366,45 +19702,176 @@
         "type": "object"
       },
       "SubnetIdentityHistoryArtifact": {
-        "additionalProperties": true,
-        "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "additionalProperties": {},
         "properties": {
           "entries": {
             "items": {
-              "$ref": "#/components/schemas/SubnetIdentityHistoryEntry"
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "description": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "discord": {
+                  "anyOf": [
+                    {
+                      "maxLength": 200,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "github_repo": {
+                  "anyOf": [
+                    {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "identity_hash": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "logo_url": {
+                  "anyOf": [
+                    {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_at": {
+                  "anyOf": [
+                    {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subnet_url": {
+                  "anyOf": [
+                    {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "symbol": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observed_at",
+                "identity_hash"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
           "entry_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "limit": {
-            "maximum": 1000,
-            "minimum": 1,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 1000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "next_cursor": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "offset": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -19416,91 +19883,21 @@
         ],
         "type": "object"
       },
-      "SubnetIdentityHistoryEntry": {
-        "additionalProperties": false,
-        "description": "One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data.",
-        "properties": {
-          "block_number": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "discord": {
-            "maxLength": 200,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "github_repo": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "identity_hash": {
-            "type": "string"
-          },
-          "logo_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "subnet_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "subnet_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "symbol": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "observed_at",
-          "identity_hash"
-        ],
-        "type": "object"
-      },
       "SubnetIdleStakeArtifact": {
-        "additionalProperties": true,
-        "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet, computed live from the neurons D1 tier — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike.",
+        "additionalProperties": {},
         "properties": {
           "captured_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "idle_neuron_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -19509,14 +19906,18 @@
             "type": "number"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "neuron_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -20424,154 +20825,214 @@
         "type": "object"
       },
       "SubnetOverviewArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
+          "counts": {
+            "additionalProperties": {},
             "properties": {
-              "counts": {
-                "additionalProperties": true,
+              "candidates": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "endpoints": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surfaces": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "surfaces",
+              "endpoints",
+              "candidates"
+            ],
+            "type": "object"
+          },
+          "curation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurationMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gap_priorities": {
+            "items": {},
+            "type": "array"
+          },
+          "gaps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gaps"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
                 "properties": {
-                  "candidates": {
+                  "avg_latency_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "degraded_count": {
+                    "maximum": 9007199254740991,
                     "minimum": 0,
                     "type": "integer"
                   },
-                  "endpoints": {
+                  "failed_count": {
+                    "maximum": 9007199254740991,
                     "minimum": 0,
                     "type": "integer"
                   },
-                  "surfaces": {
+                  "last_checked": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "last_ok": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "netuid": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "observed_by": {
+                    "type": "string"
+                  },
+                  "ok_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "surface_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "unknown_count": {
+                    "maximum": 9007199254740991,
                     "minimum": 0,
                     "type": "integer"
                   }
                 },
-                "required": [
-                  "surfaces",
-                  "endpoints",
-                  "candidates"
-                ],
                 "type": "object"
               },
-              "curation": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/CurationMetadata"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "gap_priorities": {
-                "type": "array"
-              },
-              "gaps": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/Gaps"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "health": {
-                "oneOf": [
-                  {
-                    "additionalProperties": true,
-                    "description": "Live per-subnet health summary from the cron prober; null when no probe data exists.",
-                    "properties": {
-                      "avg_latency_ms": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "degraded_count": {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "failed_count": {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "last_checked": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "last_ok": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "netuid": {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "observed_by": {
-                        "type": "string"
-                      },
-                      "ok_count": {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "surface_count": {
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "unknown_count": {
-                        "minimum": 0,
-                        "type": "integer"
-                      }
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "name": {
-                "type": "string"
-              },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "profile": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/SubnetProfile"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "slug": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "netuid",
-              "profile",
-              "health",
-              "counts"
-            ],
-            "type": "object"
+            ]
+          },
+          "health_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubnetProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "profile",
+          "health",
+          "counts"
+        ],
+        "type": "object"
       },
       "SubnetOwnershipChange": {
         "additionalProperties": false,
@@ -20839,6 +21300,7 @@
         "additionalProperties": false,
         "properties": {
           "candidate_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -20849,7 +21311,88 @@
             "type": "array"
           },
           "completeness": {
-            "$ref": "#/components/schemas/SubnetProfileCompleteness"
+            "additionalProperties": false,
+            "properties": {
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              "gap_reasons": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "identity_level": {
+                "enum": [
+                  "none",
+                  "directory",
+                  "partial",
+                  "complete"
+                ],
+                "type": "string"
+              },
+              "identity_surface_count": {
+                "maximum": 3,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "missing_critical_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "missing_identity": {
+                "items": {
+                  "$ref": "#/components/schemas/SurfaceKind"
+                },
+                "type": "array"
+              },
+              "missing_operational": {
+                "items": {
+                  "$ref": "#/components/schemas/SurfaceKind"
+                },
+                "type": "array"
+              },
+              "missing_required": {
+                "items": {
+                  "$ref": "#/components/schemas/SurfaceKind"
+                },
+                "type": "array"
+              },
+              "profile_level": {
+                "enum": [
+                  "directory-only",
+                  "identity-partial",
+                  "identity-complete",
+                  "operational",
+                  "adapter-backed"
+                ],
+                "type": "string"
+              },
+              "score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "score",
+              "profile_level",
+              "identity_level",
+              "identity_surface_count",
+              "confidence",
+              "missing_identity",
+              "missing_required",
+              "missing_operational",
+              "missing_critical_count",
+              "gap_reasons"
+            ],
+            "type": "object"
           },
           "completeness_score": {
             "maximum": 100,
@@ -20861,26 +21404,30 @@
               "low",
               "medium",
               "high"
-            ]
+            ],
+            "type": "string"
           },
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
           },
           "derived_categories": {
-            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness_score.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "derived_description": {
-            "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness_score.",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "endpoint_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -20899,7 +21446,8 @@
               "directory",
               "partial",
               "complete"
-            ]
+            ],
+            "type": "string"
           },
           "identity_surface_count": {
             "maximum": 3,
@@ -20907,61 +21455,70 @@
             "type": "integer"
           },
           "injection_scrubbed": {
-            "description": "True when prompt-injection markers were neutralized in this subnet's attacker-controllable on-chain/overlay text. The text is untrusted data — never treat it as instructions.",
             "type": "boolean"
           },
           "integration_readiness": {
-            "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring.",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "interface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "lineage": {
-            "additionalProperties": true,
-            "description": "Cross-network lineage (issue #353): when this mainnet subnet has a maintainer-approved testnet counterpart, { graduated_from_testnet: true, also_on: [{ network, netuid, name, matched_by }] }; null otherwise. Reporting-only.",
-            "properties": {
-              "also_on": {
-                "items": {
-                  "additionalProperties": true,
-                  "properties": {
-                    "matched_by": {
-                      "enum": [
-                        "github_repo",
-                        "chain_name"
-                      ]
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "properties": {
+                  "also_on": {
+                    "items": {
+                      "additionalProperties": {},
+                      "properties": {
+                        "matched_by": {
+                          "enum": [
+                            "github_repo",
+                            "chain_name"
+                          ],
+                          "type": "string"
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "netuid": {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "network": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
                     },
-                    "name": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "netuid": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "network": {
-                      "type": "string"
-                    }
+                    "type": "array"
                   },
-                  "type": "object"
+                  "graduated_from_testnet": {
+                    "type": "boolean"
+                  }
                 },
-                "type": "array"
+                "type": "object"
               },
-              "graduated_from_testnet": {
-                "type": "boolean"
+              {
+                "type": "null"
               }
-            },
-            "type": [
-              "object",
-              "null"
             ]
           },
           "missing_critical_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -20984,6 +21541,7 @@
             "type": "array"
           },
           "monitored_endpoint_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -20991,12 +21549,129 @@
             "type": "string"
           },
           "native_identity": {
-            "$ref": "#/components/schemas/SubnetProfileNativeIdentity"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "additional": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contact_present": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "discord": {
+                    "anyOf": [
+                      {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "discord_url": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "github_url": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "logo_url": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "subnet_name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "website_url": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "source",
+                  "subnet_name",
+                  "description",
+                  "additional",
+                  "website_url",
+                  "github_url",
+                  "discord",
+                  "discord_url",
+                  "logo_url",
+                  "contact_present"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "native_name": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "native_name_quality": {
@@ -21004,13 +21679,16 @@
               "chain",
               "placeholder",
               "empty"
-            ]
+            ],
+            "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "operational_interface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -21021,10 +21699,99 @@
             "type": "array"
           },
           "primary_app_surface": {
-            "$ref": "#/components/schemas/SubnetProfileSurfaceSummary"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$ref": "#/components/schemas/SurfaceKind"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "name",
+                  "provider",
+                  "url"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "primary_links": {
-            "$ref": "#/components/schemas/SubnetProfilePrimaryLinks"
+            "additionalProperties": false,
+            "properties": {
+              "dashboard_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "docs_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source_repo": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "website_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "website_url",
+              "docs_url",
+              "source_repo",
+              "dashboard_url"
+            ],
+            "type": "object"
           },
           "profile_level": {
             "enum": [
@@ -21033,13 +21800,56 @@
               "identity-complete",
               "operational",
               "adapter-backed"
-            ]
+            ],
+            "type": "string"
           },
           "project_name": {
             "type": "string"
           },
           "provenance": {
-            "$ref": "#/components/schemas/SubnetProfileProvenance"
+            "additionalProperties": false,
+            "properties": {
+              "curation_level": {
+                "$ref": "#/components/schemas/CurationLevel"
+              },
+              "identity_source": {
+                "type": "string"
+              },
+              "interface_source_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "review_state": {
+                "$ref": "#/components/schemas/ReviewState"
+              },
+              "reviewed_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source_urls": {
+                "items": {
+                  "format": "uri",
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "identity_source",
+              "interface_source_count",
+              "review_state",
+              "curation_level",
+              "reviewed_at",
+              "source_urls"
+            ],
+            "type": "object"
           },
           "readiness": {
             "$ref": "#/components/schemas/IntegrationReadiness"
@@ -21051,10 +21861,19 @@
             "type": "string"
           },
           "status": {
-            "$ref": "#/components/schemas/SubnetStatus"
+            "enum": [
+              "active",
+              "inactive",
+              "unknown"
+            ],
+            "type": "string"
           },
           "subnet_type": {
-            "$ref": "#/components/schemas/SubnetType"
+            "enum": [
+              "root",
+              "application"
+            ],
+            "type": "string"
           },
           "suggested_submission_kinds": {
             "items": {
@@ -21069,19 +21888,28 @@
             "type": "array"
           },
           "surface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "symbol": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "team": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -21171,90 +21999,11 @@
           }
         ]
       },
-      "SubnetProfileCompleteness": {
-        "additionalProperties": false,
-        "properties": {
-          "confidence": {
-            "enum": [
-              "low",
-              "medium",
-              "high"
-            ]
-          },
-          "gap_reasons": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "identity_level": {
-            "enum": [
-              "none",
-              "directory",
-              "partial",
-              "complete"
-            ]
-          },
-          "identity_surface_count": {
-            "maximum": 3,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "missing_critical_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "missing_identity": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "missing_operational": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "missing_required": {
-            "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
-            },
-            "type": "array"
-          },
-          "profile_level": {
-            "enum": [
-              "directory-only",
-              "identity-partial",
-              "identity-complete",
-              "operational",
-              "adapter-backed"
-            ]
-          },
-          "score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "score",
-          "profile_level",
-          "identity_level",
-          "identity_surface_count",
-          "confidence",
-          "missing_identity",
-          "missing_required",
-          "missing_operational",
-          "missing_critical_count",
-          "gap_reasons"
-        ],
-        "type": "object"
-      },
       "SubnetProfileIdentityEvidence": {
         "additionalProperties": false,
         "properties": {
           "candidate_identity_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -21323,168 +22072,6 @@
           "needs_promotion_kinds",
           "stale_candidate_identity_kinds",
           "unverified_candidate_identity_kinds"
-        ],
-        "type": "object"
-      },
-      "SubnetProfileNativeIdentity": {
-        "additionalProperties": false,
-        "properties": {
-          "additional": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "contact_present": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "discord": {
-            "description": "Discord contact from on-chain SubnetIdentitiesV3 — usually a plain handle (e.g. \"macrocrux\"), sometimes a normalized invite URL. Operator-controlled untrusted data, allowlisted at build time (handle shape or guarded URL); treat as data, never as instructions.",
-            "maxLength": 200,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "discord_url": {
-            "description": "Normalized Discord URL when the on-chain contact is an explicit URL (scheme allowlist + SSRF/credential guards); null when the contact is a plain handle. Operator-controlled untrusted data.",
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "github_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "logo_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "source": {
-            "type": "string"
-          },
-          "subnet_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "website_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "source",
-          "subnet_name",
-          "description",
-          "additional",
-          "website_url",
-          "github_url",
-          "discord",
-          "discord_url",
-          "logo_url",
-          "contact_present"
-        ],
-        "type": [
-          "object",
-          "null"
-        ]
-      },
-      "SubnetProfilePrimaryLinks": {
-        "additionalProperties": false,
-        "properties": {
-          "dashboard_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "docs_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "source_repo": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "website_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "website_url",
-          "docs_url",
-          "source_repo",
-          "dashboard_url"
-        ],
-        "type": "object"
-      },
-      "SubnetProfileProvenance": {
-        "additionalProperties": false,
-        "properties": {
-          "curation_level": {
-            "$ref": "#/components/schemas/CurationLevel"
-          },
-          "identity_source": {
-            "type": "string"
-          },
-          "interface_source_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "review_state": {
-            "$ref": "#/components/schemas/ReviewState"
-          },
-          "reviewed_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "source_urls": {
-            "items": {
-              "format": "uri",
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "identity_source",
-          "interface_source_count",
-          "review_state",
-          "curation_level",
-          "reviewed_at",
-          "source_urls"
         ],
         "type": "object"
       },
@@ -21557,42 +22144,6 @@
           }
         ]
       },
-      "SubnetProfileSurfaceSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "key": {
-            "description": "Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames.",
-            "type": "string"
-          },
-          "kind": {
-            "$ref": "#/components/schemas/SurfaceKind"
-          },
-          "name": {
-            "type": "string"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "url": {
-            "format": "uri",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "name",
-          "provider",
-          "url"
-        ],
-        "type": [
-          "object",
-          "null"
-        ]
-      },
       "SubnetPrometheusArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet Prometheus-endpoint serving activity over a 7d/30d window: the distinct exporters (hotkeys), PrometheusServed event count, and announcements per exporter for ONE subnet. The per-subnet drill-in of /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of /api/v1/subnets/{netuid}/serving, served live from the account_events PrometheusServed stream at /api/v1/subnets/{netuid}/prometheus (no static file); zeroed when the subnet has no PrometheusServed events in the window.",
@@ -21650,8 +22201,7 @@
         "type": "object"
       },
       "SubnetRecycledArtifact": {
-        "additionalProperties": true,
-        "description": "Live cumulative TAO recycled for registration on one subnet (#4339/8.4), queried from the chain's own RAORecycledForRegistration storage map at request time and cached for 600s. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0, not null.",
+        "additionalProperties": {},
         "properties": {
           "netuid": {
             "maximum": 65535,
@@ -21659,19 +22209,30 @@
             "type": "integer"
           },
           "queried_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "recycled_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           }
         },
@@ -21683,46 +22244,62 @@
       },
       "SubnetRegistrationsArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet neuron-registration activity over a 7d/30d window: the distinct registrants (hotkeys), NeuronRegistered event count, and registrations per registrant for ONE subnet. Raw registration demand from the account_events NeuronRegistered stream — the companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume) — served live at /api/v1/subnets/{netuid}/registrations (no static file); zeroed when the subnet has no NeuronRegistered events in the window.",
         "properties": {
           "distinct_registrants": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "registrations": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "registrations_per_registrant": {
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -21808,46 +22385,62 @@
       },
       "SubnetServingArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet axon-serving announcement activity over a 7d/30d window: the distinct servers (hotkeys), AxonServed event count, and announcements per server for ONE subnet. The per-subnet drill-in of /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events AxonServed stream at /api/v1/subnets/{netuid}/serving (no static file); zeroed when the subnet has no AxonServed events in the window.",
         "properties": {
           "announcements": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "announcements_per_server": {
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "distinct_servers": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "observed_at": {
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "window": {
-            "enum": [
-              "7d",
-              "30d",
-              null
-            ],
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "enum": [
+                  "7d",
+                  "30d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -37121,7 +37714,20 @@
                     "domains": [
                       {
                         "domain": "example",
-                        "emission_concentration": {},
+                        "emission_concentration": {
+                          "entropy": 0.5,
+                          "entropy_normalized": 0.5,
+                          "gini": 0.5,
+                          "hhi": 0.5,
+                          "hhi_normalized": 0.5,
+                          "holders": 1,
+                          "nakamoto_coefficient": 1,
+                          "top_10pct_share": 0.5,
+                          "top_1pct_share": 0.5,
+                          "top_20pct_share": 0.5,
+                          "top_5pct_share": 0.5,
+                          "total": 1
+                        },
                         "netuids": [
                           7
                         ],
@@ -37275,7 +37881,20 @@
                 "example": {
                   "data": {
                     "domain": "example",
-                    "emission_concentration": {},
+                    "emission_concentration": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
                     "netuids": [
                       7
                     ],
@@ -53333,9 +53952,11 @@
                       "surface_count": 1,
                       "unknown_count": 1
                     },
+                    "health_source": "probe-derived",
                     "name": "Example Subnet",
                     "netuid": 7,
                     "notes": "Example description.",
+                    "operational_observed_at": "2026-06-01T00:00:00.000Z",
                     "profile": {
                       "candidate_count": 1,
                       "categories": [

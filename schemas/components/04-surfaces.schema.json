@@ -154,45 +154,7 @@
           }
         ]
       },
-      "IntegrationReadiness": {
-        "type": "object",
-        "description": "Codified, objective build-time readiness for building on a subnet (0-100). Deterministic; live up/down status is separate (get_subnet_health). See docs/integration-readiness.md.",
-        "required": [
-          "score",
-          "readiness_tier",
-          "readiness_version",
-          "components"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-          "readiness_tier": {
-            "type": "string",
-            "enum": ["buildable", "emerging", "identity-only", "dormant"],
-            "description": "Categorical readiness gradient (#356): buildable = verified callable API; emerging = candidate API or public docs but not yet verified; identity-only = source repo / active presence but no interface; dormant = none. Ranks the large API-less tail that otherwise cliffs at one score."
-          },
-          "readiness_version": { "type": "integer", "minimum": 1 },
-          "readiness_verified": {
-            "type": "boolean",
-            "description": "Serve-time only (#357): true when ≥1 catalogued surface was probed healthy (status \"ok\") by the live cron — so an agent never treats a catalogued-but-dead API as ready. Absent on the static build artifact (no live truth there); overlaid on live agent-catalog detail responses. The numeric score stays a deterministic build value; this is the live verification gate on top of it."
-          },
-          "components": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "has_callable_api": { "type": "boolean" },
-              "documented": { "type": "boolean" },
-              "auth_clarity": { "type": "boolean" },
-              "callable_now": { "type": "boolean" },
-              "active_lifecycle": { "type": "boolean" },
-              "profile_complete": { "type": "boolean" },
-              "has_source_repo": { "type": "boolean" },
-              "has_public_docs": { "type": "boolean" },
-              "has_candidate_api": { "type": "boolean" }
-            }
-          }
-        }
-      },
+
       "AgentReadinessBlocker": {
         "type": "object",
         "description": "Machine-readable reason a subnet is not immediately agent-ready, or a remaining data gap on a callable subnet.",
