@@ -360,6 +360,46 @@ import {
   GetEvmAddressMappingInputSchema,
   GetEvmAddressMappingOutputSchema,
 } from "../schemas-src/mcp-tools/evm.ts";
+import {
+  ListBlocksInputSchema,
+  ListBlocksOutputSchema,
+  GetBlockInputSchema,
+  GetBlockOutputSchema,
+  ListBlockExtrinsicsInputSchema,
+  ListBlockExtrinsicsOutputSchema,
+  GetBlockEventsInputSchema,
+  GetBlockEventsOutputSchema,
+} from "../schemas-src/mcp-tools/blocks.ts";
+import {
+  ListExtrinsicsInputSchema,
+  ListExtrinsicsOutputSchema,
+  GetExtrinsicInputSchema,
+  GetExtrinsicOutputSchema,
+} from "../schemas-src/mcp-tools/extrinsics.ts";
+import {
+  GetSudoInputSchema,
+  GetSudoOutputSchema,
+  GetSudoKeyInputSchema,
+  GetSudoKeyOutputSchema,
+  GetGovernanceConfigChangesInputSchema,
+  GetGovernanceConfigChangesOutputSchema,
+} from "../schemas-src/mcp-tools/governance-feeds.ts";
+import {
+  GetNetworkParametersInputSchema,
+  GetNetworkParametersOutputSchema,
+  GetRandomnessStatusInputSchema,
+  GetRandomnessStatusOutputSchema,
+} from "../schemas-src/mcp-tools/network-live.ts";
+import {
+  GetRuntimeInputSchema,
+  GetRuntimeOutputSchema,
+} from "../schemas-src/mcp-tools/runtime.ts";
+import {
+  GetBlockChainEventsInputSchema,
+  GetBlockChainEventsOutputSchema,
+  GetExtrinsicChainEventsInputSchema,
+  GetExtrinsicChainEventsOutputSchema,
+} from "../schemas-src/mcp-tools/chain-events.ts";
 
 type Row = Record<string, unknown>;
 
@@ -4058,6 +4098,473 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  list_blocks: {
+    input: {
+      type: "object",
+      properties: {
+        author: { type: "string", pattern: SS58_PATTERN },
+        spec_version: { type: "integer", minimum: 0 },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        from: { type: "integer", minimum: 0 },
+        to: { type: "integer", minimum: 0 },
+        min_extrinsics: { type: "integer", minimum: 0 },
+        min_events: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["block_count", "blocks"],
+      properties: {
+        schema_version: { type: "integer" },
+        block_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        blocks: objectItems({
+          block_number: NULLABLE_INT,
+          block_hash: NULLABLE_STRING,
+          parent_hash: NULLABLE_STRING,
+          author: NULLABLE_STRING,
+          extrinsic_count: NULLABLE_INT,
+          event_count: NULLABLE_INT,
+          spec_version: NULLABLE_INT,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_block: {
+    input: {
+      type: "object",
+      properties: {
+        ref: { type: "string" },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ref"],
+      properties: {
+        schema_version: { type: "integer" },
+        ref: ANY,
+        block: { type: ["object", "null"], additionalProperties: true },
+        prev_block_number: NULLABLE_INT,
+        next_block_number: NULLABLE_INT,
+      },
+    },
+  },
+  list_block_extrinsics: {
+    input: {
+      type: "object",
+      properties: {
+        ref: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        offset: { type: "integer", minimum: 0 },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ref", "extrinsic_count", "extrinsics"],
+      properties: {
+        schema_version: { type: "integer" },
+        ref: ANY,
+        block_number: NULLABLE_INT,
+        extrinsic_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        extrinsics: objectItems({
+          block_number: NULLABLE_INT,
+          extrinsic_index: NULLABLE_INT,
+          extrinsic_hash: NULLABLE_STRING,
+          signer: NULLABLE_STRING,
+          call_module: NULLABLE_STRING,
+          call_function: NULLABLE_STRING,
+          call_args: ANY,
+          success: { type: ["boolean", "null"] },
+          fee_tao: ANY,
+          tip_tao: ANY,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_block_events: {
+    input: {
+      type: "object",
+      properties: {
+        ref: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 1000 },
+        offset: { type: "integer", minimum: 0 },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ref", "event_count", "events"],
+      properties: {
+        schema_version: { type: "integer" },
+        ref: ANY,
+        block_number: NULLABLE_INT,
+        event_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          event_kind: NULLABLE_STRING,
+          hotkey: NULLABLE_STRING,
+          coldkey: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          observed_at: NULLABLE_STRING,
+          extrinsic_index: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  list_extrinsics: {
+    input: {
+      type: "object",
+      properties: {
+        block: { type: "integer", minimum: 0 },
+        signer: { type: "string", pattern: SS58_PATTERN },
+        call_module: { type: "string" },
+        call_function: { type: "string" },
+        call_hash: { type: "string" },
+        success: { type: "boolean" },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        from: { type: "integer", minimum: 0 },
+        to: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["extrinsic_count", "extrinsics"],
+      properties: {
+        schema_version: { type: "integer" },
+        extrinsic_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        extrinsics: objectItems({
+          block_number: NULLABLE_INT,
+          extrinsic_index: NULLABLE_INT,
+          extrinsic_hash: NULLABLE_STRING,
+          signer: NULLABLE_STRING,
+          call_module: NULLABLE_STRING,
+          call_function: NULLABLE_STRING,
+          call_args: ANY,
+          success: { type: ["boolean", "null"] },
+          fee_tao: ANY,
+          tip_tao: ANY,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_extrinsic: {
+    input: {
+      type: "object",
+      properties: {
+        ref: { type: "string" },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["ref"],
+      properties: {
+        schema_version: { type: "integer" },
+        ref: ANY,
+        extrinsic: { type: ["object", "null"], additionalProperties: true },
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          event_kind: NULLABLE_STRING,
+          hotkey: NULLABLE_STRING,
+          coldkey: NULLABLE_STRING,
+          netuid: NULLABLE_INT,
+          uid: NULLABLE_INT,
+          amount_tao: ANY,
+          alpha_amount: ANY,
+          observed_at: NULLABLE_STRING,
+          extrinsic_index: NULLABLE_INT,
+        }),
+      },
+    },
+  },
+  get_sudo: {
+    input: {
+      type: "object",
+      properties: {
+        block: { type: "integer", minimum: 0 },
+        call_function: { type: "string" },
+        success: { type: "boolean" },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        from: { type: "integer", minimum: 0 },
+        to: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["extrinsic_count", "extrinsics"],
+      properties: {
+        schema_version: { type: "integer" },
+        extrinsic_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        extrinsics: objectItems({
+          block_number: NULLABLE_INT,
+          extrinsic_index: NULLABLE_INT,
+          extrinsic_hash: NULLABLE_STRING,
+          signer: NULLABLE_STRING,
+          call_module: NULLABLE_STRING,
+          call_function: NULLABLE_STRING,
+          call_args: ANY,
+          success: { type: ["boolean", "null"] },
+          fee_tao: ANY,
+          tip_tao: ANY,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_sudo_key: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["hotkey", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        hotkey: NULLABLE_STRING,
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_network_parameters: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "tao_weight",
+        "stake_threshold_tao",
+        "pending_childkey_cooldown_blocks",
+        "queried_at",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        tao_weight: { type: ["number", "null"] },
+        stake_threshold_tao: { type: ["number", "null"] },
+        pending_childkey_cooldown_blocks: { type: ["integer", "null"] },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_randomness_status: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "last_stored_round",
+        "oldest_stored_round",
+        "stored_round_span",
+        "queried_at",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        last_stored_round: { type: ["integer", "null"] },
+        oldest_stored_round: { type: ["integer", "null"] },
+        stored_round_span: { type: ["integer", "null"] },
+        queried_at: NULLABLE_STRING,
+      },
+    },
+  },
+  get_governance_config_changes: {
+    input: {
+      type: "object",
+      properties: {
+        block: { type: "integer", minimum: 0 },
+        call_function: { type: "string" },
+        success: { type: "boolean" },
+        block_start: { type: "integer", minimum: 0 },
+        block_end: { type: "integer", minimum: 0 },
+        from: { type: "integer", minimum: 0 },
+        to: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1 },
+        offset: { type: "integer", minimum: 0 },
+        cursor: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["extrinsic_count", "extrinsics"],
+      properties: {
+        schema_version: { type: "integer" },
+        extrinsic_count: { type: "integer" },
+        limit: NULLABLE_INT,
+        offset: NULLABLE_INT,
+        next_cursor: NULLABLE_STRING,
+        extrinsics: objectItems({
+          block_number: NULLABLE_INT,
+          extrinsic_index: NULLABLE_INT,
+          extrinsic_hash: NULLABLE_STRING,
+          signer: NULLABLE_STRING,
+          call_module: NULLABLE_STRING,
+          call_function: NULLABLE_STRING,
+          call_args: ANY,
+          success: { type: ["boolean", "null"] },
+          fee_tao: ANY,
+          tip_tao: ANY,
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_runtime: {
+    input: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["transition_count", "transitions"],
+      properties: {
+        schema_version: { type: "integer" },
+        transition_count: { type: "integer" },
+        current_spec_version: NULLABLE_INT,
+        coverage_from_block: NULLABLE_INT,
+        coverage_from_at: NULLABLE_STRING,
+        transitions: objectItems({
+          spec_version: { type: "integer" },
+          block_number: { type: "integer" },
+          observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_block_chain_events: {
+    input: {
+      type: "object",
+      properties: {
+        block_number: { type: "integer", minimum: 0 },
+      },
+      required: ["block_number"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["block_number", "event_count", "events"],
+      properties: {
+        schema_version: { type: "integer" },
+        block_number: NULLABLE_INT,
+        event_count: { type: "integer" },
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          pallet: NULLABLE_STRING,
+          method: NULLABLE_STRING,
+          args: ANY,
+          phase: ANY,
+          extrinsic_index: NULLABLE_INT,
+          observed_at: { type: ["integer", "null"] },
+        }),
+      },
+    },
+  },
+  get_extrinsic_chain_events: {
+    input: {
+      type: "object",
+      properties: {
+        ref: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 200 },
+        cursor: { type: "string" },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "ref",
+        "block_number",
+        "extrinsic_index",
+        "event_count",
+        "events",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        ref: ANY,
+        block_number: NULLABLE_INT,
+        extrinsic_index: NULLABLE_INT,
+        limit: NULLABLE_INT,
+        event_count: { type: "integer" },
+        next_cursor: NULLABLE_STRING,
+        events: objectItems({
+          block_number: NULLABLE_INT,
+          event_index: NULLABLE_INT,
+          pallet: NULLABLE_STRING,
+          method: NULLABLE_STRING,
+          args: ANY,
+          phase: ANY,
+          extrinsic_index: NULLABLE_INT,
+          observed_at: { type: ["integer", "null"] },
+        }),
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -4462,6 +4969,62 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
     input: GetEvmAddressMappingInputSchema,
     output: GetEvmAddressMappingOutputSchema,
   },
+  list_blocks: {
+    input: ListBlocksInputSchema,
+    output: ListBlocksOutputSchema,
+  },
+  get_block: {
+    input: GetBlockInputSchema,
+    output: GetBlockOutputSchema,
+  },
+  list_block_extrinsics: {
+    input: ListBlockExtrinsicsInputSchema,
+    output: ListBlockExtrinsicsOutputSchema,
+  },
+  get_block_events: {
+    input: GetBlockEventsInputSchema,
+    output: GetBlockEventsOutputSchema,
+  },
+  list_extrinsics: {
+    input: ListExtrinsicsInputSchema,
+    output: ListExtrinsicsOutputSchema,
+  },
+  get_extrinsic: {
+    input: GetExtrinsicInputSchema,
+    output: GetExtrinsicOutputSchema,
+  },
+  get_sudo: {
+    input: GetSudoInputSchema,
+    output: GetSudoOutputSchema,
+  },
+  get_sudo_key: {
+    input: GetSudoKeyInputSchema,
+    output: GetSudoKeyOutputSchema,
+  },
+  get_network_parameters: {
+    input: GetNetworkParametersInputSchema,
+    output: GetNetworkParametersOutputSchema,
+  },
+  get_randomness_status: {
+    input: GetRandomnessStatusInputSchema,
+    output: GetRandomnessStatusOutputSchema,
+  },
+  get_governance_config_changes: {
+    input: GetGovernanceConfigChangesInputSchema,
+    output: GetGovernanceConfigChangesOutputSchema,
+  },
+  get_runtime: {
+    input: GetRuntimeInputSchema,
+    output: GetRuntimeOutputSchema,
+  },
+  get_block_chain_events: {
+    input: GetBlockChainEventsInputSchema,
+    output: GetBlockChainEventsOutputSchema,
+  },
+  get_extrinsic_chain_events: {
+    input: GetExtrinsicChainEventsInputSchema,
+    output: GetExtrinsicChainEventsOutputSchema,
+  },
 };
 
 const MAX_SAFE_INT = Number.MAX_SAFE_INTEGER;
@@ -4530,7 +5093,15 @@ function normalize(node: unknown, path: string): unknown {
       continue;
     }
 
+    // `required: []` (hand-written, e.g. list_blocks/list_extrinsics's
+    // explicit empty array) and omitting `required` entirely (Zod's
+    // z.toJSONSchema output when nothing is required, e.g. get_sudo/
+    // list_accounts's hand-written originals which never declared the key
+    // either) both mean "nothing required" -- the SAME as the
+    // additionalProperties/items normalizations above. Drop the key outright
+    // rather than keeping an empty array on one side only (batch 8, #8071).
     if (key === "required" && Array.isArray(value)) {
+      if (value.length === 0) continue;
       out[key] = [...(value as string[])].sort();
       continue;
     }

@@ -19,3 +19,43 @@ export const OpenObjectSchema = z.object({}).passthrough();
 // items-shape constraint beyond "each item is some object", or none at all).
 export const OpenArraySchema = z.array(z.unknown());
 export const OpenObjectArraySchema = z.array(OpenObjectSchema);
+
+// Mirrors mcp-server.ts's shared EXTRINSIC_ITEM / ACCOUNT_EVENT_ITEM object
+// literals (types-epic E batch 8, #8071): each used across 3+ tools spanning
+// multiple schemas-src/mcp-tools/*.ts files in that batch (list_extrinsics,
+// list_block_extrinsics, get_sudo, get_governance_config_changes for the
+// former; get_block_events, get_extrinsic for the latter), unlike every
+// other item shape converted so far which stayed tool-local -- hoisted here
+// rather than tripled. objectItems(...) properties, none required at the
+// item level (see search-subnets.ts's same note from the pilot batch).
+export const ExtrinsicItemSchema = z
+  .object({
+    block_number: z.int().nullable().optional(),
+    extrinsic_index: z.int().nullable().optional(),
+    extrinsic_hash: z.string().nullable().optional(),
+    signer: z.string().nullable().optional(),
+    call_module: z.string().nullable().optional(),
+    call_function: z.string().nullable().optional(),
+    call_args: z.unknown().optional(),
+    success: z.boolean().nullable().optional(),
+    fee_tao: z.unknown().optional(),
+    tip_tao: z.unknown().optional(),
+    observed_at: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const AccountEventItemSchema = z
+  .object({
+    block_number: z.int().nullable().optional(),
+    event_index: z.int().nullable().optional(),
+    event_kind: z.string().nullable().optional(),
+    hotkey: z.string().nullable().optional(),
+    coldkey: z.string().nullable().optional(),
+    netuid: z.int().nullable().optional(),
+    uid: z.int().nullable().optional(),
+    amount_tao: z.unknown().optional(),
+    alpha_amount: z.unknown().optional(),
+    observed_at: z.string().nullable().optional(),
+    extrinsic_index: z.int().nullable().optional(),
+  })
+  .passthrough();

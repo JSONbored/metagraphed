@@ -632,6 +632,46 @@ import {
   GetEvmAddressMappingOutputSchema,
 } from "../schemas-src/mcp-tools/evm.ts";
 import {
+  ListBlocksInputSchema,
+  ListBlocksOutputSchema,
+  GetBlockInputSchema,
+  GetBlockOutputSchema,
+  ListBlockExtrinsicsInputSchema,
+  ListBlockExtrinsicsOutputSchema,
+  GetBlockEventsInputSchema,
+  GetBlockEventsOutputSchema,
+} from "../schemas-src/mcp-tools/blocks.ts";
+import {
+  ListExtrinsicsInputSchema,
+  ListExtrinsicsOutputSchema,
+  GetExtrinsicInputSchema,
+  GetExtrinsicOutputSchema,
+} from "../schemas-src/mcp-tools/extrinsics.ts";
+import {
+  GetSudoInputSchema,
+  GetSudoOutputSchema,
+  GetSudoKeyInputSchema,
+  GetSudoKeyOutputSchema,
+  GetGovernanceConfigChangesInputSchema,
+  GetGovernanceConfigChangesOutputSchema,
+} from "../schemas-src/mcp-tools/governance-feeds.ts";
+import {
+  GetNetworkParametersInputSchema,
+  GetNetworkParametersOutputSchema,
+  GetRandomnessStatusInputSchema,
+  GetRandomnessStatusOutputSchema,
+} from "../schemas-src/mcp-tools/network-live.ts";
+import {
+  GetRuntimeInputSchema,
+  GetRuntimeOutputSchema,
+} from "../schemas-src/mcp-tools/runtime.ts";
+import {
+  GetBlockChainEventsInputSchema,
+  GetBlockChainEventsOutputSchema,
+  GetExtrinsicChainEventsInputSchema,
+  GetExtrinsicChainEventsOutputSchema,
+} from "../schemas-src/mcp-tools/chain-events.ts";
+import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
@@ -2360,10 +2400,6 @@ function requireSs58(args: Row) {
   }
   return value;
 }
-
-// The ss58 inputSchema `pattern` (advisory; runtime validation is requireSs58),
-// derived from the single pattern source so it can't drift.
-const SS58_PATTERN_SOURCE = SS58_ADDRESS_PATTERN.source;
 
 // A validator identity is the same SS58 shape as an account, just a different
 // argument name (a hotkey the caller already knows, not one they're looking
@@ -7236,78 +7272,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "block_end (inclusive height range), from/to (observed_at epoch-ms range), " +
       "min_extrinsics, or min_events. Page with limit (1-100, default 50) / offset, " +
       "or follow next_cursor for stable keyset pagination. Mirrors GET /api/v1/blocks.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        author: {
-          type: "string",
-          description:
-            "Optional block author SS58 address filter. Omit for all authors.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        spec_version: {
-          type: "integer",
-          description: "Optional runtime spec_version filter. Omit for all.",
-          minimum: 0,
-        },
-        block_start: {
-          type: "integer",
-          description:
-            "Optional inclusive lower block bound; omit for no lower limit.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description:
-            "Optional inclusive upper block bound; omit for no upper limit.",
-          minimum: 0,
-        },
-        from: {
-          type: "integer",
-          description:
-            "Optional observed_at lower bound (epoch ms). Omit for no lower limit.",
-          minimum: 0,
-        },
-        to: {
-          type: "integer",
-          description:
-            "Optional observed_at upper bound (epoch ms). Omit for no upper limit.",
-          minimum: 0,
-        },
-        min_extrinsics: {
-          type: "integer",
-          description:
-            "Optional minimum extrinsic_count per block. Omit for no floor.",
-          minimum: 0,
-        },
-        min_events: {
-          type: "integer",
-          description:
-            "Optional minimum event_count per block. Omit for no floor.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max blocks to return (1-100, default 50).",
-          minimum: 1,
-          maximum: 100,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset. Default 0.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor; takes " +
-            "precedence over offset for stable deep pagination.",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListBlocksInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof ListBlocksInputSchema>, ctx: McpCtx) {
       // Every filter below is validated for REST-parity and, now that the
       // Postgres tier can be flipped on, forwarded to it below -- only the
       // buildBlockFeed([]) D1 fallback ignores them (nothing left to filter
@@ -7323,7 +7291,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const minEvents = optionalNonNegativeInt(args, "min_events");
       const limit = clampLimit(args?.limit, 50, 100);
       const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
+        ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlocks: try Postgres first, fall back to the
       // schema-stable empty feed now that blocks' D1 write path is retired
@@ -7362,20 +7330,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(64-char hex). Returns the block header plus the nearest stored prev/next block " +
       "numbers for chain-walk navigation. Returns block:null when the ref is unknown or " +
       "the store is cold — never errors. Use list_blocks to find block refs.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: {
-          type: "string",
-          description:
-            "Block reference: a numeric block number as a string (e.g. '4200000') " +
-            "or a 0x block hash (e.g. '0xabc...64hex').",
-        },
-      },
-      required: ["ref"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetBlockInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetBlockInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleBlock: try Postgres first, fall back to the
       // schema-stable block:null shape now that blocks' D1 write path is
@@ -7398,35 +7356,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(1-100, default 50) / offset. Returns block_number:null + extrinsics:[] when " +
       "the ref is unknown or the store is cold — never errors. Use get_block to " +
       "resolve a block header first. Mirrors GET /api/v1/blocks/{ref}/extrinsics.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: {
-          type: "string",
-          description:
-            "Block reference: a numeric block number as a string (e.g. '4200000') " +
-            "or a 0x block hash (e.g. '0xabc...64hex').",
-        },
-        limit: {
-          type: "integer",
-          description: "Max extrinsics to return (1-100, default 50).",
-          minimum: 1,
-          maximum: 100,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset. Default 0.",
-          minimum: 0,
-        },
-      },
-      required: ["ref"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListBlockExtrinsicsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListBlockExtrinsicsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ref = requireString(args, "ref");
       const limit = clampLimit(args?.limit, 50, 100);
       const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
+        ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlockExtrinsics, which destructures `{ data }` from
       // tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/extrinsics
@@ -7455,35 +7395,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(1-1000, default 100) / offset. Returns block_number:null + events:[] when " +
       "the ref is unknown or the store is cold — never errors. Use get_block to " +
       "resolve a block header first. Mirrors GET /api/v1/blocks/{ref}/events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: {
-          type: "string",
-          description:
-            "Block reference: a numeric block number as a string (e.g. '4200000') " +
-            "or a 0x block hash (e.g. '0xabc...64hex').",
-        },
-        limit: {
-          type: "integer",
-          description: "Max events to return (1-1000, default 100).",
-          minimum: 1,
-          maximum: 1000,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset. Default 0.",
-          minimum: 0,
-        },
-      },
-      required: ["ref"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetBlockEventsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetBlockEventsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ref = requireString(args, "ref");
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
-        ? Math.max(0, Math.floor(args.offset))
+        ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlockEvents, which destructures `{ data }` from
       // tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/events
@@ -7516,90 +7438,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "height range), and from/to (observed_at epoch-ms range). Page with limit " +
       "(1-100, default 50) / offset, or follow next_cursor for stable keyset " +
       "pagination. Mirrors GET /api/v1/extrinsics.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        block: {
-          type: "integer",
-          description:
-            "Optional exact block_number filter. Omit for all blocks.",
-          minimum: 0,
-        },
-        signer: {
-          type: "string",
-          description:
-            "Optional signer SS58 address to filter by. Omit for all signers.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        call_module: {
-          type: "string",
-          description:
-            "Optional call module filter, e.g. 'SubtensorModule'. Omit for all.",
-        },
-        call_function: {
-          type: "string",
-          description:
-            "Optional call function filter, e.g. 'set_weights'. Omit for all.",
-        },
-        call_hash: {
-          type: "string",
-          description:
-            "Optional 0x call hash to match inside call_args, e.g. to link a " +
-            "Multisig approve_as_multi/cancel_as_multi/as_multi approval chain. " +
-            "Pair with call_module for a narrow scan. Omit for all.",
-        },
-        success: {
-          type: "boolean",
-          description:
-            "Optional success filter: true for succeeded extrinsics only, false " +
-            "for failed only. Omit for all.",
-        },
-        block_start: {
-          type: "integer",
-          description:
-            "Optional inclusive lower block bound; omit for no lower limit.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description:
-            "Optional inclusive upper block bound; omit for no upper limit.",
-          minimum: 0,
-        },
-        from: {
-          type: "integer",
-          description:
-            "Optional observed_at lower bound (epoch ms). Omit for no lower limit.",
-          minimum: 0,
-        },
-        to: {
-          type: "integer",
-          description:
-            "Optional observed_at upper bound (epoch ms). Omit for no upper limit.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max extrinsics to return (1-100, default 50).",
-          minimum: 1,
-          maximum: 100,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset. Default 0.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor; takes " +
-            "precedence over offset for stable deep pagination.",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListExtrinsicsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListExtrinsicsInputSchema>,
+      ctx: McpCtx,
+    ) {
       // Validated for REST-parity but, like the D1 filters they used to bound, have
       // nothing left to filter now that extrinsics is retired (#4772) --
       // buildExtrinsicFeed([]) below never sees them.
@@ -7628,7 +7473,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         buildExtrinsicFeed([], {
           limit: clampLimit(args?.limit, 50, 100),
           offset: Number.isFinite(args?.offset)
-            ? Math.max(0, Math.floor(args.offset))
+            ? Math.max(0, Math.floor(args.offset as number))
             : 0,
           nextCursor: null,
         })
@@ -7646,20 +7491,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "errors. Use list_extrinsics to find extrinsic refs. For every raw pallet.method " +
       "event an extrinsic emitted, use get_extrinsic_chain_events. Mirrors " +
       "GET /api/v1/extrinsics/{ref}.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: {
-          type: "string",
-          description:
-            "Extrinsic reference: a 0x hash (e.g. '0xabc...64hex') or the composite " +
-            "id 'block_number-extrinsic_index' (e.g. '4200000-3').",
-        },
-      },
-      required: ["ref"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetExtrinsicInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetExtrinsicInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
       // the schema-stable empty detail now that extrinsics' D1 write path is
@@ -7682,61 +7517,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "filters as list_extrinsics minus signer/call_module (call_module is " +
       "fixed to Sudo). Use get_sudo_key for the current Sudo::Key holder. " +
       "Mirrors GET /api/v1/sudo.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        block: {
-          type: "integer",
-          description: "Exact block number.",
-          minimum: 0,
-        },
-        call_function: {
-          type: "string",
-          description: "Exact call_function to match.",
-        },
-        success: {
-          type: "boolean",
-          description: "Filter to successful (true) or failed (false) calls.",
-        },
-        block_start: {
-          type: "integer",
-          description: "Inclusive block-height range start.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description: "Inclusive block-height range end.",
-          minimum: 0,
-        },
-        from: {
-          type: "integer",
-          description: "Alias for block_start.",
-          minimum: 0,
-        },
-        to: {
-          type: "integer",
-          description: "Alias for block_end.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Pagination limit.",
-          minimum: 1,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSudoInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetSudoInputSchema>, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -7758,11 +7542,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the current Sudo::Key holder, queried live from finney RPC at " +
       "request time (1h KV cache). hotkey is null on an RPC failure or an " +
       "unset sudo key. Mirrors GET /api/v1/sudo/key.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetSudoKeyInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadSudoKey(ctx.env);
     },
@@ -7776,11 +7558,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "from finney RPC at request time (300s KV cache). Each field is " +
       "independently null on its own RPC failure. Mirrors GET " +
       "/api/v1/network/parameters.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetNetworkParametersInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadNetworkParameters(ctx.env);
     },
@@ -7796,11 +7576,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "weight-setter checking whether a given round has landed. Each field " +
       "is independently null on its own RPC failure. Mirrors GET " +
       "/api/v1/network/randomness.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetRandomnessStatusInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadRandomnessStatus(ctx.env);
     },
@@ -7814,61 +7592,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "(re-scoped from a Council/Senate framing subtensor doesn't have). Same " +
       "filters as list_extrinsics minus signer/call_module (call_module is " +
       "fixed to AdminUtils). Mirrors GET /api/v1/governance/config-changes.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        block: {
-          type: "integer",
-          description: "Exact block number.",
-          minimum: 0,
-        },
-        call_function: {
-          type: "string",
-          description: "Exact call_function to match.",
-        },
-        success: {
-          type: "boolean",
-          description: "Filter to successful (true) or failed (false) calls.",
-        },
-        block_start: {
-          type: "integer",
-          description: "Inclusive block-height range start.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description: "Inclusive block-height range end.",
-          minimum: 0,
-        },
-        from: {
-          type: "integer",
-          description: "Alias for block_start.",
-          minimum: 0,
-        },
-        to: {
-          type: "integer",
-          description: "Alias for block_end.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Pagination limit.",
-          minimum: 1,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset.",
-          minimum: 0,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor.",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetGovernanceConfigChangesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetGovernanceConfigChangesInputSchema>,
+      ctx: McpCtx,
+    ) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -7896,11 +7626,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "filter or paginate. spec_version wasn't tracked before 2026-06-25 and " +
       "can't be back-filled for rows written before then. Mirrors " +
       "GET /api/v1/runtime.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema: z.toJSONSchema(GetRuntimeInputSchema, {
+      target: "draft-2020-12",
+    }),
     async handler(_args: unknown, ctx: McpCtx) {
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
       // table is dropped in production, so a D1 query here would always miss.
@@ -7989,19 +7717,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Returns event_count:0 + events:[] when the tier is empty for that block. " +
       "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
       "Mirrors GET /api/v1/blocks/{block_number}/chain-events.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        block_number: {
-          type: "integer",
-          description: "Numeric block height.",
-          minimum: 0,
-        },
-      },
-      required: ["block_number"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetBlockChainEventsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetBlockChainEventsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const blockNumber = requireNonNegativeInt(args, "block_number");
       return loadBlockChainEvents(ctx, blockNumber);
     },
@@ -8016,30 +7738,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
       "account_events embedded in get_extrinsic. Requires the all-events data Worker " +
       "(tier_unavailable in preview deploys). Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: {
-          type: "string",
-          description:
-            "Composite extrinsic id 'block_number-extrinsic_index' (e.g. '4200000-3').",
-        },
-        limit: {
-          type: "integer",
-          description: "Max events to return (1-200, default 50).",
-          minimum: 1,
-          maximum: 200,
-        },
-        cursor: {
-          type: "string",
-          description:
-            "Opaque keyset cursor from a previous response's next_cursor for the next page.",
-        },
-      },
-      required: ["ref"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetExtrinsicChainEventsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetExtrinsicChainEventsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const ref = requireString(args, "ref");
       const cursor = optionalString(args, "cursor");
       return loadExtrinsicChainEvents(ctx, ref, {
@@ -10894,21 +10599,6 @@ const objectItems = (properties = {}) => ({
   type: "array",
   items: { type: "object", additionalProperties: true, properties },
 });
-// Shared account item shape: an event appears in get_block_events,
-// get_extrinsic, and other block/extrinsic-domain tools.
-const ACCOUNT_EVENT_ITEM = {
-  block_number: NULLABLE_INT,
-  event_index: NULLABLE_INT,
-  event_kind: NULLABLE_STRING,
-  hotkey: NULLABLE_STRING,
-  coldkey: NULLABLE_STRING,
-  netuid: NULLABLE_INT,
-  uid: NULLABLE_INT,
-  amount_tao: ANY,
-  alpha_amount: ANY,
-  observed_at: NULLABLE_STRING,
-  extrinsic_index: NULLABLE_INT,
-};
 const CHAIN_TRANSFER_PARTY_ITEM = {
   type: "object",
   additionalProperties: false,
@@ -10918,42 +10608,6 @@ const CHAIN_TRANSFER_PARTY_ITEM = {
     volume_tao: { type: "number" },
     transfer_count: { type: "integer", minimum: 0 },
   },
-};
-// Shared block item shape for list_blocks (each block in the feed).
-const BLOCK_ITEM = {
-  block_number: NULLABLE_INT,
-  block_hash: NULLABLE_STRING,
-  parent_hash: NULLABLE_STRING,
-  author: NULLABLE_STRING,
-  extrinsic_count: NULLABLE_INT,
-  event_count: NULLABLE_INT,
-  spec_version: NULLABLE_INT,
-  observed_at: NULLABLE_STRING,
-};
-// Shared extrinsic item shape for list_extrinsics + get_account_extrinsics.
-const EXTRINSIC_ITEM = {
-  block_number: NULLABLE_INT,
-  extrinsic_index: NULLABLE_INT,
-  extrinsic_hash: NULLABLE_STRING,
-  signer: NULLABLE_STRING,
-  call_module: NULLABLE_STRING,
-  call_function: NULLABLE_STRING,
-  call_args: ANY,
-  success: { type: ["boolean", "null"] },
-  fee_tao: ANY,
-  tip_tao: ANY,
-  observed_at: NULLABLE_STRING,
-};
-// Raw all-events tier item (pallet.method events from Postgres chain_events).
-const CHAIN_EVENT_ITEM = {
-  block_number: NULLABLE_INT,
-  event_index: NULLABLE_INT,
-  pallet: NULLABLE_STRING,
-  method: NULLABLE_STRING,
-  args: ANY,
-  phase: ANY,
-  extrinsic_index: NULLABLE_INT,
-  observed_at: NULLABLE_INT,
 };
 // RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
 // schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
@@ -12196,208 +11850,60 @@ const TOOL_OUTPUT_SCHEMAS = {
       target: "draft-2020-12",
     },
   ),
-  list_blocks: {
-    type: "object",
-    additionalProperties: true,
-    required: ["block_count", "blocks"],
-    properties: {
-      schema_version: { type: "integer" },
-      block_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      blocks: objectItems(BLOCK_ITEM),
+  list_blocks: z.toJSONSchema(ListBlocksOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_block: z.toJSONSchema(GetBlockOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_block_extrinsics: z.toJSONSchema(ListBlockExtrinsicsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_block_events: z.toJSONSchema(GetBlockEventsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_extrinsics: z.toJSONSchema(ListExtrinsicsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_extrinsic: z.toJSONSchema(GetExtrinsicOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_sudo: z.toJSONSchema(GetSudoOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_sudo_key: z.toJSONSchema(GetSudoKeyOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_network_parameters: z.toJSONSchema(GetNetworkParametersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_randomness_status: z.toJSONSchema(GetRandomnessStatusOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_governance_config_changes: z.toJSONSchema(
+    GetGovernanceConfigChangesOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_block: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ref"],
-    properties: {
-      schema_version: { type: "integer" },
-      ref: ANY,
-      block: { type: ["object", "null"], additionalProperties: true },
-      prev_block_number: NULLABLE_INT,
-      next_block_number: NULLABLE_INT,
-    },
-  },
-  list_block_extrinsics: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ref", "extrinsic_count", "extrinsics"],
-    properties: {
-      schema_version: { type: "integer" },
-      ref: ANY,
-      block_number: NULLABLE_INT,
-      extrinsic_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      extrinsics: objectItems(EXTRINSIC_ITEM),
-    },
-  },
-  get_block_events: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ref", "event_count", "events"],
-    properties: {
-      schema_version: { type: "integer" },
-      ref: ANY,
-      block_number: NULLABLE_INT,
-      event_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      events: objectItems(ACCOUNT_EVENT_ITEM),
-    },
-  },
-  list_extrinsics: {
-    type: "object",
-    additionalProperties: true,
-    required: ["extrinsic_count", "extrinsics"],
-    properties: {
-      schema_version: { type: "integer" },
-      extrinsic_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      extrinsics: objectItems(EXTRINSIC_ITEM),
-    },
-  },
-  get_extrinsic: {
-    type: "object",
-    additionalProperties: true,
-    required: ["ref"],
-    properties: {
-      schema_version: { type: "integer" },
-      ref: ANY,
-      extrinsic: { type: ["object", "null"], additionalProperties: true },
-      events: objectItems(ACCOUNT_EVENT_ITEM),
-    },
-  },
-  get_sudo: {
-    type: "object",
-    additionalProperties: true,
-    required: ["extrinsic_count", "extrinsics"],
-    properties: {
-      schema_version: { type: "integer" },
-      extrinsic_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      extrinsics: objectItems(EXTRINSIC_ITEM),
-    },
-  },
-  get_sudo_key: {
-    type: "object",
-    additionalProperties: true,
-    required: ["hotkey", "queried_at"],
-    properties: {
-      schema_version: { type: "integer" },
-      hotkey: NULLABLE_STRING,
-      queried_at: NULLABLE_STRING,
-    },
-  },
-  get_network_parameters: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "tao_weight",
-      "stake_threshold_tao",
-      "pending_childkey_cooldown_blocks",
-      "queried_at",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      tao_weight: { type: ["number", "null"] },
-      stake_threshold_tao: { type: ["number", "null"] },
-      pending_childkey_cooldown_blocks: { type: ["integer", "null"] },
-      queried_at: NULLABLE_STRING,
-    },
-  },
-  get_randomness_status: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "last_stored_round",
-      "oldest_stored_round",
-      "stored_round_span",
-      "queried_at",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      last_stored_round: { type: ["integer", "null"] },
-      oldest_stored_round: { type: ["integer", "null"] },
-      stored_round_span: { type: ["integer", "null"] },
-      queried_at: NULLABLE_STRING,
-    },
-  },
-  get_governance_config_changes: {
-    type: "object",
-    additionalProperties: true,
-    required: ["extrinsic_count", "extrinsics"],
-    properties: {
-      schema_version: { type: "integer" },
-      extrinsic_count: { type: "integer" },
-      limit: NULLABLE_INT,
-      offset: NULLABLE_INT,
-      next_cursor: NULLABLE_STRING,
-      extrinsics: objectItems(EXTRINSIC_ITEM),
-    },
-  },
-  get_runtime: {
-    type: "object",
-    additionalProperties: true,
-    required: ["transition_count", "transitions"],
-    properties: {
-      schema_version: { type: "integer" },
-      transition_count: { type: "integer" },
-      current_spec_version: NULLABLE_INT,
-      coverage_from_block: NULLABLE_INT,
-      coverage_from_at: NULLABLE_STRING,
-      transitions: objectItems({
-        spec_version: { type: "integer" },
-        block_number: { type: "integer" },
-        observed_at: NULLABLE_STRING,
-      }),
-    },
-  },
+  ),
+  get_runtime: z.toJSONSchema(GetRuntimeOutputSchema, {
+    target: "draft-2020-12",
+  }),
   list_accounts: z.toJSONSchema(ListAccountsOutputSchema, {
     target: "draft-2020-12",
   }),
   get_top_holders: z.toJSONSchema(GetTopHoldersOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_block_chain_events: {
-    type: "object",
-    additionalProperties: true,
-    required: ["block_number", "event_count", "events"],
-    properties: {
-      schema_version: { type: "integer" },
-      block_number: NULLABLE_INT,
-      event_count: { type: "integer" },
-      events: objectItems(CHAIN_EVENT_ITEM),
+  get_block_chain_events: z.toJSONSchema(GetBlockChainEventsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_extrinsic_chain_events: z.toJSONSchema(
+    GetExtrinsicChainEventsOutputSchema,
+    {
+      target: "draft-2020-12",
     },
-  },
-  get_extrinsic_chain_events: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "ref",
-      "block_number",
-      "extrinsic_index",
-      "event_count",
-      "events",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      ref: ANY,
-      block_number: NULLABLE_INT,
-      extrinsic_index: NULLABLE_INT,
-      limit: NULLABLE_INT,
-      event_count: { type: "integer" },
-      next_cursor: NULLABLE_STRING,
-      events: objectItems(CHAIN_EVENT_ITEM),
-    },
-  },
+  ),
   get_chain_activity: {
     type: "object",
     additionalProperties: true,
