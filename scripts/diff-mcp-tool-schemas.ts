@@ -240,6 +240,38 @@ import {
   GetSubnetLeaseHistoryInputSchema,
   GetSubnetLeaseHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-lease.ts";
+import {
+  GetGlobalIncidentsInputSchema,
+  GetGlobalIncidentsOutputSchema,
+} from "../schemas-src/mcp-tools/get-global-incidents.ts";
+import {
+  ListSubnetValidatorsInputSchema,
+  ListSubnetValidatorsOutputSchema,
+  ListGlobalValidatorsInputSchema,
+  ListGlobalValidatorsOutputSchema,
+  GetValidatorDetailInputSchema,
+  GetValidatorDetailOutputSchema,
+  CompareValidatorsInputSchema,
+  CompareValidatorsOutputSchema,
+  GetValidatorNominatorsInputSchema,
+  GetValidatorNominatorsOutputSchema,
+  GetValidatorHistoryInputSchema,
+  GetValidatorHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/validators.ts";
+import {
+  GetWebhookSubscriptionInputSchema,
+  GetWebhookSubscriptionOutputSchema,
+} from "../schemas-src/mcp-tools/get-webhook-subscription.ts";
+import {
+  GetAlertTriggerInputSchema,
+  GetAlertTriggerOutputSchema,
+} from "../schemas-src/mcp-tools/get-alert-trigger.ts";
+import {
+  GetNeuronInputSchema,
+  GetNeuronOutputSchema,
+  GetNeuronHistoryInputSchema,
+  GetNeuronHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/neurons.ts";
 
 type Row = Record<string, unknown>;
 
@@ -425,6 +457,35 @@ const PROFILES_SORT_FIELDS_4 = [
 const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const HISTORY_WINDOWS_4 = ["7d", "30d", "90d", "1y", "all"];
 const OHLC_INTERVALS_4 = ["1h", "1d"];
+
+// Batch 5 (#8068) resolved enum values, same treatment as above -- symbolic
+// in the hand-written originals (src/contracts.ts's
+// API_QUERY_COLLECTIONS.incidents.sort_fields, src/metagraph-neurons.ts's
+// GLOBAL_VALIDATOR_SORTS, src/validator-nominators.ts's NOMINATOR_SORTS;
+// NOMINATOR_WINDOWS' keys and get_validator_history/get_neuron_history's
+// window sets reuse HISTORY_WINDOWS_3/HISTORY_WINDOWS_5 above -- same literal
+// value sets), cross-checked against the actual runtime source at the time
+// of writing.
+const GLOBAL_INCIDENTS_SORT_FIELDS = [
+  "downtime_ms",
+  "incident_count",
+  "netuid",
+  "surface_id",
+];
+const GLOBAL_VALIDATOR_SORTS = [
+  "avg_validator_trust",
+  "max_validator_trust",
+  "stake_dominance",
+  "subnet_count",
+  "total_emission",
+  "total_stake",
+  "uid_count",
+];
+const NOMINATOR_SORTS = ["net_staked", "gross_staked", "last_activity"];
+// Mirrors workers/config.ts's SS58_ADDRESS_PATTERN.source (src/mcp-server.ts's
+// SS58_PATTERN_SOURCE), cross-checked against the actual runtime value at the
+// time of writing.
+const SS58_PATTERN = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
 
 const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
   search_subnets: {
@@ -2356,6 +2417,356 @@ const OLD_SCHEMAS: Record<string, { input: Row; output: Row }> = {
       },
     },
   },
+  get_global_incidents: {
+    input: {
+      type: "object",
+      properties: {
+        window: { type: "string", enum: ["7d", "30d"] },
+        netuid: { type: "integer", minimum: 0 },
+        sort: { type: "string", enum: GLOBAL_INCIDENTS_SORT_FIELDS },
+        order: { type: "string", enum: ["asc", "desc"] },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        cursor: { type: "integer", minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["summary", "surfaces"],
+      properties: {
+        schema_version: { type: "integer" },
+        window: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+        source: NULLABLE_STRING,
+        summary: { type: "object" },
+        surfaces: { type: "array", items: { type: "object" } },
+        total: { type: "integer" },
+        returned: { type: "integer" },
+        limit: { type: "integer" },
+        cursor: { type: "integer" },
+        next_cursor: NULLABLE_INT,
+        sort: NULLABLE_STRING,
+        order: NULLABLE_STRING,
+      },
+    },
+  },
+  list_subnet_validators: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1 },
+        min_stake_tao: { type: "number", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "validator_count", "validators"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        validator_count: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        validators: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  list_global_validators: {
+    input: {
+      type: "object",
+      properties: {
+        sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["sort", "limit", "validator_count", "validators"],
+      properties: {
+        schema_version: { type: "integer" },
+        sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
+        limit: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        validator_count: { type: "integer" },
+        validators: objectItems({
+          hotkey: NULLABLE_STRING,
+          coldkey: NULLABLE_STRING,
+          coldkey_count: { type: "integer" },
+          subnet_count: { type: "integer" },
+          uid_count: { type: "integer" },
+          total_stake_tao: ANY,
+          total_emission_tao: ANY,
+          avg_validator_trust: { type: ["number", "null"] },
+          max_validator_trust: { type: ["number", "null"] },
+          latest_captured_at: NULLABLE_STRING,
+          latest_block_number: NULLABLE_INT,
+          stake_dominance: { type: ["number", "null"] },
+          subnets: objectItems({
+            netuid: NULLABLE_INT,
+            uid: NULLABLE_INT,
+            stake_tao: ANY,
+            emission_tao: ANY,
+            validator_trust: { type: ["number", "null"] },
+          }),
+        }),
+      },
+    },
+  },
+  get_validator_detail: {
+    input: {
+      type: "object",
+      properties: {
+        hotkey: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["hotkey", "subnet_count", "subnets"],
+      properties: {
+        schema_version: { type: "integer" },
+        hotkey: { type: "string" },
+        coldkey: NULLABLE_STRING,
+        coldkey_count: { type: "integer" },
+        subnet_count: { type: "integer" },
+        take: { type: ["number", "null"] },
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        avg_validator_trust: { type: ["number", "null"] },
+        max_validator_trust: { type: ["number", "null"] },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        subnets: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  compare_validators: {
+    input: {
+      type: "object",
+      properties: {
+        hotkeys: {
+          type: "array",
+          items: { type: "string", pattern: SS58_PATTERN },
+          minItems: 1,
+          maxItems: 16,
+        },
+        netuid: { type: "integer", minimum: 0 },
+      },
+      required: ["hotkeys"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["validator_count", "validators"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: NULLABLE_INT,
+        validator_count: { type: "integer" },
+        validators: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
+  get_webhook_subscription: {
+    input: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["id", "url", "active"],
+      properties: {
+        id: { type: "string" },
+        url: { type: "string" },
+        filters: { type: "object" },
+        created_at: NULLABLE_STRING,
+        active: { type: "boolean" },
+        delivery: {
+          type: "object",
+          required: ["status", "pending", "dead_letter"],
+          properties: {
+            status: { type: "string", enum: ["ok", "retrying", "dead_letter"] },
+            pending: { type: "integer" },
+            dead_letter: { type: "integer" },
+            last_failure: {
+              type: ["object", "null"],
+              properties: {
+                event_id: { type: "string" },
+                attempts: { type: "integer" },
+                reason: NULLABLE_STRING,
+                status_code: NULLABLE_INT,
+                state: { type: "string" },
+                last_attempt_at: NULLABLE_STRING,
+                next_attempt_at: NULLABLE_STRING,
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  get_alert_trigger: {
+    input: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        owner_token: { type: "string" },
+      },
+      required: ["id", "owner_token"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["id", "active"],
+      properties: {
+        id: { type: "string" },
+        name: NULLABLE_STRING,
+        table_filter: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        event_kind: NULLABLE_STRING,
+        account: NULLABLE_STRING,
+        min_amount_tao: { type: ["number", "null"] },
+        channel: { type: "string" },
+        destination: { type: "string" },
+        active: { type: "boolean" },
+        created_at: NULLABLE_STRING,
+        updated_at: NULLABLE_STRING,
+        last_matched_at: NULLABLE_STRING,
+        match_count: { type: "integer" },
+      },
+    },
+  },
+  get_validator_nominators: {
+    input: {
+      type: "object",
+      properties: {
+        hotkey: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: HISTORY_WINDOWS_3 },
+        sort: { type: "string", enum: NOMINATOR_SORTS },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        offset: { type: "integer", minimum: 0 },
+        coldkey: { type: "string", pattern: SS58_PATTERN },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["hotkey", "nominator_count", "nominators"],
+      properties: {
+        schema_version: { type: "integer" },
+        hotkey: { type: "string" },
+        window: NULLABLE_STRING,
+        sort: { type: "string", enum: NOMINATOR_SORTS },
+        limit: { type: "integer" },
+        offset: { type: "integer" },
+        nominator_count: { type: "integer" },
+        nominators: objectItems({
+          coldkey: { type: "string" },
+          staked_tao: ANY,
+          unstaked_tao: ANY,
+          net_staked_tao: ANY,
+          gross_staked_tao: ANY,
+          event_count: { type: "integer" },
+          last_observed_at: NULLABLE_STRING,
+        }),
+      },
+    },
+  },
+  get_validator_history: {
+    input: {
+      type: "object",
+      properties: {
+        hotkey: { type: "string", pattern: SS58_PATTERN },
+        window: { type: "string", enum: HISTORY_WINDOWS_5 },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["hotkey", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        hotkey: { type: "string" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: objectItems({
+          snapshot_date: NULLABLE_STRING,
+          subnet_count: NULLABLE_INT,
+          total_stake_tao: ANY,
+          total_emission_tao: ANY,
+          rewards_per_1000_tao: { type: ["number", "null"] },
+        }),
+      },
+    },
+  },
+  get_neuron: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        uid: { type: "integer", minimum: 0 },
+      },
+      required: ["netuid", "uid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "neuron"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        captured_at: NULLABLE_STRING,
+        block_number: NULLABLE_INT,
+        neuron: { type: ["object", "null"] },
+      },
+    },
+  },
+  get_neuron_history: {
+    input: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        uid: { type: "integer", minimum: 0 },
+        window: { type: "string", enum: HISTORY_WINDOWS_5 },
+      },
+      required: ["netuid", "uid"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      additionalProperties: true,
+      required: ["netuid", "uid", "point_count", "points"],
+      properties: {
+        schema_version: { type: "integer" },
+        netuid: { type: "integer" },
+        uid: { type: "integer" },
+        window: NULLABLE_STRING,
+        point_count: { type: "integer" },
+        points: { type: "array", items: { type: "object" } },
+      },
+    },
+  },
 };
 
 const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
@@ -2595,6 +3006,50 @@ const NEW_SCHEMAS: Record<string, { input: z.ZodType; output: z.ZodType }> = {
   get_subnet_lease_history: {
     input: GetSubnetLeaseHistoryInputSchema,
     output: GetSubnetLeaseHistoryOutputSchema,
+  },
+  get_global_incidents: {
+    input: GetGlobalIncidentsInputSchema,
+    output: GetGlobalIncidentsOutputSchema,
+  },
+  list_subnet_validators: {
+    input: ListSubnetValidatorsInputSchema,
+    output: ListSubnetValidatorsOutputSchema,
+  },
+  list_global_validators: {
+    input: ListGlobalValidatorsInputSchema,
+    output: ListGlobalValidatorsOutputSchema,
+  },
+  get_validator_detail: {
+    input: GetValidatorDetailInputSchema,
+    output: GetValidatorDetailOutputSchema,
+  },
+  compare_validators: {
+    input: CompareValidatorsInputSchema,
+    output: CompareValidatorsOutputSchema,
+  },
+  get_webhook_subscription: {
+    input: GetWebhookSubscriptionInputSchema,
+    output: GetWebhookSubscriptionOutputSchema,
+  },
+  get_alert_trigger: {
+    input: GetAlertTriggerInputSchema,
+    output: GetAlertTriggerOutputSchema,
+  },
+  get_validator_nominators: {
+    input: GetValidatorNominatorsInputSchema,
+    output: GetValidatorNominatorsOutputSchema,
+  },
+  get_validator_history: {
+    input: GetValidatorHistoryInputSchema,
+    output: GetValidatorHistoryOutputSchema,
+  },
+  get_neuron: {
+    input: GetNeuronInputSchema,
+    output: GetNeuronOutputSchema,
+  },
+  get_neuron_history: {
+    input: GetNeuronHistoryInputSchema,
+    output: GetNeuronHistoryOutputSchema,
   },
 };
 

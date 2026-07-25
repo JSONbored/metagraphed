@@ -369,10 +369,7 @@ import {
   LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   loadEndpointIncidentsList,
 } from "./endpoint-incidents-mcp.ts";
-import {
-  applyGlobalIncidentsListQuery,
-  GLOBAL_INCIDENTS_SORT_FIELDS,
-} from "./global-incidents-mcp.ts";
+import { applyGlobalIncidentsListQuery } from "./global-incidents-mcp.ts";
 import {
   LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS,
   LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
@@ -514,6 +511,38 @@ import {
   GetSubnetLeaseHistoryInputSchema,
   GetSubnetLeaseHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-lease.ts";
+import {
+  GetGlobalIncidentsInputSchema,
+  GetGlobalIncidentsOutputSchema,
+} from "../schemas-src/mcp-tools/get-global-incidents.ts";
+import {
+  ListSubnetValidatorsInputSchema,
+  ListSubnetValidatorsOutputSchema,
+  ListGlobalValidatorsInputSchema,
+  ListGlobalValidatorsOutputSchema,
+  GetValidatorDetailInputSchema,
+  GetValidatorDetailOutputSchema,
+  CompareValidatorsInputSchema,
+  CompareValidatorsOutputSchema,
+  GetValidatorNominatorsInputSchema,
+  GetValidatorNominatorsOutputSchema,
+  GetValidatorHistoryInputSchema,
+  GetValidatorHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/validators.ts";
+import {
+  GetWebhookSubscriptionInputSchema,
+  GetWebhookSubscriptionOutputSchema,
+} from "../schemas-src/mcp-tools/get-webhook-subscription.ts";
+import {
+  GetAlertTriggerInputSchema,
+  GetAlertTriggerOutputSchema,
+} from "../schemas-src/mcp-tools/get-alert-trigger.ts";
+import {
+  GetNeuronInputSchema,
+  GetNeuronOutputSchema,
+  GetNeuronHistoryInputSchema,
+  GetNeuronHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/neurons.ts";
 import {
   buildChainConcentration,
   buildConcentration,
@@ -5090,44 +5119,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "probe failures grouped into downtime incidents over the requested window " +
       "(7d or 30d). Filter by netuid, sort with sort + order, and page with " +
       "limit (1-100) / cursor. Mirrors GET /api/v1/incidents.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        window: {
-          type: "string",
-          enum: ["7d", "30d"],
-          description: "Incident lookback window (default 7d).",
-        },
-        netuid: {
-          type: "integer",
-          description: "Filter to one subnet netuid.",
-          minimum: 0,
-        },
-        sort: {
-          type: "string",
-          enum: GLOBAL_INCIDENTS_SORT_FIELDS,
-          description: "Field to sort by before paging.",
-        },
-        order: {
-          type: "string",
-          enum: ["asc", "desc"],
-          description: "Sort direction for sort (default asc).",
-        },
-        limit: {
-          type: "integer",
-          description: "Max rows to return (1-100). Enables pagination.",
-          minimum: 1,
-          maximum: 100,
-        },
-        cursor: {
-          type: "integer",
-          description: "Pagination cursor from a prior response's next_cursor.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetGlobalIncidentsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetGlobalIncidentsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
@@ -5201,28 +5199,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "target, delegate to, or weight against. Optionally cap the list with " +
       "limit (keeps the highest-stake rows, since the list is already " +
       "stake-ranked) or drop small-stake rows with min_stake_tao.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        limit: {
-          type: "integer",
-          description:
-            "Max validators to return, keeping the highest-stake rows. Omit " +
-            "for the full list.",
-          minimum: 1,
-        },
-        min_stake_tao: {
-          type: "number",
-          description:
-            "Only validators whose stake is >= this many TAO. Omit for no floor.",
-          minimum: 0,
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListSubnetValidatorsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListSubnetValidatorsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const limit = optionalPositiveInt(args, "limit");
       const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
@@ -5266,25 +5249,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "or stake_dominance; limit caps the list (default 20, max 100). Use it to " +
       "find operators spanning many subnets or dominating network stake. Mirrors " +
       "GET /api/v1/validators.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        sort: {
-          type: "string",
-          enum: GLOBAL_VALIDATOR_SORTS,
-          description:
-            "Ranking key (default subnet_count). See tool description for options.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max validators to return (1-100, default 20).",
-          minimum: 1,
-          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListGlobalValidatorsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListGlobalValidatorsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const sort =
         optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
         DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -5312,19 +5283,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "The single-entity drill-in of list_global_validators. Returns a zeroed " +
       "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
       "error. Mirrors GET /api/v1/validators/{hotkey}.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        hotkey: {
-          type: "string",
-          description: "Validator hotkey (SS58 address).",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-      },
-      required: ["hotkey"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetValidatorDetailInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetValidatorDetailInputSchema>,
+      ctx: McpCtx,
+    ) {
       const hotkey = requireHotkey(args);
       return (
         (await tryPostgresTier(
@@ -5351,30 +5316,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Strictly READ-ONLY and decision-support only: it builds no transaction, " +
       "produces no signable/extrinsic artifact, and never touches a wallet or " +
       "key -- the validator equivalent of compare_subnets.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        hotkeys: {
-          type: "array",
-          items: { type: "string", pattern: SS58_PATTERN_SOURCE },
-          minItems: 1,
-          maxItems: COMPARE_VALIDATORS_MAX,
-          description:
-            "Validator hotkeys (SS58 addresses) to compare, in display order.",
-        },
-        netuid: {
-          type: "integer",
-          minimum: 0,
-          description:
-            "Optional subnet context -- when set, each validator also carries " +
-            "its membership row in that subnet (subnet_context), or null when " +
-            "it holds no validator permit there.",
-        },
-      },
-      required: ["hotkeys"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(CompareValidatorsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof CompareValidatorsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const hotkeys = parseCompareHotkeyList(args?.hotkeys);
       if (!hotkeys) {
         throw toolError(
@@ -5413,19 +5361,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "enumerate subscriptions, only look one up by an id you already hold " +
       "(the same id returned when it was created). Mirrors GET " +
       "/api/v1/webhooks/subscriptions/{id}.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-          description:
-            "Subscription id (UUID v4), returned when the subscription was created.",
-        },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetWebhookSubscriptionInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetWebhookSubscriptionInputSchema>,
+      ctx: McpCtx,
+    ) {
       const id = requireString(args, "id");
       if (!isValidSubscriptionId(id)) {
         throw toolError(
@@ -5467,20 +5409,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "/api/v1/alerts/triggers/{id}'s own auth requirement exactly (the " +
       "same 404 is returned for both a wrong token and a nonexistent id, " +
       "so this can't be used to enumerate other callers' triggers).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Alert trigger id." },
-        owner_token: {
-          type: "string",
-          description:
-            "The owner token returned when this trigger was created.",
-        },
-      },
-      required: ["id", "owner_token"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetAlertTriggerInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetAlertTriggerInputSchema>,
+      ctx: McpCtx,
+    ) {
       const id = requireString(args, "id");
       const ownerToken = requireString(args, "owner_token");
       if (!ctx.env.DATA_API) {
@@ -5523,45 +5458,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "operates in, over a window (7d, 30d, default 90d), ranked by net_staked " +
       "(default), gross_staked, or last_activity. Optional coldkey narrows to " +
       "one nominator's own flow. Mirrors GET /api/v1/validators/{hotkey}/nominators.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        hotkey: {
-          type: "string",
-          description: "Validator hotkey (SS58 address).",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: Object.keys(NOMINATOR_WINDOWS),
-          description: "History window (default 90d).",
-        },
-        sort: {
-          type: "string",
-          enum: NOMINATOR_SORTS,
-          description: "Ranking key (default net_staked).",
-        },
-        limit: {
-          type: "integer",
-          description: "Max nominators to return (1-100, default 20).",
-          minimum: 1,
-          maximum: NOMINATOR_LIMIT_MAX,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset (default 0).",
-          minimum: 0,
-        },
-        coldkey: {
-          type: "string",
-          description: "Narrow to one nominator's own flow (SS58 address).",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-      },
-      required: ["hotkey"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetValidatorNominatorsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetValidatorNominatorsInputSchema>,
+      ctx: McpCtx,
+    ) {
       const hotkey = requireHotkey(args);
       const window =
         optionalEnum(args, "window", Object.keys(NOMINATOR_WINDOWS)) ??
@@ -5610,24 +5513,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "per day, summed across every subnet it validates in, plus a rewards-per-" +
       "1000-TAO rate. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
       "Mirrors GET /api/v1/validators/{hotkey}/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        hotkey: {
-          type: "string",
-          description: "Validator hotkey (SS58 address).",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ["7d", "30d", "90d", "1y", "all"],
-          description: "History window (default 30d).",
-        },
-      },
-      required: ["hotkey"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetValidatorHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetValidatorHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const hotkey = requireHotkey(args);
       const { label } = requireHistoryWindow(args);
       return (
@@ -5649,20 +5541,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "rank, trust, consensus, incentive, dividends, emission, validator " +
       "permit, immunity, and axon. Returns neuron: null when that UID is not " +
       "in the latest snapshot.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        uid: {
-          type: "integer",
-          description: "The neuron UID within the subnet.",
-          minimum: 0,
-        },
-      },
-      required: ["netuid", "uid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetNeuronInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetNeuronInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       // uid is validated for REST-parity but, like the D1 filter it used to
       // bound, has nothing left to look up now that neurons is retired
@@ -5734,25 +5616,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Use it to " +
       "track how one miner or validator has performed over time. Mirrors " +
       "GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        uid: {
-          type: "integer",
-          description: "The neuron UID within the subnet.",
-          minimum: 0,
-        },
-        window: {
-          type: "string",
-          enum: ["7d", "30d", "90d", "1y", "all"],
-          description: "History window (default 30d).",
-        },
-      },
-      required: ["netuid", "uid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetNeuronHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetNeuronHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const uid = requireNonNegativeInt(args, "uid");
       return loadNeuronHistory(ctx, netuid, uid, requireHistoryWindow(args));
@@ -11436,28 +11306,6 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
-const GLOBAL_VALIDATOR_SUBNET_ITEM = {
-  netuid: NULLABLE_INT,
-  uid: NULLABLE_INT,
-  stake_tao: ANY,
-  emission_tao: ANY,
-  validator_trust: { type: ["number", "null"] },
-};
-const GLOBAL_VALIDATOR_ITEM = {
-  hotkey: NULLABLE_STRING,
-  coldkey: NULLABLE_STRING,
-  coldkey_count: { type: "integer" },
-  subnet_count: { type: "integer" },
-  uid_count: { type: "integer" },
-  total_stake_tao: ANY,
-  total_emission_tao: ANY,
-  avg_validator_trust: { type: ["number", "null"] },
-  max_validator_trust: { type: ["number", "null"] },
-  latest_captured_at: NULLABLE_STRING,
-  latest_block_number: NULLABLE_INT,
-  stake_dominance: { type: ["number", "null"] },
-  subnets: objectItems(GLOBAL_VALIDATOR_SUBNET_ITEM),
-};
 const CHAIN_TRANSFER_PARTY_ITEM = {
   type: "object",
   additionalProperties: false,
@@ -12572,194 +12420,39 @@ const TOOL_OUTPUT_SCHEMAS = {
   compare_subnets: z.toJSONSchema(CompareSubnetsOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_global_incidents: {
-    type: "object",
-    additionalProperties: true,
-    required: ["summary", "surfaces"],
-    properties: {
-      schema_version: { type: "integer" },
-      window: NULLABLE_STRING,
-      observed_at: NULLABLE_STRING,
-      source: NULLABLE_STRING,
-      summary: { type: "object" },
-      surfaces: { type: "array", items: { type: "object" } },
-      total: { type: "integer" },
-      returned: { type: "integer" },
-      limit: { type: "integer" },
-      cursor: { type: "integer" },
-      next_cursor: NULLABLE_INT,
-      sort: NULLABLE_STRING,
-      order: NULLABLE_STRING,
-    },
-  },
+  get_global_incidents: z.toJSONSchema(GetGlobalIncidentsOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_subnet_metagraph: z.toJSONSchema(GetSubnetMetagraphOutputSchema, {
     target: "draft-2020-12",
   }),
-  list_subnet_validators: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "validator_count", "validators"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      validator_count: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      validators: { type: "array", items: { type: "object" } },
-    },
-  },
-  list_global_validators: {
-    type: "object",
-    additionalProperties: true,
-    required: ["sort", "limit", "validator_count", "validators"],
-    properties: {
-      schema_version: { type: "integer" },
-      sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
-      limit: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      validator_count: { type: "integer" },
-      validators: objectItems(GLOBAL_VALIDATOR_ITEM),
-    },
-  },
-  get_validator_detail: {
-    type: "object",
-    additionalProperties: true,
-    required: ["hotkey", "subnet_count", "subnets"],
-    properties: {
-      schema_version: { type: "integer" },
-      hotkey: { type: "string" },
-      coldkey: NULLABLE_STRING,
-      coldkey_count: { type: "integer" },
-      subnet_count: { type: "integer" },
-      take: { type: ["number", "null"] },
-      total_stake_tao: ANY,
-      total_emission_tao: ANY,
-      avg_validator_trust: { type: ["number", "null"] },
-      max_validator_trust: { type: ["number", "null"] },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      subnets: { type: "array", items: { type: "object" } },
-    },
-  },
-  compare_validators: {
-    type: "object",
-    additionalProperties: true,
-    required: ["validator_count", "validators"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: NULLABLE_INT,
-      validator_count: { type: "integer" },
-      validators: { type: "array", items: { type: "object" } },
-    },
-  },
-  get_webhook_subscription: {
-    type: "object",
-    additionalProperties: true,
-    required: ["id", "url", "active"],
-    properties: {
-      id: { type: "string" },
-      url: { type: "string" },
-      filters: { type: "object" },
-      created_at: NULLABLE_STRING,
-      active: { type: "boolean" },
-      delivery: {
-        type: "object",
-        required: ["status", "pending", "dead_letter"],
-        properties: {
-          status: { type: "string", enum: ["ok", "retrying", "dead_letter"] },
-          pending: { type: "integer" },
-          dead_letter: { type: "integer" },
-          last_failure: {
-            type: ["object", "null"],
-            properties: {
-              event_id: { type: "string" },
-              attempts: { type: "integer" },
-              reason: NULLABLE_STRING,
-              status_code: NULLABLE_INT,
-              state: { type: "string" },
-              last_attempt_at: NULLABLE_STRING,
-              next_attempt_at: NULLABLE_STRING,
-            },
-          },
-        },
-      },
-    },
-  },
-  get_alert_trigger: {
-    type: "object",
-    additionalProperties: true,
-    required: ["id", "active"],
-    properties: {
-      id: { type: "string" },
-      name: NULLABLE_STRING,
-      table_filter: NULLABLE_STRING,
-      netuid: NULLABLE_INT,
-      event_kind: NULLABLE_STRING,
-      account: NULLABLE_STRING,
-      min_amount_tao: { type: ["number", "null"] },
-      channel: { type: "string" },
-      destination: { type: "string" },
-      active: { type: "boolean" },
-      created_at: NULLABLE_STRING,
-      updated_at: NULLABLE_STRING,
-      last_matched_at: NULLABLE_STRING,
-      match_count: { type: "integer" },
-    },
-  },
-  get_validator_nominators: {
-    type: "object",
-    additionalProperties: true,
-    required: ["hotkey", "nominator_count", "nominators"],
-    properties: {
-      schema_version: { type: "integer" },
-      hotkey: { type: "string" },
-      window: NULLABLE_STRING,
-      sort: { type: "string", enum: NOMINATOR_SORTS },
-      limit: { type: "integer" },
-      offset: { type: "integer" },
-      nominator_count: { type: "integer" },
-      nominators: objectItems({
-        coldkey: { type: "string" },
-        staked_tao: ANY,
-        unstaked_tao: ANY,
-        net_staked_tao: ANY,
-        gross_staked_tao: ANY,
-        event_count: { type: "integer" },
-        last_observed_at: NULLABLE_STRING,
-      }),
-    },
-  },
-  get_validator_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["hotkey", "point_count", "points"],
-    properties: {
-      schema_version: { type: "integer" },
-      hotkey: { type: "string" },
-      window: NULLABLE_STRING,
-      point_count: { type: "integer" },
-      points: objectItems({
-        snapshot_date: NULLABLE_STRING,
-        subnet_count: NULLABLE_INT,
-        total_stake_tao: ANY,
-        total_emission_tao: ANY,
-        rewards_per_1000_tao: { type: ["number", "null"] },
-      }),
-    },
-  },
-  get_neuron: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "neuron"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      captured_at: NULLABLE_STRING,
-      block_number: NULLABLE_INT,
-      neuron: { type: ["object", "null"] },
-    },
-  },
+  list_subnet_validators: z.toJSONSchema(ListSubnetValidatorsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_global_validators: z.toJSONSchema(ListGlobalValidatorsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_validator_detail: z.toJSONSchema(GetValidatorDetailOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  compare_validators: z.toJSONSchema(CompareValidatorsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_webhook_subscription: z.toJSONSchema(GetWebhookSubscriptionOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_alert_trigger: z.toJSONSchema(GetAlertTriggerOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_validator_nominators: z.toJSONSchema(GetValidatorNominatorsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_validator_history: z.toJSONSchema(GetValidatorHistoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_neuron: z.toJSONSchema(GetNeuronOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_subnet_history: z.toJSONSchema(GetSubnetHistoryOutputSchema, {
     target: "draft-2020-12",
   }),
@@ -12799,19 +12492,9 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_subnet_lease_history: z.toJSONSchema(GetSubnetLeaseHistoryOutputSchema, {
     target: "draft-2020-12",
   }),
-  get_neuron_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "uid", "point_count", "points"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      uid: { type: "integer" },
-      window: NULLABLE_STRING,
-      point_count: { type: "integer" },
-      points: { type: "array", items: { type: "object" } },
-    },
-  },
+  get_neuron_history: z.toJSONSchema(GetNeuronHistoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_subnet_events: z.toJSONSchema(GetSubnetEventsOutputSchema, {
     target: "draft-2020-12",
   }),
