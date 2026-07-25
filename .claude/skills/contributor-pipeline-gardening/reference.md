@@ -37,35 +37,99 @@ skill only covers issue-pipeline hygiene, not PR review mechanics.
 
 ## Milestone taxonomy (re-check every run — this repo's hygiene and counts drift faster than gittensory's)
 
-| Milestone                                     | Open (as of 2026-07-15)                                                                  | Nature                                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Foundations & Infra` (#11)                   | ~27+ (growing — see below)                                                               | General backend/infra work, mixed maintainer/contributor. Also the default home for well-precedented REST/GraphQL/MCP parity issues (no dedicated milestone exists for that pattern yet).                                                                                                                                                                                    |
-| `Wave 4 — Docs & Dev Surface` (#10)           | ~21                                                                                      | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md. Paused pending the fumadocs-mdx port issue #6225 (filed 2026-07-16, loopover's own spike #6037 already landed) — don't unlock the "Docs page: X" family until #6225 lands.                                                                                    |
-| `Partner Flywheel Hardening` (#13)            | ~4                                                                                       | Small, check individually                                                                                                                                                                                                                                                                                                                                                    |
-| `Wave 3 — Frontend (post-consolidation)` (#9) | 11 (checked 2026-07-15 — NOT drained, an earlier "0/480" snapshot of this doc was stale) | Verify its real open count fresh each run rather than trusting a cached number here                                                                                                                                                                                                                                                                                          |
-| Unmilestoned                                  | ~23 (checked 2026-07-15)                                                                 | Mostly legitimate: the Enrich-SNxx rolling-intake family + the bot-managed Dependency Dashboard, both correctly standalone. Verify what's actually unmilestoned fresh each run before assuming it's a hygiene gap — an earlier "~74, real gap" snapshot of this doc was stale.                                                                                               |
-| `MCP Platform — Unified Subnet Access`        | ~120 issues at creation, count drops as they close/reopen                                | The "MCP execute: verify + wire SN\*" family (#7017-#7136) — already fully filed, one per subnet, don't generate more. See SKILL.md's dedicated subsection under Pass 1 for the special stale-sweep rule (test-only-PR anti-pattern, full-API-parity completeness bar) — this family needs different verification handling than a normal code issue, not different sourcing. |
+**2026-07-25 correction — the entire prior snapshot below is obsolete, not just drifted.** Between
+roughly 2026-07-20 and 2026-07-25 the maintainer (plus a small number of very active contributors)
+drained essentially the entire historical backlog this table used to describe: all four `Wave 1-4`
+milestones (49 + 6 + 411 + 39 = 505 issues) closed out completely, the ~120-issue "MCP execute:
+verify + wire SN\*" family fully closed (verified anti-pattern-free — see SKILL.md's dedicated
+subsection), the entire REST/GraphQL/MCP tri-surface parity effort essentially finished (spot-checked
+2026-07-25: 174 MCP tools / 177 REST routes / 178 GraphQL Query fields, all near-complete parity), and
+the generated-types epic (#7858, Zod/OpenAPI/Postgres/GraphQL/MCP codegen, batches lettered A-F) closed
+the same day this correction was written. **Total open issues dropped to 28, of which zero were
+contributor-available** (unassigned, no `maintainer-only`, carrying a `gittensor:*` label) at the start
+of the 2026-07-25 run — the first time this pipeline has observed the floor at literally zero. Do not
+trust any milestone count below as anything but a historical snapshot; re-derive fresh every run via
+`gh api graphql` `milestones(states:[OPEN,CLOSED])` with per-milestone `issues(states:OPEN)`/
+`issues(states:CLOSED)` counts, exactly as this correction did.
+
+| Milestone                                                    | Open (as of 2026-07-25)                           | Nature                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Foundations & Infra` (#11)                                  | 6 open / 480 closed                               | General backend/infra work, mixed maintainer/contributor. Also the default home for well-precedented REST/GraphQL/MCP parity issues and (as of 2026-07-25) the design-token lint-ratchet-completion batch (#8167-8172) — no dedicated frontend-cleanup milestone exists yet.                          |
+| `Wave 1 — Backend (CSV · Events · Correctness · Tests)` (#7) | 0 open / 49 closed — **milestone itself CLOSED**  | Fully drained. Don't source here.                                                                                                                                                                                                                                                                     |
+| `Wave 2 — Backend Data (Validators & Economics)` (#8)        | 0 open / 6 closed — **milestone itself CLOSED**   | Fully drained. Don't source here.                                                                                                                                                                                                                                                                     |
+| `Wave 3 — Frontend (post-consolidation)` (#9)                | 0 open / 411 closed — **milestone itself CLOSED** | Fully drained as of 2026-07-25 (was 11 open on 2026-07-15 — do not trust that older snapshot either; re-verify every run, this repo's counts move fast in both directions).                                                                                                                           |
+| `Wave 4 — Docs & Dev Surface` (#10)                          | 0 open / 39 closed — **milestone itself CLOSED**  | Fully drained. The fumadocs-mdx port (#6225) landed 2026-07-16 and all "Docs page: X" issues shipped and closed by #6232 — don't look here for top-up material, per SKILL.md.                                                                                                                         |
+| `Partner Flywheel Hardening` (#13)                           | 1 open / 18 closed                                | Small, check individually                                                                                                                                                                                                                                                                             |
+| `MCP Platform — Unified Subnet Access` (#14)                 | 4 open / 138 closed                               | The "MCP execute: verify + wire SN\*" family (#7017-#7136) fully closed 2026-07-22 and re-verified anti-pattern-free 2026-07-25 (see SKILL.md). The 4 remaining open issues are a _different_ sub-effort (#6893/6895/6896/6897, "publish a metagraphed Agent Skill") — don't generate more of either. |
+| `iOS App (TestFlight)` (#15)                                 | 6 open / 0 closed                                 | Brand-new epic (#6910), all 6 sub-issues are design-spikes/account-setup/scaffolding — genuinely too early-stage for any contributor unlock yet (tech stack and v1 scope aren't decided). All correctly `maintainer-only`.                                                                            |
+| `PostHog Consolidation` (#17)                                | 4 open / 10 closed                                | Active epic (#7757). Remaining open items (#7765 insights/dashboards buildout, #7767 Umami decommission, #7803 data-warehouse spike) are PostHog-console/business-gated work, not code a contributor PR naturally fits — correctly `maintainer-only` as of 2026-07-25.                                |
+| `Frontend - Lovable Design Enhancements` (#16)               | 0 open / 18 closed — **milestone CLOSED**         | Fully drained.                                                                                                                                                                                                                                                                                        |
+| Unmilestoned                                                 | re-verify fresh every run                         | The Enrich-SNxx rolling-intake family + the bot-managed Dependency Dashboard are correctly standalone; anything else unmilestoned is a real hygiene gap.                                                                                                                                              |
 
 **Every gardening-generated issue gets a milestone — none ship unmilestoned** (reinforced by the
-maintainer, 2026-07-15). Default to the closest-fitting existing one from the table above. A new
-milestone is warranted only when nothing existing fits AND the work is either a genuinely major
-initiative or a recurring category that will keep needing a home — see gittensory/loopover's own
-`reference.md` for the `Miner Wave 4.5` precedent of the latter case. A one-off oddity alone isn't
-enough justification; when genuinely unsure on a high-stakes call like this, propose 1-2 options, but
-default to deciding and documenting the reasoning rather than blocking a run on confirmation.
+maintainer, 2026-07-15) — **except the established `types-epic <letter> batch N` precedent** (see
+"Reuse-existing-pattern" below), which the maintainer's own issues in this exact family (#8055-8064,
+#8065-8076, and the D-batches filed 2026-07-25) consistently ship with `milestone: null`; mirror that
+precedent exactly for that one issue family rather than force-fitting a milestone onto it. Default to
+the closest-fitting existing one from the table above for everything else. A new milestone is
+warranted only when nothing existing fits AND the work is either a genuinely major initiative or a
+recurring category that will keep needing a home — see gittensory/loopover's own `reference.md` for the
+`Miner Wave 4.5` precedent of the latter case. A one-off oddity alone isn't enough justification; when
+genuinely unsure on a high-stakes call like this, propose 1-2 options, but default to deciding and
+documenting the reasoning rather than blocking a run on confirmation.
+
+## Where contributor-available issues actually come from, now that Wave 1-4 are gone (added 2026-07-25)
+
+With the entire Wave 1-4 backlog and the tri-surface parity effort drained, the two productive veins
+found on 2026-07-25 were:
+
+- **Design-token lint-ratchet completion** (`apps/ui/src/components/metagraphed/**`,
+  `packages/ui-kit/src/components/**`): PR #8101 (closing #7851) introduced a one-way
+  `RATCHETED_DIRS` eslint mechanism and promoted every _already-clean_ directory to error-tier, but
+  explicitly left the two components directories un-ratcheted (81 + 19 files still had
+  `no-restricted-syntax` violations) as follow-up work. Filed as #8167-8172 (6 issues, `gittensor:bug`
+  - `help wanted` + `frontend`, milestone `Foundations & Infra`) — genuinely contributor-safe (a
+    contributor-authored PR already closed the analogous #7912 refactor), mechanical (each violation's
+    own eslint message names the exact token/component fix), and independently batchable per file group.
+    Note: any apps/ui-touching PR still needs the before/after screenshot table and is still always held
+    for manual review per CLAUDE.md's own frontend rule — that doesn't change contributor-eligibility of
+    the issue, just how its PR gets reviewed.
+- **Generated-types epic follow-on batches** (types-epic D, GraphQL resolver typing): epic #7858
+  closed with sub-issues A/C/E fully complete but B and D each landing as a 5-field/route pilot with
+  the remaining fields explicitly deferred to a batch decomposition (exactly B's own established
+  precedent, which the maintainer worked through directly as batches 1-10 on 2026-07-25 while this
+  gardening run was in progress). D's ~150-field batch decomposition was still unfiled as of this run
+  — filed as #8158-8166 (9 issues) mirroring B/E's exact batch precedent. **These are `maintainer-only`
+  by precedent** (every prior B/E batch issue was `maintainer-only`/assigned-JSONbored even after a
+  contributor ended up merging the PR) — they do NOT count toward the contributor-available target,
+  but are legitimate Pass 3 epic-health forward-looking work.
+
+Both REST/GraphQL/MCP parity (dozens of PRs merged 2026-07-20 through 2026-07-25) and the Postgres/DB
+row-type codegen (types-epic C) are now essentially fully mined — don't expect more low-hanging fruit
+there without a fresh code change creating new drift. If a future run also finds the contributor-
+available count stuck near zero, the next things worth checking (not yet tried as of this run): a
+targeted eslint sweep for the OTHER Bone & Ink sub-rules beyond `no-restricted-syntax`, a fresh
+`npm run test:coverage` read for any file that dipped below the repo's ~98%/~90% norm, and whatever new
+surface area the PostHog Consolidation / iOS App epics open up once their current design-spike/business
+-gated issues resolve into buildable scope.
 
 ## Labels — this repo's own convention, don't force gittensory's onto it
 
 - `gittensor:bug` (0.05x), `gittensor:feature` (0.25x), `gittensor:priority` (1.5x) — same point
-  values as gittensory, **but `gittensor:priority` is used far more liberally here** (roughly a third
-  of all open issues, often standalone with no `gittensor:feature`/`gittensor:bug` pairing). Follow
-  this repo's existing density, don't artificially scarce it down to match gittensory.
+  values as gittensory, **but `gittensor:priority` is used far more liberally here** (historically
+  roughly a third of all open issues, often standalone with no `gittensor:feature`/`gittensor:bug`
+  pairing — re-verify the ratio fresh each run, since the 2026-07-25 backlog drain reset the open-issue
+  population this stat is drawn from to a tiny N). Follow this repo's existing density, don't
+  artificially scarce it down to match gittensory.
 - `help wanted` — paired with points labels, same as gittensory.
 - `backend` / `frontend` — apply when the work is clearly one or the other; skip when it's genuinely
   both or neither (e.g. a pure docs/data issue).
-- `maintainer-only` — used on ~57% of open issues (81/142). Only ~14 of those also carry `roadmap`,
-  so **don't assume the `roadmap`+`maintainer-only` pairing convention from gittensory applies here**
-  — in this repo `maintainer-only` alone is a complete, sufficient signal.
+- `maintainer-only` — historically used on the majority of open issues (~57%, 81/142 as of 2026-07-14).
+  As of the 2026-07-25 backlog drain, it's **all 28** of the (much smaller) surviving open-issue
+  population — re-derive the ratio fresh each run rather than trusting either number, this repo's
+  denominator can now swing an order of magnitude between runs. Only ~14 of the historical 81 also
+  carried `roadmap`, so **don't assume the `roadmap`+`maintainer-only` pairing convention from
+  gittensory applies here** — in this repo `maintainer-only` alone is a complete, sufficient signal.
 - `good first issue` is **not** a real convention here — the label doesn't exist in this repo
   (confirmed 2026-07-14) and the maintainer doesn't want it added. Only `gittensor:*` + `help wanted`
   (+ `backend`/`frontend` where clearly applicable) matter for contributor-available issues.
