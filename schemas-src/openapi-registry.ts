@@ -206,6 +206,40 @@ import {
   SudoKeyArtifactSchema,
 } from "./routes/network-singletons.ts";
 
+import {
+  ChainActivityArtifactSchema,
+  ChainCallsArtifactSchema,
+  ChainSignersArtifactSchema,
+  ChainFeesArtifactSchema,
+} from "./routes/chain-analytics.ts";
+import {
+  ChainAxonRemovalsArtifactSchema,
+  ChainDeregistrationsArtifactSchema,
+  ChainPrometheusArtifactSchema,
+  ChainRegistrationsArtifactSchema,
+  ChainServingArtifactSchema,
+  ChainStakeMovesArtifactSchema,
+  ChainStakeTransfersArtifactSchema,
+  ChainWeightsArtifactSchema,
+} from "./routes/chain-network-rollups.ts";
+import { ChainAlphaVolumeArtifactSchema } from "./routes/chain-alpha-volume.ts";
+import { ChainConcentrationArtifactSchema } from "./routes/chain-concentration.ts";
+import {
+  ChainEventsFeedArtifactSchema,
+  ChainEventsStatsArtifactSchema,
+} from "./routes/chain-events.ts";
+import { ChainIdentityHistoryArtifactSchema } from "./routes/chain-identity-history.ts";
+import { ChainIdleStakeArtifactSchema } from "./routes/chain-idle-stake.ts";
+import { ChainPerformanceArtifactSchema } from "./routes/chain-performance.ts";
+import { ChainStakeFlowArtifactSchema } from "./routes/chain-stake-flow.ts";
+import {
+  ChainTransferPairsArtifactSchema,
+  ChainTransfersArtifactSchema,
+} from "./routes/chain-transfers.ts";
+import { ChainTurnoverArtifactSchema } from "./routes/chain-turnover.ts";
+import { ChainWeightSettersArtifactSchema } from "./routes/chain-weight-setters.ts";
+import { ChainYieldArtifactSchema } from "./routes/chain-yield.ts";
+
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
 const register = (schema: z.ZodType, id: string) => {
@@ -304,6 +338,31 @@ register(AccountServingArtifactSchema, "AccountServingArtifact");
 register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");
 register(AccountStakeMovesArtifactSchema, "AccountStakeMovesArtifact");
 register(AccountStakeFlowArtifactSchema, "AccountStakeFlowArtifact");
+register(ChainActivityArtifactSchema, "ChainActivityArtifact");
+register(ChainCallsArtifactSchema, "ChainCallsArtifact");
+register(ChainSignersArtifactSchema, "ChainSignersArtifact");
+register(ChainFeesArtifactSchema, "ChainFeesArtifact");
+register(ChainAxonRemovalsArtifactSchema, "ChainAxonRemovalsArtifact");
+register(ChainDeregistrationsArtifactSchema, "ChainDeregistrationsArtifact");
+register(ChainPrometheusArtifactSchema, "ChainPrometheusArtifact");
+register(ChainRegistrationsArtifactSchema, "ChainRegistrationsArtifact");
+register(ChainServingArtifactSchema, "ChainServingArtifact");
+register(ChainStakeMovesArtifactSchema, "ChainStakeMovesArtifact");
+register(ChainStakeTransfersArtifactSchema, "ChainStakeTransfersArtifact");
+register(ChainWeightsArtifactSchema, "ChainWeightsArtifact");
+register(ChainAlphaVolumeArtifactSchema, "ChainAlphaVolumeArtifact");
+register(ChainConcentrationArtifactSchema, "ChainConcentrationArtifact");
+register(ChainEventsFeedArtifactSchema, "ChainEventsFeedArtifact");
+register(ChainEventsStatsArtifactSchema, "ChainEventsStatsArtifact");
+register(ChainIdentityHistoryArtifactSchema, "ChainIdentityHistoryArtifact");
+register(ChainIdleStakeArtifactSchema, "ChainIdleStakeArtifact");
+register(ChainPerformanceArtifactSchema, "ChainPerformanceArtifact");
+register(ChainStakeFlowArtifactSchema, "ChainStakeFlowArtifact");
+register(ChainTransferPairsArtifactSchema, "ChainTransferPairsArtifact");
+register(ChainTransfersArtifactSchema, "ChainTransfersArtifact");
+register(ChainTurnoverArtifactSchema, "ChainTurnoverArtifact");
+register(ChainWeightSettersArtifactSchema, "ChainWeightSettersArtifact");
+register(ChainYieldArtifactSchema, "ChainYieldArtifact");
 
 // Batch 3 (#8057) additions.
 register(SubnetMetagraphArtifactSchema, "SubnetMetagraphArtifact");
@@ -460,6 +519,31 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "NetworkParametersArtifact",
   "RandomnessArtifact",
   "SudoKeyArtifact",
+  "ChainActivityArtifact",
+  "ChainCallsArtifact",
+  "ChainSignersArtifact",
+  "ChainFeesArtifact",
+  "ChainAxonRemovalsArtifact",
+  "ChainDeregistrationsArtifact",
+  "ChainPrometheusArtifact",
+  "ChainRegistrationsArtifact",
+  "ChainServingArtifact",
+  "ChainStakeMovesArtifact",
+  "ChainStakeTransfersArtifact",
+  "ChainWeightsArtifact",
+  "ChainAlphaVolumeArtifact",
+  "ChainConcentrationArtifact",
+  "ChainEventsFeedArtifact",
+  "ChainEventsStatsArtifact",
+  "ChainIdentityHistoryArtifact",
+  "ChainIdleStakeArtifact",
+  "ChainPerformanceArtifact",
+  "ChainStakeFlowArtifact",
+  "ChainTransferPairsArtifact",
+  "ChainTransfersArtifact",
+  "ChainTurnoverArtifact",
+  "ChainWeightSettersArtifact",
+  "ChainYieldArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited
@@ -539,7 +623,7 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   // ChildDelegationSubnet/ParentDelegationEntry/ParentDelegationSubnet are
   // each referenced only by the one hand-edited component this batch
   // replaces (verified via repo-wide $ref grep). `Extrinsic` is deliberately
-  // NOT here -- it still has 3 referrers outside this batch (block/
+  // NOT here -- it still has referrers outside this batch (block/
   // extrinsic-detail routes, out of scope until batch 7) -- its hand-edited
   // component key stays registered untouched; this batch's own
   // AccountExtrinsicsArtifact models that shape with a local unregistered
@@ -555,4 +639,26 @@ export const OPENAPI_ZOD_ORPHANED_COMPONENT_NAMES = [
   "ParentDelegationEntry",
   "ParentDelegationSubnet",
   "EntityLabel",
+  // Batch 6 (#8060) additions: ChainActivityDay/ChainCallEntry/
+  // ChainSignerEntry/ChainFeeDay/ChainFeePayer/ChainEventEntry/
+  // ChainIdentityHistoryChange/ChainTransferPair/ChainTransferParty/
+  // YieldDistribution are each referenced only by the one hand-edited
+  // component this batch replaces (verified via repo-wide $ref grep --
+  // ChainTransferParty's two refs are both within ChainTransfersArtifact
+  // itself, an intra-component reuse, not a cross-component one). `Extrinsic`
+  // and `ChainEvent` deliberately stay registered/untouched -- both have
+  // referrers outside this batch (block/extrinsic-detail routes, out of
+  // scope until batch 7) -- this batch's own chain-events.ts models
+  // ChainEvent's shape with a local unregistered copy instead (same pattern
+  // batch 5 used for Extrinsic/EntityLabel).
+  "ChainActivityDay",
+  "ChainCallEntry",
+  "ChainSignerEntry",
+  "ChainFeeDay",
+  "ChainFeePayer",
+  "ChainEventEntry",
+  "ChainIdentityHistoryChange",
+  "ChainTransferPair",
+  "ChainTransferParty",
+  "YieldDistribution",
 ] as const;

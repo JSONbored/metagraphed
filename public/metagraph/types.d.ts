@@ -4043,28 +4043,23 @@ export interface components {
             url: string;
             verification?: components["schemas"]["VerificationResult"] | null;
         };
-        /** @description Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold. */
         ChainActivityArtifact: {
             day_count: number;
-            days: components["schemas"]["ChainActivityDay"][];
-            /** Format: date-time */
+            days: {
+                block_count: number;
+                day: string;
+                event_count: number;
+                extrinsic_count: number;
+                success_rate: number | null;
+                successful_extrinsics: number;
+                unique_signers: number;
+            }[];
             observed_at?: string | null;
             schema_version: number;
             window: string;
         } & {
             [key: string]: unknown;
         };
-        /** @description One UTC day of network activity. success_rate is successful/total extrinsics, null when the day recorded zero extrinsics. */
-        ChainActivityDay: {
-            block_count: number;
-            day: string;
-            event_count: number;
-            extrinsic_count: number;
-            success_rate: number | null;
-            successful_extrinsics: number;
-            unique_signers: number;
-        };
-        /** @description Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao descending, each with the same buy/sell/total volume + sentiment scorecard SubnetAlphaVolumeArtifact carries (vol_mcap_ratio always null here — no per-subnet market-cap input in scope at the network level), plus a network rollup (with its own net/gross sentiment reading) and a distribution of the per-subnet total_volume_tao. Fixed 24h window, no static file — served live from the account_events D1 tier at /api/v1/chain/alpha-volume; zeros + empty leaderboard when cold. */
         ChainAlphaVolumeArtifact: {
             network: {
                 buy_count: number;
@@ -4080,12 +4075,10 @@ export interface components {
                 total_volume_alpha: number;
                 total_volume_tao: number;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["SubnetAlphaVolumeArtifact"][];
-            /** @description Spread of the per-subnet total_volume_tao (always non-negative) across every subnet with volume in the window; null when no subnet had volume. */
             volume_distribution: {
                 count: number;
                 max: number;
@@ -4099,9 +4092,7 @@ export interface components {
             /** @enum {string} */
             window: "24h";
         };
-        /** @description Network-wide axon-removal activity over a 7d/30d window across the subnets with observed removal activity: a per-subnet leaderboard (distinct removers, AxonInfoRemoved count, removals per remover) plus a network rollup with the true distinct remover count and a distribution of per-subnet re-teardown intensity. The teardown-side companion to /api/v1/chain/serving (axon announcements) and the network-wide companion to /api/v1/subnets/{netuid}/axon-removals, served live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainAxonRemovalsArtifact: {
-            /** @description Spread of the per-subnet removals-per-remover intensity across the subnets that removed an axon in the window (null when no subnet removed one). subnet_count and this distribution cover only subnets with observed AxonInfoRemoved activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4112,13 +4103,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct removers across all subnets (a hotkey removing an axon on several subnets counts once, so NOT the sum of the per-subnet counts), total AxonInfoRemoved events, and the network removals-per-remover intensity (null when no axon was removed). */
             network: {
                 distinct_removers: number;
                 removals: number;
                 removals_per_remover: number | null;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4128,22 +4117,17 @@ export interface components {
                 removals: number;
                 removals_per_remover: number | null;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description One call-mix bucket. call_function is null unless group_by=module_function. share is count / total_extrinsics (full-window), null when the window is empty. */
-        ChainCallEntry: {
-            call_function: string | null;
-            call_module: string;
-            count: number;
-            share: number | null;
-        };
-        /** @description Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics, or of the selected call_module when ?call_module= is supplied. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold. */
         ChainCallsArtifact: {
             call_count: number;
-            calls: components["schemas"]["ChainCallEntry"][];
+            calls: {
+                call_function: string | null;
+                call_module: string;
+                count: number;
+                share: number | null;
+            }[];
             group_by: string;
-            /** Format: date-time */
             observed_at?: string | null;
             schema_version: number;
             total_extrinsics: number;
@@ -4151,7 +4135,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null. */
         ChainConcentrationArtifact: {
             captured_at: string | null;
             emission: components["schemas"]["ConcentrationMetrics"];
@@ -4167,9 +4150,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide neuron-deregistration activity over a 7d/30d window across the subnets with observed deregistration activity: a per-subnet leaderboard (distinct deregistered hotkeys, NeuronDeregistered count, deregistrations per hotkey) plus a network rollup with the true distinct hotkey count and a distribution of per-subnet re-deregistration intensity. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/chain/turnover — served live at /api/v1/chain/deregistrations (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainDeregistrationsArtifact: {
-            /** @description Spread of the per-subnet deregistrations-per-hotkey intensity across the subnets that saw a deregistration in the window (null when no subnet saw a deregistration). subnet_count and this distribution cover only subnets with observed NeuronDeregistered activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4180,13 +4161,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct deregistered hotkeys across all subnets (a hotkey deregistered on several subnets counts once, so NOT the sum of the per-subnet counts), total NeuronDeregistered events, and the network deregistrations-per-hotkey intensity (null when no neuron was deregistered). */
             network: {
                 deregistrations: number;
                 deregistrations_per_hotkey: number | null;
                 distinct_deregistered_hotkeys: number;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4196,8 +4175,7 @@ export interface components {
                 distinct_deregistered_hotkeys: number;
                 netuid: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
         /** @description One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer. */
         ChainEvent: {
@@ -4210,91 +4188,82 @@ export interface components {
             pallet: string | null;
             phase?: string | null;
         };
-        /** @description One pallet.method event-distribution bucket: the count of that event over the recent-blocks window. */
-        ChainEventEntry: {
-            count: number;
-            method: string | null;
-            pallet: string | null;
-        };
-        /** @description Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless observed_at.block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs. */
         ChainEventsFeedArtifact: {
             count: number;
-            events: components["schemas"]["ChainEvent"][];
-            /** @description Legacy block_number-only cursor for the next page. Prefer next_cursor to avoid skipping same-block events. */
+            events: {
+                args?: {
+                    [key: string]: unknown;
+                } | null;
+                block_number: number | null;
+                event_index: number | null;
+                extrinsic_index?: number | null;
+                method: string | null;
+                observed_at?: number | null;
+                pallet: string | null;
+                phase?: string | null;
+            }[];
             next_before?: number | null;
-            /** @description Lossless observed_at.block_number.event_index cursor for the next page. All parts are non-negative safe integers; pass it back as ?cursor=. */
             next_cursor?: string | null;
         } & {
             [key: string]: unknown;
         };
-        /** @description Chain-activity aggregate: the pallet.method event distribution over the most recent N blocks from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats and consumed by the get_chain_activity MCP tool. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Empty (groups:0, activity:[]) before the all-events backfill runs. */
         ChainEventsStatsArtifact: {
-            activity: components["schemas"]["ChainEventEntry"][];
+            activity: {
+                count: number;
+                method: string | null;
+                pallet: string | null;
+            }[];
             groups: number;
             window_blocks: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description One UTC day of fee/tip totals, averages, and exact medians. avg_*_tao and median_*_tao are null when the day recorded zero extrinsics. */
-        ChainFeeDay: {
-            avg_fee_tao: number | null;
-            avg_tip_tao: number | null;
-            day: string;
-            extrinsic_count: number;
-            median_fee_tao: number | null;
-            median_tip_tao: number | null;
-            total_fee_tao: number;
-            total_tip_tao: number;
-        };
-        /** @description One top-fee-payer: an account with its total windowed fees/tips and extrinsic count. */
-        ChainFeePayer: {
-            extrinsic_count: number;
-            signer: string;
-            total_fee_tao: number;
-            total_tip_tao: number;
-        };
-        /** @description Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold. */
         ChainFeesArtifact: {
-            daily: components["schemas"]["ChainFeeDay"][];
+            daily: {
+                avg_fee_tao: number | null;
+                avg_tip_tao: number | null;
+                day: string;
+                extrinsic_count: number;
+                median_fee_tao: number | null;
+                median_tip_tao: number | null;
+                total_fee_tao: number;
+                total_tip_tao: number;
+            }[];
             day_count: number;
-            /** Format: date-time */
             observed_at?: string | null;
             schema_version: number;
-            top_fee_payers: components["schemas"]["ChainFeePayer"][];
+            top_fee_payers: {
+                extrinsic_count: number;
+                signer: string;
+                total_fee_tao: number;
+                total_tip_tao: number;
+            }[];
             window: string;
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file). Each change carries the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route; capped to ?limit (default 50, max 200). subnet_count is the distinct subnets the emitted feed spans. The network analog of SubnetIdentityHistoryArtifact. */
         ChainIdentityHistoryArtifact: {
-            changes: components["schemas"]["ChainIdentityHistoryChange"][];
+            changes: ({
+                block_number?: number | null;
+                description?: string | null;
+                discord?: string | null;
+                github_repo?: string | null;
+                identity_hash: string | null;
+                logo_url?: string | null;
+                netuid: number | null;
+                observed_at: string | null;
+                subnet_name?: string | null;
+                subnet_url?: string | null;
+                symbol?: string | null;
+            } & {
+                [key: string]: unknown;
+            })[];
             count: number;
             schema_version: number;
             subnet_count: number;
         } & {
             [key: string]: unknown;
         };
-        /** @description One observed on-chain SubnetIdentitiesV3 change in the network-wide feed, shaped like a per-subnet identity-history entry plus the netuid it belongs to. Operator-controlled untrusted data. */
-        ChainIdentityHistoryChange: {
-            block_number?: number | null;
-            description?: string | null;
-            discord?: string | null;
-            /** Format: uri */
-            github_repo?: string | null;
-            identity_hash: string | null;
-            /** Format: uri */
-            logo_url?: string | null;
-            netuid: number | null;
-            /** Format: date-time */
-            observed_at: string | null;
-            subnet_name?: string | null;
-            /** Format: uri */
-            subnet_url?: string | null;
-            symbol?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /** @description Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier. The idle-delegation companion to ChainPerformanceArtifact. */
         ChainIdleStakeArtifact: {
             captured_at?: string | null;
             schema_version: number;
@@ -4311,7 +4280,6 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact. */
         ChainPerformanceArtifact: {
             active_count?: number;
             captured_at?: string | null;
@@ -4327,9 +4295,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide Prometheus-endpoint serving activity over a 7d/30d window across the subnets with observed telemetry activity: a per-subnet leaderboard (distinct exporters, PrometheusServed count, announcements per exporter) plus a network rollup with the true distinct exporter count and a distribution of per-subnet re-announcement intensity. The telemetry-endpoint companion to /api/v1/chain/serving (axon endpoints) — which subnets run observability infrastructure — served live from the account_events PrometheusServed stream at /api/v1/chain/prometheus (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainPrometheusArtifact: {
-            /** @description Spread of the per-subnet announcements-per-exporter intensity across the subnets that announced a Prometheus endpoint in the window (null when no subnet announced one). subnet_count and this distribution cover only subnets with observed PrometheusServed activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4340,13 +4306,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct exporters across all subnets (a hotkey announcing on several subnets counts once, so NOT the sum of the per-subnet counts), total PrometheusServed events, and the network announcements-per-exporter intensity (null when no endpoint was announced). */
             network: {
                 announcements: number;
                 announcements_per_exporter: number | null;
                 distinct_exporters: number;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4356,12 +4320,9 @@ export interface components {
                 distinct_exporters: number;
                 netuid: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Network-wide neuron-registration activity over a 7d/30d window across the subnets with observed registration activity: a per-subnet leaderboard (distinct registrants, NeuronRegistered count, registrations per registrant) plus a network rollup with the true distinct registrant count and a distribution of per-subnet re-registration intensity. Raw registration demand from the account_events NeuronRegistered stream — the companion to the neuron_daily validator-set churn in /api/v1/chain/turnover — served live at /api/v1/chain/registrations (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainRegistrationsArtifact: {
-            /** @description Spread of the per-subnet registrations-per-registrant intensity across the subnets that saw a registration in the window (null when no subnet saw a registration). subnet_count and this distribution cover only subnets with observed NeuronRegistered activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4372,13 +4333,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct registrants across all subnets (a hotkey registering on several subnets counts once, so NOT the sum of the per-subnet counts), total NeuronRegistered events, and the network registrations-per-registrant intensity (null when no neuron registered). */
             network: {
                 distinct_registrants: number;
                 registrations: number;
                 registrations_per_registrant: number | null;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4388,12 +4347,9 @@ export interface components {
                 registrations: number;
                 registrations_per_registrant: number | null;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Network-wide axon-serving announcement activity over a 7d/30d window across the subnets with observed serving activity: a per-subnet leaderboard (distinct servers, AxonServed count, announcements per server) plus a network rollup with the true distinct server count and a distribution of per-subnet re-announcement intensity. Served live from the account_events AxonServed stream at /api/v1/chain/serving (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainServingArtifact: {
-            /** @description Spread of the per-subnet announcements-per-server intensity across the subnets that announced an axon in the window (null when no subnet announced an axon). subnet_count and this distribution cover only subnets with observed AxonServed activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4404,13 +4360,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct servers across all subnets (a hotkey announcing on several subnets counts once, so NOT the sum of the per-subnet counts), total AxonServed events, and the network announcements-per-server intensity (null when no axon was announced). */
             network: {
                 announcements: number;
                 announcements_per_server: number | null;
                 distinct_servers: number;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4420,33 +4374,26 @@ export interface components {
                 distinct_servers: number;
                 netuid: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description One leaderboard row: an account (extrinsic signer) with its windowed activity. */
-        ChainSignerEntry: {
-            last_tx_block: number | null;
-            signer: string;
-            total_fee_tao: number;
-            total_tip_tao: number;
-            tx_count: number;
-        };
-        /** @description Windowed most-active-account leaderboard (#1990): signers ranked by tx_count or total_fee_tao over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold. */
         ChainSignersArtifact: {
-            /** Format: date-time */
             observed_at?: string | null;
             schema_version: number;
             signer_count: number;
-            signers: components["schemas"]["ChainSignerEntry"][];
+            signers: {
+                last_tx_block: number | null;
+                signer: string;
+                total_fee_tao: number;
+                total_tip_tao: number;
+                tx_count: number;
+            }[];
             /** @enum {string} */
             sort: "tx_count" | "total_fee_tao";
             window: string;
         } & {
             [key: string]: unknown;
         };
-        /** @description Cross-subnet capital flow over a 7d/30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO, with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow. subnet_count, the rollup, and the distribution cover only subnets with stake events in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/stake-flow (no static file); zeros + empty leaderboard when cold. */
         ChainStakeFlowArtifact: {
-            /** @description Spread of the per-subnet net flow (TAO, can be negative) across every subnet in the window; null when no subnet moved stake. */
             net_flow_distribution: {
                 count: number;
                 max: number;
@@ -4468,7 +4415,6 @@ export interface components {
                 total_unstaked_tao: number;
                 unstake_events: number;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4483,12 +4429,9 @@ export interface components {
                 total_unstaked_tao: number;
                 unstake_events: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Network-wide stake-movement (re-delegation) activity over a 7d/30d window across the subnets with observed movement activity: a per-subnet leaderboard (distinct movers, StakeMoved count, movements per mover) plus a network rollup with the true distinct mover count and a distribution of per-subnet re-move intensity. The re-delegation-churn companion to the net-capital-flow /api/v1/chain/stake-flow — StakeMoved is an account relocating stake between hotkeys/subnets (move_stake) without unstaking, so it measures churn, not flow; keyed on the origin subnet and moving account. Served live from the account_events StakeMoved stream at /api/v1/chain/stake-moves (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainStakeMovesArtifact: {
-            /** @description Spread of the per-subnet movements-per-mover intensity across the subnets that saw a move in the window (null when no subnet saw a move). subnet_count and this distribution cover only subnets with observed StakeMoved activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4499,13 +4442,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct movers across all subnets (an account moving stake out of several subnets counts once, so NOT the sum of the per-subnet counts), total StakeMoved events, and the network movements-per-mover intensity (null when no stake moved). */
             network: {
                 distinct_movers: number;
                 movements: number;
                 movements_per_mover: number | null;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4515,12 +4456,9 @@ export interface components {
                 movements_per_mover: number | null;
                 netuid: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Network-wide stake-transfer activity over a 7d/30d window across the subnets with observed transfer activity: a per-subnet leaderboard (distinct senders, StakeTransferred count, transfers per sender) plus a network rollup with the true distinct sender count and a distribution of per-subnet transfer intensity. The between-coldkeys companion to the within-account re-delegation churn of /api/v1/chain/stake-moves — StakeTransferred (transfer_stake) relocates staked alpha from one account to another on the same hotkey, so it moves ownership rather than net capital or delegation; keyed on the origin subnet and sending account (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/chain/stake-transfers (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainStakeTransfersArtifact: {
-            /** @description Spread of the per-subnet transfers-per-sender intensity across the subnets that saw a transfer in the window (null when no subnet saw a transfer). subnet_count and this distribution cover only subnets with observed StakeTransferred activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4531,13 +4469,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct senders across all subnets (an account transferring stake out of several subnets counts once, so NOT the sum of the per-subnet counts), total StakeTransferred events, and the network transfers-per-sender intensity (null when no stake transferred). */
             network: {
                 distinct_senders: number;
                 transfers: number;
                 transfers_per_sender: number | null;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4547,61 +4483,51 @@ export interface components {
                 transfers: number;
                 transfers_per_sender: number | null;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount. */
-        ChainTransferPair: {
-            from: string;
-            last_block: number | null;
-            /** Format: date-time */
-            last_observed_at: string | null;
-            to: string;
-            transfer_count: number;
-            volume_tao: number;
-        };
-        /** @description Network-wide directed native-TAO transfer-pair analytics over a 7d/30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share of total pairable volume, and top sender -> receiver pairs ranked by volume or transfer count. Served live from the account_events D1 tier at /api/v1/chain/transfer-pairs (no static file); zeros + an empty pairs list when cold. */
         ChainTransferPairsArtifact: {
-            /** Format: date-time */
             observed_at: string | null;
-            /** @description Number of pair rows returned after applying limit. unique_pairs is the full-window pair count. */
             pair_count: number;
-            pairs: components["schemas"]["ChainTransferPair"][];
+            pairs: {
+                from: string;
+                last_block: number | null;
+                last_observed_at: string | null;
+                to: string;
+                transfer_count: number;
+                volume_tao: number;
+            }[];
             schema_version: number;
             /** @enum {string} */
             sort: "volume" | "count";
-            /** @description Highest-volume pair's full-window volume divided by total pairable volume, independent of sort and limit; null when the window has no pairable volume. */
             top_pair_share: number | null;
             total_volume_tao: number;
             transfer_count: number;
             unique_pairs: number;
             window: string | null;
         };
-        /** @description One account on a chain-transfers leaderboard: its total transfer volume and count over the window. */
-        ChainTransferParty: {
-            address: string;
-            transfer_count: number;
-            volume_tao: number;
-        };
-        /** @description Network-wide native-TAO transfer analytics over a 7d/30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/chain/transfers (no static file); zeros + empty leaderboards when cold. */
         ChainTransfersArtifact: {
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
-            top_receivers: components["schemas"]["ChainTransferParty"][];
+            top_receivers: {
+                address: string;
+                transfer_count: number;
+                volume_tao: number;
+            }[];
             top_sender_share: number | null;
-            top_senders: components["schemas"]["ChainTransferParty"][];
+            top_senders: {
+                address: string;
+                transfer_count: number;
+                volume_tao: number;
+            }[];
             total_volume_tao: number;
             transfer_count: number;
             unique_receivers: number;
             unique_senders: number;
             window: string | null;
         };
-        /** @description Network-wide validator-set turnover across all subnets between a window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered/exited, Jaccard retention, 0-100 stability score) ranked by gross churn, plus a network rollup over the union of every subnet's validator hotkeys. comparable is false (and the leaderboard empty) when the store is cold or has a single snapshot. */
         ChainTurnoverArtifact: {
             comparable: boolean;
             end_date: string | null;
-            /** @description Rollup over the union of every subnet's validator hotkeys (a hotkey validating on several subnets counts once network-wide). */
             network: {
                 stability_score: number | null;
                 validator_retention: number | null;
@@ -4611,7 +4537,6 @@ export interface components {
                 validators_start: number;
             };
             schema_version: number;
-            /** @description Spread of the per-subnet 0-100 stability scores across every subnet in the window (null when no subnet is comparable). */
             stability_distribution: {
                 count: number;
                 max: number;
@@ -4633,12 +4558,9 @@ export interface components {
                 validators_exited: number;
                 validators_start: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | "90d" | null;
+            window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Network-wide validator weight-setting activity over a 7d/30d window across the subnets with observed weight-setting activity: a per-subnet leaderboard (distinct setters, WeightsSet count, updates per validator) plus a network rollup with the true distinct setter count and a distribution of per-subnet update intensity. Served live from the account_events WeightsSet stream at /api/v1/chain/weights (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainWeightsArtifact: {
-            /** @description Spread of the per-subnet updates-per-validator intensity across the subnets that set weights in the window (null when no subnet set weights). subnet_count and this distribution cover only subnets with observed WeightsSet activity, not every registered subnet. */
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -4649,13 +4571,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Rollup over the window: the true distinct weight-setting validators across all subnets (a validator setting weights on several subnets counts once, so NOT the sum of the per-subnet counts), total WeightsSet events, and the network updates-per-validator intensity (null when no validator set weights). */
             network: {
                 distinct_setters: number;
                 sets_per_setter: number | null;
                 weight_sets: number;
             };
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
@@ -4665,36 +4585,40 @@ export interface components {
                 sets_per_setter: number | null;
                 weight_sets: number;
             }[];
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Network-wide weight-setter leaderboard over a 7d/30d window: the individual validators driving consensus across EVERY subnet, ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. The network-wide companion to /api/v1/subnets/{netuid}/weights/setters (the same relationship /api/v1/chain/weights has to /api/v1/subnets/{netuid}/weights), served live from the account_events WeightsSet stream at /api/v1/chain/weights/setters (no static file); an empty leaderboard when cold. */
         ChainWeightSettersArtifact: {
             distinct_setters: number;
-            /** Format: date-time */
             observed_at: string | null;
             schema_version: number;
             setter_count: number;
             setters: {
-                /** Format: date-time */
                 first_set_at: string | null;
                 hotkey: string | null;
-                /** Format: date-time */
                 last_set_at: string | null;
-                /** @description Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter. */
                 netuid: number | null;
                 share: number | null;
                 uid: number | null;
                 weight_sets: number;
             }[];
             weight_sets: number;
-            /** @enum {string|null} */
-            window: "7d" | "30d" | null;
+            window: ("7d" | "30d") | null;
         };
-        /** @description Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact. */
         ChainYieldArtifact: {
             captured_at?: string | null;
-            distribution: components["schemas"]["YieldDistribution"];
+            distribution: ({
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p10: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             miner_count?: number;
             miner_yield?: number | null;
             network_yield: number | null;
@@ -8530,20 +8454,6 @@ export interface components {
             url: string;
             verified_at: string;
         };
-        /** @description Distribution summary of the per-neuron emission/stake return rate across the network: count, mean, median, min, max, and the p10/p25/p75/p90 nearest-rank percentiles. Null when no neuron carries a defined yield (a cold store, an empty network, or every neuron zero-stake). */
-        YieldDistribution: ({
-            count?: number;
-            max?: number | null;
-            mean?: number | null;
-            median?: number | null;
-            min?: number | null;
-            p10?: number | null;
-            p25?: number | null;
-            p75?: number | null;
-            p90?: number | null;
-        } & {
-            [key: string]: unknown;
-        }) | null;
     };
     responses: never;
     parameters: never;
@@ -16384,7 +16294,7 @@ export interface operations {
                      *           "count": 1,
                      *           "max": 1,
                      *           "mean": 0.5,
-                     *           "median": 1,
+                     *           "median": 0.5,
                      *           "min": 1,
                      *           "p25": 1,
                      *           "p75": 1,
