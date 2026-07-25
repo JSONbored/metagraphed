@@ -13,8 +13,8 @@ const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.met
 describe("tablist consumers wire the roving-tablist contract", () => {
   const consumers = [
     ["EndpointKindTabs", "../components/metagraphed/endpoint-kind-tabs.tsx"],
-    ["explorer section tabs", "../routes/explorer.tsx"],
-    ["stake/unstake direction toggle", "../routes/subnets.$netuid.tsx"],
+    ["explorer section tabs", "../routes/-explorer-page.tsx"],
+    ["stake/unstake direction toggle", "../routes/-subnets-netuid-page.tsx"],
   ] as const;
 
   for (const [name, rel] of consumers) {

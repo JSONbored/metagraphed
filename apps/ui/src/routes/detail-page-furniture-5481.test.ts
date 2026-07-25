@@ -14,7 +14,7 @@ const mastheadSource = readFileSync(
   "utf8",
 );
 const subnetRouteSource = readFileSync(
-  fileURLToPath(new URL("./subnets.$netuid.tsx", import.meta.url)),
+  fileURLToPath(new URL("./-subnets-netuid-page.tsx", import.meta.url)),
   "utf8",
 );
 const providerRouteSource = readFileSync(
