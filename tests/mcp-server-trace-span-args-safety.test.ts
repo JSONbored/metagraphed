@@ -126,9 +126,8 @@ test("a rejected recordTraceSpan call never surfaces into the tool result", asyn
     };
   });
   vi.resetModules();
-  const { handleMcpRequest: handleMcpRequestRejecting } = await import(
-    "../src/mcp-server.ts"
-  );
+  const { handleMcpRequest: handleMcpRequestRejecting } =
+    await import("../src/mcp-server.ts");
   const of = globalThis.fetch;
   globalThis.fetch = async () =>
     new Response("{}", {

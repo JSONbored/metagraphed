@@ -3565,8 +3565,7 @@ test("emits a PostHog trace span for the request when sampled", async () => {
     expect(res.status).toBe(404);
     expect(posted.length).toBe(1);
     expect(posted[0].url.endsWith("/i/v1/traces")).toBe(true);
-    const span =
-      posted[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+    const span = posted[0].body.resourceSpans[0].scopeSpans[0].spans[0];
     expect(span.name).toBe("/api/v1/internal/does-not-exist");
     expect(span.status.code).toBe(1); // OK -- 404 is < 500
   } finally {
@@ -3580,7 +3579,9 @@ test("emits a PostHog trace span for the request when sampled", async () => {
 // registered with waitUntil, so the response must still serve cleanly.
 test("still returns the response cleanly when sampled but no usable ExecutionContext is supplied", async () => {
   const original = globalThis.fetch;
-  globalThis.fetch = (async () => ({ ok: true })) as unknown as typeof globalThis.fetch;
+  globalThis.fetch = (async () => ({
+    ok: true,
+  })) as unknown as typeof globalThis.fetch;
   try {
     const res = await worker.fetch(
       new Request("https://d/api/v1/internal/does-not-exist"),
@@ -3614,9 +3615,7 @@ test("survives recordTraceSpan itself rejecting, not just its own internal failu
   });
   vi.resetModules();
   try {
-    const { default: workerRejecting } = await import(
-      "../workers/data-api.ts"
-    );
+    const { default: workerRejecting } = await import("../workers/data-api.ts");
     const res = await workerRejecting.fetch(
       new Request("https://d/api/v1/internal/does-not-exist"),
       {
