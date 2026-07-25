@@ -239,6 +239,40 @@ import { buildChainTransfers } from "../src/chain-transfers.ts";
 import { buildChainTurnover } from "../src/chain-turnover.ts";
 import { buildChainWeightSetters } from "../src/chain-weight-setters.ts";
 import { buildChainYield } from "../src/chain-yield.ts";
+import {
+  BlocksFeedArtifactSchema,
+  BlockDetailArtifactSchema,
+} from "../schemas-src/routes/blocks.ts";
+import { BlocksSummaryArtifactSchema } from "../schemas-src/routes/blocks-summary.ts";
+import { RuntimeVersionsArtifactSchema } from "../schemas-src/routes/runtime-versions.ts";
+import {
+  ExtrinsicsFeedArtifactSchema,
+  ExtrinsicDetailArtifactSchema,
+} from "../schemas-src/routes/extrinsics.ts";
+import { BlockExtrinsicsArtifactSchema } from "../schemas-src/routes/block-extrinsics.ts";
+import { BlockEventsArtifactSchema } from "../schemas-src/routes/block-events.ts";
+import { BlockChainEventsArtifactSchema } from "../schemas-src/routes/block-chain-events.ts";
+import { GlobalValidatorsArtifactSchema } from "../schemas-src/routes/global-validators.ts";
+import { ValidatorDetailArtifactSchema } from "../schemas-src/routes/validator-detail.ts";
+import { CompareValidatorsArtifactSchema } from "../schemas-src/routes/compare-validators.ts";
+import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
+import { ValidatorNominatorsArtifactSchema } from "../schemas-src/routes/validator-nominators.ts";
+import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
+import { buildBlocksSummary } from "../src/blocks-summary.ts";
+import { buildRuntimeVersionHistory } from "../src/runtime-versions.ts";
+import {
+  buildExtrinsic,
+  buildExtrinsicFeed,
+  buildBlockExtrinsics,
+} from "../src/extrinsics.ts";
+import { buildBlockEvents, formatAccountEvent } from "../src/account-events.ts";
+import {
+  buildGlobalValidators,
+  buildValidatorDetail,
+  composeValidatorComparison,
+} from "../src/metagraph-neurons.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
+import { buildValidatorNominators } from "../src/validator-nominators.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -2223,6 +2257,429 @@ describe("batch 6 (#8060) route artifact schemas parse real builder output", () 
   });
   test("chain-yield: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = ChainYieldArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+});
+
+// Batch 7 (#8061) -- blocks/extrinsics/runtime/governance/sudo/validators
+// D1-tier data (no static file), driven directly against each route's own
+// real pure builder with fixture rows reused verbatim from that builder's
+// own tests/*.test.ts. /api/v1/sudo and /api/v1/governance/config-changes
+// reuse the identical ExtrinsicsFeedArtifact shape (buildExtrinsicFeed
+// hardcoded to call_module='Sudo'/'AdminUtils') so they're covered by the
+// extrinsics-feed tests below, not separately.
+describe("batch 7 (#8061) route artifact schemas parse real builder output", () => {
+  test("blocks: ArtifactSchema.parse(buildBlockFeed(...)) succeeds", () => {
+    const feed = buildBlockFeed(
+      [
+        { block_number: 2, block_hash: "0x2", observed_at: 1750000000000 },
+        { block_number: 1, block_hash: "0x1", observed_at: 1750000000000 },
+      ],
+      { limit: 50, offset: 0 },
+    );
+    const parsed = BlocksFeedArtifactSchema.parse(feed);
+    assert.ok(parsed);
+  });
+  test("blocks: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BlocksFeedArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("block-detail: ArtifactSchema.parse(buildBlock(...)) succeeds", () => {
+    const out = buildBlock(
+      { block_number: 5, block_hash: "0x5", observed_at: 1750000000000 },
+      "5",
+      { prev: 4, next: 6 },
+    );
+    const parsed = BlockDetailArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("block-detail: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BlockDetailArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("blocks-summary: ArtifactSchema.parse(buildBlocksSummary(...)) succeeds", () => {
+    const out = buildBlocksSummary([
+      {
+        block_number: 100,
+        author: "5Alice",
+        extrinsic_count: 3,
+        event_count: 10,
+        spec_version: 200,
+        observed_at: 1_750_000_000_000,
+      },
+      {
+        block_number: 101,
+        author: "5Alice",
+        extrinsic_count: 2,
+        event_count: 8,
+        spec_version: 200,
+        observed_at: 1_750_000_012_000,
+      },
+      {
+        block_number: 102,
+        author: "5Bob",
+        extrinsic_count: 5,
+        event_count: 20,
+        spec_version: 200,
+        observed_at: 1_750_000_024_000,
+      },
+    ]);
+    const parsed = BlocksSummaryArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("blocks-summary: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BlocksSummaryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("runtime: ArtifactSchema.parse(buildRuntimeVersionHistory(...)) succeeds", () => {
+    const transitionRow = (overrides: Record<string, unknown> = {}) => ({
+      spec_version: 218,
+      block_number: 5_123_456,
+      observed_at: 1_750_000_000_000,
+      ...overrides,
+    });
+    const out = buildRuntimeVersionHistory(
+      [
+        transitionRow({ spec_version: 217, block_number: 5_000_000 }),
+        transitionRow({ spec_version: 218, block_number: 5_123_456 }),
+        transitionRow({ spec_version: 219, block_number: 5_400_000 }),
+      ],
+      { spec_version: 219 },
+    );
+    const parsed = RuntimeVersionsArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("runtime: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = RuntimeVersionsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("extrinsics: ArtifactSchema.parse(buildExtrinsicFeed(...)) succeeds", () => {
+    const feed = buildExtrinsicFeed(
+      [
+        {
+          block_number: 1000,
+          extrinsic_index: 4,
+          extrinsic_hash: "0xhash",
+          signer: "5Signer",
+          call_module: "SubtensorModule",
+          call_function: "add_stake",
+          call_args: '[{"name":"hotkey","value":"5H..."}]',
+          fee_tao: 0.0125,
+          tip_tao: 0.5,
+          success: 1,
+          observed_at: 1750000000000,
+        },
+      ],
+      { limit: 50, offset: 0 },
+    );
+    const parsed = ExtrinsicsFeedArtifactSchema.parse(feed);
+    assert.ok(parsed);
+  });
+  test("extrinsics: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ExtrinsicsFeedArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("extrinsic-detail: ArtifactSchema.parse(buildExtrinsic(...)) succeeds", () => {
+    const hash = `0x${"a".repeat(64)}`;
+    const out = buildExtrinsic(
+      {
+        block_number: 5,
+        extrinsic_index: 1,
+        extrinsic_hash: hash,
+        call_args: '{"netuid":1}',
+        observed_at: 1750000000000,
+      },
+      hash,
+      [
+        formatAccountEvent({
+          block_number: 5,
+          event_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: "5Hk",
+          coldkey: "5Co",
+          netuid: 1,
+          uid: null,
+          amount_tao: 12.5,
+          alpha_amount: 9.25,
+          observed_at: 1750000000000,
+          extrinsic_index: 1,
+        }),
+      ],
+    );
+    const parsed = ExtrinsicDetailArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("extrinsic-detail: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ExtrinsicDetailArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("block-extrinsics: ArtifactSchema.parse(buildBlockExtrinsics(...)) succeeds", () => {
+    const out = buildBlockExtrinsics(
+      [
+        { block_number: 2, extrinsic_index: 1, observed_at: 1750000000000 },
+        { block_number: 2, extrinsic_index: 0, observed_at: 1750000000000 },
+      ],
+      "2",
+      2,
+      { limit: 50, offset: 0 },
+    );
+    const parsed = BlockExtrinsicsArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("block-extrinsics: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BlockExtrinsicsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("block-events: ArtifactSchema.parse(buildBlockEvents(...)) succeeds", () => {
+    const out = buildBlockEvents(
+      [
+        {
+          block_number: 1000,
+          event_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: "5Hk",
+          coldkey: "5Co",
+          netuid: 1,
+          uid: null,
+          amount_tao: 12.5,
+          alpha_amount: 9.25,
+          observed_at: 1750000000000,
+          extrinsic_index: 2,
+        },
+      ],
+      "1000",
+      1000,
+      { limit: 50, offset: 0 },
+    );
+    const parsed = BlockEventsArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("block-events: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BlockEventsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("block-chain-events: ArtifactSchema.parse(<live block chain-events shape>) succeeds", () => {
+    const data = {
+      block_number: 8697469,
+      count: 2,
+      events: [
+        {
+          block_number: 8697469,
+          event_index: 328,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: {
+            dispatch_info: {
+              class: "Normal",
+              weight: { ref_time: 2580157000, proof_size: 14789 },
+              pays_fee: "Yes",
+            },
+          },
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 15,
+          observed_at: 1784965824000,
+        },
+        {
+          block_number: 8697469,
+          event_index: 327,
+          pallet: "TransactionPayment",
+          method: "TransactionFeePaid",
+          args: {
+            tip: [0],
+            who: "5EymzZqKMoYbgDX17SrmzBFa3fqQKwVPMJrxAd5czjBbEcsk",
+            actual_fee: [1290240],
+          },
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 15,
+          observed_at: 1784965824000,
+        },
+      ],
+    };
+    const parsed = BlockChainEventsArtifactSchema.parse(data);
+    assert.ok(parsed);
+  });
+  test("block-chain-events: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = BlockChainEventsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("validators: ArtifactSchema.parse(buildGlobalValidators(...)) succeeds", () => {
+    const row = (overrides: Record<string, unknown>) => ({
+      uid: 0,
+      hotkey: "5Hk1",
+      coldkey: "5Co1",
+      active: 1,
+      validator_permit: 1,
+      rank: 1,
+      trust: 0.5,
+      validator_trust: 0.99,
+      consensus: 0.4,
+      incentive: 0.1,
+      dividends: 0.2,
+      emission_tao: 22.1,
+      stake_tao: 1000.5,
+      registered_at_block: 6702485,
+      is_immunity_period: 0,
+      axon: "1.2.3.4:8091",
+      block_number: 8454388,
+      captured_at: 1750000000000,
+      ...overrides,
+    });
+    const out = buildGlobalValidators(
+      [
+        row({
+          netuid: 1,
+          uid: 2,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 100,
+          emission_tao: 5,
+          validator_trust: 0.4,
+        }),
+        row({
+          netuid: 2,
+          uid: 1,
+          hotkey: "hk-a",
+          coldkey: "ck-a2",
+          stake_tao: 50,
+          emission_tao: 9,
+          validator_trust: 0.8,
+        }),
+      ],
+      { sort: "subnet_count", limit: 10 },
+    );
+    const parsed = GlobalValidatorsArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("validators: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = GlobalValidatorsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  const VALIDATOR_ROW = {
+    uid: 0,
+    hotkey: "5Hk1",
+    coldkey: "5Co1",
+    active: 1,
+    validator_permit: 1,
+    rank: 1,
+    trust: 0.5,
+    validator_trust: 0.99,
+    consensus: 0.4,
+    incentive: 0.1,
+    dividends: 0.2,
+    emission_tao: 22.1,
+    stake_tao: 1000.5,
+    registered_at_block: 6702485,
+    is_immunity_period: 0,
+    axon: "1.2.3.4:8091",
+    block_number: 8454388,
+    captured_at: 1750000000000,
+  };
+
+  test("validator-detail: ArtifactSchema.parse(buildValidatorDetail(...)) succeeds", () => {
+    const out = buildValidatorDetail(
+      [
+        {
+          ...VALIDATOR_ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 1000,
+        },
+        { ...VALIDATOR_ROW, netuid: 8, uid: 1, hotkey: "hk-a", stake_tao: 500 },
+      ],
+      "hk-a",
+    );
+    const parsed = ValidatorDetailArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("validator-detail: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ValidatorDetailArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("compare-validators: ArtifactSchema.parse(composeValidatorComparison(buildValidatorDetail(...))) succeeds", () => {
+    const detailA = buildValidatorDetail(
+      [
+        {
+          ...VALIDATOR_ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 1000,
+        },
+      ],
+      "hk-a",
+    );
+    const detailB = buildValidatorDetail(
+      [{ ...VALIDATOR_ROW, netuid: 3, uid: 1, hotkey: "hk-b", stake_tao: 500 }],
+      "hk-b",
+    );
+    const out = composeValidatorComparison([detailA, detailB], { netuid: 3 });
+    const parsed = CompareValidatorsArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("compare-validators: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = CompareValidatorsArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("validator-history: ArtifactSchema.parse(buildValidatorHistory(...)) succeeds", () => {
+    const out = buildValidatorHistory(
+      [
+        {
+          snapshot_date: "2026-06-20",
+          subnet_count: 3,
+          total_stake_tao: 1000,
+          total_emission_tao: 12.3,
+        },
+      ],
+      "5Hk1",
+      { window: "30d" },
+    );
+    const parsed = ValidatorHistoryArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("validator-history: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ValidatorHistoryArtifactSchema.safeParse({});
+    assert.equal(result.success, false);
+  });
+
+  test("validator-nominators: ArtifactSchema.parse(buildValidatorNominators(...)) succeeds", () => {
+    const out = buildValidatorNominators(
+      [
+        {
+          coldkey: "ck-a",
+          event_kind: "StakeAdded",
+          total_tao: 100,
+          event_count: 3,
+          last_observed: 1000,
+        },
+        {
+          coldkey: "ck-a",
+          event_kind: "StakeRemoved",
+          total_tao: 40,
+          event_count: 2,
+          last_observed: 1000,
+        },
+      ],
+      "5Hk1",
+      { window: "30d" },
+    );
+    const parsed = ValidatorNominatorsArtifactSchema.parse(out);
+    assert.ok(parsed);
+  });
+  test("validator-nominators: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
+    const result = ValidatorNominatorsArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
 });
