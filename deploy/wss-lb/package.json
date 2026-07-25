@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sentry/node": "^10.66.0",
+    "posthog-node": "^5.44.0",
     "ws": "^8.21.1"
   },
   "devDependencies": {

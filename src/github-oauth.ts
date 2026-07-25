@@ -70,7 +70,7 @@ const OAUTH_PENDING_KV_PREFIX = "oauth-pending:";
 // (see tests/github-oauth.test.mjs) even though production code never
 // actually invokes it -- getOAuthApi() reads options.defaultHandler's
 // presence but never calls .fetch() on it, only the real OAuthProvider
-// instance in workers/api.sentry.mjs does that, with the REAL handler.
+// instance in workers/api.entry.ts does that, with the REAL handler.
 export const UNUSED_DEFAULT_HANDLER = {
   fetch: () =>
     new Response("not used outside OAuthProvider.fetch()", { status: 500 }),
@@ -85,7 +85,7 @@ interface DefaultHandler {
 }
 
 /**
- * Options shared by the real OAuthProvider instance (workers/api.sentry.mjs,
+ * Options shared by the real OAuthProvider instance (workers/api.entry.ts,
  * the deploy entrypoint) and by getOAuthApi() calls from this Worker's own
  * route handlers below -- single source of truth for endpoint URLs/TTLs/
  * scopes so the two never drift apart. Pure -- no import of the OAuth
@@ -137,7 +137,7 @@ export function buildOAuthProviderOptions(
  * Authorization header -- the one case @cloudflare/workers-oauth-provider's
  * apiRoute/apiHandler machinery cannot serve anonymously (see
  * buildOAuthProviderOptions' apiHandler comment for the confirmed library
- * behavior). The real entrypoint (workers/api.sentry.ts) routes a true result
+ * behavior). The real entrypoint (workers/api.entry.ts) routes a true result
  * DIRECTLY to the plain handler, bypassing oauthProvider.fetch() entirely, so
  * an anonymous MCP client gets byte-identical behavior to before GitHub OAuth
  * (metagraphed#7151) was added. Every other path -- /authorize, /oauth/token,
@@ -158,8 +158,7 @@ export function isAnonymousMcpRequest(request: Request): boolean {
 // real Workers runtime: the package's own runtime file does
 // `import ... from "cloudflare:workers"` at module scope (confirmed against
 // dist/oauth-provider.js, not just its .d.ts), a protocol plain Node
-// doesn't implement -- same justification as workers/*.sentry.mjs's
-// vitest.config.ts exclusion. Both real routes
+// doesn't implement. Both real routes
 // (handleAuthorizeRequest/handleGithubOAuthCallback) accept an injectable
 // deps.getHelpers precisely so their own logic stays fully covered without
 // this function ever running in a test.

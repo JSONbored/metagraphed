@@ -34,9 +34,9 @@ import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { sha256Hex, stableStringify } from "./lib.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
+import { initObservability, endSessionAndFlush } from "./observability.ts";
 
-initSentry("export-parquet");
+initObservability("export-parquet");
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");

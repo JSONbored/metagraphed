@@ -27,11 +27,11 @@ import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.ts
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import { shouldPublishEconomics } from "./economics-floor.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
+import { initObservability, endSessionAndFlush } from "./observability.ts";
 
 type Row = Record<string, unknown>;
 
-initSentry("refresh-economics");
+initObservability("refresh-economics");
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");

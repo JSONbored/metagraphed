@@ -73,9 +73,8 @@ USER fetcher
 # Provide at runtime: SCRIPT (one of fetch-metagraph-native.py /
 # fetch-account-identity.py / fetch-subnet-hyperparams.py /
 # fetch-validator-nominator-counts.py), SUBTENSOR_RPC_URL (non-secret -- our
-# own fullnode's tailnet address), optionally SENTRY_DSN/SENTRY_ENVIRONMENT
-# (silently no-op if unset -- see scripts/observability.py), and whichever
-# *_JSON output-path env var(s) the target script reads (see each script's
+# own fullnode's tailnet address), and whichever *_JSON output-path env
+# var(s) the target script reads (see each script's
 # own OUT/module-level constant(s)). Mount /out for the result(s) and /repo
 # as a persistent volume (so the entrypoint's git clone + uv sync are only
 # paid in full on the FIRST run against a given volume, not every

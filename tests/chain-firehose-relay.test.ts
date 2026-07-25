@@ -12,31 +12,6 @@ import path from "node:path";
 import { test, vi } from "vitest";
 import type { Row } from "./row-type.ts";
 
-// Hoisted spies -- mocked the same way apps/ui/src/lib/error-reporting.test.ts
-// mocks @sentry/browser. reportRateLimitPause and main()'s own fatal catch
-// are the only two call sites that actually invoke Sentry directly in this
-// file; computeDropWindowUpdate is a pure state-transition function with no
-// Sentry dependency at all (main()'s poll loop is the one that calls
-// Sentry.captureMessage when it reports === true) -- see that function's own
-// comment for why it's deliberately NOT the one holding module-level state
-// or calling Sentry itself.
-const captureMessage = vi.hoisted(() => vi.fn());
-const captureException = vi.hoisted(() => vi.fn());
-const sentryInit = vi.hoisted(() => vi.fn());
-const setTag = vi.hoisted(() => vi.fn());
-const startSession = vi.hoisted(() => vi.fn());
-const endSession = vi.hoisted(() => vi.fn());
-const flush = vi.hoisted(() => vi.fn(async () => true));
-vi.mock("@sentry/node", () => ({
-  init: sentryInit,
-  setTag,
-  captureMessage,
-  captureException,
-  startSession,
-  endSession,
-  flush,
-}));
-
 // PostHog mock -- same shape as tests/observability.test.ts's own (a real
 // `class`, not an arrow function, since observability code calls `new
 // PostHog(...)`; arrow functions can't be invoked with `new`).
@@ -89,7 +64,7 @@ import {
   forwardBatch,
   forwardChainFirehoseNotification,
   forwardWithRetry,
-  initSentry,
+  initObservability,
   isHeartbeatFresh,
   mapBounded,
   parseRelayConfig,
@@ -809,12 +784,11 @@ test("forwardBatch: no rateLimitedForMs key at all when nothing was rate limited
 // --- computeDropWindowUpdate / reportRateLimitPause: aggregate reporting ----
 // The real incident this whole fix addresses hit millions of drops in ~40h;
 // naive per-drop capture would have blown the free-tier event quota in
-// minutes and then been silently sampled away by Sentry itself. These tests
-// assert the aggregation actually withholds a report below threshold, and
-// actually fires at it -- computeDropWindowUpdate itself is pure (no Sentry
-// call, no module-level state -- see its own comment), so no mocking is
-// needed here at all; only reportRateLimitPause below still calls Sentry
-// directly.
+// minutes and then been silently sampled away. These tests assert the
+// aggregation actually withholds a report below threshold, and actually
+// fires at it -- computeDropWindowUpdate itself is pure (no capture call, no
+// module-level state -- see its own comment), so no mocking is needed here
+// at all; only reportRateLimitPause below still calls PostHog directly.
 
 test("computeDropWindowUpdate: does not report before the count threshold is reached", () => {
   const update = computeDropWindowUpdate(
@@ -881,43 +855,30 @@ test("computeDropWindowUpdate: two independent windows (null starting state each
   assert.notEqual(windowA!.startedAt, windowB.nextWindow!.startedAt);
 });
 
-test("reportRateLimitPause: calls Sentry.captureMessage directly, once per call (naturally low-frequency, no aggregation needed)", () => {
-  captureMessage.mockClear();
+test("reportRateLimitPause: no-ops silently (no PostHog client yet) rather than throwing", () => {
   posthogCaptureException.mockClear();
   reportRateLimitPause(65_000);
-  assert.equal(captureMessage.mock.calls.length, 1);
-  const [message, options] = captureMessage.mock.calls[0];
-  assert.match(message, /pausing 65000ms/);
-  assert.equal(options.extra.pauseMs, 65_000);
   // PostHog uninitialized at this point (no test has set POSTHOG_PROJECT_TOKEN
-  // yet) -- the fire-and-forget mirror call must no-op silently, not throw.
+  // yet) -- must no-op silently, not throw.
   assert.equal(posthogCaptureException.mock.calls.length, 0);
 });
 
-// --- initSentry ---------------------------------------------------------------
+// --- initObservability ---------------------------------------------------------
 
-test("initSentry: no-ops (never calls Sentry.init, never inits PostHog) when both SENTRY_DSN and POSTHOG_PROJECT_TOKEN are unset", () => {
-  sentryInit.mockClear();
-  setTag.mockClear();
-  startSession.mockClear();
+test("initObservability: no-ops (never inits PostHog) when POSTHOG_PROJECT_TOKEN is unset", () => {
   PostHogMock.mockClear();
-  vi.stubEnv("SENTRY_DSN", "");
   vi.stubEnv("POSTHOG_PROJECT_TOKEN", "");
-  initSentry();
-  assert.equal(sentryInit.mock.calls.length, 0);
-  assert.equal(setTag.mock.calls.length, 0);
-  assert.equal(startSession.mock.calls.length, 0);
+  initObservability();
   assert.equal(PostHogMock.mock.calls.length, 0);
   vi.unstubAllEnvs();
 });
 
-test("initSentry: initializes PostHog independent of SENTRY_DSN, defaulting POSTHOG_HOST to us.i.posthog.com", () => {
+test("initObservability: initializes PostHog, defaulting POSTHOG_HOST to us.i.posthog.com", () => {
   PostHogMock.mockClear();
   posthogConstructorCalls.length = 0;
-  vi.stubEnv("SENTRY_DSN", "");
   vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
   vi.stubEnv("POSTHOG_HOST", "");
-  initSentry();
+  initObservability();
   assert.equal(PostHogMock.mock.calls.length, 1);
   assert.deepEqual(posthogConstructorCalls[0], [
     "phc_test_token",
@@ -926,11 +887,10 @@ test("initSentry: initializes PostHog independent of SENTRY_DSN, defaulting POST
   vi.unstubAllEnvs();
 });
 
-test("reportRateLimitPause: mirrors the same message to PostHog once initialized", () => {
-  captureMessage.mockClear();
+test("reportRateLimitPause: reports the message to PostHog once initialized", () => {
   posthogCaptureException.mockClear();
   vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
-  initSentry();
+  initObservability();
   vi.unstubAllEnvs();
 
   reportRateLimitPause(65_000);
@@ -943,63 +903,11 @@ test("reportRateLimitPause: mirrors the same message to PostHog once initialized
   assert.equal(properties.level, "warning");
 });
 
-test("initSentry: calls Sentry.init with dsn/environment/release, tags the component, and starts a release-health session when SENTRY_DSN is set", () => {
-  sentryInit.mockClear();
-  setTag.mockClear();
-  startSession.mockClear();
-  vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
-  vi.stubEnv("SENTRY_ENVIRONMENT", "staging");
-  vi.stubEnv("SENTRY_RELEASE", "deadbeef");
-  initSentry();
-  assert.equal(sentryInit.mock.calls.length, 1);
-  const initArgs = sentryInit.mock.calls[0][0];
-  assert.equal(initArgs.dsn, "https://abc@o0.ingest.sentry.io/0");
-  assert.equal(initArgs.environment, "staging");
-  assert.equal(initArgs.release, "deadbeef");
-  assert.equal(initArgs.tracesSampleRate, 0);
-  assert.deepEqual(setTag.mock.calls[0], ["component", "chain-firehose-relay"]);
-  assert.equal(startSession.mock.calls.length, 1);
-  vi.unstubAllEnvs();
-});
-
-test("initSentry: filters the default ProcessSession integration out (it would otherwise auto-start a second, spurious session)", () => {
-  sentryInit.mockClear();
-  vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
-  initSentry();
-
-  const { integrations } = sentryInit.mock.calls[0][0] as Row;
-  const filtered = integrations([{ name: "ProcessSession" }, { name: "Http" }]);
-  assert.deepEqual(
-    filtered.map((i: Row) => i.name),
-    ["Http"],
-  );
-
-  vi.unstubAllEnvs();
-});
-
-test("initSentry: SENTRY_ENVIRONMENT defaults to 'production' when unset", () => {
-  sentryInit.mockClear();
-  vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
-  vi.stubEnv("SENTRY_ENVIRONMENT", "");
-  initSentry();
-  assert.equal(sentryInit.mock.calls[0][0].environment, "production");
-  vi.unstubAllEnvs();
-});
-
 // --- endSessionAndFlush -------------------------------------------------------
 
-test("endSessionAndFlush: ends the session and flushes", async () => {
-  endSession.mockClear();
-  flush.mockClear();
-  await endSessionAndFlush();
-  assert.equal(endSession.mock.calls.length, 1);
-  assert.equal(flush.mock.calls.length, 1);
-  assert.equal((flush.mock.calls[0] as unknown[])[0], 2000);
-});
-
-test("endSessionAndFlush: also shuts down PostHog once it was initialized", async () => {
+test("endSessionAndFlush: shuts down PostHog once it was initialized", async () => {
   vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test_token");
-  initSentry();
+  initObservability();
   vi.unstubAllEnvs();
 
   posthogShutdown.mockClear();

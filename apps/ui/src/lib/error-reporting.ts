@@ -9,94 +9,33 @@ import { captureException as capturePostHogException } from "./analytics";
  * directly.
  *
  * Sinks, in order, all best-effort:
- *  1. Sentry — enabled whenever a DSN is available. `@sentry/browser` is
- *     loaded via a DYNAMIC import so it costs zero bundle bytes when the DSN
- *     is unset (the import is tree-shaken / never reached). Tagged with a
- *     `release` (Cloudflare Workers Builds' own commit SHA, bridged in at
- *     build time via vite.config.ts's `define` -- see vite.config.ts's own
- *     comment) and `environment` (production/development from Vite's own
- *     `import.meta.env.PROD`), so a regression can be traced to the deploy
- *     that introduced it. Source maps are NOT uploaded to Sentry for this
- *     sink -- `@sentry/vite-plugin` was removed once PostHog's sourcemap
- *     upload (below) covered the same need; a Sentry stack trace here
- *     resolves against the minified bundle, not original source.
- *  2. PostHog (metagraphed#7759) — a second, PARALLEL sink, not a
- *     replacement; enabled whenever `VITE_POSTHOG_PROJECT_TOKEN` is
- *     configured (see analytics.ts). Reuses analytics.ts's own
- *     `captureException`, which shares the SAME lazily-loaded `posthog-js`
- *     instance web analytics already manages -- this file never touches
- *     `posthog-js` directly or triggers a second init. Release correlation
- *     for PostHog works differently than Sentry's `release` property: it's
- *     inferred at read time from the chunk IDs `@posthog/rollup-plugin`
- *     injects into the built JS at upload time (vite.config.ts), not
- *     something passed at capture time -- so there's no per-call release tag
- *     to set here, unlike the Sentry sink above.
- *  3. Lovable capture channel — best-effort, no-op outside the Lovable editor.
- *  4. `console.error` in dev so the boundary + context are always greppable
+ *  1. PostHog (metagraphed#7759) — enabled whenever
+ *     `VITE_POSTHOG_PROJECT_TOKEN` is configured (see analytics.ts). Reuses
+ *     analytics.ts's own `captureException`, which shares the SAME
+ *     lazily-loaded `posthog-js` instance web analytics already manages --
+ *     this file never touches `posthog-js` directly or triggers a second
+ *     init. Release correlation is inferred at read time from the chunk IDs
+ *     `@posthog/rollup-plugin` injects into the built JS at upload time
+ *     (vite.config.ts), not something passed at capture time.
+ *  2. Lovable capture channel — best-effort, no-op outside the Lovable editor.
+ *  3. `console.error` in dev so the boundary + context are always greppable
  *     locally.
  *
- * DSN resolution mirrors DEFAULT_API_BASE's own convention
- * (src/lib/metagraphed/config.ts): `VITE_SENTRY_DSN` overrides when a build
- * sets it (e.g. a future Workers Builds dashboard config), otherwise falls
- * back to the real "metagraphed" project DSN -- safe to hardcode since a
- * Sentry DSN is designed to be public/embeddable in client JS (see
- * scripts/observability.ts's own comment on the same point). The fallback
- * only applies to production builds (`import.meta.env.PROD`); `vite dev`
- * stays silent by default so local debugging doesn't mix into production
- * error tracking, matching this module's pre-existing "no eager Sentry load
- * unless configured" intent.
+ * metagraphed#7766: Sentry sink fully removed (was sink 1, `@sentry/browser`
+ * dynamically imported when a DSN was configured -- Sentry fully
+ * decommissioned once PostHog error-tracking parity was proven). This seam
+ * itself stays -- boundaries never called Sentry/PostHog directly, so
+ * nothing upstream of this file changes.
  */
 
-const SENTRY_PROJECT_DSN =
-  "https://998bd096e2c9f1d81781ed3a88fed0b9@o4511631313666048.ingest.us.sentry.io/4511749777588224";
-const SENTRY_DSN =
-  (import.meta.env?.VITE_SENTRY_DSN as string | undefined) ||
-  (import.meta.env?.PROD ? SENTRY_PROJECT_DSN : undefined);
-// Bridged in at build time from Cloudflare Workers Builds' own
-// WORKERS_CI_COMMIT_SHA (see vite.config.ts's `define` block) -- "" (not
-// undefined) whenever that var wasn't set, since Vite's `define` replaces
-// this with a literal string constant, never an actual `undefined`.
-const SENTRY_RELEASE = (import.meta.env?.VITE_SENTRY_RELEASE as string | undefined) || undefined;
-
-type SentryModule = typeof import("@sentry/browser");
-
-let sentryInit: Promise<SentryModule | null> | null = null;
-
-function loadSentry(): Promise<SentryModule | null> {
-  if (sentryInit) return sentryInit;
-  sentryInit = import("@sentry/browser")
-    .then((Sentry) => {
-      Sentry.init({
-        dsn: SENTRY_DSN,
-        release: SENTRY_RELEASE,
-        environment: import.meta.env?.PROD ? "production" : "development",
-      });
-      return Sentry;
-    })
-    .catch((err) => {
-      // Never let telemetry wiring crash the host app.
-      if (import.meta.env?.DEV) console.error("[reportError] sentry load failed", err);
-      return null;
-    });
-  return sentryInit;
-}
-
 export function reportError(error: unknown, context: Record<string, unknown> = {}): void {
-  // 1. Sentry — gated on a build-time DSN, loaded lazily so it's zero-cost when unset.
-  if (SENTRY_DSN) {
-    void loadSentry().then((Sentry) => {
-      if (Sentry) Sentry.captureException(error, { extra: context });
-    });
-  }
-
-  // 2. PostHog — a parallel sink, not a replacement; analytics.ts's own
-  // VITE_POSTHOG_PROJECT_TOKEN gate makes this a no-op when unconfigured.
+  // 1. PostHog — a no-op when VITE_POSTHOG_PROJECT_TOKEN is unconfigured.
   capturePostHogException(error, context);
 
-  // 3. Forward to the existing Lovable capture channel (no-op when unavailable / SSR).
+  // 2. Forward to the existing Lovable capture channel (no-op when unavailable / SSR).
   reportLovableError(error, context);
 
-  // 4. Always surface locally in dev for greppable boundary + context.
+  // 3. Always surface locally in dev for greppable boundary + context.
   if (import.meta.env?.DEV) {
     console.error("[reportError]", context.boundary ?? "boundary", error, context);
   }

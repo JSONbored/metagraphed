@@ -1,6 +1,6 @@
-// Pure-logic tests for wss-lb's Sentry aggregate-reporting window. Zero deps
-// (no real Sentry.init call is ever needed to exercise this logic) — run
-// with: node --test deploy/wss-lb/test/
+// Pure-logic tests for wss-lb's PostHog aggregate-reporting window. Zero
+// deps (no real PostHog client construction is ever needed to exercise this
+// logic) — run with: node --test deploy/wss-lb/test/
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
@@ -8,7 +8,7 @@ import {
   NO_UPSTREAM_REPORT_THRESHOLD,
   NO_UPSTREAM_REPORT_INTERVAL_MS,
   computeNoUpstreamWindowUpdate,
-  initSentry,
+  initObservability,
   type NoUpstreamWindow,
   type NoUpstreamWindowUpdate,
 } from "../src/observability.ts";
@@ -73,12 +73,12 @@ test("computeNoUpstreamWindowUpdate: two independent windows never leak state in
   assert.notEqual(windowA!.startedAt, windowB!.startedAt);
 });
 
-test("initSentry: no-op (does not throw) when SENTRY_DSN is unset", () => {
-  const prior = process.env.SENTRY_DSN;
-  delete process.env.SENTRY_DSN;
+test("initObservability: no-op (does not throw) when POSTHOG_PROJECT_TOKEN is unset", () => {
+  const prior = process.env.POSTHOG_PROJECT_TOKEN;
+  delete process.env.POSTHOG_PROJECT_TOKEN;
   try {
-    assert.doesNotThrow(() => initSentry());
+    assert.doesNotThrow(() => initObservability());
   } finally {
-    if (prior !== undefined) process.env.SENTRY_DSN = prior;
+    if (prior !== undefined) process.env.POSTHOG_PROJECT_TOKEN = prior;
   }
 });

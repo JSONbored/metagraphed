@@ -3494,8 +3494,8 @@ test("neurons-sync maps a DB failure to a clean 502 instead of throwing", async 
   expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
-// metagraphed#7758: captureDataApiError now also posts a PostHog $exception
-// alongside the existing Sentry.captureException, for every one of this
+// metagraphed#7758/#7766: captureDataApiError posts a PostHog $exception
+// (Sentry.captureException fully removed since), for every one of this
 // file's 26 sync/query error sites -- this is the one representative case
 // proving the (mechanically identical) wiring pattern actually works
 // end-to-end, since all 26 share this exact catch-block shape. Uses a
@@ -3536,6 +3536,150 @@ test("neurons-sync's DB failure also reaches PostHog as $exception, tagged with 
   } finally {
     globalThis.fetch = original;
   }
+});
+
+// metagraphed#7768: PostHog distributed tracing -- one root span per
+// request, wrapping dispatchDataApiRequest in the default export's own
+// fetch. Off by default (see src/tracing.ts's own header); this is the one
+// representative case proving the wiring actually fires end-to-end when
+// sampled. A GET to an unmatched path is the cheapest way to reach the
+// wrapper's finally block without needing any DB row fixtures -- the 404
+// fallback inside dispatchReadRoutes never issues a real query.
+test("emits a PostHog trace span for the request when sampled", async () => {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init.body as string) });
+    return { ok: true };
+  }) as unknown as typeof globalThis.fetch;
+  try {
+    const res = await worker.fetch(
+      new Request("https://d/api/v1/internal/does-not-exist"),
+      {
+        ...env,
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+        POSTHOG_TRACES_SAMPLE_RATE: "1",
+      } as unknown as Env,
+      ctx,
+    );
+    expect(res.status).toBe(404);
+    expect(posted.length).toBe(1);
+    expect(posted[0].url.endsWith("/i/v1/traces")).toBe(true);
+    const span =
+      posted[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+    expect(span.name).toBe("/api/v1/internal/does-not-exist");
+    expect(span.status.code).toBe(1); // OK -- 404 is < 500
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+// The default export's own `if (typeof ctx?.waitUntil === "function")`
+// guard covers sampling firing without a usable ExecutionContext -- the
+// span is still fired-and-forgotten via recordTraceSpan itself, just never
+// registered with waitUntil, so the response must still serve cleanly.
+test("still returns the response cleanly when sampled but no usable ExecutionContext is supplied", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => ({ ok: true })) as unknown as typeof globalThis.fetch;
+  try {
+    const res = await worker.fetch(
+      new Request("https://d/api/v1/internal/does-not-exist"),
+      {
+        ...env,
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+        POSTHOG_TRACES_SAMPLE_RATE: "1",
+      } as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
+    expect(res.status).toBe(404);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+// scheduleTraceSpan's own .catch(() => false) is a defensive outer layer on
+// top of recordTraceSpan's own no-throw contract (which already turns every
+// failure into a resolved `false` -- see the fetch-throws case above).
+// Reaching this line needs recordTraceSpan itself to reject, which the real
+// function's own try/catch never does -- mock it directly.
+test("survives recordTraceSpan itself rejecting, not just its own internal failures", async () => {
+  vi.doMock("../src/tracing.ts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/tracing.ts")>();
+    return {
+      ...actual,
+      recordTraceSpan: async () => {
+        throw new Error("recordTraceSpan itself rejected");
+      },
+    };
+  });
+  vi.resetModules();
+  try {
+    const { default: workerRejecting } = await import(
+      "../workers/data-api.ts"
+    );
+    const res = await workerRejecting.fetch(
+      new Request("https://d/api/v1/internal/does-not-exist"),
+      {
+        ...env,
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+        POSTHOG_TRACES_SAMPLE_RATE: "1",
+      } as unknown as Env,
+      ctx,
+    );
+    expect(res.status).toBe(404);
+  } finally {
+    vi.doUnmock("../src/tracing.ts");
+    vi.resetModules();
+  }
+});
+
+// dispatchDataApiRequest's own route handlers all return a controlled error
+// Response rather than throwing -- the only realistic way for the default
+// export's try/catch (ok = false; throw error;) to actually run is
+// something genuinely unexpected escaping past all of that, like the
+// request body stream itself erroring mid-read (handleNeuronsSync's `await
+// request.text()` is not wrapped in its own try/catch).
+test("a body stream that errors mid-read still records ok:false on the trace span, and propagates", async () => {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init.body as string) });
+    return { ok: true };
+  }) as unknown as typeof globalThis.fetch;
+  const brokenBody = new ReadableStream({
+    start(controller) {
+      controller.error(new Error("client disconnected mid-upload"));
+    },
+  });
+  const request = new Request("https://d/api/v1/internal/neurons-sync", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-neurons-sync-token": NEURONS_SYNC_SECRET,
+    },
+    // @ts-expect-error -- duplex is required by undici for a streaming body
+    // but isn't in the RequestInit type this codebase targets.
+    duplex: "half",
+    body: brokenBody,
+  });
+  try {
+    await expect(
+      worker.fetch(
+        request,
+        {
+          ...env,
+          [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+          POSTHOG_TRACES_SAMPLE_RATE: "1",
+        } as unknown as Env,
+        ctx,
+      ),
+    ).rejects.toThrow();
+  } finally {
+    globalThis.fetch = original;
+  }
+  expect(posted.length).toBe(1);
+  const span = posted[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+  expect(span.status.code).toBe(2); // ERROR
 });
 
 // POST /api/v1/internal/backfill-neuron-daily -- deep-history ingest for

@@ -37,8 +37,6 @@
 
 import { writeFileSync, statSync } from "node:fs";
 import postgres from "postgres";
-import { closeSession } from "@sentry/core";
-import * as Sentry from "@sentry/node";
 import { PostHog } from "posthog-node";
 
 type Row = Record<string, unknown>;
@@ -46,17 +44,17 @@ type Row = Record<string, unknown>;
 let posthogClient: PostHog | undefined;
 // Stable, shared distinct_id for every box-side script -- matches
 // scripts/observability.ts's own POSTHOG_DISTINCT_ID convention (this file
-// deliberately doesn't import that module -- its Sentry lifecycle is
-// process-lifetime/one-session-per-boot, not per-run, so it has always kept
-// its own separate implementation rather than sharing observability.ts's).
+// deliberately doesn't import that module -- its lifecycle is process-
+// lifetime/one-init-per-boot, not per-run, so it has always kept its own
+// separate implementation rather than sharing observability.ts's).
 const POSTHOG_DISTINCT_ID = "metagraphed-infra";
 
 // PostHog's error-tracking product is exception-shaped, with no first-class
-// "message" severity concept the way Sentry's captureMessage has -- mirrors
-// each Sentry.captureMessage call site below with a synthetic Error carrying
-// the same text. Fire-and-forget (not the Immediate/awaited variant) -- these
-// fire mid-poll-loop, not right before process exit, so there's no shutdown
-// race to guard against the way the top-level crash handler's capture needs.
+// "message" severity concept -- each call site below wraps the message text
+// in a synthetic Error. Fire-and-forget (not the Immediate/awaited variant)
+// -- these fire mid-poll-loop, not right before process exit, so there's no
+// shutdown race to guard against the way the top-level crash handler's
+// capture needs.
 function capturePostHogEvent(
   message: string,
   properties: Record<string, unknown>,
@@ -69,74 +67,37 @@ function capturePostHogEvent(
   );
 }
 
-// Reports to the consolidated `metagraphed` Sentry project. Silently no-ops
-// if SENTRY_DSN is unset, matching this relay's own best-effort design.
-// PostHog's own init is independent of Sentry's -- gated on its own
-// POSTHOG_PROJECT_TOKEN, so either, both, or neither may be configured
-// (metagraphed-infra#158).
+// Reports to the consolidated PostHog project (metagraphed-infra#158).
+// Silently no-ops if POSTHOG_PROJECT_TOKEN is unset, matching this relay's
+// own best-effort design. metagraphed#7766: Sentry fully removed (was
+// parallel-run alongside PostHog until parity was proven).
 //
-// Deliberately NOT one captureMessage per dropped payload -- a real 2026-07
+// Deliberately NOT one capture per dropped payload -- a real 2026-07
 // incident (a rate-limit thundering-herd loop this same fix addresses) hit
 // millions of drops over ~40 hours; naive per-drop capture would have blown
 // through the free-tier event quota in minutes and then been silently
-// SAMPLED AWAY by Sentry itself, hiding the incident rather than surfacing
-// it -- the opposite of the point. computeDropWindowUpdate() below (called
-// from main()'s poll loop, which owns the actual Sentry.captureMessage call)
-// aggregates instead: one event per CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD
-// drops accumulated, or after CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS of any
+// sampled away, hiding the incident rather than surfacing it -- the
+// opposite of the point. computeDropWindowUpdate() below (called from
+// main()'s poll loop, which owns the actual capture call) aggregates
+// instead: one event per CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD drops
+// accumulated, or after CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS of any
 // nonzero drop rate, whichever comes first (so a persistent-but-low-volume
 // problem is never silent forever either) -- the same "escalate
 // periodically, don't spam" shape as roles/validator-ops/watchdog.py's own
 // re-alert logic in metagraphed-infra. Exported for direct testing rather
 // than only indirectly via main()'s own /* v8 ignore */ boundary.
-export function initSentry(): void {
+export function initObservability(): void {
   const posthogToken = process.env.POSTHOG_PROJECT_TOKEN;
-  if (posthogToken) {
-    posthogClient = new PostHog(posthogToken, {
-      host: process.env.POSTHOG_HOST || "https://us.i.posthog.com",
-    });
-  }
-
-  const dsn = process.env.SENTRY_DSN;
-  if (!dsn) return;
-  Sentry.init({
-    dsn,
-    environment: process.env.SENTRY_ENVIRONMENT || "production",
-    release: process.env.SENTRY_RELEASE, // deployed git SHA
-    tracesSampleRate: 0,
-    // The default ProcessSession integration auto-starts its own session
-    // during Sentry.init() -- left unfiltered, our own startSession() call
-    // below would immediately end that one (a spurious extra "exited"
-    // session on every process boot) and replace it, instead of there being
-    // exactly one session per boot. Confirmed empirically against a real
-    // local Sentry-envelope-receiving HTTP server (see scripts/
-    // observability.ts's own comment on this same integration for the
-    // canonical writeup).
-    integrations: (integrations) =>
-      integrations.filter(
-        (integration) => integration.name !== "ProcessSession",
-      ),
+  if (!posthogToken) return;
+  posthogClient = new PostHog(posthogToken, {
+    host: process.env.POSTHOG_HOST || "https://us.i.posthog.com",
   });
-  Sentry.setTag("component", "chain-firehose-relay");
-  // Release-health session tracking (Crash Free Sessions/Users), process-
-  // lifetime model: this is an always-on relay, not a one-shot batch script
-  // (contrast scripts/observability.ts's per-run sessions) -- one session
-  // per process boot, closed healthy on the existing graceful SIGTERM/SIGINT
-  // shutdown path below, or marked crashed in main()'s own top-level .catch()
-  // (see that catch block's comment for why no separate uncaughtException/
-  // unhandledRejection wiring is needed here, unlike scripts/observability.ts).
-  Sentry.startSession();
 }
 
-// Closes the process-lifetime session as a healthy exit. Called from the
-// graceful SIGTERM/SIGINT shutdown path once the poll loop has actually
-// stopped -- see main()'s own shutdown() closure. PostHog's shutdown is
-// gated on its own init state, independent of Sentry's (Sentry's
-// endSession()/flush() are documented no-ops before init; PostHog's are not,
-// hence the explicit guard).
+// Shuts the PostHog client down cleanly. Called from the graceful
+// SIGTERM/SIGINT shutdown path once the poll loop has actually stopped --
+// see main()'s own shutdown() closure.
 export async function endSessionAndFlush(): Promise<void> {
-  Sentry.endSession();
-  await Sentry.flush(2000);
   if (posthogClient) {
     await posthogClient.shutdown();
   }
@@ -165,11 +126,11 @@ interface DropWindowUpdate {
 // itself (unlike an earlier draft of this function) -- main()'s poll loop
 // owns the actual `dropWindow` variable in its own closure (the same
 // pattern it already uses for `lastCleanupAt`/`shuttingDown`), and is the
-// only caller that actually invokes Sentry.captureMessage when `report` is
-// true. That split is what makes this fully pure and testable with plain
-// input/output assertions, no Sentry mocking or test-order dependence
-// needed -- module-level mutable state here would leak between unit tests
-// unless every test carefully reset it first, which is exactly the bug this
+// only caller that actually invokes the capture call when `report` is true.
+// That split is what makes this fully pure and testable with plain
+// input/output assertions, no mocking or test-order dependence needed --
+// module-level mutable state here would leak between unit tests unless
+// every test carefully reset it first, which is exactly the bug this
 // design avoids.
 export function computeDropWindowUpdate(
   window: DropWindow | null | undefined,
@@ -200,7 +161,6 @@ export function computeDropWindowUpdate(
 // with no separate aggregation window needed.
 export function reportRateLimitPause(pauseMs: number): void {
   const message = `chain-firehose-relay: rate limited by the ingest endpoint, pausing ${pauseMs}ms`;
-  Sentry.captureMessage(message, { level: "warning", extra: { pauseMs } });
   capturePostHogEvent(message, { level: "warning", pauseMs });
 }
 
@@ -215,7 +175,7 @@ export const DEFAULT_CHAIN_FIREHOSE_INGEST_URL =
 // poll loop iteration (regardless of whether it claimed any rows, and
 // regardless of forward success/failure -- this tracks "is the poll loop
 // still alive," a separate question from "are forwards succeeding," which
-// the drop-window Sentry reporting above already covers). The Docker
+// the drop-window reporting above already covers). The Docker
 // HEALTHCHECK in deploy/chain-firehose-relay.Dockerfile reads this file's
 // mtime via the --healthcheck CLI flag below; metagraphed-infra's
 // docker-container-health-poll.sh then turns the container's own Docker
@@ -735,7 +695,7 @@ export async function forwardBatch(
    tested via `node --test` instead) -- see that config's own comment for the
    convention. */
 async function main(): Promise<void> {
-  initSentry();
+  initObservability();
   const config = parseRelayConfig(process.env);
   const sql = postgres(config.databaseUrl);
   let shuttingDown = false;
@@ -808,10 +768,6 @@ async function main(): Promise<void> {
           lastStatus: update.lastStatus,
           windowMs: update.elapsedMs,
         };
-        Sentry.captureMessage(message, {
-          level: "warning",
-          extra: properties,
-        });
         capturePostHogEvent(message, properties);
       }
     }
@@ -902,24 +858,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else {
     main().catch(async (error) => {
       console.error("[chain-firehose-relay] fatal:", error);
-      // Explicitly caught here, so @sentry/node's default
-      // OnUnhandledRejection integration never sees this -- Node does not
-      // consider a promise "unhandled" once something calls .catch() on it.
-      // This is also main()'s ONLY path to the process actually exiting non-
-      // zero (every await inside its poll loop funnels errors up through
-      // this same chain, there's no other unguarded top-level code), so
-      // marking the session crashed here -- rather than a separate
-      // uncaughtException/unhandledRejection handler like
-      // scripts/observability.ts needs -- covers every real crash.
-      Sentry.captureException(error);
-      const session = Sentry.getIsolationScope().getSession();
-      if (session) {
-        closeSession(session, "crashed");
-        Sentry.captureSession();
-      }
-      // flush() before process.exit(1) is required: process.exit() is
-      // synchronous and does not wait for Sentry's background network send.
-      await Sentry.flush(2000);
+      // Explicitly caught here (Node does not consider a promise
+      // "unhandled" once something calls .catch() on it) -- this is also
+      // main()'s ONLY path to the process actually exiting non-zero (every
+      // await inside its poll loop funnels errors up through this same
+      // chain, there's no other unguarded top-level code), so this covers
+      // every real crash.
       if (posthogClient) {
         // Immediate (awaited), not the fire-and-forget captureException the
         // drop/rate-limit call sites use -- the process exits right after

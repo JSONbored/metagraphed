@@ -31,7 +31,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { stableStringify } from "./lib.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
+import { initObservability, endSessionAndFlush } from "./observability.ts";
 import {
   ABSOLUTE_FLOOR_TAO,
   ALERT_THRESHOLD_RATIO,
@@ -181,7 +181,7 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  initSentry("reconcile-neurons");
+  initObservability("reconcile-neurons");
   await main();
   await endSessionAndFlush();
 }

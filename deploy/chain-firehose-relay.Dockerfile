@@ -32,8 +32,8 @@ ENV NODE_ENV=production
 USER relay
 # Provide at runtime (NOT baked in): DATABASE_URL, CHAIN_FIREHOSE_SYNC_SECRET,
 # and optionally CHAIN_FIREHOSE_INGEST_URL (defaults to the production hub),
-# SENTRY_DSN, SENTRY_RELEASE (auto-derived from the freshly-cloned HEAD if
-# unset).
+# POSTHOG_PROJECT_TOKEN, POSTHOG_HOST (silently no-op if POSTHOG_PROJECT_TOKEN
+# is unset -- see scripts/observability.ts).
 ENTRYPOINT ["./entrypoint.sh"]
 
 # metagraphed-infra#63: this relay previously had zero monitoring coverage --

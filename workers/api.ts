@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/cloudflare";
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
@@ -23,6 +22,12 @@ import {
   recordUsageEvent,
   type UsageEvent,
 } from "../src/usage-telemetry.ts";
+import {
+  newSpanId,
+  newTraceId,
+  recordTraceSpan,
+  shouldSampleTrace,
+} from "../src/tracing.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,
@@ -621,12 +626,49 @@ export async function withUsageTelemetry(
     }
     return response;
   } finally {
+    const endedAt = Date.now();
     scheduleUsageEvent(env, ctx, record, {
       route,
       ok,
-      durationMs: Date.now() - startedAt,
+      durationMs: endedAt - startedAt,
       ...(errorCode ? { errorCode } : {}),
     });
+    // metagraphed#7768: PostHog distributed tracing (alpha), one root span
+    // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
+    // instrumentation. Off by default (POSTHOG_TRACES_SAMPLE_RATE unset --
+    // see src/tracing.ts's own header for why); set it as a deployed var to
+    // match Sentry's old 0.05. Reuses this chokepoint's own route/ok/duration
+    // -- see src/tracing.ts's header for why this is an independent span (no
+    // parent) rather than nested under anything.
+    if (shouldSampleTrace(env)) {
+      scheduleTraceSpan(env, ctx, {
+        traceId: newTraceId(),
+        spanId: newSpanId(),
+        name: route,
+        startTimeMs: startedAt,
+        endTimeMs: endedAt,
+        ok,
+        serviceName: "metagraphed-api",
+        attributes: { route, error_code: errorCode },
+      });
+    }
+  }
+}
+
+function scheduleTraceSpan(
+  env: Env,
+  ctx: Ctx,
+  span: Parameters<typeof recordTraceSpan>[1],
+) {
+  try {
+    const pending = Promise.resolve(recordTraceSpan(env, span)).catch(
+      () => false,
+    );
+    if (typeof ctx?.waitUntil === "function") {
+      ctx.waitUntil(pending);
+    }
+  } catch {
+    // Telemetry must never surface into the request path.
   }
 }
 
@@ -4929,21 +4971,19 @@ async function handleEventsRequest(request: Request, env: Env) {
 
 // metagraphed#7731: this Worker's own equivalent of data-api.mjs's
 // captureDataApiError (#6769) -- a caught error converted to a clean
-// errorResponse() here never reaches Sentry via api.sentry.ts's withSentry()
-// wrap, since that only instruments genuinely UNCAUGHT exceptions. The AI
-// routes below are the only two places in this file that catch a real
-// (non-caller-input) failure and swallow it into a clean 502; every other
-// catch block either handles an expected condition inline or re-throws to
-// the top-level wrap. Sentry.captureException is a safe no-op with no
-// active client (confirmed live, same as captureDataApiError's own note),
-// which is every test importing this raw handler directly.
-// metagraphed#7758: awaited (not waitUntil) -- both call sites are already
-// deep in the catch of an async route handler about to return an error
-// response; there's no separate ExecutionContext threaded down to this
-// helper the way mcp-server.mjs's schedulers have. The cost is a little
-// latency on an already-failing request, not silent event loss.
+// errorResponse() here never reaches PostHog's own top-level catch, since
+// that only ever sees a genuinely UNCAUGHT exception. The AI routes below
+// are the only two places in this file that catch a real (non-caller-input)
+// failure and swallow it into a clean 502; every other catch block either
+// handles an expected condition inline or re-throws to the top-level wrap.
+// metagraphed#7766: Sentry fully removed (D1 fully eliminated 2026-07-17;
+// Sentry decommissioned once PostHog $exception parity was proven) -- awaited
+// (not waitUntil) because both call sites are already deep in the catch of
+// an async route handler about to return an error response; there's no
+// separate ExecutionContext threaded down to this helper the way
+// mcp-server.ts's schedulers have. The cost is a little latency on an
+// already-failing request, not silent event loss.
 async function captureAiRouteError(error: unknown, route: string, env: Env) {
-  Sentry.captureException(error, { tags: { route } });
   await recordExceptionEvent(env, { error, route, errorCode: "ai_error" });
 }
 

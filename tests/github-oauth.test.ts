@@ -116,7 +116,7 @@ describe("buildOAuthProviderOptions", () => {
 // node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js.
 // This silently broke every anonymous MCP client since GitHub OAuth (#7151)
 // shipped; isAnonymousMcpRequest is what the real entrypoint
-// (workers/api.sentry.ts) uses to bypass oauthProvider.fetch() entirely for
+// (workers/api.entry.ts) uses to bypass oauthProvider.fetch() entirely for
 // exactly this one case, restoring the pre-#7151 anonymous behavior.
 describe("isAnonymousMcpRequest", () => {
   test("true for /mcp with no Authorization header at all", () => {

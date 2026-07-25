@@ -2,28 +2,23 @@
 // (src/subnet-identity-history.ts) only ever logged to console -- per its
 // own #4832 gap-closure comment, a swallowed read error here "dark-served
 // the identity-history diff for an unknown stretch before anyone noticed."
-// A separate small file rather than folded into
-// tests/subnet-identity-history.test.ts (946 lines): vi.mock is file-scoped
-// and hoisted, and that file's other tests already exercise the real
-// (unmocked) Sentry no-op through the same function -- mocking it there
-// risks disturbing tests this issue doesn't own. Mirrors
-// tests/graphql-sentry-and-error-code.test.ts's own identical rationale.
+// metagraphed#7766: this file used to also assert Sentry.captureException
+// alongside PostHog's $exception capture -- Sentry fully removed once
+// PostHog parity was proven. A separate small file rather than folded into
+// tests/subnet-identity-history.test.ts (946 lines): that file's other
+// tests already exercise the same function through unrelated paths.
 import assert from "node:assert/strict";
-import { afterEach, test, vi } from "vitest";
+import { afterEach, test } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
-
-const captureException = vi.hoisted(() => vi.fn());
-
-vi.mock("@sentry/cloudflare", () => ({
-  captureException,
-}));
 
 const { recordSubnetIdentityChanges } =
   await import("../src/subnet-identity-history.ts");
 
+const originalFetch = globalThis.fetch;
+
 afterEach(() => {
-  captureException.mockClear();
+  globalThis.fetch = originalFetch;
 });
 
 // latestIdentityHashes only throws when Postgres hands back a truthy but
@@ -45,20 +40,14 @@ function pgEnvWithBadPayload(extra: Row = {}): Env {
 
 const profiles = [{ netuid: 7, native_identity: { subnet_name: "X" } }];
 
-test("a genuine read failure reaches Sentry, tagged subnet-identity-history-diff", async () => {
+test("a genuine read failure returns recorded:false, reason:read_failed", async () => {
   const result = await recordSubnetIdentityChanges(pgEnvWithBadPayload(), {
     profiles,
   });
   assert.deepEqual(result, { recorded: false, reason: "read_failed" });
-
-  assert.equal(captureException.mock.calls.length, 1);
-  const [, context] = captureException.mock.calls[0];
-  assert.deepEqual(context, {
-    tags: { route: "subnet-identity-history-diff" },
-  });
 });
 
-test("the same failure also reaches PostHog as $exception, tagged error_code read_failed", async () => {
+test("a genuine read failure reaches PostHog as $exception, tagged error_code read_failed", async () => {
   const original = globalThis.fetch;
   const posted: Row[] = [];
   const env = pgEnvWithBadPayload({
@@ -88,7 +77,7 @@ test("the same failure also reaches PostHog as $exception, tagged error_code rea
   }
 });
 
-test("an unchanged-identity run (no read failure) never reaches Sentry or PostHog", async () => {
+test("an unchanged-identity run (no read failure) never reaches PostHog", async () => {
   const original = globalThis.fetch;
   const posted: Row[] = [];
   globalThis.fetch = (async (
@@ -109,7 +98,6 @@ test("an unchanged-identity run (no read failure) never reaches Sentry or PostHo
     } as unknown as Env;
     const result = await recordSubnetIdentityChanges(env, { profiles });
     assert.equal(result.recorded, true);
-    assert.equal(captureException.mock.calls.length, 0);
     assert.equal(posted.length, 0);
   } finally {
     globalThis.fetch = original;

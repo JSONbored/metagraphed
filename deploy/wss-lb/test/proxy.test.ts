@@ -123,7 +123,7 @@ test("all upstreams dead → client closed with 1013", async () => {
   await lb.close();
 });
 
-test("all upstreams dead → onNoUpstream fires exactly once (for Sentry aggregate reporting)", async () => {
+test("all upstreams dead → onNoUpstream fires exactly once (for PostHog aggregate reporting)", async () => {
   let calls = 0;
   const lb = await lbServer([await deadUrl(), await deadUrl()], {
     onNoUpstream: () => {

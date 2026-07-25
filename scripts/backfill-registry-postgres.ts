@@ -41,11 +41,11 @@ import {
 } from "./lib.ts";
 import { generateBaselineOverlaySet } from "./generated-overlays.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
+import { initObservability, endSessionAndFlush } from "./observability.ts";
 
 type Row = Record<string, unknown>;
 
-initSentry("backfill-registry-postgres");
+initObservability("backfill-registry-postgres");
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");

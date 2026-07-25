@@ -100,23 +100,21 @@ export default defineConfig({
         // scope), exercised in-process by tests/zod-schemas.test.ts.
         "schemas-src/**/*.ts",
       ],
-      // The workers/*.sentry.mjs deploy-entry wrappers (metagraphed#6479;
-      // currently data-api.sentry.ts + registry-sync-api.sentry.ts --
-      // workers/api.mjs's own Sentry wrapper hit that Worker's 1024 KiB
-      // Cloudflare bundle ceiling, tracked separately, see #6479's own
-      // follow-up) are deliberately coverage-invisible for the same reason
-      // chain-firehose-relay.ts is: @sentry/cloudflare's withSentry()
-      // requires real Cloudflare Workers runtime primitives
-      // (AsyncLocalStorage-based context propagation via workerd) that
-      // don't exist in this plain-Node vitest environment -- confirmed
-      // empirically, importing one crashes with "Cannot read properties of
-      // undefined (reading 'bind')" inside @sentry/cloudflare's own
-      // flush-lock registry. Each wrapper is a thin, mechanical ~15-line
-      // `Sentry.withSentry(fn, handler)` re-export; the REAL handler logic
-      // it wraps (workers/data-api.mjs, workers/registry-sync-api.mjs) is
-      // unaffected and stays fully covered as before -- these tests were
-      // never routed through the wrapper.
-      exclude: ["workers/*.sentry.{mjs,ts}"],
+      // workers/api.entry.ts (metagraphed#7766, replacing the old
+      // workers/api.sentry.ts wrapper) can't even be IMPORTED in this
+      // plain-Node vitest environment, let alone covered -- confirmed
+      // empirically: `import("./workers/api.entry.ts")` throws "Only URLs
+      // with a scheme in: file, data, and node are supported by the default
+      // ESM loader. Received protocol 'cloudflare:'", because
+      // @cloudflare/workers-oauth-provider's own runtime file imports
+      // `cloudflare:workers` at module scope (same root cause
+      // src/github-oauth.ts's defaultGetOAuthHelpers documents for the
+      // lazy-import it needs for the same reason). The real logic this file
+      // wires together (isAnonymousMcpRequest, buildOAuthProviderOptions)
+      // is fully covered directly in tests/github-oauth.test.ts; this file
+      // itself is a thin, mechanical composition layer with nothing of its
+      // own worth testing.
+      exclude: ["workers/api.entry.ts"],
       // BACKSTOP floors only — NOT the primary gate. The real PR coverage gate is
       // Codecov (delta-based project + patch coverage, see codecov.yml). That
       // avoids the fixed-pin churn where every PR must match a near-peak absolute

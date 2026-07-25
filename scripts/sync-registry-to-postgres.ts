@@ -49,7 +49,7 @@ import {
   subnetSurfaceKey,
 } from "./lib.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
+import { initObservability, endSessionAndFlush } from "./observability.ts";
 
 // Registry overlay files here are read via readJson (already `any`) and
 // re-validated against the schema (validate-surface.ts) before this script
@@ -64,7 +64,7 @@ interface ParsedArgs {
   head?: string;
 }
 
-initSentry("sync-registry-to-postgres");
+initObservability("sync-registry-to-postgres");
 
 const args = parseArgs(process.argv.slice(2));
 const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);

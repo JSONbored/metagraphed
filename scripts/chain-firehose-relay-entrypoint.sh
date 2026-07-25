@@ -55,11 +55,5 @@ if ! git diff --quiet -- . ':(exclude)node_modules'; then
   exit 1
 fi
 
-# Sentry release -- the freshly-cloned HEAD, since this script now lives
-# only in metagraphed (metagraphed#6451): metagraphed-infra's own commit SHA
-# would no longer identify what code is actually running here.
-: "${SENTRY_RELEASE:=$(git rev-parse HEAD)}"
-export SENTRY_RELEASE
-
-echo "entrypoint: node scripts/chain-firehose-relay.ts (release ${SENTRY_RELEASE})"
+echo "entrypoint: node scripts/chain-firehose-relay.ts (release $(git rev-parse HEAD))"
 exec node scripts/chain-firehose-relay.ts

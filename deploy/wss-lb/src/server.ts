@@ -14,8 +14,8 @@
 // Cloudflare DNS for TLS/DDoS, with per-IP abuse control (rate-limit.ts).
 // Env: METAGRAPHED_API, PORT, REFRESH_MS, MAX_BLOCK_LAG, NETWORKS,
 // HANDSHAKE_TIMEOUT_MS, MAX_CONNECTIONS_PER_IP, CONNECT_RATE_LIMIT,
-// CONNECT_RATE_WINDOW_MS. Optionally SENTRY_DSN/SENTRY_ENVIRONMENT/
-// SENTRY_RELEASE (silently no-ops if SENTRY_DSN is unset -- see
+// CONNECT_RATE_WINDOW_MS. Optionally POSTHOG_PROJECT_TOKEN/POSTHOG_HOST
+// (silently no-ops if POSTHOG_PROJECT_TOKEN is unset -- see
 // src/observability.ts).
 import http from "node:http";
 
@@ -26,7 +26,7 @@ import { proxy } from "./proxy.ts";
 import { createConnectionLimiter, resolveClientIp } from "./rate-limit.ts";
 import { selectWssUpstreams, type PoolsArtifact } from "./select.ts";
 import {
-  initSentry,
+  initObservability,
   endSessionAndFlush,
   computeNoUpstreamWindowUpdate,
   reportNoUpstreamWindow,
@@ -43,7 +43,7 @@ declare module "ws" {
   }
 }
 
-initSentry();
+initObservability();
 
 // Numeric env with a NaN/positivity guard: Number(process.env.X || d) returns NaN
 // for a non-numeric string (the `|| d` only catches empty/unset), which would
@@ -240,11 +240,11 @@ server.listen(PORT, () =>
 );
 
 // Railway sends SIGTERM on every redeploy -- without this, the process
-// simply dies mid-"ok" and its Sentry release-health session is never
-// closed, reporting neither healthy nor crashed. Scoped to just the Sentry
-// session (not draining in-flight WS connections/the HTTP server): the
-// process manager already restarts on exit, and existing client sockets
-// close on their own once the process actually exits either way.
+// simply dies mid-request and the PostHog client's background flush never
+// gets a chance to run. Scoped to just the PostHog shutdown (not draining
+// in-flight WS connections/the HTTP server): the process manager already
+// restarts on exit, and existing client sockets close on their own once the
+// process actually exits either way.
 async function shutdown() {
   await endSessionAndFlush();
   process.exit(0);

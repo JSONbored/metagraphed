@@ -14,9 +14,9 @@
 // using the committed snapshot (this step is production-only).
 import { spawnSync } from "node:child_process";
 import { stableStringify } from "./lib.ts";
-import { initSentry, endSessionAndFlush } from "./observability.ts";
+import { initObservability, endSessionAndFlush } from "./observability.ts";
 
-initSentry("refresh-native-snapshot");
+initObservability("refresh-native-snapshot");
 
 const startedAt = process.env.METAGRAPH_BUILD_TIMESTAMP || null;
 

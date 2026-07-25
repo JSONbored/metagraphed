@@ -372,10 +372,11 @@ export async function recordMcpInitializeEvent(
 // summarizes the shape; the exact property names/types below are confirmed
 // against PostHog's own repo (docs/onboarding/error-tracking/api.tsx, the
 // source their public docs render from), including a real example payload.
-// Parallel-run alongside the existing Sentry.captureException call at every
-// site this wires into -- additive, not a replacement (metagraphed#7757 is
-// the consolidation epic; #7766 is the gated Sentry removal, which happens
-// in its own PR once parity is proven, not here).
+// Originally landed as a parallel-run alongside each site's existing
+// Sentry.captureException call, additive rather than a replacement
+// (metagraphed#7757 is the consolidation epic). #7766 has since removed
+// Sentry everywhere this wires into once parity was proven, so PostHog is
+// now the only exception-capture path at every one of these call sites.
 
 /** One PostHog `$exception_list` stack frame. `platform`/`lang` are always
  * "custom"/"javascript" -- PostHog's required marker for a manually built
@@ -465,8 +466,11 @@ function exceptionListEntry(error: unknown): {
       type,
       value,
       // Every capture site wraps a genuinely caught (try/catch), non-fatal
-      // fault -- never an uncaught/fatal one (those reach Sentry only, via
-      // the existing withSentry() wrap this module has no visibility into).
+      // fault -- never an uncaught/fatal one. Since #7766 removed Sentry's
+      // automatic withSentry() wrap, a truly uncaught throw has no dedicated
+      // $exception capture of its own; it still surfaces as an ok:false
+      // usage event (and trace span, if sampled) via withUsageTelemetry's
+      // finally block in workers/api.ts, just without a stack trace.
       mechanism: { handled: true, synthetic: false },
       stacktrace: { type: "raw", frames },
     },
