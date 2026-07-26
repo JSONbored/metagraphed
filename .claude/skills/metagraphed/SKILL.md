@@ -251,7 +251,13 @@ test for every bug fix**. **Codecov is the coverage gate** — `codecov/patch` e
 coverage, branch-counted, with zero threshold slack** (`target: 99%, threshold: 0%` in `codecov.yml`),
 scoped to `src/**` + `workers/**` runtime code. Run it unsharded locally: `npm run test:coverage`.
 Reader tests serve R2-only artifacts that only exist after a build, so `npm run build` before the
-suite if a test reads served artifacts.
+suite if a test reads served artifacts. Running a single reader test file in isolation (e.g.
+`npx vitest run tests/some-route.test.ts`) needs the same precondition — those artifacts live under
+gitignored `dist/metagraph-r2/metagraph/`, populated as a side effect of `tests/artifacts.test.ts` /
+`tests/discovery-artifacts.test.ts` when the full suite runs first (alphabetically), but absent on a
+fresh checkout or a filtered single-file run. For just the fixture tree, without the rest of
+`npm run build`'s slower steps (type/client/GraphQL generation) and without ever touching
+`public/metagraph/`, run `npm run artifacts:prepare-local` first.
 
 ### Phase B3 — Regenerate what you invalidated (then commit it)
 
@@ -271,16 +277,22 @@ Stale committed artifacts fail the **derived-artifact freshness** + **contract-d
 read from its committed path at publish time; `schemas/index.json` is a network-capture cache the
 build reconciles in place) — see the "Verify committed derived artifacts are fresh" step in
 `.github/workflows/validate.yml`, which explicitly excludes both for this reason. A contributor
-build will **always** show them as changed for reasons unrelated to your change. After
-`npm run build`, always revert them against your **base** remote — `upstream/main` if you forked
-per Phase A0, or `origin/main` if you cloned this repo directly (no `upstream` configured):
+build will **always** show them as changed for reasons unrelated to your change.
+
+Both `npm run build` and a standalone `node scripts/build-artifacts.ts` /
+`npm run build:artifacts` already **auto-revert** whichever of these actually went dirty, back
+against your base remote (`upstream/main` if you forked per Phase A0, `origin/main` otherwise) —
+`git status` should already be clean after either. Treat that as a safety net, not a guarantee: it
+silently degrades to a printed warning (not a failure) if the revert itself can't reach your base
+remote (e.g. no network, or `upstream`/`origin` isn't fetched). So still check `git status` before
+staging, and if either file shows modified, revert it by hand:
 
 ```sh
 git checkout "$(git remote | grep -qx upstream && echo upstream || echo origin)/main" -- \
   public/metagraph/r2-manifest.json public/metagraph/schemas/index.json
 ```
 
-before staging/committing — even if they show as modified.
+before staging/committing.
 
 **Client SDK version:** do **not** bump `packages/client/package.json` in your PR. The
 `sync-client-version` workflow auto-opens a `chore/sync-client-version` PR after a contract-changing
@@ -560,9 +572,10 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       (auto-sync workflow handles it post-merge).
 - [ ] `public/metagraph/r2-manifest.json` and `public/metagraph/schemas/index.json` are **not** part of
       your diff — both always change on a local/CI build for reasons unrelated to your PR (they're
-      deploy/publish-pipeline-owned, not contract artifacts). Revert them against your base remote
-      (the Phase B3 command above) before committing if `npm run build` touched them. `npm run build`
-      itself warns you if either changed.
+      deploy/publish-pipeline-owned, not contract artifacts). `npm run build` (and a standalone
+      `scripts/build-artifacts.ts`) already auto-revert either one if it went dirty; double-check
+      `git status` and fall back to the Phase B3 command above if either still shows modified (e.g.
+      the auto-revert couldn't reach your base remote).
 - [ ] `git diff --check` clean · `lint` + `format:check` + `typecheck` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
 - [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` — required, referencing an issue that's still open.
