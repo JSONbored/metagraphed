@@ -9,6 +9,9 @@ import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
 const validatorDetailSearchSchema = z.object({
+  // #8251: which detail tab is active (Per-subnet performance / Nominators /
+  // History) — same `tab` convention subnets.$netuid.tsx uses.
+  tab: fallback(z.string(), "subnets").default("subnets"),
   window: fallback(z.enum(["7d", "30d", "90d"]), "30d").default("30d"),
   sort: fallback(z.enum(["net_staked", "gross_staked", "last_activity"]), "net_staked").default(
     "net_staked",

@@ -20,15 +20,22 @@ const feed = readFileSync(
 );
 
 describe("empty-state 'Open the API' actions", () => {
-  it("Validators index links its empty state to /api/v1/validators", () => {
+  // #8251: the empty state now distinguishes a genuinely-empty directory from
+  // a search that matched nothing -- the API link only renders for the former
+  // (a filter-empty view suggesting "open the API" would show unfiltered
+  // data, not the filtered subset -- the same convention chain-events-feed's
+  // own filtered-empty case pins below).
+  it("Validators index links its UNFILTERED empty state to /api/v1/validators", () => {
     const empty = validators.slice(
       validators.indexOf("No validators indexed yet"),
-      validators.indexOf("No validators indexed yet") + 320,
+      validators.indexOf("No validators indexed yet") + 700,
     );
-    expect(empty).toContain("action={{");
     expect(empty).toContain('label: "Open /api/v1/validators"');
     expect(empty).toContain("href: `${API_BASE}/api/v1/validators`");
     expect(empty).toContain("external: true");
+    // Gated on the search box being empty -- search.q ? undefined : {...}.
+    expect(empty).toContain("search.q");
+    expect(empty).toContain("undefined");
   });
 
   it("Chain events feed links its UNFILTERED empty state to /api/v1/chain-events", () => {
