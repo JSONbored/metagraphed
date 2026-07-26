@@ -1,4 +1,4 @@
-import { ListShell } from "metagraphed-ui";
+import { ListShell } from "@jsonbored/ui-kit";
 
 function DemoTable() {
   return (

@@ -1,4 +1,4 @@
-import { SparkLegend, Sparkline } from "metagraphed-ui";
+import { SparkLegend, Sparkline } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (

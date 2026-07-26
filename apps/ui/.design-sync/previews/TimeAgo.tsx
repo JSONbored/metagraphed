@@ -1,4 +1,4 @@
-import { TimeAgo } from "metagraphed-ui";
+import { TimeAgo } from "@jsonbored/ui-kit";
 
 const recent = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 

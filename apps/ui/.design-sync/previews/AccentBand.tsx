@@ -1,4 +1,4 @@
-import { AccentBand } from "metagraphed-ui";
+import { AccentBand } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (

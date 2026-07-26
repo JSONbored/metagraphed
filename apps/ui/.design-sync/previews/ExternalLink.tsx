@@ -1,4 +1,4 @@
-import { ExternalLink } from "metagraphed-ui";
+import { ExternalLink } from "@jsonbored/ui-kit";
 
 export function Default() {
   return <ExternalLink href="https://taostats.io">View on Taostats</ExternalLink>;

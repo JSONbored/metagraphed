@@ -1,4 +1,4 @@
-import { CopyIconToggle } from "metagraphed-ui";
+import { CopyIconToggle } from "@jsonbored/ui-kit";
 
 export function Idle() {
   return <CopyIconToggle copied={false} />;
