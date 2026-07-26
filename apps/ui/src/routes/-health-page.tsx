@@ -1,5 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { resolveRefetchInterval, usePageVisible } from "@/hooks/use-refetch-interval";
 import { useEffect, useMemo, useState } from "react";
@@ -376,9 +377,14 @@ function AutoRefreshControl({
 function StatusBoard({ interval }: { interval: number | false }) {
   const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval: interval });
   const { data: fRes } = useSuspenseQuery({ ...freshnessQuery(), refetchInterval: interval });
+  // `stale` and `sourceAges` below both read the wall clock during render, so
+  // the server pass and the client's first pass disagree by however long the
+  // response spent in flight (#8241). Hold both at their pre-hydration value
+  // until hydration completes, matching useHydrated's documented use.
+  const hydrated = useHydrated();
   const h = hRes.data;
   const f = fRes.data;
-  const stale = isStaleFreshness(hRes.meta?.generated_at);
+  const stale = hydrated && isStaleFreshness(hRes.meta?.generated_at);
   const segs = [
     { label: "OK", value: h?.ok ?? 0, color: "var(--health-ok)" },
     { label: "Warn", value: h?.warn ?? 0, color: "var(--health-warn)" },
@@ -387,10 +393,11 @@ function StatusBoard({ interval }: { interval: number | false }) {
   ].filter((s) => s.value > 0);
   const uptimePct = h?.uptime_24h != null ? (h.uptime_24h * 100).toFixed(2) + "%" : "—";
 
-  const sourceAges =
-    (f?.sources ?? [])
-      .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
-      .filter((v): v is number => typeof v === "number") ?? [];
+  const sourceAges = hydrated
+    ? ((f?.sources ?? [])
+        .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
+        .filter((v): v is number => typeof v === "number") ?? [])
+    : [];
 
   return (
     <div className="space-y-4">
@@ -556,6 +563,10 @@ function severityRank(state: HealthState | undefined): SeverityRank {
 function Incidents({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
   const rows = useMemo(() => (data.data ?? []) as EndpointIncident[], [data]);
+  // The 14-day bucket keys below are derived from the wall clock, so a server
+  // pass that straddles a UTC midnight (or simply runs seconds earlier) builds
+  // a different set of days than the client's first pass (#8241).
+  const hydrated = useHydrated();
   const search = useSearch({ from: "/health" });
   const navigate = useNavigate({ from: "/health" });
   const filter = search.status;
@@ -604,6 +615,7 @@ function Incidents({ interval }: { interval: number | false }) {
 
   // 14-day incident sparkline (count of incidents per day, oldest first).
   const incidentsByDay = useMemo(() => {
+    if (!hydrated) return [];
     const buckets = new Map<string, number>();
     const now = new Date();
     for (let i = 13; i >= 0; i--) {
@@ -616,7 +628,7 @@ function Incidents({ interval }: { interval: number | false }) {
       if (key && buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
     }
     return Array.from(buckets.values());
-  }, [rows]);
+  }, [rows, hydrated]);
 
   if (rows.length === 0) {
     return (
