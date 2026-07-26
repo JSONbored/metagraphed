@@ -45,8 +45,21 @@ const write = args.has("--write");
 const uploadHistory = process.env.METAGRAPH_R2_UPLOAD_HISTORY === "1";
 const forceUpload = process.env.METAGRAPH_R2_UPLOAD_FORCE === "1";
 const uploadLimit = parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_LIMIT);
+// #stale-publish-pipeline/B: each object upload spawns its own `wrangler`
+// subprocess (see putObjectOnce below), so wall-clock time scales with
+// object_count / concurrency, not raw bytes. METAGRAPH_R2_UPLOAD_HISTORY=1
+// (always set in publish-cloudflare.yml) uploads BOTH a "latest" and a
+// "history" copy of every tracked artifact every run (~2,325 artifacts as of
+// 2026-07-26, so ~4,650 uploads/run) -- registry growth since this default
+// was set had pushed the publish job's "Upload artifact history to R2" step
+// to consistently exceed the job's 45-minute timeout-minutes ceiling at the
+// old concurrency of 8, cancelling the step (and the whole publish -- R2
+// never gets the fresh artifacts, KV `latest` pointer never flips) on every
+// run since ~2026-07-23. Raised with real headroom, paired with a matching
+// timeout-minutes increase in publish-cloudflare.yml as a safety margin (see
+// that workflow's own comment) rather than relying on concurrency alone.
 const uploadConcurrency =
-  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_CONCURRENCY) || 8;
+  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_CONCURRENCY) || 24;
 const progressInterval =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_PROGRESS_INTERVAL) || 25;
 const uploadRetries =
