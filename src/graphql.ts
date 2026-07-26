@@ -550,6 +550,8 @@ import type {
   QueryBlock_ExtrinsicsArgs,
   QueryCandidatesArgs,
   QueryChain_ActivityArgs,
+  QueryChain_Alpha_VolumeArgs,
+  QueryChain_Axon_RemovalsArgs,
   QueryChain_CallsArgs,
   QueryChain_DeregistrationsArgs,
   QueryChain_EventsArgs,
@@ -559,7 +561,14 @@ import type {
   QueryChain_PrometheusArgs,
   QueryChain_RegistrationsArgs,
   QueryChain_ServingArgs,
+  QueryChain_SignersArgs,
+  QueryChain_Stake_FlowArgs,
+  QueryChain_Stake_MovesArgs,
+  QueryChain_Stake_TransfersArgs,
+  QueryChain_Transfer_PairsArgs,
+  QueryChain_TransfersArgs,
   QueryChain_TurnoverArgs,
+  QueryChain_Weight_SettersArgs,
   QueryChain_WeightsArgs,
   QueryCompareArgs,
   QueryCompare_ValidatorsArgs,
@@ -594,15 +603,18 @@ import type {
   QueryRegistry_LeaderboardsArgs,
   QueryRpc_EndpointsArgs,
   QueryRpc_PoolsArgs,
+  QueryRpc_UsageArgs,
   QuerySaved_QueryArgs,
   QuerySearchArgs,
   QuerySearch_IndexArgs,
   QuerySource_SnapshotsArgs,
   QuerySubnetArgs,
   QuerySubnet_Axon_RemovalsArgs,
+  QuerySubnet_BurnArgs,
   QuerySubnet_CandidatesArgs,
   QuerySubnet_ConcentrationArgs,
   QuerySubnet_Concentration_HistoryArgs,
+  QuerySubnet_ConvictionArgs,
   QuerySubnet_DeregistrationsArgs,
   QuerySubnet_EndpointsArgs,
   QuerySubnet_Event_SummaryArgs,
@@ -621,11 +633,13 @@ import type {
   QuerySubnet_MetagraphArgs,
   QuerySubnet_MoversArgs,
   QuerySubnet_OhlcArgs,
+  QuerySubnet_Ownership_HistoryArgs,
   QuerySubnet_OverviewArgs,
   QuerySubnet_PerformanceArgs,
   QuerySubnet_Performance_HistoryArgs,
   QuerySubnet_ProfileArgs,
   QuerySubnet_PrometheusArgs,
+  QuerySubnet_RecycledArgs,
   QuerySubnet_RegistrationsArgs,
   QuerySubnet_ServingArgs,
   QuerySubnet_Stake_FlowArgs,
@@ -633,6 +647,7 @@ import type {
   QuerySubnet_Stake_QuoteArgs,
   QuerySubnet_Stake_TransfersArgs,
   QuerySubnet_TrajectoryArgs,
+  QuerySubnet_TurnoverArgs,
   QuerySubnet_UptimeArgs,
   QuerySubnet_ValidatorsArgs,
   QuerySubnet_VolumeArgs,
@@ -1785,12 +1800,12 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 8-9 (types-epic D, #7862 tracks follow-up
+// Row-erased: pending D batch 9 (types-epic D, #7862 tracks follow-up
 // batches -- see #8158-#8166 for each batch's exact field list). The 5 pilot
-// fields plus D batches 1-7's 135 fields (#8158-#8164) are typed against the
+// fields plus D batches 1-8's 155 fields (#8158-#8165) are typed against the
 // generated Args types below; the remaining root fields on this object keep
 // their `Row`-typed destructured params for now, adopted incrementally in
-// later batches rather than all at once here.
+// the final batch rather than all at once here.
 const rootValue = {
   subnets(
     {
@@ -6477,7 +6492,10 @@ const rootValue = {
     };
   },
 
-  async chain_axon_removals({ window, limit }: Row, context: GqlContext) {
+  async chain_axon_removals(
+    { window, limit }: QueryChain_Axon_RemovalsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
     if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6664,7 +6682,7 @@ const rootValue = {
   },
 
   async chain_signers(
-    { window, limit, sort, call_module: callModule }: Row,
+    { window, limit, sort, call_module: callModule }: QueryChain_SignersArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainSigners
@@ -6719,7 +6737,7 @@ const rootValue = {
       (tier as Row | null) ??
       buildChainSigners({
         window: label,
-        sort,
+        sort: sort ?? undefined,
         observedAt: await loadObservedAt(context),
         rows: [],
       });
@@ -6739,7 +6757,10 @@ const rootValue = {
     };
   },
 
-  async chain_weight_setters({ window, limit }: Row, context: GqlContext) {
+  async chain_weight_setters(
+    { window, limit }: QueryChain_Weight_SettersArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
     if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6778,7 +6799,10 @@ const rootValue = {
     };
   },
 
-  async chain_alpha_volume({ limit }: Row, context: GqlContext) {
+  async chain_alpha_volume(
+    { limit }: QueryChain_Alpha_VolumeArgs,
+    context: GqlContext,
+  ) {
     const safeLimit = clampLimit(limit, {
       defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
       maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
@@ -6840,7 +6864,10 @@ const rootValue = {
     };
   },
 
-  async chain_stake_flow({ window, limit }: Row, context: GqlContext) {
+  async chain_stake_flow(
+    { window, limit }: QueryChain_Stake_FlowArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6889,7 +6916,10 @@ const rootValue = {
     };
   },
 
-  async chain_stake_moves({ window, limit }: Row, context: GqlContext) {
+  async chain_stake_moves(
+    { window, limit }: QueryChain_Stake_MovesArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6932,7 +6962,10 @@ const rootValue = {
     };
   },
 
-  async chain_stake_transfers({ window, limit }: Row, context: GqlContext) {
+  async chain_stake_transfers(
+    { window, limit }: QueryChain_Stake_TransfersArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6979,7 +7012,7 @@ const rootValue = {
   },
 
   async chain_transfer_pairs(
-    { window, sort, limit }: Row,
+    { window, sort, limit }: QueryChain_Transfer_PairsArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
@@ -7035,7 +7068,10 @@ const rootValue = {
     };
   },
 
-  async chain_transfers({ window, limit }: Row, context: GqlContext) {
+  async chain_transfers(
+    { window, limit }: QueryChain_TransfersArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
     if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -7287,7 +7323,7 @@ const rootValue = {
     };
   },
 
-  async rpc_usage({ window }: Row, context: GqlContext) {
+  async rpc_usage({ window }: QueryRpc_UsageArgs, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_ANALYTICS_WINDOW;
     if (!Object.hasOwn(ANALYTICS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -7480,7 +7516,10 @@ const rootValue = {
     };
   },
 
-  async subnet_recycled({ netuid }: Row, context: GqlContext) {
+  async subnet_recycled(
+    { netuid }: QuerySubnet_RecycledArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7495,7 +7534,7 @@ const rootValue = {
     return loadSubnetRecycled(context.env, netuid);
   },
 
-  async subnet_burn({ netuid }: Row, context: GqlContext) {
+  async subnet_burn({ netuid }: QuerySubnet_BurnArgs, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7510,7 +7549,10 @@ const rootValue = {
     return loadSubnetBurn(context.env, netuid);
   },
 
-  async subnet_turnover({ netuid, window, changes }: Row, context: GqlContext) {
+  async subnet_turnover(
+    { netuid, window, changes }: QuerySubnet_TurnoverArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7567,7 +7609,10 @@ const rootValue = {
     };
   },
 
-  async subnet_ownership_history({ netuid }: Row, context: GqlContext) {
+  async subnet_ownership_history(
+    { netuid }: QuerySubnet_Ownership_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7588,7 +7633,10 @@ const rootValue = {
     };
   },
 
-  async subnet_conviction({ netuid }: Row, context: GqlContext) {
+  async subnet_conviction(
+    { netuid }: QuerySubnet_ConvictionArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
