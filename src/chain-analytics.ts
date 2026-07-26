@@ -71,6 +71,46 @@ export interface ChainActivityResult {
   days: ChainActivityDay[];
 }
 
+/**
+ * Trim a newest-first daily series to the window's own day count (#8242).
+ *
+ * The upstream aggregation buckets by UTC day over a `now - N days` range, so
+ * a 7d window spans 8 calendar days: a partial today, six whole days, and a
+ * partial tail day at the boundary. Serving all 8 under `window: "7d"` made
+ * the UI print "FEES, LAST 7D … 8 days" — the response contradicting its own
+ * label. Dropping the oldest (partial) day makes day_count match the window
+ * the caller asked for. A null/absent maxDays leaves the series untouched, so
+ * callers that don't know their day count are unaffected.
+ */
+function trimToWindow<T>(rows: T[], maxDays: number | null | undefined): T[] {
+  if (maxDays == null || !Number.isFinite(maxDays) || maxDays < 1) return rows;
+  return rows.length > maxDays ? rows.slice(0, maxDays) : rows;
+}
+
+/**
+ * Apply the same trim to an already-built result, whichever tier produced it.
+ * The live series comes from the Postgres data tier (the builders above only
+ * shape the schema-stable empty stub), so the handlers normalize the resolved
+ * payload through these rather than the builder arguments.
+ */
+export function trimChainActivityToWindow(
+  result: ChainActivityResult,
+  maxDays: number | null | undefined,
+): ChainActivityResult {
+  const days = trimToWindow(result.days ?? [], maxDays);
+  if (days === result.days) return result;
+  return { ...result, days, day_count: days.length };
+}
+
+export function trimChainFeesToWindow(
+  result: ChainFeesResult,
+  maxDays: number | null | undefined,
+): ChainFeesResult {
+  const daily = trimToWindow(result.daily ?? [], maxDays);
+  if (daily === result.daily) return result;
+  return { ...result, daily, day_count: daily.length };
+}
+
 // Merge the two per-UTC-day aggregations (extrinsics tier + blocks tier) into one
 // newest-first daily series. `extrinsicRows` carries extrinsic_count /
 // successful_extrinsics / unique_signers; `blockRows` carries block_count /

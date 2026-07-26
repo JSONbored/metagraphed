@@ -46,8 +46,26 @@ export function apyFromRewardsPer1000(
   return Math.round(dailyPerTao * 365 * 100 * 100) / 100;
 }
 
+/**
+ * Above this, an annualized estimate is noise rather than a return (#8242).
+ * These come from tiny-stake validators where one lucky emission tick, scaled
+ * by 365, produces figures like 242% next to the majors' 1-2%. Rendering them
+ * unqualified made the whole column read as untrustworthy, so everything past
+ * the threshold collapses to a single ">100%" bucket with an explanation.
+ */
+export const APY_IMPLAUSIBLE_PCT = 100;
+
+export function isImplausibleApyPct(value: number | null | undefined): boolean {
+  return value != null && Number.isFinite(value) && value > APY_IMPLAUSIBLE_PCT;
+}
+
+/** Why an estimate is shown as ">100%" — for a title/tooltip at call sites. */
+export const IMPLAUSIBLE_APY_NOTE =
+  "Annualized from a very small stake base — a single emission tick dominates the estimate, so the exact figure is not meaningful.";
+
 export function formatApyPct(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
+  if (isImplausibleApyPct(value)) return `>${APY_IMPLAUSIBLE_PCT}%`;
   if (value >= 100) return `${value.toFixed(0)}%`;
   if (value >= 10) return `${value.toFixed(1)}%`;
   return `${value.toFixed(2)}%`;

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { describe, test } from "vitest";
 import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
+  trimChainActivityToWindow,
+  trimChainFeesToWindow,
 } from "../src/chain-analytics.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -1562,4 +1564,77 @@ test("the new chain routes are schema-stable empty when D1 is cold", async () =>
     assert.equal(body.ok, true);
     assert.equal(body.data.schema_version, 1);
   }
+});
+
+describe("window trimming (#8242)", () => {
+  // The upstream aggregation buckets by UTC day over a `now - N days` range,
+  // so a 7d window returns 8 calendar days (a partial today + a partial tail
+  // day). Live example captured 2026-07-26 from /api/v1/chain/fees?window=7d:
+  // 2026-07-26 (60,315 extrinsics, partial) … 2026-07-19 (76,706, partial).
+  const eightDays = [
+    "2026-07-26",
+    "2026-07-25",
+    "2026-07-24",
+    "2026-07-23",
+    "2026-07-22",
+    "2026-07-21",
+    "2026-07-20",
+    "2026-07-19",
+  ];
+
+  test("trims chain activity to the requested window and fixes day_count", () => {
+    const result = buildChainActivity({
+      window: "7d",
+      extrinsicRows: eightDays.map((day) => ({ day, extrinsic_count: 10 })),
+    });
+    assert.equal(result.day_count, 8); // untrimmed builder output
+    const trimmed = trimChainActivityToWindow(result, 7);
+    assert.equal(trimmed.day_count, 7);
+    assert.equal(trimmed.days.length, 7);
+    // Newest kept, oldest (partial boundary day) dropped.
+    assert.equal(trimmed.days[0].day, "2026-07-26");
+    assert.equal(trimmed.days[6].day, "2026-07-20");
+    assert.ok(!trimmed.days.some((d) => d.day === "2026-07-19"));
+  });
+
+  test("trims chain fees to the requested window and fixes day_count", () => {
+    const result = buildChainFees({
+      window: "7d",
+      dailyRows: eightDays.map((day) => ({
+        day,
+        extrinsic_count: 10,
+        total_fee_tao: 1,
+        total_tip_tao: 0,
+      })),
+    });
+    assert.equal(result.day_count, 8);
+    const trimmed = trimChainFeesToWindow(result, 7);
+    assert.equal(trimmed.day_count, 7);
+    assert.equal(trimmed.daily[0].day, "2026-07-26");
+    assert.equal(trimmed.daily[6].day, "2026-07-20");
+  });
+
+  test("leaves series at or under the window untouched", () => {
+    const result = buildChainFees({
+      window: "7d",
+      dailyRows: eightDays.slice(0, 5).map((day) => ({
+        day,
+        extrinsic_count: 1,
+        total_fee_tao: 1,
+        total_tip_tao: 0,
+      })),
+    });
+    const trimmed = trimChainFeesToWindow(result, 7);
+    assert.equal(trimmed.day_count, 5);
+    assert.equal(trimmed, result); // identity: no needless copy
+  });
+
+  test("a null/invalid maxDays disables trimming", () => {
+    const result = buildChainActivity({
+      window: "all",
+      extrinsicRows: eightDays.map((day) => ({ day, extrinsic_count: 1 })),
+    });
+    assert.equal(trimChainActivityToWindow(result, null).day_count, 8);
+    assert.equal(trimChainActivityToWindow(result, 0).day_count, 8);
+  });
 });
