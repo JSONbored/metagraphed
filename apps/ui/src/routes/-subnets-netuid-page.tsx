@@ -419,23 +419,24 @@ function SubnetStartIntegratingCard({
   const score = profile?.integration_readiness;
   const snippet = apiSnippet("curl", `/api/v1/subnets/${netuid}/profile`);
   return (
-    <Panel
-      dense
-      bodyClassName="flex flex-wrap items-center justify-between gap-4"
-      className="border-accent/30"
-    >
-      <div className="flex items-center gap-3">
-        <div>
-          <div className="mg-label">Start integrating</div>
-          <div className="mt-0.5 flex items-baseline gap-1.5">
-            <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
-              {score != null ? score : "—"}
-            </span>
-            <span className="mg-type-data-sm text-ink-muted">/ 100 readiness</span>
-          </div>
+    <Panel dense bodyClassName="flex flex-wrap items-center gap-4" className="border-accent/30">
+      <div className="min-w-0 shrink-0">
+        <div className="mg-label">Start integrating</div>
+        <div className="mt-0.5 flex items-baseline gap-1.5">
+          <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
+            {score != null ? score : "—"}
+          </span>
+          <span className="mg-type-data-sm text-ink-muted">/ 100 readiness</span>
         </div>
-        <CopyableCode label="curl" value={snippet} className="hidden sm:inline-flex" />
       </div>
+      {/* #8247/CI: a second, `hidden`-gated copy of this same CopyableCode
+          used to sit alongside a `sm:hidden` one for the mobile/desktop
+          split -- CopyableCode's own base classes hardcode `inline-flex`
+          unconditionally, so a plain (non-responsive) `hidden` utility on
+          top of it loses the cascade to that hardcoded base class and never
+          actually hides, overflowing the 375px viewport. One instance,
+          shrinkable via `min-w-0`/`max-w-full`, truncates instead. */}
+      <CopyableCode label="curl" value={snippet} className="min-w-0 max-w-full flex-1" />
       <button
         type="button"
         onClick={() =>
@@ -445,11 +446,10 @@ function SubnetStartIntegratingCard({
             replace: true,
           })
         }
-        className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-surface px-3 py-1.5 mg-type-data font-medium text-accent-text hover:border-accent/70"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent-surface px-3 py-1.5 mg-type-data font-medium text-accent-text hover:border-accent/70"
       >
         Start here →
       </button>
-      <CopyableCode label="curl" value={snippet} className="w-full sm:hidden" />
     </Panel>
   );
 }
