@@ -548,3 +548,66 @@ test("#8277 stable-latest artifacts still bypass the manifest entirely", async (
     "latest/health/history/2026-07-01.json",
   );
 });
+
+test("#8277 a manifest entry missing path or key is skipped, not indexed", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(
+    {
+      artifacts: [
+        { path: "/metagraph/subnets.json" }, // no key
+        { key: "by-hash/orphan" }, // no path
+        { path: "/metagraph/coverage.json", key: "by-hash/bbb222" }, // valid
+      ],
+    },
+    { latest_prefix: "latest/", full_manifest_run_key: RUN_MANIFEST_KEY },
+  );
+  // A half-written entry must not shadow the prefix fallback with a bad key.
+  assert.equal(
+    await resolve("/metagraph/subnets.json", env),
+    "latest/subnets.json",
+  );
+  // ...and must not poison the rest of the index.
+  assert.equal(
+    await resolve("/metagraph/coverage.json", env),
+    "by-hash/bbb222",
+  );
+});
+
+test("#8277 a manifest read that throws degrades to the prefix and is not retried", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  let reads = 0;
+  const env = {
+    METAGRAPH_CONTROL: {
+      async get() {
+        return {
+          latest_prefix: "latest/",
+          full_manifest_run_key: RUN_MANIFEST_KEY,
+        };
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        reads += 1;
+        return {
+          async json() {
+            throw new Error("malformed body");
+          },
+        };
+      },
+    },
+  } as unknown as Env;
+
+  assert.equal(
+    await resolve("/metagraph/subnets.json", env),
+    "latest/subnets.json",
+  );
+  assert.equal(
+    await resolve("/metagraph/coverage.json", env),
+    "latest/coverage.json",
+  );
+  // The null result is memoized too, so a broken manifest costs one read per
+  // isolate rather than a ~585 KB fetch on every single request.
+  assert.equal(reads, 1);
+});
