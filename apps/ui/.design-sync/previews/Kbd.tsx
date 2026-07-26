@@ -1,4 +1,4 @@
-import { Kbd } from "metagraphed-ui";
+import { Kbd } from "@jsonbored/ui-kit";
 
 export function Combo() {
   return (

@@ -1,4 +1,4 @@
-import { HoverPreview } from "metagraphed-ui";
+import { HoverPreview } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (

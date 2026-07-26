@@ -1,4 +1,4 @@
-import { AnimatedNumber } from "metagraphed-ui";
+import { AnimatedNumber } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (

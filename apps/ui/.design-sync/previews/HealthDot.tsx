@@ -1,4 +1,4 @@
-import { HealthDot } from "metagraphed-ui";
+import { HealthDot } from "@jsonbored/ui-kit";
 
 export function AllStates() {
   return (

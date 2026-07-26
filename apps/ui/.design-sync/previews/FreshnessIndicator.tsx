@@ -1,4 +1,4 @@
-import { FreshnessIndicator } from "metagraphed-ui";
+import { FreshnessIndicator } from "@jsonbored/ui-kit";
 
 const fresh = new Date(Date.now() - 2 * 60 * 1000).toISOString();
 // isStaleFreshness's real default threshold is 12h (see @/lib/metagraphed/format.ts) —

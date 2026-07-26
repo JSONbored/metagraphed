@@ -1,4 +1,4 @@
-import { CopyButton } from "metagraphed-ui";
+import { CopyButton } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (

@@ -1,4 +1,4 @@
-import { StatWithSpark, Sparkline } from "metagraphed-ui";
+import { StatWithSpark, Sparkline } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (

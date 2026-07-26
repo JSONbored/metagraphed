@@ -1,4 +1,4 @@
-import { SectionAnchor } from "metagraphed-ui";
+import { SectionAnchor } from "@jsonbored/ui-kit";
 
 export function Default() {
   return (
