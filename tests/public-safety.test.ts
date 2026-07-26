@@ -324,6 +324,42 @@ describe("captured-fixture body scan", () => {
     }
   });
 
+  test("flags a bare Telegram bot token", async () => {
+    // src/alert-delivery.ts builds api.telegram.org/bot${token}/sendMessage, so
+    // a leaked bot token is a real credential. Assemble the id:secret shape at
+    // runtime so the source never commits a contiguous token-shaped literal
+    // (the AWS-key test above sets this precedent).
+    // The secret half is exactly 35 URL-safe chars (the real bot-token shape and
+    // what the pattern matches); assemble it from parts so no contiguous
+    // token-shaped literal is committed.
+    const botId = "123456789";
+    const secret = ["AAHdqTcvCH1vGWJxfSeofSAs", "0K5PALDsaw", "x"].join("");
+    assert.equal(secret.length, 35);
+    await fs.writeFile(TEST_PUBLIC_PATH, `${botId}:${secret}\n`, "utf8");
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: telegram bot token`),
+      `Telegram bot token must be flagged; got:\n${output}`,
+    );
+  });
+
+  test("flags a bare Discord webhook URL", async () => {
+    // A Discord webhook URL is itself a bearer credential (src/alert-delivery.ts
+    // buildDiscordDeliveryRequest posts to it). Assemble it from parts so the
+    // source never commits a contiguous webhook-shaped literal.
+    const webhook = [
+      "https://discord.com/api/webhooks/",
+      "123456789012345678/",
+      ["Abcd_efGH", "ijkLMNop-qrST"].join(""),
+    ].join("");
+    await fs.writeFile(TEST_PUBLIC_PATH, `${webhook}\n`, "utf8");
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: discord webhook url`),
+      `Discord webhook URL must be flagged; got:\n${output}`,
+    );
+  });
+
   test("does not flag soft Bittensor terminology in a mirrored fixture body", async () => {
     // Regression for the publish-wedging false positive: upstream API docs
     // legitimately say "miner hotkey" / "validator hotkey path".
