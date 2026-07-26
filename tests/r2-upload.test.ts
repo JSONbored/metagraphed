@@ -225,3 +225,66 @@ test("R2 upload still fails once the 429 retry budget is exhausted", async () =>
     /429/,
   );
 });
+
+// #8261 follow-up: the Cloudflare rate gate must not pace a local mock. The
+// full-manifest upload in tests/artifacts.test.ts is thousands of HEAD+PUT
+// pairs -- at the production default of 3.5 rps that run took hours and blew
+// its 30s timeout, so the gate defaults OFF whenever METAGRAPH_R2_API_BASE_URL
+// points somewhere other than the real Cloudflare API.
+test("the rate gate does not pace uploads aimed at a non-Cloudflare base URL", async () => {
+  const manifest = JSON.parse(
+    readFileSync(`${r2StagingRoot}/r2-manifest.json`, "utf8"),
+  );
+  const remoteManifest = {
+    ...manifest,
+    artifacts: manifest.artifacts.map(
+      (artifact: Record<string, unknown>, index: number) =>
+        index === 0 ? { ...artifact, sha256: "0".repeat(64) } : artifact,
+    ),
+  };
+  let puts = 0;
+  server = http.createServer((req, res) => {
+    if (req.method === "GET") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(remoteManifest));
+      return;
+    }
+    if (req.method === "HEAD") {
+      res.writeHead(404).end();
+      return;
+    }
+    if (req.method === "PUT") {
+      puts += 1;
+      req.resume();
+      req.on("end", () => res.writeHead(200).end());
+      return;
+    }
+    res.writeHead(405).end();
+  });
+  await new Promise<void>((resolve) => server!.listen(0, resolve));
+  const port = (server.address() as AddressInfo).port;
+
+  const started = Date.now();
+  await execFileAsync(process.execPath, ["scripts/r2-upload.ts", "--write"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CLOUDFLARE_ACCOUNT_ID: "test-account",
+      CLOUDFLARE_API_TOKEN: "test-token",
+      METAGRAPH_ALLOW_R2_UPLOAD: "1",
+      METAGRAPH_R2_API_BASE_URL: `http://127.0.0.1:${port}`,
+      METAGRAPH_R2_UPLOAD_HISTORY: "1",
+      METAGRAPH_R2_UPLOAD_LIMIT: "12",
+      // Deliberately NOT setting METAGRAPH_R2_UPLOAD_MAX_RPS -- the point is
+      // that the default is unpaced against a mock host.
+    },
+  });
+  const elapsed = Date.now() - started;
+  // 24 objects (12 artifacts x latest+history) would need ~6.6s at 3.5 rps.
+  assert.ok(puts >= 12, `expected >=12 PUTs, saw ${puts}`);
+  assert.ok(
+    elapsed < 6000,
+    `unpaced run took ${elapsed}ms — gate did not disable`,
+  );
+});
