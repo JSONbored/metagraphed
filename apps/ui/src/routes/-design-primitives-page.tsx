@@ -374,7 +374,7 @@ function TokensSection({
         </Panel>
         <Panel title="Radius scale" caption="rounded-* (#7843)">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {RADIUS_TOKENS.map(([cls, desc]) => (
+            {RADIUS_TOKENS.map(([cls]) => (
               <div key={cls} className="flex flex-col items-center gap-1.5 p-2">
                 <span className={`size-10 border border-accent/60 bg-accent/10 ${cls}`} />
                 <span className="mg-type-micro text-ink-muted text-center">{cls}</span>
@@ -906,6 +906,23 @@ function InteractionSection({
               </tbody>
             </table>
           </ResponsiveTable>
+          {/* ScrollShadow was imported and named in this Show's label but only
+              demonstrated indirectly, via ResponsiveTable's internal use of it
+              (#8294). A design-system reference should show the primitive
+              itself, so here it is standalone — scroll it to see the edge fades
+              appear and disappear per edge. */}
+          <ScrollShadow className="mt-3">
+            <div className="flex w-max items-center gap-2 py-1">
+              {Array.from({ length: 24 }, (_, i) => (
+                <span
+                  key={i}
+                  className="whitespace-nowrap rounded border border-border bg-surface px-2 py-1 mg-type-caption text-ink-muted"
+                >
+                  scrollable item {i + 1}
+                </span>
+              ))}
+            </div>
+          </ScrollShadow>
         </Show>
         <Show name="ListShell, LoadMore">
           <ListShell

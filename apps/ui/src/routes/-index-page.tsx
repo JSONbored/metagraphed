@@ -18,7 +18,6 @@ import {
   ScrollReveal,
   Sparkline,
 } from "@jsonbored/ui-kit";
-import { SubnetPulseGrid } from "@/components/metagraphed/charts/subnet-pulse-grid";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 import { MoversBand } from "@/components/metagraphed/movers-band";

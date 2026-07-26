@@ -5,7 +5,6 @@ import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { ExternalLink, HoverPreview, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "./states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { formatRelative } from "@/lib/metagraphed/format";
 import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
 
 interface Props {

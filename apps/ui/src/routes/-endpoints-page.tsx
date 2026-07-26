@@ -31,7 +31,6 @@ import { EndpointOperationalList } from "@/components/metagraphed/endpoint-opera
 import { EndpointComparePanel } from "@/components/metagraphed/endpoint-compare-panel";
 
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
 import { IncidentsTimeline } from "@/components/metagraphed/analytics/incidents-timeline";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";

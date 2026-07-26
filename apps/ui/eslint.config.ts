@@ -224,7 +224,23 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      // ON, matching the root config. It was "off" purely because the Vite/
+      // Lovable scaffold shipped it that way when the UI came into the
+      // monorepo (#3190) -- combined with tsconfig's noUnusedLocals:false that
+      // left this package with NO unused-code detection at all, so an
+      // imported-but-never-rendered component was invisible to build, lint and
+      // review. Enabling it surfaced a subnet-detail share affordance and a
+      // homepage chart that had been silently orphaned (#8294).
+      // argsIgnorePattern keeps deliberate signature placeholders legal.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
       // Bone & Ink design-system guardrails. See CONTRIBUTING.md.
       // "warn", not "error": a full-codebase audit (2026-07-23) found 2177
       // pre-existing violations across 201 files -- tightening to "error" now
