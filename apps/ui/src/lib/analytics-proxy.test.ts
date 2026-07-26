@@ -169,6 +169,71 @@ describe("forwardToAnalyticsHost", () => {
     expect(response.status).toBe(200);
   });
 
+  it("forwards a session-replay snapshot far above the event cap (#7761 replay was being dropped)", async () => {
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 200 }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    // 512 KiB: a realistic rrweb full-snapshot flush on a dense page. Would
+    // have 413'd under the 64 KiB event cap, silently losing the recording.
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/s/`, {
+      method: "POST",
+      headers: { "content-length": String(512 * 1024) },
+      body: "{}",
+    });
+    const response = await forwardToAnalyticsHost(request, "/s/");
+
+    expect(response.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  it("still bounds session-replay bodies at their own larger cap", async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/s/`, {
+      method: "POST",
+      headers: { "content-length": String(2 * 1024 * 1024 + 1) },
+      body: "{}",
+    });
+    const response = await forwardToAnalyticsHost(request, "/s/");
+
+    expect(response.status).toBe(413);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not extend the replay cap to event paths that merely start with s", async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    // `/static/` is asset-routed elsewhere, but guard the regex anyway: only
+    // the exact `/s/` recording path gets the larger ceiling.
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/survey/`, {
+      method: "POST",
+      headers: { "content-length": String(64 * 1024 + 1) },
+      body: "{}",
+    });
+    const response = await forwardToAnalyticsHost(request, "/survey/");
+
+    expect(response.status).toBe(413);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("applies the replay cap when /s/ carries a query string", async () => {
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch;
+
+    const request = new Request(
+      `https://metagraph.sh${ANALYTICS_PREFIX}/s/?ver=1.0.0&compression=gzip-js`,
+      {
+        method: "POST",
+        headers: { "content-length": String(512 * 1024) },
+        body: "{}",
+      },
+    );
+    const response = await forwardToAnalyticsHost(request, "/s/?ver=1.0.0&compression=gzip-js");
+
+    expect(response.status).toBe(200);
+  });
+
   it("sends no body for GET/HEAD", async () => {
     let sawBody: unknown;
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
