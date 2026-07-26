@@ -78,7 +78,7 @@ export function IntegrabilityBoard() {
               <span className="mg-label">% of subnets</span>
             </div>
             <BarMini data={dimensionData} max={100} />
-            <p className="mt-2 text-[11px] text-ink-muted">
+            <p className="mt-2 mg-type-caption text-ink-muted">
               Lowest-coverage dimensions first — the biggest gaps to fill.
             </p>
           </Panel>
@@ -93,7 +93,7 @@ export function IntegrabilityBoard() {
               <span className="mg-label">subnets</span>
             </div>
             <BarMini data={distribution} />
-            <p className="mt-2 text-[11px] text-ink-muted">
+            <p className="mt-2 mg-type-caption text-ink-muted">
               How subnet completeness scores are distributed across the registry.
             </p>
           </Panel>

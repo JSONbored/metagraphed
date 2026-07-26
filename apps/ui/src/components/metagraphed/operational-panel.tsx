@@ -207,7 +207,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                   Endpoint mosaic · {endpoints.length}
                   <InfoTooltip label="One cell per tracked endpoint, colored by the last probe result: ok (2xx within latency budget), warn (slow / intermittent 5xx), down (consecutive failures), or unknown (no probe in window). Source: /api/v1/subnets/{netuid}/endpoints joined with /health. Stale snapshots still render — check the panel's `updated` stamp." />
                 </span>
-                <span className="font-mono text-[9.5px] text-ink-muted/80">
+                <span className="mg-type-data-sm text-ink-muted/80">
                   one cell = one tracked endpoint, colored by last probe
                 </span>
               </div>
@@ -221,6 +221,11 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                     <TooltipTrigger asChild>
                       <span
                         className={classNames(
+                          // CONTRIBUTING.md documents the status-mosaic micro-radius
+                          // as a standing sub-token residual: every named step on the
+                          // approved scale is visually much larger and would
+                          // materially change this dense per-cell grid.
+                          // eslint-disable-next-line no-restricted-syntax -- documented dense-grid exception
                           "size-3 rounded-[2px] border border-border/40",
                           (e.health ?? "unknown") === "ok" && "bg-health-ok",
                           (e.health ?? "") === "warn" && "bg-health-warn",
@@ -249,7 +254,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               <div className="flex items-center justify-between gap-2 border-b border-border bg-paper/40 px-4 py-2">
                 <div>
                   <div className="mg-type-micro text-ink-strong">Health trend</div>
-                  <div className="font-mono text-[9.5px] text-ink-muted/80">
+                  <div className="mg-type-data-sm text-ink-muted/80">
                     uptime &amp; latency over the selected window, with incident markers
                     {healthRes?.meta?.generated_at
                       ? ` · ${formatFreshness(healthRes.meta.generated_at) ?? ""}`
@@ -285,7 +290,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               ) : incidents.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border bg-paper/40 px-3 py-6 text-center">
                   <div className="mg-type-micro text-ink-muted">Clean history</div>
-                  <div className="mt-1 text-[11px] text-ink-muted">
+                  <div className="mt-1 mg-type-caption text-ink-muted">
                     No incidents recorded for this subnet.
                   </div>
                 </div>
@@ -437,7 +442,7 @@ function Stat({
           </div>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-xs text-[11px] leading-relaxed">
+      <TooltipContent side="bottom" className="max-w-xs mg-type-caption leading-relaxed">
         {hint}
       </TooltipContent>
     </Tooltip>

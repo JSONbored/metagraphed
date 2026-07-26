@@ -18,6 +18,7 @@ import {
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -362,11 +363,14 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       className="hidden md:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
     >
       {/* Input */}
-      <div
+      <Panel
+        as="div"
+        flush
         className={classNames(
-          "inline-flex w-full items-center gap-2 rounded-full border bg-card pl-3 pr-2 py-2 text-left text-sm transition-all min-h-10",
-          open ? "border-accent/60 ring-2 ring-accent/20" : "border-border hover:border-accent/40",
+          "w-full !rounded-full text-left text-sm transition-all",
+          open ? "!border-accent/60 ring-2 ring-accent/20" : "hover:border-accent/40",
         )}
+        bodyClassName="inline-flex w-full items-center gap-2 !pl-3 !pr-2 !py-2 min-h-10"
       >
         <Search className="size-3.5 shrink-0 text-ink-muted" />
         <input
@@ -387,7 +391,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           aria-activedescendant={activeOptionId}
           className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-sm"
         />
-      </div>
+      </Panel>
 
       {/* Dropdown — wider than the input, right-aligned */}
       {open ? (
@@ -414,7 +418,9 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                         <span className="block mg-type-caption font-medium text-ink-strong truncate">
                           {r.label}
                         </span>
-                        <span className="block text-[10px] text-ink-muted truncate">{r.hint}</span>
+                        <span className="block mg-type-caption text-ink-muted truncate">
+                          {r.hint}
+                        </span>
                       </span>
                     </Link>
                   ))}
@@ -422,7 +428,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
               </div>
 
               <div className="mx-3 mb-2 rounded-md border border-border/60 mg-glass-soft px-3 py-2">
-                <p className="text-[11px] text-ink-muted leading-relaxed">
+                <p className="mg-type-caption text-ink-muted leading-relaxed">
                   <span className="font-medium text-ink">Paste anything:</span> wallet address
                   (ss58), block number, transaction hash (0x…) or block hash to jump directly.
                 </p>
@@ -444,7 +450,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                           setOpen(true);
                           inputRef.current?.focus();
                         }}
-                        className="rounded-full border border-border bg-card px-2.5 py-0.5 text-[11px] text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors"
+                        className="rounded-full border border-border bg-card px-2.5 py-0.5 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors"
                       >
                         {r}
                       </button>

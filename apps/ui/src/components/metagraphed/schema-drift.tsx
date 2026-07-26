@@ -90,15 +90,13 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
           ))}
         </div>
         {drift.length > 0 ? (
-          <ul className="mt-2 space-y-0.5 text-[11px] text-ink-muted">
+          <ul className="mt-2 space-y-0.5 mg-type-caption text-ink-muted">
             {drift.slice(0, 3).map((s) => (
               <li key={s.id} className="truncate font-mono">
                 · {s.name ?? s.url}
               </li>
             ))}
-            {drift.length > 3 ? (
-              <li className="text-[10px]">+ {drift.length - 3} more changed</li>
-            ) : null}
+            {drift.length > 3 ? <li>+ {drift.length - 3} more changed</li> : null}
           </ul>
         ) : null}
       </Panel>

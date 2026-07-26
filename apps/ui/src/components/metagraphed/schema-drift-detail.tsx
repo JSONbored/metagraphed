@@ -192,7 +192,7 @@ function EvidenceSection({
               {l.label}
             </span>
             {l.href.startsWith("http") ? (
-              <ExternalLink href={l.href} className="truncate text-[11px]">
+              <ExternalLink href={l.href} className="truncate mg-type-data">
                 <span className="inline-flex items-center gap-1">
                   <ExternalIcon className="size-3" />
                   <span className="truncate">{l.href}</span>
@@ -204,7 +204,7 @@ function EvidenceSection({
             <button
               type="button"
               onClick={() => onCopy(l.href)}
-              className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 text-[10px] text-ink-muted hover:text-ink-strong"
+              className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted hover:text-ink-strong"
               aria-label={`Copy ${l.label}`}
             >
               {copied ? <Check className="size-3 text-health-ok" /> : <Copy className="size-3" />}

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BrandIcon } from "@jsonbored/ui-kit";
+import { BrandIcon, ExternalLink } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { adapterQuery } from "@/lib/metagraphed/queries";
 
@@ -63,10 +63,9 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
           const sharePct = typeof row.emission_share === "number" ? row.emission_share * 100 : null;
           return (
             <li key={row.repository}>
-              <a
+              <ExternalLink
+                bare
                 href={repoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="mg-row-hover flex items-center justify-between gap-2 rounded-md px-2 py-1.5"
               >
                 <span className="flex min-w-0 items-center gap-2">
@@ -79,20 +78,19 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
                 <span className="shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
                   {sharePct !== null ? `${sharePct.toFixed(1)}%` : "—"}
                 </span>
-              </a>
+              </ExternalLink>
             </li>
           );
         })}
       </ol>
       {total && total > rows.length ? (
-        <a
+        <ExternalLink
+          bare
           href="https://gittensor.io/repositories"
-          target="_blank"
-          rel="noopener noreferrer"
           className="mt-2 block text-center text-xs text-accent hover:underline"
         >
           View all {total} registered repositories →
-        </a>
+        </ExternalLink>
       ) : null}
     </Panel>
   );
