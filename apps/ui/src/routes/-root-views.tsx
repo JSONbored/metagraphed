@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Toaster } from "@jsonbored/ui-kit";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { initAnalytics, capturePageview } from "../lib/analytics";
+import { initAnalytics, capturePageview, syncReplayPolicy } from "../lib/analytics";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
@@ -301,8 +301,14 @@ export function RootComponent() {
   useEffect(() => {
     initAnalytics();
     capturePageview(window.location.href);
+    // Session replay must follow the route, not just the initial load
+    // (#8270) -- a client-side navigation into /settings would otherwise keep
+    // recording a page that renders API keys and signing secrets.
+    syncReplayPolicy(window.location.pathname);
     return router.subscribe("onResolved", (event) => {
-      if (event.hrefChanged) capturePageview(window.location.href);
+      if (!event.hrefChanged) return;
+      capturePageview(window.location.href);
+      syncReplayPolicy(window.location.pathname);
     });
   }, [router]);
 

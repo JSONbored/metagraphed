@@ -8,6 +8,7 @@ const init = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
 const captureExceptionSpy = vi.hoisted(() => vi.fn());
 const startSessionRecording = vi.hoisted(() => vi.fn());
+const stopSessionRecording = vi.hoisted(() => vi.fn());
 const onFeatureFlags = vi.hoisted(() => vi.fn());
 const isFeatureEnabledSpy = vi.hoisted(() => vi.fn());
 
@@ -17,6 +18,7 @@ vi.mock("posthog-js", () => ({
     capture,
     captureException: captureExceptionSpy,
     startSessionRecording,
+    stopSessionRecording,
     onFeatureFlags,
     isFeatureEnabled: isFeatureEnabledSpy,
   },
@@ -29,6 +31,7 @@ describe("analytics (PostHog web analytics)", () => {
     capture.mockClear();
     captureExceptionSpy.mockClear();
     startSessionRecording.mockClear();
+    stopSessionRecording.mockClear();
     onFeatureFlags.mockClear();
     isFeatureEnabledSpy.mockClear();
   });
@@ -288,5 +291,106 @@ describe("analytics (PostHog web analytics)", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(capture).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("session-replay route policy (#8270)", () => {
+  // The dashboard-side URL blocklist shipped four rules that were all inert
+  // (invalid regex / glob-as-regex), so /settings -- which renders minted API
+  // keys and webhook signing secrets -- was being recorded. This policy owns
+  // the list in code so it can't depend on dashboard state again.
+  beforeEach(() => {
+    // Earlier suites in this file stub `window`/`document` away to exercise
+    // the SSR paths; clear that first or this block's own stubs stack on top
+    // of a half-removed global and posthog.init throws into loadPostHog's
+    // catch, leaving the policy with a null client and no spy calls.
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    // mockReset, not mockClear: the "init failure never throws" case above
+    // installs a throwing implementation, and mockClear only wipes the call
+    // log -- the implementation survives into this block and sends every
+    // loadPostHog() straight to its catch, yielding a null client.
+    init.mockReset();
+    startSessionRecording.mockReset();
+    stopSessionRecording.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("blocks the routes that render secrets, and their subpaths", async () => {
+    const { isReplayBlockedRoute } = await import("./analytics");
+    expect(isReplayBlockedRoute("/settings")).toBe(true);
+    expect(isReplayBlockedRoute("/settings/")).toBe(true);
+    expect(isReplayBlockedRoute("/settings/api-keys")).toBe(true);
+    expect(isReplayBlockedRoute("/portfolio")).toBe(true);
+  });
+
+  it("does not block public routes, including the /admin-changes near-miss", async () => {
+    const { isReplayBlockedRoute } = await import("./analytics");
+    // A loose substring rule would wrongly suppress this PUBLIC route.
+    expect(isReplayBlockedRoute("/admin-changes")).toBe(false);
+    expect(isReplayBlockedRoute("/settings-guide")).toBe(false);
+    expect(isReplayBlockedRoute("/subnets/74")).toBe(false);
+    expect(isReplayBlockedRoute("/")).toBe(false);
+    expect(isReplayBlockedRoute(null)).toBe(false);
+    expect(isReplayBlockedRoute(undefined)).toBe(false);
+  });
+
+  it("never starts a recording when the first load is a blocked route", async () => {
+    vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+    vi.stubGlobal("window", { location: { pathname: "/settings" } });
+    const { initAnalytics } = await import("./analytics");
+    initAnalytics();
+    await vi.waitFor(() => expect(init).toHaveBeenCalled());
+    expect(init.mock.calls[0][1].disable_session_recording).toBe(true);
+  });
+
+  it("leaves recording enabled at init on a public route", async () => {
+    vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+    vi.stubGlobal("window", { location: { pathname: "/subnets" } });
+    const { initAnalytics } = await import("./analytics");
+    initAnalytics();
+    await vi.waitFor(() => expect(init).toHaveBeenCalled());
+    expect(init.mock.calls[0][1].disable_session_recording).toBe(false);
+  });
+
+  it("stops recording when navigating into a blocked route, and resumes on the way out", async () => {
+    vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+    vi.stubGlobal("window", { location: { pathname: "/subnets" } });
+    const { syncReplayPolicy } = await import("./analytics");
+
+    syncReplayPolicy("/settings");
+    await vi.waitFor(() => expect(stopSessionRecording).toHaveBeenCalledTimes(1));
+    expect(startSessionRecording).not.toHaveBeenCalled();
+
+    syncReplayPolicy("/subnets");
+    await vi.waitFor(() => expect(startSessionRecording).toHaveBeenCalledTimes(1));
+    // Never the force-override form: a visitor excluded by sampleRate must
+    // stay excluded (captureException is the only caller allowed to force).
+    expect(startSessionRecording).toHaveBeenCalledWith();
+  });
+
+  it("does not resume a recording it never stopped", async () => {
+    vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+    vi.stubGlobal("window", { location: { pathname: "/subnets" } });
+    const { syncReplayPolicy } = await import("./analytics");
+    syncReplayPolicy("/subnets");
+    syncReplayPolicy("/blocks");
+    await vi.waitFor(() => expect(init).toHaveBeenCalled());
+    expect(startSessionRecording).not.toHaveBeenCalled();
+    expect(stopSessionRecording).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op when unconfigured", async () => {
+    vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "");
+    const { syncReplayPolicy } = await import("./analytics");
+    syncReplayPolicy("/settings");
+    await new Promise((r) => setTimeout(r, 10));
+    expect(init).not.toHaveBeenCalled();
+    expect(stopSessionRecording).not.toHaveBeenCalled();
   });
 });
