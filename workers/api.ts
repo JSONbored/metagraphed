@@ -4464,7 +4464,21 @@ async function handleApiRequest(
     request,
     envelopePayload,
     matched.cache as CacheProfile,
-    linkValue ? { link: linkValue } : {},
+    {
+      ...(linkValue ? { link: linkValue } : {}),
+      // #8301: the artifact diagnostics were set by the RAW /metagraph/*.json
+      // builder only, so an /api/v1 consumer could not tell a fresh R2 read
+      // from a committed-asset fallback or a pointer-miss fallback -- the exact
+      // distinctions that mattered during the 2026-07-26 outage (#8276). All
+      // three are already in the CORS expose list; the envelope path just never
+      // set them, which is also what silently blinded the resolution alarm
+      // (#8287) until #8299 repointed it. envelopeResponse drops null/undefined
+      // entries, so a live-overlay response with no artifact behind it simply
+      // omits them rather than asserting a tier it did not read.
+      "x-metagraph-artifact-source": artifact.source,
+      "x-metagraph-storage-tier": artifact.storage_tier,
+      [X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER]: artifact.resolution,
+    },
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
   // are skipped even when their live store is cold and the response falls back
