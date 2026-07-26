@@ -35,6 +35,13 @@ export const tableSearchSchema = z.object({
   // only narrow rows the server already sent, so it would be inert by
   // construction; it belongs here only once that route serves non-active rows.
   includeRoot: fallback(z.boolean(), true).default(true),
+  // #8248: client-only "Watched" quick-tab -- narrows the list to rows
+  // starred in the localStorage watchlist (lib/metagraphed/watchlist.ts).
+  // Optional/additive so pages that don't offer a watchlist never set it.
+  watched: fallback(z.boolean(), false).default(false),
+  // #8248: domains rollup chip filter (subnets belonging to a capability
+  // domain from GET /api/v1/domains). Optional/additive, same as `watched`.
+  domain: fallback(z.string(), "").default(""),
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
   view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),

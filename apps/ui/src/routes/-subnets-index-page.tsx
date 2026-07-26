@@ -1,9 +1,9 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useSuspenseInfiniteQuery, useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getTaoMarket } from "@/lib/metagraphed/market.functions";
-import { z } from "zod";
-import { Network, Radio, Layers, Activity, Coins, Server } from "lucide-react";
+import { Coins, Layers, Server, Star } from "lucide-react";
 import {
   AsyncPanel,
   Chip,
@@ -41,8 +41,6 @@ import {
   DownloadCsvButton,
   ActionBar,
   ListShell,
-  LoadMore,
-  StatTile,
   SparkLegend,
   MiniStack,
   Sparkline,
@@ -54,12 +52,10 @@ import {
 } from "@jsonbored/ui-kit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useInView } from "@/hooks/use-in-view";
-import { SubnetsHighlights } from "@/components/metagraphed/subnets-highlights";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
   ariaSort,
   FilterChip,
-  PageSizeSelect,
   ResetFiltersButton,
   SortHeader,
 } from "@/components/metagraphed/table-controls";
@@ -69,16 +65,15 @@ import {
   CompareToggle,
 } from "@/components/metagraphed/subnets-compare-drawer";
 import {
-  subnetsInfiniteQuery,
+  subnetsQuery,
   coverageQuery,
   healthQuery,
   subnetHealthMapQuery,
   agentCatalogMapQuery,
   economicsQuery,
-  economicsTrendsQuery,
   subnetHistoryQuery,
   subnetTrajectoryQuery,
-  metagraphedQueryKey,
+  domainsQuery,
 } from "@/lib/metagraphed/queries";
 import {
   classNames,
@@ -89,15 +84,17 @@ import {
   formatSubnetAge,
 } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import {
-  joinEconomics,
-  joinHealth,
-  matchesQuery,
-  sortBy,
-  tableSearchSchema,
-} from "@/lib/metagraphed/url-state";
+import { joinEconomics, joinHealth, matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
+
+// #8248: fetch every active subnet in one shot instead of cursor-paginating --
+// the whole list (129 rows) is virtualized client-side, so there is no
+// "Load more" tier anymore. 200 comfortably exceeds the live subnet count
+// (verified: GET /api/v1/subnets?limit=200 already returns all 129 with
+// next_cursor: null) with headroom for registry growth.
+const ALL_ROWS_LIMIT = 200;
 
 // #9: a list row enriched with its agent-catalog capability fields (flattened
 // from the netuid-keyed catalog map so client-side sort/filter can read them).
@@ -124,16 +121,24 @@ type SubnetRow = Subnet & {
 // (source/profile/updated) is opt-in via the column customizer. Renames
 // "Curation → Source" and "Readiness → Profile" so headers don't read like
 // dev-tool jargon; the underlying filter/sort keys are unchanged.
+// #8248: column diet. Default set matches the issue's 8 named columns
+// (star/Subnet/Price+spark are structural, not toggleable); the long tail
+// (Symbol/Surfaces/Source/Profile/Reg. cost/Market cap/Updated) stays
+// available via the column customizer, just off by default. PARTICIPANTS is
+// gone outright, not hidden -- it read 256 for essentially every row (the
+// registered-UID cap, not a real signal) and had no customizer escape hatch
+// worth keeping for a column that carries zero information.
 const SUBNET_COLUMNS: ColumnDef[] = [
   { id: "netuid", label: "UID", required: true },
   { id: "name", label: "Name", required: true },
   { id: "alphaPrice", label: "Price (α)", defaultVisible: true },
-  { id: "marketCap", label: "Market cap", defaultVisible: true },
-  { id: "emission", label: "Emission" },
+  { id: "priceChange", label: "24h/7d %", defaultVisible: true },
+  { id: "emission", label: "Emission", defaultVisible: true },
   { id: "totalStake", label: "Total stake", defaultVisible: true },
-  { id: "participants", label: "Participants" },
-  { id: "registration", label: "Reg. cost" },
-  { id: "health", label: "Health" },
+  { id: "health", label: "Health", defaultVisible: true },
+  { id: "age", label: "Age", defaultVisible: true },
+  { id: "marketCap", label: "Market cap", defaultVisible: false },
+  { id: "registration", label: "Reg. cost", defaultVisible: false },
   { id: "symbol", label: "Symbol", defaultVisible: false },
   { id: "surfaces", label: "Surfaces", defaultVisible: false },
   { id: "curation", label: "Source", defaultVisible: false },
@@ -158,16 +163,6 @@ function joinCatalog(
   });
 }
 
-type SubnetsSearch = z.infer<typeof tableSearchSchema>;
-
-/** Server-backed params only — sort/curation/health filters are client-side. */
-function subnetsQueryParams(search: SubnetsSearch): { q?: string; limit: number } {
-  return {
-    q: search.q || undefined,
-    limit: search.limit,
-  };
-}
-
 export function SubnetsPage() {
   const search = useSearch({ from: "/subnets/" });
   const navigate = useNavigate({ from: "/subnets/" });
@@ -180,13 +175,14 @@ export function SubnetsPage() {
     !!search.readiness ||
     !!search.kind ||
     !!search.stale ||
-    !!search.cursor ||
+    !!search.domain ||
+    !!search.watched ||
     // #6270: defaults to true, so hiding the root is what makes it "active" —
     // without this the Reset button stays disabled while a filter is applied.
     !search.includeRoot;
   const onReset = () =>
     navigate({
-      search: { limit: search.limit, view: search.view } as never,
+      search: { view: search.view } as never,
       replace: true,
     });
   const setView = (v: ViewMode) =>
@@ -206,7 +202,7 @@ export function SubnetsPage() {
       search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
       replace: true,
     });
-  const subnetsCsvUrl = buildUrl("/api/v1/subnets", subnetsQueryParams(search));
+  const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: ALL_ROWS_LIMIT });
   return (
     <AppShell>
       <PageMasthead
@@ -227,38 +223,17 @@ export function SubnetsPage() {
           </>
         }
       />
-      <AsyncPanel
-        context="registry highlights"
-        fallback={
-          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-          </div>
-        }
-        retryQueryKeys={[
-          metagraphedQueryKey("health"),
-          metagraphedQueryKey("coverage"),
-          metagraphedQueryKey("freshness"),
-          metagraphedQueryKey("schemas"),
-        ]}
-      >
-        <SubnetsHighlights />
-      </AsyncPanel>
+      {/* #8248: masthead trim -- the old nine meta-cards (SubnetsHighlights +
+          a 5-tile SubnetsStatStrip) pushed the table ~1,700px down on mobile
+          and led with an incident card, before any actionable content. Ops
+          signals (incidents/drift/pilot counts) now live only on their owning
+          pages (/apis/endpoints, /status); this page keeps at most 4 inline
+          facts a reader of a SUBNET list actually wants first. */}
       <AsyncPanel
         context="subnets summary"
-        fallback={
-          <div className="flex flex-wrap gap-3 mb-6 [&>*]:grow [&>*]:basis-[160px]">
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-            <PanelSkeleton height="xs" />
-          </div>
-        }
+        fallback={<PanelSkeleton height="xs" className="mb-4" />}
       >
-        <SubnetsStatStrip />
+        <SubnetsCompactStats />
       </AsyncPanel>
       <SubnetsSavedViews />
       <AsyncPanel
@@ -273,97 +248,135 @@ export function SubnetsPage() {
       >
         <SubnetsTable view={search.view} density={effectiveDensity} />
       </AsyncPanel>
-      <ApiSourceFooter paths={["/api/v1/subnets"]} artifacts={["/metagraph/subnets.json"]} />
+      <AsyncPanel
+        context="domains rollup"
+        fallback={<PanelSkeleton height="sm" className="mt-6" />}
+      >
+        <SubnetsDomainsRollup />
+      </AsyncPanel>
+      <ApiSourceFooter
+        paths={["/api/v1/subnets", "/api/v1/domains"]}
+        artifacts={["/metagraph/subnets.json"]}
+      />
       <SubnetsCompareDrawer />
       <BackToTop />
     </AppShell>
   );
 }
 
-function SubnetsStatStrip() {
-  const coverage = useSuspenseQuery(coverageQuery()).data.data ?? {};
-  const health = useSuspenseQuery(healthQuery()).data.data ?? {};
-  // #6271: the network-wide total-stake series already powers /explorer's
-  // "Network economics trend" section (EconomicsTrendsSection's MiniSeries,
-  // #3365) via the same GET /api/v1/economics/trends source (subnet_snapshots
-  // rollup) -- reused here as a StatTile + Sparkline rather than a static
-  // number, matching the issue's own "trend" framing and the existing
-  // Alpha-price StatTile+Sparkline precedent in economics-panel.tsx. days[] is
-  // newest-first (see explorer.tsx's own chrono = [...days].reverse()).
-  const trends = useSuspenseQuery(economicsTrendsQuery()).data.data;
-  // Partial/empty API payloads are a normal data state, not a render error.
-  // Never let a missing `days` collection take down the whole route.
-  const trendDays = trends?.days ?? [];
-  const stakeSeries = [...trendDays].reverse().map((d) => d.total_stake_tao ?? 0);
-  const latestTotalStake = trendDays[0]?.total_stake_tao ?? undefined;
-  // Wired to the live /api/v1/coverage shape (same as CoverageFunnel): the older
-  // netuids_active/netuids_total/adapter_backed fields are null on the live payload.
+// #8248: masthead trim -- Active / Healthy / Total stake / freshness (only
+// when late), inline, no cards. Active + Healthy read the same
+// coverage/health sources SubnetsHighlights used; the "Healthy" figure is
+// endpoint-level (probed surfaces), matching the header ribbon's own
+// "endpoints up N/M" convention, not a subnet count.
+function SubnetsCompactStats() {
+  const coverageRes = useSuspenseQuery(coverageQuery());
+  const healthRes = useSuspenseQuery(healthQuery());
+  const coverage = coverageRes.data.data ?? {};
+  const health = healthRes.data.data ?? {};
   const active =
     (coverage.netuids_active as number | undefined) ??
     (coverage.chain_subnet_count as number | undefined);
   const total =
     (coverage.netuids_total as number | undefined) ??
     (coverage.chain_subnet_count as number | undefined);
-  const adapter =
-    (coverage.curation_level_counts as Record<string, number> | undefined)?.["adapter-backed"] ??
-    (coverage.adapter_backed as number | undefined);
-  // "Manifested surfaces" = total surfaces declared in the registry. The legacy
-  // `manifested_count` is hard-0 on the live payload (deprecated) and `??` won't
-  // skip a real 0, so it silently zeroed the tile; `surface_count` is the live
-  // total. (`curated_overlay_count` is a subnet count — wrong unit for surfaces.)
-  const manifested =
-    (coverage.surface_count as number | undefined) ??
-    (coverage.manifested_count as number | undefined) ??
-    (coverage.surfaces_total as number | undefined);
-  const ok = health.ok;
-  const totalH = health.total;
-  const healthyOk = ok != null && totalH != null && totalH > 0 && ok / totalH > 0.9;
+  const ok = health.ok as number | undefined;
+  const totalH = health.total as number | undefined;
+  // #3363-adjacent: total stake summed from the same live economics rows the
+  // table's Total stake column reads, so the masthead figure and the column
+  // total can never diverge from a second source.
+  const economicsRes = useQuery(economicsQuery());
+  const totalStake = (economicsRes.data?.data ?? []).reduce(
+    (sum, e) => sum + (e.total_stake_tao ?? 0),
+    0,
+  );
+  const generatedAt = coverageRes.data.meta?.generated_at ?? healthRes.data.meta?.generated_at;
+  const stale = isStaleFreshness(generatedAt);
   return (
-    // Flex-wrap (not grid) so a trailing partial row's tiles stretch to fill
-    // the row instead of leaving an orphaned single tile — grid tracks are
-    // shared across every row, but flex lines size independently. Same
-    // pattern as economics-panel.tsx's own StatTile strip and the stat spine
-    // in subnet-masthead.tsx/operational-panel.tsx.
-    <div className="flex flex-wrap gap-3 mb-6 [&>*]:grow [&>*]:basis-[160px]">
-      <StatTile
-        icon={Network}
-        eyebrow="Active subnets"
-        value={formatNumber(active)}
-        hint={total ? `of ${formatNumber(total)}` : undefined}
-      />
-      <StatTile
-        icon={Radio}
-        eyebrow="Adapter-backed"
-        value={formatNumber(adapter)}
-        hint="pilots"
-        tone="accent"
-      />
-      <StatTile icon={Layers} eyebrow="Manifested surfaces" value={formatNumber(manifested)} />
-      <StatTile
-        icon={Activity}
-        eyebrow="Healthy"
-        value={ok != null && totalH ? `${formatNumber(ok)}/${formatNumber(totalH)}` : "—"}
-        tone={healthyOk ? "ok" : "default"}
-      />
-      <StatTile
-        icon={Coins}
-        eyebrow="Total stake"
-        value={formatTao(latestTotalStake)}
-        hint="network-wide"
-        tone="accent"
-        chart={
-          stakeSeries.length > 1 ? (
-            <Sparkline
-              values={stakeSeries}
-              width={64}
-              height={28}
-              formatValue={formatTao}
-              ariaLabel="Total stake trend"
-            />
-          ) : undefined
-        }
-      />
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 mg-type-data text-ink-muted">
+      <span>
+        <span className="font-medium text-ink-strong">{formatNumber(active)}</span> active
+        {total ? ` of ${formatNumber(total)}` : ""}
+      </span>
+      <span aria-hidden className="text-border">
+        ·
+      </span>
+      <span>
+        Healthy{" "}
+        <span className="font-medium text-ink-strong">
+          {ok != null && totalH ? `${formatNumber(ok)}/${formatNumber(totalH)}` : "—"}
+        </span>
+      </span>
+      <span aria-hidden className="text-border">
+        ·
+      </span>
+      <span>
+        Total stake{" "}
+        <span className="inline-flex items-center gap-1 font-medium text-ink-strong">
+          <Coins className="size-3.5 text-accent" aria-hidden />
+          {formatTao(totalStake)}
+        </span>
+      </span>
+      {stale ? (
+        <>
+          <span aria-hidden className="text-border">
+            ·
+          </span>
+          <span className="inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 mg-type-micro text-health-warn">
+            Data may be stale
+          </span>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+// #8248: compact domains rollup below the table (from the nav-consolidation
+// issue's domains-integration note). Each chip is both a summary and a
+// filter trigger -- clicking a domain narrows the table to its member
+// netuids via the same `domain` search param the filter-chip row clears.
+function SubnetsDomainsRollup() {
+  const { data } = useSuspenseQuery(domainsQuery());
+  const domains = data.data ?? [];
+  const navigate = useNavigate({ from: "/subnets/" });
+  const search = useSearch({ from: "/subnets/" });
+  if (domains.length === 0) return null;
+  const sorted = [...domains].sort((a, b) => (b.subnet_count ?? 0) - (a.subnet_count ?? 0));
+  return (
+    <Panel as="div" dense className="mt-6">
+      <div className="mb-2 mg-type-micro text-ink-muted">Domains</div>
+      <div className="flex flex-wrap gap-2">
+        {sorted.map((d) => {
+          const active = search.domain === d.domain;
+          return (
+            <button
+              key={d.domain}
+              type="button"
+              onClick={() =>
+                navigate({
+                  search: (prev: Record<string, unknown>) =>
+                    ({ ...prev, domain: active ? "" : d.domain }) as never,
+                  replace: true,
+                })
+              }
+              aria-pressed={active}
+              className={classNames(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 mg-type-data-sm transition-colors",
+                active
+                  ? "border-accent/60 bg-accent/10 text-ink-strong"
+                  : "border-border bg-card text-ink-muted hover:text-ink-strong",
+              )}
+            >
+              <span className="font-medium">{d.domain}</span>
+              <span className="text-ink-muted">{d.subnet_count ?? d.netuids.length}</span>
+              {d.total_stake_tao != null ? (
+                <span className="text-ink-muted">· {formatTao(d.total_stake_tao)}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </Panel>
   );
 }
 
@@ -414,20 +427,15 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // tone. Not URL-persisted (view chrome, not a filter over the row set).
   const [trendWindow, setTrendWindow] = useState<"7d" | "30d" | "90d">("7d");
 
-  // /api/v1/subnets supports only q + cursor/limit. `sort` returns HTTP 400, and
-  // `curation`/`health` are ignored server-side — so those are applied
-  // client-side (filtered/sorted over the fetched pages) and must NOT be sent.
-  const baseParams = subnetsQueryParams(search);
+  // #8248: one-shot fetch of every active subnet -- no pagination, no
+  // "Load more". /api/v1/subnets supports only q + limit server-side (`sort`
+  // returns HTTP 400, `curation`/`health` are ignored) -- everything else is
+  // applied client-side over this one page.
+  const { data, isFetching } = useSuspenseQuery(
+    subnetsQuery({ q: search.q || undefined, limit: ALL_ROWS_LIMIT }),
+  );
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    error,
-    isFetching,
-  } = useSuspenseInfiniteQuery(subnetsInfiniteQuery(baseParams, search.cursor));
+  const watchlist = useWatchlist("subnet");
 
   // Per-subnet probe health (the list rows don't carry it; join it from
   // /api/v1/health so the Health + Updated columns and the health filter work).
@@ -441,7 +449,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // degrades to an empty map" behavior. useSuspenseQuery contradicted that:
   // a failure here threw up through the table's single AsyncPanel and took
   // the entire table -- including the always-succeeding, always-real
-  // subnetsInfiniteQuery list below -- down with it.
+  // subnetsQuery list below -- down with it.
   const healthMapRaw = useQuery(subnetHealthMapQuery()).data?.data;
   const healthMap = useMemo(() => healthMapRaw ?? {}, [healthMapRaw]);
 
@@ -468,25 +476,16 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     return map;
   }, [economicsRaw]);
 
-  const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
-  const lastPage = pages[pages.length - 1];
-  const cursorInvalid = !!lastPage?.cursorInvalid;
-  // Join the fetched pages with per-subnet probe health + agent-catalog
+  // Join the fetched rows with per-subnet probe health + agent-catalog
   // capability + economics. Memoized on its real inputs so a keystroke/hover
   // that only re-renders the route doesn't re-flatten and re-clone every row.
   const all = useMemo(
     () =>
       joinEconomics(
-        joinCatalog(
-          joinHealth(
-            pages.flatMap((p) => (p.data ?? []) as Subnet[]),
-            healthMap,
-          ),
-          catalogMap,
-        ),
+        joinCatalog(joinHealth((data.data ?? []) as Subnet[], healthMap), catalogMap),
         economicsMap,
       ),
-    [pages, healthMap, catalogMap, economicsMap],
+    [data.data, healthMap, catalogMap, economicsMap],
   );
 
   // #6270: how many rows each inclusion toggle would drop, surfaced on the
@@ -497,15 +496,11 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     () => all.filter((s) => s.subnet_type === "root" || s.netuid === 0).length,
     [all],
   );
-  const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
-
-  // Treat the URL cursor as the immutable starting point for this infinite query.
-  // Updating it after fetching more pages changes the query key and drops already
-  // accumulated pages.
+  const total = data.meta?.pagination?.total ?? data.meta?.total ?? all.length;
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
       // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
       resetScroll: false,
     });
@@ -517,7 +512,6 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           ...prev,
           sort: field,
           order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
-          cursor: "",
         }) as never,
     });
 
@@ -530,6 +524,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     search.kind ||
     search.stale ||
     search.sort ||
+    search.domain ||
+    search.watched ||
     // #6270: defaults to true (include everything), so it only counts as an
     // active filter once the user has switched it OFF.
     !search.includeRoot
@@ -539,21 +535,36 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // Both are memoized on the joined rows and the exact search params they read,
   // so they only recompute when one of those actually changes — not on every
   // keystroke-driven re-render.
+  // #8248: domain membership lookup for the domains-rollup chip filter.
+  // Non-suspending join, same reasoning as healthMap/catalogMap above.
+  const domainsRaw = useQuery(domainsQuery()).data?.data;
+  const domainNetuids = useMemo(() => {
+    const found = (domainsRaw ?? []).find((d) => d.domain === search.domain);
+    return found ? new Set(found.netuids) : null;
+  }, [domainsRaw, search.domain]);
+
   const filtered = useMemo(
     () =>
       all.filter((s) => {
         if (!matchesQuery([s.netuid, s.name, s.symbol], search.q)) return false;
         if (search.curation && s.curation_level !== search.curation) return false;
-        if (search.health && s.health !== search.health) return false;
+        // "Unhealthy" is a quick-tab sentinel (warn OR down) distinct from an
+        // exact health-value match, which the Filters-sheet toggle still uses.
+        if (search.health === "unhealthy") {
+          if (s.health !== "warn" && s.health !== "down") return false;
+        } else if (search.health && s.health !== search.health) {
+          return false;
+        }
         // Capability: subnet must expose the selected service kind. Rows with no
         // catalog entry (no service_kinds) are excluded when this filter is set.
         if (search.serviceKind && !(s.service_kinds ?? []).includes(search.serviceKind))
           return false;
         if (search.readiness && s.readiness_tier !== search.readiness) return false;
-        // Mega-menu "Has APIs/docs/SSE" links (nav-mega-menu-data.ts). "api"/"sse"
-        // are agent-catalog service_kinds; "docs" has no service_kinds entry (a
-        // docs page isn't a callable service) so it checks the row's own
-        // docs_url instead — this is the one case service_kinds can't answer.
+        // Mega-menu "Has APIs/docs/SSE" links (nav-mega-menu-data.ts), also the
+        // "Has API" quick-tab. "api"/"sse" are agent-catalog service_kinds;
+        // "docs" has no service_kinds entry (a docs page isn't a callable
+        // service) so it checks the row's own docs_url instead — the one case
+        // service_kinds can't answer.
         if (search.kind === "api" && !(s.service_kinds ?? []).includes("subnet-api")) return false;
         if (search.kind === "sse" && !(s.service_kinds ?? []).includes("sse")) return false;
         if (search.kind === "docs" && !s.docs_url) return false;
@@ -567,6 +578,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         // wire `subnet_type` (netuid 0 is the root subnet by definition, so
         // it's accepted either way).
         if (!search.includeRoot && (s.subnet_type === "root" || s.netuid === 0)) return false;
+        // #8248: domains-rollup chip filter.
+        if (domainNetuids && !domainNetuids.has(s.netuid)) return false;
+        // #8248: Watched quick-tab -- localStorage watchlist, not a server field.
+        if (search.watched && !watchlist.isWatched(s.netuid)) return false;
         return true;
       }),
     [
@@ -579,6 +594,9 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       search.kind,
       search.stale,
       search.includeRoot,
+      domainNetuids,
+      search.watched,
+      watchlist,
     ],
   );
   // Smarter default: when the user hasn't clicked a column, sort by market cap
@@ -596,6 +614,29 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       ),
     [filtered, effectiveSort, effectiveOrder],
   );
+
+  // #8248: virtualize the table body -- all 129+ rows are fetched/filtered/
+  // sorted in full above (no server pagination left), but only the rows
+  // actually in view are ever mounted as real DOM `<tr>`s. Kept as genuine
+  // table rows (not absolutely-positioned or div-based) via the padding-row
+  // technique: two spacer `<tr>`s stand in for the space above/below the
+  // rendered slice, so `<thead>` sticky positioning and column alignment
+  // both keep working exactly as before. Called unconditionally (before the
+  // grid/matrix early return below) since hooks can't be conditional --
+  // grid/matrix renders just never read `rowVirtualizer`'s output.
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableScrollRef.current,
+    estimateSize: () => (density === "compact" ? 37 : 49),
+    overscan: 12,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const virtualPaddingTop = virtualRows.length > 0 ? virtualRows[0]!.start : 0;
+  const virtualPaddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1]!.end
+      : 0;
 
   // Live TAO price (USD) — one fetch, cached — so we can render an inline USD
   // conversion beneath alpha-price cells without touching per-row queries.
@@ -669,26 +710,65 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     (search.serviceKind ? 1 : 0) +
     (search.kind ? 1 : 0) +
     (search.stale ? 1 : 0) +
+    (search.domain ? 1 : 0) +
+    (search.watched ? 1 : 0) +
     (!search.includeRoot ? 1 : 0);
 
   const resultCount = rows.length;
   const totalCount = total ?? all.length;
 
-  // Primary tone selector replaces the row of trigger chips. Health is the
-  // one filter people reach for constantly ("what's live? what's broken?"),
-  // so it lives inline as a segmented switch; every other filter (Source,
-  // Profile, Service, Surface) is opt-in behind a single "Filters" button
-  // that opens the same sheet on every viewport — no more chip soup.
-  const toneOptions: SegmentedToggleOption<"" | "ok" | "warn" | "down" | "unknown">[] = [
+  // #8248: quick-tabs replace the old health-only tone toggle. "All" clears
+  // every quick-tab field at once; the other four each own a specific
+  // combination of watched/kind/health, chosen to reuse fields the granular
+  // Filters-sheet (below) already reads/writes -- one source of truth per
+  // field, never a second parallel filter state.
+  type QuickTab = "" | "watched" | "api" | "unhealthy" | "new";
+  const quickTab: QuickTab = search.watched
+    ? "watched"
+    : search.kind === "api"
+      ? "api"
+      : search.health === "unhealthy"
+        ? "unhealthy"
+        : search.health === "unknown"
+          ? "new"
+          : "";
+  const quickTabOptions: SegmentedToggleOption<QuickTab>[] = [
     { value: "", label: "All" },
-    { value: "ok", label: "Live" },
-    { value: "warn", label: "Warn" },
-    { value: "down", label: "Down" },
-    { value: "unknown", label: "New" },
+    { value: "watched", label: watchlist.count > 0 ? `Watched · ${watchlist.count}` : "Watched" },
+    { value: "api", label: "Has API" },
+    { value: "unhealthy", label: "Unhealthy" },
+    { value: "new", label: "New" },
   ];
+  const onQuickTab = (v: QuickTab) => {
+    setSearch({
+      watched: v === "watched",
+      kind: v === "api" ? "api" : search.kind === "api" ? "" : search.kind,
+      health:
+        v === "unhealthy"
+          ? "unhealthy"
+          : v === "new"
+            ? "unknown"
+            : search.health === "unhealthy" || search.health === "unknown"
+              ? ""
+              : search.health,
+    });
+  };
 
   const secondaryFilters = (
     <div className="flex flex-col gap-3">
+      <FilterChip
+        label="Health"
+        ariaLabel="Filter by exact health state"
+        placeholder="Any"
+        value={search.health === "unhealthy" ? "" : search.health}
+        onChange={(v) => setSearch({ health: v })}
+        options={[
+          { value: "ok", label: "Live" },
+          { value: "warn", label: "Warn" },
+          { value: "down", label: "Down" },
+          { value: "unknown", label: "New" },
+        ]}
+      />
       <FilterChip
         label="Source"
         ariaLabel="Filter by curation source"
@@ -725,6 +805,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   );
 
   const secondaryFilterCount =
+    (search.health && search.health !== "unhealthy" ? 1 : 0) +
     (search.curation ? 1 : 0) +
     (search.readiness ? 1 : 0) +
     (search.serviceKind ? 1 : 0) +
@@ -745,10 +826,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           <QueryBar.Divider />
           <div className="hidden sm:flex items-center">
             <SegmentedToggle
-              options={toneOptions}
-              value={(search.health as "" | "ok" | "warn" | "down" | "unknown") ?? ""}
-              onChange={(v: string) => setSearch({ health: v })}
-              ariaLabel="Filter by health tone"
+              options={quickTabOptions}
+              value={quickTab}
+              onChange={(v: QuickTab) => onQuickTab(v)}
+              ariaLabel="Quick filter"
               className="border-0 bg-transparent"
             />
           </div>
@@ -764,7 +845,6 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   : "Root subnet hidden — click to show it again"
               }
             />
-            <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
             {view === "table" ? (
               <>
                 <SegmentedToggle<"7d" | "30d" | "90d">
@@ -801,7 +881,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           activeFilterCount > 0
             ? () =>
                 navigate({
-                  search: { limit: search.limit, view: search.view } as never,
+                  search: { view: search.view } as never,
                   replace: true,
                 })
             : undefined
@@ -811,12 +891,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         const chipItems: FilterChipItem[] = [];
         const labelFor = (opts: { value: string; label: string }[], v: string) =>
           opts.find((o) => o.value === v)?.label ?? v;
+        const healthLabels = [
+          { value: "ok", label: "Live" },
+          { value: "warn", label: "Warn" },
+          { value: "down", label: "Down" },
+          { value: "unknown", label: "New" },
+          { value: "unhealthy", label: "Unhealthy" },
+        ];
         if (search.q) chipItems.push({ id: "q", label: "Search", value: search.q });
         if (search.health)
           chipItems.push({
             id: "health",
             label: "Health",
-            value: labelFor(toneOptions as never, search.health),
+            value: labelFor(healthLabels, search.health),
           });
         if (search.curation)
           chipItems.push({
@@ -843,6 +930,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             value: labelFor(kindOptions, search.kind),
           });
         if (search.stale) chipItems.push({ id: "stale", label: "Stale", value: "only" });
+        if (search.domain) chipItems.push({ id: "domain", label: "Domain", value: search.domain });
+        if (search.watched) chipItems.push({ id: "watched", label: "Watched", value: "only" });
         if (!search.includeRoot)
           chipItems.push({ id: "includeRoot", label: "Root", value: "hidden" });
         const clearKey = (id: string) => {
@@ -868,6 +957,12 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             case "stale":
               setSearch({ stale: "" });
               break;
+            case "domain":
+              setSearch({ domain: "" });
+              break;
+            case "watched":
+              setSearch({ watched: false });
+              break;
             case "includeRoot":
               setSearch({ includeRoot: true });
               break;
@@ -881,7 +976,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               chipItems.length > 1
                 ? () =>
                     navigate({
-                      search: { limit: search.limit, view: search.view } as never,
+                      search: { view: search.view } as never,
                       replace: true,
                     })
                 : undefined
@@ -912,92 +1007,99 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     />
   );
 
-  const footerNode = (
-    <LoadMore
-      shown={rows.length}
-      total={total}
-      hasMore={!!hasNextPage}
-      isLoading={isFetchingNextPage}
-      onLoadMore={() => fetchNextPage()}
-      error={isFetchNextPageError ? (error as Error) : null}
-      cursorInvalid={cursorInvalid}
-    />
-  );
-
   // Grid / matrix views skip ListShell so they're not boxed in a table card.
   if (view === "grid" || view === "matrix") {
     return (
       <div>
         <StickyToolbar className="mb-3">{filters}</StickyToolbar>
-        {rows.length === 0 && !hasNextPage ? (
+        {rows.length === 0 ? (
           emptyNode
         ) : view === "grid" ? (
-          <SubnetGrid rows={rows} />
+          <SubnetGrid rows={rows} watchlist={watchlist} />
         ) : (
           <SubnetMatrix rows={rows} />
         )}
-        <div className="mt-3">{footerNode}</div>
       </div>
     );
   }
 
   return (
     <div id="subnets-list" className="relative">
-      <QueryProgress active={isFetching && !isFetchingNextPage} position="sticky" />
+      <QueryProgress active={isFetching} position="sticky" />
       <ListShell
         filters={filters}
-        isEmpty={rows.length === 0 && !hasNextPage}
-        isStale={isFetching && !isFetchingNextPage}
+        isEmpty={rows.length === 0}
+        isStale={isFetching}
         empty={emptyNode}
         cards={rows.map((s) => (
           <Link
             key={s.netuid}
             to="/subnets/$netuid"
             params={{ netuid: s.netuid }}
-            className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
+            className="relative block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <BrandIcon
-                  url={s.website}
-                  repoUrl={s.repo}
-                  iconUrl={s.icon_url}
-                  netuid={s.netuid}
-                  name={s.name}
-                  fallback={s.netuid}
-                  size={32}
-                />
-                <div className="min-w-0">
-                  <div className="mg-type-data text-ink-muted">
-                    #{String(s.netuid).padStart(3, "0")}
-                    {s.symbol ? ` · ${s.symbol}` : ""}
-                    {" · "}
-                    {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
-                  </div>
-                  <div className="font-medium text-ink-strong truncate">
-                    {s.name ?? `Subnet ${s.netuid}`}
-                  </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                watchlist.toggle(s.netuid);
+              }}
+              aria-pressed={watchlist.isWatched(s.netuid)}
+              aria-label={
+                watchlist.isWatched(s.netuid) ? "Remove from watchlist" : "Add to watchlist"
+              }
+              className="absolute right-2 top-2 rounded p-1 text-ink-muted hover:text-ink-strong"
+            >
+              <Star
+                className={classNames(
+                  "size-4",
+                  watchlist.isWatched(s.netuid) && "fill-accent text-accent",
+                )}
+              />
+            </button>
+            <div className="flex items-center gap-3 min-w-0 pr-8">
+              <BrandIcon
+                url={s.website}
+                repoUrl={s.repo}
+                iconUrl={s.icon_url}
+                netuid={s.netuid}
+                name={s.name}
+                fallback={s.netuid}
+                size={32}
+              />
+              <div className="min-w-0">
+                <div className="mg-type-data text-ink-muted">
+                  #{String(s.netuid).padStart(3, "0")}
+                  {s.symbol ? ` · ${s.symbol}` : ""}
+                  {" · "}
+                  {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                </div>
+                <div className="font-medium text-ink-strong truncate">
+                  {s.name ?? `Subnet ${s.netuid}`}
                 </div>
               </div>
-              <HealthPill state={s.health} />
             </div>
-            <div className="mt-2 flex items-center justify-between mg-type-data text-ink-muted">
-              <span>{formatNumber(s.participants)} participants</span>
-              <span>{s.surfaces_count ?? 0} surfaces</span>
-              <span>
-                <TimeAgo at={s.updated_at ?? s.freshness} />
-              </span>
-            </div>
-            <div className="mt-1.5">
-              <div className="grid grid-cols-[auto_minmax(88px,1fr)] items-center gap-3">
-                <ProvenanceChip level={s.curation_level} />
-                <ReadinessGauge
-                  score={s.integration_readiness}
-                  tier={s.readiness_tier}
-                  details={s.service_kinds}
-                  compact
-                  className="justify-self-end"
-                />
+            {/* #8248: lead mobile cards with the 3 facts a reader actually
+                compares subnets by -- price, emission share, health -- in
+                place of the old participants/surfaces/updated registry-
+                plumbing row. */}
+            <div className="mt-2 grid grid-cols-3 gap-2 mg-type-data">
+              <div>
+                <div className="mg-type-micro text-ink-muted">Price</div>
+                <div className="tabular-nums text-ink-strong">
+                  {s.alpha_price_tao != null ? `${s.alpha_price_tao.toFixed(4)} τ` : "—"}
+                </div>
+              </div>
+              <div>
+                <div className="mg-type-micro text-ink-muted">Emission</div>
+                <div className="tabular-nums text-ink-strong">
+                  {s.emission_share != null ? `${(s.emission_share * 100).toFixed(2)}%` : "—"}
+                </div>
+              </div>
+              <div>
+                <div className="mg-type-micro text-ink-muted">Health</div>
+                <HealthPill state={s.health} />
               </div>
             </div>
           </Link>
@@ -1008,375 +1110,514 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
           const monoSize = compact ? "text-[11px]" : "mg-type-caption";
           return (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th
-                    className={classNames(firstPad, "mg-subnets-sticky-head w-6")}
-                    aria-label="Compare"
-                  />
-                  <th
-                    className={classNames(cellPad, "mg-subnets-sticky-head")}
-                    aria-sort={ariaSort(search.sort === "netuid", search.order)}
-                  >
-                    <SortHeader
-                      label="UID"
-                      field="netuid"
-                      active={search.sort === "netuid"}
-                      order={search.order}
-                      onSort={onSort}
+            // #8248: bounded, internally-scrolling virtualized region -- this
+            // div (not the page) is the sticky-header containing block and
+            // the scroll viewport react-virtual measures against. Nested one
+            // level inside ListShell's own `.mg-table-scroll` horizontal-
+            // scroll wrapper, so it doesn't interact with that wrapper's
+            // existing page-sticky CSS override (#subnets-list
+            // div:has(> .mg-table-scroll) { overflow: visible }), which only
+            // ever targeted `.mg-table-scroll`'s own ancestors.
+            <div ref={tableScrollRef} className="max-h-[70vh] overflow-y-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th
+                      className={classNames(firstPad, "mg-subnets-sticky-head w-6")}
+                      aria-label="Watch"
                     />
-                  </th>
-                  <th
-                    className={classNames(cellPad, "mg-subnets-sticky-head")}
-                    aria-sort={ariaSort(search.sort === "name", search.order)}
-                  >
-                    <SortHeader
-                      label="Name"
-                      field="name"
-                      active={search.sort === "name"}
-                      order={search.order}
-                      onSort={onSort}
+                    <th
+                      className={classNames(firstPad, "mg-subnets-sticky-head w-6")}
+                      aria-label="Compare"
                     />
-                  </th>
-                  {columns.isVisible("symbol") ? (
                     <th
                       className={classNames(cellPad, "mg-subnets-sticky-head")}
-                      aria-sort={ariaSort(search.sort === "symbol", search.order)}
+                      aria-sort={ariaSort(search.sort === "netuid", search.order)}
                     >
                       <SortHeader
-                        label="Symbol"
-                        field="symbol"
-                        active={search.sort === "symbol"}
+                        label="UID"
+                        field="netuid"
+                        active={search.sort === "netuid"}
                         order={search.order}
                         onSort={onSort}
                       />
                     </th>
-                  ) : null}
-                  {columns.isVisible("participants") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "participants", search.order)}
-                    >
-                      <SortHeader
-                        label="Participants"
-                        field="participants"
-                        active={search.sort === "participants"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("curation") ? (
                     <th
                       className={classNames(cellPad, "mg-subnets-sticky-head")}
-                      aria-sort={ariaSort(search.sort === "curation_level", search.order)}
-                      title="Source: how this subnet's registry entry was curated — native chain data, machine-verified, maintainer-reviewed, adapter-backed, community-seeded, or an unverified candidate."
+                      aria-sort={ariaSort(search.sort === "name", search.order)}
                     >
                       <SortHeader
-                        label="Source"
-                        field="curation_level"
-                        active={search.sort === "curation_level"}
+                        label="Name"
+                        field="name"
+                        active={search.sort === "name"}
                         order={search.order}
                         onSort={onSort}
                       />
                     </th>
-                  ) : null}
-                  {columns.isVisible("surfaces") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
-                      title="Verified public surfaces registered for this subnet (APIs, docs, dashboards, data artifacts, SSE streams)."
-                    >
-                      <SortHeader
-                        label="Surfaces"
-                        field="surfaces_count"
-                        active={search.sort === "surfaces_count"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("readiness") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
-                      title="Profile: how complete this subnet's public-interface profile is (buildable → emerging → identity-only → dormant), based on registered surfaces and evidence."
-                    >
-                      <SortHeader
-                        label="Profile"
-                        field="integration_readiness"
-                        active={search.sort === "integration_readiness"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("registration") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
-                      title="Current recycle/burn cost (in TAO) to register a new UID on this subnet. Dimmed when registration is closed."
-                    >
-                      <SortHeader
-                        label="Reg. cost"
-                        field="registration_cost_tao"
-                        active={search.sort === "registration_cost_tao"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("health") ? (
-                    <th
-                      className={classNames(
-                        cellPad,
-                        "mg-subnets-sticky-head mg-type-micro text-[10px] text-ink-muted font-normal text-left",
-                      )}
-                    >
-                      Health
-                    </th>
-                  ) : null}
-                  {columns.isVisible("emission") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "emission_share", search.order)}
-                    >
-                      <SortHeader
-                        label="Emission"
-                        field="emission_share"
-                        active={search.sort === "emission_share"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("alphaPrice") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "alpha_price_tao", search.order)}
-                    >
-                      <SortHeader
-                        label="Alpha price"
-                        field="alpha_price_tao"
-                        active={search.sort === "alpha_price_tao"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("totalStake") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "total_stake_tao", search.order)}
-                    >
-                      <SortHeader
-                        label="Total stake"
-                        field="total_stake_tao"
-                        active={search.sort === "total_stake_tao"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("marketCap") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "alpha_market_cap_tao", search.order)}
-                    >
-                      <SortHeader
-                        label="Market cap"
-                        field="alpha_market_cap_tao"
-                        active={search.sort === "alpha_market_cap_tao"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                  {columns.isVisible("updated") ? (
-                    <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                      aria-sort={ariaSort(search.sort === "updated_at", search.order)}
-                    >
-                      <SortHeader
-                        label="Updated"
-                        field="updated_at"
-                        active={search.sort === "updated_at"}
-                        order={search.order}
-                        onSort={onSort}
-                        align="right"
-                      />
-                    </th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((s) => (
-                  <tr key={s.netuid} className="mg-row-accent hover:bg-surface/40">
-                    <td className={classNames(firstPad, "align-middle")}>
-                      <CompareToggle netuid={s.netuid} />
-                    </td>
-                    <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
-                      <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: s.netuid }}
-                          className="hover:text-ink-strong"
-                        >
-                          {String(s.netuid).padStart(3, "0")}
-                        </Link>
-                      </EntityHoverCard>
-                      {/* #6643: age-in-days, estimated from the already-fetched
-                        registered_at_block/block delta -- no new backend call. */}
-                      <div className="text-[10px] font-sans text-ink-muted/70 whitespace-nowrap">
-                        {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
-                      </div>
-                    </td>
-                    <td className={cellPad}>
-                      <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: s.netuid }}
-                          className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
-                        >
-                          <BrandIcon
-                            url={s.website}
-                            repoUrl={s.repo}
-                            iconUrl={s.icon_url}
-                            netuid={s.netuid}
-                            name={s.name}
-                            fallback={s.netuid}
-                            size={compact ? 18 : 20}
-                          />
-                          <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                        </Link>
-                      </EntityHoverCard>
-                    </td>
                     {columns.isVisible("symbol") ? (
-                      <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
-                        {s.symbol ?? "—"}
-                      </td>
-                    ) : null}
-                    {columns.isVisible("participants") ? (
-                      <td className={classNames(cellPad, "text-right")}>
-                        <ParticipantsCell
-                          value={s.participants}
-                          density={density}
-                          updatedAt={s.updated_at ?? s.freshness}
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head")}
+                        aria-sort={ariaSort(search.sort === "symbol", search.order)}
+                      >
+                        <SortHeader
+                          label="Symbol"
+                          field="symbol"
+                          active={search.sort === "symbol"}
+                          order={search.order}
+                          onSort={onSort}
                         />
-                      </td>
+                      </th>
                     ) : null}
                     {columns.isVisible("curation") ? (
-                      <td className={cellPad}>
-                        <ProvenanceChip level={s.curation_level} />
-                      </td>
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head")}
+                        aria-sort={ariaSort(search.sort === "curation_level", search.order)}
+                        title="Source: how this subnet's registry entry was curated — native chain data, machine-verified, maintainer-reviewed, adapter-backed, community-seeded, or an unverified candidate."
+                      >
+                        <SortHeader
+                          label="Source"
+                          field="curation_level"
+                          active={search.sort === "curation_level"}
+                          order={search.order}
+                          onSort={onSort}
+                        />
+                      </th>
                     ) : null}
                     {columns.isVisible("surfaces") ? (
-                      <td className={classNames(cellPad, "text-right")}>
-                        <SurfacesCell subnet={s} density={density} />
-                      </td>
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
+                        title="Verified public surfaces registered for this subnet (APIs, docs, dashboards, data artifacts, SSE streams)."
+                      >
+                        <SortHeader
+                          label="Surfaces"
+                          field="surfaces_count"
+                          active={search.sort === "surfaces_count"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
                     ) : null}
                     {columns.isVisible("readiness") ? (
-                      <td className={classNames(cellPad, "text-right")}>
-                        <ReadinessGauge
-                          score={s.integration_readiness}
-                          tier={s.readiness_tier}
-                          details={s.service_kinds}
-                          compact={compact}
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
+                        title="Profile: how complete this subnet's public-interface profile is (buildable → emerging → identity-only → dormant), based on registered surfaces and evidence."
+                      >
+                        <SortHeader
+                          label="Profile"
+                          field="integration_readiness"
+                          active={search.sort === "integration_readiness"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
                         />
-                      </td>
+                      </th>
                     ) : null}
                     {columns.isVisible("registration") ? (
-                      <td
-                        className={classNames(
-                          cellPad,
-                          "text-right mg-type-data tabular-nums",
-                          // #3364: dim the cost only when registration is explicitly
-                          // closed. `registration_allowed === undefined` (economics
-                          // entry present but flag absent, or no entry at all) keeps
-                          // the neutral tone — do NOT read it as "open".
-                          s.registration_allowed === false ? "text-ink-muted" : "text-ink",
-                        )}
-                        title={
-                          s.registration_allowed === false
-                            ? "Registration currently closed"
-                            : s.registration_allowed === true
-                              ? "Registration open"
-                              : undefined
-                        }
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
+                        title="Current recycle/burn cost (in TAO) to register a new UID on this subnet. Dimmed when registration is closed."
                       >
-                        {formatTao(s.registration_cost_tao)}
-                      </td>
-                    ) : null}
-                    {columns.isVisible("health") ? (
-                      <td className={cellPad}>
-                        <HealthPill state={s.health} />
-                      </td>
+                        <SortHeader
+                          label="Reg. cost"
+                          field="registration_cost_tao"
+                          active={search.sort === "registration_cost_tao"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
                     ) : null}
                     {columns.isVisible("emission") ? (
-                      <td className={classNames(cellPad, "text-right mg-type-data tabular-nums")}>
-                        <EmissionCell share={s.emission_share} />
-                      </td>
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "emission_share", search.order)}
+                      >
+                        <SortHeader
+                          label="Emission"
+                          field="emission_share"
+                          active={search.sort === "emission_share"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
                     ) : null}
                     {columns.isVisible("alphaPrice") ? (
-                      <FinancialTrendCell
-                        netuid={s.netuid}
-                        field="alpha_price_tao"
-                        current={s.alpha_price_tao}
-                        digits={4}
-                        compact={compact}
-                        usdPerTao={taoUsd}
-                        window={trendWindow}
-                      />
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "alpha_price_tao", search.order)}
+                      >
+                        <SortHeader
+                          label="Alpha price"
+                          field="alpha_price_tao"
+                          active={search.sort === "alpha_price_tao"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
+                    ) : null}
+                    {columns.isVisible("priceChange") ? (
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        title={`Alpha price change over the selected trend window (${trendWindow})`}
+                      >
+                        <span className="mg-type-micro text-[10px] font-normal text-ink-muted">
+                          {trendWindow} %
+                        </span>
+                      </th>
                     ) : null}
                     {columns.isVisible("totalStake") ? (
-                      <FinancialTrendCell
-                        netuid={s.netuid}
-                        field="total_stake_tao"
-                        current={s.total_stake_tao}
-                        compact={compact}
-                        window={trendWindow}
-                        symbol={s.netuid === 0 ? "τ" : (s.symbol ?? "α")}
-                      />
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "total_stake_tao", search.order)}
+                      >
+                        <SortHeader
+                          label="Total stake"
+                          field="total_stake_tao"
+                          active={search.sort === "total_stake_tao"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
                     ) : null}
                     {columns.isVisible("marketCap") ? (
-                      <FinancialTrendCell
-                        netuid={s.netuid}
-                        field="alpha_market_cap_tao"
-                        current={s.alpha_market_cap_tao}
-                        compact={compact}
-                        usdPerTao={taoUsd}
-                        window={trendWindow}
-                      />
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "alpha_market_cap_tao", search.order)}
+                      >
+                        <SortHeader
+                          label="Market cap"
+                          field="alpha_market_cap_tao"
+                          active={search.sort === "alpha_market_cap_tao"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
                     ) : null}
                     {columns.isVisible("updated") ? (
-                      <td className={classNames(cellPad, "text-right mg-type-data text-ink-muted")}>
-                        <TimeAgo at={s.updated_at ?? s.freshness} />
-                      </td>
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "updated_at", search.order)}
+                      >
+                        <SortHeader
+                          label="Updated"
+                          field="updated_at"
+                          active={search.sort === "updated_at"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
+                    ) : null}
+                    {columns.isVisible("health") ? (
+                      <th
+                        className={classNames(
+                          cellPad,
+                          "mg-subnets-sticky-head mg-type-micro text-[10px] text-ink-muted font-normal text-left",
+                        )}
+                      >
+                        Health
+                      </th>
+                    ) : null}
+                    {columns.isVisible("age") ? (
+                      <th
+                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
+                        aria-sort={ariaSort(search.sort === "registered_at_block", search.order)}
+                        title="Time since this subnet's registration block."
+                      >
+                        <SortHeader
+                          label="Age"
+                          field="registered_at_block"
+                          active={search.sort === "registered_at_block"}
+                          order={search.order}
+                          onSort={onSort}
+                          align="right"
+                        />
+                      </th>
                     ) : null}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {/* #8248: top spacer -- stands in for the height of every row
+                    above the rendered slice, so real `<tr>`s never need
+                    absolute positioning (which would drop them out of table
+                    row-group layout and break column alignment). */}
+                  {virtualPaddingTop > 0 ? (
+                    <tr aria-hidden>
+                      <td colSpan={20} style={{ height: virtualPaddingTop }} />
+                    </tr>
+                  ) : null}
+                  {virtualRows.map((vRow) => {
+                    const s = rows[vRow.index];
+                    return (
+                      <tr
+                        key={s.netuid}
+                        data-index={vRow.index}
+                        ref={rowVirtualizer.measureElement}
+                        className="mg-row-accent hover:bg-surface/40"
+                      >
+                        <td className={classNames(firstPad, "align-middle")}>
+                          <button
+                            type="button"
+                            onClick={() => watchlist.toggle(s.netuid)}
+                            aria-pressed={watchlist.isWatched(s.netuid)}
+                            aria-label={
+                              watchlist.isWatched(s.netuid)
+                                ? `Remove SN${s.netuid} from watchlist`
+                                : `Add SN${s.netuid} to watchlist`
+                            }
+                            className="flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                          >
+                            <Star
+                              className={classNames(
+                                "size-3.5",
+                                watchlist.isWatched(s.netuid) && "fill-accent text-accent",
+                              )}
+                            />
+                          </button>
+                        </td>
+                        <td className={classNames(firstPad, "align-middle")}>
+                          <CompareToggle netuid={s.netuid} />
+                        </td>
+                        <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
+                          <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                            <Link
+                              to="/subnets/$netuid"
+                              params={{ netuid: s.netuid }}
+                              className="hover:text-ink-strong"
+                            >
+                              {String(s.netuid).padStart(3, "0")}
+                            </Link>
+                          </EntityHoverCard>
+                          {/* #6643: age-in-days, estimated from the already-fetched
+                        registered_at_block/block delta -- no new backend call. */}
+                          <div className="text-[10px] font-sans text-ink-muted/70 whitespace-nowrap">
+                            {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                          </div>
+                        </td>
+                        <td className={cellPad}>
+                          <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                            <Link
+                              to="/subnets/$netuid"
+                              params={{ netuid: s.netuid }}
+                              className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                            >
+                              <BrandIcon
+                                url={s.website}
+                                repoUrl={s.repo}
+                                iconUrl={s.icon_url}
+                                netuid={s.netuid}
+                                name={s.name}
+                                fallback={s.netuid}
+                                size={compact ? 18 : 20}
+                              />
+                              <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                            </Link>
+                          </EntityHoverCard>
+                        </td>
+                        {columns.isVisible("symbol") ? (
+                          <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
+                            {s.symbol ?? "—"}
+                          </td>
+                        ) : null}
+                        {columns.isVisible("curation") ? (
+                          <td className={cellPad}>
+                            <ProvenanceChip level={s.curation_level} />
+                          </td>
+                        ) : null}
+                        {columns.isVisible("surfaces") ? (
+                          <td className={classNames(cellPad, "text-right")}>
+                            <SurfacesCell subnet={s} density={density} />
+                          </td>
+                        ) : null}
+                        {columns.isVisible("readiness") ? (
+                          <td className={classNames(cellPad, "text-right")}>
+                            <ReadinessGauge
+                              score={s.integration_readiness}
+                              tier={s.readiness_tier}
+                              details={s.service_kinds}
+                              compact={compact}
+                            />
+                          </td>
+                        ) : null}
+                        {columns.isVisible("registration") ? (
+                          <td
+                            className={classNames(
+                              cellPad,
+                              "text-right mg-type-data tabular-nums",
+                              // #3364: dim the cost only when registration is explicitly
+                              // closed. `registration_allowed === undefined` (economics
+                              // entry present but flag absent, or no entry at all) keeps
+                              // the neutral tone — do NOT read it as "open".
+                              s.registration_allowed === false ? "text-ink-muted" : "text-ink",
+                            )}
+                            title={
+                              s.registration_allowed === false
+                                ? "Registration currently closed"
+                                : s.registration_allowed === true
+                                  ? "Registration open"
+                                  : undefined
+                            }
+                          >
+                            {formatTao(s.registration_cost_tao)}
+                          </td>
+                        ) : null}
+                        {columns.isVisible("emission") ? (
+                          <td
+                            className={classNames(cellPad, "text-right mg-type-data tabular-nums")}
+                          >
+                            <EmissionCell share={s.emission_share} />
+                          </td>
+                        ) : null}
+                        {columns.isVisible("alphaPrice") ? (
+                          <FinancialTrendCell
+                            netuid={s.netuid}
+                            field="alpha_price_tao"
+                            current={s.alpha_price_tao}
+                            digits={4}
+                            compact={compact}
+                            usdPerTao={taoUsd}
+                            window={trendWindow}
+                          />
+                        ) : null}
+                        {columns.isVisible("priceChange") ? (
+                          <PctChangeCell
+                            netuid={s.netuid}
+                            current={s.alpha_price_tao}
+                            window={trendWindow}
+                            compact={compact}
+                          />
+                        ) : null}
+                        {columns.isVisible("totalStake") ? (
+                          <FinancialTrendCell
+                            netuid={s.netuid}
+                            field="total_stake_tao"
+                            current={s.total_stake_tao}
+                            compact={compact}
+                            window={trendWindow}
+                            symbol={s.netuid === 0 ? "τ" : (s.symbol ?? "α")}
+                          />
+                        ) : null}
+                        {columns.isVisible("marketCap") ? (
+                          <FinancialTrendCell
+                            netuid={s.netuid}
+                            field="alpha_market_cap_tao"
+                            current={s.alpha_market_cap_tao}
+                            compact={compact}
+                            usdPerTao={taoUsd}
+                            window={trendWindow}
+                          />
+                        ) : null}
+                        {columns.isVisible("updated") ? (
+                          <td
+                            className={classNames(
+                              cellPad,
+                              "text-right mg-type-data text-ink-muted",
+                            )}
+                          >
+                            <TimeAgo at={s.updated_at ?? s.freshness} />
+                          </td>
+                        ) : null}
+                        {columns.isVisible("health") ? (
+                          <td className={cellPad}>
+                            <HealthPill state={s.health} />
+                          </td>
+                        ) : null}
+                        {columns.isVisible("age") ? (
+                          <td
+                            className={classNames(
+                              cellPad,
+                              "text-right mg-type-data tabular-nums text-ink-muted",
+                            )}
+                          >
+                            {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })}
+                  {virtualPaddingBottom > 0 ? (
+                    <tr aria-hidden>
+                      <td colSpan={20} style={{ height: virtualPaddingBottom }} />
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           );
         })()}
-        footer={footerNode}
       />
     </div>
   );
 }
 
+// #8248: 24h/7d trend-window % change as its own column, distinct from the
+// value shown in the Price column -- same trajectory source FinancialTrendCell
+// already reads for alpha_price_tao (react-query dedupes the fetch, this
+// isn't a second network call), just rendered as a standalone colored-text
+// figure instead of a sub-line under the price.
+function PctChangeCell({
+  netuid,
+  current,
+  window: win,
+  compact,
+}: {
+  netuid: number;
+  current?: number;
+  window: "7d" | "30d" | "90d";
+  compact: boolean;
+}) {
+  const [cellRef, inView] = useInView<HTMLTableCellElement>();
+  const trajectoryRes = useQuery({
+    ...subnetTrajectoryQuery(netuid),
+    enabled: inView,
+    staleTime: 60_000,
+  });
+  const points = trajectoryRes.data?.data?.points ?? [];
+  const days = win === "7d" ? 7 : win === "30d" ? 30 : 90;
+  const priced = points
+    .slice(-days)
+    .map((p) => (typeof p.alpha_price_tao === "number" ? p.alpha_price_tao : NaN))
+    .filter((n) => Number.isFinite(n));
+  const first = priced[0];
+  const last = priced.length ? priced[priced.length - 1] : current;
+  const delta = first != null && last != null && first !== 0 ? (last - first) / first : null;
+  const toneClass =
+    delta == null || Math.abs(delta) < 0.0005
+      ? "text-ink-muted"
+      : delta > 0
+        ? "text-health-ok"
+        : "text-health-down";
+  return (
+    <td
+      ref={cellRef}
+      className={classNames(
+        compact ? "px-3 py-1.5" : "px-4 py-2.5",
+        "text-right mg-type-data tabular-nums",
+        toneClass,
+      )}
+    >
+      {delta == null ? "—" : `${delta > 0 ? "+" : ""}${(delta * 100).toFixed(2)}%`}
+    </td>
+  );
+}
+
 /* ---------- Grid view ---------- */
 
-function SubnetGrid({ rows }: { rows: Subnet[] }) {
+function SubnetGrid({
+  rows,
+  watchlist,
+}: {
+  rows: Subnet[];
+  watchlist: ReturnType<typeof useWatchlist>;
+}) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {rows.map((s) => (
@@ -1407,6 +1648,26 @@ function SubnetGrid({ rows }: { rows: Subnet[] }) {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  watchlist.toggle(s.netuid);
+                }}
+                aria-pressed={watchlist.isWatched(s.netuid)}
+                aria-label={
+                  watchlist.isWatched(s.netuid) ? "Remove from watchlist" : "Add to watchlist"
+                }
+                className="rounded p-1 text-ink-muted hover:text-ink-strong"
+              >
+                <Star
+                  className={classNames(
+                    "size-3.5",
+                    watchlist.isWatched(s.netuid) && "fill-accent text-accent",
+                  )}
+                />
+              </button>
               <CompareToggle netuid={s.netuid} />
               <StatusBadge status={(s.health ?? "unknown") as HealthStatus} />
             </div>
@@ -1548,50 +1809,6 @@ const SURFACE_KIND_COLORS: Record<string, string> = {
   sse: "var(--health-warn)",
   rpc: "var(--ink-strong)",
 };
-
-function ParticipantsCell({
-  value,
-  density = "comfortable",
-  updatedAt,
-}: {
-  value?: number;
-  density?: Density;
-  updatedAt?: string | null;
-}) {
-  const n = typeof value === "number" ? value : 0;
-  const pct = Math.max(0, Math.min(1, n / 256));
-  const compact = density === "compact";
-  return (
-    <SparkLegend
-      metric="Participant density"
-      source="Live participant count from the on-chain metagraph, scaled against the 256-slot subnet cap."
-      windowLabel="live"
-      updatedAt={updatedAt ?? null}
-      staleness="Reflects the most recent block snapshot; bar disappears when the count is zero or unknown."
-      side="left"
-    >
-      <span className="inline-flex flex-col items-end gap-0.5 min-w-[64px]">
-        <span
-          className={classNames(
-            "font-mono tabular-nums text-ink",
-            compact ? "text-[11px]" : "mg-type-caption",
-          )}
-        >
-          {formatNumber(value)}
-        </span>
-        <span
-          className={classNames(
-            "overflow-hidden rounded-full bg-border/50 w-14",
-            compact ? "h-0.5" : "h-1",
-          )}
-          aria-hidden
-        >
-          <span className="block h-full bg-accent/70" style={{ width: `${pct * 100}%` }} />
-        </span>
-      </span>
-    </SparkLegend>
-  );
-}
 
 const ALPHA_MAX_SUPPLY = 21_000_000;
 

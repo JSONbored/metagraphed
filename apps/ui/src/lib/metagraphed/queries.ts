@@ -7479,24 +7479,6 @@ export const chainEventsInfiniteQuery = (baseParams: QueryParams = {}, initialCu
 export const chainEventsQuery = chainEventsInfiniteQuery;
 
 /** Server-driven cursor-paginated subnets. */
-export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("subnets-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/subnets",
-        "subnets",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      return { ...page, data: page.data.map(normalizeSubnet) } as typeof page;
-    },
-    getNextPageParam,
-    staleTime: STALE_MED,
-  });
-
 /** Server-driven cursor-paginated surfaces. */
 export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
   infiniteQueryOptions({
