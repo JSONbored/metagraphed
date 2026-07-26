@@ -33,7 +33,10 @@ import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ChainIndexRouteImport } from './routes/chain.index'
 import { Route as ChainBlocksRouteImport } from './routes/chain.blocks'
+import { Route as ChainEventsRouteImport } from './routes/chain.events'
 import { Route as ChainExtrinsicsRouteImport } from './routes/chain.extrinsics'
+import { Route as ChainGovernanceRouteImport } from './routes/chain.governance'
+import { Route as ChainRuntimeRouteImport } from './routes/chain.runtime'
 import { Route as DesignPrimitivesRouteImport } from './routes/design.primitives'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
@@ -172,9 +175,24 @@ const ChainBlocksRoute = ChainBlocksRouteImport.update({
   path: '/blocks',
   getParentRoute: () => ChainRoute,
 } as any)
+const ChainEventsRoute = ChainEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => ChainRoute,
+} as any)
 const ChainExtrinsicsRoute = ChainExtrinsicsRouteImport.update({
   id: '/extrinsics',
   path: '/extrinsics',
+  getParentRoute: () => ChainRoute,
+} as any)
+const ChainGovernanceRoute = ChainGovernanceRouteImport.update({
+  id: '/governance',
+  path: '/governance',
+  getParentRoute: () => ChainRoute,
+} as any)
+const ChainRuntimeRoute = ChainRuntimeRouteImport.update({
+  id: '/runtime',
+  path: '/runtime',
   getParentRoute: () => ChainRoute,
 } as any)
 const DesignPrimitivesRoute = DesignPrimitivesRouteImport.update({
@@ -284,7 +302,10 @@ export interface FileRoutesByFullPath {
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
+  '/chain/governance': typeof ChainGovernanceRoute
+  '/chain/runtime': typeof ChainRuntimeRoute
   '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
@@ -327,7 +348,10 @@ export interface FileRoutesByTo {
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
+  '/chain/governance': typeof ChainGovernanceRoute
+  '/chain/runtime': typeof ChainRuntimeRoute
   '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
@@ -372,7 +396,10 @@ export interface FileRoutesById {
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
+  '/chain/governance': typeof ChainGovernanceRoute
+  '/chain/runtime': typeof ChainRuntimeRoute
   '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
@@ -418,7 +445,10 @@ export interface FileRouteTypes {
     | '/api/search'
     | '/blocks/$ref'
     | '/chain/blocks'
+    | '/chain/events'
     | '/chain/extrinsics'
+    | '/chain/governance'
+    | '/chain/runtime'
     | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
@@ -461,7 +491,10 @@ export interface FileRouteTypes {
     | '/api/search'
     | '/blocks/$ref'
     | '/chain/blocks'
+    | '/chain/events'
     | '/chain/extrinsics'
+    | '/chain/governance'
+    | '/chain/runtime'
     | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
@@ -505,7 +538,10 @@ export interface FileRouteTypes {
     | '/api/search'
     | '/blocks/$ref'
     | '/chain/blocks'
+    | '/chain/events'
     | '/chain/extrinsics'
+    | '/chain/governance'
+    | '/chain/runtime'
     | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
@@ -741,11 +777,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChainBlocksRouteImport
       parentRoute: typeof ChainRoute
     }
+    '/chain/events': {
+      id: '/chain/events'
+      path: '/events'
+      fullPath: '/chain/events'
+      preLoaderRoute: typeof ChainEventsRouteImport
+      parentRoute: typeof ChainRoute
+    }
     '/chain/extrinsics': {
       id: '/chain/extrinsics'
       path: '/extrinsics'
       fullPath: '/chain/extrinsics'
       preLoaderRoute: typeof ChainExtrinsicsRouteImport
+      parentRoute: typeof ChainRoute
+    }
+    '/chain/governance': {
+      id: '/chain/governance'
+      path: '/governance'
+      fullPath: '/chain/governance'
+      preLoaderRoute: typeof ChainGovernanceRouteImport
+      parentRoute: typeof ChainRoute
+    }
+    '/chain/runtime': {
+      id: '/chain/runtime'
+      path: '/runtime'
+      fullPath: '/chain/runtime'
+      preLoaderRoute: typeof ChainRuntimeRouteImport
       parentRoute: typeof ChainRoute
     }
     '/design/primitives': {
@@ -872,13 +929,19 @@ declare module '@tanstack/react-router' {
 
 interface ChainRouteChildren {
   ChainBlocksRoute: typeof ChainBlocksRoute
+  ChainEventsRoute: typeof ChainEventsRoute
   ChainExtrinsicsRoute: typeof ChainExtrinsicsRoute
+  ChainGovernanceRoute: typeof ChainGovernanceRoute
+  ChainRuntimeRoute: typeof ChainRuntimeRoute
   ChainIndexRoute: typeof ChainIndexRoute
 }
 
 const ChainRouteChildren: ChainRouteChildren = {
   ChainBlocksRoute: ChainBlocksRoute,
+  ChainEventsRoute: ChainEventsRoute,
   ChainExtrinsicsRoute: ChainExtrinsicsRoute,
+  ChainGovernanceRoute: ChainGovernanceRoute,
+  ChainRuntimeRoute: ChainRuntimeRoute,
   ChainIndexRoute: ChainIndexRoute,
 }
 

@@ -36,6 +36,24 @@ export const CHAIN_TABS: readonly ChainTab[] = [
     blurb:
       "Recent transactions indexed directly from the chain — newest first, with call, signer and result.",
   },
+  {
+    to: "/chain/events",
+    label: "Events",
+    blurb:
+      "Individual pallet events indexed directly from the chain, distinct from the aggregate activity stats.",
+  },
+  {
+    to: "/chain/governance",
+    label: "Governance",
+    blurb:
+      "Root-origin activity: Sudo calls and the AdminUtils config changes that tune subnet hyperparameters.",
+  },
+  {
+    to: "/chain/runtime",
+    label: "Runtime",
+    blurb:
+      "Spec-version upgrade history from the first-party blocks tier — every upgrade observed, newest first.",
+  },
 ] as const;
 
 export function activeChainTab(pathname: string): ChainTab {

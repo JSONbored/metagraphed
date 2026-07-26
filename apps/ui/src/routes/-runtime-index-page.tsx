@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { ShareButton, DownloadCsvButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
   RuntimeUpgradeCardList,
   orderRuntimeUpgradesNewestFirst,
@@ -14,26 +13,21 @@ import { runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { RuntimeVersionHistory } from "@/lib/metagraphed/types";
+import { ChainTabActions } from "./-chain-hub";
 
 export function RuntimePage() {
   const runtimeCsvUrl = buildUrl("/api/v1/runtime", { format: "csv" });
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Runtime"
-        description="Spec-version upgrade history for the Bittensor chain, tracked from the first-party blocks tier — every observed runtime upgrade, newest first."
-        actions={
-          <ActionBar>
-            {/* /api/v1/runtime is a single whole-window aggregate with no
-                filters to carry, so the export needs no query params beyond
-                format -- unlike the filtered feeds' <page>QueryParams(search). */}
-            <DownloadCsvButton url={runtimeCsvUrl} bare />
-            <ShareButton bare />
-          </ActionBar>
-        }
-      />
+    <>
+      <ChainTabActions>
+        <ActionBar>
+          {/* /api/v1/runtime is a single whole-window aggregate with no
+              filters to carry, so the export needs no query params beyond
+              format -- unlike the filtered feeds' <page>QueryParams(search). */}
+          <DownloadCsvButton url={runtimeCsvUrl} bare />
+          <ShareButton bare />
+        </ActionBar>
+      </ChainTabActions>
       <AsyncPanel
         context="runtime upgrades"
         fallback={<Skeleton className="h-96 w-full" />}
@@ -42,7 +36,7 @@ export function RuntimePage() {
         <RuntimeContent />
       </AsyncPanel>
       <ApiSourceFooter paths={["/api/v1/runtime"]} artifacts={["/metagraph/runtime.json"]} />
-    </AppShell>
+    </>
   );
 }
 

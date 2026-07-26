@@ -1,18 +1,14 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton } from "@/components/metagraphed/states";
-import { ShareButton, DownloadCsvButton, ActionBar, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { CopyButton, TimeAgo } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { sudoCallsQuery, sudoKeyQuery } from "@/lib/metagraphed/queries";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import type { SudoSearch } from "./sudo.index";
+import type { GovernanceSearch } from "./chain.governance";
 
-function sudoQueryParams(search: SudoSearch): Record<string, string | number> {
+export function sudoQueryParams(search: GovernanceSearch): Record<string, string | number> {
   const queryParams: Record<string, string | number> = {
     limit: search.limit,
     offset: search.offset,
@@ -22,70 +18,51 @@ function sudoQueryParams(search: SudoSearch): Record<string, string | number> {
   return queryParams;
 }
 
-export function SudoPage() {
-  const search = useSearch({ from: "/sudo/" });
-  const sudoCsvUrl = buildUrl("/api/v1/sudo", sudoQueryParams(search));
-
-  // Live-RPC lookup, fetched non-blocking so a slow/failed RPC never stalls
-  // or errors the table below (mirrors accounts.$ss58.tsx's balance fetch).
+/**
+ * Current Sudo key, read live over RPC (#8291).
+ *
+ * This was a masthead KPI on the old /sudo page. The hub owns the masthead
+ * now, so it renders as its own card rather than being dropped — it is the one
+ * piece of live state on this tab, and the call log below is meaningless
+ * without knowing who currently holds the key.
+ *
+ * Non-blocking by design (mirrors accounts.$ss58's balance fetch): a slow or
+ * failed RPC must never stall or error the artifact-backed table.
+ */
+export function SudoKeyCard() {
   const keyResult = useQuery(sudoKeyQuery());
   const hotkey = keyResult.data?.data.hotkey;
   const queriedAt = keyResult.data?.data.queried_at;
 
-  const keyValue = keyResult.isPending ? (
-    <span className="text-ink-muted">…</span>
-  ) : hotkey ? (
-    <span className="inline-flex items-center gap-1.5">
-      {shortHash(hotkey, 8)}
-      <CopyButton value={hotkey} label="sudo key" />
-    </span>
-  ) : (
-    <span>Unset</span>
-  );
-
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Sudo"
-        description="Root-origin (Sudo) calls on the Bittensor chain — subtensor has no Council or Senate, so Sudo is the whole root-origin surface, plus the account currently holding the Sudo key."
-        actions={
-          <>
-            <ActionBar>
-              <DownloadCsvButton url={sudoCsvUrl} bare />
-              <ShareButton bare />
-            </ActionBar>
-          </>
-        }
-        kpis={[
-          {
-            label: "Current Sudo key",
-            value: keyValue,
-            hint: queriedAt ? (
-              <>
-                queried <TimeAgo at={queriedAt} />
-              </>
-            ) : undefined,
-          },
-        ]}
-      />
-      <div className="min-w-0">
-        <AsyncPanel context="sudo calls" fallback={<Skeleton className="h-96 w-full" />}>
-          <SudoTable />
-        </AsyncPanel>
+    <Panel as="div" dense className="mb-6">
+      <div className="mg-label">Current Sudo key</div>
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-mono mg-type-data text-ink-strong">
+          {keyResult.isPending ? (
+            <span className="text-ink-muted">…</span>
+          ) : hotkey ? (
+            <span className="inline-flex items-center gap-1.5">
+              {shortHash(hotkey, 8)}
+              <CopyButton value={hotkey} label="sudo key" />
+            </span>
+          ) : (
+            <span>Unset</span>
+          )}
+        </span>
+        {queriedAt ? (
+          <span className="mg-type-caption text-ink-muted">
+            queried <TimeAgo at={queriedAt} />
+          </span>
+        ) : null}
       </div>
-      <ApiSourceFooter
-        paths={["/api/v1/sudo", "/api/v1/sudo/key"]}
-        artifacts={["/metagraph/sudo.json"]}
-      />
-    </AppShell>
+    </Panel>
   );
 }
 
-function SudoTable() {
-  const search = useSearch({ from: "/sudo/" });
-  const navigate = useNavigate({ from: "/sudo/" });
+export function SudoTable() {
+  const search = useSearch({ from: "/chain/governance" });
+  const navigate = useNavigate({ from: "/chain/governance" });
   const queryParams = sudoQueryParams(search);
 
   const setSearch = (patch: Record<string, unknown>) =>
