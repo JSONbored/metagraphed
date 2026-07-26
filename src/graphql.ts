@@ -519,27 +519,158 @@ import { SDL } from "./graphql-sdl.ts";
 // here, not the Resolver wrapper. Same class of codegen/runtime-convention
 // mismatch the epic already anticipated for the Subscription resolver.
 import type {
+  QueryAccountArgs,
+  QueryAccountsArgs,
+  QueryAccount_BalanceArgs,
+  QueryAccount_Axon_RemovalsArgs,
+  QueryAccount_ChildrenArgs,
+  QueryAccount_CounterpartiesArgs,
+  QueryAccount_DeregistrationsArgs,
+  QueryAccount_EntitiesArgs,
+  QueryAccount_EventsArgs,
+  QueryAccount_ExtrinsicsArgs,
+  QueryAccount_HistoryArgs,
+  QueryAccount_IdentityArgs,
+  QueryAccount_Identity_HistoryArgs,
+  QueryAccount_ParentsArgs,
+  QueryAccount_PortfolioArgs,
+  QueryAccount_Position_HistoryArgs,
+  QueryAccount_PositionsArgs,
+  QueryAccount_PrometheusArgs,
+  QueryAccount_RegistrationsArgs,
+  QueryAccount_Root_ClaimArgs,
+  QueryAccount_ServingArgs,
+  QueryAccount_Stake_FlowArgs,
+  QueryAccount_Stake_MovesArgs,
+  QueryAccount_SubnetsArgs,
+  QueryAccount_TransfersArgs,
+  QueryAccount_Weight_SettersArgs,
+  QueryAdapterArgs,
   QueryAgent_CatalogArgs,
+  QueryBlockArgs,
+  QueryBlocksArgs,
+  QueryBlock_Chain_EventsArgs,
+  QueryBlock_EventsArgs,
+  QueryBlock_ExtrinsicsArgs,
   QueryCandidatesArgs,
+  QueryChain_ActivityArgs,
+  QueryChain_Alpha_VolumeArgs,
+  QueryChain_Axon_RemovalsArgs,
+  QueryChain_CallsArgs,
+  QueryChain_DeregistrationsArgs,
+  QueryChain_EventsArgs,
+  QueryChain_Events_StatsArgs,
+  QueryChain_FeesArgs,
+  QueryChain_Identity_HistoryArgs,
+  QueryChain_PrometheusArgs,
+  QueryChain_RegistrationsArgs,
+  QueryChain_ServingArgs,
+  QueryChain_SignersArgs,
+  QueryChain_Stake_FlowArgs,
+  QueryChain_Stake_MovesArgs,
+  QueryChain_Stake_TransfersArgs,
+  QueryChain_Transfer_PairsArgs,
+  QueryChain_TransfersArgs,
+  QueryChain_TurnoverArgs,
+  QueryChain_Weight_SettersArgs,
+  QueryChain_WeightsArgs,
+  QueryCompareArgs,
+  QueryCompare_ValidatorsArgs,
+  QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
+  QueryEconomics_TrendsArgs,
+  QueryEndpoint_IncidentsArgs,
+  QueryEndpoint_PoolsArgs,
+  QueryEndpointsArgs,
+  QueryEvidenceArgs,
+  QueryEvm_AddressArgs,
+  QueryEvm_Address_MappingArgs,
+  QueryExtrinsicArgs,
+  QueryExtrinsicsArgs,
   QueryFixtureArgs,
+  QueryGapsArgs,
+  QueryGlobal_IncidentsArgs,
+  QueryGovernance_Config_ChangesArgs,
+  QueryHealth_HistoryArgs,
+  QueryIncidentsArgs,
+  QueryNeuronArgs,
+  QueryNeuron_HistoryArgs,
+  QueryOpportunity_BoardsArgs,
+  QueryProfilesArgs,
+  QueryProviderArgs,
+  QueryProvider_EndpointsArgs,
+  QueryProvidersArgs,
+  QueryReview_Adapter_CandidatesArgs,
+  QueryReview_Enrichment_EvidenceArgs,
+  QueryReview_Enrichment_QueueArgs,
+  QueryReview_Enrichment_TargetsArgs,
+  QueryReview_GapsArgs,
+  QueryReview_Profile_CompletenessArgs,
+  QueryRegistry_LeaderboardsArgs,
+  QueryRpc_EndpointsArgs,
+  QueryRpc_PoolsArgs,
+  QueryRpc_UsageArgs,
   QuerySaved_QueryArgs,
   QuerySearchArgs,
+  QuerySearch_IndexArgs,
+  QuerySource_SnapshotsArgs,
   QuerySubnetArgs,
-  QuerySubnetsArgs,
+  QuerySudoArgs,
+  QuerySubnet_Axon_RemovalsArgs,
+  QuerySubnet_BurnArgs,
+  QuerySubnet_CandidatesArgs,
+  QuerySubnet_ConcentrationArgs,
+  QuerySubnet_Concentration_HistoryArgs,
+  QuerySubnet_ConvictionArgs,
   QuerySubnet_DeregistrationsArgs,
+  QuerySubnet_EndpointsArgs,
+  QuerySubnet_Event_SummaryArgs,
+  QuerySubnet_EventsArgs,
+  QuerySubnet_EvidenceArgs,
+  QuerySubnet_GapsArgs,
   QuerySubnet_HealthArgs,
   QuerySubnet_Health_IncidentsArgs,
   QuerySubnet_Health_PercentilesArgs,
   QuerySubnet_Health_TrendsArgs,
+  QuerySubnet_HistoryArgs,
   QuerySubnet_HyperparametersArgs,
   QuerySubnet_Hyperparameters_HistoryArgs,
+  QuerySubnet_Identity_HistoryArgs,
+  QuerySubnet_Idle_StakeArgs,
+  QuerySubnet_LeaseArgs,
+  QuerySubnet_Lease_HistoryArgs,
+  QuerySubnet_MetagraphArgs,
+  QuerySubnet_MoversArgs,
+  QuerySubnet_OhlcArgs,
+  QuerySubnet_Ownership_HistoryArgs,
+  QuerySubnet_OverviewArgs,
+  QuerySubnet_PerformanceArgs,
+  QuerySubnet_Performance_HistoryArgs,
+  QuerySubnet_ProfileArgs,
+  QuerySubnet_PrometheusArgs,
+  QuerySubnet_RecycledArgs,
   QuerySubnet_RegistrationsArgs,
   QuerySubnet_ServingArgs,
+  QuerySubnet_Stake_FlowArgs,
+  QuerySubnet_Stake_MovesArgs,
   QuerySubnet_Stake_QuoteArgs,
+  QuerySubnet_Stake_TransfersArgs,
+  QuerySubnet_TrajectoryArgs,
+  QuerySubnet_TurnoverArgs,
   QuerySubnet_UptimeArgs,
+  QuerySubnet_ValidatorsArgs,
   QuerySubnet_VolumeArgs,
+  QuerySubnet_Weight_SettersArgs,
+  QuerySubnet_WeightsArgs,
+  QuerySubnet_YieldArgs,
+  QuerySubnet_Yield_HistoryArgs,
+  QuerySubnetsArgs,
+  QuerySurfacesArgs,
   QueryTop_HoldersArgs,
+  QueryValidatorArgs,
+  QueryValidatorsArgs,
+  QueryValidator_HistoryArgs,
+  QueryValidator_NominatorsArgs,
 } from "../generated/graphql/types.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1678,18 +1809,10 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 2-9 (types-epic D, #7862 tracks follow-up
-// batches). The 5 pilot fields (subnets, subnet, subnet_health,
-// subnet_stake_quote, economics) plus D batch 1's 20 fields
-// (subnet_registrations, subnet_hyperparameters,
-// subnet_hyperparameters_history, subnet_deregistrations, subnet_serving,
-// subnet_health_trends, subnet_uptime, subnet_health_incidents,
-// subnet_health_percentiles, subnet_volume, agent_resources, curation,
-// candidates, saved_query, fixtures, fixture, agent_catalog, freshness,
-// top_holders, search) are typed against the generated Args types below;
-// the remaining ~130 root fields on this object keep their `Row`-typed
-// destructured params for now, adopted incrementally in later batches
-// rather than all at once here.
+// Row-erased (types-epic D, #7862, batches #8158-#8166 -- see PR #8005 for
+// the pilot conversion + the codegen mechanism). Every Query root field on
+// this object is now typed against the generated Query<Field>Args types
+// below rather than a Row-typed destructured param.
 const rootValue = {
   subnets(
     {
@@ -1831,7 +1954,7 @@ const rootValue = {
   // reuses exactly what REST/MCP already call, so the three surfaces can't
   // drift.
   async subnet_metagraph(
-    { netuid, validator_permit }: Row,
+    { netuid, validator_permit }: QuerySubnet_MetagraphArgs,
     context: GqlContext,
   ) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
@@ -1852,7 +1975,10 @@ const rootValue = {
     );
   },
 
-  async subnet_overview({ netuid }: Row, context: GqlContext) {
+  async subnet_overview(
+    { netuid }: QuerySubnet_OverviewArgs,
+    context: GqlContext,
+  ) {
     // Same baked-overview + overlayOverviewHealth composition the REST
     // "subnet-overview" case and the get_subnet MCP tool perform. An
     // un-baked netuid resolves to null rather than a GraphQL error.
@@ -1865,7 +1991,10 @@ const rootValue = {
     return overlayOverviewHealth(overview, live, netuid) || overview;
   },
 
-  async subnet_profile({ netuid }: Row, context: GqlContext) {
+  async subnet_profile(
+    { netuid }: QuerySubnet_ProfileArgs,
+    context: GqlContext,
+  ) {
     // Reuse loadSubnetProfile (the loader get_subnet_profile already calls)
     // unchanged; its deps.readArtifact is invoked as (ctx, path) -- exactly
     // loadArtifact's shape -- so the read shares the request-scoped once()
@@ -1982,7 +2111,10 @@ const rootValue = {
     );
   },
 
-  async subnet_trajectory({ netuid }: Row, context: GqlContext) {
+  async subnet_trajectory(
+    { netuid }: QuerySubnet_TrajectoryArgs,
+    context: GqlContext,
+  ) {
     // Same tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) -> loadSubnetTrajectory
     // fallback contract handleTrajectory uses; a subnet with no daily snapshots is
     // a schema-stable empty trajectory, never a GraphQL error.
@@ -2129,7 +2261,10 @@ const rootValue = {
     };
   },
 
-  async subnet_axon_removals({ netuid, window }: Row, context: GqlContext) {
+  async subnet_axon_removals(
+    { netuid, window }: QuerySubnet_Axon_RemovalsArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetAxonRemovals uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -2168,7 +2303,7 @@ const rootValue = {
   },
 
   async subnet_identity_history(
-    { netuid, limit, offset, cursor }: Row,
+    { netuid, limit, offset, cursor }: QuerySubnet_Identity_HistoryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2213,7 +2348,10 @@ const rootValue = {
     };
   },
 
-  async chain_identity_history({ limit }: Row, context: GqlContext) {
+  async chain_identity_history(
+    { limit }: QueryChain_Identity_HistoryArgs,
+    context: GqlContext,
+  ) {
     // Same FEED_PAGINATION clamp REST applies. This chain-wide feed is
     // limit-only (no offset/cursor) -- the network view returns the most-recent
     // changes across every subnet in one pass.
@@ -2237,7 +2375,10 @@ const rootValue = {
     };
   },
 
-  async subnet_performance({ netuid }: Row, context: GqlContext) {
+  async subnet_performance(
+    { netuid }: QuerySubnet_PerformanceArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2272,7 +2413,10 @@ const rootValue = {
     };
   },
 
-  async subnet_concentration({ netuid }: Row, context: GqlContext) {
+  async subnet_concentration(
+    { netuid }: QuerySubnet_ConcentrationArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2308,7 +2452,7 @@ const rootValue = {
   },
 
   async subnet_performance_history(
-    { netuid, window }: Row,
+    { netuid, window }: QuerySubnet_Performance_HistoryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2353,7 +2497,10 @@ const rootValue = {
     };
   },
 
-  async subnet_yield_history({ netuid, window }: Row, context: GqlContext) {
+  async subnet_yield_history(
+    { netuid, window }: QuerySubnet_Yield_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2397,7 +2544,7 @@ const rootValue = {
   },
 
   async subnet_concentration_history(
-    { netuid, window }: Row,
+    { netuid, window }: QuerySubnet_Concentration_HistoryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2442,7 +2589,7 @@ const rootValue = {
     };
   },
 
-  async neuron({ netuid, uid }: Row, context: GqlContext) {
+  async neuron({ netuid, uid }: QueryNeuronArgs, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2474,7 +2621,10 @@ const rootValue = {
     };
   },
 
-  async neuron_history({ netuid, uid, window }: Row, context: GqlContext) {
+  async neuron_history(
+    { netuid, uid, window }: QueryNeuron_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2522,7 +2672,7 @@ const rootValue = {
     };
   },
 
-  async subnet_yield({ netuid }: Row, context: GqlContext) {
+  async subnet_yield({ netuid }: QuerySubnet_YieldArgs, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYield cold
     // fallback contract handleSubnetYield uses: a subnet with no neurons is a
     // schema-stable zeroed card, never a GraphQL error. No window param — the
@@ -2559,7 +2709,10 @@ const rootValue = {
     };
   },
 
-  async subnet_weights({ netuid, window }: Row, context: GqlContext) {
+  async subnet_weights(
+    { netuid, window }: QuerySubnet_WeightsArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetWeights uses -- an unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -2597,7 +2750,10 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_moves({ netuid, window }: Row, context: GqlContext) {
+  async subnet_stake_moves(
+    { netuid, window }: QuerySubnet_Stake_MovesArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetStakeMoves uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -2635,7 +2791,10 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_transfers({ netuid, window }: Row, context: GqlContext) {
+  async subnet_stake_transfers(
+    { netuid, window }: QuerySubnet_Stake_TransfersArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetStakeTransfers uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -2673,7 +2832,10 @@ const rootValue = {
     };
   },
 
-  async subnet_idle_stake({ netuid }: Row, context: GqlContext) {
+  async subnet_idle_stake(
+    { netuid }: QuerySubnet_Idle_StakeArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2700,7 +2862,7 @@ const rootValue = {
   },
 
   async subnet_stake_flow(
-    { netuid, window, direction }: Row,
+    { netuid, window, direction }: QuerySubnet_Stake_FlowArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2757,7 +2919,14 @@ const rootValue = {
   },
 
   async subnet_events(
-    { netuid, kind, block_start, block_end, limit, offset }: Row,
+    {
+      netuid,
+      kind,
+      block_start,
+      block_end,
+      limit,
+      offset,
+    }: QuerySubnet_EventsArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2809,7 +2978,10 @@ const rootValue = {
     };
   },
 
-  async subnet_history({ netuid, window }: Row, context: GqlContext) {
+  async subnet_history(
+    { netuid, window }: QuerySubnet_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2849,7 +3021,10 @@ const rootValue = {
     };
   },
 
-  async subnet_prometheus({ netuid, window }: Row, context: GqlContext) {
+  async subnet_prometheus(
+    { netuid, window }: QuerySubnet_PrometheusArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2893,7 +3068,10 @@ const rootValue = {
     };
   },
 
-  async subnet_weight_setters({ netuid, window }: Row, context: GqlContext) {
+  async subnet_weight_setters(
+    { netuid, window }: QuerySubnet_Weight_SettersArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2942,7 +3120,7 @@ const rootValue = {
   // #7920: opaque string id-keyset cursor/next_cursor (not REST's Int offset)
   // and schema-stable empty list on a cold/absent artifact (not a GraphQL
   // error). limit/cursor are applied here via paginate, not the loader.
-  async providers(args: Row, context: GqlContext) {
+  async providers(args: QueryProvidersArgs, context: GqlContext) {
     const { limit, cursor, ...filters } = args;
     // Default empty list; only overwrite on a successful load. Cold/absent
     // (or any non-invalid_params loader failure) keeps this historical contract.
@@ -2983,7 +3161,7 @@ const rootValue = {
     };
   },
 
-  async provider({ id }: Row, context: GqlContext) {
+  async provider({ id }: QueryProviderArgs, context: GqlContext) {
     if (typeof id !== "string" || !VALID_PROVIDER_ID.test(id)) return null;
     const data = await loadArtifact(context, `/metagraph/providers/${id}.json`);
     if (!data) return null;
@@ -2996,7 +3174,7 @@ const rootValue = {
   // loader miss (not_found / cold R2 / unavailable) resolves to null
   // (schema-stable), matching provider's cold/absent convention -- never a
   // GraphQL error for an unregistered slug.
-  async adapter({ slug }: Row, context: GqlContext) {
+  async adapter({ slug }: QueryAdapterArgs, context: GqlContext) {
     try {
       return await loadAdapter(mcpCtx(context), { slug }, { readArtifact });
     } catch (rawErr) {
@@ -3028,7 +3206,7 @@ const rootValue = {
     };
   },
 
-  surfaces({ netuid, limit, cursor }: Row, context: GqlContext) {
+  surfaces({ netuid, limit, cursor }: QuerySurfacesArgs, context: GqlContext) {
     return listPage(context, ARTIFACT.surfaces, "surfaces", {
       limit,
       cursor,
@@ -3037,7 +3215,7 @@ const rootValue = {
     });
   },
 
-  endpoints(args: Row, context: GqlContext) {
+  endpoints(args: QueryEndpointsArgs, context: GqlContext) {
     return loadEndpointsPage(context, args);
   },
 
@@ -3048,7 +3226,7 @@ const rootValue = {
   // that throw becomes a GraphQL error, matching endpoint_pools/gaps' "an
   // unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
-  provider_endpoints(args: Row, context: GqlContext) {
+  provider_endpoints(args: QueryProvider_EndpointsArgs, context: GqlContext) {
     return loadProviderEndpointsList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3060,11 +3238,11 @@ const rootValue = {
   // executor surfaces as a normal GraphQL error, matching every other field's
   // "an unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
-  endpoint_pools(args: Row, context: GqlContext) {
+  endpoint_pools(args: QueryEndpoint_PoolsArgs, context: GqlContext) {
     return loadEndpointPoolsList(mcpCtx(context), args, { readArtifact });
   },
 
-  rpc_pools(args: Row, context: GqlContext) {
+  rpc_pools(args: QueryRpc_PoolsArgs, context: GqlContext) {
     // rpc-pools' loader additionally reads ctx.readHealthKv for its live
     // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.mjs's
     // own context has no such property, so it's supplied here from the same
@@ -3078,7 +3256,7 @@ const rootValue = {
     );
   },
 
-  endpoint_incidents(args: Row, context: GqlContext) {
+  endpoint_incidents(args: QueryEndpoint_IncidentsArgs, context: GqlContext) {
     return loadEndpointIncidentsList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3088,7 +3266,7 @@ const rootValue = {
   // as a normal GraphQL error, matching every other field's "an unsupported
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention.
-  source_snapshots(args: Row, context: GqlContext) {
+  source_snapshots(args: QuerySource_SnapshotsArgs, context: GqlContext) {
     return loadSourceSnapshotsList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3097,11 +3275,11 @@ const rootValue = {
   // error, matching source_snapshots' "unsupported filter/sort is a GraphQL
   // error, not a silently substituted default" convention. A cold/absent
   // artifact is likewise a GraphQL error (matching REST/MCP not_found).
-  gaps(args: Row, context: GqlContext) {
+  gaps(args: QueryGapsArgs, context: GqlContext) {
     return loadGapsList(mcpCtx(context), args, { readArtifact });
   },
 
-  evidence(args: Row, context: GqlContext) {
+  evidence(args: QueryEvidenceArgs, context: GqlContext) {
     return loadEvidenceList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3110,7 +3288,7 @@ const rootValue = {
   // (not a throw) -- this file's own loadArtifact(context, path) already has
   // exactly that shape (readArtifact(context.env, path), null if not ok), so
   // it's reused directly rather than adding a redundant wrapper.
-  profiles(args: Row, context: GqlContext) {
+  profiles(args: QueryProfilesArgs, context: GqlContext) {
     return loadProfilesList(mcpCtx(context), args, {
       readOptionalArtifact: loadArtifact as AnyFn,
     });
@@ -3159,7 +3337,7 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/lineage.json");
   },
 
-  rpc_endpoints(args: Row, context: GqlContext) {
+  rpc_endpoints(args: QueryRpc_EndpointsArgs, context: GqlContext) {
     // #7886: reuse loadRpcEndpointsList — same live 15-minute cron overlay +
     // endpoints-collection list-query transforms REST applies. The loader
     // validates its own args and throws on an invalid filter/sort or a cold
@@ -3203,7 +3381,7 @@ const rootValue = {
   // and throws invalid_params on a bad one / not_found on a missing snapshot;
   // that throw becomes a GraphQL error, matching every other field's "an
   // unsupported filter/sort is a GraphQL error, not a silent default".
-  health_history(args: Row, context: GqlContext) {
+  health_history(args: QueryHealth_HistoryArgs, context: GqlContext) {
     return loadHealthHistory(context, args, {
       readArtifact: loadArtifact as AnyFn,
     });
@@ -3216,29 +3394,44 @@ const rootValue = {
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention. A cold/missing artifact is also a GraphQL error (matches
   // REST 404 / MCP not_found); an empty filtered page is a success with total 0.
-  review_adapter_candidates(args: Row, context: GqlContext) {
+  review_adapter_candidates(
+    args: QueryReview_Adapter_CandidatesArgs,
+    context: GqlContext,
+  ) {
     return loadAdapterCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_evidence(args: Row, context: GqlContext) {
+  review_enrichment_evidence(
+    args: QueryReview_Enrichment_EvidenceArgs,
+    context: GqlContext,
+  ) {
     return loadEnrichmentEvidenceList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_queue(args: Row, context: GqlContext) {
+  review_enrichment_queue(
+    args: QueryReview_Enrichment_QueueArgs,
+    context: GqlContext,
+  ) {
     return loadEnrichmentQueueList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_targets(args: Row, context: GqlContext) {
+  review_enrichment_targets(
+    args: QueryReview_Enrichment_TargetsArgs,
+    context: GqlContext,
+  ) {
     return loadReviewEnrichmentTargetsList(mcpCtx(context), args, {
       readArtifact,
     });
   },
 
-  review_gaps(args: Row, context: GqlContext) {
+  review_gaps(args: QueryReview_GapsArgs, context: GqlContext) {
     return loadReviewGapsList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_profile_completeness(args: Row, context: GqlContext) {
+  review_profile_completeness(
+    args: QueryReview_Profile_CompletenessArgs,
+    context: GqlContext,
+  ) {
     return loadProfileCompletenessList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3258,7 +3451,10 @@ const rootValue = {
     };
   },
 
-  async opportunity_boards({ limit }: Row, context: GqlContext) {
+  async opportunity_boards(
+    { limit }: QueryOpportunity_BoardsArgs,
+    context: GqlContext,
+  ) {
     const data = await loadEconomics(context);
     const rows = Array.isArray(data?.subnets) ? data.subnets : [];
     // Reuse the live economics tier + the leaderboard ranking, so the boards
@@ -3286,7 +3482,10 @@ const rootValue = {
     };
   },
 
-  async compare({ netuids, dimensions }: Row, context: GqlContext) {
+  async compare(
+    { netuids, dimensions }: QueryCompareArgs,
+    context: GqlContext,
+  ) {
     // Reuse the REST/MCP shared parsers so the GraphQL contract matches
     // /api/v1/compare and the compare_subnets MCP tool exactly (distinctness +
     // range + the dimension whitelist), then the shared loader composes the rows.
@@ -3320,7 +3519,7 @@ const rootValue = {
   },
 
   async incidents(
-    { window, netuid, sort, order, limit, cursor }: Row,
+    { window, netuid, sort, order, limit, cursor }: QueryIncidentsArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
@@ -3407,7 +3606,7 @@ const rootValue = {
   // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
   // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
   // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
-  async global_incidents(args: Row, context: GqlContext) {
+  async global_incidents(args: QueryGlobal_IncidentsArgs, context: GqlContext) {
     return rootValue.incidents(args, context);
   },
 
@@ -3426,7 +3625,7 @@ const rootValue = {
   // limit/cursor validation and filtering are all handled by the loader --
   // an invalid arg throws and becomes a GraphQL error, matching every other
   // filtered field's convention (search/source_snapshots/evidence/profiles).
-  search_index(args: Row, context: GqlContext) {
+  search_index(args: QuerySearch_IndexArgs, context: GqlContext) {
     return loadSearchIndexList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3440,7 +3639,7 @@ const rootValue = {
     return buildDomainOverview(subnetRows, economicsRows);
   },
 
-  async domain_summary({ tag }: Row, context: GqlContext) {
+  async domain_summary({ tag }: QueryDomain_SummaryArgs, context: GqlContext) {
     // The same fixed 14-tag enum ?domain= validates on subnets -- an unknown
     // tag is a GraphQL BAD_USER_INPUT error, not an empty rollup.
     if (!DOMAIN_TAGS.includes(tag)) {
@@ -3455,7 +3654,10 @@ const rootValue = {
     return buildDomainSummary(tag, subnetRows, economicsRows);
   },
 
-  async compare_validators({ hotkeys, netuid }: Row, context: GqlContext) {
+  async compare_validators(
+    { hotkeys, netuid }: QueryCompare_ValidatorsArgs,
+    context: GqlContext,
+  ) {
     // Same parse/validate contract the REST route + compare_validators MCP
     // tool share: 1..COMPARE_VALIDATORS_MAX distinct SS58 addresses.
     const parsed = parseCompareHotkeyList(hotkeys);
@@ -3567,7 +3769,10 @@ const rootValue = {
     };
   },
 
-  async subnet_ohlc({ netuid, interval, days }: Row, context: GqlContext) {
+  async subnet_ohlc(
+    { netuid, interval, days }: QuerySubnet_OhlcArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3650,7 +3855,10 @@ const rootValue = {
     return { schema_version: 1, ...result.quote };
   },
 
-  async subnet_validators({ netuid }: Row, context: GqlContext) {
+  async subnet_validators(
+    { netuid }: QuerySubnet_ValidatorsArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3726,7 +3934,7 @@ const rootValue = {
   },
 
   async subnet_event_summary(
-    { netuid, window, limit }: Row,
+    { netuid, window, limit }: QuerySubnet_Event_SummaryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -3787,7 +3995,7 @@ const rootValue = {
     };
   },
 
-  async subnet_gaps(args: Row, context: GqlContext) {
+  async subnet_gaps(args: QuerySubnet_GapsArgs, context: GqlContext) {
     const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -3851,7 +4059,7 @@ const rootValue = {
     };
   },
 
-  async subnet_evidence(args: Row, context: GqlContext) {
+  async subnet_evidence(args: QuerySubnet_EvidenceArgs, context: GqlContext) {
     const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -3886,7 +4094,10 @@ const rootValue = {
     }
   },
 
-  async subnet_candidates(args: Row, context: GqlContext) {
+  async subnet_candidates(
+    args: QuerySubnet_CandidatesArgs,
+    context: GqlContext,
+  ) {
     const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -3933,7 +4144,7 @@ const rootValue = {
   // GraphQL error, matching the subnet_candidates sibling's convention. A cold/
   // absent per-subnet artifact stays null (the documented per-subnet contract),
   // never a silently substituted empty list.
-  async subnet_endpoints(args: Row, context: GqlContext) {
+  async subnet_endpoints(args: QuerySubnet_EndpointsArgs, context: GqlContext) {
     try {
       return await loadSubnetEndpointsList(mcpCtx(context), args, {
         readArtifact,
@@ -4019,7 +4230,7 @@ const rootValue = {
       block_end: blockEnd,
       from,
       to,
-    }: Row,
+    }: QueryExtrinsicsArgs,
     context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
@@ -4071,7 +4282,15 @@ const rootValue = {
   // schema-stable empty feed, never a GraphQL error — matching extrinsics'
   // cold-empty convention. Distinct from Subscription.chainEvents.
   async chain_events(
-    { pallet, method, block, extrinsic, cursor, before, limit }: Row,
+    {
+      pallet,
+      method,
+      block,
+      extrinsic,
+      cursor,
+      before,
+      limit,
+    }: QueryChain_EventsArgs,
     context: GqlContext,
   ) {
     try {
@@ -4123,7 +4342,10 @@ const rootValue = {
   // (the same 1000-default/positive-integer/1-5000-cap validation MCP's
   // get_chain_activity applies) then loadChainActivity — both relocated to
   // data-api-mcp.ts beside loadChainEventsFeed.
-  async chain_events_stats({ blocks }: Row, context: GqlContext) {
+  async chain_events_stats(
+    { blocks }: QueryChain_Events_StatsArgs,
+    context: GqlContext,
+  ) {
     let window;
     try {
       window = optionalBlocksWindow({ blocks });
@@ -4158,7 +4380,7 @@ const rootValue = {
       to,
       call_function: callFunction,
       success,
-    }: Row,
+    }: QuerySudoArgs,
     context: GqlContext,
   ) {
     // The Sudo governance feed is the /extrinsics feed with call_module fixed
@@ -4204,7 +4426,7 @@ const rootValue = {
     };
   },
 
-  async extrinsic({ ref }: Row, context: GqlContext) {
+  async extrinsic({ ref }: QueryExtrinsicArgs, context: GqlContext) {
     const data =
       ((await tryPostgresTier(
         context.env,
@@ -4232,7 +4454,7 @@ const rootValue = {
       block_end: blockEnd,
       from,
       to,
-    }: Row,
+    }: QueryGovernance_Config_ChangesArgs,
     context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
@@ -4309,7 +4531,7 @@ const rootValue = {
       to,
       min_extrinsics: minExtrinsics,
       min_events: minEvents,
-    }: Row,
+    }: QueryBlocksArgs,
     context: GqlContext,
   ) {
     const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
@@ -4403,7 +4625,7 @@ const rootValue = {
     };
   },
 
-  async block({ ref }: Row, context: GqlContext) {
+  async block({ ref }: QueryBlockArgs, context: GqlContext) {
     const data =
       ((await tryPostgresTier(
         context.env,
@@ -4425,13 +4647,18 @@ const rootValue = {
   // Postgres tier + schema-stable fallback builder REST and MCP already use. The
   // /blocks/:ref/{extrinsics,events} routes wrap their body in `{ data }` (unlike
   // the flat /blocks/:ref route), so the tier result is destructured accordingly.
-  async block_extrinsics({ ref, limit, offset }: Row, context: GqlContext) {
-    const safeLimit = Number.isFinite(limit)
-      ? Math.max(1, Math.min(100, Math.floor(limit)))
-      : 50;
-    const safeOffset = Number.isFinite(offset)
-      ? Math.max(0, Math.floor(offset))
-      : 0;
+  async block_extrinsics(
+    { ref, limit, offset }: QueryBlock_ExtrinsicsArgs,
+    context: GqlContext,
+  ) {
+    const safeLimit =
+      typeof limit === "number" && Number.isFinite(limit)
+        ? Math.max(1, Math.min(100, Math.floor(limit)))
+        : 50;
+    const safeOffset =
+      typeof offset === "number" && Number.isFinite(offset)
+        ? Math.max(0, Math.floor(offset))
+        : 0;
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
@@ -4452,13 +4679,18 @@ const rootValue = {
     return data;
   },
 
-  async block_events({ ref, limit, offset }: Row, context: GqlContext) {
-    const safeLimit = Number.isFinite(limit)
-      ? Math.max(1, Math.min(1000, Math.floor(limit)))
-      : 100;
-    const safeOffset = Number.isFinite(offset)
-      ? Math.max(0, Math.floor(offset))
-      : 0;
+  async block_events(
+    { ref, limit, offset }: QueryBlock_EventsArgs,
+    context: GqlContext,
+  ) {
+    const safeLimit =
+      typeof limit === "number" && Number.isFinite(limit)
+        ? Math.max(1, Math.min(1000, Math.floor(limit)))
+        : 100;
+    const safeOffset =
+      typeof offset === "number" && Number.isFinite(offset)
+        ? Math.max(0, Math.floor(offset))
+        : 0;
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
@@ -4482,11 +4714,17 @@ const rootValue = {
   // Reuses loadBlockChainEvents unchanged (the get_block_chain_events tool's own
   // loader); it throws invalid_params on a bad block_number and tier_unavailable
   // where the all-events Worker is absent -- both surface as normal GraphQL errors.
-  block_chain_events({ block_number: blockNumber }: Row, context: GqlContext) {
+  block_chain_events(
+    { block_number: blockNumber }: QueryBlock_Chain_EventsArgs,
+    context: GqlContext,
+  ) {
     return loadBlockChainEvents(mcpCtx(context), blockNumber);
   },
 
-  async validators({ sort, limit, cursor }: Row, context: GqlContext) {
+  async validators(
+    { sort, limit, cursor }: QueryValidatorsArgs,
+    context: GqlContext,
+  ) {
     const requestedSort = sort ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
     if (!GLOBAL_VALIDATOR_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -4528,7 +4766,7 @@ const rootValue = {
   },
 
   async validator_nominators(
-    { hotkey, window, sort, coldkey }: Row,
+    { hotkey, window, sort, coldkey }: QueryValidator_NominatorsArgs,
     context: GqlContext,
   ) {
     // Same window/sort allow-lists handleValidatorNominators validates against --
@@ -4598,7 +4836,7 @@ const rootValue = {
     };
   },
 
-  async validator({ hotkey }: Row, context: GqlContext) {
+  async validator({ hotkey }: QueryValidatorArgs, context: GqlContext) {
     const data = await tryPostgresTier(
       context.env,
       postgresTierRequest(
@@ -4610,7 +4848,10 @@ const rootValue = {
     return validatorDetailNode(data as Row, hotkey);
   },
 
-  async validator_history({ hotkey, window }: Row, context: GqlContext) {
+  async validator_history(
+    { hotkey, window }: QueryValidator_HistoryArgs,
+    context: GqlContext,
+  ) {
     // Same parseHistoryWindow REST's handleValidatorHistory uses, so accepted
     // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
     const windowResult = parseHistoryWindow(window);
@@ -4647,7 +4888,7 @@ const rootValue = {
   },
 
   async account_position_history(
-    { ss58, netuid, window }: Row,
+    { ss58, netuid, window }: QueryAccount_Position_HistoryArgs,
     context: GqlContext,
   ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -4697,7 +4938,7 @@ const rootValue = {
     };
   },
 
-  async accounts({ sort, limit }: Row, context: GqlContext) {
+  async accounts({ sort, limit }: QueryAccountsArgs, context: GqlContext) {
     const requestedSort = sort ?? DEFAULT_ACCOUNTS_LIST_SORT;
     if (!ACCOUNTS_LIST_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -4731,7 +4972,7 @@ const rootValue = {
     };
   },
 
-  async account({ ss58 }: Row, context: GqlContext) {
+  async account({ ss58 }: QueryAccountArgs, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4749,7 +4990,10 @@ const rootValue = {
     return accountSummaryNode(data, ss58);
   },
 
-  async account_prometheus({ ss58, window }: Row, context: GqlContext) {
+  async account_prometheus(
+    { ss58, window }: QueryAccount_PrometheusArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4794,7 +5038,7 @@ const rootValue = {
   },
 
   async account_stake_flow(
-    { ss58, window, direction }: Row,
+    { ss58, window, direction }: QueryAccount_Stake_FlowArgs,
     context: GqlContext,
   ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -4855,7 +5099,10 @@ const rootValue = {
     };
   },
 
-  async account_portfolio({ ss58 }: Row, context: GqlContext) {
+  async account_portfolio(
+    { ss58 }: QueryAccount_PortfolioArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4890,7 +5137,10 @@ const rootValue = {
     };
   },
 
-  async account_positions({ ss58 }: Row, context: GqlContext) {
+  async account_positions(
+    { ss58 }: QueryAccount_PositionsArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4920,7 +5170,10 @@ const rootValue = {
     };
   },
 
-  async account_subnets({ ss58 }: Row, context: GqlContext) {
+  async account_subnets(
+    { ss58 }: QueryAccount_SubnetsArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4948,7 +5201,10 @@ const rootValue = {
     };
   },
 
-  async account_registrations({ ss58, window }: Row, context: GqlContext) {
+  async account_registrations(
+    { ss58, window }: QueryAccount_RegistrationsArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountRegistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -4999,7 +5255,10 @@ const rootValue = {
     };
   },
 
-  async account_deregistrations({ ss58, window }: Row, context: GqlContext) {
+  async account_deregistrations(
+    { ss58, window }: QueryAccount_DeregistrationsArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountDeregistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5050,7 +5309,10 @@ const rootValue = {
     };
   },
 
-  async account_serving({ ss58, window }: Row, context: GqlContext) {
+  async account_serving(
+    { ss58, window }: QueryAccount_ServingArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountServing (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5101,7 +5363,10 @@ const rootValue = {
     };
   },
 
-  async account_axon_removals({ ss58, window }: Row, context: GqlContext) {
+  async account_axon_removals(
+    { ss58, window }: QueryAccount_Axon_RemovalsArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountAxonRemovals (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5152,7 +5417,10 @@ const rootValue = {
     };
   },
 
-  async account_stake_moves({ ss58, window }: Row, context: GqlContext) {
+  async account_stake_moves(
+    { ss58, window }: QueryAccount_Stake_MovesArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountStakeMoves (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5204,7 +5472,10 @@ const rootValue = {
     };
   },
 
-  async account_weight_setters({ ss58, window }: Row, context: GqlContext) {
+  async account_weight_setters(
+    { ss58, window }: QueryAccount_Weight_SettersArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5249,7 +5520,10 @@ const rootValue = {
     };
   },
 
-  async account_entities({ ss58 }: Row, context: GqlContext) {
+  async account_entities(
+    { ss58 }: QueryAccount_EntitiesArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5288,7 +5562,10 @@ const rootValue = {
     };
   },
 
-  async account_identity({ ss58 }: Row, context: GqlContext) {
+  async account_identity(
+    { ss58 }: QueryAccount_IdentityArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -5326,7 +5603,7 @@ const rootValue = {
   },
 
   async account_identity_history(
-    { ss58, limit, offset, cursor }: Row,
+    { ss58, limit, offset, cursor }: QueryAccount_Identity_HistoryArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed
@@ -5382,7 +5659,7 @@ const rootValue = {
   },
 
   async account_counterparties(
-    { ss58, counterparty, limit }: Row,
+    { ss58, counterparty, limit }: QueryAccount_CounterpartiesArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5428,7 +5705,7 @@ const rootValue = {
     if (data == null) {
       if (counterparty != null) {
         const rel = buildCounterpartyRelationship([], ss58, counterparty, {
-          limit,
+          limit: limit ?? undefined,
         });
         data = {
           schema_version: 1,
@@ -5442,7 +5719,7 @@ const rootValue = {
           relationship: rel,
         };
       } else {
-        data = buildCounterparties([], ss58, { limit });
+        data = buildCounterparties([], ss58, { limit: limit ?? undefined });
       }
     }
     const rel = data.relationship;
@@ -5494,7 +5771,15 @@ const rootValue = {
   },
 
   async account_transfers(
-    { ss58, limit, offset, cursor, direction, block_start, block_end }: Row,
+    {
+      ss58,
+      limit,
+      offset,
+      cursor,
+      direction,
+      block_start,
+      block_end,
+    }: QueryAccount_TransfersArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5556,7 +5841,14 @@ const rootValue = {
   },
 
   async account_extrinsics(
-    { ss58, limit, offset, cursor, block_start, block_end }: Row,
+    {
+      ss58,
+      limit,
+      offset,
+      cursor,
+      block_start,
+      block_end,
+    }: QueryAccount_ExtrinsicsArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5611,7 +5903,16 @@ const rootValue = {
   },
 
   async account_events(
-    { ss58, kind, netuid, block_start, block_end, limit, offset, cursor }: Row,
+    {
+      ss58,
+      kind,
+      netuid,
+      block_start,
+      block_end,
+      limit,
+      offset,
+      cursor,
+    }: QueryAccount_EventsArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5678,7 +5979,7 @@ const rootValue = {
   },
 
   async account_history(
-    { ss58, netuid, from, to, limit, offset, cursor }: Row,
+    { ss58, netuid, from, to, limit, offset, cursor }: QueryAccount_HistoryArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5757,7 +6058,10 @@ const rootValue = {
     };
   },
 
-  async economics_trends({ window }: Row, context: GqlContext) {
+  async economics_trends(
+    { window }: QueryEconomics_TrendsArgs,
+    context: GqlContext,
+  ) {
     // Same parseHistoryWindow REST uses, so accepted window labels and the
     // resulting { label, days } stay identical between REST and GraphQL.
     const windowResult = parseHistoryWindow(window);
@@ -5790,7 +6094,10 @@ const rootValue = {
     };
   },
 
-  async subnet_movers({ window, sort, limit }: Row, context: GqlContext) {
+  async subnet_movers(
+    { window, sort, limit }: QuerySubnet_MoversArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_MOVERS_WINDOW;
     if (!Object.hasOwn(MOVERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -5864,7 +6171,10 @@ const rootValue = {
     };
   },
 
-  async chain_turnover({ window, limit }: Row, context: GqlContext) {
+  async chain_turnover(
+    { window, limit }: QueryChain_TurnoverArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
     if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -5917,7 +6227,10 @@ const rootValue = {
     };
   },
 
-  async chain_activity({ window }: Row, context: GqlContext) {
+  async chain_activity(
+    { window }: QueryChain_ActivityArgs,
+    context: GqlContext,
+  ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainActivity
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
@@ -5962,7 +6275,12 @@ const rootValue = {
   },
 
   async chain_calls(
-    { window, group_by: groupBy, limit, call_module: callModule }: Row,
+    {
+      window,
+      group_by: groupBy,
+      limit,
+      call_module: callModule,
+    }: QueryChain_CallsArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainCalls
@@ -6027,7 +6345,7 @@ const rootValue = {
   },
 
   async chain_fees(
-    { window, limit, call_module: callModule }: Row,
+    { window, limit, call_module: callModule }: QueryChain_FeesArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainFees
@@ -6087,7 +6405,10 @@ const rootValue = {
     };
   },
 
-  async chain_weights({ window, limit }: Row, context: GqlContext) {
+  async chain_weights(
+    { window, limit }: QueryChain_WeightsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
     if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6133,7 +6454,10 @@ const rootValue = {
     };
   },
 
-  async chain_serving({ window, limit }: Row, context: GqlContext) {
+  async chain_serving(
+    { window, limit }: QueryChain_ServingArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_SERVING_WINDOW;
     if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6175,7 +6499,10 @@ const rootValue = {
     };
   },
 
-  async chain_axon_removals({ window, limit }: Row, context: GqlContext) {
+  async chain_axon_removals(
+    { window, limit }: QueryChain_Axon_RemovalsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
     if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6217,7 +6544,10 @@ const rootValue = {
     };
   },
 
-  async chain_deregistrations({ window, limit }: Row, context: GqlContext) {
+  async chain_deregistrations(
+    { window, limit }: QueryChain_DeregistrationsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
     if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6265,7 +6595,10 @@ const rootValue = {
     };
   },
 
-  async chain_registrations({ window, limit }: Row, context: GqlContext) {
+  async chain_registrations(
+    { window, limit }: QueryChain_RegistrationsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
     if (!Object.hasOwn(CHAIN_REGISTRATIONS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6310,7 +6643,10 @@ const rootValue = {
     };
   },
 
-  async chain_prometheus({ window, limit }: Row, context: GqlContext) {
+  async chain_prometheus(
+    { window, limit }: QueryChain_PrometheusArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
     if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6353,7 +6689,7 @@ const rootValue = {
   },
 
   async chain_signers(
-    { window, limit, sort, call_module: callModule }: Row,
+    { window, limit, sort, call_module: callModule }: QueryChain_SignersArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainSigners
@@ -6408,7 +6744,7 @@ const rootValue = {
       (tier as Row | null) ??
       buildChainSigners({
         window: label,
-        sort,
+        sort: sort ?? undefined,
         observedAt: await loadObservedAt(context),
         rows: [],
       });
@@ -6428,7 +6764,10 @@ const rootValue = {
     };
   },
 
-  async chain_weight_setters({ window, limit }: Row, context: GqlContext) {
+  async chain_weight_setters(
+    { window, limit }: QueryChain_Weight_SettersArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
     if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6467,7 +6806,10 @@ const rootValue = {
     };
   },
 
-  async chain_alpha_volume({ limit }: Row, context: GqlContext) {
+  async chain_alpha_volume(
+    { limit }: QueryChain_Alpha_VolumeArgs,
+    context: GqlContext,
+  ) {
     const safeLimit = clampLimit(limit, {
       defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
       maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
@@ -6529,7 +6871,10 @@ const rootValue = {
     };
   },
 
-  async chain_stake_flow({ window, limit }: Row, context: GqlContext) {
+  async chain_stake_flow(
+    { window, limit }: QueryChain_Stake_FlowArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6578,7 +6923,10 @@ const rootValue = {
     };
   },
 
-  async chain_stake_moves({ window, limit }: Row, context: GqlContext) {
+  async chain_stake_moves(
+    { window, limit }: QueryChain_Stake_MovesArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6621,7 +6969,10 @@ const rootValue = {
     };
   },
 
-  async chain_stake_transfers({ window, limit }: Row, context: GqlContext) {
+  async chain_stake_transfers(
+    { window, limit }: QueryChain_Stake_TransfersArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6668,7 +7019,7 @@ const rootValue = {
   },
 
   async chain_transfer_pairs(
-    { window, sort, limit }: Row,
+    { window, sort, limit }: QueryChain_Transfer_PairsArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
@@ -6724,7 +7075,10 @@ const rootValue = {
     };
   },
 
-  async chain_transfers({ window, limit }: Row, context: GqlContext) {
+  async chain_transfers(
+    { window, limit }: QueryChain_TransfersArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
     if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6976,7 +7330,7 @@ const rootValue = {
     };
   },
 
-  async rpc_usage({ window }: Row, context: GqlContext) {
+  async rpc_usage({ window }: QueryRpc_UsageArgs, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_ANALYTICS_WINDOW;
     if (!Object.hasOwn(ANALYTICS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -7028,7 +7382,10 @@ const rootValue = {
     };
   },
 
-  async registry_leaderboards({ board, limit }: Row, context: GqlContext) {
+  async registry_leaderboards(
+    { board, limit }: QueryRegistry_LeaderboardsArgs,
+    context: GqlContext,
+  ) {
     // Same board allowlist handleLeaderboards enforces -- an unknown board is a
     // GraphQL BAD_USER_INPUT error, mirroring REST's invalid_query 400 rather
     // than silently resolving to an empty board.
@@ -7166,7 +7523,10 @@ const rootValue = {
     };
   },
 
-  async subnet_recycled({ netuid }: Row, context: GqlContext) {
+  async subnet_recycled(
+    { netuid }: QuerySubnet_RecycledArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7181,7 +7541,7 @@ const rootValue = {
     return loadSubnetRecycled(context.env, netuid);
   },
 
-  async subnet_burn({ netuid }: Row, context: GqlContext) {
+  async subnet_burn({ netuid }: QuerySubnet_BurnArgs, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7196,7 +7556,10 @@ const rootValue = {
     return loadSubnetBurn(context.env, netuid);
   },
 
-  async subnet_turnover({ netuid, window, changes }: Row, context: GqlContext) {
+  async subnet_turnover(
+    { netuid, window, changes }: QuerySubnet_TurnoverArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7253,7 +7616,10 @@ const rootValue = {
     };
   },
 
-  async subnet_ownership_history({ netuid }: Row, context: GqlContext) {
+  async subnet_ownership_history(
+    { netuid }: QuerySubnet_Ownership_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7274,7 +7640,10 @@ const rootValue = {
     };
   },
 
-  async subnet_conviction({ netuid }: Row, context: GqlContext) {
+  async subnet_conviction(
+    { netuid }: QuerySubnet_ConvictionArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7297,7 +7666,10 @@ const rootValue = {
     };
   },
 
-  async subnet_lease_history({ netuid }: Row, context: GqlContext) {
+  async subnet_lease_history(
+    { netuid }: QuerySubnet_Lease_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7316,7 +7688,7 @@ const rootValue = {
     };
   },
 
-  async subnet_lease({ netuid }: Row, context: GqlContext) {
+  async subnet_lease({ netuid }: QuerySubnet_LeaseArgs, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7330,7 +7702,10 @@ const rootValue = {
     return loadSubnetLease(context.env, netuid);
   },
 
-  async account_balance({ ss58 }: Row, context: GqlContext) {
+  async account_balance(
+    { ss58 }: QueryAccount_BalanceArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7344,7 +7719,10 @@ const rootValue = {
     return loadAccountBalance(context.env, ss58);
   },
 
-  async account_root_claim({ ss58 }: Row, context: GqlContext) {
+  async account_root_claim(
+    { ss58 }: QueryAccount_Root_ClaimArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7356,7 +7734,10 @@ const rootValue = {
     return loadAccountRootClaim(context.env, ss58);
   },
 
-  async account_children({ ss58 }: Row, context: GqlContext) {
+  async account_children(
+    { ss58 }: QueryAccount_ChildrenArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7370,7 +7751,10 @@ const rootValue = {
     return loadAccountChildren(context.env, ss58);
   },
 
-  async account_parents({ ss58 }: Row, context: GqlContext) {
+  async account_parents(
+    { ss58 }: QueryAccount_ParentsArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7416,13 +7800,16 @@ const rootValue = {
   async randomness_status(_args: unknown, context: GqlContext) {
     return rootValue.network_randomness(_args, context);
   },
-  async evm_address({ h160 }: Row, context: GqlContext) {
+  async evm_address({ h160 }: QueryEvm_AddressArgs, context: GqlContext) {
     return resolveEvmAddressMapping(h160, context);
   },
   // Same resolver as evm_address, under the get_evm_address_mapping tool name so
   // MCP and GraphQL agree; delegating rather than duplicating keeps the two
   // fields from ever drifting apart.
-  async evm_address_mapping({ h160 }: Row, context: GqlContext) {
+  async evm_address_mapping(
+    { h160 }: QueryEvm_Address_MappingArgs,
+    context: GqlContext,
+  ) {
     return resolveEvmAddressMapping(h160, context);
   },
 };
