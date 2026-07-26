@@ -98,6 +98,47 @@ const POSTHOG_UI_HOST =
 // fails `npm run typecheck` outright rather than degrading quietly at runtime.
 const SDK_DEFAULTS_DATE = "2026-05-30";
 
+/**
+ * Routes session replay must never record (#8270).
+ *
+ * The PostHog project also carries a dashboard-side URL blocklist, but every
+ * rule in it was authored as a glob while declared `matching: "regex"`. Two
+ * of them start with a caret immediately followed by a star, which is not a
+ * valid regex at all ("Nothing to repeat") and throws a SyntaxError inside
+ * the recorder; the other two rely on a trailing slash-star, which in regex
+ * means "zero or more slashes" and is matched against a full https:// URL,
+ * so it can never fire. All four rules were inert, and `/settings` -- which
+ * renders minted API keys and webhook signing secrets -- was being recorded.
+ *
+ * Element-level protection (`ph-no-capture` on the secret-reveal panels,
+ * `maskAllInputs`) always held, so this is defense-in-depth restored rather
+ * than a leak closed. Owning the list here follows the same posture as the
+ * hardcoded `sampleRate` / `enable_recording_console_log` / `persistence`
+ * choices below: don't depend on dashboard state this code can't guarantee.
+ *
+ * Matched as a path prefix on a segment boundary, deliberately NOT a
+ * substring: `/admin-changes` is a PUBLIC route (the AdminUtils config-change
+ * feed) that a loose `/admin` substring rule would wrongly suppress.
+ */
+const REPLAY_BLOCKED_ROUTES = ["/settings", "/portfolio"] as const;
+
+export function isReplayBlockedRoute(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  // Normalize a trailing slash so "/settings/" matches "/settings".
+  const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return REPLAY_BLOCKED_ROUTES.some((base) => path === base || path.startsWith(`${base}/`));
+}
+
+function currentPathname(): string | null {
+  return typeof window === "undefined" ? null : window.location.pathname;
+}
+
+// True only while replay is stopped *by this policy*, so resuming can never
+// hand a recording to a visitor whose sample-rate dice roll said no -- we only
+// restart what we ourselves stopped, and never with the `true` force-override
+// captureException uses.
+let replayStoppedByPolicy = false;
+
 let posthogInit: Promise<PostHog | null> | null = null;
 
 function loadPostHog(): Promise<PostHog | null> {
@@ -108,6 +149,11 @@ function loadPostHog(): Promise<PostHog | null> {
         api_host: POSTHOG_API_HOST,
         ui_host: POSTHOG_UI_HOST,
         defaults: SDK_DEFAULTS_DATE,
+        // Landing directly on a blocked route must never start a recording
+        // in the first place -- stopping one after init would already have
+        // captured the first frames. SPA navigations are handled by
+        // syncReplayPolicy() below.
+        disable_session_recording: isReplayBlockedRoute(currentPathname()),
         capture_pageview: false,
         // posthog-js's own default for capture_pageleave is
         // 'if_capture_pageview' -- i.e. it piggybacks on capture_pageview's
@@ -242,6 +288,29 @@ export function capturePageview(url?: string): void {
       ...(url ? { $current_url: url } : undefined),
       ...(typeof document !== "undefined" ? { page_title: document.title } : undefined),
     });
+  });
+}
+
+/** Starts or stops session replay to match the route now being shown (#8270).
+ *
+ * Call on every SPA navigation, alongside `capturePageview`. A no-op when
+ * unconfigured. Only ever resumes a recording this policy itself stopped, and
+ * never with `startSessionRecording`'s force-override, so a visitor excluded
+ * by `sampleRate` stays excluded. */
+export function syncReplayPolicy(pathname?: string): void {
+  if (!POSTHOG_TOKEN) return;
+  const blocked = isReplayBlockedRoute(pathname ?? currentPathname());
+  void loadPostHog().then((posthog) => {
+    if (!posthog) return;
+    if (blocked) {
+      posthog.stopSessionRecording();
+      replayStoppedByPolicy = true;
+      return;
+    }
+    if (replayStoppedByPolicy) {
+      replayStoppedByPolicy = false;
+      posthog.startSessionRecording();
+    }
   });
 }
 
