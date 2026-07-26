@@ -41,6 +41,7 @@ import {
   exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   weakEtag,
+  X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   type CacheProfile,
 } from "./http.ts";
@@ -3609,6 +3610,12 @@ async function handleRawArtifactRequest(
   const headers = apiHeaders("standard");
   headers.set("content-type", JSON_CONTENT_TYPE);
   headers.set(X_METAGRAPH_ARTIFACT_SOURCE_HEADER, artifact.source);
+  // #8287: expose HOW the key resolved, so a scheduled public probe can tell a
+  // healthy manifest read from one limping on the pointer-miss fallback without
+  // needing log access or credentials.
+  if (artifact.resolution) {
+    headers.set(X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER, artifact.resolution);
+  }
   headers.set("x-metagraph-storage-tier", artifact.storage_tier);
   if (pub) {
     headers.set("x-metagraph-published-at", pub);

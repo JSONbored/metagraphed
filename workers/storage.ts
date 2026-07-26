@@ -13,11 +13,30 @@ import { METAGRAPH_LATEST_KEY } from "./config.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
 
+/**
+ * How an R2 artifact key was resolved (#8287). Surfaced as a response header so
+ * the read path's health is observable from OUTSIDE the Worker, with no log
+ * access and no secrets — the same "read the live public signal" posture as
+ * the publish-freshness alarm (#8286).
+ *
+ *  - `manifest` — resolved through the run's immutable manifest to a
+ *    content-addressed by-hash key (#8277). The healthy steady state.
+ *  - `prefix`   — resolved by concatenating the pointer's `latest_prefix`.
+ *    Normal for a pointer written before #8277, and for artifacts the manifest
+ *    does not name.
+ *  - `fallback` — the resolved key held no object and the literal `latest/`
+ *    retry saved the read (#8279). Correct behaviour, but it means the pointer
+ *    is WRONG: every artifact read is paying a second round-trip. Acceptable
+ *    as a burst mid-publish, never acceptable sustained.
+ */
+export type ArtifactResolution = "manifest" | "prefix" | "fallback";
+
 export interface StorageReadOk {
   ok: true;
   data: unknown;
   source: "static-assets" | "r2";
   storage_tier: string;
+  resolution?: ArtifactResolution;
 }
 export interface StorageReadError {
   ok: false;
@@ -32,6 +51,7 @@ export interface R2ObjectReadOk {
   object: R2ObjectBody;
   source: "r2";
   storage_tier: string;
+  resolution?: ArtifactResolution;
 }
 export type R2ObjectReadResult = R2ObjectReadOk | StorageReadError;
 
@@ -237,6 +257,7 @@ export async function readR2(
     data: await result.object.json(),
     source: "r2",
     storage_tier: storageTier,
+    resolution: result.resolution,
   };
 }
 
@@ -258,7 +279,7 @@ export async function readR2Object(
     };
   }
 
-  const key = await latestR2Key(artifactPath, env);
+  const { key, resolution } = await resolveArtifactKey(artifactPath, env);
   let object;
   try {
     object = await withTimeout(
@@ -307,12 +328,16 @@ export async function readR2Object(
           key,
           fallback_key: fallbackKey,
           storage_tier: storageTier,
+          // #8287: the strategy that MISSED, so triage knows whether the run
+          // manifest or the pointer prefix sent the read somewhere empty.
+          attempted_resolution: resolution,
         });
         return {
           ok: true,
           object: fallbackObject,
           source: "r2",
           storage_tier: storageTier,
+          resolution: "fallback",
         };
       }
     }
@@ -329,6 +354,7 @@ export async function readR2Object(
     object,
     source: "r2",
     storage_tier: storageTier,
+    resolution,
   };
 }
 
@@ -374,17 +400,25 @@ const STABLE_LATEST_ARTIFACT_PATTERNS = [
   /^\/metagraph\/fixtures\/(?!_capture-report\.json$)[A-Za-z0-9._:-]+\.json$/,
 ];
 
-export async function latestR2Key(
+/**
+ * Resolve an artifact's R2 key AND report which strategy produced it (#8287).
+ *
+ * `latestR2Key` below is the key-only wrapper every existing caller uses; this
+ * exists so `readR2Object` can surface the strategy without every call site
+ * having to care. Stable-latest artifacts report `prefix`: they bypass the
+ * pointer by design, so "manifest vs prefix" is not a health signal for them.
+ */
+export async function resolveArtifactKey(
   artifactPath: string,
   env: Env,
-): Promise<string> {
+): Promise<{ key: string; resolution: ArtifactResolution }> {
   const relativePath = artifactPath.replace(/^\/metagraph\//, "");
   if (
     STABLE_LATEST_ARTIFACT_PATTERNS.some((pattern) =>
       pattern.test(artifactPath),
     )
   ) {
-    return `latest/${relativePath}`;
+    return { key: `latest/${relativePath}`, resolution: "prefix" };
   }
   const pointer = await latestPointer(env);
   // #8277: prefer the run's immutable manifest. It maps this artifact path to a
@@ -396,11 +430,18 @@ export async function latestR2Key(
   if (pointer?.full_manifest_run_key && env.METAGRAPH_ARCHIVE) {
     const index = await runManifestIndex(env, pointer.full_manifest_run_key);
     const key = index?.get(artifactPath);
-    if (key) return key;
+    if (key) return { key, resolution: "manifest" };
   }
   const prefix =
     pointer?.latest_prefix || env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
-  return `${prefix}${relativePath}`;
+  return { key: `${prefix}${relativePath}`, resolution: "prefix" };
+}
+
+export async function latestR2Key(
+  artifactPath: string,
+  env: Env,
+): Promise<string> {
+  return (await resolveArtifactKey(artifactPath, env)).key;
 }
 
 // In-isolate memo for the publish pointer (#367). Cloudflare reuses Worker

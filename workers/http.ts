@@ -14,6 +14,12 @@ export type CacheProfile = "short" | "standard" | "static";
 // CORS-open response. Keep in sync as new client-facing headers are added.
 const X_METAGRAPH_STALE_CONTRACT_HEADER = "x-metagraph-stale-contract";
 export const X_METAGRAPH_ARTIFACT_SOURCE_HEADER = "x-metagraph-artifact-source";
+// #8287: which strategy resolved the R2 key (manifest | prefix | fallback).
+// Distinct from the source header above (which tier served it) -- a read can be
+// source=r2 and still be limping along on the pointer-miss fallback, and that
+// difference is the whole health signal.
+export const X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER =
+  "x-metagraph-artifact-resolution";
 
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
@@ -29,6 +35,7 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-metagraph-published-at",
   "x-metagraph-events",
   "x-metagraph-health",
+  "x-metagraph-artifact-resolution",
   "x-metagraph-cache-profile",
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   "x-metagraph-storage-tier",
