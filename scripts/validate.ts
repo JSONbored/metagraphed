@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { firstPartyLogoUrl } from "./cache-identity-logos.ts";
 import {
   backfilledIdentityUrl,
   socialAccounts,
@@ -805,9 +806,14 @@ function buildExpectedGeneratedSubnet(
         : "none",
     },
     lifecycle: subnetLifecycle(nativeSubnet),
+    // #8288: mirrors build-artifacts.ts's mergeSubnet exactly -- the raw
+    // chain_identity.logo_url is resolved to its first-party cached copy (or
+    // null) before the placeholder/overlay backfill, so this reproducibility
+    // check compares against what the build actually serves, not the raw
+    // third-party URL the build no longer emits.
     logo_url: backfilledIdentityUrl(
       overlay?.logo_url,
-      nativeSubnet.chain_identity?.logo_url,
+      firstPartyLogoUrl(nativeSubnet.chain_identity?.logo_url),
     ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,

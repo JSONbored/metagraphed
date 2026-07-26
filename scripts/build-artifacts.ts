@@ -8,6 +8,7 @@ import {
   rollupSubnetStatus,
 } from "../src/health-probe-core.ts";
 import { generateServiceSnippets } from "../src/integration-snippets.ts";
+import { firstPartyLogoUrl } from "./cache-identity-logos.ts";
 import { githubSignalsForSubnet, loadGithubSignals } from "./github-signals.ts";
 import {
   backfilledIdentityUrl,
@@ -2848,9 +2849,15 @@ function mergeSubnet(
         : "none",
     },
     lifecycle: subnetLifecycle(nativeSubnet),
+    // #8288: chain_identity.logo_url is on-chain identity (attacker-settable
+    // by whoever registered the subnet), resolved to its build-time cached
+    // first-party copy -- or null -- so a raw third-party URL never reaches
+    // the served payload. firstPartyLogoUrl is shared with validate.ts's
+    // buildExpectedGeneratedSubnet so the reproducibility check compares
+    // against the same resolution the build actually performs.
     logo_url: backfilledIdentityUrl(
       overlay?.logo_url,
-      nativeSubnet.chain_identity?.logo_url,
+      firstPartyLogoUrl(nativeSubnet.chain_identity?.logo_url),
     ),
     registered_at_block: nativeSubnet.registered_at_block,
     slug,

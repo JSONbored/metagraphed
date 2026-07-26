@@ -1,0 +1,18 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- No background — transparent for light mode -->
+  <!-- Outer ring, slightly broken -->
+  <circle cx="200" cy="200" r="160" stroke="#7c3aed" stroke-width="10" stroke-dasharray="800 42" stroke-dashoffset="21" opacity="0.25"/>
+  <!-- Main perturbation waveform -->
+  <path d="M40 200 C73 133, 107 267, 140 200 C173 133, 207 267, 240 200 C273 133, 307 267, 340 200 C357 167, 365 183, 370 200"
+        stroke="#7c3aed" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <!-- Ghost wave, offset -->
+  <path d="M40 200 C73 156, 107 244, 140 200 C173 156, 207 244, 240 200 C273 156, 307 244, 340 200"
+        stroke="#7c3aed" stroke-width="5.5" fill="none" stroke-linecap="round" opacity="0.3"/>
+  <!-- Center dot -->
+  <circle cx="200" cy="200" r="16" fill="#7c3aed"/>
+  <!-- Crosshair ticks -->
+  <line x1="200" y1="22" x2="200" y2="55" stroke="#7c3aed" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+  <line x1="200" y1="345" x2="200" y2="378" stroke="#7c3aed" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+  <line x1="22" y1="200" x2="55" y2="200" stroke="#7c3aed" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+  <line x1="345" y1="200" x2="378" y2="200" stroke="#7c3aed" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+</svg>
