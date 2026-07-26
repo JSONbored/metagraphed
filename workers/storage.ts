@@ -38,6 +38,66 @@ export type R2ObjectReadResult = R2ObjectReadOk | StorageReadError;
 export interface LatestPointer {
   published_at?: string;
   latest_prefix?: string;
+  /**
+   * #8277: key of the immutable per-run FULL manifest (path -> content-addressed
+   * by-hash key for every artifact the run published). Optional — a pointer
+   * written before #8277, or by a partial publish, simply won't have it and
+   * resolution falls back to `latest_prefix`.
+   */
+  full_manifest_run_key?: string;
+}
+
+interface RunManifestEntry {
+  path?: string;
+  key?: string;
+}
+
+/**
+ * Per-run artifact index, memoized for the life of the isolate.
+ *
+ * No TTL, unlike `pointerMemo` below: a run manifest is IMMUTABLE (it lives at
+ * `runs/<run>/r2-manifest.json` and is never rewritten), so once parsed for a
+ * given key it can never go stale. A new publish changes the pointer's
+ * `full_manifest_run_key`, which misses this cache by key and loads the new one.
+ * `null` is cached too, so a manifest that failed to load doesn't re-fetch a
+ * ~585 KB object on every subsequent request.
+ */
+const runManifestMemo = new Map<string, Map<string, string> | null>();
+
+async function runManifestIndex(
+  env: Env,
+  manifestKey: string,
+): Promise<Map<string, string> | null> {
+  const cached = runManifestMemo.get(manifestKey);
+  if (cached !== undefined) return cached;
+
+  let index: Map<string, string> | null = null;
+  try {
+    const object = await withTimeout(
+      env.METAGRAPH_ARCHIVE.get(manifestKey),
+      r2TimeoutMs(env),
+    );
+    const body = object
+      ? ((await object.json()) as { artifacts?: unknown })
+      : null;
+    const artifacts = Array.isArray(body?.artifacts)
+      ? (body.artifacts as RunManifestEntry[])
+      : null;
+    if (artifacts) {
+      index = new Map();
+      for (const artifact of artifacts) {
+        if (artifact?.path && artifact?.key) {
+          index.set(artifact.path, artifact.key);
+        }
+      }
+    }
+  } catch {
+    // Best-effort by design: a timeout, a malformed body, or a missing object
+    // must degrade to latest_prefix resolution, never fail the read.
+    index = null;
+  }
+  runManifestMemo.set(manifestKey, index);
+  return index;
 }
 
 // Structured request logging on non-happy paths (R2 timeout, static fallback) so
@@ -327,6 +387,17 @@ export async function latestR2Key(
     return `latest/${relativePath}`;
   }
   const pointer = await latestPointer(env);
+  // #8277: prefer the run's immutable manifest. It maps this artifact path to a
+  // content-addressed by-hash key, so the pointer flip is the single atomic
+  // switch between runs and an in-flight publish overwriting the mutable
+  // latest/ tree can never be observed mid-way. Best-effort: an older pointer
+  // without the key, an unreadable manifest, or a path the manifest doesn't
+  // name all fall through to the prefix resolution below unchanged.
+  if (pointer?.full_manifest_run_key && env.METAGRAPH_ARCHIVE) {
+    const index = await runManifestIndex(env, pointer.full_manifest_run_key);
+    const key = index?.get(artifactPath);
+    if (key) return key;
+  }
   const prefix =
     pointer?.latest_prefix || env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
   return `${prefix}${relativePath}`;

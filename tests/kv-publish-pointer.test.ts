@@ -17,6 +17,13 @@ test("KV latest pointer resolves reads through a prefix the upload writes", () =
   // run_prefix is still published as provenance (which run produced this
   // content), just no longer used to resolve reads.
   assert.match(source, /run_prefix: manifest\.run_prefix/);
+  // #8277: the immutable per-run manifest key the Worker prefers over
+  // latest_prefix. Without it every read falls back to the mutable latest/
+  // tree and publish reads stop being atomic again -- silently.
+  assert.match(
+    source,
+    /full_manifest_run_key: manifest\.full_manifest_run_key/,
+  );
   // metagraph:latest is the only KV control record now (dead feature-flags /
   // endpoint-pools / source-freshness sidecars were removed — read by nothing).
   assert.match(source, /\["metagraph:latest", pointer\]/);
