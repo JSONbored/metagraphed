@@ -20,14 +20,20 @@ const DEFAULT_API_BASE = "https://api.metagraph.sh";
 const FETCH_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 10_000;
 
-// A spread of R2-backed artifacts rather than one: a single path could be
-// missing from the run manifest for its own reasons (and legitimately resolve
-// via `prefix`), while a broken POINTER degrades all of them at once. Probing
-// several is what separates "one artifact is odd" from "the read path is sick".
+// The RAW artifact routes, not /api/v1/*. Verified against production: the
+// artifact diagnostics (source / storage-tier / resolution) are set by the raw
+// `/metagraph/*.json` response builder; the /api/v1 envelope builder never
+// carried them, so probing /api/v1 reported `unknown` forever and the alarm was
+// blind. These paths ARE the artifact read path this alarm is about.
+//
+// A spread rather than one: a single path could be missing from the run
+// manifest for its own reasons (and legitimately resolve via `prefix`), while a
+// broken POINTER degrades all of them at once. Probing several is what
+// separates "one artifact is odd" from "the read path is sick".
 const DEFAULT_PROBE_PATHS = [
-  "/api/v1/subnets",
-  "/api/v1/coverage",
-  "/api/v1/providers",
+  "/metagraph/subnets.json",
+  "/metagraph/coverage.json",
+  "/metagraph/providers.json",
 ];
 
 export type Resolution = "manifest" | "prefix" | "fallback" | "unknown";
@@ -87,7 +93,10 @@ async function probe(apiBase: string, path: string): Promise<ProbeResult> {
   // before believing an absent header.
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
     try {
-      const res = await fetch(`${apiBase}${path}?limit=1`, {
+      // HEAD: the diagnostics live in the headers, so there is no reason to
+      // pull a multi-hundred-KB body three times a day.
+      const res = await fetch(`${apiBase}${path}`, {
+        method: "HEAD",
         headers: { accept: "application/json" },
       });
       const header = res.headers.get("x-metagraph-artifact-resolution");

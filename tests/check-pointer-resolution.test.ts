@@ -90,3 +90,20 @@ test("no probes at all is unknown, never healthy", () => {
   const v = evaluateResolution([]);
   assert.equal(v.status, "unknown");
 });
+
+// The probe must target the RAW artifact routes. Verified against production:
+// the artifact diagnostics (source / storage-tier / resolution) are set by the
+// `/metagraph/*.json` response builder only -- the /api/v1 envelope builder
+// never carried them, so an /api/v1 probe reported `unknown` forever and the
+// alarm was silently blind. Pin the path shape so that can't regress.
+test("the default probe paths are raw artifact routes, not /api/v1", async () => {
+  const src = await import("node:fs").then((fs) =>
+    fs.readFileSync("scripts/check-pointer-resolution.ts", "utf8"),
+  );
+  const block = src.slice(
+    src.indexOf("const DEFAULT_PROBE_PATHS"),
+    src.indexOf("];", src.indexOf("const DEFAULT_PROBE_PATHS")),
+  );
+  assert.match(block, /"\/metagraph\/[a-z-]+\.json"/);
+  assert.doesNotMatch(block, /"\/api\/v1\//);
+});
