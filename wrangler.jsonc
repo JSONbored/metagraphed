@@ -54,7 +54,7 @@
     "not_found_handling": "404-page",
   },
   "vars": {
-    "METAGRAPH_CONTRACT_VERSION": "2026-06-06.1",
+    "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
     // Staging drift tripwire (types-epic B, #7860): when "true", the routes
