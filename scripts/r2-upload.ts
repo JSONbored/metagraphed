@@ -68,6 +68,58 @@ const uploadRetryBaseDelayMs =
   1000;
 const uploadTimeoutMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_TIMEOUT_MS) || 45_000;
+// #stale-publish-pipeline/D: replacing the per-object wrangler subprocess with
+// direct API fetches (#8209) removed the CLI overhead and exposed the next
+// ceiling — Cloudflare's client-API rate limit (documented ~1,200 requests /
+// 5 minutes per token; every HEAD dedupe probe and every PUT counts). The
+// 2026-07-26 run died in mass HTTP 429s ("code 971: Please wait and consider
+// throttling your request speed"): 24 workers kept firing while each failing
+// object burned its 3 quick retries (1s/2s/4s — meaningless against a
+// 5-minute window) and the first object to exhaust them aborted the whole
+// publish. Two-part fix: a request-rate gate shared by every worker (default
+// 3.5 rps ≈ 1,050 per 5 minutes, ~12% under the ceiling), and 429-aware
+// retries that honor Retry-After, back off in tens of seconds, and push a
+// shared cooldown so ALL workers pause together instead of 23 siblings
+// draining the budget while one sleeps.
+const uploadMaxRps =
+  parsePositiveNumber(process.env.METAGRAPH_R2_UPLOAD_MAX_RPS) || 3.5;
+const uploadRateLimitRetries =
+  parseNonNegativeInteger(process.env.METAGRAPH_R2_UPLOAD_429_RETRIES) ?? 6;
+const uploadRateLimitBaseDelayMs =
+  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_429_BASE_DELAY_MS) ||
+  15_000;
+const uploadRateLimitMaxDelayMs = 120_000;
+
+// Shared pacing across all workers. Each request claims the next slot on a
+// common clock (Node is single-threaded, so the read-modify-write below is
+// race-free), and a 429 pushes a shared cooldown so every worker stalls
+// together instead of the survivors draining the 5-minute budget while one
+// backs off. Declared here, above the script's top-level execution, so the
+// bindings exist before the first upload runs (class/let are not hoisted).
+let nextRequestSlot = 0;
+let cooldownUntil = 0;
+
+async function rateGate(): Promise<void> {
+  const interval = 1000 / uploadMaxRps;
+  for (;;) {
+    const slot = Math.max(Date.now(), nextRequestSlot, cooldownUntil);
+    nextRequestSlot = slot + interval;
+    const wait = slot - Date.now();
+    if (wait > 0) await sleep(wait);
+    // A 429 may have pushed the shared cooldown past our claimed slot while
+    // we slept — re-claim instead of firing into a known-throttled window.
+    if (Date.now() >= cooldownUntil) return;
+  }
+}
+
+function pushCooldown(ms: number): void {
+  cooldownUntil = Math.max(cooldownUntil, Date.now() + ms);
+}
+
+class R2PutError extends Error {
+  status?: number;
+  retryAfterMs?: number;
+}
 // Test-only seam (mirrors the old METAGRAPH_WRANGLER_BIN override this
 // replaced): lets tests/r2-upload.test.ts point at a local mock HTTP server
 // instead of the real Cloudflare API. Never set in production.
@@ -278,6 +330,17 @@ function parseNonNegativeInteger(value: string | undefined): number | null {
   return parsed;
 }
 
+function parsePositiveNumber(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error("Expected a positive number value.");
+  }
+  return parsed;
+}
+
 function verifyLocalArtifact(localPath: string, artifact: Artifact): void {
   const actual = sha256Hex(readFileSync(localPath));
   if (actual !== artifact.sha256) {
@@ -424,23 +487,46 @@ async function putObject(
   job: UploadJob,
   { retries, retryBaseDelayMs }: { retries: number; retryBaseDelayMs: number },
 ): Promise<{ deduped: boolean }> {
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
+  let rateLimitAttempt = 0;
+  let otherAttempt = 0;
+  for (;;) {
     try {
       return await putObjectOnce(job);
     } catch (error) {
-      if (attempt >= retries) {
+      // Rate limiting gets its own, much larger retry budget and backoff
+      // scale: Cloudflare's window is 5 minutes, so the generic 1s/2s/4s
+      // ladder below only burns more budget. Honor Retry-After when the API
+      // sends one; otherwise back off in tens of seconds with jitter so the
+      // workers don't re-align on the same instant.
+      if (error instanceof R2PutError && error.status === 429) {
+        if (rateLimitAttempt >= uploadRateLimitRetries) {
+          throw error;
+        }
+        const backoff =
+          error.retryAfterMs ??
+          Math.min(
+            uploadRateLimitBaseDelayMs * 2 ** rateLimitAttempt,
+            uploadRateLimitMaxDelayMs,
+          );
+        const delay = backoff + Math.floor(Math.random() * 1000);
+        pushCooldown(delay);
+        rateLimitAttempt += 1;
+        console.error(
+          `Rate-limited (HTTP 429) on ${job.key}; cooling all workers down ${Math.round(delay / 1000)}s (retry ${rateLimitAttempt}/${uploadRateLimitRetries})`,
+        );
+        await sleep(delay);
+        continue;
+      }
+      if (otherAttempt >= retries) {
         throw error;
       }
-      const retryNumber = attempt + 1;
+      otherAttempt += 1;
       console.error(
-        `Retrying R2 object upload ${job.key} (${retryNumber}/${retries}) after ${summarizeError(error)}`,
+        `Retrying R2 object upload ${job.key} (${otherAttempt}/${retries}) after ${summarizeError(error)}`,
       );
-      await sleep(retryBaseDelayMs * 2 ** attempt);
+      await sleep(retryBaseDelayMs * 2 ** (otherAttempt - 1));
     }
   }
-  // Unreachable: the loop above always returns or throws by its last
-  // iteration (attempt >= retries re-throws), but TypeScript can't see that.
-  throw new Error(`putObject exhausted retries for ${job.key}`);
 }
 
 // #stale-publish-pipeline/C: previously spawned a `wrangler r2 object put`
@@ -511,6 +597,7 @@ async function putObjectOnce({
   const body = readFileSync(localPath);
   let res: Response;
   try {
+    await rateGate();
     res = await fetch(r2ObjectUrl(accountId, bucketName, key), {
       method: "PUT",
       headers: {
@@ -538,12 +625,19 @@ async function putObjectOnce({
   }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(
+    const error = new R2PutError(
       [`R2 object put failed for ${key} (HTTP ${res.status})`, text.trim()]
         .filter(Boolean)
         .join("\n")
         .slice(0, 500),
     );
+    error.status = res.status;
+    // Retry-After is seconds on Cloudflare's API; only trust a positive one.
+    const retryAfter = Number(res.headers.get("retry-after"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+      error.retryAfterMs = retryAfter * 1000;
+    }
+    throw error;
   }
   return { deduped: false };
 }
@@ -558,6 +652,9 @@ async function objectExists(
   apiToken: string,
 ): Promise<boolean> {
   try {
+    // HEAD probes spend the same client-API rate budget as PUTs — gate them
+    // too, or the dedupe pass alone can trip the 429 window.
+    await rateGate();
     const res = await fetch(r2ObjectUrl(accountId, bucketName, key), {
       method: "HEAD",
       headers: { Authorization: `Bearer ${apiToken}` },
