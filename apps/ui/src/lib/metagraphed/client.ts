@@ -5,12 +5,25 @@ export class ApiError extends Error {
   status: number;
   code?: string;
   url: string;
-  constructor(message: string, opts: { status: number; code?: string; url: string }) {
+  /**
+   * The response envelope's `meta.network`, when present. Set on every
+   * network-partition 404 (`workers/api.ts`'s `handleNetworkScopedRequest`
+   * paths — mainnet-only blocklist hits, the `local` network's no-data 404,
+   * and its catch-all unmatched-route 404) so callers can distinguish
+   * "unavailable on this network by design" from an ordinary 404, without
+   * relying on a specific error `code`.
+   */
+  network?: string;
+  constructor(
+    message: string,
+    opts: { status: number; code?: string; url: string; network?: string },
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = opts.status;
     this.code = opts.code;
     this.url = opts.url;
+    this.network = opts.network;
   }
 }
 
@@ -104,6 +117,7 @@ export async function apiFetch<T>(
       status: res.status,
       code: env?.error?.code,
       url: redactUrlForError(url),
+      network: env?.meta?.network,
     });
   }
 
@@ -115,6 +129,7 @@ export async function apiFetch<T>(
         status: res.status,
         code: env.error?.code,
         url: redactUrlForError(url),
+        network: env.meta?.network,
       });
     }
     return { data: env.data, meta: env.meta ?? {}, url };

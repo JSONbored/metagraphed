@@ -90,6 +90,7 @@ export interface ApiMeta {
   generated_at?: string;
   source?: string;
   stale?: boolean;
+  network?: string;
   cursor?: string | number | null;
   next_cursor?: string | number | null;
   prev_cursor?: string | number | null;

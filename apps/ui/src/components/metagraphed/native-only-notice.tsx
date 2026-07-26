@@ -4,11 +4,13 @@ import { coverageQuery } from "@/lib/metagraphed/queries";
 import { getNetwork } from "@/lib/metagraphed/config";
 
 /**
- * Shown when a route's data 404s with `artifact_not_found` on a non-mainnet
- * network. Those partitions (e.g. testnet) carry native chain data only, so
- * most enrichment / health / interface artifacts legitimately don't exist yet
- * — an informational empty notice (surfacing the API's own `coverage.notes`)
- * is the honest signal, not a red error card (#370).
+ * Shown when a route's data 404s on a non-mainnet network, either because the
+ * artifact simply isn't built yet (`artifact_not_found`) or because the route
+ * is deliberately mainnet-only (`not_found` with `meta.network` set — see
+ * `ErrorState` in ./states.tsx). Those partitions (e.g. testnet) carry native
+ * chain data only, so most enrichment / health / interface artifacts
+ * legitimately don't exist yet — an informational empty notice (surfacing the
+ * API's own `coverage.notes`) is the honest signal, not a red error card (#370).
  */
 export function NativeOnlyNotice({ context }: { context?: string }) {
   const network = getNetwork();
