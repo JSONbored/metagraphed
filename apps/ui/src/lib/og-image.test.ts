@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { escapeText, normalizeTitle } from "./og-image";
+import { escapeText, normalizeSubtitle, normalizeTitle } from "./og-image";
 
 describe("escapeText", () => {
   it("escapes HTML metacharacters for safe satori markup embedding", () => {
@@ -37,5 +37,25 @@ describe("normalizeTitle", () => {
     expect(out.length).toBe(110);
     expect(out.endsWith("…")).toBe(true);
     expect(out.startsWith("x".repeat(109))).toBe(true);
+  });
+});
+
+describe("normalizeSubtitle (#8257)", () => {
+  it("falls back to the tagline when a page passes none", () => {
+    expect(normalizeSubtitle(null)).toBe("The Bittensor subnet integration registry");
+    expect(normalizeSubtitle("  ")).toBe("The Bittensor subnet integration registry");
+  });
+
+  it("keeps an entity subtitle so a share names what it links to", () => {
+    expect(normalizeSubtitle("Validator — stake, take and subnet memberships")).toBe(
+      "Validator — stake, take and subnet memberships",
+    );
+  });
+
+  it("truncates rather than letting a long subtitle overflow the card", () => {
+    const long = "x".repeat(200);
+    const out = normalizeSubtitle(long);
+    expect(out.length).toBeLessThanOrEqual(90);
+    expect(out.endsWith("\u2026")).toBe(true);
   });
 });

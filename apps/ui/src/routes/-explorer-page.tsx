@@ -5,6 +5,7 @@ import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import {
+  SectionHeading,
   ShareButton,
   ActionBar,
   TimeAgo,
@@ -18,6 +19,8 @@ import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
+import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
+import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import {
   NetworkDecentralizationPanel,
   NetworkDecentralizationSkeleton,
@@ -151,6 +154,22 @@ export function ExplorerPage() {
       </section>
 
       <ChainEventsFeedSection />
+      {/* #8257: the full "what changed" view. The homepage carries a 7-item
+          compact version; this one is unbounded within the range and adds the
+          per-kind filter chips. Chain Overview rather than /subnets Rankings:
+          runtime upgrades and incidents aren't subnet rankings. */}
+      <section>
+        <SectionHeading
+          title="What changed"
+          intro="Registry updates, incidents, on-chain identity edits and runtime upgrades — grouped by day, newest first."
+        />
+        <TimeRangeProvider>
+          <AsyncPanel context="what changed" fallback={<Skeleton className="h-64 w-full" />}>
+            <WhatChangedFeed showFilters />
+          </AsyncPanel>
+        </TimeRangeProvider>
+      </section>
+
       <ApiSourceFooter
         paths={[
           "/api/v1/blocks",
