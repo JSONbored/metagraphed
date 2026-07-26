@@ -32,6 +32,7 @@ import {
   formatLlmMarkdownText,
   hashJson,
   isJsonContentType,
+  isProductionPublishBuild,
   listJsonFilesRecursive,
   loadCandidates,
   loadEntities,
@@ -53,6 +54,7 @@ import {
   corroboratingSources,
   clusterDomainFromUrl,
   redactCredentialedUrls,
+  revertDeployOwnedArtifactsIfDirty,
   sanitizeOpenApiDocument,
   repoRoot,
   sha256Hex,
@@ -2727,6 +2729,33 @@ await writeJson(artifactFile("build-summary.json"), {
 console.log(
   `Built ${mergedSubnets.length} subnet(s), ${surfaces.length} surface(s), and ${providers.length} provider(s).`,
 );
+
+// This script's own r2-manifest.json write above (a build-to-build-varying
+// intermediate, not the real publish manifest) is exactly the "epoch landmine"
+// DEPLOY_OWNED_ARTIFACTS papercut: a standalone `node scripts/build-artifacts.ts`
+// or `npm run build:artifacts` -- run directly rather than through the full
+// `npm run build` pipeline (which already self-heals via the same call in
+// build.ts) -- otherwise leaves a bogus local diff on a committed file for a
+// human to notice and revert by hand. Self-revert here too so every entrypoint
+// that can dirty it cleans up after itself; a no-op when nothing's dirty
+// (e.g. when this call and build.ts's later one both run in the same
+// `npm run build`), and correctly skipped during the real production publish,
+// where the drift is genuine and must be committed.
+//
+// Scoped to ONLY r2-manifest.json -- the one DEPLOY_OWNED_ARTIFACTS member
+// this script actually writes -- rather than the full array: schemas/
+// index.json is a sibling DEPLOY_OWNED_ARTIFACTS member, but this script never
+// writes it, and a caller (a test forging it to exercise the
+// forgery/staleness reconciler, or sync-schema-snapshots.yml's own commit
+// step) may legitimately have just written it in the same process tree.
+// Reverting the whole array here would silently discard that caller's
+// deliberate change out from under it the moment this script exits.
+if (!isProductionPublishBuild()) {
+  revertDeployOwnedArtifactsIfDirty(
+    ["public/metagraph/r2-manifest.json"],
+    repoRoot,
+  );
+}
 
 function mergeSubnet(
   nativeSubnet: Row,
