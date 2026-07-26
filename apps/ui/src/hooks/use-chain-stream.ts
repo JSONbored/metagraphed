@@ -53,16 +53,33 @@ export function chainStreamEventMatchesFilters(
   return true;
 }
 
+/**
+ * Debounced trigger with an out-of-band cancel handle, so a connection
+ * teardown can drop a scheduled-but-not-yet-fired flush (#8179).
+ */
+export interface DebouncedHandler {
+  (): void;
+  /** Drop the pending, not-yet-fired invocation (if any) without running it. */
+  cancel: () => void;
+}
+
 /** Pure debounce helper; exported for unit tests. */
-export function createDebouncedHandler(run: () => void, waitMs: number): () => void {
+export function createDebouncedHandler(run: () => void, waitMs: number): DebouncedHandler {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  return () => {
+  const cancel = () => {
     if (timer != null) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      run();
-    }, waitMs);
+    timer = null;
   };
+  return Object.assign(
+    () => {
+      if (timer != null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        run();
+      }, waitMs);
+    },
+    { cancel },
+  );
 }
 
 /** Parse an SSE MessageEvent's `data` as JSON; null on empty/malformed. */
@@ -73,6 +90,102 @@ export function parseChainStreamPayload(data: unknown): unknown | null {
   } catch {
     return null;
   }
+}
+
+/** The slice of `EventSource` the session logic needs; injected for unit tests. */
+export interface ChainStreamSource {
+  addEventListener(type: string, listener: (ev: Event) => void): void;
+  close(): void;
+  onmessage: ((ev: MessageEvent) => void) | null;
+}
+
+export interface ChainStreamSessionDeps {
+  /** Open a fresh source for the current network/API base; may throw. */
+  openSource: () => ChainStreamSource;
+  /** Read through to the caller's latest `onEvent` (ref-backed in the hook). */
+  getOnEvent: () => ((payload: unknown) => void) | undefined;
+  /** Read through to the caller's latest `matches` (ref-backed in the hook). */
+  getMatches: () => ((payload: unknown) => boolean) | undefined;
+  debounceMs: number;
+  setStatus: (s: SseStatus) => void;
+  /** Called on every accepted frame (feeds `lastEventAt`). */
+  markActivity: () => void;
+}
+
+/**
+ * Connection lifecycle for `useChainStream`, extracted so the reconnect /
+ * teardown behavior is unit-testable in this suite's plain-node environment
+ * (no jsdom/renderHook -- see `apps/ui/vitest.config.ts`).
+ *
+ * #8179: `teardown()` cancels the previous connection's pending debounce in
+ * addition to closing its source. Without that, a frame received on the old
+ * connection could sit in a scheduled `flush()` timer across a
+ * network/API-base reconnect and fire *after* the switch, delivering a stale
+ * cross-network payload to `onEvent`.
+ */
+export function createChainStreamSession(deps: ChainStreamSessionDeps): {
+  connect: () => void;
+  dispose: () => void;
+} {
+  let es: ChainStreamSource | null = null;
+  let disposed = false;
+  let cancelPendingFlush: (() => void) | null = null;
+  const set = (s: SseStatus) => {
+    if (!disposed) deps.setStatus(s);
+  };
+
+  const teardown = () => {
+    cancelPendingFlush?.();
+    cancelPendingFlush = null;
+    es?.close();
+    es = null;
+  };
+
+  const connect = () => {
+    teardown();
+    set("connecting");
+    try {
+      es = deps.openSource();
+    } catch {
+      es = null;
+      set("error");
+      return;
+    }
+
+    let pending: unknown = null;
+    const flush = createDebouncedHandler(() => {
+      if (pending === null || disposed) return;
+      const payload = pending;
+      pending = null;
+      deps.getOnEvent()?.(payload);
+    }, deps.debounceMs);
+    cancelPendingFlush = flush.cancel;
+
+    const handle = (ev: Event) => {
+      if (disposed) return;
+      const payload = parseChainStreamPayload((ev as MessageEvent).data);
+      if (payload == null) return;
+      const match = deps.getMatches();
+      if (match && !match(payload)) return;
+      deps.markActivity();
+      pending = payload;
+      flush();
+    };
+
+    es.addEventListener("chain", handle);
+    // Some proxies strip named SSE events into unnamed `message` frames.
+    es.onmessage = handle;
+    es.addEventListener("open", () => set("open"));
+    // onerror: EventSource auto-reconnects; polling/manual refresh covers the gap.
+    es.addEventListener("error", () => set("error"));
+  };
+
+  const dispose = () => {
+    disposed = true;
+    teardown();
+  };
+
+  return { connect, dispose };
 }
 
 export interface UseChainStreamOptions {
@@ -124,67 +237,26 @@ export function useChainStream(options: UseChainStreamOptions = {}): {
       return;
     }
 
-    let es: EventSource | null = null;
-    let cancelled = false;
-    const set = (s: SseStatus) => {
-      if (!cancelled) setStatus(s);
-    };
-
-    const teardown = () => {
-      es?.close();
-      es = null;
-    };
-
     const topicList = topicsKey
       ? topicsKey.split(",").filter(Boolean)
       : (["chain_events"] as string[]);
 
-    const connect = () => {
-      teardown();
-      set("connecting");
-      try {
-        es = new EventSource(buildChainStreamUrl(topicList));
-      } catch {
-        es = null;
-        set("error");
-        return;
-      }
+    const session = createChainStreamSession({
+      openSource: () => new EventSource(buildChainStreamUrl(topicList)),
+      getOnEvent: () => onEventRef.current,
+      getMatches: () => matchesRef.current,
+      debounceMs,
+      setStatus,
+      markActivity: () => setLastEventAt(new Date().toISOString()),
+    });
 
-      let pending: unknown = null;
-      const flush = createDebouncedHandler(() => {
-        if (pending === null || cancelled) return;
-        const payload = pending;
-        pending = null;
-        onEventRef.current?.(payload);
-      }, debounceMs);
-
-      const handle = (ev: Event) => {
-        if (cancelled) return;
-        const payload = parseChainStreamPayload((ev as MessageEvent).data);
-        if (payload == null) return;
-        const match = matchesRef.current;
-        if (match && !match(payload)) return;
-        if (!cancelled) setLastEventAt(new Date().toISOString());
-        pending = payload;
-        flush();
-      };
-
-      es.addEventListener("chain", handle);
-      // Some proxies strip named SSE events into unnamed `message` frames.
-      es.onmessage = handle;
-      es.addEventListener("open", () => set("open"));
-      // onerror: EventSource auto-reconnects; polling/manual refresh covers the gap.
-      es.addEventListener("error", () => set("error"));
-    };
-
-    connect();
-    const offNetwork = onNetworkChange(connect);
-    const offApiBase = onApiBaseChange(connect);
+    session.connect();
+    const offNetwork = onNetworkChange(session.connect);
+    const offApiBase = onApiBaseChange(session.connect);
     return () => {
-      cancelled = true;
       offNetwork();
       offApiBase();
-      teardown();
+      session.dispose();
     };
   }, [enabled, topicsKey, debounceMs]);
 
