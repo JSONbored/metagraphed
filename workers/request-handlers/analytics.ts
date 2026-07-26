@@ -61,6 +61,8 @@ import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
+  trimChainActivityToWindow,
+  trimChainFeesToWindow,
   buildChainSigners,
 } from "../../src/chain-analytics.ts";
 import {
@@ -963,7 +965,7 @@ export async function handleChainActivity(
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
+  const { label, days: windowDays } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const csv = csvRequested(url, request);
@@ -978,16 +980,22 @@ export async function handleChainActivity(
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
       // D1 read.
-      const data =
+      // #8242: the upstream aggregation buckets by UTC day across a
+      // `now - N days` range, so a 7d window comes back as 8 calendar days (a
+      // partial today plus a partial tail day). Trim to the window the caller
+      // actually asked for so day_count can't contradict the window label.
+      const data = trimChainActivityToWindow(
         ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) as ReturnType<typeof buildChainActivity> | null) ??
-        buildChainActivity({
-          window: label,
-          observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof buildChainActivity>[0]);
+          buildChainActivity({
+            window: label,
+            observedAt: meta?.last_run_at || null,
+          } as unknown as Parameters<typeof buildChainActivity>[0]),
+        windowDays,
+      );
       if (csv) {
         return csvResponse(
           data.days,
@@ -2281,7 +2289,7 @@ export async function handleChainFees(
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "call_module", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
+  const { label, days: windowDays } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const limitResult = parseLimitParam(url, {
@@ -2319,6 +2327,9 @@ export async function handleChainFees(
         window: label,
         observedAt: meta?.last_run_at || null,
       } as unknown as Parameters<typeof buildChainFees>[0]);
+      // #8242: see handleChainActivity — trim the UTC-day buckets down to the
+      // requested window so "7d" never reports 8 days.
+      data = trimChainFeesToWindow(data, windowDays);
       if (csv) {
         return csvResponse(
           data.daily,

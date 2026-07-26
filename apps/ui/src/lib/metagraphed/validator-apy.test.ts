@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   annualizedDelegatorApyPct,
+  APY_IMPLAUSIBLE_PCT,
   apyFromRewardsPer1000,
   formatApyPct,
   formatTakePct,
+  isImplausibleApyPct,
   netDailyYield,
 } from "./validator-apy";
 
@@ -29,5 +31,29 @@ describe("validator-apy", () => {
     expect(formatTakePct(null)).toBe("—");
     expect(formatApyPct(12.456)).toBe("12.5%");
     expect(formatApyPct(null)).toBe("—");
+  });
+
+  describe("implausible estimates (#8242)", () => {
+    it("buckets tiny-stake outliers instead of printing them", () => {
+      // The live validators index showed 242% and 180% for small validators
+      // next to the majors' 1-2%, which made the whole column look wrong.
+      expect(formatApyPct(242)).toBe(">100%");
+      expect(formatApyPct(180.4)).toBe(">100%");
+      expect(isImplausibleApyPct(242)).toBe(true);
+    });
+
+    it("leaves plausible estimates — including the boundary — untouched", () => {
+      expect(formatApyPct(APY_IMPLAUSIBLE_PCT)).toBe("100%");
+      expect(isImplausibleApyPct(APY_IMPLAUSIBLE_PCT)).toBe(false);
+      expect(formatApyPct(99.4)).toBe("99.4%");
+      expect(formatApyPct(2.26)).toBe("2.26%");
+    });
+
+    it("treats absent and non-finite values as unknown, not implausible", () => {
+      expect(isImplausibleApyPct(null)).toBe(false);
+      expect(isImplausibleApyPct(undefined)).toBe(false);
+      expect(isImplausibleApyPct(Number.POSITIVE_INFINITY)).toBe(false);
+      expect(formatApyPct(Number.POSITIVE_INFINITY)).toBe("—");
+    });
   });
 });

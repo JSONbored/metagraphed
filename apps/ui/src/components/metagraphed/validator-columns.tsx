@@ -6,7 +6,12 @@ import { formatNumber } from "@/lib/metagraphed/format";
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
-import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
+import {
+  formatApyPct,
+  formatTakePct,
+  isImplausibleApyPct,
+  IMPLAUSIBLE_APY_NOTE,
+} from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator, GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 const TH_BASE = "px-3 py-2 mg-type-micro text-ink-muted";
@@ -87,7 +92,16 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   {
     ...numeric("Est. APY"),
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
-    cell: (v) => formatApyPct(v.apy_estimate != null ? v.apy_estimate * 100 : null),
+    cell: (v) => {
+      const pct = v.apy_estimate != null ? v.apy_estimate * 100 : null;
+      // Tiny-stake estimates annualize into nonsense (#8242) — formatApyPct
+      // buckets them as ">100%"; explain why on hover rather than in-cell.
+      return (
+        <span title={isImplausibleApyPct(pct) ? IMPLAUSIBLE_APY_NOTE : undefined}>
+          {formatApyPct(pct)}
+        </span>
+      );
+    },
   },
   {
     ...numeric("Active subnets"),
