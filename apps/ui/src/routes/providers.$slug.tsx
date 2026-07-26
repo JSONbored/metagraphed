@@ -47,7 +47,7 @@ export const Route = createFileRoute("/providers/$slug")({
       <EmptyState
         title="Provider not found"
         description="No provider matches this slug. Browse the provider directory to find the one you're looking for."
-        action={{ label: "Back to providers", href: "/providers" }}
+        action={{ label: "Back to providers", href: "/apis/providers" }}
       />
     </AppShell>
   ),

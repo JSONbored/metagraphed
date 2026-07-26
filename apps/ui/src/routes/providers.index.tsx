@@ -1,37 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { RoutePending } from "@/components/metagraphed/primitives";
-import { ProvidersPage } from "./-providers-index-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const providerSortKeys = ["name", "surfaces", "endpoints", "subnets", "updated"] as const;
-export type ProviderSortKey = (typeof providerSortKeys)[number];
-
-const providersSearchSchema = z.object({
-  view: fallback(z.enum(["grid", "table"]), "grid").default("grid"),
-  q: fallback(z.string(), "").default(""),
-  kind: fallback(z.string(), "").default(""),
-  // `high` is a nav shortcut for official + provider-claimed (see nav-mega-menu-data).
-  authority: fallback(z.string(), "").default(""),
-  sort: fallback(z.enum(providerSortKeys), "name").default("name"),
-});
-
+/**
+ * /providers index moved into the APIs hub (#8303, part of #8245).
+ * /providers/$slug deliberately keeps its own URL -- only index pages
+ * consolidate, so every existing link to a specific provider still resolves.
+ */
 export const Route = createFileRoute("/providers/")({
-  validateSearch: zodValidator(providersSearchSchema),
-  head: () => ({
-    meta: [
-      { title: "Providers — Metagraphed" },
-      {
-        name: "description",
-        content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
-      },
-      { property: "og:title", content: "Providers — Metagraphed" },
-      {
-        property: "og:description",
-        content: "Subnet teams, infrastructure providers, docs registries, and resource sources.",
-      },
-    ],
-  }),
-  pendingComponent: () => <RoutePending panels={3} />,
-  component: ProvidersPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/apis/providers", search, replace: true });
+  },
 });

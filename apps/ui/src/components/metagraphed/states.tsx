@@ -352,9 +352,9 @@ export function StatUnavailable({ iconClassName = "size-3.5" }: { iconClassName?
  * pages. Keep labels identical everywhere so the UI feels consistent.
  */
 export const RECOVERY = {
-  schemas: { label: "Browse all schemas", href: "/schemas" },
+  schemas: { label: "Browse all schemas", href: "/apis/schemas" },
   endpoints: { label: "Browse all endpoints", href: "/apis/endpoints" },
-  providers: { label: "Browse all providers", href: "/providers" },
+  providers: { label: "Browse all providers", href: "/apis/providers" },
   subnets: { label: "Browse all subnets", href: "/subnets" },
   surfaces: { label: "Browse all surfaces", href: "/apis" },
   openapi: { label: "Open API reference", href: "/schemas#openapi" },

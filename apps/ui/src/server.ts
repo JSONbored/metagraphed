@@ -70,7 +70,7 @@ const DISCOVERY_LINK_HEADER = [
 const SITEMAP_STATIC_PATHS = [
   "/",
   "/subnets",
-  "/providers",
+  "/apis/providers",
   "/apis",
   "/apis/endpoints",
   "/chain",
@@ -81,7 +81,7 @@ const SITEMAP_STATIC_PATHS = [
   "/chain/runtime",
   "/health",
   "/status",
-  "/schemas",
+  "/apis/schemas",
   "/gaps",
   "/about",
 ];
@@ -251,7 +251,7 @@ function buildBreadcrumb(pathname: string): unknown | null {
     const name = safeDecodePathSegment(provider[1]);
     trail = [
       { name: "Home", path: "/" },
-      { name: "Providers", path: "/providers" },
+      { name: "Providers", path: "/apis/providers" },
       { name, path: `/providers/${provider[1]}` },
     ];
   }
@@ -309,12 +309,12 @@ function buildJsonLd(pathname: string): string {
 // A short, human-readable title for the rendered OG card, derived from the path.
 const OG_SECTION_TITLES: Record<string, string> = {
   "/subnets": "Subnets",
-  "/providers": "Providers",
+  "/apis/providers": "Providers",
   "/apis": "Interfaces",
   "/apis/endpoints": "Endpoints",
   "/health": "Health",
   "/status": "Status",
-  "/schemas": "Schemas",
+  "/apis/schemas": "Schemas",
   "/gaps": "Registry gaps",
   "/about": "About",
 };

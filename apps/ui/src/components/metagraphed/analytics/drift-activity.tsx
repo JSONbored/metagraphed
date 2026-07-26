@@ -27,7 +27,7 @@ const DRIFT_DIGEST_LIMIT = 10;
  * click a stable row to open it in the schema explorer.
  */
 export function DriftActivity({ schemas, fromPath }: Props) {
-  const navigate = useNavigate({ from: fromPath as "/schemas" });
+  const navigate = useNavigate({ from: fromPath as "/apis/schemas" });
   const [scope, setScope] = useState<"drifting" | "all">("drifting");
   const [showAllDrift, setShowAllDrift] = useState(false);
 
@@ -54,7 +54,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
         description="Drift activity appears once the registry has two snapshots of a schema to compare."
         freshnessHint="Snapshots refresh on every registry build. A schema must have a previous + current artifact to show drift."
         actions={[
-          { label: "Browse schemas", to: "/schemas", primary: true },
+          { label: "Browse schemas", to: "/apis/schemas", primary: true },
           { label: "Open API", href: "/api/v1/schemas", external: true },
         ]}
       />
@@ -63,13 +63,13 @@ export function DriftActivity({ schemas, fromPath }: Props) {
 
   const openDrift = (id: string) =>
     navigate({
-      to: "/schemas",
+      to: "/apis/schemas",
       search: (prev: Record<string, unknown>) => ({ ...prev, driftDetail: id }) as never,
       replace: true,
     });
   const openInExplorer = (id: string) =>
     navigate({
-      to: "/schemas",
+      to: "/apis/schemas",
       search: (prev: Record<string, unknown>) => ({ ...prev, open: id, drift: "all" }) as never,
       replace: true,
     });

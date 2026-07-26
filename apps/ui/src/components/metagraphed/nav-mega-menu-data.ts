@@ -124,20 +124,20 @@ export const MEGA_PANELS: MegaPanel[] = [
   },
   {
     key: "providers",
-    to: "/providers",
+    to: "/apis/providers",
     label: "Providers",
     icon: Network,
     blurb: "Subnet teams, infra providers, and docs registries.",
     apiPath: "/api/v1/providers",
     browse: [
-      { to: "/providers", label: "All providers" },
-      { to: "/providers", search: { kind: "subnet-team" }, label: "Subnet teams" },
-      { to: "/providers", search: { kind: "infra" }, label: "Infra providers" },
-      { to: "/providers", search: { kind: "docs" }, label: "Docs registries" },
+      { to: "/apis/providers", label: "All providers" },
+      { to: "/apis/providers", search: { kind: "subnet-team" }, label: "Subnet teams" },
+      { to: "/apis/providers", search: { kind: "infra" }, label: "Infra providers" },
+      { to: "/apis/providers", search: { kind: "docs" }, label: "Docs registries" },
     ],
     filters: [
-      { to: "/providers", search: { authority: "high" }, label: "Authority high" },
-      { to: "/providers", search: { sort: "updated" }, label: "Recently updated" },
+      { to: "/apis/providers", search: { authority: "high" }, label: "Authority high" },
+      { to: "/apis/providers", search: { sort: "updated" }, label: "Recently updated" },
     ],
   },
   {

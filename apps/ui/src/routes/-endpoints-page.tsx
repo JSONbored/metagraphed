@@ -822,7 +822,7 @@ function EndpointsTable() {
             external: true,
             primary: true,
           },
-          { label: "Browse providers", to: "/providers" },
+          { label: "Browse providers", to: "/apis/providers" },
         ]}
       />
     );

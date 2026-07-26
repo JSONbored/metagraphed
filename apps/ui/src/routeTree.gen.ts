@@ -32,6 +32,8 @@ import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.in
 import { Route as ApiSearchRouteImport } from './routes/api.search'
 import { Route as ApisIndexRouteImport } from './routes/apis.index'
 import { Route as ApisEndpointsRouteImport } from './routes/apis.endpoints'
+import { Route as ApisProvidersRouteImport } from './routes/apis.providers'
+import { Route as ApisSchemasRouteImport } from './routes/apis.schemas'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ChainIndexRouteImport } from './routes/chain.index'
@@ -171,6 +173,16 @@ const ApisIndexRoute = ApisIndexRouteImport.update({
 const ApisEndpointsRoute = ApisEndpointsRouteImport.update({
   id: '/endpoints',
   path: '/endpoints',
+  getParentRoute: () => ApisRoute,
+} as any)
+const ApisProvidersRoute = ApisProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => ApisRoute,
+} as any)
+const ApisSchemasRoute = ApisSchemasRouteImport.update({
+  id: '/schemas',
+  path: '/schemas',
   getParentRoute: () => ApisRoute,
 } as any)
 const BlocksIndexRoute = BlocksIndexRouteImport.update({
@@ -320,6 +332,8 @@ export interface FileRoutesByFullPath {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
+  '/apis/providers': typeof ApisProvidersRoute
+  '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
@@ -368,6 +382,8 @@ export interface FileRoutesByTo {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
+  '/apis/providers': typeof ApisProvidersRoute
+  '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
@@ -419,6 +435,8 @@ export interface FileRoutesById {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/apis/endpoints': typeof ApisEndpointsRoute
+  '/apis/providers': typeof ApisProvidersRoute
+  '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
@@ -471,6 +489,8 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
+    | '/apis/providers'
+    | '/apis/schemas'
     | '/blocks/$ref'
     | '/chain/blocks'
     | '/chain/events'
@@ -519,6 +539,8 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
+    | '/apis/providers'
+    | '/apis/schemas'
     | '/blocks/$ref'
     | '/chain/blocks'
     | '/chain/events'
@@ -569,6 +591,8 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/apis/endpoints'
+    | '/apis/providers'
+    | '/apis/schemas'
     | '/blocks/$ref'
     | '/chain/blocks'
     | '/chain/events'
@@ -805,6 +829,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApisEndpointsRouteImport
       parentRoute: typeof ApisRoute
     }
+    '/apis/providers': {
+      id: '/apis/providers'
+      path: '/providers'
+      fullPath: '/apis/providers'
+      preLoaderRoute: typeof ApisProvidersRouteImport
+      parentRoute: typeof ApisRoute
+    }
+    '/apis/schemas': {
+      id: '/apis/schemas'
+      path: '/schemas'
+      fullPath: '/apis/schemas'
+      preLoaderRoute: typeof ApisSchemasRouteImport
+      parentRoute: typeof ApisRoute
+    }
     '/blocks/': {
       id: '/blocks/'
       path: '/blocks'
@@ -985,11 +1023,15 @@ declare module '@tanstack/react-router' {
 
 interface ApisRouteChildren {
   ApisEndpointsRoute: typeof ApisEndpointsRoute
+  ApisProvidersRoute: typeof ApisProvidersRoute
+  ApisSchemasRoute: typeof ApisSchemasRoute
   ApisIndexRoute: typeof ApisIndexRoute
 }
 
 const ApisRouteChildren: ApisRouteChildren = {
   ApisEndpointsRoute: ApisEndpointsRoute,
+  ApisProvidersRoute: ApisProvidersRoute,
+  ApisSchemasRoute: ApisSchemasRoute,
   ApisIndexRoute: ApisIndexRoute,
 }
 

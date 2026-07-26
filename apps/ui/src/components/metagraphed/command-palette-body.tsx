@@ -126,7 +126,7 @@ const STATIC_ROUTES_HEAD: RouteEntry[] = [
   },
   {
     label: "Providers",
-    to: "/providers",
+    to: "/apis/providers",
     hint: "Teams & infrastructure",
     icon: Network,
     scope: "route",
@@ -147,7 +147,7 @@ const STATIC_ROUTES_HEAD: RouteEntry[] = [
   },
   {
     label: "Schemas",
-    to: "/schemas",
+    to: "/apis/schemas",
     hint: "OpenAPI, contracts, drift",
     icon: FileJson,
     scope: "route",

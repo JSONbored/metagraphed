@@ -206,7 +206,7 @@ function AtAGlance() {
       icon: FileCode2,
       label: "Adapter-backed",
       value: adapterBacked != null ? formatNumber(adapterBacked) : "—",
-      to: "/providers",
+      to: "/apis/providers",
       phase: statPhase(coverageResult),
     },
     {
@@ -258,7 +258,7 @@ function AtAGlance() {
       </ul>
       <div className="mt-4 border-t border-border pt-3 grid gap-1.5">
         <Link
-          to="/schemas"
+          to="/apis/schemas"
           className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
         >
           → API & schemas
