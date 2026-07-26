@@ -521,24 +521,41 @@ import { SDL } from "./graphql-sdl.ts";
 import type {
   QueryAgent_CatalogArgs,
   QueryCandidatesArgs,
+  QueryCompare_ValidatorsArgs,
+  QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
   QueryFixtureArgs,
   QuerySaved_QueryArgs,
   QuerySearchArgs,
+  QuerySearch_IndexArgs,
   QuerySubnetArgs,
-  QuerySubnetsArgs,
+  QuerySubnet_Axon_RemovalsArgs,
+  QuerySubnet_CandidatesArgs,
   QuerySubnet_DeregistrationsArgs,
+  QuerySubnet_EndpointsArgs,
+  QuerySubnet_Event_SummaryArgs,
+  QuerySubnet_EventsArgs,
+  QuerySubnet_EvidenceArgs,
+  QuerySubnet_GapsArgs,
   QuerySubnet_HealthArgs,
   QuerySubnet_Health_IncidentsArgs,
   QuerySubnet_Health_PercentilesArgs,
   QuerySubnet_Health_TrendsArgs,
   QuerySubnet_HyperparametersArgs,
   QuerySubnet_Hyperparameters_HistoryArgs,
+  QuerySubnet_Idle_StakeArgs,
+  QuerySubnet_OhlcArgs,
   QuerySubnet_RegistrationsArgs,
   QuerySubnet_ServingArgs,
+  QuerySubnet_Stake_FlowArgs,
+  QuerySubnet_Stake_MovesArgs,
   QuerySubnet_Stake_QuoteArgs,
+  QuerySubnet_Stake_TransfersArgs,
   QuerySubnet_UptimeArgs,
+  QuerySubnet_ValidatorsArgs,
   QuerySubnet_VolumeArgs,
+  QuerySubnet_WeightsArgs,
+  QuerySubnetsArgs,
   QueryTop_HoldersArgs,
 } from "../generated/graphql/types.ts";
 
@@ -1678,7 +1695,7 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 2-9 (types-epic D, #7862 tracks follow-up
+// Row-erased: pending D batches 3-9 (types-epic D, #7862 tracks follow-up
 // batches). The 5 pilot fields (subnets, subnet, subnet_health,
 // subnet_stake_quote, economics) plus D batch 1's 20 fields
 // (subnet_registrations, subnet_hyperparameters,
@@ -1686,10 +1703,16 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
 // subnet_health_trends, subnet_uptime, subnet_health_incidents,
 // subnet_health_percentiles, subnet_volume, agent_resources, curation,
 // candidates, saved_query, fixtures, fixture, agent_catalog, freshness,
-// top_holders, search) are typed against the generated Args types below;
-// the remaining ~130 root fields on this object keep their `Row`-typed
-// destructured params for now, adopted incrementally in later batches
-// rather than all at once here.
+// top_holders, search) plus D batch 2's 20 fields (search_index, domains,
+// domain_summary, compare_validators, coverage, coverage_depth,
+// subnet_ohlc, subnet_validators, subnet_event_summary, subnet_gaps,
+// subnet_evidence, subnet_candidates, subnet_endpoints,
+// subnet_axon_removals, subnet_weights, subnet_stake_moves,
+// subnet_stake_transfers, subnet_idle_stake, subnet_stake_flow,
+// subnet_events) are typed against the generated Args types below; the
+// remaining root fields on this object keep their `Row`-typed destructured
+// params for now, adopted incrementally in later batches rather than all
+// at once here.
 const rootValue = {
   subnets(
     {
@@ -2129,7 +2152,10 @@ const rootValue = {
     };
   },
 
-  async subnet_axon_removals({ netuid, window }: Row, context: GqlContext) {
+  async subnet_axon_removals(
+    { netuid, window }: QuerySubnet_Axon_RemovalsArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetAxonRemovals uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -2559,7 +2585,10 @@ const rootValue = {
     };
   },
 
-  async subnet_weights({ netuid, window }: Row, context: GqlContext) {
+  async subnet_weights(
+    { netuid, window }: QuerySubnet_WeightsArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetWeights uses -- an unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -2597,7 +2626,10 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_moves({ netuid, window }: Row, context: GqlContext) {
+  async subnet_stake_moves(
+    { netuid, window }: QuerySubnet_Stake_MovesArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetStakeMoves uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -2635,7 +2667,10 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_transfers({ netuid, window }: Row, context: GqlContext) {
+  async subnet_stake_transfers(
+    { netuid, window }: QuerySubnet_Stake_TransfersArgs,
+    context: GqlContext,
+  ) {
     // Same 7d/30d window validation handleSubnetStakeTransfers uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -2673,7 +2708,10 @@ const rootValue = {
     };
   },
 
-  async subnet_idle_stake({ netuid }: Row, context: GqlContext) {
+  async subnet_idle_stake(
+    { netuid }: QuerySubnet_Idle_StakeArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2700,7 +2738,7 @@ const rootValue = {
   },
 
   async subnet_stake_flow(
-    { netuid, window, direction }: Row,
+    { netuid, window, direction }: QuerySubnet_Stake_FlowArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2757,7 +2795,14 @@ const rootValue = {
   },
 
   async subnet_events(
-    { netuid, kind, block_start, block_end, limit, offset }: Row,
+    {
+      netuid,
+      kind,
+      block_start,
+      block_end,
+      limit,
+      offset,
+    }: QuerySubnet_EventsArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -3426,7 +3471,7 @@ const rootValue = {
   // limit/cursor validation and filtering are all handled by the loader --
   // an invalid arg throws and becomes a GraphQL error, matching every other
   // filtered field's convention (search/source_snapshots/evidence/profiles).
-  search_index(args: Row, context: GqlContext) {
+  search_index(args: QuerySearch_IndexArgs, context: GqlContext) {
     return loadSearchIndexList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3440,7 +3485,7 @@ const rootValue = {
     return buildDomainOverview(subnetRows, economicsRows);
   },
 
-  async domain_summary({ tag }: Row, context: GqlContext) {
+  async domain_summary({ tag }: QueryDomain_SummaryArgs, context: GqlContext) {
     // The same fixed 14-tag enum ?domain= validates on subnets -- an unknown
     // tag is a GraphQL BAD_USER_INPUT error, not an empty rollup.
     if (!DOMAIN_TAGS.includes(tag)) {
@@ -3455,7 +3500,10 @@ const rootValue = {
     return buildDomainSummary(tag, subnetRows, economicsRows);
   },
 
-  async compare_validators({ hotkeys, netuid }: Row, context: GqlContext) {
+  async compare_validators(
+    { hotkeys, netuid }: QueryCompare_ValidatorsArgs,
+    context: GqlContext,
+  ) {
     // Same parse/validate contract the REST route + compare_validators MCP
     // tool share: 1..COMPARE_VALIDATORS_MAX distinct SS58 addresses.
     const parsed = parseCompareHotkeyList(hotkeys);
@@ -3567,7 +3615,10 @@ const rootValue = {
     };
   },
 
-  async subnet_ohlc({ netuid, interval, days }: Row, context: GqlContext) {
+  async subnet_ohlc(
+    { netuid, interval, days }: QuerySubnet_OhlcArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3650,7 +3701,10 @@ const rootValue = {
     return { schema_version: 1, ...result.quote };
   },
 
-  async subnet_validators({ netuid }: Row, context: GqlContext) {
+  async subnet_validators(
+    { netuid }: QuerySubnet_ValidatorsArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -3726,7 +3780,7 @@ const rootValue = {
   },
 
   async subnet_event_summary(
-    { netuid, window, limit }: Row,
+    { netuid, window, limit }: QuerySubnet_Event_SummaryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -3787,7 +3841,7 @@ const rootValue = {
     };
   },
 
-  async subnet_gaps(args: Row, context: GqlContext) {
+  async subnet_gaps(args: QuerySubnet_GapsArgs, context: GqlContext) {
     const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -3851,7 +3905,7 @@ const rootValue = {
     };
   },
 
-  async subnet_evidence(args: Row, context: GqlContext) {
+  async subnet_evidence(args: QuerySubnet_EvidenceArgs, context: GqlContext) {
     const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -3886,7 +3940,10 @@ const rootValue = {
     }
   },
 
-  async subnet_candidates(args: Row, context: GqlContext) {
+  async subnet_candidates(
+    args: QuerySubnet_CandidatesArgs,
+    context: GqlContext,
+  ) {
     const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -3933,7 +3990,7 @@ const rootValue = {
   // GraphQL error, matching the subnet_candidates sibling's convention. A cold/
   // absent per-subnet artifact stays null (the documented per-subnet contract),
   // never a silently substituted empty list.
-  async subnet_endpoints(args: Row, context: GqlContext) {
+  async subnet_endpoints(args: QuerySubnet_EndpointsArgs, context: GqlContext) {
     try {
       return await loadSubnetEndpointsList(mcpCtx(context), args, {
         readArtifact,
