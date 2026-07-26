@@ -13,7 +13,7 @@ export function EventsPage() {
     chainEventsBaseParams(search.pallet, search.method),
   );
 
-  const onFilter = (patch: { pallet?: string; method?: string }) =>
+  const onFilter = (patch: { pallet?: string; method?: string; noise?: boolean }) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
       resetScroll: false,
@@ -31,6 +31,7 @@ export function EventsPage() {
         pallet={search.pallet}
         method={search.method}
         cursor={search.cursor}
+        showNoise={search.noise}
         onFilter={onFilter}
       />
       <ApiSourceFooter

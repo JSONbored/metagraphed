@@ -9,6 +9,12 @@ const eventsSearchSchema = z.object({
   pallet: fallback(z.string(), "").default(""),
   method: fallback(z.string(), "").default(""),
   cursor: fallback(z.string(), "").default(""),
+  // #8253: hide the high-volume plumbing events (ExtrinsicSuccess /
+  // ExtrinsicFailed / TransactionFeePaid) that were 68% of the unfiltered
+  // feed when measured live. Defaults ON -- the URL param exists so the
+  // firehose stays reachable and shareable, not because the noisy view is a
+  // reasonable default.
+  noise: fallback(z.boolean(), false).default(false),
 });
 
 export const Route = createFileRoute("/chain/events")({

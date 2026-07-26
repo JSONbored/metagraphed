@@ -19,6 +19,14 @@ import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-lead
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
 import {
+  NetworkDecentralizationPanel,
+  NetworkDecentralizationSkeleton,
+} from "@/components/metagraphed/network-decentralization-panel";
+import {
+  EmissionYieldPanel,
+  EmissionYieldSkeleton,
+} from "@/components/metagraphed/emission-yield-panel";
+import {
   blocksQuery,
   chainActivityQuery,
   chainCallsQuery,
@@ -37,6 +45,9 @@ import {
   chainIdleStakeQuery,
   chainTransferPairsQuery,
   chainTransfersQuery,
+  chainConcentrationQuery,
+  chainPerformanceQuery,
+  chainYieldQuery,
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -98,6 +109,47 @@ export function ExplorerPage() {
       <AsyncPanel context="explorer dashboard" fallback={<Skeleton className="h-[40rem] w-full" />}>
         <ExplorerDashboard />
       </AsyncPanel>
+
+      {/* #8253: chain-scope decentralization + emission-yield move here from
+          /status, where they were off-topic — /status answers "is it up", not
+          "how concentrated is the network". Both are chain-wide metagraph
+          rollups, which is exactly what this Overview is. */}
+      <section className="mt-10">
+        <div className="mb-4">
+          <h2 className="mg-type-label uppercase text-ink-muted">Network decentralization</h2>
+          <p className="mt-1 mg-type-data text-ink-muted">
+            Chain-wide stake &amp; emission concentration (Gini, HHI, Nakamoto coefficient, entropy,
+            top-1% share) and the trust/consensus score spread, computed across every subnet from
+            the metagraph snapshot.
+          </p>
+        </div>
+        <AsyncPanel
+          context="network decentralization"
+          fallback={<NetworkDecentralizationSkeleton />}
+          retryQueryKeys={[chainConcentrationQuery().queryKey, chainPerformanceQuery().queryKey]}
+        >
+          <NetworkDecentralizationPanel />
+        </AsyncPanel>
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-4">
+          <h2 className="mg-type-label uppercase text-ink-muted">Network emission yield</h2>
+          <p className="mt-1 mg-type-data text-ink-muted">
+            Chain-wide emission yield — total emission over total stake, split by validator/miner
+            role — plus the per-neuron return distribution, computed across every neuron from the
+            metagraph snapshot.
+          </p>
+        </div>
+        <AsyncPanel
+          context="network emission yield"
+          fallback={<EmissionYieldSkeleton />}
+          retryQueryKeys={[chainYieldQuery().queryKey]}
+        >
+          <EmissionYieldPanel />
+        </AsyncPanel>
+      </section>
+
       <ChainEventsFeedSection />
       <ApiSourceFooter
         paths={[
@@ -119,6 +171,9 @@ export function ExplorerPage() {
           "/api/v1/chain-events/stats",
           "/api/v1/economics/trends",
           "/api/v1/chain/transfers",
+          "/api/v1/chain/concentration",
+          "/api/v1/chain/performance",
+          "/api/v1/chain/yield",
         ]}
       />
     </>
@@ -621,6 +676,12 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
 function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
   const net = board.network;
 
+  // #8253: render nothing until there's data, rather than a framed panel of
+  // zeroes above an "No Prometheus telemetry in this window yet" box. Gated
+  // on the network rollup being empty too, not just the per-subnet table --
+  // a zeroed rollup with no rows is the whole panel saying nothing.
+  if (board.subnets.length === 0 && !net.announcements && !net.distinct_exporters) return null;
+
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
@@ -694,6 +755,13 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
  * stake-transfer leaderboard treatment on this page.
  */
 function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
+  // #8253: same empty-module rule as the Prometheus board above — an
+  // all-zero "0 teardowns across 0 removers" header over an empty-state box
+  // is a framed panel saying nothing.
+  if (churn.subnets.length === 0 && !churn.network.removals && !churn.network.distinct_removers) {
+    return null;
+  }
+
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
