@@ -2524,6 +2524,15 @@ test("R2 history upload deduplicates content-addressed objects that already exis
           METAGRAPH_R2_API_BASE_URL: `http://127.0.0.1:${port}`,
           METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
           METAGRAPH_R2_UPLOAD_HISTORY: "1",
+          // Lift the shared 3.5 rps production rate gate (#8240/#8261, sized
+          // for Cloudflare's ~1,200-requests/5-minutes client-API ceiling).
+          // This test walks the WHOLE manifest -- ~2.3k artifacts, each a HEAD
+          // dedupe probe plus a PUT, plus the latest/ copies -- so at 3.5 rps
+          // it needs ~22 minutes and can never finish inside the timeout. The
+          // gate is production pacing against a real remote; the mock server
+          // here has no such limit. Same override, for the same reason, that
+          // tests/r2-upload.test.ts already applies to its own upload cases.
+          METAGRAPH_R2_UPLOAD_MAX_RPS: "5000",
         },
       },
     );
