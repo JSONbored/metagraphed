@@ -1904,6 +1904,75 @@ describe("MCP tools (injected deps)", () => {
     assert.equal("economics" in out, false);
   });
 
+  test("get_subnet_detail network:test reads the testnet key and skips the mainnet economics overlay (#8228)", async () => {
+    const localDeps = makeDeps({
+      // Same netuid on both networks, deliberately different records: testnet
+      // netuids are independent of mainnet netuids.
+      "/metagraph/subnets/7.json": {
+        schema_version: 1,
+        subnet: { netuid: 7, slug: "allways", name: "MAINNET Allways" },
+      },
+      "/metagraph/testnet/subnets/7.json": {
+        schema_version: 1,
+        subnet: {
+          netuid: 7,
+          slug: "sn-7",
+          name: "TESTNET subnet 7",
+          economics: { alpha_price_tao: 0.25 },
+        },
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: { with_economics_count: 1 },
+        subnets: [{ netuid: 7, open_slots: 3 }],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: 7, network: "test" },
+      { deps: localDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.name, "TESTNET subnet 7");
+    // The mainnet live-KV economics overlay must NOT be attached to a testnet
+    // record -- it would report finney numbers against a testnet subnet.
+    assert.equal("economics" in out, false);
+    // Testnet's own chain economics still ride along inside the record.
+    assert.equal(out.subnet.economics.alpha_price_tao, 0.25);
+  });
+
+  test("get_subnet_detail network:finney is identical to omitting network (#8228)", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets/7.json": {
+        schema_version: 1,
+        subnet: { netuid: 7, slug: "allways", name: "MAINNET Allways" },
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: { with_economics_count: 1 },
+        subnets: [{ netuid: 7, open_slots: 3 }],
+      },
+    });
+    const explicit = await callTool(
+      "get_subnet_detail",
+      { netuid: 7, network: "finney" },
+      { deps: localDeps },
+    );
+    const implicit = await callTool(
+      "get_subnet_detail",
+      { netuid: 7 },
+      { deps: localDeps },
+    );
+    assert.deepEqual(
+      explicit.body.result.structuredContent,
+      implicit.body.result.structuredContent,
+    );
+    assert.equal(
+      explicit.body.result.structuredContent.economics.open_slots,
+      3,
+    );
+  });
+
   test("get_subnet_detail maps a missing artifact to a clean not_found", async () => {
     const res = await callTool("get_subnet_detail", { netuid: 999 }, { deps });
     assert.equal(res.body.result.isError, true);
@@ -7976,6 +8045,42 @@ describe("list_subnets", () => {
         },
       ],
     },
+  });
+
+  test("network:test reads the testnet index, finney matches the default (#8228)", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 7, slug: "allways", name: "MAINNET Allways" }],
+      },
+      "/metagraph/testnet/subnets.json": {
+        subnets: [
+          { netuid: 7, slug: "sn-7", name: "TESTNET seven" },
+          { netuid: 11, slug: "sn-11", name: "TESTNET eleven" },
+        ],
+      },
+    });
+
+    const testnet = (
+      await callTool("list_subnets", { network: "test" }, { deps: localDeps })
+    ).body.result.structuredContent;
+    assert.equal(testnet.total, 2);
+    assert.equal(testnet.subnets[0].title, "TESTNET seven");
+
+    // Explicit finney and an omitted network must resolve to the same
+    // unprefixed mainnet artifact.
+    const explicit = (
+      await callTool("list_subnets", { network: "finney" }, { deps: localDeps })
+    ).body.result.structuredContent;
+    const implicit = (await callTool("list_subnets", {}, { deps: localDeps }))
+      .body.result.structuredContent;
+    assert.deepEqual(explicit, implicit);
+    assert.equal(explicit.total, 1);
+    assert.equal(explicit.subnets[0].title, "MAINNET Allways");
+  });
+
+  test("rejects an unknown network value (#8228)", async () => {
+    const res = await callTool("list_subnets", { network: "devnet" }, { deps });
+    assert.equal(res.body.result.isError, true);
   });
 
   test("paginates the full registry and reports next_cursor", async () => {

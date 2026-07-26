@@ -10,7 +10,11 @@
 // only coverage_level/curation_level/sort/order were actually enum-
 // constrained on the wire, and only those reuse a shared enum.
 import { z } from "zod";
-import { CoverageLevelSchema, CurationLevelSchema } from "../shared.ts";
+import {
+  CoverageLevelSchema,
+  CurationLevelSchema,
+  McpNetworkSchema,
+} from "../shared.ts";
 
 const LIST_SUBNETS_SORT_FIELDS = [
   "netuid",
@@ -54,6 +58,7 @@ export const ListSubnetsInputSchema = z
     max_netuid: z.int().min(0).optional(),
     sort: z.enum(LIST_SUBNETS_SORT_FIELDS).optional(),
     order: z.enum(LIST_SUBNETS_ORDERS).optional(),
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type ListSubnetsInput = z.infer<typeof ListSubnetsInputSchema>;

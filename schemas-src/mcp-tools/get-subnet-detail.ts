@@ -10,10 +10,12 @@
 // the pilot batch).
 import { z } from "zod";
 import { OpenObjectSchema } from "./shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
 
 export const GetSubnetDetailInputSchema = z
   .object({
     netuid: z.int().min(0),
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetSubnetDetailInput = z.infer<typeof GetSubnetDetailInputSchema>;

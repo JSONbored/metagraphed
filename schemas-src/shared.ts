@@ -17,6 +17,14 @@ export const CoverageLevelSchema = z.enum([
 ]);
 export type CoverageLevel = z.infer<typeof CoverageLevelSchema>;
 
+// Chain network for the network-aware MCP tools (#8228). Same two values, and
+// the same chain-name spelling, `call_rpc` already accepts — an agent should
+// not have to learn that the RPC lane says "test" while a data lane says
+// "testnet". Only the tools whose artifact is actually published per-network
+// (list_subnets, get_subnet_detail) take this; everything else stays mainnet.
+export const McpNetworkSchema = z.enum(["finney", "test"]);
+export type McpNetwork = z.infer<typeof McpNetworkSchema>;
+
 export const CurationLevelSchema = z.enum([
   "native",
   "candidate-discovered",
