@@ -126,8 +126,11 @@ describe("apiFetch", () => {
         Response.json(
           {
             ok: false,
-            error: { message: "/api/v1/validators is only available on mainnet, not the test network.", code: "not_found" },
-            meta: { network: "test" },
+            error: {
+              message: "/api/v1/validators is only available on mainnet, not the testnet network.",
+              code: "not_found",
+            },
+            meta: { network: "testnet" },
           },
           { status: 404 },
         ),
@@ -136,7 +139,7 @@ describe("apiFetch", () => {
 
     await expect(apiFetch("/api/v1/testnet/validators")).rejects.toMatchObject({
       code: "not_found",
-      network: "test",
+      network: "testnet",
     } satisfies Partial<ApiError>);
   });
 
