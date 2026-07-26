@@ -7828,15 +7828,17 @@ function normalizeAgentResource(raw: unknown, index: number): AgentResource | un
   if (!title || !url) return undefined;
 
   const kind = stringValue(r.kind);
+  const install = stringValue(r.install);
   return {
     id,
     kind: AGENT_RESOURCE_KINDS.has(kind) ? kind : "api",
     title,
     url,
+    ...(install ? { install } : {}),
   };
 }
 
-function normalizeAgentResources(raw: unknown): AgentResources {
+export function normalizeAgentResources(raw: unknown): AgentResources {
   const d = recordValue(raw);
   const copyableAgent = recordValue(d.copyable_agent);
   const mcp = recordValue(d.mcp);
