@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
 import {
   DEPLOY_OWNED_ARTIFACTS,
-  dirtyTrackedPaths,
-  resolveBaseRemote,
+  isProductionPublishBuild,
+  revertDeployOwnedArtifactsIfDirty,
   stableStringify,
 } from "./lib.ts";
 
@@ -78,64 +78,13 @@ function revertDeployOwnedArtifactsIfChanged(): void {
   // leave them alone in that context. Everywhere else (plain local/CI validate
   // build), r2-manifest.json is inherently non-deterministic build output
   // (its *_artifact_size_bytes totals sum the live R2-only artifacts, which
-  // legitimately vary build-to-build) — never a signal about YOUR change. A
-  // human manually reverting it before every commit was the actual recurring
-  // papercut, so auto-revert here instead of just warning.
-  //
-  // Revert only the DEPLOY_OWNED_ARTIFACTS members that are ACTUALLY dirty,
-  // not the whole set the moment any one member is: schemas/index.json is
-  // deploy-owned in the same sense (its committed copy is a network-capture
-  // cache, not this build's output) but, unlike r2-manifest.json, nothing in
-  // localSteps()/productionSteps() above ever writes it -- the only thing
-  // that legitimately changes it is sync-schema-snapshots.yml's dedicated
-  // `schemas:snapshot` step, committed directly to its own PR. A blanket
-  // revert of the whole array used to stomp that legitimate commit back to
-  // origin/main just because r2-manifest.json also showed dirty in the same
-  // build, which guaranteed ci-verify-submitted-artifacts.ts would always
-  // see committed != rebuilt and fail that PR's `checks` job.
+  // legitimately vary build-to-build) — never a signal about YOUR change.
+  // Shared with build-artifacts.ts (scripts/lib.ts's own doc comment covers
+  // why a standalone run of that script needs the identical self-revert).
   if (productionBuild) {
     return;
   }
-  const dirty: string[] = dirtyTrackedPaths(
-    DEPLOY_OWNED_ARTIFACTS,
-    process.cwd(),
-  );
-  if (dirty.length === 0) {
-    return;
-  }
-  const baseRemote = resolveBaseRemote(process.cwd());
-  const revert = spawnSync(
-    "git",
-    ["checkout", `${baseRemote}/main`, "--", ...dirty],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
-  if (revert.status !== 0) {
-    // Fall back to the old warning if the auto-revert itself fails (e.g. no
-    // network access to fetch the base remote's latest main) — don't hide a
-    // dirty working tree silently if we couldn't actually clean it up.
-    console.warn(
-      [
-        "",
-        "warning: build modified deploy-owned artifact(s), and auto-revert failed:",
-        ...dirty.map((file) => `  - ${file}`),
-        revert.stderr || "",
-        "Revert them manually before committing:",
-        "",
-        `  git checkout ${baseRemote}/main -- ${dirty.join(" ")}`,
-        "",
-      ].join("\n"),
-    );
-    return;
-  }
-  console.log(
-    [
-      "",
-      "note: build produced non-deterministic deploy-owned artifact(s), auto-reverted to",
-      `${baseRemote}/main (see DEPLOY_OWNED_ARTIFACTS in scripts/lib.ts):`,
-      ...dirty.map((file) => `  - ${file}`),
-      "",
-    ].join("\n"),
-  );
+  revertDeployOwnedArtifactsIfDirty(DEPLOY_OWNED_ARTIFACTS, process.cwd());
 }
 
 function localSteps(): Step[] {
@@ -246,13 +195,3 @@ function nodeStep(
   };
 }
 
-function isProductionPublishBuild(): boolean {
-  if (process.env.METAGRAPH_PRODUCTION_BUILD === "1") {
-    return true;
-  }
-  return (
-    process.env.GITHUB_ACTIONS === "true" &&
-    process.env.GITHUB_WORKFLOW === "Publish Cloudflare Backend" &&
-    process.env.GITHUB_REF === "refs/heads/main"
-  );
-}

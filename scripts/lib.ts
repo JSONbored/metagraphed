@@ -38,6 +38,88 @@ export const DEPLOY_OWNED_ARTIFACTS = [
   "public/metagraph/schemas/index.json",
 ];
 
+// True only for the real production publish (publish-cloudflare.yml on main, or
+// an explicit local override) -- every other invocation (plain local build, CI
+// validate, a standalone `node scripts/build-artifacts.ts`, or a test's
+// execFileSync of it) is a context where DEPLOY_OWNED_ARTIFACTS drift is never a
+// signal about the caller's own change and should self-heal. Single source of
+// truth shared by build.ts (top-of-pipeline flag) and any script that writes a
+// DEPLOY_OWNED_ARTIFACTS member directly, so both agree on when a revert is safe.
+export function isProductionPublishBuild(): boolean {
+  if (process.env.METAGRAPH_PRODUCTION_BUILD === "1") {
+    return true;
+  }
+  return (
+    process.env.GITHUB_ACTIONS === "true" &&
+    process.env.GITHUB_WORKFLOW === "Publish Cloudflare Backend" &&
+    process.env.GITHUB_REF === "refs/heads/main"
+  );
+}
+
+// Reverts whichever of `paths` (default: every DEPLOY_OWNED_ARTIFACTS member)
+// are actually dirty back to the base remote's main -- the fix for the
+// recurring "r2-manifest.json epoch landmine" papercut (a local build leaves
+// the committed manifest showing a bogus local diff that a human then has to
+// notice and revert by hand). Safe to call from anywhere that just wrote one
+// of these files, including mid-pipeline (build.ts, no `paths` override —
+// every step that could legitimately touch any member has already run by
+// then) or standalone (build-artifacts.ts run directly, or via a test's
+// execFileSync — MUST pass its own narrower `paths`, just
+// ["public/metagraph/r2-manifest.json"], since that's the only member it
+// writes: schemas/index.json is legitimately, deliberately written by other
+// callers in the same process tree — e.g. a test forging it to exercise
+// build-artifacts.ts's forgery/staleness reconciler, or sync-schema-
+// snapshots.yml's own commit step — and reverting it out from under them
+// would silently discard exactly the state under test). It only acts on
+// paths `git status` reports dirty, so calling it when nothing in `paths`
+// changed is a no-op, and calling it more than once in the same run just
+// re-checks an already-clean tree. Callers must skip this during an actual
+// production publish (where the drift is real and must be committed), which
+// is why this doesn't check isProductionPublishBuild() itself -- only the
+// caller knows whether THIS call site is the final, real write.
+export function revertDeployOwnedArtifactsIfDirty(
+  paths: string[] = DEPLOY_OWNED_ARTIFACTS,
+  cwd: string = process.cwd(),
+): void {
+  const dirty = dirtyTrackedPaths(paths, cwd);
+  if (dirty.length === 0) {
+    return;
+  }
+  const baseRemote = resolveBaseRemote(cwd);
+  const revert = spawnSync(
+    "git",
+    ["checkout", `${baseRemote}/main`, "--", ...dirty],
+    { cwd, encoding: "utf8" },
+  );
+  if (revert.status !== 0) {
+    // Fall back to a warning if the auto-revert itself fails (e.g. no network
+    // access to fetch the base remote's latest main) -- don't hide a dirty
+    // working tree silently if we couldn't actually clean it up.
+    console.warn(
+      [
+        "",
+        "warning: build modified deploy-owned artifact(s), and auto-revert failed:",
+        ...dirty.map((file) => `  - ${file}`),
+        revert.stderr || "",
+        "Revert them manually before committing:",
+        "",
+        `  git checkout ${baseRemote}/main -- ${dirty.join(" ")}`,
+        "",
+      ].join("\n"),
+    );
+    return;
+  }
+  console.log(
+    [
+      "",
+      "note: build produced non-deterministic deploy-owned artifact(s), auto-reverted to",
+      `${baseRemote}/main (see DEPLOY_OWNED_ARTIFACTS in scripts/lib.ts):`,
+      ...dirty.map((file) => `  - ${file}`),
+      "",
+    ].join("\n"),
+  );
+}
+
 // Forks (Phase A0 of the contributor skill) set up `upstream` pointing at the
 // canonical repo, with `origin` as the contributor's own fork -- possibly
 // stale relative to it. A direct clone of the canonical repo has no
