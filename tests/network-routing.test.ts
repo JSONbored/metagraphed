@@ -212,6 +212,28 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(detail.body.data.economics, undefined);
   });
 
+  test("testnet publishes its own economics artifact (#8227)", async () => {
+    const env = createLocalArtifactEnv();
+    const { res, body } = await get(env, "/api/v1/testnet/economics");
+
+    assert.equal(res.status, 200);
+    assert.equal(body.ok, true);
+    // Served from the testnet key, never the mainnet economics artifact.
+    assert.equal(body.meta.artifact_path, "/metagraph/testnet/economics.json");
+    assert.equal(body.data.network, "test");
+    assert.ok(Array.isArray(body.data.subnets));
+    // The committed snapshot predates the economics fetcher (#1032), so the
+    // row set is legitimately empty here -- the point is that the artifact
+    // builds and serves rather than 404ing, and that the summary still counts
+    // every subnet. A snapshot WITH economics populates subnets[] instead;
+    // buildEconomicsArtifact filters on presence, so both shapes are valid.
+    assert.equal(body.data.summary.subnet_count > 0, true);
+    assert.equal(
+      body.data.summary.with_economics_count,
+      body.data.subnets.length,
+    );
+  });
+
   test("local network route 404s cleanly (no data published)", async () => {
     const env = createLocalArtifactEnv();
     const { res } = await get(env, "/api/v1/local/coverage");
