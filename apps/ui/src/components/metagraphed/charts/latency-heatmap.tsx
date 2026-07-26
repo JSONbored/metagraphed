@@ -184,7 +184,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
                           {k}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-[11px]">
+                      <TooltipContent side="top" className="mg-type-caption">
                         {KIND_HINT[k] ?? k}
                       </TooltipContent>
                     </Tooltip>
@@ -209,7 +209,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
                             {p}
                           </Link>
                         </TooltipTrigger>
-                        <TooltipContent side="right" className="text-[11px]">
+                        <TooltipContent side="right" className="mg-type-caption">
                           {p} · {total} endpoint{total === 1 ? "" : "s"}
                         </TooltipContent>
                       </Tooltip>
@@ -277,7 +277,7 @@ function Cell({ cell }: { cell: Cell }) {
           title={title}
           aria-label={ariaSummary}
           className={classNames(
-            "relative h-7 w-full rounded flex items-center justify-center text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
+            "relative h-7 w-full rounded flex items-center justify-center mg-type-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
             tone,
           )}
         >
@@ -287,12 +287,12 @@ function Cell({ cell }: { cell: Cell }) {
           {cell.downCount > 0 || cell.warnCount > 0 ? (
             <span className="absolute top-0.5 right-0.5 flex items-center gap-0.5" aria-hidden>
               {cell.downCount > 0 ? (
-                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-down/95 px-0.5 text-[9px] font-mono leading-none text-paper">
+                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-down/95 px-0.5 mg-type-data-sm leading-none text-paper">
                   {cell.downCount}
                 </span>
               ) : null}
               {cell.warnCount > 0 ? (
-                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-warn/95 px-0.5 text-[9px] font-mono leading-none text-paper">
+                <span className="inline-flex h-3 min-w-[12px] items-center justify-center rounded bg-health-warn/95 px-0.5 mg-type-data-sm leading-none text-paper">
                   {cell.warnCount}
                 </span>
               ) : null}
@@ -363,7 +363,7 @@ function Cell({ cell }: { cell: Cell }) {
                         SN{n}
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="text-[11px]">
+                    <TooltipContent side="top" className="mg-type-caption">
                       Jump to SN{n} · {cell.kind} endpoints
                     </TooltipContent>
                   </Tooltip>
@@ -434,7 +434,7 @@ function LegendBucket({ cls, label, hint }: { cls: string; label: string; hint: 
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="text-[11px]">
+      <TooltipContent side="top" className="mg-type-caption">
         {hint}
       </TooltipContent>
     </Tooltip>

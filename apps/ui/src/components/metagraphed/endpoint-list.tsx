@@ -13,6 +13,7 @@ import {
   safeExternalUrl,
   CopyIconToggle,
   Sparkline,
+  ExternalLink,
 } from "@jsonbored/ui-kit";
 import { useCopy } from "@/hooks/use-copy";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -204,7 +205,7 @@ function Row({
         </td>
       ) : null}
       <td className="px-4 py-2.5">
-        <div className="font-mono text-[11.5px] text-ink truncate max-w-[42ch]">{e.url ?? "—"}</div>
+        <div className="mg-type-data text-ink truncate max-w-[42ch]">{e.url ?? "—"}</div>
         {e.region ? <div className="mg-type-data-sm text-ink-muted mt-0.5">{e.region}</div> : null}
       </td>
       {showProvider ? (
@@ -278,6 +279,7 @@ function Row({
                   <TooltipTrigger asChild>
                     <a
                       href={safeUrl}
+                      // eslint-disable-next-line no-restricted-syntax -- must stay a raw <a>: it's the child of a Radix <TooltipTrigger asChild>, which clones it and injects a ref; <ExternalLink> is a plain function component (no forwardRef) so it can't receive that ref
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="Open URL"
@@ -331,7 +333,7 @@ function MobileCard({
         </div>
         <HealthDot state={e.health} />
       </div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 mg-type-caption">
         {showProvider ? (
           <>
             <dt className="mg-type-micro text-ink-muted">Provider</dt>
@@ -376,14 +378,13 @@ function MobileCard({
             <CopyIconToggle copied={copied} /> copy
           </button>
           {safeUrl ? (
-            <a
+            <ExternalLink
               href={safeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              bare
               className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-accent/40"
             >
               open <ExternalLinkIcon className="size-3" />
-            </a>
+            </ExternalLink>
           ) : null}
         </div>
       ) : null}
@@ -406,7 +407,7 @@ function HeaderHint({ label, hint }: { label: string; hint: string }) {
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
+      <TooltipContent side="top" className="max-w-xs mg-type-caption">
         {hint}
       </TooltipContent>
     </Tooltip>

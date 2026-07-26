@@ -49,7 +49,7 @@ export function EndpointKindTabs({ value, counts, onChange }: Props) {
             {count != null ? (
               <span
                 className={classNames(
-                  "rounded px-1 tabular-nums text-[10px]",
+                  "rounded px-1 tabular-nums mg-type-caption",
                   active ? "bg-paper/40 text-ink-strong" : "bg-surface/60 text-ink-muted",
                 )}
               >

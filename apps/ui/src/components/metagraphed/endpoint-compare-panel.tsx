@@ -135,7 +135,7 @@ function CompareColumn({
             <Link
               to="/providers/$slug"
               params={{ slug: endpoint.provider_slug }}
-              className="mg-focus-ring mt-1 inline-flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink-strong"
+              className="mg-focus-ring mt-1 inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
             >
               <BrandIcon
                 url={provider?.website ?? provider?.homepage}

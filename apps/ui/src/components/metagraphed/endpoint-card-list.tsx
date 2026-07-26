@@ -60,7 +60,7 @@ export function EndpointCardList({
             <div className="mg-type-data min-w-0">
               {e.url ? (
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <ExternalLink href={e.url} className="min-w-0 text-[11px]">
+                  <ExternalLink href={e.url} className="min-w-0 mg-type-caption">
                     {e.url}
                   </ExternalLink>
                   <CopyButton value={e.url} label="URL" compact />
@@ -69,7 +69,7 @@ export function EndpointCardList({
                 "—"
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
               {e.netuid != null ? (
                 <Link
                   to="/subnets/$netuid"

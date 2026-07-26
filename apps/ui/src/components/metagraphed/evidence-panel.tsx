@@ -111,7 +111,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <div className="flex flex-wrap items-center gap-2 mg-type-caption">
         <span className="font-mono uppercase tracking-widest text-ink-muted">Source</span>
         <select
           value={sourceFilter}
@@ -183,11 +183,11 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
                   }
                 >
                   {item.url ? (
-                    <ExternalLink href={item.url} className="text-[11px]">
+                    <ExternalLink href={item.url} className="mg-type-caption">
                       {shortLabel(item)}
                     </ExternalLink>
                   ) : (
-                    <span className="inline-flex items-center rounded border border-border bg-paper px-1.5 py-0.5 text-[11px] text-ink-muted">
+                    <span className="inline-flex items-center rounded border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
                       {shortLabel(item)}
                     </span>
                   )}
@@ -195,7 +195,9 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
               </li>
             ))}
             {items.length > 24 ? (
-              <li className="text-[11px] text-ink-muted self-center">+{items.length - 24} more</li>
+              <li className="mg-type-caption text-ink-muted self-center">
+                +{items.length - 24} more
+              </li>
             ) : null}
           </ul>
         </Panel>
@@ -211,7 +213,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
             type="button"
             onClick={() => query.fetchNextPage()}
             disabled={query.isFetchingNextPage}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink hover:border-ink/30 transition-colors disabled:opacity-60"
           >
             {query.isFetchingNextPage ? "Loading…" : `Load ${pageSize} more`}
           </button>

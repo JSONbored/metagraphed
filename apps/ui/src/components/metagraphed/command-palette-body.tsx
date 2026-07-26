@@ -666,7 +666,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     <button
                       type="button"
                       onClick={() => setQ(s)}
-                      className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                      className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                     >
                       {s}
                     </button>
@@ -725,7 +725,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                       <button
                         type="button"
                         onClick={() => setQ(r)}
-                        className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-ink hover:border-accent/40 hover:text-accent transition-colors"
+                        className="rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption text-ink hover:border-accent/40 hover:text-accent transition-colors"
                       >
                         {r}
                       </button>
@@ -742,7 +742,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     <button
                       type="button"
                       onClick={() => setQ(s)}
-                      className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                      className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                     >
                       {s}
                     </button>

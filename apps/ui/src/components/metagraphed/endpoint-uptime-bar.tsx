@@ -62,7 +62,7 @@ export function EndpointUptimeBar({
         <span
           key={i}
           className={classNames(
-            "block h-3 w-[3px] rounded-[1px]",
+            "block h-3 w-[3px] rounded",
             p === "ok" && "bg-health-ok/70",
             p === "warn" && "bg-health-warn/80",
             p === "down" && "bg-health-down/80",
