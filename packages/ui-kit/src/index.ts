@@ -150,6 +150,8 @@ export {
 } from "@/components/metagraphed/view-mode-toggle";
 export { Wordmark } from "@/components/metagraphed/wordmark";
 export { DiscordIcon } from "@/components/metagraphed/discord-icon";
+export { ClaudeIcon } from "@/components/metagraphed/claude-icon";
+export { OpenAIIcon } from "@/components/metagraphed/openai-icon";
 export {
   SCOPES,
   type SearchScope,

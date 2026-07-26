@@ -263,6 +263,11 @@
   --mg-dot-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
   --mg-dot-size: 24px;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 3.5%, transparent);
+
+  /* Third-party brand mark (ClaudeIcon) -- fixed regardless of theme, unlike
+     the semantic tokens above. Converted from Claude's official simple-icons
+     hex (#D97757) via the standard sRGB->OKLab->OKLCH formulas. */
+  --claude-brand: oklch(0.67 0.13 39);
 }
 
 /* ============================================================
