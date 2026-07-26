@@ -75,6 +75,27 @@ CREATE INDEX IF NOT EXISTS idx_extrinsics_signer_block
 -- #2082 sibling: extrinsics-feed call_module/call_function/success filters.
 CREATE INDEX IF NOT EXISTS idx_extrinsics_call
   ON extrinsics (call_module, call_function, success, block_number DESC);
+-- #8175: the /accounts/{ss58}/extrinsics feed and the account-summary
+-- tx-count/module-mix aggregates all lead their ORDER BY with observed_at
+-- (hypertable chunk exclusion), which idx_extrinsics_signer_block above
+-- (block_number-led tail) can't satisfy without a per-chunk Sort of the
+-- signer's ENTIRE matching set -- the same "index doesn't match this
+-- ORDER BY" class fixed for account_events by idx_ae_hotkey_observed/
+-- idx_ae_coldkey_observed (#8153/#8154; see that comment block for why
+-- the full 4-column key is required -- observed_at is a per-flush batch
+-- timestamp, so the block_number/extrinsic_index tiebreak columns must be
+-- in the index too). idx_extrinsics_signer_block stays: it still backs the
+-- block_start/block_end-range variants of the same routes.
+CREATE INDEX IF NOT EXISTS idx_extrinsics_signer_observed
+  ON extrinsics (signer, observed_at DESC, block_number DESC, extrinsic_index DESC);
+-- #8176: same class one level down -- /api/v1/sudo and
+-- /api/v1/governance/config-changes filter by a fixed call_module with the
+-- same observed_at-leading ORDER BY, which idx_extrinsics_call above
+-- (call_function/success/block_number tail) can't back either.
+-- idx_extrinsics_call stays for the general extrinsics-feed
+-- call_module/call_function/success filter combinations.
+CREATE INDEX IF NOT EXISTS idx_extrinsics_call_observed
+  ON extrinsics (call_module, observed_at DESC, block_number DESC, extrinsic_index DESC);
 
 CREATE TABLE IF NOT EXISTS account_events (
   block_number     BIGINT NOT NULL,
