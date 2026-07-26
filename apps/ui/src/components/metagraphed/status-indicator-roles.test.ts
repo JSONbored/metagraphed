@@ -14,12 +14,11 @@ import { describe, expect, it } from "vitest";
 // repo already tests this way (see ui-kit's list-shell.test.ts).
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 
+// #8249: hero-subnet-chips.tsx (the "chip marquee") was retired along with
+// the rest of the home page's auto-scrolling/rail elements -- its role="img"
+// health-dot entry goes with it. The remaining two sites still exercise the
+// same pattern this suite exists to pin.
 const SITES: Array<[string, string, string]> = [
-  [
-    "hero-subnet-chips (subnet health dot)",
-    "./hero-subnet-chips.tsx",
-    "aria-label={`health ${health}`}",
-  ],
   [
     "providers.index (official-provider badge)",
     "../../routes/-providers-index-page.tsx",
@@ -55,7 +54,10 @@ describe("colour-only status indicators expose their label", () => {
     const healthDot = read("../../../../../packages/ui-kit/src/components/metagraphed/chips.tsx");
     expect(healthDot).toContain('role="img"');
 
-    const el = elementCarrying(read("./hero-subnet-chips.tsx"), "aria-label={`health ${health}`}");
+    const el = elementCarrying(
+      read("../../routes/-providers-index-page.tsx"),
+      'aria-label="Official provider"',
+    );
     expect(el).toContain("title=");
   });
 

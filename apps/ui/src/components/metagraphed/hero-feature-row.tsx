@@ -3,19 +3,21 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { useMemo } from "react";
 
-import {
-  AnimatedTraceSparkline,
-  directionFor,
-} from "@/components/metagraphed/charts/animated-trace-sparkline";
+import { AnimatedTraceSparkline } from "@/components/metagraphed/charts/animated-trace-sparkline";
 import { BrandIcon, Sparkline } from "@jsonbored/ui-kit";
-import { chainActivityQuery, subnetOhlcQuery, subnetsQuery } from "@/lib/metagraphed/queries";
+import {
+  chainActivityQuery,
+  healthQuery,
+  subnetOhlcQuery,
+  subnetsQuery,
+} from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { Subnet } from "@/lib/metagraphed/types";
 import { useHydrated } from "@/hooks/use-hydrated";
 
 /**
  * Two-up feature row that lives directly beneath the centered hero.
- * Left = animated chain-throughput trace (7d). Right = compact live-subnet list
+ * Left = neutral chain-throughput trace (7d). Right = compact live-subnet list
  * with per-row price sparklines. Everything renders skeletons/placeholders on
  * cold fetch so layout never jumps.
  */
@@ -30,45 +32,45 @@ export function HeroFeatureRow() {
 
 /* ------------------------------ Left card ------------------------------ */
 
+// #8249: was "extrinsics today, +/-N% in red-or-green" -- a stat that read as
+// bad news on the very first paint whenever throughput merely dipped day over
+// day (nothing wrong with the network, just noise). Replaced with a neutral
+// pair the audit asked for -- blocks produced today + endpoints currently up
+// -- and a permanently neutral-colored trace (no red/green direction at all)
+// so the hero never opens on a negative-framed number.
 function ChainThroughputCard() {
   const hydrated = useHydrated();
-  const { data } = useQuery({ ...chainActivityQuery("7d"), enabled: hydrated });
-  const activity = hydrated ? data?.data : undefined;
+  const { data: activityData } = useQuery({ ...chainActivityQuery("7d"), enabled: hydrated });
+  const { data: healthData } = useQuery({ ...healthQuery(), enabled: hydrated });
+  const activity = hydrated ? activityData?.data : undefined;
+  const health = hydrated ? healthData?.data : undefined;
 
-  const { series, latest, deltaPct, dir } = useMemo(() => {
+  const { series, blocksToday } = useMemo(() => {
     const days = activity?.days?.length ? [...activity.days].reverse() : [];
-    const s = days.map((d) => d.extrinsic_count).filter((v) => Number.isFinite(v));
-    const last = s.at(-1) ?? 0;
-    const first = s[0] ?? last;
-    const delta = first ? ((last - first) / first) * 100 : 0;
-    return {
-      series: s,
-      latest: last,
-      deltaPct: delta,
-      dir: s.length ? directionFor(s) : ("flat" as const),
-    };
+    const s = days.map((d) => d.block_count).filter((v) => Number.isFinite(v));
+    return { series: s, blocksToday: s.at(-1) ?? 0 };
   }, [activity]);
 
-  const deltaTone =
-    dir === "up" ? "text-health-ok" : dir === "down" ? "text-health-down" : "text-ink-muted";
+  const endpointsOk = health?.ok;
+  const endpointsTotal =
+    health != null
+      ? (health.ok ?? 0) + (health.warn ?? 0) + (health.down ?? 0) + (health.unknown ?? 0)
+      : undefined;
 
   return (
     <div className="mg-card-glow relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-start justify-between gap-3 px-4 pt-4">
         <div className="min-w-0">
-          <div className="mg-type-micro text-ink-muted">Chain throughput · 7d</div>
-          <div className="mt-2 flex items-baseline gap-3">
-            <div className="font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
-              {series.length ? formatNumber(latest) : "—"}
-            </div>
-            {series.length > 0 && (
-              <span className={`font-mono text-xs tabular-nums ${deltaTone}`}>
-                {deltaPct >= 0 ? "+" : ""}
-                {deltaPct.toFixed(1)}%
-              </span>
-            )}
+          <div className="mg-type-micro text-ink-muted">Blocks today</div>
+          <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
+            {series.length ? formatNumber(blocksToday) : "—"}
           </div>
-          <div className="mt-1 mg-type-micro text-ink-subtle-text">extrinsics · last day</div>
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="mg-type-micro text-ink-muted">Endpoints up</div>
+          <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
+            {endpointsTotal ? `${formatNumber(endpointsOk)}/${formatNumber(endpointsTotal)}` : "—"}
+          </div>
         </div>
       </div>
 
@@ -76,10 +78,10 @@ function ChainThroughputCard() {
         {series.length >= 2 ? (
           <AnimatedTraceSparkline
             values={series}
-            direction={dir}
+            direction="flat"
             width={640}
             height={180}
-            ariaLabel="Chain throughput over the last 7 days"
+            ariaLabel="Blocks produced per day over the last 7 days"
             className="w-full"
           />
         ) : (
