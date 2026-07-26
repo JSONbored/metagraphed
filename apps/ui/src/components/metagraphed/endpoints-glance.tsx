@@ -135,7 +135,7 @@ export function EndpointsGlance({
         type="button"
         onClick={toggle}
         className={classNames(
-          "flex w-full items-center justify-center gap-1.5 border-t border-border bg-surface/40 px-3 py-3 text-[11px] font-medium text-ink-muted hover:text-accent hover:bg-surface min-h-11 transition-colors",
+          "flex w-full items-center justify-center gap-1.5 border-t border-border bg-surface/40 px-3 py-3 mg-type-caption font-medium text-ink-muted hover:text-accent hover:bg-surface min-h-11 transition-colors",
         )}
         aria-expanded={open}
         aria-controls={panelId}

@@ -184,6 +184,7 @@ export function EndpointOperationalList({
                       id={`endpoint-${endpoint.id}`}
                       role="listitem"
                       className={classNames(
+                        // eslint-disable-next-line no-restricted-syntax -- `scroll-mt-32` is anchor scroll-margin (8rem sticky-header clearance for deep-linked endpoint rows), not layout spacing; the guardrail's `mt` matcher flags it as a false positive and no on-scale step equals 8rem
                         "group relative scroll-mt-32 transition-colors",
                         idx > 0 && "border-t border-border",
                         open ? "bg-surface/70" : "hover:bg-surface/50",
@@ -297,7 +298,7 @@ export function EndpointOperationalList({
                                 <Link
                                   to="/providers/$slug"
                                   params={{ slug: providerSlug }}
-                                  className="mg-focus-ring inline-flex items-center gap-1.5 text-[11px] text-ink-muted hover:text-ink-strong"
+                                  className="mg-focus-ring inline-flex items-center gap-1.5 mg-type-caption text-ink-muted hover:text-ink-strong"
                                 >
                                   <BrandIcon
                                     url={provider?.website ?? provider?.homepage}
@@ -314,7 +315,7 @@ export function EndpointOperationalList({
                                 </Link>
                               </div>
                             ) : endpoint.provider ? (
-                              <div className="mt-1.5 text-[11px] text-ink-muted">
+                              <div className="mt-1.5 mg-type-caption text-ink-muted">
                                 {endpoint.provider}
                               </div>
                             ) : null}
@@ -326,6 +327,7 @@ export function EndpointOperationalList({
                             <div className="flex items-baseline gap-1.5">
                               <span
                                 className={classNames(
+                                  // eslint-disable-next-line no-restricted-syntax -- 20px mono latency stat; the type scale tops out at mg-type-data (11px) with no large-numeric token, so this hero figure has no equivalent
                                   "font-mono text-[20px] leading-none tabular-nums",
                                   latencyTone(endpoint.latency_ms),
                                 )}

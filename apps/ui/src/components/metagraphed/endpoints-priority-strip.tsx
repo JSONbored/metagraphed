@@ -113,11 +113,14 @@ function PriorityCard({ item }: { item: Item }) {
       <div className="mt-1 flex items-baseline gap-2">
         <span className="font-display text-xl text-ink-strong tabular-nums">{item.value}</span>
       </div>
-      {item.hint ? <p className="mt-0.5 text-[11px] text-ink-muted">{item.hint}</p> : null}
+      {item.hint ? <p className="mt-0.5 mg-type-caption text-ink-muted">{item.hint}</p> : null}
       {item.rows.length > 0 ? (
         <ul className="mt-2 space-y-0.5">
           {item.rows.slice(0, 3).map((r) => (
-            <li key={r.id} className="flex items-center gap-1.5 text-[11px] text-ink-muted min-w-0">
+            <li
+              key={r.id}
+              className="flex items-center gap-1.5 mg-type-caption text-ink-muted min-w-0"
+            >
               <HealthDot state={r.health ?? "unknown"} />
               <span className="truncate font-mono">{r.provider ?? r.provider_slug ?? r.id}</span>
               {r.latency_ms != null ? (
@@ -129,7 +132,7 @@ function PriorityCard({ item }: { item: Item }) {
           ))}
         </ul>
       ) : (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-muted">
+        <div className="mt-2 flex items-center gap-1.5 mg-type-caption text-ink-muted">
           <Chip tone="muted">Nothing to review</Chip>
         </div>
       )}

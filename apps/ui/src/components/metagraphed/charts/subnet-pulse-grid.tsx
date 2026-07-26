@@ -40,7 +40,7 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
   }
 
   if (isError) {
-    return <div className="text-[11px] text-health-down">Couldn't load subnet pulse.</div>;
+    return <div className="mg-type-caption text-health-down">Couldn't load subnet pulse.</div>;
   }
 
   const subs = data?.data ?? [];
@@ -72,7 +72,7 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
               <div className="font-display text-sm font-semibold text-ink-strong">
                 {s.name ?? `Subnet ${s.netuid}`}
               </div>
-              <div className="mt-0.5 text-[11px] text-ink-muted">health · {health}</div>
+              <div className="mt-0.5 mg-type-caption text-ink-muted">health · {health}</div>
             </TooltipContent>
           </Tooltip>
         );

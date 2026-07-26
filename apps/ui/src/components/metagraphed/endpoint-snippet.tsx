@@ -50,6 +50,7 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
   return (
     <>
       <div
+        // eslint-disable-next-line no-restricted-syntax -- this is a segmented language switcher (role="tablist"), not a card shell; <Panel> would impose card padding/semantics. The rule's rounded+border+bg-card matcher is a false positive here
         className="mb-3 inline-flex rounded border border-border bg-card p-0.5"
         role="tablist"
         aria-label="Snippet language"

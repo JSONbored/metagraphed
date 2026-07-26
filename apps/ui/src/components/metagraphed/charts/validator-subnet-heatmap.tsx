@@ -54,7 +54,7 @@ export function ValidatorSubnetHeatmap() {
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="mg-type-micro text-ink-muted">Validator × subnet · stake intensity</div>
-        <div className="flex flex-wrap items-center gap-2.5 font-mono text-[9.5px] text-ink-muted">
+        <div className="flex flex-wrap items-center gap-2.5 mg-type-data-sm text-ink-muted">
           <span>top {rows.length} validators · top 10 subnets each (server-capped)</span>
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded bg-accent/20" />
@@ -75,7 +75,7 @@ export function ValidatorSubnetHeatmap() {
                 {netuids.map((n) => (
                   <th
                     key={n}
-                    className="border-b border-border px-1.5 py-2 text-[10px] tabular-nums text-ink-muted"
+                    className="border-b border-border px-1.5 py-2 mg-type-caption tabular-nums text-ink-muted"
                   >
                     {n}
                   </th>
@@ -117,7 +117,7 @@ export function ValidatorSubnetHeatmap() {
                                 )}
                               />
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="text-[11px]">
+                            <TooltipContent side="top" className="mg-type-caption">
                               {summary}
                             </TooltipContent>
                           </Tooltip>

@@ -144,7 +144,7 @@ export function EndpointDetailDrawer({
               <div id={`latency-${endpoint.id}`} className="mg-label">
                 Latency trend
               </div>
-              <p className="mt-1 text-[11px] text-ink-muted">
+              <p className="mt-1 mg-type-caption text-ink-muted">
                 Seeded from server probe history when published; augmented with client-observed
                 samples as you monitor the endpoint.
               </p>
@@ -179,7 +179,7 @@ export function EndpointDetailDrawer({
                 <div key={`${p.t}-${index}`} className="min-w-0 border-l border-border pl-2">
                   <div className="mg-label">{index === 0 ? "Latest" : `Prior ${index}`}</div>
                   <div className="mt-1 mg-type-data text-ink-strong">{Math.round(p.v)}ms</div>
-                  <div className="mt-0.5 truncate font-mono text-[9px] text-ink-muted">
+                  <div className="mt-0.5 truncate mg-type-data-sm text-ink-muted">
                     {new Date(p.t).toLocaleString()}
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export function EndpointDetailDrawer({
           </div>
 
           {rows.length === 0 ? (
-            <div className="rounded border border-dashed border-border/70 px-3 py-2 text-[11px] text-ink-muted">
+            <div className="rounded border border-dashed border-border/70 px-3 py-2 mg-type-caption text-ink-muted">
               {allRows.length === 0
                 ? "No incidents recorded for this endpoint in the retained window."
                 : "No incidents match the current filter."}
@@ -253,6 +253,7 @@ export function EndpointDetailDrawer({
                   <li
                     key={inc.id}
                     id={`incident-${inc.id}`}
+                    // eslint-disable-next-line no-restricted-syntax -- `scroll-mt-32` is anchor scroll-margin (8rem sticky-header clearance for deep-linked incidents), not layout spacing; the guardrail's `mt` matcher flags it as a false positive and no on-scale step equals 8rem
                     className="flex items-start gap-2 scroll-mt-32 rounded border border-border/60 bg-paper px-2 py-1.5 target:border-accent/60"
                   >
                     <span
@@ -283,7 +284,7 @@ export function EndpointDetailDrawer({
                         </span>
                       </div>
                       {inc.message ? (
-                        <div className="mt-0.5 truncate text-[11px] text-ink-muted">
+                        <div className="mt-0.5 truncate mg-type-caption text-ink-muted">
                           {inc.message}
                         </div>
                       ) : null}
@@ -307,7 +308,7 @@ export function EndpointDetailDrawer({
               })}
             </ol>
           )}
-          <p className="mt-2 text-[10px] text-ink-subtle-text">
+          <p className="mt-2 mg-type-caption text-ink-subtle-text">
             Incident intervals come from /api/v1/endpoint-incidents. Latency series merges published
             probe samples with locally-observed samples — no synthetic values are generated.
           </p>

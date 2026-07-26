@@ -55,7 +55,7 @@ export function EndpointChipCluster({ endpoint, poolsById, max = 3, className }:
   return (
     <div className={className ?? "flex flex-wrap items-center gap-1"}>
       {visible.map((c) => (
-        <Chip key={c.key} tone={c.tone} title={c.title} className="!text-[10px]">
+        <Chip key={c.key} tone={c.tone} title={c.title}>
           {c.label}
         </Chip>
       ))}
