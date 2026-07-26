@@ -6,6 +6,7 @@ description: >-
   generation", "is subnet 7 healthy", "how do I call the Chutes API", "build on
   a Bittensor subnet". Backed by metagraphed (api.metagraph.sh), the live
   operational + integration registry for ~129 subnets.
+license: AGPL-3.0-or-later
 ---
 
 # Bittensor in a box
