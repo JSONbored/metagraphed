@@ -9,108 +9,52 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SurfacesRouteImport } from './routes/surfaces'
-import { Route as StatusRouteImport } from './routes/status'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SchemasRouteImport } from './routes/schemas'
-import { Route as PortfolioRouteImport } from './routes/portfolio'
-import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
-import { Route as HealthRouteImport } from './routes/health'
-import { Route as GapsRouteImport } from './routes/gaps'
-import { Route as ExplorerRouteImport } from './routes/explorer'
-import { Route as EndpointsRouteImport } from './routes/endpoints'
-import { Route as DomainsRouteImport } from './routes/domains'
-import { Route as DelegateRouteImport } from './routes/delegate'
-import { Route as AgentsRouteImport } from './routes/agents'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
-import { Route as SudoIndexRouteImport } from './routes/sudo.index'
-import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
-import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
-import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
-import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
-import { Route as EventsIndexRouteImport } from './routes/events.index'
-import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
-import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as ChainRouteImport } from './routes/chain'
+import { Route as DelegateRouteImport } from './routes/delegate'
+import { Route as DomainsRouteImport } from './routes/domains'
+import { Route as EndpointsRouteImport } from './routes/endpoints'
+import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as GapsRouteImport } from './routes/gaps'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
+import { Route as PortfolioRouteImport } from './routes/portfolio'
+import { Route as SchemasRouteImport } from './routes/schemas'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as StatusRouteImport } from './routes/status'
+import { Route as SurfacesRouteImport } from './routes/surfaces'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
-import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
-import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
-import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
-import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
-import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
-import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
-import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
-import { Route as DocsSplatRouteImport } from './routes/docs.$'
-import { Route as DesignPrimitivesRouteImport } from './routes/design.primitives'
-import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
-import { Route as ApiSearchRouteImport } from './routes/api.search'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
+import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
+import { Route as ApiSearchRouteImport } from './routes/api.search'
+import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
+import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
+import { Route as ChainIndexRouteImport } from './routes/chain.index'
+import { Route as ChainBlocksRouteImport } from './routes/chain.blocks'
+import { Route as ChainExtrinsicsRouteImport } from './routes/chain.extrinsics'
+import { Route as DesignPrimitivesRouteImport } from './routes/design.primitives'
+import { Route as DocsSplatRouteImport } from './routes/docs.$'
+import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
+import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
+import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
+import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
+import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
+import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
+import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
+import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
+import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
+import { Route as SudoIndexRouteImport } from './routes/sudo.index'
+import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
+import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
+import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
 import { Route as DocsRawSplatRouteImport } from './routes/docs.raw.$'
 
-const SurfacesRoute = SurfacesRouteImport.update({
-  id: '/surfaces',
-  path: '/surfaces',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SchemasRoute = SchemasRouteImport.update({
-  id: '/schemas',
-  path: '/schemas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortfolioRoute = PortfolioRouteImport.update({
-  id: '/portfolio',
-  path: '/portfolio',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeaderboardsRoute = LeaderboardsRouteImport.update({
-  id: '/leaderboards',
-  path: '/leaderboards',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GapsRoute = GapsRouteImport.update({
-  id: '/gaps',
-  path: '/gaps',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExplorerRoute = ExplorerRouteImport.update({
-  id: '/explorer',
-  path: '/explorer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EndpointsRoute = EndpointsRouteImport.update({
-  id: '/endpoints',
-  path: '/endpoints',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DomainsRoute = DomainsRouteImport.update({
-  id: '/domains',
-  path: '/domains',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DelegateRoute = DelegateRouteImport.update({
-  id: '/delegate',
-  path: '/delegate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgentsRoute = AgentsRouteImport.update({
-  id: '/agents',
-  path: '/agents',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -118,54 +62,74 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ValidatorsIndexRoute = ValidatorsIndexRouteImport.update({
-  id: '/validators/',
-  path: '/validators/',
+const ChainRoute = ChainRouteImport.update({
+  id: '/chain',
+  path: '/chain',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SudoIndexRoute = SudoIndexRouteImport.update({
-  id: '/sudo/',
-  path: '/sudo/',
+const DelegateRoute = DelegateRouteImport.update({
+  id: '/delegate',
+  path: '/delegate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SubnetsIndexRoute = SubnetsIndexRouteImport.update({
-  id: '/subnets/',
-  path: '/subnets/',
+const DomainsRoute = DomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RuntimeIndexRoute = RuntimeIndexRouteImport.update({
-  id: '/runtime/',
-  path: '/runtime/',
+const EndpointsRoute = EndpointsRouteImport.update({
+  id: '/endpoints',
+  path: '/endpoints',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
-  id: '/providers/',
-  path: '/providers/',
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
-  id: '/extrinsics/',
-  path: '/extrinsics/',
+const GapsRoute = GapsRouteImport.update({
+  id: '/gaps',
+  path: '/gaps',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventsIndexRoute = EventsIndexRouteImport.update({
-  id: '/events/',
-  path: '/events/',
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlocksIndexRoute = BlocksIndexRouteImport.update({
-  id: '/blocks/',
-  path: '/blocks/',
+const LeaderboardsRoute = LeaderboardsRouteImport.update({
+  id: '/leaderboards',
+  path: '/leaderboards',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminChangesIndexRoute = AdminChangesIndexRouteImport.update({
-  id: '/admin-changes/',
-  path: '/admin-changes/',
+const PortfolioRoute = PortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchemasRoute = SchemasRouteImport.update({
+  id: '/schemas',
+  path: '/schemas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurfacesRoute = SurfacesRouteImport.update({
+  id: '/surfaces',
+  path: '/surfaces',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountsIndexRoute = AccountsIndexRouteImport.update({
@@ -173,54 +137,14 @@ const AccountsIndexRoute = AccountsIndexRouteImport.update({
   path: '/accounts/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ValidatorsHotkeyRoute = ValidatorsHotkeyRouteImport.update({
-  id: '/validators/$hotkey',
-  path: '/validators/$hotkey',
+const AccountsSs58Route = AccountsSs58RouteImport.update({
+  id: '/accounts/$ss58',
+  path: '/accounts/$ss58',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ToolsSs58Route = ToolsSs58RouteImport.update({
-  id: '/tools/ss58',
-  path: '/tools/ss58',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
-  id: '/subnets/$netuid',
-  path: '/subnets/$netuid',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
-  id: '/providers/$slug',
-  path: '/providers/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
-  id: '/graphql/explorer',
-  path: '/graphql/explorer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExtrinsicsHashRoute = ExtrinsicsHashRouteImport.update({
-  id: '/extrinsics/$hash',
-  path: '/extrinsics/$hash',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsLlmsDottxtRoute = DocsLlmsDottxtRouteImport.update({
-  id: '/docs/llms.txt',
-  path: '/docs/llms.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsSplatRoute = DocsSplatRouteImport.update({
-  id: '/docs/$',
-  path: '/docs/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignPrimitivesRoute = DesignPrimitivesRouteImport.update({
-  id: '/design/primitives',
-  path: '/design/primitives',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlocksRefRoute = BlocksRefRouteImport.update({
-  id: '/blocks/$ref',
-  path: '/blocks/$ref',
+const AdminChangesIndexRoute = AdminChangesIndexRouteImport.update({
+  id: '/admin-changes/',
+  path: '/admin-changes/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
@@ -228,9 +152,109 @@ const ApiSearchRoute = ApiSearchRouteImport.update({
   path: '/api/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AccountsSs58Route = AccountsSs58RouteImport.update({
-  id: '/accounts/$ss58',
-  path: '/accounts/$ss58',
+const BlocksIndexRoute = BlocksIndexRouteImport.update({
+  id: '/blocks/',
+  path: '/blocks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlocksRefRoute = BlocksRefRouteImport.update({
+  id: '/blocks/$ref',
+  path: '/blocks/$ref',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChainIndexRoute = ChainIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChainRoute,
+} as any)
+const ChainBlocksRoute = ChainBlocksRouteImport.update({
+  id: '/blocks',
+  path: '/blocks',
+  getParentRoute: () => ChainRoute,
+} as any)
+const ChainExtrinsicsRoute = ChainExtrinsicsRouteImport.update({
+  id: '/extrinsics',
+  path: '/extrinsics',
+  getParentRoute: () => ChainRoute,
+} as any)
+const DesignPrimitivesRoute = DesignPrimitivesRouteImport.update({
+  id: '/design/primitives',
+  path: '/design/primitives',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/docs/$',
+  path: '/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsLlmsDottxtRoute = DocsLlmsDottxtRouteImport.update({
+  id: '/docs/llms.txt',
+  path: '/docs/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsIndexRoute = EventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
+  id: '/extrinsics/',
+  path: '/extrinsics/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExtrinsicsHashRoute = ExtrinsicsHashRouteImport.update({
+  id: '/extrinsics/$hash',
+  path: '/extrinsics/$hash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
+  id: '/graphql/explorer',
+  path: '/graphql/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
+  id: '/providers/',
+  path: '/providers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
+  id: '/providers/$slug',
+  path: '/providers/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RuntimeIndexRoute = RuntimeIndexRouteImport.update({
+  id: '/runtime/',
+  path: '/runtime/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubnetsIndexRoute = SubnetsIndexRouteImport.update({
+  id: '/subnets/',
+  path: '/subnets/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
+  id: '/subnets/$netuid',
+  path: '/subnets/$netuid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SudoIndexRoute = SudoIndexRouteImport.update({
+  id: '/sudo/',
+  path: '/sudo/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsSs58Route = ToolsSs58RouteImport.update({
+  id: '/tools/ss58',
+  path: '/tools/ss58',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ValidatorsIndexRoute = ValidatorsIndexRouteImport.update({
+  id: '/validators/',
+  path: '/validators/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ValidatorsHotkeyRoute = ValidatorsHotkeyRouteImport.update({
+  id: '/validators/$hotkey',
+  path: '/validators/$hotkey',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRawSplatRoute = DocsRawSplatRouteImport.update({
@@ -243,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain': typeof ChainRouteWithChildren
   '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
@@ -258,6 +283,8 @@ export interface FileRoutesByFullPath {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/extrinsics': typeof ChainExtrinsicsRoute
   '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
@@ -270,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
+  '/chain/': typeof ChainIndexRoute
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
@@ -298,6 +326,8 @@ export interface FileRoutesByTo {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/extrinsics': typeof ChainExtrinsicsRoute
   '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
@@ -310,6 +340,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsIndexRoute
   '/admin-changes': typeof AdminChangesIndexRoute
   '/blocks': typeof BlocksIndexRoute
+  '/chain': typeof ChainIndexRoute
   '/events': typeof EventsIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
   '/providers': typeof ProvidersIndexRoute
@@ -324,6 +355,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain': typeof ChainRouteWithChildren
   '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
@@ -339,6 +371,8 @@ export interface FileRoutesById {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/extrinsics': typeof ChainExtrinsicsRoute
   '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
@@ -351,6 +385,7 @@ export interface FileRoutesById {
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
+  '/chain/': typeof ChainIndexRoute
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
@@ -366,6 +401,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain'
     | '/delegate'
     | '/domains'
     | '/endpoints'
@@ -381,6 +417,8 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/blocks/$ref'
+    | '/chain/blocks'
+    | '/chain/extrinsics'
     | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
@@ -393,6 +431,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/admin-changes/'
     | '/blocks/'
+    | '/chain/'
     | '/events/'
     | '/extrinsics/'
     | '/providers/'
@@ -421,6 +460,8 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/blocks/$ref'
+    | '/chain/blocks'
+    | '/chain/extrinsics'
     | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
@@ -433,6 +474,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/admin-changes'
     | '/blocks'
+    | '/chain'
     | '/events'
     | '/extrinsics'
     | '/providers'
@@ -446,6 +488,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain'
     | '/delegate'
     | '/domains'
     | '/endpoints'
@@ -461,6 +504,8 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/blocks/$ref'
+    | '/chain/blocks'
+    | '/chain/extrinsics'
     | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
@@ -473,6 +518,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/admin-changes/'
     | '/blocks/'
+    | '/chain/'
     | '/events/'
     | '/extrinsics/'
     | '/providers/'
@@ -487,6 +533,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
+  ChainRoute: typeof ChainRouteWithChildren
   DelegateRoute: typeof DelegateRoute
   DomainsRoute: typeof DomainsRoute
   EndpointsRoute: typeof EndpointsRoute
@@ -526,95 +573,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/surfaces': {
-      id: '/surfaces'
-      path: '/surfaces'
-      fullPath: '/surfaces'
-      preLoaderRoute: typeof SurfacesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/schemas': {
-      id: '/schemas'
-      path: '/schemas'
-      fullPath: '/schemas'
-      preLoaderRoute: typeof SchemasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portfolio': {
-      id: '/portfolio'
-      path: '/portfolio'
-      fullPath: '/portfolio'
-      preLoaderRoute: typeof PortfolioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leaderboards': {
-      id: '/leaderboards'
-      path: '/leaderboards'
-      fullPath: '/leaderboards'
-      preLoaderRoute: typeof LeaderboardsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gaps': {
-      id: '/gaps'
-      path: '/gaps'
-      fullPath: '/gaps'
-      preLoaderRoute: typeof GapsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/explorer': {
-      id: '/explorer'
-      path: '/explorer'
-      fullPath: '/explorer'
-      preLoaderRoute: typeof ExplorerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/endpoints': {
-      id: '/endpoints'
-      path: '/endpoints'
-      fullPath: '/endpoints'
-      preLoaderRoute: typeof EndpointsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/domains': {
-      id: '/domains'
-      path: '/domains'
-      fullPath: '/domains'
-      preLoaderRoute: typeof DomainsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/delegate': {
-      id: '/delegate'
-      path: '/delegate'
-      fullPath: '/delegate'
-      preLoaderRoute: typeof DelegateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents': {
-      id: '/agents'
-      path: '/agents'
-      fullPath: '/agents'
-      preLoaderRoute: typeof AgentsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -624,74 +587,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/validators/': {
-      id: '/validators/'
-      path: '/validators'
-      fullPath: '/validators/'
-      preLoaderRoute: typeof ValidatorsIndexRouteImport
+    '/chain': {
+      id: '/chain'
+      path: '/chain'
+      fullPath: '/chain'
+      preLoaderRoute: typeof ChainRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sudo/': {
-      id: '/sudo/'
-      path: '/sudo'
-      fullPath: '/sudo/'
-      preLoaderRoute: typeof SudoIndexRouteImport
+    '/delegate': {
+      id: '/delegate'
+      path: '/delegate'
+      fullPath: '/delegate'
+      preLoaderRoute: typeof DelegateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/subnets/': {
-      id: '/subnets/'
-      path: '/subnets'
-      fullPath: '/subnets/'
-      preLoaderRoute: typeof SubnetsIndexRouteImport
+    '/domains': {
+      id: '/domains'
+      path: '/domains'
+      fullPath: '/domains'
+      preLoaderRoute: typeof DomainsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/runtime/': {
-      id: '/runtime/'
-      path: '/runtime'
-      fullPath: '/runtime/'
-      preLoaderRoute: typeof RuntimeIndexRouteImport
+    '/endpoints': {
+      id: '/endpoints'
+      path: '/endpoints'
+      fullPath: '/endpoints'
+      preLoaderRoute: typeof EndpointsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/providers/': {
-      id: '/providers/'
-      path: '/providers'
-      fullPath: '/providers/'
-      preLoaderRoute: typeof ProvidersIndexRouteImport
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/extrinsics/': {
-      id: '/extrinsics/'
-      path: '/extrinsics'
-      fullPath: '/extrinsics/'
-      preLoaderRoute: typeof ExtrinsicsIndexRouteImport
+    '/gaps': {
+      id: '/gaps'
+      path: '/gaps'
+      fullPath: '/gaps'
+      preLoaderRoute: typeof GapsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/events/': {
-      id: '/events/'
-      path: '/events'
-      fullPath: '/events/'
-      preLoaderRoute: typeof EventsIndexRouteImport
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blocks/': {
-      id: '/blocks/'
-      path: '/blocks'
-      fullPath: '/blocks/'
-      preLoaderRoute: typeof BlocksIndexRouteImport
+    '/leaderboards': {
+      id: '/leaderboards'
+      path: '/leaderboards'
+      fullPath: '/leaderboards'
+      preLoaderRoute: typeof LeaderboardsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin-changes/': {
-      id: '/admin-changes/'
-      path: '/admin-changes'
-      fullPath: '/admin-changes/'
-      preLoaderRoute: typeof AdminChangesIndexRouteImport
+    '/portfolio': {
+      id: '/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof PortfolioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schemas': {
+      id: '/schemas'
+      path: '/schemas'
+      fullPath: '/schemas'
+      preLoaderRoute: typeof SchemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/surfaces': {
+      id: '/surfaces'
+      path: '/surfaces'
+      fullPath: '/surfaces'
+      preLoaderRoute: typeof SurfacesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accounts/': {
@@ -701,74 +692,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/validators/$hotkey': {
-      id: '/validators/$hotkey'
-      path: '/validators/$hotkey'
-      fullPath: '/validators/$hotkey'
-      preLoaderRoute: typeof ValidatorsHotkeyRouteImport
+    '/accounts/$ss58': {
+      id: '/accounts/$ss58'
+      path: '/accounts/$ss58'
+      fullPath: '/accounts/$ss58'
+      preLoaderRoute: typeof AccountsSs58RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tools/ss58': {
-      id: '/tools/ss58'
-      path: '/tools/ss58'
-      fullPath: '/tools/ss58'
-      preLoaderRoute: typeof ToolsSs58RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/subnets/$netuid': {
-      id: '/subnets/$netuid'
-      path: '/subnets/$netuid'
-      fullPath: '/subnets/$netuid'
-      preLoaderRoute: typeof SubnetsNetuidRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/providers/$slug': {
-      id: '/providers/$slug'
-      path: '/providers/$slug'
-      fullPath: '/providers/$slug'
-      preLoaderRoute: typeof ProvidersSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/graphql/explorer': {
-      id: '/graphql/explorer'
-      path: '/graphql/explorer'
-      fullPath: '/graphql/explorer'
-      preLoaderRoute: typeof GraphqlExplorerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/extrinsics/$hash': {
-      id: '/extrinsics/$hash'
-      path: '/extrinsics/$hash'
-      fullPath: '/extrinsics/$hash'
-      preLoaderRoute: typeof ExtrinsicsHashRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs/llms.txt': {
-      id: '/docs/llms.txt'
-      path: '/docs/llms.txt'
-      fullPath: '/docs/llms.txt'
-      preLoaderRoute: typeof DocsLlmsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs/$': {
-      id: '/docs/$'
-      path: '/docs/$'
-      fullPath: '/docs/$'
-      preLoaderRoute: typeof DocsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design/primitives': {
-      id: '/design/primitives'
-      path: '/design/primitives'
-      fullPath: '/design/primitives'
-      preLoaderRoute: typeof DesignPrimitivesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blocks/$ref': {
-      id: '/blocks/$ref'
-      path: '/blocks/$ref'
-      fullPath: '/blocks/$ref'
-      preLoaderRoute: typeof BlocksRefRouteImport
+    '/admin-changes/': {
+      id: '/admin-changes/'
+      path: '/admin-changes'
+      fullPath: '/admin-changes/'
+      preLoaderRoute: typeof AdminChangesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/search': {
@@ -778,11 +713,151 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/accounts/$ss58': {
-      id: '/accounts/$ss58'
-      path: '/accounts/$ss58'
-      fullPath: '/accounts/$ss58'
-      preLoaderRoute: typeof AccountsSs58RouteImport
+    '/blocks/': {
+      id: '/blocks/'
+      path: '/blocks'
+      fullPath: '/blocks/'
+      preLoaderRoute: typeof BlocksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blocks/$ref': {
+      id: '/blocks/$ref'
+      path: '/blocks/$ref'
+      fullPath: '/blocks/$ref'
+      preLoaderRoute: typeof BlocksRefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chain/': {
+      id: '/chain/'
+      path: '/'
+      fullPath: '/chain/'
+      preLoaderRoute: typeof ChainIndexRouteImport
+      parentRoute: typeof ChainRoute
+    }
+    '/chain/blocks': {
+      id: '/chain/blocks'
+      path: '/blocks'
+      fullPath: '/chain/blocks'
+      preLoaderRoute: typeof ChainBlocksRouteImport
+      parentRoute: typeof ChainRoute
+    }
+    '/chain/extrinsics': {
+      id: '/chain/extrinsics'
+      path: '/extrinsics'
+      fullPath: '/chain/extrinsics'
+      preLoaderRoute: typeof ChainExtrinsicsRouteImport
+      parentRoute: typeof ChainRoute
+    }
+    '/design/primitives': {
+      id: '/design/primitives'
+      path: '/design/primitives'
+      fullPath: '/design/primitives'
+      preLoaderRoute: typeof DesignPrimitivesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/docs/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/llms.txt': {
+      id: '/docs/llms.txt'
+      path: '/docs/llms.txt'
+      fullPath: '/docs/llms.txt'
+      preLoaderRoute: typeof DocsLlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/': {
+      id: '/events/'
+      path: '/events'
+      fullPath: '/events/'
+      preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/extrinsics/': {
+      id: '/extrinsics/'
+      path: '/extrinsics'
+      fullPath: '/extrinsics/'
+      preLoaderRoute: typeof ExtrinsicsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/extrinsics/$hash': {
+      id: '/extrinsics/$hash'
+      path: '/extrinsics/$hash'
+      fullPath: '/extrinsics/$hash'
+      preLoaderRoute: typeof ExtrinsicsHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graphql/explorer': {
+      id: '/graphql/explorer'
+      path: '/graphql/explorer'
+      fullPath: '/graphql/explorer'
+      preLoaderRoute: typeof GraphqlExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers/': {
+      id: '/providers/'
+      path: '/providers'
+      fullPath: '/providers/'
+      preLoaderRoute: typeof ProvidersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers/$slug': {
+      id: '/providers/$slug'
+      path: '/providers/$slug'
+      fullPath: '/providers/$slug'
+      preLoaderRoute: typeof ProvidersSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runtime/': {
+      id: '/runtime/'
+      path: '/runtime'
+      fullPath: '/runtime/'
+      preLoaderRoute: typeof RuntimeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subnets/': {
+      id: '/subnets/'
+      path: '/subnets'
+      fullPath: '/subnets/'
+      preLoaderRoute: typeof SubnetsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subnets/$netuid': {
+      id: '/subnets/$netuid'
+      path: '/subnets/$netuid'
+      fullPath: '/subnets/$netuid'
+      preLoaderRoute: typeof SubnetsNetuidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sudo/': {
+      id: '/sudo/'
+      path: '/sudo'
+      fullPath: '/sudo/'
+      preLoaderRoute: typeof SudoIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/ss58': {
+      id: '/tools/ss58'
+      path: '/tools/ss58'
+      fullPath: '/tools/ss58'
+      preLoaderRoute: typeof ToolsSs58RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/validators/': {
+      id: '/validators/'
+      path: '/validators'
+      fullPath: '/validators/'
+      preLoaderRoute: typeof ValidatorsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/validators/$hotkey': {
+      id: '/validators/$hotkey'
+      path: '/validators/$hotkey'
+      fullPath: '/validators/$hotkey'
+      preLoaderRoute: typeof ValidatorsHotkeyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs/raw/$': {
@@ -795,10 +870,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ChainRouteChildren {
+  ChainBlocksRoute: typeof ChainBlocksRoute
+  ChainExtrinsicsRoute: typeof ChainExtrinsicsRoute
+  ChainIndexRoute: typeof ChainIndexRoute
+}
+
+const ChainRouteChildren: ChainRouteChildren = {
+  ChainBlocksRoute: ChainBlocksRoute,
+  ChainExtrinsicsRoute: ChainExtrinsicsRoute,
+  ChainIndexRoute: ChainIndexRoute,
+}
+
+const ChainRouteWithChildren = ChainRoute._addFileChildren(ChainRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
+  ChainRoute: ChainRouteWithChildren,
   DelegateRoute: DelegateRoute,
   DomainsRoute: DomainsRoute,
   EndpointsRoute: EndpointsRoute,

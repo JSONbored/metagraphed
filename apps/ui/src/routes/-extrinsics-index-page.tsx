@@ -2,7 +2,6 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
 import { SuccessBadge } from "@/components/metagraphed/success-badge";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -24,7 +23,7 @@ import {
   DownloadCsvButton,
   Sparkline,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, PagerFooter, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PagerFooter, Panel } from "@/components/metagraphed/primitives";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
@@ -33,7 +32,8 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Extrinsic } from "@/lib/metagraphed/types";
-import type { ExtrinsicsSearch } from "./extrinsics.index";
+import type { ExtrinsicsSearch } from "./chain.extrinsics";
+import { ChainTabActions } from "./-chain-hub";
 
 function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string | number> {
   const queryParams: Record<string, string | number> = {
@@ -48,25 +48,21 @@ function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string 
 }
 
 export function ExtrinsicsPage() {
-  const search = useSearch({ from: "/extrinsics/" });
+  const search = useSearch({ from: "/chain/extrinsics" });
   const extrinsicsCsvUrl = buildUrl("/api/v1/extrinsics", extrinsicsQueryParams(search));
 
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Extrinsics"
-        description="Recent Bittensor extrinsics (transactions) indexed directly from the chain — newest first, with call, signer, and success."
-        actions={
-          <>
-            <ActionBar>
-              <DownloadCsvButton url={extrinsicsCsvUrl} bare />
-              <ShareButton bare />
-            </ActionBar>
-          </>
-        }
-      />
+    <>
+      {/* Lifted off this page's own masthead — the hub owns the shell, title
+          and description now (#8290). Rendered above the tab content, not
+          beside the tab strip: a shrink-0 sibling there is what starved the
+          profile tabs to 196px on mobile (#8254). */}
+      <ChainTabActions>
+        <ActionBar>
+          <DownloadCsvButton url={extrinsicsCsvUrl} bare />
+          <ShareButton bare />
+        </ActionBar>
+      </ChainTabActions>
       <AsyncPanel
         context="fees trend"
         fallback={<Skeleton className="mb-6 h-24 w-full" />}
@@ -81,7 +77,7 @@ export function ExtrinsicsPage() {
         paths={["/api/v1/extrinsics", "/api/v1/chain/fees"]}
         artifacts={["/metagraph/extrinsics.json"]}
       />
-    </AppShell>
+    </>
   );
 }
 
@@ -122,7 +118,7 @@ function FeesTrendCard() {
 }
 
 function ExtrinsicsTable() {
-  const search = useSearch({ from: "/extrinsics/" });
+  const search = useSearch({ from: "/chain/extrinsics" });
   const navigate = useNavigate({ from: "/extrinsics/" });
 
   // Only send filters the user actually set, so an empty bar is the plain feed.

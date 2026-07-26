@@ -73,6 +73,8 @@ const SITEMAP_STATIC_PATHS = [
   "/providers",
   "/surfaces",
   "/endpoints",
+  "/chain/blocks",
+  "/chain/extrinsics",
   "/health",
   "/status",
   "/schemas",

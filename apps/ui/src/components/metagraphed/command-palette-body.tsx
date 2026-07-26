@@ -164,10 +164,16 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
     scope: "route",
   },
   { label: "About", to: "/about", hint: "Methodology & scope", icon: Compass, scope: "route" },
-  { label: "Blocks", to: "/blocks", hint: "Chain block explorer", icon: Hash, scope: "route" },
+  {
+    label: "Blocks",
+    to: "/chain/blocks",
+    hint: "Chain block explorer",
+    icon: Hash,
+    scope: "route",
+  },
   {
     label: "Extrinsics",
-    to: "/extrinsics",
+    to: "/chain/extrinsics",
     hint: "Transaction explorer",
     icon: ArrowRightLeft,
     scope: "route",

@@ -106,7 +106,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         <EmptyState
           title="Extrinsic not found or not yet indexed"
           description="The chain poller indexes recent extrinsics every few minutes. Cold or out-of-range extrinsics aren't available."
-          action={{ label: "Back to extrinsics", href: "/extrinsics" }}
+          action={{ label: "Back to extrinsics", href: "/chain/extrinsics" }}
         />
         <ApiSourceFooter
           paths={[`/api/v1/extrinsics/${sourceRef}`]}
@@ -379,7 +379,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
 
       <div className="mt-6">
         <Link
-          to="/extrinsics"
+          to="/chain/extrinsics"
           className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
         >
           ← All extrinsics

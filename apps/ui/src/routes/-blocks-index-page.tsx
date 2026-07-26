@@ -1,7 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Timer, Activity, Users } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   AsyncPanel,
   TableSkeleton,
@@ -12,7 +11,6 @@ import {
   FilterSheet,
   FilterChipRow,
   type FilterChipItem,
-  PageMasthead,
 } from "@/components/metagraphed/primitives";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -40,8 +38,9 @@ import { buildUrl } from "@/lib/metagraphed/client";
 import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { ChainTabActions } from "./-chain-hub";
 import type { Block } from "@/lib/metagraphed/types";
-import type { BlocksSearch } from "./blocks.index";
+import type { BlocksSearch } from "./chain.blocks";
 
 function blocksQueryParams(search: BlocksSearch): Record<string, string | number> {
   const queryParams: Record<string, string | number> = {
@@ -58,23 +57,21 @@ function blocksQueryParams(search: BlocksSearch): Record<string, string | number
 }
 
 export function BlocksPage() {
-  const search = useSearch({ from: "/blocks/" });
+  const search = useSearch({ from: "/chain/blocks" });
   const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
 
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Blocks"
-        description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
-        actions={
-          <ActionBar>
-            <DownloadCsvButton url={blocksCsvUrl} bare />
-            <ShareButton bare />
-          </ActionBar>
-        }
-      />
+    <>
+      {/* The hub owns the shell, title and description now (#8290). These
+          actions came off this page's own masthead and render above the tab
+          content rather than beside the tab strip — a shrink-0 sibling there is
+          exactly what starved the profile tabs to 196px on mobile (#8254). */}
+      <ChainTabActions>
+        <ActionBar>
+          <DownloadCsvButton url={blocksCsvUrl} bare />
+          <ShareButton bare />
+        </ActionBar>
+      </ChainTabActions>
       <AsyncPanel
         context="Live block rail"
         retryQueryKeys={[metagraphedQueryKey("blocks"), metagraphedQueryKey("chain-activity")]}
@@ -114,7 +111,7 @@ export function BlocksPage() {
         artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
       />
       <BackToTop />
-    </AppShell>
+    </>
   );
 }
 
@@ -158,7 +155,7 @@ function BlockProductionHeader() {
 }
 
 function BlocksTable() {
-  const search = useSearch({ from: "/blocks/" });
+  const search = useSearch({ from: "/chain/blocks" });
   const navigate = useNavigate({ from: "/blocks/" });
 
   // Only send filters the user actually set, so an empty bar is the plain feed.

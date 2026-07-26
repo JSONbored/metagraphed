@@ -79,7 +79,7 @@ const NAV_LINKS = [
     Icon: Network,
   },
   {
-    to: "/blocks",
+    to: "/chain/blocks",
     label: "Blocks",
     hint: "Chain block explorer",
     Icon: Hash,
