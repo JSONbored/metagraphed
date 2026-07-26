@@ -68,6 +68,7 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
                 to="/blocks/$ref"
                 params={{ ref: String(block.block_number) }}
                 className={classNames(
+                  // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
                   "mg-focus-ring block h-5 w-[10px] rounded-[2px] transition-transform hover:scale-125",
                   tone.cls,
                 )}
@@ -110,6 +111,7 @@ function Legend() {
       <div className="flex flex-wrap items-center gap-1">
         {items.map((i) => (
           <span key={i.label} className="inline-flex items-center gap-1">
+            {/* eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids */}
             <span className={classNames("inline-block h-2 w-3 rounded-[2px]", i.cls)} />
             <span>{i.label}</span>
           </span>

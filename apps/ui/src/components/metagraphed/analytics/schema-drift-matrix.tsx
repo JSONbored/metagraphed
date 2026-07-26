@@ -293,7 +293,7 @@ function DriftTile({
         />
         <span className="mg-type-data text-ink-strong truncate max-w-[180px]">{label}</span>
         {schema.updated_at ? (
-          <span className="font-mono text-[9px] text-ink-muted shrink-0">
+          <span className="mg-type-data-sm text-ink-muted shrink-0">
             <TimeAgo at={schema.updated_at} />
           </span>
         ) : null}
@@ -301,6 +301,7 @@ function DriftTile({
       {evidenceHref ? (
         <a
           href={evidenceHref}
+          // eslint-disable-next-line no-restricted-syntax -- evidence link needs onClick stopPropagation (row is clickable); <ExternalLink> doesn't forward onClick
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}

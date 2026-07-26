@@ -220,7 +220,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                   </div>
                 </div>
                 <TimelineTrack now={now} totalMs={totalMs} items={r.items} />
-                <div className="flex items-center justify-end gap-2 text-[11px]">
+                <div className="flex items-center justify-end gap-2 mg-type-caption">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"

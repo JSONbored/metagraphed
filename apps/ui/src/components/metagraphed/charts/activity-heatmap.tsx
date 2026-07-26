@@ -131,13 +131,14 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
                     <div
                       role="button"
                       tabIndex={0}
+                      // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
                       className="mg-focus-ring aspect-square rounded-[2px] border border-border/40"
                       style={{ background: tone(c.score, maxScore) }}
                       aria-label={`${c.key}: ${c.probes} probes, ${c.incidents} incidents`}
                     />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="mg-type-data-sm">
-                    <div className="text-[11px] text-ink-strong">{c.key}</div>
+                    <div className="mg-type-caption text-ink-strong">{c.key}</div>
                     <div>
                       {c.probes} probe{c.probes === 1 ? "" : "s"}
                     </div>
@@ -153,11 +154,12 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
             </div>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-end gap-1.5 font-mono text-[9.5px] text-ink-muted">
+        <div className="mt-3 flex items-center justify-end gap-1.5 mg-type-data-sm text-ink-muted">
           <span>less</span>
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (
             <span
               key={t}
+              // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
               className="size-2.5 rounded-[2px] border border-border/40"
               style={{ background: tone(t * maxScore, maxScore) }}
             />

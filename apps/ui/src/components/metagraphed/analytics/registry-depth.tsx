@@ -346,7 +346,7 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
             {row.top_gap_codes.slice(0, 4).map((g) => (
               <span
                 key={g}
-                className="rounded border border-dashed border-ink-subtle bg-paper px-1 py-0.5 font-mono text-[9px] text-ink-muted"
+                className="rounded border border-dashed border-ink-subtle bg-paper px-1 py-0.5 mg-type-data-sm text-ink-muted"
               >
                 {g}
               </span>

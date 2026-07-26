@@ -101,7 +101,7 @@ function SignInPrompt({
       {error ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 text-[11px] text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
         >
           {error}
         </div>
@@ -165,13 +165,13 @@ function ApiKeysPanel({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] text-ink-muted">
+        <span className="mg-type-caption text-ink-muted">
           Tier: <span className="font-mono text-ink-strong">{tier ?? "free"}</span>
         </span>
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded border border-border bg-card px-2 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-ink/30"
+          className="rounded border border-border bg-card px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-ink/30"
         >
           Sign out
         </button>
@@ -232,7 +232,7 @@ function ApiKeysPanel({
           >
             <div className="min-w-0">
               <div className="font-mono mg-type-caption text-ink-strong truncate">{key.key_id}</div>
-              <div className="text-[10px] text-ink-muted">
+              <div className="mg-type-caption text-ink-muted">
                 Created {formatTimestamp(key.created_at)} · Last used{" "}
                 {formatTimestamp(key.last_used_at)}
               </div>
@@ -241,7 +241,7 @@ function ApiKeysPanel({
               type="button"
               onClick={() => revokeMutation.mutate(key.key_id)}
               disabled={revokeMutation.isPending && revokeMutation.variables === key.key_id}
-              className="shrink-0 rounded border border-health-down/40 bg-health-down/5 px-2 py-1 text-[11px] font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
+              className="shrink-0 rounded border border-health-down/40 bg-health-down/5 px-2 py-1 mg-type-caption font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
             >
               {revokeMutation.isPending && revokeMutation.variables === key.key_id
                 ? "Revoking…"

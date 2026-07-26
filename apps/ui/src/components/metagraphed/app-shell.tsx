@@ -28,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   CopyableCode,
+  ExternalLink,
   safeExternalUrl,
   DiscordIcon,
   TimeAgo,
@@ -271,7 +272,7 @@ export function AppShell({
                       <Webhook className="size-3.5" aria-hidden="true" />
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[11px]">
+                  <TooltipContent side="bottom" className="mg-type-caption">
                     Developer settings — webhook subscriptions
                   </TooltipContent>
                 </Tooltip>
@@ -424,7 +425,7 @@ function ApiBaseRow() {
     <CopyableCode
       value={`${base}/api/v1`}
       truncate={true}
-      className="w-full max-w-full text-[10px]"
+      className="w-full max-w-full mg-type-caption"
     />
   );
 }
@@ -450,40 +451,37 @@ function SiteFooter() {
             data is public, chain-direct, and verifiable.
           </p>
           <div className="mt-4 flex items-center gap-1">
-            <a
+            <ExternalLink
+              bare
               href={GITHUB_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub repository"
+              ariaLabel="GitHub repository"
               title="Open source on GitHub"
               className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
             >
               <Github className="size-4" />
-            </a>
-            <a
+            </ExternalLink>
+            <ExternalLink
+              bare
               href={DISCORD_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Discord community"
+              ariaLabel="Discord community"
               title="Join us on Discord"
               className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
             >
               <DiscordIcon className="size-4" />
-            </a>
+            </ExternalLink>
             {/* #3351: discoverable RSS/Atom feed for the registry-changes feed
                 (/api/v1/feeds/registry, content-negotiated; .rss for a predictable
                 browser click). Same guarded external-link pattern as the openapi
                 link and the GitHub/Discord icons above. */}
-            <a
-              href={safeExternalUrl(`${API_BASE}/api/v1/feeds/registry.rss`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Registry changes RSS feed"
+            <ExternalLink
+              bare
+              href={`${API_BASE}/api/v1/feeds/registry.rss`}
+              ariaLabel="Registry changes RSS feed"
               title="Subscribe to the registry-changes feed (RSS)"
               className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
             >
               <Rss className="size-4" />
-            </a>
+            </ExternalLink>
           </div>
         </div>
         <FooterCol title="Registry">
@@ -586,14 +584,13 @@ function RegistryPulseStrip() {
         </>
       ) : null}
       <span>·</span>
-      <a
-        href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
-        target="_blank"
-        rel="noopener noreferrer"
+      <ExternalLink
+        bare
+        href={`${API_BASE}/api/v1/openapi.json`}
         className="hover:text-ink-strong transition-colors"
       >
         openapi
-      </a>
+      </ExternalLink>
     </div>
   );
 }
@@ -629,10 +626,9 @@ function EndpointHealthPill() {
     status === "down" ? "unreachable" : status === "checking" ? "checking…" : `${ms} ms`;
   const title = `API endpoint · ${ENDPOINT_LABEL[status]}${ms != null ? ` · ${ms} ms` : ""}`;
   return (
-    <a
-      href={safeExternalUrl(`${base}/api/v1`)}
-      target="_blank"
-      rel="noopener noreferrer"
+    <ExternalLink
+      bare
+      href={`${base}/api/v1`}
       title={title}
       className="shrink-0 inline-flex items-center gap-2 text-ink-muted hover:text-ink-strong transition-colors"
     >
@@ -642,7 +638,7 @@ function EndpointHealthPill() {
         ·
       </span>
       <span>{detail}</span>
-    </a>
+    </ExternalLink>
   );
 }
 

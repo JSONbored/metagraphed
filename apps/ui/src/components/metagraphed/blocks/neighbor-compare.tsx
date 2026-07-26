@@ -106,7 +106,7 @@ function DeltaChip({
           {loading ? "…" : value != null ? formatNumber(value) : "—"}
         </span>
         {delta != null && !loading ? (
-          <span className={classNames("text-[10px]", tone)}>
+          <span className={classNames("mg-type-caption", tone)}>
             {delta > 0 ? "+" : ""}
             {formatNumber(delta)}
           </span>

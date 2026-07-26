@@ -172,6 +172,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
               glass tier (mg-glass would add unwanted blur; mg-glass-soft's 60%
               visibly lightens this segmented-toggle track). Kept as a bare
               fraction rather than a wrong tier. */}
+          {/* eslint-disable-next-line no-restricted-syntax -- #7842: bg-card/80 toggle track has no clean glass tier (mg-glass adds blur, mg-glass-soft lightens it -- see comment above); a pill toggle, not a card shell */}
           <div className="inline-flex flex-wrap rounded-full border border-border/80 bg-card/80 p-1 shadow-[var(--mg-shadow-pill)]">
             <button
               type="button"
@@ -204,7 +205,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 mg-card-glow">
+      <div className="overflow-hidden rounded-2xl border border-border/80 mg-glass mg-card-glow">
         <div className="grid gap-4 border-b border-border/70 px-4 py-4 md:grid-cols-3">
           <MetricBlock
             label="Total activity"

@@ -60,6 +60,7 @@ export function LiveBlockRail() {
             <Link
               to="/blocks/$ref"
               params={{ ref: String(latest.block_number) }}
+              // eslint-disable-next-line no-restricted-syntax -- block-number display at 14px: no mg-type-body utility exists (--mg-type-body is a reserved CSS var per styles.css, not exposed as a class); nearest utility would resize
               className="mg-focus-ring rounded font-mono text-[14px] font-semibold tabular-nums text-ink-strong hover:text-accent"
             >
               #{formatNumber(latest.block_number)}
@@ -114,6 +115,7 @@ export function LiveBlockRail() {
       <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-2 md:border-l md:border-t-0 md:pl-3 md:pt-0">
         <div>
           <div className="mg-type-micro text-ink-muted">Blocks · last 7d</div>
+          {/* eslint-disable-next-line no-restricted-syntax -- block-number display at 14px: no mg-type-body utility exists (--mg-type-body is a reserved CSS var per styles.css, not exposed as a class); nearest utility would resize */}
           <div className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums text-ink-strong">
             {formatNumber(daily.reduce((s, n) => s + n, 0))}
           </div>
