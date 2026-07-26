@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ChainStreamSource, ChainStreamSessionDeps } from "./use-chain-stream";
 import {
   buildChainStreamUrl,
   chainStreamEventMatchesFilters,
+  createChainStreamSession,
   createDebouncedHandler,
   parseChainStreamPayload,
 } from "./use-chain-stream";
@@ -68,6 +70,129 @@ describe("createDebouncedHandler", () => {
 
     vi.advanceTimersByTime(400);
     expect(run).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it("cancel() drops a scheduled, not-yet-fired invocation (#8179)", () => {
+    vi.useFakeTimers();
+    const run = vi.fn();
+    const debounced = createDebouncedHandler(run, 400);
+
+    debounced();
+    debounced.cancel();
+
+    vi.advanceTimersByTime(1000);
+    expect(run).not.toHaveBeenCalled();
+
+    // The handler stays usable after a cancel.
+    debounced();
+    vi.advanceTimersByTime(400);
+    expect(run).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+});
+
+/**
+ * Minimal stand-in for the `EventSource` slice `createChainStreamSession`
+ * consumes (same plain-node approach as `use-in-view.test.ts`'s
+ * IntersectionObserver mock -- no jsdom/renderHook in this suite).
+ */
+class MockChainSource implements ChainStreamSource {
+  onmessage: ((ev: MessageEvent) => void) | null = null;
+  closed = false;
+  private listeners = new Map<string, Array<(ev: Event) => void>>();
+
+  addEventListener(type: string, listener: (ev: Event) => void): void {
+    const arr = this.listeners.get(type) ?? [];
+    arr.push(listener);
+    this.listeners.set(type, arr);
+  }
+
+  close(): void {
+    this.closed = true;
+  }
+
+  emitChain(payload: unknown): void {
+    const ev = { data: JSON.stringify(payload) } as MessageEvent;
+    for (const listener of this.listeners.get("chain") ?? []) listener(ev);
+  }
+}
+
+describe("createChainStreamSession", () => {
+  function makeSession(overrides: Partial<ChainStreamSessionDeps> = {}) {
+    const sources: MockChainSource[] = [];
+    const onEvent = vi.fn();
+    const session = createChainStreamSession({
+      openSource: () => {
+        const source = new MockChainSource();
+        sources.push(source);
+        return source;
+      },
+      getOnEvent: () => onEvent,
+      getMatches: () => undefined,
+      debounceMs: 400,
+      setStatus: () => {},
+      markActivity: () => {},
+      ...overrides,
+    });
+    return { session, sources, onEvent };
+  }
+
+  it("delivers a debounced frame that is not superseded by a reconnect", () => {
+    vi.useFakeTimers();
+    const { session, sources, onEvent } = makeSession();
+
+    session.connect();
+    sources[0].emitChain({ table: "chain_events", pallet: "Balances" });
+    expect(onEvent).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(400);
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent).toHaveBeenCalledWith({ table: "chain_events", pallet: "Balances" });
+
+    vi.useRealTimers();
+  });
+
+  it("reconnect before the debounce fires drops the stale connection's frame (#8179)", () => {
+    vi.useFakeTimers();
+    const { session, sources, onEvent } = makeSession();
+
+    session.connect();
+    sources[0].emitChain({ table: "chain_events", network: "old-network" });
+
+    // Network/API-base switch mid-debounce: the old source is closed and the
+    // old pending flush must never reach onEvent.
+    vi.advanceTimersByTime(200);
+    session.connect();
+    expect(sources[0].closed).toBe(true);
+
+    vi.advanceTimersByTime(1000);
+    expect(onEvent).not.toHaveBeenCalled();
+
+    // The new connection's frames still flow.
+    sources[1].emitChain({ table: "chain_events", network: "new-network" });
+    vi.advanceTimersByTime(400);
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent).toHaveBeenCalledWith({ table: "chain_events", network: "new-network" });
+
+    vi.useRealTimers();
+  });
+
+  it("dispose (unmount) before the debounce fires drops the pending frame (#8179)", () => {
+    vi.useFakeTimers();
+    const { session, sources, onEvent } = makeSession();
+
+    session.connect();
+    sources[0].emitChain({ table: "chain_events", network: "old-network" });
+
+    vi.advanceTimersByTime(200);
+    session.dispose();
+    expect(sources[0].closed).toBe(true);
+
+    vi.advanceTimersByTime(1000);
+    expect(onEvent).not.toHaveBeenCalled();
 
     vi.useRealTimers();
   });
