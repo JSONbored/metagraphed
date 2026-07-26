@@ -6,6 +6,8 @@
 // for unit tests; the Worker does the D1 reads + envelope. Scoped to validator_permit rows
 // so the two-snapshot read stays bounded (validators, not every neuron across the network).
 
+import { median, percentile } from "./lib/stats.ts";
+
 // The neuron_daily columns the handler reads — its D1 read contract. `hotkey` is public
 // metagraph vocabulary, not a secret; kept next to its consumer so the handler stays a thin SELECT.
 export const CHAIN_TURNOVER_READ_COLUMNS =
@@ -51,25 +53,6 @@ function stabilityScore(retention: number): number {
   return score;
 }
 
-// Nearest-rank percentile of a NON-EMPTY ascending numeric array (deterministic, no
-// interpolation) — mirrors src/subnet-yield.ts. Only called from stabilityDistribution,
-// which short-circuits an empty score set to null before reaching here.
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.ceil((p / 100) * ascending.length);
-  return ascending[Math.min(rank, ascending.length) - 1];
-}
-
-// Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd count,
-// the mean of the two middle values for an even count (so [33, 100] -> 66.5, not the lower-middle 33
-// a nearest-rank p50 gives). The averaging form needs no odd/even branch — for an odd count the two
-// indices coincide and it returns that middle value unchanged. Matches median() in chain-yield.ts /
-// subnet-yield.ts so a `median` field is the same statistic across the API. Reached only after
-// stabilityDistribution's empty short-circuit.
-function median(ascending: number[]): number {
-  const mid = (ascending.length - 1) / 2;
-  return round((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
-}
-
 export interface StabilityDistribution {
   count: number;
   mean: number;
@@ -93,10 +76,12 @@ function stabilityDistribution(scores: number[]): StabilityDistribution | null {
     count: ascending.length,
     mean: Math.round((sum / ascending.length) * 100) / 100,
     min: ascending[0],
-    p25: percentile(ascending, 25),
-    median: median(ascending),
-    p75: percentile(ascending, 75),
-    p90: percentile(ascending, 90),
+    // ascending is non-empty here (the empty case returned null above), so the
+    // shared percentile()/median() never hit their empty-array null.
+    p25: percentile(ascending, 25)!,
+    median: round(median(ascending)!),
+    p75: percentile(ascending, 75)!,
+    p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],
   };
 }

@@ -6,6 +6,7 @@
 // one. Pure + injectable for tests — the Worker handlers run the D1 query and call
 // these.
 import { NEURON_COLUMNS, formatNeuron } from "./metagraph-neurons.ts";
+import { median } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
 
@@ -202,7 +203,7 @@ export function buildEconomicsTrends(
       acc.weighted_price_den > 0
         ? roundPrice(acc.weighted_price_num / acc.weighted_price_den)
         : null,
-    alpha_price_tao_median: median(acc.prices),
+    alpha_price_tao_median: priceMedian(acc.prices),
     validator_count: acc.validator_seen ? acc.validator_sum : null,
     miner_count: acc.miner_seen ? acc.miner_sum : null,
     mean_emission_share:
@@ -264,13 +265,9 @@ function roundShare(v: number): number {
   return Math.round(v * 1e6) / 1e6;
 }
 
-function median(values: number[]): number | null {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const raw =
-    sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-  return roundPrice(raw);
+function priceMedian(values: number[]): number | null {
+  const m = median([...values].sort((a, b) => a - b));
+  return m == null ? null : roundPrice(m);
 }
 
 // Per-subnet metric-over-time: the daily count + a couple of cheap aggregates per

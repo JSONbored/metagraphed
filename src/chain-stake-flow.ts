@@ -7,6 +7,8 @@
 // REST envelope. Null-safe: a cold store or an empty window yields schema-stable zeros
 // (never throws), matching the sibling live tiers.
 
+import { median, percentile } from "./lib/stats.ts";
+
 // The two account_events kinds that move stake: StakeAdded is capital entering a subnet,
 // StakeRemoved is capital leaving. Both carry a positive amount_tao, so net = staked - unstaked.
 export const STAKE_ADDED_KIND = "StakeAdded";
@@ -84,23 +86,6 @@ function classifyDirection(
   return net > 0 ? "inflow" : "outflow";
 }
 
-// Nearest-rank percentile of a NON-EMPTY ascending numeric array (net flow can be negative).
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.ceil((p / 100) * ascending.length);
-  return ascending[Math.min(rank, ascending.length) - 1];
-}
-
-// Conventional median of a NON-EMPTY ascending numeric array (net flow can be negative): the middle
-// value for an odd count, the mean of the two middle values for an even count (so an even count
-// returns the average of the two middles, not the lower-middle a nearest-rank p50 gives). The
-// averaging form needs no odd/even branch — for an odd count the two indices coincide and it returns
-// that middle value unchanged. Matches median() in chain-yield.ts / subnet-yield.ts so a `median`
-// field is the same statistic across the API. Reached only after netFlowDistribution's empty short-circuit.
-function median(ascending: number[]): number {
-  const mid = (ascending.length - 1) / 2;
-  return roundTao((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
-}
-
 export interface NetFlowDistribution {
   count: number;
   mean: number;
@@ -123,10 +108,12 @@ function netFlowDistribution(values: number[]): NetFlowDistribution | null {
     count: ascending.length,
     mean: roundTao(sum / ascending.length),
     min: ascending[0],
-    p25: percentile(ascending, 25),
-    median: median(ascending),
-    p75: percentile(ascending, 75),
-    p90: percentile(ascending, 90),
+    // ascending is non-empty here (the empty case returned null above), so the
+    // shared percentile()/median() never hit their empty-array null.
+    p25: percentile(ascending, 25)!,
+    median: roundTao(median(ascending)!),
+    p75: percentile(ascending, 75)!,
+    p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],
   };
 }
