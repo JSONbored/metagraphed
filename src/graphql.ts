@@ -522,8 +522,14 @@ import type {
   QueryAccountArgs,
   QueryAccountsArgs,
   QueryAccount_Axon_RemovalsArgs,
+  QueryAccount_CounterpartiesArgs,
   QueryAccount_DeregistrationsArgs,
   QueryAccount_EntitiesArgs,
+  QueryAccount_EventsArgs,
+  QueryAccount_ExtrinsicsArgs,
+  QueryAccount_HistoryArgs,
+  QueryAccount_IdentityArgs,
+  QueryAccount_Identity_HistoryArgs,
   QueryAccount_PortfolioArgs,
   QueryAccount_Position_HistoryArgs,
   QueryAccount_PositionsArgs,
@@ -533,6 +539,7 @@ import type {
   QueryAccount_Stake_FlowArgs,
   QueryAccount_Stake_MovesArgs,
   QueryAccount_SubnetsArgs,
+  QueryAccount_TransfersArgs,
   QueryAccount_Weight_SettersArgs,
   QueryAdapterArgs,
   QueryAgent_CatalogArgs,
@@ -542,12 +549,23 @@ import type {
   QueryBlock_EventsArgs,
   QueryBlock_ExtrinsicsArgs,
   QueryCandidatesArgs,
+  QueryChain_ActivityArgs,
+  QueryChain_CallsArgs,
+  QueryChain_DeregistrationsArgs,
   QueryChain_EventsArgs,
   QueryChain_Events_StatsArgs,
+  QueryChain_FeesArgs,
+  QueryChain_Identity_HistoryArgs,
+  QueryChain_PrometheusArgs,
+  QueryChain_RegistrationsArgs,
+  QueryChain_ServingArgs,
+  QueryChain_TurnoverArgs,
+  QueryChain_WeightsArgs,
   QueryCompareArgs,
   QueryCompare_ValidatorsArgs,
   QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
+  QueryEconomics_TrendsArgs,
   QueryEndpoint_IncidentsArgs,
   QueryEndpoint_PoolsArgs,
   QueryEndpointsArgs,
@@ -573,6 +591,7 @@ import type {
   QueryReview_Enrichment_TargetsArgs,
   QueryReview_GapsArgs,
   QueryReview_Profile_CompletenessArgs,
+  QueryRegistry_LeaderboardsArgs,
   QueryRpc_EndpointsArgs,
   QueryRpc_PoolsArgs,
   QuerySaved_QueryArgs,
@@ -600,6 +619,7 @@ import type {
   QuerySubnet_Identity_HistoryArgs,
   QuerySubnet_Idle_StakeArgs,
   QuerySubnet_MetagraphArgs,
+  QuerySubnet_MoversArgs,
   QuerySubnet_OhlcArgs,
   QuerySubnet_OverviewArgs,
   QuerySubnet_PerformanceArgs,
@@ -1765,9 +1785,9 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 7-9 (types-epic D, #7862 tracks follow-up
+// Row-erased: pending D batches 8-9 (types-epic D, #7862 tracks follow-up
 // batches -- see #8158-#8166 for each batch's exact field list). The 5 pilot
-// fields plus D batches 1-6's 115 fields (#8158-#8163) are typed against the
+// fields plus D batches 1-7's 135 fields (#8158-#8164) are typed against the
 // generated Args types below; the remaining root fields on this object keep
 // their `Row`-typed destructured params for now, adopted incrementally in
 // later batches rather than all at once here.
@@ -2306,7 +2326,10 @@ const rootValue = {
     };
   },
 
-  async chain_identity_history({ limit }: Row, context: GqlContext) {
+  async chain_identity_history(
+    { limit }: QueryChain_Identity_HistoryArgs,
+    context: GqlContext,
+  ) {
     // Same FEED_PAGINATION clamp REST applies. This chain-wide feed is
     // limit-only (no offset/cursor) -- the network view returns the most-recent
     // changes across every subnet in one pass.
@@ -5517,7 +5540,10 @@ const rootValue = {
     };
   },
 
-  async account_identity({ ss58 }: Row, context: GqlContext) {
+  async account_identity(
+    { ss58 }: QueryAccount_IdentityArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -5555,7 +5581,7 @@ const rootValue = {
   },
 
   async account_identity_history(
-    { ss58, limit, offset, cursor }: Row,
+    { ss58, limit, offset, cursor }: QueryAccount_Identity_HistoryArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed
@@ -5611,7 +5637,7 @@ const rootValue = {
   },
 
   async account_counterparties(
-    { ss58, counterparty, limit }: Row,
+    { ss58, counterparty, limit }: QueryAccount_CounterpartiesArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5657,7 +5683,7 @@ const rootValue = {
     if (data == null) {
       if (counterparty != null) {
         const rel = buildCounterpartyRelationship([], ss58, counterparty, {
-          limit,
+          limit: limit ?? undefined,
         });
         data = {
           schema_version: 1,
@@ -5671,7 +5697,7 @@ const rootValue = {
           relationship: rel,
         };
       } else {
-        data = buildCounterparties([], ss58, { limit });
+        data = buildCounterparties([], ss58, { limit: limit ?? undefined });
       }
     }
     const rel = data.relationship;
@@ -5723,7 +5749,15 @@ const rootValue = {
   },
 
   async account_transfers(
-    { ss58, limit, offset, cursor, direction, block_start, block_end }: Row,
+    {
+      ss58,
+      limit,
+      offset,
+      cursor,
+      direction,
+      block_start,
+      block_end,
+    }: QueryAccount_TransfersArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5785,7 +5819,14 @@ const rootValue = {
   },
 
   async account_extrinsics(
-    { ss58, limit, offset, cursor, block_start, block_end }: Row,
+    {
+      ss58,
+      limit,
+      offset,
+      cursor,
+      block_start,
+      block_end,
+    }: QueryAccount_ExtrinsicsArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5840,7 +5881,16 @@ const rootValue = {
   },
 
   async account_events(
-    { ss58, kind, netuid, block_start, block_end, limit, offset, cursor }: Row,
+    {
+      ss58,
+      kind,
+      netuid,
+      block_start,
+      block_end,
+      limit,
+      offset,
+      cursor,
+    }: QueryAccount_EventsArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5907,7 +5957,7 @@ const rootValue = {
   },
 
   async account_history(
-    { ss58, netuid, from, to, limit, offset, cursor }: Row,
+    { ss58, netuid, from, to, limit, offset, cursor }: QueryAccount_HistoryArgs,
     context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
@@ -5986,7 +6036,10 @@ const rootValue = {
     };
   },
 
-  async economics_trends({ window }: Row, context: GqlContext) {
+  async economics_trends(
+    { window }: QueryEconomics_TrendsArgs,
+    context: GqlContext,
+  ) {
     // Same parseHistoryWindow REST uses, so accepted window labels and the
     // resulting { label, days } stay identical between REST and GraphQL.
     const windowResult = parseHistoryWindow(window);
@@ -6019,7 +6072,10 @@ const rootValue = {
     };
   },
 
-  async subnet_movers({ window, sort, limit }: Row, context: GqlContext) {
+  async subnet_movers(
+    { window, sort, limit }: QuerySubnet_MoversArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_MOVERS_WINDOW;
     if (!Object.hasOwn(MOVERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6093,7 +6149,10 @@ const rootValue = {
     };
   },
 
-  async chain_turnover({ window, limit }: Row, context: GqlContext) {
+  async chain_turnover(
+    { window, limit }: QueryChain_TurnoverArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
     if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6146,7 +6205,10 @@ const rootValue = {
     };
   },
 
-  async chain_activity({ window }: Row, context: GqlContext) {
+  async chain_activity(
+    { window }: QueryChain_ActivityArgs,
+    context: GqlContext,
+  ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainActivity
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
@@ -6191,7 +6253,12 @@ const rootValue = {
   },
 
   async chain_calls(
-    { window, group_by: groupBy, limit, call_module: callModule }: Row,
+    {
+      window,
+      group_by: groupBy,
+      limit,
+      call_module: callModule,
+    }: QueryChain_CallsArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainCalls
@@ -6256,7 +6323,7 @@ const rootValue = {
   },
 
   async chain_fees(
-    { window, limit, call_module: callModule }: Row,
+    { window, limit, call_module: callModule }: QueryChain_FeesArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainFees
@@ -6316,7 +6383,10 @@ const rootValue = {
     };
   },
 
-  async chain_weights({ window, limit }: Row, context: GqlContext) {
+  async chain_weights(
+    { window, limit }: QueryChain_WeightsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
     if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6362,7 +6432,10 @@ const rootValue = {
     };
   },
 
-  async chain_serving({ window, limit }: Row, context: GqlContext) {
+  async chain_serving(
+    { window, limit }: QueryChain_ServingArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_SERVING_WINDOW;
     if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6446,7 +6519,10 @@ const rootValue = {
     };
   },
 
-  async chain_deregistrations({ window, limit }: Row, context: GqlContext) {
+  async chain_deregistrations(
+    { window, limit }: QueryChain_DeregistrationsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
     if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6494,7 +6570,10 @@ const rootValue = {
     };
   },
 
-  async chain_registrations({ window, limit }: Row, context: GqlContext) {
+  async chain_registrations(
+    { window, limit }: QueryChain_RegistrationsArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
     if (!Object.hasOwn(CHAIN_REGISTRATIONS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -6539,7 +6618,10 @@ const rootValue = {
     };
   },
 
-  async chain_prometheus({ window, limit }: Row, context: GqlContext) {
+  async chain_prometheus(
+    { window, limit }: QueryChain_PrometheusArgs,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
     if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -7257,7 +7339,10 @@ const rootValue = {
     };
   },
 
-  async registry_leaderboards({ board, limit }: Row, context: GqlContext) {
+  async registry_leaderboards(
+    { board, limit }: QueryRegistry_LeaderboardsArgs,
+    context: GqlContext,
+  ) {
     // Same board allowlist handleLeaderboards enforces -- an unknown board is a
     // GraphQL BAD_USER_INPUT error, mirroring REST's invalid_query 400 rather
     // than silently resolving to an empty board.
