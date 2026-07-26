@@ -90,7 +90,7 @@ function ChainThroughputCard() {
       <div className="mt-1 flex flex-col items-start gap-1.5 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="mg-type-micro text-ink-muted">/api/v1/chain/activity</span>
         <Link
-          to="/blocks"
+          to="/chain/blocks"
           className="inline-flex items-center gap-1.5 mg-type-label uppercase text-ink-strong transition-colors hover:text-accent"
         >
           Open the block explorer

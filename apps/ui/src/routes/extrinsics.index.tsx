@@ -1,37 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { ExtrinsicsPage } from "./-extrinsics-index-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const extrinsicsSearchSchema = z.object({
-  limit: fallback(z.number().int().min(1).max(100), 50).default(50),
-  offset: fallback(z.number().int().min(0), 0).default(0),
-  // Server-side filters (#265) wired to the /api/v1/extrinsics conjunctive set.
-  signer: fallback(z.string(), "").default(""),
-  call_module: fallback(z.string(), "").default(""),
-  call_function: fallback(z.string(), "").default(""),
-  success: fallback(z.enum(["", "true", "false"]), "").default(""),
-});
-
-export type ExtrinsicsSearch = z.infer<typeof extrinsicsSearchSchema>;
-
+/**
+ * /extrinsics moved into the Chain hub (#8290, part of #8244). Permanent
+ * redirect with search params forwarded, so existing filtered links keep
+ * working. The detail route (/extrinsics/$hash) keeps its own URL.
+ */
 export const Route = createFileRoute("/extrinsics/")({
-  validateSearch: zodValidator(extrinsicsSearchSchema),
-  head: () => ({
-    meta: [
-      { title: "Extrinsics — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Recent Bittensor extrinsics (transactions) indexed from the chain — block, call, signer, and success, newest first.",
-      },
-      { property: "og:title", content: "Extrinsics — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Recent Bittensor extrinsics (transactions) indexed from the chain — block, call, signer, and success, newest first.",
-      },
-    ],
-  }),
-  component: ExtrinsicsPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/chain/extrinsics", search, replace: true });
+  },
 });

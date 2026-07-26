@@ -120,7 +120,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
       // G → jump to blocks feed (head).
       if (e.key === "g" || e.key === "G") {
         e.preventDefault();
-        navigate({ to: "/blocks" });
+        navigate({ to: "/chain/blocks" });
       }
     }
 
@@ -143,7 +143,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         <EmptyState
           title="Block not found or not yet indexed"
           description="The chain poller indexes recent blocks every few minutes. Cold or out-of-range blocks aren't available."
-          action={{ label: "Back to blocks", href: "/blocks" }}
+          action={{ label: "Back to blocks", href: "/chain/blocks" }}
         />
         <ApiSourceFooter
           paths={[`/api/v1/blocks/${sourceRef}`]}

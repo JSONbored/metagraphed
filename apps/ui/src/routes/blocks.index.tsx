@@ -1,39 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { BlocksPage } from "./-blocks-index-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const blocksSearchSchema = z.object({
-  limit: fallback(z.number().int().min(1).max(100), 50).default(50),
-  offset: fallback(z.number().int().min(0), 0).default(0),
-  // Server-side filters wired to the /api/v1/blocks conjunctive set.
-  author: fallback(z.string(), "").default(""),
-  spec_version: fallback(z.string(), "").default(""),
-  block_start: fallback(z.string(), "").default(""),
-  block_end: fallback(z.string(), "").default(""),
-  min_extrinsics: fallback(z.string(), "").default(""),
-  min_events: fallback(z.string(), "").default(""),
-});
-
-export type BlocksSearch = z.infer<typeof blocksSearchSchema>;
-
+/**
+ * /blocks moved into the Chain hub (#8290, part of #8244).
+ *
+ * A permanent redirect rather than a deletion: this URL is in the sitemap, in
+ * llms.txt, and in whatever agents and links already point at it. Search params
+ * are forwarded so an existing filtered/paged link keeps working.
+ *
+ * The DETAIL route (/blocks/$ref) deliberately keeps its own URL — only index
+ * pages consolidate, so every deep link to a specific block still resolves.
+ */
 export const Route = createFileRoute("/blocks/")({
-  validateSearch: zodValidator(blocksSearchSchema),
-  head: () => ({
-    meta: [
-      { title: "Blocks — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Recent Bittensor blocks indexed from the chain — block number, hash, author, extrinsic and event counts, newest first.",
-      },
-      { property: "og:title", content: "Blocks — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Recent Bittensor blocks indexed from the chain — block number, hash, author, extrinsic and event counts, newest first.",
-      },
-    ],
-  }),
-  component: BlocksPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/chain/blocks", search, replace: true });
+  },
 });
