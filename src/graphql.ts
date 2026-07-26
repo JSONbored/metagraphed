@@ -521,7 +521,15 @@ import { SDL } from "./graphql-sdl.ts";
 import type {
   QueryAdapterArgs,
   QueryAgent_CatalogArgs,
+  QueryBlockArgs,
+  QueryBlocksArgs,
+  QueryBlock_Chain_EventsArgs,
+  QueryBlock_EventsArgs,
+  QueryBlock_ExtrinsicsArgs,
   QueryCandidatesArgs,
+  QueryChain_EventsArgs,
+  QueryChain_Events_StatsArgs,
+  QueryCompareArgs,
   QueryCompare_ValidatorsArgs,
   QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
@@ -529,10 +537,17 @@ import type {
   QueryEndpoint_PoolsArgs,
   QueryEndpointsArgs,
   QueryEvidenceArgs,
+  QueryExtrinsicArgs,
+  QueryExtrinsicsArgs,
   QueryFixtureArgs,
   QueryGapsArgs,
+  QueryGlobal_IncidentsArgs,
+  QueryGovernance_Config_ChangesArgs,
+  QueryHealth_HistoryArgs,
+  QueryIncidentsArgs,
   QueryNeuronArgs,
   QueryNeuron_HistoryArgs,
+  QueryOpportunity_BoardsArgs,
   QueryProfilesArgs,
   QueryProviderArgs,
   QueryProvider_EndpointsArgs,
@@ -1731,35 +1746,12 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 5-9 (types-epic D, #7862 tracks follow-up
-// batches). The 5 pilot fields (subnets, subnet, subnet_health,
-// subnet_stake_quote, economics) plus D batch 1's 20 fields
-// (subnet_registrations, subnet_hyperparameters,
-// subnet_hyperparameters_history, subnet_deregistrations, subnet_serving,
-// subnet_health_trends, subnet_uptime, subnet_health_incidents,
-// subnet_health_percentiles, subnet_volume, agent_resources, curation,
-// candidates, saved_query, fixtures, fixture, agent_catalog, freshness,
-// top_holders, search) plus D batch 2's 20 fields (search_index, domains,
-// domain_summary, compare_validators, coverage, coverage_depth,
-// subnet_ohlc, subnet_validators, subnet_event_summary, subnet_gaps,
-// subnet_evidence, subnet_candidates, subnet_endpoints,
-// subnet_axon_removals, subnet_weights, subnet_stake_moves,
-// subnet_stake_transfers, subnet_idle_stake, subnet_stake_flow,
-// subnet_events) plus D batch 3's 20 fields (subnet_history,
-// subnet_prometheus, subnet_weight_setters, subnet_yield,
-// subnet_yield_history, subnet_performance, subnet_performance_history,
-// subnet_concentration, subnet_concentration_history, neuron, neuron_history,
-// subnet_identity_history, subnet_trajectory, subnet_metagraph,
-// subnet_overview, subnet_profile, providers, provider, adapter, surfaces)
-// plus D batch 4's 20 fields (endpoints, provider_endpoints, endpoint_pools,
-// rpc_pools, endpoint_incidents, source_snapshots, gaps, evidence, profiles,
-// review_adapter_candidates, review_enrichment_evidence,
-// review_enrichment_queue, review_enrichment_targets, review_gaps,
-// review_profile_completeness, registry_summary, schemas, source_health,
-// lineage, rpc_endpoints) are typed against the generated Args types below;
-// the remaining root fields on this object keep their `Row`-typed
-// destructured params for now, adopted incrementally in later batches
-// rather than all at once here.
+// Row-erased: pending D batches 6-9 (types-epic D, #7862 tracks follow-up
+// batches -- see #8158-#8166 for each batch's exact field list). The 5 pilot
+// fields plus D batches 1-5's 95 fields (#8158-#8162) are typed against the
+// generated Args types below; the remaining root fields on this object keep
+// their `Row`-typed destructured params for now, adopted incrementally in
+// later batches rather than all at once here.
 const rootValue = {
   subnets(
     {
@@ -3325,7 +3317,7 @@ const rootValue = {
   // and throws invalid_params on a bad one / not_found on a missing snapshot;
   // that throw becomes a GraphQL error, matching every other field's "an
   // unsupported filter/sort is a GraphQL error, not a silent default".
-  health_history(args: Row, context: GqlContext) {
+  health_history(args: QueryHealth_HistoryArgs, context: GqlContext) {
     return loadHealthHistory(context, args, {
       readArtifact: loadArtifact as AnyFn,
     });
@@ -3395,7 +3387,10 @@ const rootValue = {
     };
   },
 
-  async opportunity_boards({ limit }: Row, context: GqlContext) {
+  async opportunity_boards(
+    { limit }: QueryOpportunity_BoardsArgs,
+    context: GqlContext,
+  ) {
     const data = await loadEconomics(context);
     const rows = Array.isArray(data?.subnets) ? data.subnets : [];
     // Reuse the live economics tier + the leaderboard ranking, so the boards
@@ -3423,7 +3418,10 @@ const rootValue = {
     };
   },
 
-  async compare({ netuids, dimensions }: Row, context: GqlContext) {
+  async compare(
+    { netuids, dimensions }: QueryCompareArgs,
+    context: GqlContext,
+  ) {
     // Reuse the REST/MCP shared parsers so the GraphQL contract matches
     // /api/v1/compare and the compare_subnets MCP tool exactly (distinctness +
     // range + the dimension whitelist), then the shared loader composes the rows.
@@ -3457,7 +3455,7 @@ const rootValue = {
   },
 
   async incidents(
-    { window, netuid, sort, order, limit, cursor }: Row,
+    { window, netuid, sort, order, limit, cursor }: QueryIncidentsArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
@@ -3544,7 +3542,7 @@ const rootValue = {
   // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
   // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
   // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
-  async global_incidents(args: Row, context: GqlContext) {
+  async global_incidents(args: QueryGlobal_IncidentsArgs, context: GqlContext) {
     return rootValue.incidents(args, context);
   },
 
@@ -4168,7 +4166,7 @@ const rootValue = {
       block_end: blockEnd,
       from,
       to,
-    }: Row,
+    }: QueryExtrinsicsArgs,
     context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
@@ -4220,7 +4218,15 @@ const rootValue = {
   // schema-stable empty feed, never a GraphQL error — matching extrinsics'
   // cold-empty convention. Distinct from Subscription.chainEvents.
   async chain_events(
-    { pallet, method, block, extrinsic, cursor, before, limit }: Row,
+    {
+      pallet,
+      method,
+      block,
+      extrinsic,
+      cursor,
+      before,
+      limit,
+    }: QueryChain_EventsArgs,
     context: GqlContext,
   ) {
     try {
@@ -4272,7 +4278,10 @@ const rootValue = {
   // (the same 1000-default/positive-integer/1-5000-cap validation MCP's
   // get_chain_activity applies) then loadChainActivity — both relocated to
   // data-api-mcp.ts beside loadChainEventsFeed.
-  async chain_events_stats({ blocks }: Row, context: GqlContext) {
+  async chain_events_stats(
+    { blocks }: QueryChain_Events_StatsArgs,
+    context: GqlContext,
+  ) {
     let window;
     try {
       window = optionalBlocksWindow({ blocks });
@@ -4353,7 +4362,7 @@ const rootValue = {
     };
   },
 
-  async extrinsic({ ref }: Row, context: GqlContext) {
+  async extrinsic({ ref }: QueryExtrinsicArgs, context: GqlContext) {
     const data =
       ((await tryPostgresTier(
         context.env,
@@ -4381,7 +4390,7 @@ const rootValue = {
       block_end: blockEnd,
       from,
       to,
-    }: Row,
+    }: QueryGovernance_Config_ChangesArgs,
     context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
@@ -4458,7 +4467,7 @@ const rootValue = {
       to,
       min_extrinsics: minExtrinsics,
       min_events: minEvents,
-    }: Row,
+    }: QueryBlocksArgs,
     context: GqlContext,
   ) {
     const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
@@ -4552,7 +4561,7 @@ const rootValue = {
     };
   },
 
-  async block({ ref }: Row, context: GqlContext) {
+  async block({ ref }: QueryBlockArgs, context: GqlContext) {
     const data =
       ((await tryPostgresTier(
         context.env,
@@ -4574,13 +4583,18 @@ const rootValue = {
   // Postgres tier + schema-stable fallback builder REST and MCP already use. The
   // /blocks/:ref/{extrinsics,events} routes wrap their body in `{ data }` (unlike
   // the flat /blocks/:ref route), so the tier result is destructured accordingly.
-  async block_extrinsics({ ref, limit, offset }: Row, context: GqlContext) {
-    const safeLimit = Number.isFinite(limit)
-      ? Math.max(1, Math.min(100, Math.floor(limit)))
-      : 50;
-    const safeOffset = Number.isFinite(offset)
-      ? Math.max(0, Math.floor(offset))
-      : 0;
+  async block_extrinsics(
+    { ref, limit, offset }: QueryBlock_ExtrinsicsArgs,
+    context: GqlContext,
+  ) {
+    const safeLimit =
+      typeof limit === "number" && Number.isFinite(limit)
+        ? Math.max(1, Math.min(100, Math.floor(limit)))
+        : 50;
+    const safeOffset =
+      typeof offset === "number" && Number.isFinite(offset)
+        ? Math.max(0, Math.floor(offset))
+        : 0;
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
@@ -4601,13 +4615,18 @@ const rootValue = {
     return data;
   },
 
-  async block_events({ ref, limit, offset }: Row, context: GqlContext) {
-    const safeLimit = Number.isFinite(limit)
-      ? Math.max(1, Math.min(1000, Math.floor(limit)))
-      : 100;
-    const safeOffset = Number.isFinite(offset)
-      ? Math.max(0, Math.floor(offset))
-      : 0;
+  async block_events(
+    { ref, limit, offset }: QueryBlock_EventsArgs,
+    context: GqlContext,
+  ) {
+    const safeLimit =
+      typeof limit === "number" && Number.isFinite(limit)
+        ? Math.max(1, Math.min(1000, Math.floor(limit)))
+        : 100;
+    const safeOffset =
+      typeof offset === "number" && Number.isFinite(offset)
+        ? Math.max(0, Math.floor(offset))
+        : 0;
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
@@ -4631,7 +4650,10 @@ const rootValue = {
   // Reuses loadBlockChainEvents unchanged (the get_block_chain_events tool's own
   // loader); it throws invalid_params on a bad block_number and tier_unavailable
   // where the all-events Worker is absent -- both surface as normal GraphQL errors.
-  block_chain_events({ block_number: blockNumber }: Row, context: GqlContext) {
+  block_chain_events(
+    { block_number: blockNumber }: QueryBlock_Chain_EventsArgs,
+    context: GqlContext,
+  ) {
     return loadBlockChainEvents(mcpCtx(context), blockNumber);
   },
 
