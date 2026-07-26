@@ -61,7 +61,7 @@ export const MEGA_PANELS: MegaPanel[] = [
     apiPath: "/api/v1/blocks",
     browse: [
       {
-        to: "/explorer",
+        to: "/chain",
         label: "Chain explorer",
         hint: "Network at a glance — activity, fees, top accounts",
       },

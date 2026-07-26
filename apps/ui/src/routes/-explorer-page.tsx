@@ -2,7 +2,6 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import {
@@ -15,7 +14,7 @@ import {
   Donut,
   CopyButton,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
@@ -43,6 +42,7 @@ import {
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { ChainTabActions } from "./-chain-hub";
 import type {
   ChainCalls,
   ChainEventsStats,
@@ -88,21 +88,13 @@ function fmtTaoSigned(v: number): string {
 
 export function ExplorerPage() {
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Chain explorer"
-        description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
-        actions={
-          <>
-            <ActionBar>
-              <ShareButton bare />
-            </ActionBar>
-            <ChainHeadTip />
-          </>
-        }
-      />
+    <>
+      <ChainTabActions>
+        <ChainHeadTip />
+        <ActionBar>
+          <ShareButton bare />
+        </ActionBar>
+      </ChainTabActions>
       <AsyncPanel context="explorer dashboard" fallback={<Skeleton className="h-[40rem] w-full" />}>
         <ExplorerDashboard />
       </AsyncPanel>
@@ -129,7 +121,7 @@ export function ExplorerPage() {
           "/api/v1/chain/transfers",
         ]}
       />
-    </AppShell>
+    </>
   );
 }
 
@@ -546,7 +538,12 @@ function NetworkOperationsSection({
       <h2 className="mb-6 mg-type-label uppercase text-ink-muted">Network operations</h2>
       <div className="grid gap-6 lg:grid-cols-2">
         <ChainServingLeaderboard board={serving} />
-        <ChainPrometheusLeaderboard board={prometheus} />
+        {/* #8292: rendered nothing but a framed "no data" box in every window
+            observed — a panel with no data is noise, not information. It
+            reappears on its own the moment exporters report. */}
+        {prometheus.network?.announcements ? (
+          <ChainPrometheusLeaderboard board={prometheus} />
+        ) : null}
       </div>
     </section>
   );
@@ -1232,8 +1229,8 @@ const EXPLORER_TABS: { id: ExplorerTab; label: string }[] = [
 ];
 
 function ExplorerDashboard() {
-  const search = useSearch({ from: "/explorer" });
-  const navigate = useNavigate({ from: "/explorer" });
+  const search = useSearch({ from: "/chain/" });
+  const navigate = useNavigate({ from: "/chain/" });
   const win = search.window;
 
   // A single batched useSuspenseQueries, not one useSuspenseQuery call per
@@ -1313,6 +1310,12 @@ function ExplorerDashboard() {
   const successRate = totalExtrinsics > 0 ? totalSuccessful / totalExtrinsics : null;
   const totalFees = sum(fees.daily.map((d) => d.total_fee_tao));
   const totalTips = sum(fees.daily.map((d) => d.total_tip_tao));
+  // #8292: the Most-active-accounts fee/tip columns rendered 0.0000 τ for
+  // every row in every window observed. Drive the columns off the data rather
+  // than hardcoding their removal, so they return by themselves if the fee
+  // market ever wakes up.
+  const anySignerFees = signers.signers.some((s) => (s.total_fee_tao ?? 0) > 0);
+  const anySignerTips = signers.signers.some((s) => (s.total_tip_tao ?? 0) > 0);
 
   // #5328: group the ~20 chain-analytics panels into tabs so the page is no
   // longer one ~24,000px vertical feed. Only the active tab's panels mount; the
@@ -1428,25 +1431,11 @@ function ExplorerDashboard() {
                   formatValue={(v) => formatNumber(v)}
                 />
                 <MiniSeries
-                  label="Blocks"
-                  days={chrono.map((d) => d.day)}
-                  values={chrono.map((d) => d.block_count)}
-                  color="var(--chart-1)"
-                  formatValue={(v) => formatNumber(v)}
-                />
-                <MiniSeries
                   label="Events"
                   days={chrono.map((d) => d.day)}
                   values={chrono.map((d) => d.event_count)}
                   color="var(--chart-3)"
                   formatValue={(v) => formatNumber(v)}
-                />
-                <MiniSeries
-                  label="Success rate"
-                  days={chrono.map((d) => d.day)}
-                  values={chrono.map((d) => d.success_rate ?? 0)}
-                  color="var(--chart-6)"
-                  formatValue={(v) => `${(v * 100).toFixed(1)}%`}
                 />
                 <MiniSeries
                   label="Unique signers"
@@ -1475,8 +1464,12 @@ function ExplorerDashboard() {
                     <tr>
                       <th className={TH}>Account</th>
                       <th className={`${TH} text-right`}>Txs</th>
-                      <th className={`${TH} text-right`}>Fees</th>
-                      <th className={`${TH} text-right`}>Tips</th>
+                      {/* #8292: these read 0.0000 τ for every row in every
+                          window observed — subtensor's fee market is
+                          effectively idle. A column of zeroes is not data, so
+                          it renders only when some row actually has a value. */}
+                      {anySignerFees ? <th className={`${TH} text-right`}>Fees</th> : null}
+                      {anySignerTips ? <th className={`${TH} text-right`}>Tips</th> : null}
                       <th className={`${TH} text-right`}>Last block</th>
                     </tr>
                   </thead>
@@ -1499,12 +1492,16 @@ function ExplorerDashboard() {
                         <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                           {formatNumber(s.tx_count)}
                         </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {formatTao(s.total_fee_tao)}
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {formatTao(s.total_tip_tao)}
-                        </td>
+                        {anySignerFees ? (
+                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                            {formatTao(s.total_fee_tao)}
+                          </td>
+                        ) : null}
+                        {anySignerTips ? (
+                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                            {formatTao(s.total_tip_tao)}
+                          </td>
+                        ) : null}
                         <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {s.last_tx_block != null ? (
                             <Link
@@ -1528,7 +1525,10 @@ function ExplorerDashboard() {
             </Panel>
           </div>
           <NetworkOperationsSection serving={serving} prometheus={prometheus} />
-          <AxonChurnSection churn={axonChurn} />
+          {/* #8292: showed "0 axon teardowns across 0 removers" in every
+              window observed. Hidden until the tier reports something, rather
+              than rendering an empty framed board. */}
+          {axonChurn.network?.removals ? <AxonChurnSection churn={axonChurn} /> : null}
           <PalletEventMixSection stats={eventMix} />
         </>
       )}
@@ -1928,8 +1928,8 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
 }
 
 function ChainEventsFeedSection() {
-  const search = useSearch({ from: "/explorer" });
-  const navigate = useNavigate({ from: "/explorer" });
+  const search = useSearch({ from: "/chain/" });
+  const navigate = useNavigate({ from: "/chain/" });
 
   const onFilter = (patch: { pallet?: string; method?: string }) =>
     navigate({

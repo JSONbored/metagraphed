@@ -1,14 +1,38 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { ExplorerPage } from "./-explorer-page";
 
 /**
- * Bare /chain lands on Blocks for now.
+ * Chain hub Overview — the retired /explorer (#8292, completing #8244).
  *
- * The Overview tab that will own this path arrives with #8292, which retires
- * /explorer into it. Until then a redirect is honest: the hub exists and has a
- * sensible default, rather than rendering an empty shell.
+ * Bare /chain is the overview, so the hub's landing page is the network at a
+ * glance rather than a redirect into one of its tabs.
  */
+const overviewSearchSchema = z.object({
+  window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  pallet: fallback(z.string(), "").default(""),
+  method: fallback(z.string(), "").default(""),
+  events_cursor: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/chain/")({
-  beforeLoad: () => {
-    throw redirect({ to: "/chain/blocks", replace: true });
-  },
+  validateSearch: zodValidator(overviewSearchSchema),
+  head: () => ({
+    meta: [
+      { title: "Chain — Metagraphed" },
+      {
+        name: "description",
+        content:
+          "The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers.",
+      },
+      { property: "og:title", content: "Chain — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers.",
+      },
+    ],
+  }),
+  component: ExplorerPage,
 });

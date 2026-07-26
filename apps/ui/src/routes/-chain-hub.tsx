@@ -25,6 +25,12 @@ export interface ChainTab {
 
 export const CHAIN_TABS: readonly ChainTab[] = [
   {
+    to: "/chain",
+    label: "Overview",
+    blurb:
+      "The network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers.",
+  },
+  {
     to: "/chain/blocks",
     label: "Blocks",
     blurb:

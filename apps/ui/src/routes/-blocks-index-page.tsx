@@ -31,7 +31,6 @@ import { PageSizeSelect } from "@/components/metagraphed/table-controls";
 import { LiveBlockRail } from "@/components/metagraphed/blocks/live-block-rail";
 import { CadenceHeatmap } from "@/components/metagraphed/blocks/cadence-heatmap";
 import { AuthorSharePanel } from "@/components/metagraphed/blocks/author-share-panel";
-import { RuntimeTimeline } from "@/components/metagraphed/blocks/runtime-timeline";
 import { blocksQuery, blocksSummaryQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -91,13 +90,6 @@ export function BlocksPage() {
         }
       >
         <BlockProductionHeader />
-      </AsyncPanel>
-      <AsyncPanel
-        context="Runtime upgrades"
-        retryQueryKeys={[metagraphedQueryKey("runtime-version-history")]}
-        fallback={<PanelSkeleton height="sm" className="mb-6" />}
-      >
-        <RuntimeTimeline />
       </AsyncPanel>
       <AsyncPanel
         context="Blocks table"
