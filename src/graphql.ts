@@ -519,11 +519,31 @@ import { SDL } from "./graphql-sdl.ts";
 // here, not the Resolver wrapper. Same class of codegen/runtime-convention
 // mismatch the epic already anticipated for the Subscription resolver.
 import type {
+  QueryAdapterArgs,
   QueryEconomicsArgs,
+  QueryNeuronArgs,
+  QueryNeuron_HistoryArgs,
+  QueryProviderArgs,
+  QueryProvidersArgs,
   QuerySubnetArgs,
   QuerySubnetsArgs,
+  QuerySubnet_ConcentrationArgs,
+  QuerySubnet_Concentration_HistoryArgs,
   QuerySubnet_HealthArgs,
+  QuerySubnet_HistoryArgs,
+  QuerySubnet_Identity_HistoryArgs,
+  QuerySubnet_MetagraphArgs,
+  QuerySubnet_OverviewArgs,
+  QuerySubnet_PerformanceArgs,
+  QuerySubnet_Performance_HistoryArgs,
+  QuerySubnet_ProfileArgs,
+  QuerySubnet_PrometheusArgs,
   QuerySubnet_Stake_QuoteArgs,
+  QuerySubnet_TrajectoryArgs,
+  QuerySubnet_Weight_SettersArgs,
+  QuerySubnet_YieldArgs,
+  QuerySubnet_Yield_HistoryArgs,
+  QuerySurfacesArgs,
 } from "../generated/graphql/types.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1663,12 +1683,18 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
 }
 
 // Row-erased: pending D batch N (types-epic D, #7862 tracks follow-up
-// batches). Only the 5 Query fields with a Zod-covered REST mirror from
-// types-epic A (subnets, subnet, subnet_health, subnet_stake_quote,
-// economics) are typed against the generated Args types below; the
-// remaining ~150 root fields on this object keep their `Row`-typed
-// destructured params for now, adopted incrementally in later batches
-// rather than all at once here.
+// batches). The 5 pilot fields (subnets, subnet, subnet_health,
+// subnet_stake_quote, economics) plus D-batch-3's 20 fields (subnet_history,
+// subnet_prometheus, subnet_weight_setters, subnet_yield,
+// subnet_yield_history, subnet_performance, subnet_performance_history,
+// subnet_concentration, subnet_concentration_history, neuron, neuron_history,
+// subnet_identity_history, subnet_trajectory, subnet_metagraph,
+// subnet_overview, subnet_profile, providers, provider, adapter, surfaces)
+// are typed against the generated Args types below. This note reflects only
+// this PR's own base commit; batches 1 and 2 (#8158, #8159) are separate,
+// not-yet-merged PRs touching this same region. The remaining root fields on
+// this object keep their `Row`-typed destructured params for now, adopted
+// incrementally in later batches rather than all at once here.
 const rootValue = {
   subnets(
     {
@@ -1807,7 +1833,7 @@ const rootValue = {
   // reuses exactly what REST/MCP already call, so the three surfaces can't
   // drift.
   async subnet_metagraph(
-    { netuid, validator_permit }: Row,
+    { netuid, validator_permit }: QuerySubnet_MetagraphArgs,
     context: GqlContext,
   ) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
@@ -1828,7 +1854,10 @@ const rootValue = {
     );
   },
 
-  async subnet_overview({ netuid }: Row, context: GqlContext) {
+  async subnet_overview(
+    { netuid }: QuerySubnet_OverviewArgs,
+    context: GqlContext,
+  ) {
     // Same baked-overview + overlayOverviewHealth composition the REST
     // "subnet-overview" case and the get_subnet MCP tool perform. An
     // un-baked netuid resolves to null rather than a GraphQL error.
@@ -1841,7 +1870,10 @@ const rootValue = {
     return overlayOverviewHealth(overview, live, netuid) || overview;
   },
 
-  async subnet_profile({ netuid }: Row, context: GqlContext) {
+  async subnet_profile(
+    { netuid }: QuerySubnet_ProfileArgs,
+    context: GqlContext,
+  ) {
     // Reuse loadSubnetProfile (the loader get_subnet_profile already calls)
     // unchanged; its deps.readArtifact is invoked as (ctx, path) -- exactly
     // loadArtifact's shape -- so the read shares the request-scoped once()
@@ -1955,7 +1987,10 @@ const rootValue = {
     );
   },
 
-  async subnet_trajectory({ netuid }: Row, context: GqlContext) {
+  async subnet_trajectory(
+    { netuid }: QuerySubnet_TrajectoryArgs,
+    context: GqlContext,
+  ) {
     // Same tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) -> loadSubnetTrajectory
     // fallback contract handleTrajectory uses; a subnet with no daily snapshots is
     // a schema-stable empty trajectory, never a GraphQL error.
@@ -2132,7 +2167,7 @@ const rootValue = {
   },
 
   async subnet_identity_history(
-    { netuid, limit, offset, cursor }: Row,
+    { netuid, limit, offset, cursor }: QuerySubnet_Identity_HistoryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2201,7 +2236,10 @@ const rootValue = {
     };
   },
 
-  async subnet_performance({ netuid }: Row, context: GqlContext) {
+  async subnet_performance(
+    { netuid }: QuerySubnet_PerformanceArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2236,7 +2274,10 @@ const rootValue = {
     };
   },
 
-  async subnet_concentration({ netuid }: Row, context: GqlContext) {
+  async subnet_concentration(
+    { netuid }: QuerySubnet_ConcentrationArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2272,7 +2313,7 @@ const rootValue = {
   },
 
   async subnet_performance_history(
-    { netuid, window }: Row,
+    { netuid, window }: QuerySubnet_Performance_HistoryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2317,7 +2358,10 @@ const rootValue = {
     };
   },
 
-  async subnet_yield_history({ netuid, window }: Row, context: GqlContext) {
+  async subnet_yield_history(
+    { netuid, window }: QuerySubnet_Yield_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2361,7 +2405,7 @@ const rootValue = {
   },
 
   async subnet_concentration_history(
-    { netuid, window }: Row,
+    { netuid, window }: QuerySubnet_Concentration_HistoryArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -2406,7 +2450,7 @@ const rootValue = {
     };
   },
 
-  async neuron({ netuid, uid }: Row, context: GqlContext) {
+  async neuron({ netuid, uid }: QueryNeuronArgs, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2438,7 +2482,10 @@ const rootValue = {
     };
   },
 
-  async neuron_history({ netuid, uid, window }: Row, context: GqlContext) {
+  async neuron_history(
+    { netuid, uid, window }: QueryNeuron_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2486,7 +2533,7 @@ const rootValue = {
     };
   },
 
-  async subnet_yield({ netuid }: Row, context: GqlContext) {
+  async subnet_yield({ netuid }: QuerySubnet_YieldArgs, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYield cold
     // fallback contract handleSubnetYield uses: a subnet with no neurons is a
     // schema-stable zeroed card, never a GraphQL error. No window param — the
@@ -2773,7 +2820,10 @@ const rootValue = {
     };
   },
 
-  async subnet_history({ netuid, window }: Row, context: GqlContext) {
+  async subnet_history(
+    { netuid, window }: QuerySubnet_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2813,7 +2863,10 @@ const rootValue = {
     };
   },
 
-  async subnet_prometheus({ netuid, window }: Row, context: GqlContext) {
+  async subnet_prometheus(
+    { netuid, window }: QuerySubnet_PrometheusArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2857,7 +2910,10 @@ const rootValue = {
     };
   },
 
-  async subnet_weight_setters({ netuid, window }: Row, context: GqlContext) {
+  async subnet_weight_setters(
+    { netuid, window }: QuerySubnet_Weight_SettersArgs,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -2906,7 +2962,7 @@ const rootValue = {
   // #7920: opaque string id-keyset cursor/next_cursor (not REST's Int offset)
   // and schema-stable empty list on a cold/absent artifact (not a GraphQL
   // error). limit/cursor are applied here via paginate, not the loader.
-  async providers(args: Row, context: GqlContext) {
+  async providers(args: QueryProvidersArgs, context: GqlContext) {
     const { limit, cursor, ...filters } = args;
     // Default empty list; only overwrite on a successful load. Cold/absent
     // (or any non-invalid_params loader failure) keeps this historical contract.
@@ -2947,7 +3003,7 @@ const rootValue = {
     };
   },
 
-  async provider({ id }: Row, context: GqlContext) {
+  async provider({ id }: QueryProviderArgs, context: GqlContext) {
     if (typeof id !== "string" || !VALID_PROVIDER_ID.test(id)) return null;
     const data = await loadArtifact(context, `/metagraph/providers/${id}.json`);
     if (!data) return null;
@@ -2960,7 +3016,7 @@ const rootValue = {
   // loader miss (not_found / cold R2 / unavailable) resolves to null
   // (schema-stable), matching provider's cold/absent convention -- never a
   // GraphQL error for an unregistered slug.
-  async adapter({ slug }: Row, context: GqlContext) {
+  async adapter({ slug }: QueryAdapterArgs, context: GqlContext) {
     try {
       return await loadAdapter(mcpCtx(context), { slug }, { readArtifact });
     } catch (rawErr) {
@@ -2992,7 +3048,7 @@ const rootValue = {
     };
   },
 
-  surfaces({ netuid, limit, cursor }: Row, context: GqlContext) {
+  surfaces({ netuid, limit, cursor }: QuerySurfacesArgs, context: GqlContext) {
     return listPage(context, ARTIFACT.surfaces, "surfaces", {
       limit,
       cursor,
