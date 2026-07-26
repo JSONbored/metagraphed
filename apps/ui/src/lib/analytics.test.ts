@@ -35,6 +35,7 @@ describe("analytics (PostHog web analytics)", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   describe("unconfigured (no token)", () => {
@@ -109,14 +110,17 @@ describe("analytics (PostHog web analytics)", () => {
       expect(options.defaults.length).toBeGreaterThan(0);
     });
 
-    it("respects DNT and uses memory-only (cookieless) persistence, matching Umami's no-cookie posture", async () => {
+    it("respects DNT and uses localStorage (no-cookie) persistence for cross-visit continuity", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { initAnalytics } = await import("./analytics");
       initAnalytics();
       await vi.waitFor(() => expect(init).toHaveBeenCalled());
       const options = init.mock.calls[0][1];
       expect(options.respect_dnt).toBe(true);
-      expect(options.persistence).toBe("memory");
+      expect(options.persistence).toBe("localStorage");
+      // Never cookieless_mode -- see analytics.ts's own header comment for
+      // why (it strips GeoIP unconditionally and disables session replay).
+      expect(options.cookieless_mode).toBeUndefined();
     });
 
     it("enables pageleave and native web vitals capture despite capture_pageview being disabled", async () => {
@@ -158,7 +162,13 @@ describe("analytics (PostHog web analytics)", () => {
       expect(init.mock.calls[0][1].ui_host).toBe("https://eu.posthog.com");
     });
 
-    it("capturePageview captures $pageview with $current_url when a URL is given", async () => {
+    // This suite runs in vitest's plain "node" environment (vitest.config.ts's
+    // own comment: enough for lib/metagraphed's business logic), where
+    // `document` is undefined -- so these two tests exercise capturePageview's
+    // SSR/no-DOM fallback specifically. The dedicated "adds page_title from
+    // document.title" test below stubs a `document` global to cover the real
+    // browser path instead.
+    it("capturePageview captures $pageview with $current_url when a URL is given (no document global)", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { capturePageview } = await import("./analytics");
       capturePageview("https://metagraph.sh/subnets/7");
@@ -168,12 +178,24 @@ describe("analytics (PostHog web analytics)", () => {
       });
     });
 
-    it("capturePageview omits properties (posthog-js's own current-URL read) when no URL is given", async () => {
+    it("capturePageview omits $current_url (posthog-js's own current-URL read) when no URL is given (no document global)", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { capturePageview } = await import("./analytics");
       capturePageview();
       await vi.waitFor(() => expect(capture).toHaveBeenCalled());
-      expect(capture).toHaveBeenCalledWith("$pageview", undefined);
+      expect(capture).toHaveBeenCalledWith("$pageview", {});
+    });
+
+    it("capturePageview adds page_title from document.title when a document global exists (Umami parity, #7767)", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      vi.stubGlobal("document", { title: "Subnet 7 — Metagraphed" });
+      const { capturePageview } = await import("./analytics");
+      capturePageview("https://metagraph.sh/subnets/7");
+      await vi.waitFor(() => expect(capture).toHaveBeenCalled());
+      expect(capture).toHaveBeenCalledWith("$pageview", {
+        $current_url: "https://metagraph.sh/subnets/7",
+        page_title: "Subnet 7 — Metagraphed",
+      });
     });
 
     it("captureEvent forwards the name and properties verbatim", async () => {
