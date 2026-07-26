@@ -334,7 +334,7 @@ function Cell({ cell }: { cell: Cell }) {
                 open provider <ExternalLink className="size-3" />
               </Link>
               <Link
-                to="/endpoints"
+                to="/apis/endpoints"
                 search={
                   {
                     provider: cell.provider,
@@ -376,7 +376,7 @@ function Cell({ cell }: { cell: Cell }) {
                   <Tooltip key={p}>
                     <TooltipTrigger asChild>
                       <Link
-                        to="/endpoints"
+                        to="/apis/endpoints"
                         search={{ q: p } as never}
                         hash={`pool-${p}`}
                         className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"

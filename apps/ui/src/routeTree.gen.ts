@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as ApisRouteImport } from './routes/apis'
 import { Route as ChainRouteImport } from './routes/chain'
 import { Route as DelegateRouteImport } from './routes/delegate'
 import { Route as DomainsRouteImport } from './routes/domains'
@@ -29,6 +30,8 @@ import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
 import { Route as ApiSearchRouteImport } from './routes/api.search'
+import { Route as ApisIndexRouteImport } from './routes/apis.index'
+import { Route as ApisEndpointsRouteImport } from './routes/apis.endpoints'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ChainIndexRouteImport } from './routes/chain.index'
@@ -68,6 +71,11 @@ const AboutRoute = AboutRouteImport.update({
 const AgentsRoute = AgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApisRoute = ApisRouteImport.update({
+  id: '/apis',
+  path: '/apis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChainRoute = ChainRouteImport.update({
@@ -154,6 +162,16 @@ const ApiSearchRoute = ApiSearchRouteImport.update({
   id: '/api/search',
   path: '/api/search',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApisIndexRoute = ApisIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ApisRoute,
+} as any)
+const ApisEndpointsRoute = ApisEndpointsRouteImport.update({
+  id: '/endpoints',
+  path: '/endpoints',
+  getParentRoute: () => ApisRoute,
 } as any)
 const BlocksIndexRoute = BlocksIndexRouteImport.update({
   id: '/blocks/',
@@ -285,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/apis': typeof ApisRouteWithChildren
   '/chain': typeof ChainRouteWithChildren
   '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
@@ -300,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/surfaces': typeof SurfacesRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
+  '/apis/endpoints': typeof ApisEndpointsRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
@@ -317,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
+  '/apis/': typeof ApisIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/chain/': typeof ChainIndexRoute
   '/events/': typeof EventsIndexRoute
@@ -346,6 +367,7 @@ export interface FileRoutesByTo {
   '/surfaces': typeof SurfacesRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
+  '/apis/endpoints': typeof ApisEndpointsRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
@@ -363,6 +385,7 @@ export interface FileRoutesByTo {
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts': typeof AccountsIndexRoute
   '/admin-changes': typeof AdminChangesIndexRoute
+  '/apis': typeof ApisIndexRoute
   '/blocks': typeof BlocksIndexRoute
   '/chain': typeof ChainIndexRoute
   '/events': typeof EventsIndexRoute
@@ -379,6 +402,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/apis': typeof ApisRouteWithChildren
   '/chain': typeof ChainRouteWithChildren
   '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
@@ -394,6 +418,7 @@ export interface FileRoutesById {
   '/surfaces': typeof SurfacesRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
+  '/apis/endpoints': typeof ApisEndpointsRoute
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
@@ -411,6 +436,7 @@ export interface FileRoutesById {
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
+  '/apis/': typeof ApisIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/chain/': typeof ChainIndexRoute
   '/events/': typeof EventsIndexRoute
@@ -428,6 +454,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/apis'
     | '/chain'
     | '/delegate'
     | '/domains'
@@ -443,6 +470,7 @@ export interface FileRouteTypes {
     | '/surfaces'
     | '/accounts/$ss58'
     | '/api/search'
+    | '/apis/endpoints'
     | '/blocks/$ref'
     | '/chain/blocks'
     | '/chain/events'
@@ -460,6 +488,7 @@ export interface FileRouteTypes {
     | '/validators/$hotkey'
     | '/accounts/'
     | '/admin-changes/'
+    | '/apis/'
     | '/blocks/'
     | '/chain/'
     | '/events/'
@@ -489,6 +518,7 @@ export interface FileRouteTypes {
     | '/surfaces'
     | '/accounts/$ss58'
     | '/api/search'
+    | '/apis/endpoints'
     | '/blocks/$ref'
     | '/chain/blocks'
     | '/chain/events'
@@ -506,6 +536,7 @@ export interface FileRouteTypes {
     | '/validators/$hotkey'
     | '/accounts'
     | '/admin-changes'
+    | '/apis'
     | '/blocks'
     | '/chain'
     | '/events'
@@ -521,6 +552,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/apis'
     | '/chain'
     | '/delegate'
     | '/domains'
@@ -536,6 +568,7 @@ export interface FileRouteTypes {
     | '/surfaces'
     | '/accounts/$ss58'
     | '/api/search'
+    | '/apis/endpoints'
     | '/blocks/$ref'
     | '/chain/blocks'
     | '/chain/events'
@@ -553,6 +586,7 @@ export interface FileRouteTypes {
     | '/validators/$hotkey'
     | '/accounts/'
     | '/admin-changes/'
+    | '/apis/'
     | '/blocks/'
     | '/chain/'
     | '/events/'
@@ -569,6 +603,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
+  ApisRoute: typeof ApisRouteWithChildren
   ChainRoute: typeof ChainRouteWithChildren
   DelegateRoute: typeof DelegateRoute
   DomainsRoute: typeof DomainsRoute
@@ -628,6 +663,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apis': {
+      id: '/apis'
+      path: '/apis'
+      fullPath: '/apis'
+      preLoaderRoute: typeof ApisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chain': {
@@ -748,6 +790,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/search'
       preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/apis/': {
+      id: '/apis/'
+      path: '/'
+      fullPath: '/apis/'
+      preLoaderRoute: typeof ApisIndexRouteImport
+      parentRoute: typeof ApisRoute
+    }
+    '/apis/endpoints': {
+      id: '/apis/endpoints'
+      path: '/endpoints'
+      fullPath: '/apis/endpoints'
+      preLoaderRoute: typeof ApisEndpointsRouteImport
+      parentRoute: typeof ApisRoute
     }
     '/blocks/': {
       id: '/blocks/'
@@ -927,6 +983,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApisRouteChildren {
+  ApisEndpointsRoute: typeof ApisEndpointsRoute
+  ApisIndexRoute: typeof ApisIndexRoute
+}
+
+const ApisRouteChildren: ApisRouteChildren = {
+  ApisEndpointsRoute: ApisEndpointsRoute,
+  ApisIndexRoute: ApisIndexRoute,
+}
+
+const ApisRouteWithChildren = ApisRoute._addFileChildren(ApisRouteChildren)
+
 interface ChainRouteChildren {
   ChainBlocksRoute: typeof ChainBlocksRoute
   ChainEventsRoute: typeof ChainEventsRoute
@@ -951,6 +1019,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
+  ApisRoute: ApisRouteWithChildren,
   ChainRoute: ChainRouteWithChildren,
   DelegateRoute: DelegateRoute,
   DomainsRoute: DomainsRoute,

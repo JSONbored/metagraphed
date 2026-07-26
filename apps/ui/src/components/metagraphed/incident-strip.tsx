@@ -80,7 +80,8 @@ export function IncidentStrip() {
     );
   }, [data, error, dismissed, viewedNetuid]);
 
-  const onOperationalRoute = pathname.startsWith("/endpoints") || pathname.startsWith("/subnets");
+  const onOperationalRoute =
+    pathname.startsWith("/apis/endpoints") || pathname.startsWith("/subnets");
   if (!onOperationalRoute || active.length === 0) return null;
 
   const top = active[0]!;

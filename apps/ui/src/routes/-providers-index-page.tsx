@@ -261,7 +261,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
       <EmptyState
         title="No providers tracked yet"
         description="Once provider entries are registered, they'll be listed here."
-        action={{ label: "Browse all endpoints", href: "/endpoints" }}
+        action={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
       />
     );
 
@@ -371,7 +371,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
         <EmptyState
           title="No providers match this filter"
           description="Try clearing filters or adjusting your search."
-          action={{ label: "Browse all endpoints", href: "/endpoints" }}
+          action={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
         />
       ) : view === "table" ? (
         <>

@@ -155,8 +155,8 @@ function UsageStat({
 export function ProxyUsagePanel() {
   // #3976: window is URL-backed on /endpoints (this panel's only host) so a
   // shared link restores the same 7d/30d view and back/forward works.
-  const window = useSearch({ from: "/endpoints", select: (s) => s.window });
-  const navigate = useNavigate({ from: "/endpoints" });
+  const window = useSearch({ from: "/apis/endpoints", select: (s) => s.window });
+  const navigate = useNavigate({ from: "/apis/endpoints" });
   const { data } = useSuspenseQuery(rpcUsageQuery(window));
   const usage = data.data as RpcUsage;
   const s = usage.summary;

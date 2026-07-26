@@ -1,7 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   AsyncPanel,
   FilterChipRow,
@@ -9,11 +8,11 @@ import {
   Panel,
   QueryBar,
   QueryProgress,
-  PageMasthead,
   type FilterChipItem,
 } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
+import { ApisTabActions } from "./-apis-hub";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
   TimeAgo,
@@ -55,8 +54,8 @@ import { matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
 
 export function SurfacesPage() {
-  const search = useSearch({ from: "/surfaces" });
-  const navigate = useNavigate({ from: "/surfaces" });
+  const search = useSearch({ from: "/apis/" });
+  const navigate = useNavigate({ from: "/apis/" });
   const filtersActive =
     !!search.q ||
     !!search.sort ||
@@ -82,33 +81,30 @@ export function SurfacesPage() {
     provider: search.provider || undefined,
   });
   return (
-    <AppShell>
+    <>
       <TimeRangeProvider defaultRange="7d">
-        <PageMasthead
-          live
-          title="Surfaces"
-          description="Verified public interfaces across subnets — filter by kind, provider, and netuid."
-          actions={
-            <>
-              <TimeRangeScrub />
-              <ViewModeToggle
-                value={viewMode}
-                options={["table", "grid"]}
-                onChange={(v) =>
-                  navigate({
-                    search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
-                    replace: true,
-                  })
-                }
-              />
-              <ActionBar>
-                <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-                <DownloadCsvButton url={surfacesCsvUrl} bare />
-                <ShareButton bare />
-              </ActionBar>
-            </>
-          }
-        />
+        {/* Lifted off this page's own masthead — the hub owns title and
+            description now (#8302). Above the tab content, never beside the tab
+            strip: a shrink-0 sibling there starved profile-tabs to 196px on
+            mobile (#8254). */}
+        <ApisTabActions>
+          <TimeRangeScrub />
+          <ViewModeToggle
+            value={viewMode}
+            options={["table", "grid"]}
+            onChange={(v) =>
+              navigate({
+                search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+                replace: true,
+              })
+            }
+          />
+          <ActionBar>
+            <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+            <DownloadCsvButton url={surfacesCsvUrl} bare />
+            <ShareButton bare />
+          </ActionBar>
+        </ApisTabActions>
         <AsyncPanel
           height="xl"
           context="surfaces"
@@ -126,13 +122,13 @@ export function SurfacesPage() {
         </section>
       </TimeRangeProvider>
       <ApiSourceFooter paths={["/api/v1/surfaces"]} artifacts={["/metagraph/surfaces.json"]} />
-    </AppShell>
+    </>
   );
 }
 
 function SurfacesTable({ view }: { view: "table" | "grid" }) {
-  const search = useSearch({ from: "/surfaces" });
-  const navigate = useNavigate({ from: "/surfaces" });
+  const search = useSearch({ from: "/apis/" });
+  const navigate = useNavigate({ from: "/apis/" });
   const { range } = useTimeRange();
   const windowLabel = `${RANGE_LABEL[range]} window · latest snapshot`;
 

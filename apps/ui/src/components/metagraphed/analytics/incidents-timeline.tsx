@@ -233,7 +233,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                   ) : null}
                   {pool ? (
                     <Link
-                      to="/endpoints"
+                      to="/apis/endpoints"
                       search={(prev: Record<string, unknown>) =>
                         ({ ...prev, q: pool.name ?? pool.id }) as never
                       }

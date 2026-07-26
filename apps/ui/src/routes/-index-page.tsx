@@ -529,12 +529,12 @@ function TrackedGrid() {
     },
     {
       label: "Surfaces",
-      to: "/surfaces",
+      to: "/apis",
       desc: "Verified public APIs, schemas, docs, dashboards, and SDKs.",
     },
     {
       label: "Endpoints",
-      to: "/endpoints",
+      to: "/apis/endpoints",
       desc: "Tracked endpoint resources including root RPC pools.",
     },
     {
