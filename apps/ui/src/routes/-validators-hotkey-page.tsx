@@ -16,6 +16,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
+import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
@@ -431,6 +432,11 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                   )}
                 />
               ) : null}
+              <WatchStarButton
+                kind="validator"
+                id={hotkey}
+                label={hasIdentity ? displayName : "this validator"}
+              />
               <ShareButton bare />
             </ActionBar>
             {isStaleFreshness(generatedAt) ? (

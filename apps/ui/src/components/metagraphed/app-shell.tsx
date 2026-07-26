@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { captureEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -37,6 +38,7 @@ import {
   Sheet,
   SheetContent,
   SheetTitle,
+  SHARE_COPIED_EVENT,
 } from "@jsonbored/ui-kit";
 import { SettingsPopover } from "./settings-popover";
 import { WalletConnectButton } from "./wallet-connect";
@@ -154,6 +156,14 @@ export function AppShell({
     const v = visitFromPath(pathname);
     if (v) pushRecentVisit(v);
   }, [pathname]);
+
+  // #8256: one global listener for ui-kit's share-copied announcement, so the
+  // event is instrumented once rather than threaded through ~20 call sites.
+  useEffect(() => {
+    const onShareCopied = () => captureEvent("share_copied");
+    window.addEventListener(SHARE_COPIED_EVENT, onShareCopied);
+    return () => window.removeEventListener(SHARE_COPIED_EVENT, onShareCopied);
+  }, []);
 
   // Publish the live header height as --mg-sticky-offset so downstream sticky
   // sub-nav / toolbars can pin flush against the chrome instead of hardcoding

@@ -10,6 +10,10 @@ import { ValidatorsPage } from "./-validators-index-page";
 // never supported.
 const validatorsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
+  // #8256: "Watched" quick filter, matching the /subnets index convention.
+  // A search param (not component state) so a filtered view is shareable and
+  // survives a reload.
+  watched: fallback(z.boolean(), false).default(false),
   sort: fallback(z.string(), "total_stake_tao").default("total_stake_tao"),
   // #5344: bring Validators up to the canonical ranked-list interaction model
   // (Subnets) — a sort DIRECTION toggled by clicking a column header, and a row

@@ -33,6 +33,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { SelectFilter, FilterChip } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
+import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import {
   CopyableCode,
   TimeAgo,
@@ -195,6 +196,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         actions={
           <>
             <ActionBar>
+              <WatchStarButton kind="account" id={ss58} label="this account" />
               <ShareButton bare />
             </ActionBar>
             <a

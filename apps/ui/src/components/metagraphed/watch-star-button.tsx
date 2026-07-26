@@ -1,0 +1,48 @@
+import { Star } from "lucide-react";
+import { classNames } from "@/lib/metagraphed/format";
+import { useWatchlist, type WatchlistKind } from "@/lib/metagraphed/watchlist";
+
+/**
+ * Masthead star toggle for an entity detail page (#8256).
+ *
+ * The index pages grew stars first, which left the odd gap that you could
+ * star a subnet from the list but not from the subnet's own page — the one
+ * place you're most likely to decide you care about it. Same store, same
+ * icon, same cross-tab sync; this is only the detail-page presentation of it.
+ *
+ * Sized for the ActionBar rather than a dense row, so it clears 44px on touch
+ * without needing the `mg-tap-target` slop the index-row stars use.
+ */
+export function WatchStarButton({
+  kind,
+  id,
+  label,
+}: {
+  kind: WatchlistKind;
+  /** The same id the index page stars by — netuid for subnets, hotkey/ss58 otherwise. */
+  id: string | number;
+  /** Entity noun for the accessible name, e.g. "SN64" or a validator name. */
+  label: string;
+}) {
+  const watchlist = useWatchlist(kind);
+  const watched = watchlist.isWatched(id);
+
+  return (
+    <button
+      type="button"
+      onClick={() => watchlist.toggle(id)}
+      aria-pressed={watched}
+      aria-label={watched ? `Remove ${label} from watchlist` : `Add ${label} to watchlist`}
+      title={watched ? "Watched — click to unstar" : "Star to pin this to your homepage"}
+      className={classNames(
+        "inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
+        watched
+          ? "text-accent-text hover:bg-surface"
+          : "text-ink-muted hover:bg-surface hover:text-ink-strong",
+      )}
+    >
+      <Star className={classNames("size-3.5", watched && "fill-accent text-accent")} aria-hidden />
+      {watched ? "Watched" : "Watch"}
+    </button>
+  );
+}

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { captureEvent } from "@/lib/analytics";
 import { Link } from "@tanstack/react-router";
 import { X, BarChart3, ExternalLink } from "lucide-react";
 import { useState } from "react";
@@ -59,7 +60,15 @@ export function SubnetsCompareDrawer() {
             <div className="ml-auto flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setExpanded((v) => !v)}
+                onClick={() =>
+                  setExpanded((v) => {
+                    // #8256: only the open transition is an event -- collapsing
+                    // isn't a use of the feature. Count only, never the ids.
+                    if (!v)
+                      captureEvent("compare_opened", { kind: "subnet", count: selected.length });
+                    return !v;
+                  })
+                }
                 disabled={selected.length < 2}
                 className={classNames(
                   "inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-paper px-3 mg-type-micro transition-colors",
