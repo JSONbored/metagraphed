@@ -412,6 +412,7 @@ export interface AgentResource {
   kind: string; // agent | skill | index | contract | api | data
   title: string;
   url: string;
+  install?: string;
 }
 
 /** /api/v1/agent-resources — the machine-readable index of metagraphed's AI surfaces. */

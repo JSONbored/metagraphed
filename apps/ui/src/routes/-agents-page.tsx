@@ -26,7 +26,7 @@ import { SearchBox } from "@/components/metagraphed/search-box";
 import { Skeleton } from "@/components/metagraphed/states";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import type { AgentResources } from "@/lib/metagraphed/types";
+import type { AgentResource, AgentResources } from "@/lib/metagraphed/types";
 
 // A pre-prompt that drops the live llms.txt + MCP into a fresh agent session.
 const AGENT_PROMPT =
@@ -104,6 +104,11 @@ function AgentsBody() {
   const { data } = useSuspenseQuery(agentResourcesQuery());
   const res = data.data as AgentResources;
   const mcp = res.mcp;
+  const skillResource = res.resources.find(
+    (r): r is AgentResource & { install: string } => r.kind === "skill" && Boolean(r.install),
+  );
+  const skillMeta = kindMeta("skill");
+  const SkillIcon = skillMeta.icon;
 
   return (
     <div className="mt-6 space-y-section">
@@ -149,10 +154,11 @@ function AgentsBody() {
         <SearchBox />
       </section>
 
-      {/* Two calmer alternatives, side by side */}
-      <section className="grid gap-10 md:grid-cols-2">
+      {/* Three calmer alternatives, side by side */}
+      <section className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
         <div>
           <SectionHeading
+            id="install-sdk"
             title="Or install the SDK"
             intro="Typed clients for Python and TypeScript that wrap every route and the RPC proxy."
           />
@@ -175,6 +181,30 @@ function AgentsBody() {
             ))}
           </div>
         </div>
+
+        {skillResource && (
+          <div>
+            <SectionHeading
+              id="skill-install"
+              title="Or add the skill"
+              intro="A drop-in Agent Skill for Claude Code, Cursor, and any gh skill-compatible agent."
+            />
+            <Panel as="div" flush>
+              <div className="flex items-center gap-3 px-4 py-3">
+                <SkillIcon className={classNames("size-4 shrink-0", skillMeta.tone)} aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <code className="block overflow-x-auto whitespace-nowrap font-mono mg-type-caption text-ink-strong">
+                    {skillResource.install}
+                  </code>
+                  <ExternalLink href={skillResource.url} className="mg-type-data-sm text-ink-muted">
+                    {skillResource.title}
+                  </ExternalLink>
+                </div>
+                <CopyButton value={skillResource.install} label="Skill install command" compact />
+              </div>
+            </Panel>
+          </div>
+        )}
 
         <div>
           <SectionHeading title="Or drop into a chat" intro={res.copyable_agent.description} />
