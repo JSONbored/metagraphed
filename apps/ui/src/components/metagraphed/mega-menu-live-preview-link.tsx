@@ -44,7 +44,7 @@ function LiveRowLink({ item, onNavigate, registerItem, itemIndex }: MegaMenuLive
     >
       <span className="min-w-0">
         <span className="block text-sm text-ink-strong truncate">{item.label}</span>
-        <span className="block text-[11px] text-ink-muted truncate">{item.sub}</span>
+        <span className="block mg-type-caption text-ink-muted truncate">{item.sub}</span>
       </span>
       <ArrowUpRight className="size-3 text-ink-muted shrink-0" />
     </Link>

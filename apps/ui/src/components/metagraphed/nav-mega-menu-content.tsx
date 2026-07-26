@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   CopyButton,
-  safeExternalUrl,
+  ExternalLink,
 } from "@jsonbored/ui-kit";
 import {
   MEGA_PANELS,
@@ -256,7 +256,7 @@ export function MegaPanelBody({
           </div>
         </div>
         {showOverallEmpty ? (
-          <div className="mt-3 rounded-md border border-dashed border-ink-subtle bg-surface/40 px-3 py-2 text-[11px] text-ink-muted flex items-center justify-between">
+          <div className="mt-3 rounded-md border border-dashed border-ink-subtle bg-surface/40 px-3 py-2 mg-type-caption text-ink-muted flex items-center justify-between">
             <span>
               No results for <span className="text-ink-strong">"{filterValue}"</span>.
             </span>
@@ -276,7 +276,7 @@ export function MegaPanelBody({
       <div className="col-span-5">
         <div className="mg-label mb-3">Browse</div>
         {browseEmpty && !supportsLive ? (
-          <div className="text-[11px] text-ink-muted">No matches in this section.</div>
+          <div className="mg-type-caption text-ink-muted">No matches in this section.</div>
         ) : browseEmpty ? null : (
           <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5">
             {browseFiltered.map((l) => {
@@ -295,7 +295,7 @@ export function MegaPanelBody({
                       {l.label}
                     </div>
                     {l.hint ? (
-                      <div className="text-[11px] text-ink-muted truncate">{l.hint}</div>
+                      <div className="mg-type-caption text-ink-muted truncate">{l.hint}</div>
                     ) : null}
                   </Link>
                 </li>
@@ -316,19 +316,19 @@ export function MegaPanelBody({
               </ul>
             ) : liveError ? (
               <div className="flex items-center justify-between rounded-md border border-health-down/30 bg-health-down/5 px-2.5 py-1.5">
-                <span className="text-[11px] text-health-down">
+                <span className="mg-type-caption text-health-down">
                   Couldn't load live {panel.label.toLowerCase()}.
                 </span>
                 <button
                   type="button"
                   onClick={liveRetry}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-strong hover:text-accent"
+                  className="inline-flex items-center gap-1 mg-type-caption font-medium text-ink-strong hover:text-accent"
                 >
                   <RefreshCw className="size-3" /> Retry
                 </button>
               </div>
             ) : liveEmpty ? (
-              <div className="text-[11px] text-ink-muted px-2 py-1.5">
+              <div className="mg-type-caption text-ink-muted px-2 py-1.5">
                 No live matches for "{filterValue}".
               </div>
             ) : (
@@ -363,7 +363,7 @@ export function MegaPanelBody({
                       to={r.to}
                       onClick={onNavigate}
                       ref={(el) => registerItem(el, i)}
-                      className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-ink hover:border-accent/40 hover:text-accent focus:border-accent/60 focus:outline-none transition-colors"
+                      className="rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption text-ink hover:border-accent/40 hover:text-accent focus:border-accent/60 focus:outline-none transition-colors"
                       preload="intent"
                     >
                       {r.label}
@@ -390,7 +390,7 @@ export function MegaPanelBody({
                     search={(l.search ?? undefined) as never}
                     onClick={onNavigate}
                     ref={(el) => registerItem(el, i)}
-                    className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-accent/50 focus:border-accent/60 focus:outline-none transition-colors"
+                    className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong hover:border-accent/50 focus:border-accent/60 focus:outline-none transition-colors"
                     preload="intent"
                   >
                     {l.label}
@@ -400,7 +400,7 @@ export function MegaPanelBody({
             })}
           </ul>
         ) : (
-          <div className="text-[11px] text-ink-muted">No quick filters.</div>
+          <div className="mg-type-caption text-ink-muted">No quick filters.</div>
         )}
       </div>
 
@@ -414,7 +414,7 @@ export function MegaPanelBody({
             ))}
           </div>
         ) : snapshot.isError ? (
-          <div className="rounded-md border border-health-down/30 bg-health-down/5 px-2.5 py-2 text-[11px] text-health-down">
+          <div className="rounded-md border border-health-down/30 bg-health-down/5 px-2.5 py-2 mg-type-caption text-health-down">
             Snapshot unavailable.
           </div>
         ) : (
@@ -444,14 +444,13 @@ export function MegaPanelBody({
         <div className="flex items-center gap-2 mg-type-data text-ink-muted">
           <span>{panel.apiPath}</span>
           <CopyButton value={`${API_BASE}${panel.apiPath}`} label={`${panel.apiPath} URL`} />
-          <a
-            href={safeExternalUrl(`${API_BASE}${panel.apiPath}`)}
-            target="_blank"
-            rel="noopener noreferrer"
+          <ExternalLink
+            bare
+            href={`${API_BASE}${panel.apiPath}`}
             className="inline-flex items-center gap-1 hover:text-ink-strong"
           >
             <Boxes className="size-3" /> JSON
-          </a>
+          </ExternalLink>
         </div>
       </div>
     </div>
@@ -535,7 +534,7 @@ export function MobileMegaMenuBody({ onNavigate }: { onNavigate?: () => void }) 
                           >
                             {l.label}
                             {l.hint ? (
-                              <span className="block text-[11px] text-ink-muted">{l.hint}</span>
+                              <span className="block mg-type-caption text-ink-muted">{l.hint}</span>
                             ) : null}
                           </Link>
                         </li>
@@ -552,7 +551,7 @@ export function MobileMegaMenuBody({ onNavigate }: { onNavigate?: () => void }) 
                               to={l.to}
                               search={(l.search ?? undefined) as never}
                               onClick={onNavigate}
-                              className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong"
+                              className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 mg-type-caption text-ink-muted hover:text-ink-strong"
                               preload="intent"
                             >
                               {l.label}

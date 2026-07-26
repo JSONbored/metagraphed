@@ -131,7 +131,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
       <SheetTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-ink-strong hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 mg-type-caption font-medium text-ink-strong hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Open resource filters"
         >
           <Filter className="size-3" />
@@ -181,7 +181,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
           <button
             type="button"
             onClick={filter.reset}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-muted hover:text-ink-strong"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> Reset
           </button>
@@ -221,7 +221,7 @@ function SegmentBar({
             aria-selected={active}
             onClick={() => onChange(s.id)}
             className={classNames(
-              "px-2.5 py-1 text-[11px] font-medium rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "px-2.5 py-1 mg-type-caption font-medium rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
             )}
           >
@@ -447,7 +447,7 @@ function EndpointRow({ e }: { e: Endpoint }) {
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" className="text-[11px]">
+              <TooltipContent side="top" className="mg-type-caption">
                 Copy URL
               </TooltipContent>
             </Tooltip>
@@ -456,6 +456,11 @@ function EndpointRow({ e }: { e: Endpoint }) {
                 {safeUrl ? (
                   <a
                     href={safeUrl}
+                    // Already routed through safeExternalUrl above (with a custom
+                    // blocked-state fallback below); ui-kit's <ExternalLink>
+                    // can't sit under TooltipTrigger asChild because it doesn't
+                    // forward the ref/hover handlers Radix's Slot injects.
+                    // eslint-disable-next-line no-restricted-syntax -- see above
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Open endpoint"
@@ -479,7 +484,7 @@ function EndpointRow({ e }: { e: Endpoint }) {
                   </span>
                 )}
               </TooltipTrigger>
-              <TooltipContent side="top" className="text-[11px]">
+              <TooltipContent side="top" className="mg-type-caption">
                 {safeUrl ? "Open in new tab" : "Blocked unsafe URL"}
               </TooltipContent>
             </Tooltip>
@@ -617,6 +622,11 @@ function SurfaceRow({ s }: { s: Surface }) {
               {safeUrl ? (
                 <a
                   href={safeUrl}
+                  // Already routed through safeExternalUrl above (with a custom
+                  // blocked-state fallback below); ui-kit's <ExternalLink>
+                  // can't sit under TooltipTrigger asChild because it doesn't
+                  // forward the ref/hover handlers Radix's Slot injects.
+                  // eslint-disable-next-line no-restricted-syntax -- see above
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-0.5 block truncate mg-type-data text-ink-muted hover:text-ink-strong"

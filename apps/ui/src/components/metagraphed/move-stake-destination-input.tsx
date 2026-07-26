@@ -63,7 +63,7 @@ export function MoveStakeDestinationInput({
 
   return (
     <div className="space-y-4">
-      <div className="rounded border border-border bg-surface/40 px-2.5 py-2 text-[11px] text-ink-muted">
+      <div className="rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
         Moving from{" "}
         <span className="font-medium text-ink-strong">
           {originValidatorName ?? shortHash(originHotkey, 6)}

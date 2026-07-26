@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Coins, Download } from "lucide-react";
-import { CopyButton } from "@jsonbored/ui-kit";
+import { CopyButton, ExternalLink } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -291,7 +291,7 @@ export function NeuronTable({
                             <button
                               type="button"
                               onClick={open}
-                              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
                             >
                               <Coins className="size-3 text-ink-muted" aria-hidden />
                               Delegate
@@ -311,16 +311,16 @@ export function NeuronTable({
         <span>
           {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
         </span>
-        <a
-          href={csvUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-1 mg-type-label uppercase text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Download className="size-3" aria-hidden />
-          Download CSV
-        </a>
+        <span onClick={(e) => e.stopPropagation()}>
+          <ExternalLink
+            bare
+            href={csvUrl}
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-1 mg-type-label uppercase text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Download className="size-3" aria-hidden />
+            Download CSV
+          </ExternalLink>
+        </span>
       </div>
     </Panel>
   );
@@ -397,7 +397,7 @@ function NeuronCard({
           "—"
         )}
       </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
         <Stat label="Stake τ" value={taoCompact(n.stake_tao)} />
         <Stat label="Emission τ" value={taoCompact(n.emission_tao)} />
         {isValidator ? (
@@ -428,7 +428,7 @@ function NeuronCard({
             <button
               type="button"
               onClick={open}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
             >
               <Coins className="size-3 text-ink-muted" aria-hidden />
               Delegate

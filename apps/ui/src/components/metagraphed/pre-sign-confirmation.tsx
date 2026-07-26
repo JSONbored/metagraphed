@@ -100,7 +100,7 @@ export function PreSignConfirmation({
         />
       ) : null}
 
-      <div className="flex items-start gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-2 text-[11px] text-ink-muted">
+      <div className="flex items-start gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
         <span>
           metagraphed builds this transaction for your wallet to sign — we never see your keys and
@@ -153,7 +153,7 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
-      <span className="text-[11px] text-ink-muted">{label}</span>
+      <span className="mg-type-caption text-ink-muted">{label}</span>
       <span className="text-right">
         <span
           className={classNames(
@@ -163,7 +163,7 @@ function SummaryRow({
         >
           {value}
         </span>
-        {detail ? <span className="block text-[10px] text-ink-muted">{detail}</span> : null}
+        {detail ? <span className="block mg-type-caption text-ink-muted">{detail}</span> : null}
       </span>
     </div>
   );

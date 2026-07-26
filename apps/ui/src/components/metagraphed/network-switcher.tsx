@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, ChevronDown, Globe2, Pencil, TerminalSquare } from "lucide-react";
-import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
+import { ExternalLink, Popover, PopoverTrigger } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
 import { useApiBase, useNetwork } from "@/hooks/use-api-base";
 import { CHAIN_NETWORKS, LOCAL_DEV, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
@@ -116,7 +116,7 @@ export function NetworkSwitcher() {
                         </span>
                         {active ? <Check className="size-3 text-health-ok" /> : null}
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-ink-muted">
+                      <span className="mt-0.5 block mg-type-caption text-ink-muted">
                         {n.description}
                       </span>
                     </span>
@@ -133,19 +133,18 @@ export function NetworkSwitcher() {
                       {LOCAL_DEV.label}
                     </span>
                   </div>
-                  <span className="mt-0.5 block text-[10px] text-ink-muted">
+                  <span className="mt-0.5 block mg-type-caption text-ink-muted">
                     {LOCAL_DEV.description}
                   </span>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <code className="mg-type-data-sm text-ink-muted truncate">{LOCAL_DEV.rpc}</code>
-                    <a
+                    <ExternalLink
+                      bare
                       href={LOCAL_DEV.guideUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] text-ink-muted hover:text-ink-strong underline underline-offset-2 shrink-0"
+                      className="mg-type-caption text-ink-muted hover:text-ink-strong underline underline-offset-2 shrink-0"
                     >
                       setup →
-                    </a>
+                    </ExternalLink>
                   </div>
                 </div>
               </Panel>
@@ -153,7 +152,7 @@ export function NetworkSwitcher() {
           </ul>
         </div>
 
-        <div className="rounded border border-border bg-surface/40 px-2 py-1.5 text-[11px] text-ink-muted">
+        <div className="rounded border border-border bg-surface/40 px-2 py-1.5 mg-type-caption text-ink-muted">
           <div className="flex items-center gap-2">
             <span
               className={classNames("inline-block size-1.5 rounded-full", dotCls)}
@@ -208,7 +207,7 @@ export function NetworkSwitcher() {
                 />
                 <button
                   type="submit"
-                  className="rounded border border-border bg-card px-2 py-1 text-[11px] hover:border-ink/30"
+                  className="rounded border border-border bg-card px-2 py-1 mg-type-caption hover:border-ink/30"
                 >
                   set
                 </button>
@@ -219,7 +218,7 @@ export function NetworkSwitcher() {
                   <button
                     type="button"
                     onClick={() => changeBase(DEFAULT_API_BASE)}
-                    className="text-[10px] text-ink-muted hover:text-ink-strong underline underline-offset-2 shrink-0"
+                    className="mg-type-caption text-ink-muted hover:text-ink-strong underline underline-offset-2 shrink-0"
                   >
                     reset
                   </button>

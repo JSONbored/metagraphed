@@ -75,7 +75,7 @@ export function RegistryTicker() {
                   <span className="text-ink-strong tabular-nums">#{formatNumber(blockNumber)}</span>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-[11px]">
+              <TooltipContent side="bottom" className="mg-type-caption">
                 Chain head · <TimeAgo at={head?.observed_at} />
               </TooltipContent>
             </Tooltip>
@@ -88,7 +88,7 @@ export function RegistryTicker() {
                 <span className="text-ink-strong tabular-nums">{formatUsd(market?.price)}</span>
               </span>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-[11px]">
+            <TooltipContent side="bottom" className="mg-type-caption">
               Current TAO price · CoinPaprika
             </TooltipContent>
           </Tooltip>

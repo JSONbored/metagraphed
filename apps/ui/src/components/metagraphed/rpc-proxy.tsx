@@ -110,7 +110,7 @@ export function ProxyHero() {
             <Icon className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
             <div>
               <p className="mg-type-caption font-medium text-ink-strong">{title}</p>
-              <p className="text-[11px] leading-snug text-ink-muted">{body}</p>
+              <p className="mg-type-caption leading-snug text-ink-muted">{body}</p>
             </div>
           </li>
         ))}
@@ -175,7 +175,7 @@ export function ProxyUsagePanel() {
             "Live from the proxy telemetry"
           )}
         </p>
-        <div className="inline-flex rounded border border-border bg-card p-0.5">
+        <Panel as="div" flush bodyClassName="inline-flex !p-0.5">
           {(["7d", "30d"] as const).map((w) => (
             <button
               key={w}
@@ -189,7 +189,7 @@ export function ProxyUsagePanel() {
               {w}
             </button>
           ))}
-        </div>
+        </Panel>
       </div>
 
       {stale ? <StaleBanner generatedAt={data.meta?.generated_at} /> : null}
