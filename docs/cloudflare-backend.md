@@ -6,7 +6,7 @@ Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. G
 
 - Workers serve `metagraph.sh/api/v1/*` and `metagraph.sh/metagraph/*.json` routes over canonical artifact paths so API consumers get consistent CORS, cache headers, storage-tier headers, and R2 fallback.
 - Workers Static Assets serve compact checked-in artifacts from `public/metagraph`.
-- R2 stores high-churn/detail artifacts staged under `dist/metagraph-r2/metagraph`, plus current artifact copies under `latest/`; versioned artifact history under `runs/{generated_at}/` is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1`.
+- R2 stores high-churn/detail artifacts staged under `dist/metagraph-r2/metagraph`, plus current artifact copies under `latest/`; artifact history is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1` and is content-addressed at `by-hash/<sha256>` (#8208) — a byte-identical artifact across runs is stored once regardless of how many publishes it survives unchanged. Each run's `runs/{generated_at}/r2-manifest.json` is the pointer: it lists every artifact's path and sha256, so "what was live at run X" is `for each artifact, fetch by-hash/<its sha256>`.
 - KV stores the small publish pointer plus the live tiers: the 15-minute prober's health snapshots and the live economics blob.
 - D1 is not used for canonical registry truth in v1.
 - The read-only RPC proxy/load-balancer prototype exists behind `METAGRAPH_ENABLE_RPC_PROXY=false`; write and unsafe RPC methods remain blocked by default.

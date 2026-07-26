@@ -162,12 +162,23 @@ async function buildManifest(
     }
     const raw = await readFile(file);
     const fileStat = await stat(file);
+    const sha256 = sha256Hex(raw);
     artifacts.push({
       content_type: contentTypeFor(relative),
-      key: `runs/${version}/${relative}`,
+      // Content-addressed, not run-prefixed (#8208): a byte-identical artifact
+      // across N runs is the common case (most artifacts change rarely), so
+      // keying history by hash lets r2-upload.ts skip re-uploading bytes it
+      // already has, via a cheap HEAD instead of a full PUT -- dedup applies
+      // across ALL history, not just the immediately-preceding run. This run's
+      // full path->sha256 mapping is still recoverable: the manifest itself
+      // (this file) is uploaded to runs/<version>/r2-manifest.json every run
+      // (see r2-upload.ts's buildControlArtifacts), so "what was live at run
+      // X" is `for each artifact, fetch by-hash/<its sha256>` -- no separate
+      // ledger needed.
+      key: `by-hash/${sha256}`,
       latest_key: `latest/${relative}`,
       path: `/metagraph/${relative}`,
-      sha256: sha256Hex(raw),
+      sha256,
       size_bytes: fileStat.size,
       storage_tier: artifactStorageTierForRelativePath(relative),
     });

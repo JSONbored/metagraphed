@@ -2456,12 +2456,19 @@ test("R2-only generated artifacts stay out of the public git tree", () => {
   }
 });
 
-test("R2 history upload writes every planned run-prefix artifact", async () => {
+test("R2 history upload deduplicates content-addressed objects that already exist", async () => {
   const execFileAsync = promisify(execFile);
   const manifestPath = path.join(r2StagingRoot, "r2-manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const remoteManifestBody = readFileSync(manifestPath);
   const putKeys: string[] = [];
+  const headKeys: string[] = [];
+  // Pre-seed one artifact's content-addressed key (by-hash/<sha256>, see
+  // r2-manifest.ts) as already present remotely -- its history PUT must be
+  // skipped (#8208), while every other artifact/control object (none of
+  // which this mock knows about) still gets a real PUT.
+  const preexistingHistoryKey = manifest.artifacts.at(-1).key;
+  const existingKeys = new Set([preexistingHistoryKey]);
 
   // Mocks the Cloudflare R2 REST API scripts/r2-upload.ts calls directly
   // (replaced the METAGRAPH_WRANGLER_BIN fake-CLI seam when putObjectOnce/
@@ -2477,6 +2484,11 @@ test("R2 history upload writes every planned run-prefix artifact", async () => {
     const key = decodeURIComponent(
       req.url!.slice(markerIndex + objectsMarker.length),
     );
+    if (req.method === "HEAD") {
+      headKeys.push(key);
+      res.writeHead(existingKeys.has(key) ? 200 : 404).end();
+      return;
+    }
     if (req.method === "GET") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(remoteManifestBody);
@@ -2516,23 +2528,35 @@ test("R2 history upload writes every planned run-prefix artifact", async () => {
       },
     );
     const summary = JSON.parse(stdout);
+    const totalHistoryObjects =
+      manifest.artifacts.length + summary.uploaded_control_count;
 
     assert.equal(summary.remote_manifest_status, "found");
     assert.equal(summary.changed_artifact_count, 0);
     assert.equal(summary.skipped_artifact_count, manifest.artifacts.length);
     assert.equal(summary.uploaded_latest_count, 0);
     assert.equal(summary.uploaded_control_count, 3);
+    assert.equal(summary.deduplicated_history_count, 1);
     assert.equal(
       summary.uploaded_history_count,
-      manifest.artifacts.length + summary.uploaded_control_count,
+      totalHistoryObjects - 1,
+      "the pre-seeded content-addressed object must not count as a fresh upload",
     );
     assert.equal(
-      putKeys.filter((key) => key.startsWith(manifest.run_prefix)).length,
-      manifest.artifacts.length + summary.uploaded_control_count,
+      putKeys.length,
+      // putKeys also captures the 3 "control"-kind PUTs (the always-fresh
+      // latest/ copies of the manifest files, separate from their history
+      // copies) -- add those back in alongside the post-dedup history count.
+      totalHistoryObjects - 1 + summary.uploaded_control_count,
+      "the pre-seeded content-addressed object must not be re-uploaded",
     );
     assert(
-      putKeys.includes(manifest.artifacts.at(-1).key),
-      "expected history upload to include artifacts unchanged in latest",
+      !putKeys.includes(preexistingHistoryKey),
+      "a history object that already exists by hash must be skipped, not re-uploaded",
+    );
+    assert(
+      headKeys.includes(preexistingHistoryKey),
+      "every history object must be existence-checked before upload",
     );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
