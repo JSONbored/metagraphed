@@ -4138,10 +4138,10 @@ function TreemapMini({
             "div",
             {
               className: "flex h-full w-full flex-col justify-between rounded border border-background/40 p-1.5",
-              style: { background: t.color ?? "var(--accent)" },
+              style: { background: t.color ?? "var(--surface-2)" },
               children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate mg-type-data-sm font-medium leading-none text-accent-foreground", children: t.label }),
-                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate mg-type-data-sm leading-none text-accent-foreground/80", children: formatValue(t.value) }) : null
+                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate mg-type-data-sm font-medium leading-none text-ink-strong", children: t.label }),
+                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate mg-type-data-sm leading-none text-ink-muted", children: formatValue(t.value) }) : null
               ] }) : null
             }
           )

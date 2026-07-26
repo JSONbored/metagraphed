@@ -167,17 +167,23 @@ export function TreemapMini({
             height: `${t.h}%`,
           }}
         >
+          {/* #8255 (accent budget): the default fill was full-strength
+              var(--accent) on every tile, so a treemap painted the whole map
+              area in the interactive colour. Accent marks what's interactive
+              or current; a magnitude encoding is neither. The quiet default
+              is surface-2 with an ink label, and callers that need a
+              categorical ramp still pass `color` per datum. */}
           <div
             className="flex h-full w-full flex-col justify-between rounded border border-background/40 p-1.5"
-            style={{ background: t.color ?? "var(--accent)" }}
+            style={{ background: t.color ?? "var(--surface-2)" }}
           >
             {t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? (
               <>
-                <span className="truncate mg-type-data-sm font-medium leading-none text-accent-foreground">
+                <span className="truncate mg-type-data-sm font-medium leading-none text-ink-strong">
                   {t.label}
                 </span>
                 {t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? (
-                  <span className="truncate mg-type-data-sm leading-none text-accent-foreground/80">
+                  <span className="truncate mg-type-data-sm leading-none text-ink-muted">
                     {formatValue(t.value)}
                   </span>
                 ) : null}

@@ -52,8 +52,11 @@ export function ValidatorsTableLoader({
   // a complement to the ranked bar list, not a replacement. Shares are derived
   // client-side from the values already in hand (no network-wide total exists
   // on the payload).
+  // #8255 (accent budget): tiles drop the bars' accent colour and take
+  // TreemapMini's quiet surface fill -- accent marks what's interactive or
+  // current, and a full-map area fill is neither.
   const stakeTiles = useMemo<TreemapMiniDatum[]>(
-    () => stakeBars.map((b) => ({ label: b.label, value: b.value, color: b.color })),
+    () => stakeBars.map((b) => ({ label: b.label, value: b.value })),
     [stakeBars],
   );
 

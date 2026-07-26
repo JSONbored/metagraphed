@@ -1162,10 +1162,6 @@ html[data-density="compact"] .bg-card > table td {
   .mg-metric-tile:hover {
     transform: none;
   }
-  .mg-ticker-track {
-    animation: none !important;
-    transform: none !important;
-  }
 }
 
 .mg-chip-rail > div::-webkit-scrollbar {
@@ -1190,11 +1186,6 @@ html[data-density="compact"] .bg-card > table td {
     #000 calc(100% - 1.25rem),
     transparent 100%
   );
-}
-
-.mg-ticker-track {
-  width: max-content;
-  animation: mg-marquee 60s linear infinite;
 }
 
 @keyframes mg-lb-in {
@@ -1634,14 +1625,5 @@ html[data-density="compact"] .bg-card > table td {
   .mg-query-shell,
   .mg-ghost-trigger {
     transition: none;
-  }
-}
-
-@keyframes mg-marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
   }
 }
