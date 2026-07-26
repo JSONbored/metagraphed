@@ -1,0 +1,47 @@
+name: Check Publish Freshness
+
+# Staleness alarm for the published registry (#8286). The publish pipeline was
+# stale for four days in July 2026 and nobody knew -- it was found by a UI audit
+# noticing "snapshot 4d ago" banners on the site, not by an alert. That mattered
+# twice over: the staleness also HID a second bug, because the KV pointer only
+# moves on a publish that completes, so four days of no completed publishes meant
+# four days of not knowing the pointer was broken (#8276).
+#
+# Deliberately reads the LIVE PUBLIC API (meta.published_at on /api/v1/build) --
+# the same freshness signal a visitor sees -- rather than an internal build
+# stamp or workflow status, so this cannot pass while the public surface is
+# stale. It needs no secrets for that reason.
+#
+# Runs a few hours after the daily publish (publish-cloudflare.yml, "17 7 * * *")
+# so a normal run has landed before this looks; the 48h threshold means a single
+# missed publish is not yet an incident, two is.
+on:
+  schedule:
+    - cron: "41 13 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-publish-freshness
+  cancel-in-progress: false
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      - name: Check published-data freshness
+        run: node scripts/check-publish-freshness.ts
