@@ -1,19 +1,14 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Scale, Coins, Timer } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton } from "@/components/metagraphed/states";
-import { ShareButton, DownloadCsvButton, ActionBar, StatTile } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
+import { StatTile } from "@jsonbored/ui-kit";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { governanceConfigChangesQuery, networkParametersQuery } from "@/lib/metagraphed/queries";
-import { buildUrl } from "@/lib/metagraphed/client";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
-import type { AdminChangesSearch } from "./admin-changes.index";
+import type { GovernanceSearch } from "./chain.governance";
 
-function adminChangesQueryParams(search: AdminChangesSearch): Record<string, string | number> {
+export function adminChangesQueryParams(search: GovernanceSearch): Record<string, string | number> {
   const queryParams: Record<string, string | number> = {
     limit: search.limit,
     offset: search.offset,
@@ -23,66 +18,7 @@ function adminChangesQueryParams(search: AdminChangesSearch): Record<string, str
   return queryParams;
 }
 
-export function AdminChangesPage() {
-  const search = useSearch({ from: "/admin-changes/" });
-  const adminChangesCsvUrl = buildUrl(
-    "/api/v1/governance/config-changes",
-    adminChangesQueryParams(search),
-  );
-
-  return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Admin changes"
-        description="AdminUtils root-origin config changes — subtensor's own admin pallet for subnet hyperparameters and network-wide config, newest first."
-        actions={
-          <>
-            <ActionBar>
-              <DownloadCsvButton url={adminChangesCsvUrl} bare />
-              <ShareButton bare />
-            </ActionBar>
-          </>
-        }
-      />
-      {/* #6997: the change-log below is a history of governance config-change
-          events -- it never showed the *current* live values of the three
-          key protocol/governance parameters those changes actually move.
-          Own AsyncPanel so a slow/failed RPC read never blocks the
-          (unrelated, artifact-backed) change-log table below. */}
-      <AsyncPanel
-        context="network parameters"
-        fallback={
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            <Skeleton className="h-20" />
-            <Skeleton className="h-20" />
-            <Skeleton className="h-20" />
-          </div>
-        }
-        retryQueryKeys={[networkParametersQuery().queryKey]}
-      >
-        <NetworkParametersCard />
-      </AsyncPanel>
-      <div className="min-w-0">
-        <AsyncPanel context="admin changes" fallback={<TableSkeleton rows={10} columns={6} />}>
-          <AdminChangesTable />
-        </AsyncPanel>
-      </div>
-      <ApiSourceFooter
-        paths={["/api/v1/governance/config-changes", "/api/v1/network/parameters"]}
-        artifacts={["/metagraph/governance/config-changes.json"]}
-      />
-    </AppShell>
-  );
-}
-
-// #6997: current values of the three global Subtensor protocol/governance
-// parameters the change-log table below is a *history* of. Each field is
-// independently null on its own RPC failure (never coerced to 0), so
-// StatTile's own "—" empty-value rendering is what a viewer sees on a
-// per-field failure -- distinct from a real zero (e.g. tao_weight at 0%).
-function NetworkParametersCard() {
+export function NetworkParametersCard() {
   const { data: res } = useSuspenseQuery(networkParametersQuery());
   const p = res.data;
   const taoWeightPct = p.tao_weight != null ? `${(p.tao_weight * 100).toFixed(2)}%` : "—";
@@ -116,9 +52,9 @@ function NetworkParametersCard() {
   );
 }
 
-function AdminChangesTable() {
-  const search = useSearch({ from: "/admin-changes/" });
-  const navigate = useNavigate({ from: "/admin-changes/" });
+export function AdminChangesTable() {
+  const search = useSearch({ from: "/chain/governance" });
+  const navigate = useNavigate({ from: "/chain/governance" });
   const queryParams = adminChangesQueryParams(search);
 
   const setSearch = (patch: Record<string, unknown>) =>

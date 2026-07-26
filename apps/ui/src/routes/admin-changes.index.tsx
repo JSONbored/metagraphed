@@ -1,34 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { AdminChangesPage } from "./-admin-changes-index-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const adminChangesSearchSchema = z.object({
-  limit: fallback(z.number().int().min(1).max(100), 50).default(50),
-  offset: fallback(z.number().int().min(0), 0).default(0),
-  call_function: fallback(z.string(), "").default(""),
-  success: fallback(z.enum(["", "true", "false"]), "").default(""),
-});
-
-export type AdminChangesSearch = z.infer<typeof adminChangesSearchSchema>;
-
+/**
+ * /admin-changes merged into the Chain hub's Governance tab (#8291, part of
+ * #8244). Search params forward; `view` pins the AdminUtils half.
+ */
 export const Route = createFileRoute("/admin-changes/")({
-  validateSearch: zodValidator(adminChangesSearchSchema),
-  head: () => ({
-    meta: [
-      { title: "Admin changes — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "AdminUtils root-origin config changes — subtensor's hyperparameter and network-config admin pathway, newest first.",
-      },
-      { property: "og:title", content: "Admin changes — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "AdminUtils root-origin config changes — subtensor's hyperparameter and network-config admin pathway, newest first.",
-      },
-    ],
-  }),
-  component: AdminChangesPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: "/chain/governance",
+      search: { ...(search as Record<string, unknown>), view: "admin" } as never,
+      replace: true,
+    });
+  },
 });

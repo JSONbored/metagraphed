@@ -180,7 +180,7 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
   },
   {
     label: "Events",
-    to: "/events",
+    to: "/chain/events",
     hint: "Chain event feed",
     icon: Rss,
     scope: "route",
@@ -194,21 +194,21 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
   },
   {
     label: "Sudo",
-    to: "/sudo",
+    to: "/chain/governance",
     hint: "Root-origin calls + current key",
     icon: KeyRound,
     scope: "route",
   },
   {
     label: "Admin changes",
-    to: "/admin-changes",
+    to: "/chain/governance",
     hint: "AdminUtils config-change feed",
     icon: SlidersHorizontal,
     scope: "route",
   },
   {
     label: "Runtime",
-    to: "/runtime",
+    to: "/chain/runtime",
     hint: "Spec-version upgrade history",
     icon: GitBranch,
     scope: "route",

@@ -1,34 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { SudoPage } from "./-sudo-index-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const sudoSearchSchema = z.object({
-  limit: fallback(z.number().int().min(1).max(100), 50).default(50),
-  offset: fallback(z.number().int().min(0), 0).default(0),
-  call_function: fallback(z.string(), "").default(""),
-  success: fallback(z.enum(["", "true", "false"]), "").default(""),
-});
-
-export type SudoSearch = z.infer<typeof sudoSearchSchema>;
-
+/**
+ * /sudo merged into the Chain hub's Governance tab (#8291, part of #8244).
+ * Sudo and AdminUtils are two halves of one root-origin surface, so they share
+ * a page with a source toggle. Search params forward; `view` pins the Sudo half.
+ */
 export const Route = createFileRoute("/sudo/")({
-  validateSearch: zodValidator(sudoSearchSchema),
-  head: () => ({
-    meta: [
-      { title: "Sudo — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Root-origin (Sudo) calls on the Bittensor chain and the account currently holding the Sudo key.",
-      },
-      { property: "og:title", content: "Sudo — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Root-origin (Sudo) calls on the Bittensor chain and the account currently holding the Sudo key.",
-      },
-    ],
-  }),
-  component: SudoPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: "/chain/governance",
+      search: { ...(search as Record<string, unknown>), view: "sudo" } as never,
+      replace: true,
+    });
+  },
 });

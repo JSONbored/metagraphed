@@ -1,22 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { RuntimePage } from "./-runtime-index-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** /runtime moved into the Chain hub (#8291, part of #8244). */
 export const Route = createFileRoute("/runtime/")({
-  head: () => ({
-    meta: [
-      { title: "Runtime — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Spec-version upgrade history for the Bittensor chain — every runtime upgrade observed, newest first.",
-      },
-      { property: "og:title", content: "Runtime — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Spec-version upgrade history for the Bittensor chain — every runtime upgrade observed, newest first.",
-      },
-    ],
-  }),
-  component: RuntimePage,
+  beforeLoad: () => {
+    throw redirect({ to: "/chain/runtime", replace: true });
+  },
 });

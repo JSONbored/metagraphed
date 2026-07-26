@@ -85,7 +85,7 @@ const NAV_LINKS = [
     Icon: Hash,
   },
   {
-    to: "/events",
+    to: "/chain/events",
     label: "Events",
     hint: "Chain event feed",
     Icon: Rss,
