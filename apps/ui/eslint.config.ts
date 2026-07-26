@@ -168,6 +168,36 @@ const RADIUS_RULES = [
   },
 ];
 
+// #8255 visual grammar. Unlike the token rules above -- which encode "which
+// value" -- this encodes "how much": how loud a page is allowed to be.
+//
+// It joins FULL_DESIGN_RULES and inherits that severity: warn in src/**, error
+// in RATCHETED_DIRS. `no-restricted-syntax` carries one severity for all its
+// selectors, so there is no way to run this at error while the token worklist
+// stays at warn -- visual-grammar-guardrails.test.ts does that job instead,
+// failing CI outright on any occurrence anywhere in either package.
+//
+// The companion accent-budget rule is deliberately NOT here. Telling a
+// legitimate accent data mark (a bar sized `width: ${pct}%`, a sparkline
+// stroke, an 8px legend swatch) from a full-bleed region fill needs the
+// element's className, which a `style` -> Property -> Literal selector can't
+// reach -- a first attempt flagged all three of those as violations. The test
+// file makes that distinction with line context instead.
+const VISUAL_GRAMMAR_RULES = [
+  {
+    // Auto-scrolling text is unreadable, unpausable, and steals attention from
+    // whatever the reader actually came for. No markup referenced the marquee
+    // any more -- .mg-ticker-track had zero consumers and .mg-ticker is a
+    // plain user-scrollable row -- so what survived was dead CSS keeping the
+    // pattern one className away. This change deletes it and this rule keeps
+    // it deleted.
+    selector:
+      "Literal[value=/\\b(?:animate-marquee|animate-scroll|mg-marquee|mg-ticker-track)\\b/]",
+    message:
+      "No marquees or auto-scrolling strips (#8255). Give the reader a static list, or a scroll container they control.",
+  },
+];
+
 // The full Bone & Ink rule set applied to src/**/*.{ts,tsx} (the "warn" block
 // below) -- named so the #7851 ratchet block can apply the identical set at
 // "error" without duplicating the array.
@@ -180,6 +210,7 @@ const FULL_DESIGN_RULES = [
   ...Z_INDEX_RULES,
   ...GLASS_SURFACE_RULES,
   ...RADIUS_RULES,
+  ...VISUAL_GRAMMAR_RULES,
 ];
 
 // #7851: one-way lint ratchet. A directory enters this list only once it's

@@ -37,10 +37,13 @@ export function ValidatorDominanceChart() {
   }
 
   const barData = rows.map((r) => ({ label: r.label, value: r.value, color: DOMINANCE_COLOR }));
+  // #8255 (accent budget): the tiles deliberately omit `color` so they take
+  // TreemapMini's quiet surface fill. The ranked bars keep accent -- a thin
+  // series stroke is the one accent moment here; painting the treemap's whole
+  // area in the same colour made a magnitude encoding read as interactive.
   const tiles: TreemapMiniDatum[] = rows.map((r) => ({
     label: r.label,
     value: r.value,
-    color: DOMINANCE_COLOR,
   }));
   // Sum of the top-N shares only — not full network coverage (the API caps
   // this fetch to VALIDATOR_DOMINANCE_TOP_N rows), so the label says "top N"
