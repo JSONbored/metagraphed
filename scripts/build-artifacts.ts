@@ -5121,9 +5121,13 @@ function buildR2Manifest({
   generatedAt: string;
 }): Row {
   const version = timestamp.replace(/[:.]/g, "-");
+  // Content-addressed, not run-prefixed (#8208) -- mirrors scripts/r2-manifest.ts's
+  // own key scheme exactly; see that file's matching comment for the rationale
+  // (this function and that script both produce public/metagraph/r2-manifest.json,
+  // just at different points in the build pipeline, so they must agree on shape).
   const artifacts = artifactSizes.map((artifact) => ({
     content_type: "application/json",
-    key: `runs/${version}/${artifact.path}`,
+    key: `by-hash/${artifact.sha256}`,
     latest_key: `latest/${artifact.path}`,
     path: `/metagraph/${artifact.path}`,
     sha256: artifact.sha256,
@@ -5140,7 +5144,8 @@ function buildR2Manifest({
       canonical_latest_in_repo: true,
       large_history_in_r2: true,
       source_of_truth: "github-reviewed-artifacts",
-      versioned_run_prefix: `runs/${version}/`,
+      content_addressed_history: true,
+      manifest_run_prefix: `runs/${version}/`,
     },
     latest_prefix: "latest/",
     run_prefix: `runs/${version}/`,

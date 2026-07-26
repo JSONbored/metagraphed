@@ -194,24 +194,26 @@ for (const controlArtifact of plannedControlArtifacts) {
   }
 }
 
-await putObjects(artifactUploadJobs, {
+const artifactHistoryDedupedCount = await putObjects(artifactUploadJobs, {
   concurrency: uploadConcurrency,
   progressInterval,
   retryBaseDelayMs: uploadRetryBaseDelayMs,
   retries: uploadRetries,
 });
-await putObjects(controlUploadJobs, {
+const controlHistoryDedupedCount = await putObjects(controlUploadJobs, {
   concurrency: uploadConcurrency,
   progressInterval,
   retryBaseDelayMs: uploadRetryBaseDelayMs,
   retries: uploadRetries,
 });
+const dedupedHistoryCount =
+  artifactHistoryDedupedCount + controlHistoryDedupedCount;
 
 const uploadJobs = [...artifactUploadJobs, ...controlUploadJobs];
 const uploadedLatestCount = uploadJobs.filter(
   (job) => job.kind === "latest",
 ).length;
-const uploadedHistoryCount = uploadJobs.filter(
+const historyJobCount = uploadJobs.filter(
   (job) => job.kind === "history",
 ).length;
 const uploadedControlCount = uploadJobs.filter(
@@ -240,10 +242,17 @@ console.log(
     upload_retries: uploadRetries,
     upload_timeout_ms: uploadTimeoutMs,
     uploaded_control_count: uploadedControlCount,
-    uploaded_history_count: uploadedHistoryCount,
+    // #8208: history objects are content-addressed (by-hash/<sha256>, see
+    // r2-manifest.ts), so a history job whose object already exists remotely
+    // is skipped rather than re-uploaded -- deduplicated_history_count is how
+    // many of historyJobCount avoided a real PUT this run.
+    uploaded_history_count: historyJobCount - dedupedHistoryCount,
+    deduplicated_history_count: dedupedHistoryCount,
     uploaded_latest_count: uploadedLatestCount,
     uploaded_object_count:
-      uploadedLatestCount + uploadedHistoryCount + uploadedControlCount,
+      uploadedLatestCount +
+      (historyJobCount - dedupedHistoryCount) +
+      uploadedControlCount,
   }),
 );
 
@@ -378,20 +387,24 @@ async function putObjects(
     retries: number;
     retryBaseDelayMs: number;
   },
-): Promise<void> {
+): Promise<number> {
   if (jobs.length === 0) {
-    return;
+    return 0;
   }
 
   let nextIndex = 0;
   let completedCount = 0;
+  let dedupedCount = 0;
   const workerCount = Math.min(concurrency, jobs.length);
   await Promise.all(
     Array.from({ length: workerCount }, async () => {
       while (nextIndex < jobs.length) {
         const job = jobs[nextIndex];
         nextIndex += 1;
-        await putObject(job, { retries, retryBaseDelayMs });
+        const { deduped } = await putObject(job, { retries, retryBaseDelayMs });
+        if (deduped) {
+          dedupedCount += 1;
+        }
         completedCount += 1;
         if (
           completedCount === jobs.length ||
@@ -404,16 +417,16 @@ async function putObjects(
       }
     }),
   );
+  return dedupedCount;
 }
 
 async function putObject(
   job: UploadJob,
   { retries, retryBaseDelayMs }: { retries: number; retryBaseDelayMs: number },
-): Promise<void> {
+): Promise<{ deduped: boolean }> {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      await putObjectOnce(job);
-      return;
+      return await putObjectOnce(job);
     } catch (error) {
       if (attempt >= retries) {
         throw error;
@@ -425,6 +438,9 @@ async function putObject(
       await sleep(retryBaseDelayMs * 2 ** attempt);
     }
   }
+  // Unreachable: the loop above always returns or throws by its last
+  // iteration (attempt >= retries re-throws), but TypeScript can't see that.
+  throw new Error(`putObject exhausted retries for ${job.key}`);
 }
 
 // #stale-publish-pipeline/C: previously spawned a `wrangler r2 object put`
@@ -477,8 +493,21 @@ async function putObjectOnce({
   key,
   bucketName,
   contentType,
-}: UploadJob): Promise<void> {
+  kind,
+}: UploadJob): Promise<{ deduped: boolean }> {
   const { accountId, apiToken } = requireCloudflareCredentials();
+  // History objects are content-addressed (by-hash/<sha256>, see
+  // r2-manifest.ts): if this exact key already exists remotely, its bytes are
+  // necessarily identical (the key IS the hash of the content), so a HEAD
+  // check-then-skip avoids re-uploading a full body for an artifact that
+  // hasn't changed since some earlier run (#8208) -- unlike "latest"/"control"
+  // keys, which are always overwritten in place regardless of content.
+  if (
+    kind === "history" &&
+    (await objectExists(accountId, bucketName, key, apiToken))
+  ) {
+    return { deduped: true };
+  }
   const body = readFileSync(localPath);
   let res: Response;
   try {
@@ -515,6 +544,28 @@ async function putObjectOnce({
         .join("\n")
         .slice(0, 500),
     );
+  }
+  return { deduped: false };
+}
+
+// Fail-safe: any non-2xx/network outcome (including a timeout) is treated as
+// "not confirmed present" so the caller falls through to a real PUT -- worst
+// case a redundant upload, never a missed one.
+async function objectExists(
+  accountId: string,
+  bucketName: string,
+  key: string,
+  apiToken: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(r2ObjectUrl(accountId, bucketName, key), {
+      method: "HEAD",
+      headers: { Authorization: `Bearer ${apiToken}` },
+      signal: AbortSignal.timeout(uploadTimeoutMs),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
