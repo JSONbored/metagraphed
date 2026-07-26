@@ -69,7 +69,11 @@ describe("visual grammar guardrails (#8255)", () => {
     for (const p of sources) {
       const lines = read(p).split("\n");
       lines.forEach((line, i) => {
-        if (!/(?:background|backgroundColor|fill)\s*:\s*(?:[^,;\n]*\?\?\s*)?["']var\(--accent\)["']/.test(line))
+        if (
+          !/(?:background|backgroundColor|fill)\s*:\s*(?:[^,;\n]*\?\?\s*)?["']var\(--accent\)["']/.test(
+            line,
+          )
+        )
           return;
         // The className sits in the same JSX opening element, a few lines up.
         const element = lines.slice(Math.max(0, i - 6), i + 1).join("\n");
