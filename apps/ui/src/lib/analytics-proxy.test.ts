@@ -229,10 +229,7 @@ describe("forwardToAnalyticsHost", () => {
         body: "{}",
       },
     );
-    const response = await forwardToAnalyticsHost(
-      request,
-      "/s/?ver=1.0.0&compression=gzip-js",
-    );
+    const response = await forwardToAnalyticsHost(request, "/s/?ver=1.0.0&compression=gzip-js");
 
     expect(response.status).toBe(200);
   });

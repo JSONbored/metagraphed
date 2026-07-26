@@ -60,9 +60,7 @@ const MAX_REPLAY_BODY_BYTES = 2 * 1024 * 1024;
 // (events, flags, decide) to its own paths. Matched on the proxied upstream
 // path, i.e. AFTER ANALYTICS_PREFIX has been stripped.
 function maxBodyBytesForPath(pathWithParams: string): number {
-  return /^\/s\/?(?:\?|$)/.test(pathWithParams)
-    ? MAX_REPLAY_BODY_BYTES
-    : MAX_INGEST_BODY_BYTES;
+  return /^\/s\/?(?:\?|$)/.test(pathWithParams) ? MAX_REPLAY_BODY_BYTES : MAX_INGEST_BODY_BYTES;
 }
 
 export type PostHogAssetContext = { waitUntil(promise: Promise<unknown>): void };
