@@ -84,7 +84,13 @@ export function ListShell({
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",
         )}
-        style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
+        // --mg-sticky-offset is the app header (published by AppShell);
+        // --mg-tabs-h is the page's sticky tab strip, 0 when there isn't one.
+        // Without the second term this bar pinned to the same offset as the
+        // hub tabs on /chain and overlapped them on scroll (#8254).
+        style={{
+          top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))",
+        }}
       >
         <div className="flex flex-wrap items-center gap-2">{filters}</div>
       </div>

@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { classNames } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { ScrollShadow } from "@jsonbored/ui-kit";
+import { useStickyStripHeight } from "@/hooks/use-sticky-strip-height";
 
 export interface ProfileTabSpec {
   id: string;
@@ -51,6 +52,11 @@ export function ProfileTabs({
 
   const { tabRef, onKeyDown } = useRovingTablist(tabs.length, selectAt);
 
+  // Publish this strip's height so the page's inner sticky bars stack under
+  // it rather than pinning to the same offset (#8254).
+  const navRef = useRef<HTMLElement>(null);
+  useStickyStripHeight(navRef);
+
   // Keep the active tab visible when it changes (esp. useful when many tabs
   // overflow horizontally on tablet/mobile).
   const listRef = useRef<HTMLUListElement>(null);
@@ -63,6 +69,7 @@ export function ProfileTabs({
 
   return (
     <nav
+      ref={navRef}
       aria-label="Profile sections"
       className="sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}

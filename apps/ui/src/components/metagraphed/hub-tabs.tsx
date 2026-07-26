@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { ScrollShadow } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
+import { useStickyStripHeight } from "@/hooks/use-sticky-strip-height";
 
 /**
  * Shared chrome for the consolidated hubs (#8302).
@@ -43,32 +44,7 @@ export function HubTabs({ tabs, ariaLabel }: { tabs: readonly HubTab[]; ariaLabe
   const active = activeHubTab(tabs, pathname);
   const ref = useRef<HTMLElement>(null);
 
-  /**
-   * Publish this strip's measured height as --mg-hub-tabs-h.
-   *
-   * Anything that sticks BELOW the strip (the endpoint list's per-subnet group
-   * headers, for one) previously hardcoded an offset for whatever page chrome
-   * happened to exist when it was written — a magic number that silently goes
-   * wrong the moment the chrome changes, which is exactly what consolidating
-   * pages into hubs does. Measuring it means those offsets self-correct.
-   */
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const publish = () => {
-      document.documentElement.style.setProperty(
-        "--mg-hub-tabs-h",
-        `${el.getBoundingClientRect().height}px`,
-      );
-    };
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-      document.documentElement.style.removeProperty("--mg-hub-tabs-h");
-    };
-  }, []);
+  useStickyStripHeight(ref);
 
   return (
     <nav

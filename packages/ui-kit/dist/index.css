@@ -1119,6 +1119,25 @@ html[data-density=compact] .bg-card > table td {
   box-shadow: 0 0 0 1px var(--ring), 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
   border-radius: 6px;
 }
+.mg-tap-target {
+  position: relative;
+}
+.mg-tap-target::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
+}
+@media (pointer: fine) {
+  .mg-tap-target::after {
+    display: none;
+  }
+}
 .mg-table-scroll {
   mask-image:
     linear-gradient(

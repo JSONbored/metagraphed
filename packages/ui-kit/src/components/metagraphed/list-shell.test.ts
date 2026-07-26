@@ -23,8 +23,14 @@ describe("ListShell sticky table wrappers", () => {
     // root wrapper -- the sticky offset math reads --mg-sticky-offset
     // (from AppShell) plus this to land the <thead> just below the filter bar.
     expect(source).toContain("--mg-list-filter-offset");
+  });
+
+  it("stacks the filter bar below the page's sticky tab strip, not on top of it", () => {
+    // #8254: the bar pinned to bare --mg-sticky-offset, which is where the hub
+    // tab strip also pins -- on /chain the two overlapped on every scroll. The
+    // 0px fallback keeps pages without a strip unaffected.
     expect(source).toContain(
-      'style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}',
+      '"calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))"',
     );
   });
 

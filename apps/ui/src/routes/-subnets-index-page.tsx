@@ -1049,7 +1049,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               aria-label={
                 watchlist.isWatched(s.netuid) ? "Remove from watchlist" : "Add to watchlist"
               }
-              className="absolute right-2 top-2 rounded p-1 text-ink-muted hover:text-ink-strong"
+              className="mg-tap-target absolute right-2 top-2 rounded p-1 text-ink-muted hover:text-ink-strong"
             >
               <Star
                 className={classNames(
@@ -1373,7 +1373,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                                 ? `Remove SN${s.netuid} from watchlist`
                                 : `Add SN${s.netuid} to watchlist`
                             }
-                            className="flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                            className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
                           >
                             <Star
                               className={classNames(
@@ -1659,7 +1659,7 @@ function SubnetGrid({
                 aria-label={
                   watchlist.isWatched(s.netuid) ? "Remove from watchlist" : "Add to watchlist"
                 }
-                className="rounded p-1 text-ink-muted hover:text-ink-strong"
+                className="mg-tap-target rounded p-1 text-ink-muted hover:text-ink-strong"
               >
                 <Star
                   className={classNames(
