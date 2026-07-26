@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
   CopyableCode,
   Kbd,
-  safeExternalUrl,
+  ExternalLink,
 } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -51,7 +51,7 @@ export function ApiDrawerTrigger() {
           <Code2 className="size-4" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-[11px]">
+      <TooltipContent side="bottom" className="mg-type-caption">
         View in API · <Kbd>⌘</Kbd>
         <Kbd>J</Kbd>
       </TooltipContent>
@@ -89,7 +89,7 @@ export function ApiDrawer() {
           <SheetTitle className="font-display text-base font-semibold text-ink-strong inline-flex items-center gap-2">
             <Code2 className="size-4 text-accent" /> API source
           </SheetTitle>
-          <p className="text-[11px] text-ink-muted leading-relaxed">
+          <p className="mg-type-caption text-ink-muted">
             Every screen in Metagraphed is powered by a documented JSON endpoint. Copy the URL, open
             it raw, or grab the curl snippet.
           </p>
@@ -167,15 +167,14 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
               GET
             </span>
             <span className="min-w-0 flex-1">{fullUrl}</span>
-            <a
-              href={safeExternalUrl(fullUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open raw"
+            <ExternalLink
+              bare
+              href={fullUrl}
+              ariaLabel="Open raw"
               className="text-ink-muted hover:text-ink-strong"
             >
               <ExternalLinkIcon className="size-3.5" />
-            </a>
+            </ExternalLink>
           </div>
         </Panel>
         <div className="flex flex-wrap gap-1.5">

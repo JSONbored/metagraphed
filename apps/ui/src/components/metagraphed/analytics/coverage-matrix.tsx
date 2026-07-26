@@ -242,7 +242,7 @@ function CompletenessChip({ value, netuid }: { value: number; netuid: number }) 
     <span
       title={`SN${netuid}: ${pct}% of required public-interface kinds present`}
       className={classNames(
-        "ml-auto inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] font-semibold tabular-nums md:hidden",
+        "ml-auto inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 mg-type-data-sm font-semibold tabular-nums md:hidden",
         tone,
       )}
     >

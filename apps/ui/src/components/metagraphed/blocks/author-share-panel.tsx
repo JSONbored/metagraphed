@@ -76,7 +76,7 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
                   <div>{formatNumber(count)}</div>
                   <div
                     className={classNames(
-                      "text-[10px]",
+                      "mg-type-caption",
                       heavy ? "text-health-warn-text" : "text-ink-muted",
                     )}
                   >

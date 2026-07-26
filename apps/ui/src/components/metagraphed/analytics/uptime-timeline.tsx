@@ -147,7 +147,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
           {usingFallbackWindow ? <span className="text-ink-muted/60"> (7d window)</span> : null}
         </div>
         {freshLine ? (
-          <span className="font-mono text-[9.5px] text-ink-muted/70">· {freshLine}</span>
+          <span className="mg-type-data-sm text-ink-muted/70">· {freshLine}</span>
         ) : null}
         {/* Aggregate window stats. */}
         <div className="ml-auto flex items-center gap-3 mg-type-data-sm text-ink-muted">
@@ -198,7 +198,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                   aria-hidden
                 />
               </div>
-              <div className="mt-1 flex items-center gap-3 font-mono text-[9.5px] text-ink-muted tabular-nums">
+              <div className="mt-1 flex items-center gap-3 mg-type-data-sm text-ink-muted tabular-nums">
                 {typeof s.samples === "number" ? (
                   <span>{formatNumber(s.samples)} samples</span>
                 ) : null}
@@ -270,7 +270,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     <button
                       type="button"
                       aria-label={aria}
-                      className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[9.5px] text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted transition-colors hover:text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <span
                         aria-hidden
@@ -280,7 +280,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                       <span className="tabular-nums">{dur}</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
+                  <TooltipContent side="top" className="max-w-xs mg-type-caption">
                     <div className="mg-type-micro text-primary-foreground/80">
                       {sev} · {dur}
                     </div>

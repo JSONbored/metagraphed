@@ -11,7 +11,7 @@ import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 export function ApiSourceFooter({ paths, artifacts }: { paths: string[]; artifacts?: string[] }) {
   useRegisterApiSource(paths, artifacts ?? []);
   return (
-    <footer className="mt-10 border-t border-border pt-4 text-[11px] text-ink-muted">
+    <footer className="mt-10 border-t border-border pt-4 mg-type-caption text-ink-muted">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="mg-type-micro">data sources</span>
         {paths.map((p) => (

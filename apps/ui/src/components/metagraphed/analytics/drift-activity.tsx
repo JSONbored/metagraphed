@@ -89,8 +89,11 @@ export function DriftActivity({ schemas, fromPath }: Props) {
           <span className="text-health-warn">{drifting.length} drifting</span>
           <span className="text-ink-muted"> · {stable.length} stable</span>
         </div>
-        <div
-          className="ml-auto inline-flex items-center rounded-md border border-border bg-card p-0.5"
+        <Panel
+          as="div"
+          flush
+          className="ml-auto"
+          bodyClassName="inline-flex items-center p-0.5"
           role="tablist"
           aria-label="Drift scope"
         >
@@ -112,7 +115,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
               </button>
             );
           })}
-        </div>
+        </Panel>
       </div>
 
       {/* Drifting list */}
@@ -200,7 +203,7 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-[10.5px] text-ink-muted">
+          <div className="mt-0.5 flex flex-wrap items-center gap-2 mg-type-data text-ink-muted">
             {added != null ? <span className="text-health-ok">+{added}</span> : null}
             {removed != null ? <span className="text-health-down">−{removed}</span> : null}
             {schema.previous_hash && schema.hash ? (
@@ -263,6 +266,7 @@ function WeightBar({ weight: w, tone }: { weight: number; tone: "warn" | "muted"
             key={i}
             aria-hidden
             className={classNames(
+              // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
               "h-3 w-1 rounded-[1px]",
               on ? (tone === "warn" ? "bg-health-warn" : "bg-ink-strong") : "bg-ink-subtle/25",
             )}

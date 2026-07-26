@@ -96,6 +96,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
             const tile = (
               <span
                 className={classNames(
+                  // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
                   "block aspect-square rounded-[2px] transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
                   TONE[state] ?? TONE.unknown,
                 )}
@@ -110,6 +111,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: e.netuid }}
+                    // eslint-disable-next-line no-restricted-syntax -- heatmap/mosaic micro-radius: documented residual (CONTRIBUTING 'Border radius'); the smallest named step (rounded, 4px) would materially change these dense grids
                     className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-[2px]"
                   >
                     {tile}
