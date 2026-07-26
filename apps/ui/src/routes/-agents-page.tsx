@@ -28,13 +28,8 @@ import { SearchBox } from "@/components/metagraphed/search-box";
 import { Skeleton } from "@/components/metagraphed/states";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
+import { CLAUDE_URL, CHATGPT_URL } from "@/lib/metagraphed/agent-prompt";
 import type { AgentResource, AgentResources } from "@/lib/metagraphed/types";
-
-// A pre-prompt that drops the live llms.txt + MCP into a fresh agent session.
-const AGENT_PROMPT =
-  "Use the metagraphed Bittensor registry. First read https://api.metagraph.sh/llms.txt for the available machine surfaces, then help me find and call the right Bittensor subnet for a task. It exposes an MCP server, an agent capability catalog, semantic search, and grounded Q&A over ~129 subnets.";
-const CLAUDE_URL = `https://claude.ai/new?q=${encodeURIComponent(AGENT_PROMPT)}`;
-const CHATGPT_URL = `https://chatgpt.com/?q=${encodeURIComponent(AGENT_PROMPT)}`;
 
 // Icon + tone per resource kind. agent/skill lead (accent); the rest are neutral.
 const KIND_META = {

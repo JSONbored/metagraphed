@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
-import { ArrowUpRight, ChevronDown, FileCode2 } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Terminal } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
@@ -14,6 +14,9 @@ import {
   CurationChip,
   HealthPill,
   CopyableCode,
+  CopyButton,
+  ClaudeIcon,
+  OpenAIIcon,
   safeExternalUrl,
   ScrollReveal,
   Sparkline,
@@ -32,9 +35,6 @@ import {
 } from "@/components/metagraphed/analytics/registry-depth";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { SubnetPriceTicker } from "@/components/metagraphed/subnet-price-ticker";
-import { NetworkMoodGauge } from "@/components/metagraphed/network-mood-gauge";
-import { HeroSubnetChips } from "@/components/metagraphed/hero-subnet-chips";
 import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
 import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-changes";
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
@@ -52,9 +52,11 @@ import {
   coverageDepthQuery,
   changelogQuery,
   endpointIncidentsQuery,
+  agentResourcesQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { CLAUDE_URL, CHATGPT_URL } from "@/lib/metagraphed/agent-prompt";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 export function OverviewPage() {
@@ -68,33 +70,43 @@ export function OverviewPage() {
   // until opened.
   const [showMore, setShowMore] = useState(false);
   return (
-    <AppShell
-      flushTop
-      afterHeader={
-        // Seat the alpha-price marquee flush against the secondary ecosystem
-        // strip -- fills the gap that used to sit above the hero. Its bottom
-        // mint hairline doubles as the hero's top rule.
-        <QueryErrorBoundary fallback={() => null}>
-          <Suspense fallback={null}>
-            <SubnetPriceTicker />
-          </Suspense>
-        </QueryErrorBoundary>
-      }
-    >
+    <AppShell flushTop>
       <HomeHero />
 
-      {/* #6642: network-wide sentiment reading — full-width card with a real
-          gradient rail, ticks, and a numeric ratio. Self-manages loading/error
-          via useQuery (no Suspense needed). */}
-      <QueryErrorBoundary fallback={() => null}>
-        <NetworkMoodGauge />
-      </QueryErrorBoundary>
+      {/* #8249: the two new always-visible modules the redesign asked for --
+          "what's actually happening" and "how do I automate this" -- sit
+          right after the hero's throughput/live-subnets row, ahead of the
+          calmer "keep exploring" content below. Neither needs `showMore`:
+          they're small, single-panel, and exactly the kind of glance content
+          a first-time visitor benefits from seeing without an extra click. */}
+      <section className="mt-section-gap">
+        <SectionHeader
+          eyebrow="What changed"
+          live
+          title="What changed today."
+          description="New subnets, ownership transfers, runtime upgrades, notable stake moves, and resolved incidents — newest first."
+        />
+        <TimeRangeProvider>
+          <QueryErrorBoundary fallback={() => null}>
+            <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+              <WhatChangedFeed limit={7} />
+            </Suspense>
+          </QueryErrorBoundary>
+        </TimeRangeProvider>
+      </section>
 
-      <QueryErrorBoundary fallback={() => null}>
-        <Suspense fallback={null}>
-          <HeroSubnetChips />
-        </Suspense>
-      </QueryErrorBoundary>
+      <section className="mt-section-gap">
+        <SectionHeader
+          eyebrow="For agents"
+          title="Built for agents first."
+          description="Point any agent at this registry over MCP -- no key, no account."
+        />
+        <QueryErrorBoundary fallback={() => null}>
+          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+            <HomeForAgentsModule />
+          </Suspense>
+        </QueryErrorBoundary>
+      </section>
 
       <ContinueExploring />
 
@@ -329,8 +341,6 @@ export function OverviewPage() {
           </Link>
         </div>
       </AccentBand>
-
-      <PoweredByFooter />
     </AppShell>
   );
 }
@@ -459,6 +469,57 @@ function HomeHero() {
         <HeroFeatureRow />
       </div>
     </section>
+  );
+}
+
+/* ----------------------------- for agents ----------------------------- */
+
+// #8249: the MCP one-liner + Open-in-Claude/ChatGPT buttons + tool-count/
+// no-key line, lifted from /agents (AgentsBody's "Connect over MCP" +
+// "drop into a chat" sections) into a single compact home module. Reuses the
+// exact same query + CLAUDE_URL/CHATGPT_URL/AGENT_PROMPT definitions as
+// /agents (lib/metagraphed/agent-prompt.ts) rather than a second copy.
+function HomeForAgentsModule() {
+  const { data } = useSuspenseQuery(agentResourcesQuery());
+  const mcp = data.data.mcp;
+  return (
+    <Panel as="div" className="max-w-2xl">
+      <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent-surface px-4 py-3.5">
+        <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
+        <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono mg-type-caption-lg text-ink-strong">
+          {mcp.install}
+        </code>
+        <CopyButton value={mcp.install} label="MCP install command" />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <span className="mg-type-data text-ink-muted">
+          {mcp.tools.length} tools · {mcp.transport} · no key
+        </span>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={CLAUDE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 mg-type-data font-medium text-accent hover:bg-accent/15"
+          >
+            <ClaudeIcon className="size-3.5" aria-hidden /> Open in Claude
+          </a>
+          <a
+            href={CHATGPT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 mg-type-data font-medium text-ink-strong hover:border-ink/30"
+          >
+            <OpenAIIcon className="size-3.5" aria-hidden /> Open in ChatGPT
+          </a>
+        </div>
+      </div>
+      <div className="mt-3">
+        <Link to="/agents" className="mg-type-data-sm text-ink-muted hover:text-accent">
+          Every agent surface →
+        </Link>
+      </div>
+    </Panel>
   );
 }
 
@@ -943,18 +1004,6 @@ function SubnetPreviewTable() {
         </button>
       </div>
     </Panel>
-  );
-}
-
-function PoweredByFooter() {
-  return (
-    <div className="mt-12 border-t border-border pt-6 flex flex-wrap items-center justify-between gap-2 mg-type-micro text-ink-muted">
-      <span className="inline-flex items-center gap-2">
-        <FileCode2 className="size-3" />
-        Powered by Cloudflare Workers · Static Assets · R2
-      </span>
-      <span>JSON-Schema canonical · OpenAPI projected</span>
-    </div>
   );
 }
 
