@@ -16,6 +16,7 @@ import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
+import { buildEconomicsArtifact } from "./lib/economics-artifacts.ts";
 import {
   artifactOutputPath,
   backfilledIdentityUrl,
@@ -154,6 +155,14 @@ function buildNativeSubnet(nativeSubnet: Row, snapshot: Row): Row {
       gap_notes: [],
     },
     links: [],
+    // #8227: chain economics, same as mainnet. fetch-native-subnets.py's
+    // normalize_info() attaches this for whatever --network it is pointed at
+    // (every field comes off the same MetagraphInfo the identity fields do, so
+    // there is no extra RPC and nothing finney-specific), but this projection
+    // used to drop it -- leaving `economics: null` on every testnet subnet
+    // despite the snapshot carrying real values. Null-coalesced because
+    // snapshots captured before the economics fetcher (#1032) have no such key.
+    economics: (nativeSubnet.economics as Row | undefined) ?? null,
   };
 }
 
@@ -294,10 +303,36 @@ export async function buildNetworkRegistry({
     buildCoverage(subnets, snapshot, generatedAt),
   );
 
+  // #8227: same builder the mainnet pipeline uses -- it is network-agnostic
+  // (takes the subnet rows + a netuid→economics map and derives emission_share
+  // from the price distribution within whatever set it is given). Subnets whose
+  // snapshot carries no economics are filtered out by the builder itself, so a
+  // pre-#1032 snapshot yields an empty-but-valid artifact rather than a throw.
+  // No price history: that comes from the mainnet subnet_snapshots rollup,
+  // which has no testnet equivalent, so alpha_price_change_* stay null.
+  const economicsByNetuid = new Map(
+    subnets.map((subnet) => [
+      subnet.netuid as number,
+      subnet.economics as Row | null,
+    ]),
+  );
+  const economics = buildEconomicsArtifact({
+    subnets,
+    economicsByNetuid: economicsByNetuid as Map<number, Row>,
+    generatedAt,
+    network: snapshot.network as string | null,
+    capturedAt: snapshot.captured_at as string | null,
+  });
+  economics.contract_version = CONTRACT_VERSION;
+  await writeJson(artifactOutputPath(`${prefix}/economics.json`), economics);
+
   return {
     network: snapshot.network,
     prefix,
     subnet_count: subnets.length,
+    economics_row_count: Array.isArray(economics.subnets)
+      ? economics.subnets.length
+      : 0,
     captured_at: snapshot.captured_at,
   };
 }
