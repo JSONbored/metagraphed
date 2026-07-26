@@ -1,4 +1,3 @@
-import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.ts";
@@ -69,6 +68,12 @@ const uploadRetryBaseDelayMs =
   1000;
 const uploadTimeoutMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_TIMEOUT_MS) || 45_000;
+// Test-only seam (mirrors the old METAGRAPH_WRANGLER_BIN override this
+// replaced): lets tests/r2-upload.test.ts point at a local mock HTTP server
+// instead of the real Cloudflare API. Never set in production.
+const r2ApiBaseUrl =
+  process.env.METAGRAPH_R2_API_BASE_URL ||
+  "https://api.cloudflare.com/client/v4";
 const manifest: Row = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
@@ -118,7 +123,7 @@ if (process.env.METAGRAPH_ALLOW_R2_UPLOAD !== "1") {
 
 const remoteManifestResult: RemoteManifestResult = forceUpload
   ? { status: "not-checked", manifest: null }
-  : getRemoteManifest(
+  : await getRemoteManifest(
       manifest.bucket_name as string,
       "latest/r2-manifest.json",
     );
@@ -337,28 +342,24 @@ function uploadJob(
   };
 }
 
-function getRemoteManifest(
+async function getRemoteManifest(
   bucketName: string,
   key: string,
-): RemoteManifestResult {
-  const result = spawnSync(
-    wranglerBin(),
-    ["r2", "object", "get", `${bucketName}/${key}`, "--remote", "--pipe"],
-    {
-      encoding: "utf8",
-      maxBuffer: 20 * 1024 * 1024,
-      stdio: "pipe",
-    },
-  );
-  if (result.status !== 0) {
-    return { status: "missing", manifest: null };
-  }
+): Promise<RemoteManifestResult> {
+  const { accountId, apiToken } = requireCloudflareCredentials();
   try {
-    const parsed = JSON.parse(result.stdout);
-    if (!Array.isArray(parsed.artifacts)) {
+    const res = await fetch(r2ObjectUrl(accountId, bucketName, key), {
+      headers: { Authorization: `Bearer ${apiToken}` },
+      signal: AbortSignal.timeout(uploadTimeoutMs),
+    });
+    if (!res.ok) {
+      return { status: "missing", manifest: null };
+    }
+    const parsed = await res.json();
+    if (!Array.isArray((parsed as Row)?.artifacts)) {
       return { status: "unavailable", manifest: null };
     }
-    return { status: "found", manifest: parsed };
+    return { status: "found", manifest: parsed as Row };
   } catch {
     return { status: "unavailable", manifest: null };
   }
@@ -426,83 +427,95 @@ async function putObject(
   }
 }
 
-function putObjectOnce({
+// #stale-publish-pipeline/C: previously spawned a `wrangler r2 object put`
+// CLI subprocess per object -- real, measured cost at this registry's current
+// scale (~2,325 tracked artifacts, doubled by the always-on history copy):
+// every non-upload step in the "publish" job finishes in under 2 minutes,
+// while this step alone consistently ran the full 45-minute job timeout
+// before being killed (see #8208). A subprocess spawn pays full Node/CLI
+// startup + its own credential/account resolution on every single call;
+// a direct fetch() reuses Node's built-in undici connection pool across
+// concurrent calls to the same host, paying that cost once. Same
+// CLOUDFLARE_API_TOKEN this job already has (proven live: it's the exact
+// token wrangler itself was authenticating with) against the same public,
+// stable Cloudflare API v4 R2 endpoint wrangler's CLI calls under the hood --
+// verified directly (2026-07-26): a real object write + read round-trip via
+// `wrangler r2 object put/get --remote` against this bucket confirms the
+// endpoint shape and bucket name; this fetch call targets the identical
+// REST resource, just from this process instead of a spawned CLI.
+function requireCloudflareCredentials(): {
+  accountId: string;
+  apiToken: string;
+} {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !apiToken) {
+    throw new Error(
+      "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for R2 access.",
+    );
+  }
+  return { accountId, apiToken };
+}
+
+// R2 keys are hierarchical ("latest/subnets.json", "runs/<id>/..."): encode
+// each path segment individually so the literal `/` separators survive while
+// any segment containing reserved characters is still safely escaped.
+function encodeR2Key(key: string): string {
+  return key.split("/").map(encodeURIComponent).join("/");
+}
+
+function r2ObjectUrl(
+  accountId: string,
+  bucketName: string,
+  key: string,
+): string {
+  return `${r2ApiBaseUrl}/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeR2Key(key)}`;
+}
+
+async function putObjectOnce({
   localPath,
   key,
   bucketName,
   contentType,
 }: UploadJob): Promise<void> {
-  const args = [
-    "r2",
-    "object",
-    "put",
-    `${bucketName}/${key}`,
-    "--file",
-    localPath,
-    "--remote",
-  ];
-  if (contentType) {
-    args.push("--content-type", contentType);
+  const { accountId, apiToken } = requireCloudflareCredentials();
+  const body = readFileSync(localPath);
+  let res: Response;
+  try {
+    res = await fetch(r2ObjectUrl(accountId, bucketName, key), {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": contentType || "application/octet-stream",
+      },
+      body,
+      // A single stalled call (network stall, hung TLS handshake, R2 API
+      // wedge) previously had no ceiling and blocked this promise forever --
+      // Promise.all in putObjects() then never resolved, wedging the whole
+      // publish job until GitHub Actions' job-level timeout-minutes killed it
+      // (up to 45m of stale production data). Force a bounded failure instead
+      // so the existing retry/backoff loop in putObject() can recover in
+      // seconds.
+      signal: AbortSignal.timeout(uploadTimeoutMs),
+    });
+  } catch (error) {
+    if ((error as Error)?.name === "TimeoutError") {
+      throw new Error(
+        `R2 object put timed out after ${uploadTimeoutMs}ms for ${key}`,
+        { cause: error },
+      );
+    }
+    throw error;
   }
-  return new Promise((resolve, reject) => {
-    const child = spawn(wranglerBin(), args, {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    child.stdout?.setEncoding("utf8");
-    child.stderr?.setEncoding("utf8");
-    child.stdout?.on("data", (chunk) => {
-      stdout += chunk;
-    });
-    child.stderr?.on("data", (chunk) => {
-      stderr += chunk;
-    });
-    // A single stalled wrangler call (network stall, hung TLS handshake, R2
-    // API wedge) previously had no ceiling and blocked this promise forever
-    // -- Promise.all in putObjects() then never resolves, wedging the whole
-    // publish job until GitHub Actions' job-level timeout-minutes kills it
-    // (up to 45m of stale production data). Force a bounded failure instead
-    // so the existing retry/backoff loop in putObject() can recover in
-    // seconds.
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      child.kill("SIGKILL");
-      reject(
-        new Error(
-          `wrangler r2 object put timed out after ${uploadTimeoutMs}ms for ${key}`,
-        ),
-      );
-    }, uploadTimeoutMs);
-    child.on("error", (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(
-        new Error(
-          [
-            `wrangler r2 object put failed for ${key}`,
-            stdout.trim(),
-            stderr.trim(),
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        ),
-      );
-    });
-  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      [`R2 object put failed for ${key} (HTTP ${res.status})`, text.trim()]
+        .filter(Boolean)
+        .join("\n")
+        .slice(0, 500),
+    );
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -515,16 +528,4 @@ function summarizeError(error: unknown): string | undefined {
     .find((line) => line.trim())
     ?.trim()
     .slice(0, 240);
-}
-
-function wranglerBin(): string {
-  return (
-    process.env.METAGRAPH_WRANGLER_BIN ||
-    path.join(
-      repoRoot,
-      "node_modules",
-      ".bin",
-      process.platform === "win32" ? "wrangler.cmd" : "wrangler",
-    )
-  );
 }
