@@ -1,5 +1,6 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { raoToTao, type Rao } from "@/lib/metagraphed/units";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
@@ -117,10 +118,12 @@ export function StakeAmountInput({
 
   return (
     <div className="space-y-4">
-      <div
+      <Panel
+        as="div"
         role="tablist"
         aria-label="Stake or unstake"
-        className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+        flush
+        bodyClassName="inline-flex items-center !p-0.5"
       >
         {STAKE_FLOW_ACTIONS.map((a) => {
           const active = a === action;
@@ -140,7 +143,7 @@ export function StakeAmountInput({
             </button>
           );
         })}
-      </div>
+      </Panel>
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
@@ -159,10 +162,12 @@ export function StakeAmountInput({
         {showUnitToggle ? (
           <div className="flex flex-col gap-1">
             <span className="mg-type-micro text-ink-muted">Unit</span>
-            <div
+            <Panel
+              as="div"
               role="tablist"
               aria-label="TAO or alpha"
-              className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+              flush
+              bodyClassName="inline-flex items-center !p-0.5"
             >
               {(["tao", "alpha"] as const).map((u) => {
                 const active = u === unit;
@@ -184,7 +189,7 @@ export function StakeAmountInput({
                   </button>
                 );
               })}
-            </div>
+            </Panel>
           </div>
         ) : null}
 

@@ -102,7 +102,7 @@ export function SettingsPanel() {
             />
           ))}
         </ul>
-        <p className="mt-2 text-[10px] text-ink-muted">
+        <p className="mt-2 mg-type-caption text-ink-muted">
           All presets verified for perceptible contrast in light and dark.
         </p>
       </Section>
@@ -123,7 +123,7 @@ function Section({
     <div>
       <div className="mg-type-micro text-ink-muted mb-1.5">{label}</div>
       {children}
-      {sub ? <p className="mt-1 text-[10px] text-ink-muted">{sub}</p> : null}
+      {sub ? <p className="mt-1 mg-type-caption text-ink-muted">{sub}</p> : null}
     </div>
   );
 }
@@ -157,7 +157,7 @@ function SegmentBtn({
       aria-label={label}
       title={title ?? label}
       className={classNames(
-        "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-[11px] font-medium transition-colors min-h-8",
+        "flex-1 inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 mg-type-caption font-medium transition-colors min-h-8",
         active ? "bg-card text-ink-strong shadow-sm" : "text-ink-muted hover:text-ink-strong",
       )}
     >
@@ -205,7 +205,7 @@ function PaletteRow({
         </span>
         <span className="flex-1 min-w-0">
           <span className="block mg-type-caption font-medium text-ink-strong">{label}</span>
-          <span className="block text-[10px] text-ink-muted truncate">{description}</span>
+          <span className="block mg-type-caption text-ink-muted truncate">{description}</span>
         </span>
       </button>
     </li>

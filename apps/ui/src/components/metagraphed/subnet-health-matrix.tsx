@@ -67,12 +67,12 @@ export function SubnetHealthMatrix() {
                     )}
                     aria-label={`SN${s.netuid}${s.name ? ` — ${s.name}` : ""} — ${s.health ?? "unknown"}`}
                   >
-                    <span className="font-mono text-[9px] font-semibold leading-none tabular-nums tracking-tight">
+                    <span className="mg-type-data-sm font-semibold leading-none tabular-nums tracking-tight">
                       {s.netuid}
                     </span>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-[11px]">
+                <TooltipContent side="top" className="mg-type-caption">
                   <div className="font-display font-semibold text-ink-strong">
                     SN{s.netuid}{" "}
                     {s.name ? <span className="text-ink-muted">· {s.name}</span> : null}

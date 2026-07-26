@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   BrandIcon,
+  ExternalLink,
   safeExternalUrl,
   CurationChip,
   HealthPill,
@@ -308,7 +309,7 @@ export function SubnetMasthead({
     uptimeDelta != null && Math.abs(uptimeDelta) > 0.01 ? (
       <span
         className={
-          "inline-flex items-center gap-0.5 font-mono text-[9.5px] " +
+          "inline-flex items-center gap-0.5 mg-type-data-sm " +
           (uptimeDelta > 0 ? "text-health-ok" : "text-health-down")
         }
         title={`${uptimeDelta > 0 ? "+" : ""}${uptimeDelta.toFixed(2)}% over window`}
@@ -431,16 +432,20 @@ export function SubnetMasthead({
                   <Tooltip key={l.label} delayDuration={150}>
                     <TooltipTrigger asChild>
                       {safeHref ? (
-                        <a
-                          href={safeHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={l.label}
-                          aria-label={l.label}
-                          className={className}
-                        >
-                          <Icon className="size-4" />
-                        </a>
+                        <span className="inline-flex">
+                          {/* span carries TooltipTrigger's Slot ref/props --
+                              ExternalLink doesn't forward refs to its anchor
+                              (same wrapper recipe as batch 2/5). */}
+                          <ExternalLink
+                            bare
+                            href={safeHref}
+                            title={l.label}
+                            ariaLabel={l.label}
+                            className={className}
+                          >
+                            <Icon className="size-4" />
+                          </ExternalLink>
+                        </span>
                       ) : (
                         <span
                           className={className}
@@ -635,7 +640,7 @@ export function SubnetMasthead({
                 size={22}
                 stroke={3}
               />
-              <span className="font-mono text-[9.5px] text-ink-muted truncate">
+              <span className="mg-type-data-sm text-ink-muted truncate">
                 {profile?.curation_level ?? "—"}
               </span>
             </div>

@@ -65,7 +65,7 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
             {field.label}
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
+        <TooltipContent side="top" className="max-w-xs mg-type-caption leading-relaxed">
           {field.hint}
         </TooltipContent>
       </Tooltip>
@@ -73,7 +73,8 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
         <Tooltip delayDuration={200}>
           <TooltipTrigger asChild>
             <span
-              className="min-w-0 truncate font-display text-[14px] font-semibold tabular-nums text-ink-strong"
+              className="min-w-0 truncate font-display font-semibold tabular-nums text-ink-strong"
+              style={{ fontSize: "var(--mg-type-body)" }}
               tabIndex={hasValue ? 0 : -1}
             >
               {short}
@@ -234,7 +235,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
             <Link
               to="/subnets/$netuid"
               params={{ netuid: lineagePeer.netuid }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-2.5 py-0.5 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-2.5 py-0.5 mg-type-caption font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
             >
               <span className="font-mono tabular-nums text-ink-muted">
                 {String(lineagePeer.netuid).padStart(3, "0")}
@@ -325,8 +326,8 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
               {providerLockup.length > 0 ? (
                 <ul className="mt-2 space-y-1.5">
                   {providerLockup.map((p) => (
-                    <li key={p.slug} className="flex items-center gap-2 text-[11px]">
-                      <span className="inline-flex size-5 items-center justify-center rounded border border-border bg-paper font-mono text-[9px] uppercase text-ink-muted">
+                    <li key={p.slug} className="flex items-center gap-2 mg-type-caption">
+                      <span className="inline-flex size-5 items-center justify-center rounded border border-border bg-paper mg-type-micro text-ink-muted">
                         {p.name.slice(0, 2)}
                       </span>
                       <Link
@@ -386,7 +387,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   ) : null}
                 </>
               ) : (
-                <div className="text-[11px] text-ink-muted">No ownership keys recorded.</div>
+                <div className="mg-type-caption text-ink-muted">No ownership keys recorded.</div>
               );
             })()}
           </div>
@@ -461,7 +462,7 @@ function Meta({ label, value, hint }: { label: string; value: string; hint: stri
           </div>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
+      <TooltipContent side="top" className="max-w-xs mg-type-caption leading-relaxed">
         {hint}
       </TooltipContent>
     </Tooltip>

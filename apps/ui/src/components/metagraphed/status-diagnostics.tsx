@@ -501,7 +501,7 @@ function ProviderRow({ provider }: { provider: SourceHealthProvider }) {
               <span
                 key={label}
                 className={classNames(
-                  "inline-flex items-center gap-1 rounded border px-1 py-0.5 font-mono text-[9px]",
+                  "inline-flex items-center gap-1 rounded border px-1 py-0.5 mg-type-data-sm",
                   label === "dead"
                     ? "border-health-down/40 text-health-down"
                     : label === "live"
