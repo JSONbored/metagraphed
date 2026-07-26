@@ -896,6 +896,19 @@ jobs:
       # covered by the same 320 KB budget. Raise it again the same way when a
       # real feature legitimately grows the initial load further.
       #
+      # 320 -> 340 (metagraphed#8266): main had drifted to exactly 320 KB
+      # against the 320 KB budget -- zero headroom -- so the gate had started
+      # failing PRs that cannot affect client JS at all. #8263 is the proof: it
+      # touches only src/lib/analytics-proxy.ts, imported solely by
+      # src/server.ts (server-only, never in a client chunk), and still
+      # reported 321 KB. With `Math.ceil` on a baseline sitting on the boundary,
+      # ordinary build-to-build gzip variance alone flips 320 -> 321, so the
+      # gate was blocking every UI PR on noise rather than on a regression.
+      # 340 restores ~6% headroom -- enough to absorb that variance, small
+      # enough to still catch a real regression. The 305 -> 320 drift that
+      # consumed the previous headroom is unexplained and tracked separately in
+      # metagraphed#8267; this bump deliberately does NOT close that out.
+      #
       # dist/, not Nitro's library-default .output/ -- this project's
       # vite.config.ts (@lovable.dev/vite-tanstack-config) is customized to
       # output there instead (confirmed against a real local + CI build; the
@@ -904,7 +917,7 @@ jobs:
       - name: Bundle size budget (initial client JS, gzipped)
         working-directory: apps/ui
         env:
-          BUDGET_KB: 320
+          BUDGET_KB: 340
         run: |
           node --input-type=module <<'NODE'
           import { readdirSync, readFileSync } from "node:fs";
