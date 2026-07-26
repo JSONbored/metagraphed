@@ -719,6 +719,35 @@ export async function loadGlobalIncidentsLedger(
   return { data, incidentRows: [] };
 }
 
+/**
+ * Resolve the global incident ledger the way every caller must: Postgres tier
+ * first, the schema-stable empty stub above only on a miss.
+ *
+ * The stub is NOT a data source — it hardcodes `incidentRows: []`. Calling
+ * loadGlobalIncidentsLedger directly therefore always yields zero incidents,
+ * which is exactly what /api/v1/feeds/incidents did: it bypassed the Postgres
+ * tier, so the feed reported "no incidents" while /status, reading through the
+ * route below, showed dozens ongoing from the same underlying data (#8242).
+ * One resolver, used by both, so those two can't disagree again.
+ */
+export async function resolveGlobalIncidents(
+  request: Request,
+  env: Env,
+  { label = "7d" }: { label?: string } = {},
+): Promise<{ data: Record<string, unknown>; isFallback: boolean }> {
+  const tiered = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_HEALTH_SOURCE",
+  )) as Record<string, unknown> | null;
+  if (tiered) return { data: tiered, isFallback: false };
+  const result = await loadGlobalIncidentsLedger(env, { label });
+  return {
+    data: result.data as unknown as Record<string, unknown>,
+    isFallback: true,
+  };
+}
+
 // The list-query params GET /api/v1/incidents accepts on top of its own `window`
 // scope (#6571): limit/cursor/sort/order + the netuid filter, so a caller can page
 // a 30-day incident list the way the sibling endpoint-incidents route already can.
@@ -735,13 +764,9 @@ export async function handleGlobalIncidents(
   }
   const { label } = windowResult;
   // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
-  let isFallback = false;
-  let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
-  if (!data) {
-    isFallback = true;
-    const result = await loadGlobalIncidentsLedger(env, { label });
-    data = result.data;
-  }
+  const { data, isFallback } = await resolveGlobalIncidents(request, env, {
+    label,
+  });
   // Page/sort/filter the window-scoped `surfaces` ledger through the shared
   // list-query engine (#6571). `window` is this route's own scope param, already
   // validated above, so it is stripped before the engine — which only knows the
