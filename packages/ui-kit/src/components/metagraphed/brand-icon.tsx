@@ -151,27 +151,25 @@ interface ChainInputs {
   size: number;
 }
 
-function isDirectIconUrlCandidate(
-  candidate: string | null | undefined,
-  iconUrl: IconSource | null | undefined,
-  theme: ResolvedTheme,
-): boolean {
-  if (!candidate) return false;
-  const directIcon = safeImageUrl(pickIconSource(iconUrl, theme));
-  return Boolean(
-    directIcon && candidate === directIcon && !isProxiedIcon(candidate),
-  );
-}
-
-function shouldUseAnonymousCors(
-  candidate: string | null | undefined,
-  iconUrl: IconSource | null | undefined,
-  theme: ResolvedTheme,
-): boolean {
-  return (
-    isProxiedIcon(candidate) ||
-    isDirectIconUrlCandidate(candidate, iconUrl, theme)
-  );
+/**
+ * Only our own proxy gets a CORS request (#8243).
+ *
+ * `crossOrigin="anonymous"` is not a hint — if the response carries no
+ * `Access-Control-Allow-Origin`, the browser fails the load outright. Registry
+ * `logo_url` values point at whatever host a subnet team publishes (team S3
+ * buckets, project sites, favicon endpoints), and most send no CORS headers at
+ * all, so asking for CORS turned every one of those into a broken icon plus a
+ * console error — verified live across /subnets, /validators, /providers,
+ * /endpoints and subnet detail.
+ *
+ * Dropping the request costs only the canvas luminance probe, which taints on
+ * a non-CORS image and already degrades silently to the default surface (see
+ * analyseLogoLuminance). That is the exact trade this chain has always made
+ * for curated overrides and GitHub avatars — a visible logo without the
+ * auto-contrast tile beats no logo at all.
+ */
+function shouldUseAnonymousCors(candidate: string | null | undefined): boolean {
+  return isProxiedIcon(candidate);
 }
 
 function buildCandidateChain({
@@ -234,9 +232,7 @@ export function prefetchBrandIcon(
     const img = new Image();
     img.decoding = "async";
     img.referrerPolicy = "no-referrer";
-    if (
-      shouldUseAnonymousCors(first, extra?.iconUrl, extra?.theme ?? "light")
-    ) {
+    if (shouldUseAnonymousCors(first)) {
       img.crossOrigin = "anonymous";
     }
     img.onload = () => loadedUrls.add(first);
@@ -482,13 +478,11 @@ export function BrandIcon({
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
-        // Request credentialless CORS for our proxy and direct registry/API icon_url
-        // values. Curated frontend overrides and GitHub fallbacks can still load as
-        // ordinary images so missing CORS headers do not hide trusted icons.
+        // Credentialless CORS for our own proxy only -- see
+        // shouldUseAnonymousCors. Every other source loads as an ordinary
+        // image so a missing CORS header can never hide a real logo.
         crossOrigin={
-          shouldUseAnonymousCors(candidate, iconUrl, theme)
-            ? "anonymous"
-            : undefined
+          shouldUseAnonymousCors(candidate) ? "anonymous" : undefined
         }
         className={classNames(
           "relative block transition-opacity duration-150",
