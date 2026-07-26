@@ -358,7 +358,7 @@ export const RECOVERY = {
   subnets: { label: "Browse all subnets", href: "/subnets" },
   surfaces: { label: "Browse all surfaces", href: "/apis" },
   openapi: { label: "Open API reference", href: "/schemas#openapi" },
-  gaps: { label: "Browse registry gaps", href: "/gaps" },
+  gaps: { label: "Open the contributor queue", href: "/contribute" },
 } as const;
 
 export function PageHeading({

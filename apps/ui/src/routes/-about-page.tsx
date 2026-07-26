@@ -264,7 +264,7 @@ function AtAGlance() {
           → API & schemas
         </Link>
         <Link
-          to="/gaps"
+          to="/contribute"
           className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
         >
           → Registry gaps

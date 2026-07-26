@@ -157,7 +157,7 @@ const STATIC_ROUTES_HEAD: RouteEntry[] = [
 const STATIC_ROUTES_TAIL: RouteEntry[] = [
   {
     label: "Gaps",
-    to: "/gaps",
+    to: "/contribute",
     hint: "Coverage & enrichment queue",
     icon: Sparkles,
     scope: "route",

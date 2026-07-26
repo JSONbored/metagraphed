@@ -19,7 +19,7 @@ const GOTO: Array<{ keys: string; to: string; label: string }> = [
   { keys: "g p", to: "/apis/providers", label: "Providers" },
   { keys: "g h", to: "/health", label: "Health" },
   { keys: "g x", to: "/apis/schemas", label: "Schemas" },
-  { keys: "g g", to: "/gaps", label: "Gaps" },
+  { keys: "g g", to: "/contribute", label: "Contribute" },
 ];
 
 export function ShortcutsPopover() {
