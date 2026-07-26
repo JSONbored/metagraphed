@@ -754,6 +754,26 @@ describe("raw artifact route", () => {
     assert.ok(res.headers.get("etag"));
   });
 
+  // #8301: the same diagnostics on the /api/v1 envelope route. They were set by
+  // the raw builder ONLY, so an API consumer could not tell a fresh R2 read from
+  // a committed-asset fallback or a pointer-miss fallback -- and that asymmetry
+  // is what silently blinded the resolution alarm (#8287) until #8299 repointed
+  // it at the raw routes. Assert BOTH surfaces so they cannot drift apart again.
+  test("serves an /api/v1 artifact with the same source + storage-tier headers (#8301)", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      env as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.ok(
+      res.headers.get("x-metagraph-artifact-source"),
+      "/api/v1 must report which tier served it, like /metagraph/*.json does",
+    );
+    assert.ok(res.headers.get("x-metagraph-storage-tier"));
+  });
+
   test("304 on a matching if-none-match", async () => {
     const env = createLocalArtifactEnv();
     const first = await handleRequest(
