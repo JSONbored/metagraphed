@@ -69,10 +69,19 @@ export function ErrorState({
   context?: string;
 }) {
   const isApi = error instanceof ApiError;
-  // #370: on a non-mainnet partition, `artifact_not_found` is expected — those
-  // networks are native-only, so most artifacts legitimately aren't published.
-  // Degrade to an informational notice instead of a red error card.
-  if (isApi && error.code === "artifact_not_found" && getNetworkPrefix() !== "") {
+  // #370/#8224: on a non-mainnet partition, two error shapes both mean "not
+  // published for this network," not a real fault, and should degrade to an
+  // informational notice instead of a red error card:
+  //   - `artifact_not_found`: an unbuilt testnet/local artifact (silent gap).
+  //   - `not_found` with `meta.network` set: a deliberate mainnet-only route
+  //     (workers/api.ts's `isMainnetOnlyApiPath` blocklist, or the `local`
+  //     network's no-data 404) — `meta.network` is only ever populated on
+  //     these network-partition 404s, never on an ordinary unmatched route.
+  if (
+    isApi &&
+    ((error.code === "artifact_not_found" && getNetworkPrefix() !== "") ||
+      (error.code === "not_found" && error.network))
+  ) {
     return <NativeOnlyNotice context={context} />;
   }
   // #2564: the chain-events deep-history tier (workers/api.ts's handleChainEventsProxy)

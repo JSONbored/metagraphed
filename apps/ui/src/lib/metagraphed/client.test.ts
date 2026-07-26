@@ -119,6 +119,27 @@ describe("apiFetch", () => {
     } satisfies Partial<ApiError>);
   });
 
+  it("carries meta.network on ApiError for a network-partition 404", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            ok: false,
+            error: { message: "/api/v1/validators is only available on mainnet, not the test network.", code: "not_found" },
+            meta: { network: "test" },
+          },
+          { status: 404 },
+        ),
+      ),
+    );
+
+    await expect(apiFetch("/api/v1/testnet/validators")).rejects.toMatchObject({
+      code: "not_found",
+      network: "test",
+    } satisfies Partial<ApiError>);
+  });
+
   it("throws ApiError when the envelope reports ok:false on a 200 response", async () => {
     vi.stubGlobal(
       "fetch",
