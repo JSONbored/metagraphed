@@ -13,9 +13,10 @@
  * `captureException` is called from error-reporting.ts's `reportError` --
  * metagraphed#7766: Sentry (formerly a parallel sink there) is fully removed
  * now that parity was proven; this module's `posthog-js` instance is the
- * only exception-capture sink left. The self-hosted Umami tracker
- * (src/server.ts) is a separate, still-gated decommission (#7767) -- see the
- * consolidation epic (metagraphed#7757) for the full history.
+ * only exception-capture sink left. The self-hosted Umami tracker that used
+ * to live alongside this in src/server.ts is now fully decommissioned
+ * (#7767) -- see the consolidation epic (metagraphed#7757) for the full
+ * history.
  *
  * `posthog-js` is loaded via a DYNAMIC import: this keeps it out of the initial client
  * bundle the CI bundle-size-budget gate measures (that check only counts the
@@ -41,6 +42,26 @@
  * than mixing automatic-for-the-first-load with manual-for-the-rest.
  * Autocapture of clicks/inputs is left to `defaults`' own recommended
  * behavior.
+ *
+ * Umami-parity audit (#7767's decommission gate -- "capture the same types of
+ * data Umami did"), checked against Umami's actual schema/behavior (its
+ * `website_event`/`session` tables, `src/app/api/send/route.ts`), not
+ * assumed:
+ *   - URL, referrer, UTM params (all 5), browser, OS, device type, screen
+ *     size, language: posthog-js attaches these automatically on every event
+ *     (confirmed against PostHog's own UTM-segmentation and event docs) --
+ *     nothing to configure.
+ *   - Page title: NOT a posthog-js default (confirmed no `$title`-equivalent
+ *     property in its source) -- added explicitly in `capturePageview` below.
+ *   - Geo (country/region/city): populated server-side from the real client
+ *     IP, which `src/lib/analytics-proxy.ts`'s `forwardToAnalyticsHost`
+ *     already forwards via `x-forwarded-for` -- unaffected by any setting in
+ *     this file. This is the one property Umami's OWN cookieless design and
+ *     PostHog's `cookieless_mode` both still provide -- but only PostHog's
+ *     `cookieless_mode` specifically strips it; ordinary (non-cookieless)
+ *     capture, which this file uses, keeps it.
+ *   - Web vitals: covered independently (capture_performance below); see its
+ *     own comment.
  */
 
 import type { PostHog } from "posthog-js";
@@ -103,8 +124,8 @@ function loadPostHog(): Promise<PostHog | null> {
         // Native Core Web Vitals capture (LCP/INP/CLS/FCP as posthog-js's
         // own $web_vitals events), independent of and in addition to this
         // app's existing custom 'web_vitals' event (src/server.ts's
-        // WEB_VITALS_SNIPPET, which also feeds Umami -- kept as-is, this
-        // doesn't replace it). Explicit here rather than relying solely on
+        // WEB_VITALS_SNIPPET -- kept as-is, this doesn't replace it).
+        // Explicit here rather than relying solely on
         // the dashboard's own "Web vitals autocapture" project setting: that
         // setting only reaches the client via the /array/*/config remote-
         // config fetch, so a client-side default keeps this working even if
@@ -114,24 +135,36 @@ function loadPostHog(): Promise<PostHog | null> {
         capture_performance: { web_vitals: true },
         // metagraphed#7760's own explicit requirement: "respect DNT, no
         // cookies beyond what's justified" -- parity with the self-hosted
-        // Umami tracker this sits alongside, which never sets cookies either.
+        // Umami tracker this originally sat alongside (now decommissioned,
+        // #7767), which never set cookies either.
         respect_dnt: true,
-        // "memory", not posthog-js's own 'localStorage+cookie' default: no
-        // cookie or localStorage write at all, matching Umami's cookieless
-        // posture directly. Deliberately NOT `cookieless_mode` (posthog-js's
-        // other no-cookie option) -- that one requires ALSO flipping a
-        // matching toggle in this project's PostHog dashboard settings or
-        // every event is silently dropped server-side (confirmed via
-        // node_modules/@posthog/types' own doc comment on the option); a
-        // config value here can't guarantee that dashboard-side state, so it
-        // would be a silent-data-loss trap the day someone forgets. The
-        // tradeoff: identity resets every reload/tab close (each is a new
-        // anonymous visitor) rather than persisting client-side -- accepted
-        // for a public dashboard that doesn't need cross-session user
-        // profiles for pageview-level web analytics. Session replay
-        // (below) inherits the same reset-per-reload behavior, since
-        // posthog-js's own session ID also lives in this persistence store.
-        persistence: "memory",
+        // "localStorage", not posthog-js's own 'localStorage+cookie' default
+        // and not "memory" (this module's original choice, changed
+        // 2026-07-26): "memory" persists nothing at all, so every reload/new
+        // tab/return visit reset identity -- each was counted as a brand-new
+        // visitor, which is what actually surfaced as PostHog's unique-visitor
+        // count running far hotter than Umami's for the same real traffic.
+        // "localStorage" persists a random anonymous ID with NO cookie set --
+        // still satisfies metagraphed#7760's "no cookies beyond what's
+        // justified" requirement (that requirement was about cookies
+        // specifically, not zero client storage of any kind) -- while giving
+        // a returning visitor in the same browser actual continuity, matching
+        // (and outlasting -- localStorage persists until the visitor clears
+        // site data, vs. Umami's own forced monthly salt rotation) what Umami
+        // provided.
+        //
+        // Deliberately NOT `cookieless_mode` (PostHog's own dedicated
+        // cookieless-tracking feature, posthog.com/docs/tutorials/
+        // cookieless-tracking): considered and rejected on its actual documented
+        // behavior, not a guess -- it strips the request IP server-side before
+        // any GeoIP enrichment runs, UNCONDITIONALLY, so country/city/region
+        // data (a #7767 Umami-parity requirement) would never populate again;
+        // it also disables session replay (#7761) entirely, for every visitor,
+        // with no override; and its server-side hash rotates on a DAILY salt
+        // (vs. Umami's own monthly), so it wouldn't even beat Umami's own
+        // long-window visitor-count accuracy. None of that is a config
+        // mistake to fix later -- it's how the feature is documented to work.
+        persistence: "localStorage",
         // Session replay (metagraphed#7761). Privacy is the point here, not
         // an afterthought -- see this module's own privacy review in the PR
         // that added this block for the full surface audit (search inputs,
@@ -153,12 +186,12 @@ function loadPostHog(): Promise<PostHog | null> {
           // 15%, the midpoint of the issue's own suggested 10-20% starting
           // range. Hardcoded rather than left to PostHog's remote/dashboard
           // sampling config (which this value overrides when set, per
-          // node_modules/@posthog/types' own doc comment) -- same
-          // reasoning as this module's `persistence: "memory"` choice
-          // above: a safe default that doesn't depend on separately
-          // getting a dashboard setting right before this ships. Tune via
-          // a follow-up code change once real volume against the 5k/mo
-          // free-tier recording cap is known.
+          // node_modules/@posthog/types' own doc comment) -- same "don't
+          // depend on state this code can't guarantee" posture as the
+          // persistence choice above: a safe default that doesn't depend on
+          // separately getting a dashboard setting right before this ships.
+          // Tune via a follow-up code change once real volume against the
+          // 5k/mo free-tier recording cap is known.
           sampleRate: 0.15,
         },
         // Explicitly off, not left `undefined` (posthog-js's own default,
@@ -192,11 +225,23 @@ export function initAnalytics(): void {
 
 /** Captures one `$pageview`. `url` defaults to posthog-js's own current-URL
  * read when omitted -- pass it explicitly on an SPA route change so the
- * event reflects the route just navigated to, not a stale closure value. */
+ * event reflects the route just navigated to, not a stale closure value.
+ *
+ * `page_title` is added explicitly (Umami-parity, #7767's decommission gate
+ * requires PostHog capture the same data types Umami did): posthog-js has no
+ * built-in `$title`-style property the way it auto-attaches UTM/referrer/
+ * browser/os/device -- confirmed against posthog-js's own source, there is no
+ * such default. `document.title` is read at call time, not passed down from
+ * the caller, so it's always the value the route's own `head()` meta just
+ * committed -- `onResolved` (this function's only SPA call site, in
+ * routes/-root-views.tsx) fires after the new route's head has rendered. */
 export function capturePageview(url?: string): void {
   if (!POSTHOG_TOKEN) return;
   void loadPostHog().then((posthog) => {
-    posthog?.capture("$pageview", url ? { $current_url: url } : undefined);
+    posthog?.capture("$pageview", {
+      ...(url ? { $current_url: url } : undefined),
+      ...(typeof document !== "undefined" ? { page_title: document.title } : undefined),
+    });
   });
 }
 

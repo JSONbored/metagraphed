@@ -1,8 +1,9 @@
 // Product analytics (PostHog) first-party proxy (metagraphed#7760).
 //
-// Same rationale and first-party-proxy shape as the existing Umami proxy in
-// src/server.ts -- see its own header comment. This one specifically follows
-// PostHog's own documented Cloudflare Workers proxy guide
+// Same rationale and first-party-proxy shape as the Umami proxy that used to
+// live in src/server.ts (removed in #7767's decommission, once this proxy had
+// proven parity). This one specifically follows PostHog's own documented
+// Cloudflare Workers proxy guide
 // (posthog.com/docs/advanced/proxy/cloudflare) rather than being invented
 // from scratch: /static/* and /array/* route to PostHog's asset host (the JS
 // SDK bundle + per-project remote config, both edge-cacheable and never
@@ -13,8 +14,8 @@
 //
 // The path prefix deliberately avoids "analytics"/"tracking"/"posthog"/"ph"
 // (PostHog's own guide: ad blockers pattern-match those in URLs even on a
-// first-party origin) -- "ingest" was chosen for the same reason the
-// existing Umami prefix is the unrelated-sounding "/stats".
+// first-party origin) -- "ingest" was chosen for the same reason the old
+// Umami prefix (removed in #7767) was the unrelated-sounding "/stats".
 //
 // A standalone module (like lib/og-image.ts), not inline in server.ts, so it
 // can be unit-tested directly -- server.ts itself has no test harness (it
@@ -25,17 +26,18 @@ export const ANALYTICS_PREFIX = "/ingest";
 const POSTHOG_API_HOST = "us.i.posthog.com";
 const POSTHOG_ASSET_HOST = "us-assets.i.posthog.com";
 
-// Same defensive purpose as server.ts's own MAX_STATS_BODY_BYTES for the
-// sibling Umami proxy (this route is public/unauthenticated -- reachable by
-// anyone, not just posthog-js -- so it must never buffer an unbounded body
-// into Worker memory). Sized above that 16 KiB, not equal to it: PostHog's
-// own capture endpoint accepts BATCHED events (posthog-js can queue and flush
-// several pageview/custom events in one POST), unlike Umami's one-event-per-
-// request format, so a real single request legitimately runs larger. This is
-// our own defensive ceiling, not a PostHog-documented limit -- generous
-// enough for realistic batched web-analytics traffic (autocapture stays OFF
-// per metagraphed#7760's own requirement, so volume per batch stays small)
-// while still bounding worst-case memory per request to a small, fixed cap.
+// Same defensive purpose the old server.ts Umami proxy's own body-size cap
+// served before its #7767 removal (this route is public/unauthenticated --
+// reachable by anyone, not just posthog-js -- so it must never buffer an
+// unbounded body into Worker memory). Sized above that proxy's old 16 KiB,
+// not equal to it: PostHog's own capture endpoint accepts BATCHED events
+// (posthog-js can queue and flush several pageview/custom events in one
+// POST), unlike Umami's one-event-per-request format, so a real single
+// request legitimately runs larger. This is our own defensive ceiling, not a
+// PostHog-documented limit -- generous enough for realistic batched
+// web-analytics traffic (autocapture stays OFF per metagraphed#7760's own
+// requirement, so volume per batch stays small) while still bounding
+// worst-case memory per request to a small, fixed cap.
 const MAX_INGEST_BODY_BYTES = 64 * 1024;
 
 export type PostHogAssetContext = { waitUntil(promise: Promise<unknown>): void };
@@ -111,10 +113,10 @@ export async function forwardToAnalyticsHost(
 ): Promise<Response> {
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
 
-  // Same content-length-first gate as server.ts's Umami collect endpoint --
-  // reject BEFORE buffering, never after, so an oversized/malformed request
-  // never gets read into memory at all. See MAX_INGEST_BODY_BYTES above for
-  // why the cap differs from Umami's own.
+  // Same content-length-first gate the old server.ts Umami collect endpoint
+  // used -- reject BEFORE buffering, never after, so an oversized/malformed
+  // request never gets read into memory at all. See MAX_INGEST_BODY_BYTES
+  // above for why the cap differs from Umami's own.
   if (hasBody) {
     const contentLengthHeader = request.headers.get("content-length");
     const contentLength = contentLengthHeader === null ? NaN : Number(contentLengthHeader);
