@@ -19,6 +19,8 @@ import {
   ExternalLink,
   McpToolsList,
   SectionHeading,
+  ClaudeIcon,
+  OpenAIIcon,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { AskBox } from "@/components/metagraphed/ask-box";
@@ -156,7 +158,7 @@ function AgentsBody() {
 
       {/* Three calmer alternatives, side by side */}
       <section className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-        <div>
+        <div className="min-w-0">
           <SectionHeading
             id="install-sdk"
             title="Or install the SDK"
@@ -183,7 +185,7 @@ function AgentsBody() {
         </div>
 
         {skillResource && (
-          <div>
+          <div className="min-w-0">
             <SectionHeading
               id="skill-install"
               title="Or add the skill"
@@ -206,7 +208,7 @@ function AgentsBody() {
           </div>
         )}
 
-        <div>
+        <div className="min-w-0">
           <SectionHeading title="Or drop into a chat" intro={res.copyable_agent.description} />
           <div className="flex flex-wrap gap-2">
             <a
@@ -215,7 +217,8 @@ function AgentsBody() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3.5 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15"
             >
-              Open in Claude <ArrowUpRight className="size-3.5" />
+              <ClaudeIcon className="size-3.5" aria-hidden /> Open in Claude{" "}
+              <ArrowUpRight className="size-3.5" />
             </a>
             <a
               href={CHATGPT_URL}
@@ -223,7 +226,8 @@ function AgentsBody() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3.5 py-2 mg-type-caption-lg font-medium text-ink-strong hover:border-ink/30"
             >
-              Open in ChatGPT <ArrowUpRight className="size-3.5" />
+              <OpenAIIcon className="size-3.5" aria-hidden /> Open in ChatGPT{" "}
+              <ArrowUpRight className="size-3.5" />
             </a>
           </div>
           <p className="mt-3 mg-type-data text-ink-muted">
