@@ -67,8 +67,18 @@ export function ProfileTabs({
       className="sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
-      <div className="flex items-stretch gap-3 px-4 md:px-0">
-        <ScrollShadow className="min-w-0 flex-1" innerClassName="scroll-smooth">
+      {/*
+        The trailing controls are shrink-0, so on a narrow viewport they took
+        whatever width they needed and left the tab strip with the remainder:
+        measured 196px of a 390px viewport on /subnets/74, i.e. 2 of 14 tabs
+        reachable without scrolling (#8254). Horizontal scrolling, the
+        ScrollShadow edge fades and the scroll-active-tab-into-view effect were
+        all working the whole time -- the strip was simply being starved of
+        width. Stack the two rows on mobile so the tabs get the full viewport,
+        and keep the single-row layout from md up where both fit comfortably.
+      */}
+      <div className="flex flex-col gap-1 px-4 md:flex-row md:items-stretch md:gap-3 md:px-0">
+        <ScrollShadow className="min-w-0 md:flex-1" innerClassName="scroll-smooth">
           <ul
             ref={listRef}
             role="tablist"
