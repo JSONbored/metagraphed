@@ -15,15 +15,17 @@ import {
 
 describe("MEGA_PANELS catalogue", () => {
   it("exposes the expected primary panels in order", () => {
-    // Schemas + Gaps were demoted to footer-only navigation; they remain
-    // routes but no longer carry a top-level mega-panel.
+    // #8246: five hubs, matching primary nav. Surfaces/endpoints/providers/
+    // schemas collapsed into the APIs hub (#8245); blocks and the rest of the
+    // chain routes into the Chain hub (#8244); health left primary navigation
+    // entirely, reduced to the header status dot, because an ops console is
+    // not a peer of Subnets and Chain.
     expect(MEGA_PANELS.map((p) => p.key)).toEqual([
       "subnets",
-      "blocks",
-      "surfaces",
-      "endpoints",
-      "providers",
-      "health",
+      "validators",
+      "chain",
+      "accounts",
+      "apis",
     ]);
   });
 
@@ -73,53 +75,75 @@ describe("MEGA_PANELS catalogue", () => {
     }
   });
 
-  it("only links to route-consumed filter params/values on /endpoints", () => {
-    // /endpoints (routes/endpoints.tsx) reads category / health / eligibility;
-    // its facet chips enumerate the allowed values. A mega-menu link carrying a
-    // param the route never reads (the old kind / archive / pool / incidents /
-    // stale) matches zero rows and silently renders the unfiltered list. Pin
-    // every /endpoints filter link to a param+value the route actually accepts.
-    const SCHEMA_KEYS = new Set([
-      "q",
-      "category",
-      "provider",
-      "health",
-      "netuid",
-      "region",
-      "eligibility",
-      "callable",
-      "sort",
-      "order",
-      "page",
-      "pageSize",
-      "view",
-    ]);
-    const FACET_VALUES: Record<string, Set<string>> = {
-      category: new Set(["all", "rpc", "wss", "api", "sse", "data", "other"]),
-      health: new Set(["ok", "warn", "down", "unknown"]),
-      eligibility: new Set(["proxy-enabled", "pool-member", "archive-capable", "unassigned"]),
+  it("only links to route-consumed filter params/values in the APIs hub", () => {
+    // #8302/#8303 folded /surfaces, /endpoints, /schemas and /providers into
+    // one hub with different sub-routes, each with its OWN search schema — a
+    // link's params must match the schema of the route it actually points at
+    // (routes/apis.index.tsx for the Catalog tab, apis.endpoints.tsx for Live
+    // endpoints), not one merged vocabulary. A param the target route never
+    // reads matches zero rows and silently renders the unfiltered list.
+    const SCHEMA_KEYS: Record<string, Set<string>> = {
+      "/apis": new Set([
+        "q",
+        "kind",
+        "provider",
+        "netuid",
+        "sort",
+        "order",
+        "page",
+        "pageSize",
+        "view",
+        "public_safe",
+        "auth",
+        "rate_limited",
+      ]),
+      "/apis/endpoints": new Set([
+        "q",
+        "category",
+        "provider",
+        "health",
+        "netuid",
+        "region",
+        "eligibility",
+        "callable",
+        "sort",
+        "order",
+        "page",
+        "pageSize",
+        "view",
+      ]),
     };
-    const endpoints = MEGA_PANELS.find((p) => p.key === "endpoints");
-    expect(endpoints).toBeDefined();
-    for (const l of [...endpoints!.browse, ...endpoints!.filters]) {
+    const FACET_VALUES: Record<string, Record<string, Set<string>>> = {
+      "/apis": {
+        kind: new Set(["openapi", "docs", "dashboard", "data", "sse"]),
+      },
+      "/apis/endpoints": {
+        category: new Set(["all", "rpc", "wss", "api", "sse", "data", "other"]),
+        health: new Set(["ok", "warn", "down", "unknown"]),
+        eligibility: new Set(["proxy-enabled", "pool-member", "archive-capable", "unassigned"]),
+      },
+    };
+    const apis = MEGA_PANELS.find((p) => p.key === "apis");
+    expect(apis).toBeDefined();
+    for (const l of [...apis!.browse, ...apis!.filters]) {
+      const schema = SCHEMA_KEYS[l.to];
+      if (!schema) continue; // links to routes outside this hub (e.g. /agents)
       for (const [param, value] of Object.entries(l.search ?? {})) {
-        expect(SCHEMA_KEYS.has(param)).toBe(true);
-        const allowed = FACET_VALUES[param];
+        expect(schema.has(param)).toBe(true);
+        const allowed = FACET_VALUES[l.to]?.[param];
         if (allowed) expect(allowed.has(value)).toBe(true);
       }
     }
   });
-  it("surfaces both /status and /health under the Health mega-panel", () => {
-    // #5345: /status was footer-only while the mega-menu deep-linked only into
-    // /health?view=… — surface both so users can reach public status and the
-    // ops drill-down from the same panel without guessing which page is which.
-    const health = MEGA_PANELS.find((p) => p.key === "health");
-    expect(health).toBeDefined();
-    const browseTos = new Set(health!.browse.map((l) => l.to));
-    expect(browseTos.has("/status")).toBe(true);
-    expect(browseTos.has("/health")).toBe(true);
-    expect(health!.browse[0]?.to).toBe("/status");
-    expect(health!.browse[0]?.label).toMatch(/public status/i);
+  it("keeps ops surfaces out of the primary mega-menu", () => {
+    // Supersedes the #5345 expectation that /status and /health both sat in a
+    // Health mega-panel. #8246 removed that panel: /status is reachable from
+    // the header status dot (which is the one bit most visitors want from it),
+    // /health is the maintainer ops console and is footer + palette only.
+    // Neither belongs beside Subnets and Chain in primary navigation.
+    expect(MEGA_PANELS.some((p) => p.key === "health")).toBe(false);
+    const allTos = MEGA_PANELS.flatMap((p) => [...p.browse, ...p.filters]).map((l) => l.to);
+    expect(allTos).not.toContain("/health");
   });
 });
 

@@ -43,6 +43,7 @@ import { WalletConnectButton } from "./wallet-connect";
 import { classNames } from "@/lib/metagraphed/format";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
+import { NavStatusDot } from "./nav-status-dot";
 import { RegistryTicker } from "./registry-ticker";
 import { ShortcutsPopover } from "./shortcuts-popover";
 import { CommandPalette } from "./command-palette";
@@ -234,7 +235,8 @@ export function AppShell({
               <Brand />
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
-              <div className="flex-1 min-w-0 flex justify-end">
+              <div className="flex-1 min-w-0 flex justify-end items-center gap-1">
+                <NavStatusDot />
                 <NavOmnibox
                   onOpenPalette={() =>
                     openPaletteFrom(
@@ -486,17 +488,14 @@ function SiteFooter() {
         </div>
         <FooterCol title="Registry">
           <FooterLink to="/subnets">Subnets</FooterLink>
-          <FooterLink to="/domains">Domains</FooterLink>
-          <FooterLink to="/chain/blocks">Blocks</FooterLink>
-          <FooterLink to="/apis">Surfaces</FooterLink>
-          <FooterLink to="/apis/endpoints">Endpoints</FooterLink>
-          <FooterLink to="/apis/providers">Providers</FooterLink>
+          <FooterLink to="/chain">Chain</FooterLink>
+          <FooterLink to="/apis">APIs</FooterLink>
           <FooterLink to="/validators">Validators</FooterLink>
+          <FooterLink to="/accounts">Accounts</FooterLink>
         </FooterCol>
         <FooterCol title="Operations">
           <FooterLink to="/health">Health</FooterLink>
           <FooterLink to="/status">Status</FooterLink>
-          <FooterLink to="/apis/schemas">Schemas</FooterLink>
           <FooterLink to="/contribute">Contribute</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>
