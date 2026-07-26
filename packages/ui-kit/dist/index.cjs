@@ -1029,15 +1029,8 @@ function safeImageUrl(input) {
     return null;
   }
 }
-function isDirectIconUrlCandidate(candidate, iconUrl, theme) {
-  if (!candidate) return false;
-  const directIcon = safeImageUrl(pickIconSource(iconUrl, theme));
-  return Boolean(
-    directIcon && candidate === directIcon && !isProxiedIcon(candidate)
-  );
-}
-function shouldUseAnonymousCors(candidate, iconUrl, theme) {
-  return isProxiedIcon(candidate) || isDirectIconUrlCandidate(candidate, iconUrl, theme);
+function shouldUseAnonymousCors(candidate) {
+  return isProxiedIcon(candidate);
 }
 function buildCandidateChain({
   url,
@@ -1081,7 +1074,7 @@ function prefetchBrandIcon(url, size = 32, extra) {
     const img = new Image();
     img.decoding = "async";
     img.referrerPolicy = "no-referrer";
-    if (shouldUseAnonymousCors(first, extra?.iconUrl, extra?.theme ?? "light")) {
+    if (shouldUseAnonymousCors(first)) {
       img.crossOrigin = "anonymous";
     }
     img.onload = () => loadedUrls.add(first);
@@ -1277,7 +1270,7 @@ function BrandIcon({
             loading: "lazy",
             decoding: "async",
             referrerPolicy: "no-referrer",
-            crossOrigin: shouldUseAnonymousCors(candidate, iconUrl, theme) ? "anonymous" : void 0,
+            crossOrigin: shouldUseAnonymousCors(candidate) ? "anonymous" : void 0,
             className: classNames(
               "relative block transition-opacity duration-150",
               loaded ? "opacity-100" : "opacity-0"
