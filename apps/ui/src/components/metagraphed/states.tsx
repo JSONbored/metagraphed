@@ -353,10 +353,10 @@ export function StatUnavailable({ iconClassName = "size-3.5" }: { iconClassName?
  */
 export const RECOVERY = {
   schemas: { label: "Browse all schemas", href: "/schemas" },
-  endpoints: { label: "Browse all endpoints", href: "/endpoints" },
+  endpoints: { label: "Browse all endpoints", href: "/apis/endpoints" },
   providers: { label: "Browse all providers", href: "/providers" },
   subnets: { label: "Browse all subnets", href: "/subnets" },
-  surfaces: { label: "Browse all surfaces", href: "/surfaces" },
+  surfaces: { label: "Browse all surfaces", href: "/apis" },
   openapi: { label: "Open API reference", href: "/schemas#openapi" },
   gaps: { label: "Browse registry gaps", href: "/gaps" },
 } as const;

@@ -26,14 +26,14 @@ const ACTIONS: QuickAction[] = [
     icon: Search,
   },
   {
-    to: "/surfaces",
+    to: "/apis",
     eyebrow: "Interfaces",
     title: "Browse surfaces",
     description: "Every verified API, schema, dashboard, repo, and SDK in one place.",
     icon: Layers3,
   },
   {
-    to: "/endpoints",
+    to: "/apis/endpoints",
     eyebrow: "Live",
     title: "Inspect endpoints",
     description: "Probed endpoints, root RPC pools, incidents, and archive support.",

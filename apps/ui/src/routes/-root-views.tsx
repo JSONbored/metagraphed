@@ -67,7 +67,7 @@ export function NotFoundComponent() {
     { href: "/subnets/7", label: "/subnets/7", note: "Allways · adapter-backed" },
     { href: "/subnets/74", label: "/subnets/74", note: "Gittensor · adapter-backed" },
     { href: "/providers", label: "/providers", note: "Provider directory" },
-    { href: "/endpoints", label: "/endpoints", note: "All public endpoints" },
+    { href: "/apis/endpoints", label: "/apis/endpoints", note: "All public endpoints" },
     { href: "/schemas", label: "/schemas", note: "OpenAPI & schema drift" },
   ];
 

@@ -112,12 +112,18 @@ const STATIC_ROUTES_HEAD: RouteEntry[] = [
   },
   {
     label: "Surfaces",
-    to: "/surfaces",
+    to: "/apis",
     hint: "Verified public interfaces",
     icon: Workflow,
     scope: "route",
   },
-  { label: "Endpoints", to: "/endpoints", hint: "RPC, APIs, streams", icon: Wifi, scope: "route" },
+  {
+    label: "Endpoints",
+    to: "/apis/endpoints",
+    hint: "RPC, APIs, streams",
+    icon: Wifi,
+    scope: "route",
+  },
   {
     label: "Providers",
     to: "/providers",
@@ -505,8 +511,8 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
       return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
     if (kind === "provider" && hit.slug)
       return { to: "/providers/$slug", params: { slug: hit.slug } };
-    if (kind === "surface") return { to: "/surfaces" };
-    if (kind === "endpoint") return { to: "/endpoints" };
+    if (kind === "surface") return { to: "/apis" };
+    if (kind === "endpoint") return { to: "/apis/endpoints" };
     if (hit.netuid != null)
       return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
     const safeUrl = safeExternalUrl(hit.url);
@@ -597,7 +603,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     pushRecent(debounced);
     trackAction("filter:endpoints");
     onOpenChange(false);
-    navigate({ to: "/endpoints", search: { q: debounced } as never });
+    navigate({ to: "/apis/endpoints", search: { q: debounced } as never });
   }, [debounced, navigate, onOpenChange]);
 
   return (

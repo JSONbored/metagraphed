@@ -61,13 +61,13 @@ const NAV_LINKS = [
     Icon: Layers,
   },
   {
-    to: "/surfaces",
+    to: "/apis",
     label: "Surfaces",
     hint: "Verified public interfaces",
     Icon: Workflow,
   },
   {
-    to: "/endpoints",
+    to: "/apis/endpoints",
     label: "Endpoints",
     hint: "RPC, APIs, streams",
     Icon: Wifi,
@@ -102,8 +102,8 @@ function hrefFor(hit: Hit): string {
   const k = hitKind(hit);
   if (k === "subnet" && hit.netuid != null) return `/subnets/${hit.netuid}`;
   if (k === "provider" && hit.slug) return `/providers/${hit.slug}`;
-  if (k === "surface") return "/surfaces";
-  if (k === "endpoint") return "/endpoints";
+  if (k === "surface") return "/apis";
+  if (k === "endpoint") return "/apis/endpoints";
   if (hit.netuid != null) return `/subnets/${hit.netuid}`;
   return hit.url ?? "/";
 }
@@ -321,9 +321,9 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     } else if (k === "provider" && item.hit.slug) {
       navigate({ to: "/providers/$slug", params: { slug: item.hit.slug } });
     } else if (k === "surface") {
-      navigate({ to: "/surfaces" });
+      navigate({ to: "/apis" });
     } else if (k === "endpoint") {
-      navigate({ to: "/endpoints" });
+      navigate({ to: "/apis/endpoints" });
     } else if (item.hit.netuid != null) {
       navigate({ to: "/subnets/$netuid", params: { netuid: item.hit.netuid } });
     } else {

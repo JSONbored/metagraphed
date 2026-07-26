@@ -131,7 +131,13 @@ export function EndpointOperationalList({
           <section key={String(group.netuid)} aria-labelledby={`group-${group.netuid}`}>
             <header
               className="mg-section-rule sticky z-[var(--mg-z-sticky)] -mx-1 flex items-center justify-between gap-3 bg-paper/92 px-1 py-2 backdrop-blur"
-              style={{ top: "calc(var(--mg-sticky-offset, 3.5rem) + 3.75rem)" }}
+              // #8302: was a hardcoded +3.75rem for the old page's sub-header. Inside
+              // the APIs hub the chrome above this is the hub tab strip, which
+              // publishes its measured height as --mg-hub-tabs-h; the literal is
+              // only the fallback for pages that render this list outside a hub.
+              style={{
+                top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-hub-tabs-h, 3.75rem))",
+              }}
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 {typeof group.netuid === "number" ? (
@@ -249,7 +255,12 @@ export function EndpointOperationalList({
                         <div
                           className={classNames(
                             "grid min-w-0 grid-cols-1 gap-x-6 gap-y-3 pr-3 py-4 lg:grid-cols-[minmax(0,1fr)_11rem_11rem_auto] lg:items-center lg:pr-4",
-                            onToggleCompare ? "pl-4 lg:pl-6 pt-8 lg:pt-4" : "pl-4 lg:pl-6",
+                            // #8302: the Compare control is absolutely positioned at left-2/top-2, so
+                            // the row has to reserve that space. It did on mobile (pt-8) but
+                            // dropped back to pt-4 at lg -- 16px of padding under a control
+                            // occupying roughly 8-28px, so on desktop the label sat on top of
+                            // the kind/region/eligibility badges. Reserve it at every breakpoint.
+                            onToggleCompare ? "pl-4 lg:pl-6 pt-8" : "pl-4 lg:pl-6",
                           )}
                         >
                           {/* Headline: kind chip + URL as h4 */}

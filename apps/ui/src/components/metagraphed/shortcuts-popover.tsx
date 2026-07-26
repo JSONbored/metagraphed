@@ -14,8 +14,8 @@ import { classNames } from "@/lib/metagraphed/format";
 
 const GOTO: Array<{ keys: string; to: string; label: string }> = [
   { keys: "g s", to: "/subnets", label: "Subnets" },
-  { keys: "g u", to: "/surfaces", label: "Surfaces" },
-  { keys: "g e", to: "/endpoints", label: "Endpoints" },
+  { keys: "g u", to: "/apis", label: "Surfaces" },
+  { keys: "g e", to: "/apis/endpoints", label: "Endpoints" },
   { keys: "g p", to: "/providers", label: "Providers" },
   { keys: "g h", to: "/health", label: "Health" },
   { keys: "g x", to: "/schemas", label: "Schemas" },

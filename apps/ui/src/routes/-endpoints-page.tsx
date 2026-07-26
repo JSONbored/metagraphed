@@ -2,7 +2,6 @@ import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
@@ -17,7 +16,6 @@ import {
   AsyncPanel,
   FilterChipRow,
   FilterSheet,
-  PageMasthead,
   PagerFooter,
   PanelSkeleton,
   QueryBar,
@@ -39,6 +37,7 @@ import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
 import { buildUrl } from "@/lib/metagraphed/client";
+import { ApisTabActions } from "./-apis-hub";
 import {
   endpointsQuery,
   endpointIncidentsQuery,
@@ -69,7 +68,7 @@ import type {
   Subnet,
 } from "@/lib/metagraphed/types";
 import { activeFilterCount } from "@/lib/metagraphed/filter-disclosure";
-import type { EndpointsSearch } from "./endpoints";
+import type { EndpointsSearch } from "./apis.endpoints";
 
 // Endpoints is the primary product on this page; proxy is one surface among
 // several. Order tabs so the directory is the default landing view rather
@@ -101,14 +100,10 @@ export function EndpointsPage() {
   // data, so only the active tab's panels mount (and query) at a time.
   const [tab, setTab] = useState<EndpointsTab>("endpoints");
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Infrastructure"
-        live
-        title="Endpoints"
-        description="Callable Subtensor and subnet endpoints — health, latency, and pool eligibility, plus a managed RPC proxy that fans requests across the healthiest members."
-        actions={<ShareButton />}
-      />
+    <>
+      <ApisTabActions>
+        <ShareButton />
+      </ApisTabActions>
       <div className="space-y-section">
         {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
             and doesn't float alone under the hero. */}
@@ -264,7 +259,7 @@ export function EndpointsPage() {
           "/api/v1/endpoint-incidents",
         ]}
       />
-    </AppShell>
+    </>
   );
 }
 
@@ -596,8 +591,8 @@ function EndpointsTable() {
     return m;
   }, [snRes]);
 
-  const search = useSearch({ from: "/endpoints" });
-  const navigate = useNavigate({ from: "/endpoints" });
+  const search = useSearch({ from: "/apis/endpoints" });
+  const navigate = useNavigate({ from: "/apis/endpoints" });
   const expandedId = search.endpoint || null;
   const toggleExpanded = (id: string) =>
     navigate({

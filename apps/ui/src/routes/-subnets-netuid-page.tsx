@@ -1743,7 +1743,7 @@ function EndpointsTableLoader({ netuid }: { netuid: number }) {
         title="No endpoints recorded"
         description="This subnet has no tracked endpoints yet — public RPC, WSS, SSE, and data streams will appear here once registered."
         generatedAt={meta?.generated_at}
-        cta={{ label: "Browse all endpoints", href: "/endpoints" }}
+        cta={{ label: "Browse all endpoints", href: "/apis/endpoints" }}
       />
     );
   }

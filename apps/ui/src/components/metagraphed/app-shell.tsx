@@ -488,8 +488,8 @@ function SiteFooter() {
           <FooterLink to="/subnets">Subnets</FooterLink>
           <FooterLink to="/domains">Domains</FooterLink>
           <FooterLink to="/chain/blocks">Blocks</FooterLink>
-          <FooterLink to="/surfaces">Surfaces</FooterLink>
-          <FooterLink to="/endpoints">Endpoints</FooterLink>
+          <FooterLink to="/apis">Surfaces</FooterLink>
+          <FooterLink to="/apis/endpoints">Endpoints</FooterLink>
           <FooterLink to="/providers">Providers</FooterLink>
           <FooterLink to="/validators">Validators</FooterLink>
         </FooterCol>

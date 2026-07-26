@@ -111,7 +111,7 @@ describe("netuidFromPathname", () => {
 
   it("returns null off subnet detail routes", () => {
     expect(netuidFromPathname("/subnets")).toBeNull();
-    expect(netuidFromPathname("/endpoints")).toBeNull();
+    expect(netuidFromPathname("/apis/endpoints")).toBeNull();
     expect(netuidFromPathname("/")).toBeNull();
   });
 });
