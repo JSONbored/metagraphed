@@ -31,11 +31,30 @@ const pointer = {
   // build stamp). The Worker surfaces this as meta.published_at so consumers
   // read true freshness instead of the epoch content marker.
   published_at: buildSummary.published_at || null,
-  // The Worker resolves live artifacts through latest_prefix. Point it at the
-  // immutable run prefix so a failed pointer write after R2 upload keeps the
-  // previous pointer on the previous run's artifacts, instead of mixing stale
-  // metadata with newly overwritten latest/ objects.
-  latest_prefix: manifest.run_prefix,
+  // The Worker resolves live artifacts through latest_prefix (workers/storage.ts's
+  // latestR2Key: `${latest_prefix}${relativePath}`), so this MUST name a prefix
+  // the upload actually writes.
+  //
+  // #8276: this pointed at manifest.run_prefix until #8237 content-addressed the
+  // history tier. Under the old scheme r2-upload wrote every artifact to
+  // runs/<run>/<path>, so the run prefix was both immutable AND complete --
+  // pointing at it meant a pointer write that failed after the R2 upload left
+  // readers on the previous run rather than on half-overwritten latest/ objects.
+  // #8237 replaced that tree with by-hash/<sha256>, so runs/<run>/<path> is no
+  // longer written at all: the 2026-07-26T10-59-03-643Z publish uploaded 5,666
+  // objects, flipped the pointer to its run prefix, and every artifact read
+  // 404'd because nothing was ever written under it. (The publish's own "Smoke
+  // live API" step caught it and failed the workflow -- after the flip.)
+  //
+  // latest/ is the only complete, readable tree the upload still produces
+  // (uploaded_latest_count covers every artifact, every run). Tradeoff, stated
+  // plainly: it is mutable, so a reader during an in-flight publish can observe
+  // a mix of old and new objects -- the atomicity the run prefix used to buy is
+  // genuinely gone, and restoring it needs the Worker to resolve reads through
+  // the manifest's per-artifact by-hash keys (too large for the KV pointer as
+  // shaped today). Tracked in #8277. A 404 on every artifact is strictly worse
+  // than a brief mixed read, so this takes the tradeoff rather than the outage.
+  latest_prefix: manifest.latest_prefix,
   run_prefix: manifest.run_prefix,
   manifest_hash: hashJson(manifest),
   artifact_count: manifest.artifact_count,
@@ -44,7 +63,7 @@ const pointer = {
   health_surface_count: (freshness.summary as Row).health_surface_count,
 };
 // metagraph:latest is the ONLY KV control record: the pointer the Worker reads to
-// resolve the live immutable R2 run prefix. (The former feature-flags /
+// resolve the live R2 artifact prefix. (The former feature-flags /
 // endpoint-pools / source-freshness sidecars were written here every publish but
 // read by nothing — Worker, UI, or otherwise — so they were removed; reintroduce
 // such a blob only together with its reader so it can't drift unread.)
