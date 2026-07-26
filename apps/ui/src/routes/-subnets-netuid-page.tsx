@@ -33,6 +33,7 @@ import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import { WatchEntitySheet } from "@/components/metagraphed/watch-entity-sheet";
+import { SurfacePlayground } from "@/components/metagraphed/surface-playground";
 import {
   CandidateChip,
   CurationChip,
@@ -568,6 +569,11 @@ function ApiEndpointsPanel({ netuid }: { netuid: number }) {
           <ReliabilityPanel netuid={netuid} />
         </SectionAnchor>
       </MobileCollapse>
+
+      {/* #8258: the registry knows each subnet's callable surfaces and already
+          exposes a guarded way to call them; this is the first place a builder
+          can actually try one without leaving the page. */}
+      <SurfacePlayground netuid={netuid} />
 
       <CandidatesPanel netuid={netuid} />
 
