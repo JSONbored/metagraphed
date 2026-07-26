@@ -7,11 +7,17 @@ import {
   repoRoot,
   stableStringify,
 } from "./lib.ts";
+import { r2ObjectExists, requireCloudflareCredentials } from "./r2-rest.ts";
 
 type Row = Record<string, unknown>;
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
+// Readback sample size for assertPointerPrefixServes below. Small on purpose:
+// this is a pre-flight sanity check on the prefix, not a full-tree audit, and
+// it spends the same Cloudflare API budget the upload just spent (#8261).
+const SAMPLE_MAX = 12;
+const SAMPLE_SPREAD = 8;
 const manifest: Row = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
@@ -91,6 +97,8 @@ if (process.env.METAGRAPH_ALLOW_KV_WRITE !== "1") {
   process.exit(1);
 }
 
+await assertPointerPrefixServes();
+
 for (const [key, value] of kvEntries) {
   putKv(key, value);
 }
@@ -127,4 +135,98 @@ function putKv(key: string, value: unknown): void {
     console.error(result.stderr);
     process.exit(result.status || 1);
   }
+}
+
+/**
+ * Refuse to flip the pointer unless the prefix it names actually serves.
+ *
+ * The pointer flip is the single most dangerous write in the publish:
+ * workers/storage.ts's latestR2Key builds EVERY live artifact key as
+ * `${latest_prefix}${relativePath}`, so a prefix that does not serve takes the
+ * entire R2-backed API down in one KV write -- /api/v1/subnets, /coverage and
+ * every per-subnet artifact at once. That is exactly what happened on
+ * 2026-07-26 (#8276): #8237 moved the history tier to by-hash/<sha256>, nothing
+ * was written under runs/<runId>/ any more, the pointer still named it, and the
+ * upload reported a clean 5,666/5,666 objects on the way out.
+ *
+ * The publish's own live smoke step DID catch that -- but it runs after
+ * kv:publish, so it reported an outage that was already serving. This check is
+ * the same question asked in the other order: read back through the exact key
+ * the Worker will build, BEFORE claiming the prefix.
+ *
+ * Fails closed on a definite miss (non-zero exit, pointer unchanged, previous
+ * working pointer still live). Does NOT fail on an indeterminate read -- a
+ * flaky network must not block a publish whose data is fine.
+ */
+async function assertPointerPrefixServes(): Promise<void> {
+  const prefix = String(pointer.latest_prefix || "");
+  const bucketName = String(manifest.bucket_name || "");
+  if (!prefix || !bucketName) {
+    console.error(
+      `Refusing to publish: pointer latest_prefix (${prefix || "empty"}) or manifest bucket_name (${bucketName || "empty"}) is missing.`,
+    );
+    process.exit(1);
+  }
+
+  const artifacts = (manifest.artifacts as Row[]) || [];
+  const relativeOf = (a: Row): string =>
+    String(a.path || "").replace(/^\/metagraph\//, "");
+
+  // Sample the artifacts whose loss is TOTAL, not just any artifact: these are
+  // the exact shapes that 404'd on 2026-07-26. A per-subnet detail is included
+  // because it exercises a nested path, which a flat-only sample would miss.
+  const critical = ["subnets.json", "coverage.json"];
+  const chosen = new Map<string, string>();
+  for (const name of critical) {
+    const hit = artifacts.find((a) => relativeOf(a) === name);
+    if (hit) chosen.set(name, name);
+  }
+  const nested = artifacts.find((a) =>
+    /^subnets\/\d+\.json$/.test(relativeOf(a)),
+  );
+  if (nested) chosen.set(relativeOf(nested), relativeOf(nested));
+
+  // Plus a small deterministic spread across the manifest, to catch a
+  // partially-populated tree rather than an entirely absent one.
+  const step = Math.max(1, Math.floor(artifacts.length / SAMPLE_SPREAD));
+  for (let i = 0; i < artifacts.length && chosen.size < SAMPLE_MAX; i += step) {
+    const rel = relativeOf(artifacts[i]!);
+    if (rel) chosen.set(rel, rel);
+  }
+
+  if (chosen.size === 0) {
+    console.error(
+      "Refusing to publish: no artifacts available to verify the pointer prefix against.",
+    );
+    process.exit(1);
+  }
+
+  const { accountId, apiToken } = requireCloudflareCredentials();
+  const missing: string[] = [];
+  let indeterminate = 0;
+  for (const relative of chosen.keys()) {
+    const key = `${prefix}${relative}`;
+    const result = await r2ObjectExists(accountId, bucketName, key, apiToken);
+    if (result.exists) continue;
+    if (result.determinate) missing.push(key);
+    else indeterminate += 1;
+  }
+
+  if (missing.length > 0) {
+    console.error(
+      `Refusing to publish the KV pointer: latest_prefix "${prefix}" does not serve ` +
+        `${missing.length} of ${chosen.size} sampled artifact(s) in bucket "${bucketName}".\n` +
+        `The Worker builds every live key as \`${prefix}<path>\`, so flipping the pointer ` +
+        `would 404 the entire R2-backed API. Missing key(s):\n` +
+        missing.map((k) => `  - ${k}`).join("\n"),
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    `Pointer prefix "${prefix}" verified against ${chosen.size} sampled artifact(s)` +
+      (indeterminate > 0
+        ? ` (${indeterminate} read(s) indeterminate — not treated as failure).`
+        : "."),
+  );
 }

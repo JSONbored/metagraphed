@@ -5,6 +5,12 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
+import {
+  R2_API_BASE_URL_DEFAULT,
+  r2ApiBaseUrl,
+  r2ObjectUrl,
+  requireCloudflareCredentials,
+} from "./r2-rest.ts";
 
 type Row = Record<string, unknown>;
 
@@ -69,12 +75,10 @@ const uploadRetryBaseDelayMs =
 const uploadTimeoutMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_TIMEOUT_MS) || 45_000;
 
-const R2_API_BASE_URL_DEFAULT = "https://api.cloudflare.com/client/v4";
 // Test-only seam (mirrors the old METAGRAPH_WRANGLER_BIN override this
 // replaced): lets tests/r2-upload.test.ts point at a local mock HTTP server
 // instead of the real Cloudflare API. Never set in production.
-const r2ApiBaseUrl =
-  process.env.METAGRAPH_R2_API_BASE_URL || R2_API_BASE_URL_DEFAULT;
+const r2ApiBaseUrlValue = r2ApiBaseUrl();
 // #stale-publish-pipeline/D: replacing the per-object wrangler subprocess with
 // direct API fetches (#8209) removed the CLI overhead and exposed the next
 // ceiling — Cloudflare's client-API rate limit (documented ~1,200 requests /
@@ -96,7 +100,7 @@ const r2ApiBaseUrl =
 // still wins either way, so a staging/proxy base URL can opt back in.
 const uploadMaxRps =
   parsePositiveNumber(process.env.METAGRAPH_R2_UPLOAD_MAX_RPS) ||
-  (r2ApiBaseUrl === R2_API_BASE_URL_DEFAULT ? 3.5 : Infinity);
+  (r2ApiBaseUrlValue === R2_API_BASE_URL_DEFAULT ? 3.5 : Infinity);
 const uploadRateLimitRetries =
   parseNonNegativeInteger(process.env.METAGRAPH_R2_UPLOAD_429_RETRIES) ?? 6;
 const uploadRateLimitBaseDelayMs =
@@ -553,35 +557,6 @@ async function putObject(
 // `wrangler r2 object put/get --remote` against this bucket confirms the
 // endpoint shape and bucket name; this fetch call targets the identical
 // REST resource, just from this process instead of a spawned CLI.
-function requireCloudflareCredentials(): {
-  accountId: string;
-  apiToken: string;
-} {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-  if (!accountId || !apiToken) {
-    throw new Error(
-      "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for R2 access.",
-    );
-  }
-  return { accountId, apiToken };
-}
-
-// R2 keys are hierarchical ("latest/subnets.json", "runs/<id>/..."): encode
-// each path segment individually so the literal `/` separators survive while
-// any segment containing reserved characters is still safely escaped.
-function encodeR2Key(key: string): string {
-  return key.split("/").map(encodeURIComponent).join("/");
-}
-
-function r2ObjectUrl(
-  accountId: string,
-  bucketName: string,
-  key: string,
-): string {
-  return `${r2ApiBaseUrl}/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeR2Key(key)}`;
-}
-
 async function putObjectOnce({
   localPath,
   key,
