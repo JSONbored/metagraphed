@@ -137,6 +137,45 @@ export const LOCAL_DEV = {
 
 let cachedNetwork: ChainNetwork | null = null;
 
+/**
+ * The apex that carries per-network subdomains (#8229). testnet.metagraph.sh
+ * is a Cloudflare custom domain on the same metagraphed-ui Worker as the apex,
+ * so within this family the leading label names the network and the bare apex
+ * means mainnet.
+ *
+ * Everything OFF this family -- `vite dev` on localhost, a *.workers.dev
+ * preview, an IP -- has no per-network sibling to navigate to, so those keep
+ * the pure localStorage behavior. That split is the whole reason this is an
+ * explicit suffix rather than "does the first label happen to name a network":
+ * a preview host must not be told it is authoritative when its `testnet.`
+ * sibling would not resolve.
+ */
+const NETWORK_HOST_APEX = "metagraph.sh";
+
+function isNetworkHostFamily(host: string): boolean {
+  return host === NETWORK_HOST_APEX || host.endsWith(`.${NETWORK_HOST_APEX}`);
+}
+
+/**
+ * The network the current hostname designates, or null when the host carries
+ * no network signal at all (so the caller falls back to localStorage).
+ *
+ * Within the host family this is authoritative in BOTH directions: a
+ * `testnet.` label resolves to testnet, and the bare apex resolves to mainnet
+ * rather than deferring to a stale stored preference from an earlier visit.
+ */
+function readHostNetwork(): ChainNetwork | null {
+  if (typeof window === "undefined") return null;
+  // `window.location` is absent in the unit-test harness's minimal window and
+  // in any non-DOM embedder -- treat it as "no host signal", never a throw.
+  const host = window.location?.hostname?.toLowerCase();
+  if (!host || !isNetworkHostFamily(host)) return null;
+  const label = host.split(".")[0];
+  return (
+    CHAIN_NETWORKS.find((n) => n.id === label && n.id !== DEFAULT_NETWORK.id) ?? DEFAULT_NETWORK
+  );
+}
+
 function readStoredNetwork(): ChainNetwork | null {
   if (typeof window === "undefined") return null;
   try {
@@ -147,10 +186,22 @@ function readStoredNetwork(): ChainNetwork | null {
   }
 }
 
-/** Current chain network. Safe in both SSR and CSR (defaults to mainnet). */
+/**
+ * Current chain network. Safe in both SSR and CSR (defaults to mainnet).
+ *
+ * Hostname wins over the stored preference: on testnet.metagraph.sh the URL is
+ * the explicit, shareable request, and a stale localStorage value from an
+ * earlier visit to the apex must not silently override it (nor the reverse --
+ * a testnet preference must not follow you back to the apex).
+ *
+ * SSR still resolves to the default: `window` is absent there, and the request
+ * hostname cannot be threaded in through a module-level value without leaking
+ * across concurrent requests in a shared Workers isolate. The client corrects
+ * immediately on hydration. See #8229 for the request-scoped follow-up.
+ */
 export function getNetwork(): ChainNetwork {
   if (cachedNetwork) return cachedNetwork;
-  cachedNetwork = readStoredNetwork() ?? DEFAULT_NETWORK;
+  cachedNetwork = readHostNetwork() ?? readStoredNetwork() ?? DEFAULT_NETWORK;
   return cachedNetwork;
 }
 
@@ -159,7 +210,39 @@ export function getNetworkPrefix(): string {
   return getNetwork().prefix;
 }
 
-/** Select + persist a chain network. Dispatches an event subscribers react to. */
+/**
+ * The hostname a given network is served from, or null when the current host
+ * has no per-network sibling (#8229).
+ *
+ * Returns null for single-label hosts (localhost) and bare IPs: `vite dev` and
+ * preview/IP access have no `testnet.` sibling to reach, so those keep the
+ * pure localStorage behavior instead of navigating somewhere that won't
+ * resolve. Registrable-domain detection is deliberately naive (strip a leading
+ * known-network label, keep the rest) because the only hosts this ever runs
+ * against are metagraph.sh and its per-network subdomains.
+ */
+export function networkHostname(next: ChainNetwork, currentHost: string): string | null {
+  const host = currentHost.toLowerCase();
+  // Same gate readHostNetwork uses, so the read and write sides can't drift:
+  // only hosts that actually carry per-network siblings are navigable.
+  if (!isNetworkHostFamily(host)) return null;
+  const [label, ...rest] = host.split(".");
+  // Drop the current network label (if any) to recover the apex, so switching
+  // testnet→mainnet→testnet doesn't stack labels.
+  const isNetworkLabel = CHAIN_NETWORKS.some((n) => n.id === label && n.id !== DEFAULT_NETWORK.id);
+  const apex = isNetworkLabel ? rest.join(".") : host;
+  return next.id === DEFAULT_NETWORK.id ? apex : `${next.id}.${apex}`;
+}
+
+/**
+ * Select + persist a chain network. Dispatches an event subscribers react to.
+ *
+ * On a per-network host (#8229) this navigates to the sibling hostname rather
+ * than only flipping in-page state: the URL is the shareable, reloadable
+ * source of truth, and `getNetwork()` reads the hostname first, so staying put
+ * would leave the two disagreeing on the next reload. Falls back to the
+ * in-page switch wherever no sibling host exists (dev, previews, IPs).
+ */
 export function setNetwork(id: string) {
   const next = CHAIN_NETWORKS.find((n) => n.id === id) ?? DEFAULT_NETWORK;
   cachedNetwork = next;
@@ -169,6 +252,17 @@ export function setNetwork(id: string) {
       else window.localStorage.setItem(NETWORK_STORAGE_KEY, next.id);
     } catch {
       /* ignore */
+    }
+    const host = window.location?.hostname;
+    const target = host ? networkHostname(next, host) : null;
+    if (target && target !== host && typeof window.location?.assign === "function") {
+      // Same path + query on the sibling host, so switching network keeps you
+      // on the page you were reading. Full navigation, not a router push --
+      // it's a different origin.
+      const url = new URL(window.location.href);
+      url.hostname = target;
+      window.location.assign(url.toString());
+      return;
     }
     window.dispatchEvent(new CustomEvent(NETWORK_EVT, { detail: next.id }));
   }
