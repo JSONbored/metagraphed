@@ -40,6 +40,31 @@ const POSTHOG_ASSET_HOST = "us-assets.i.posthog.com";
 // worst-case memory per request to a small, fixed cap.
 const MAX_INGEST_BODY_BYTES = 64 * 1024;
 
+// Session-replay snapshots are a different traffic class and need their own
+// ceiling. The 64 KiB cap above reasons explicitly about batched pageview/
+// custom events with autocapture OFF -- correct for those, but replay landed
+// later (#7761, sampleRate 0.15) and posts rrweb DOM snapshots, which are
+// orders of magnitude larger than an event batch. A full-snapshot flush on a
+// dense page (the subnet detail route renders thousands of nodes) blows past
+// 64 KiB easily, so the gate below was returning 413 and silently dropping
+// recordings -- the replay data never reaches PostHog and nothing in the UI
+// surfaces the loss.
+//
+// 2 MiB: comfortably above a realistic full-snapshot flush while still a small,
+// fixed bound on per-request Worker memory (the 128 MiB isolate limit is the
+// thing being protected). Still our own defensive ceiling, not a
+// PostHog-documented limit -- their capture endpoint accepts far larger.
+const MAX_REPLAY_BODY_BYTES = 2 * 1024 * 1024;
+
+// posthog-js posts session-recording snapshots to `/s/` and everything else
+// (events, flags, decide) to its own paths. Matched on the proxied upstream
+// path, i.e. AFTER ANALYTICS_PREFIX has been stripped.
+function maxBodyBytesForPath(pathWithParams: string): number {
+  return /^\/s\/?(?:\?|$)/.test(pathWithParams)
+    ? MAX_REPLAY_BODY_BYTES
+    : MAX_INGEST_BODY_BYTES;
+}
+
 export type PostHogAssetContext = { waitUntil(promise: Promise<unknown>): void };
 
 // Cloudflare Workers runtime global (the Cache API) -- same class of ambient
@@ -116,14 +141,15 @@ export async function forwardToAnalyticsHost(
   // Same content-length-first gate the old server.ts Umami collect endpoint
   // used -- reject BEFORE buffering, never after, so an oversized/malformed
   // request never gets read into memory at all. See MAX_INGEST_BODY_BYTES
-  // above for why the cap differs from Umami's own.
+  // above for why the cap differs from Umami's own, and MAX_REPLAY_BODY_BYTES
+  // for why session-replay snapshots get their own larger ceiling.
   if (hasBody) {
     const contentLengthHeader = request.headers.get("content-length");
     const contentLength = contentLengthHeader === null ? NaN : Number(contentLengthHeader);
     if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
       return new Response("Length Required", { status: 411 });
     }
-    if (contentLength > MAX_INGEST_BODY_BYTES) {
+    if (contentLength > maxBodyBytesForPath(pathWithParams)) {
       return new Response("Payload Too Large", { status: 413 });
     }
   }
