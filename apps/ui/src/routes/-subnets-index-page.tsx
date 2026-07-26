@@ -434,24 +434,34 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // Key the `?? {}` fallback off the raw query value so `healthMap` keeps a
   // stable reference across renders — otherwise a fresh `{}` each render would
   // defeat the `all` memo below.
-  const healthMapRaw = useSuspenseQuery(subnetHealthMapQuery()).data.data;
+  // #8226: plain (non-suspending) query on purpose. This is an optional join,
+  // not core list data -- health is one of the routes `isMainnetOnlyApiPath`
+  // blocklists outright on a non-mainnet network (see workers/api.ts), and the
+  // surrounding comments already document the intended "missing/failed fetch
+  // degrades to an empty map" behavior. useSuspenseQuery contradicted that:
+  // a failure here threw up through the table's single AsyncPanel and took
+  // the entire table -- including the always-succeeding, always-real
+  // subnetsInfiniteQuery list below -- down with it.
+  const healthMapRaw = useQuery(subnetHealthMapQuery()).data?.data;
   const healthMap = useMemo(() => healthMapRaw ?? {}, [healthMapRaw]);
 
-  // #9: per-subnet agent-catalog capability (service kinds + integration
+  // #9/#8226: per-subnet agent-catalog capability (service kinds + integration
   // readiness). Joined the same way as health so the capability filter and the
   // Readiness column resolve. Best-effort: subnets with no catalog entry pass
   // through with no capability data (and are simply excluded by the filters).
-  const catalogMapRaw = useSuspenseQuery(agentCatalogMapQuery()).data.data;
+  // Plain query, same reasoning as healthMapRaw above.
+  const catalogMapRaw = useQuery(agentCatalogMapQuery()).data?.data;
   const catalogMap = useMemo(() => catalogMapRaw ?? {}, [catalogMapRaw]);
 
-  // #3364/#3363: per-subnet on-chain economics — already fetched once per
+  // #3364/#3363/#8226: per-subnet on-chain economics — already fetched once per
   // session for the detail EconomicsPanel, so this reuses that shared cache
   // (no new endpoint, no backend change). Indexed by netuid into a map and
   // joined the same way as health/catalog so the Registration + Emission
   // columns (and their sort) resolve off the row. A missing/failed fetch
   // degrades to an empty map (every cell falls back to "—") rather than
-  // breaking the table, mirroring healthMap/catalogMap's fallback.
-  const economicsRaw = useSuspenseQuery(economicsQuery()).data.data;
+  // breaking the table, mirroring healthMap/catalogMap's fallback. Plain
+  // query, same reasoning as healthMapRaw above.
+  const economicsRaw = useQuery(economicsQuery()).data?.data;
   const economicsMap = useMemo(() => {
     const map: Record<number, SubnetEconomics> = {};
     for (const e of economicsRaw ?? []) map[e.netuid] = e;
