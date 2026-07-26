@@ -218,6 +218,44 @@ export async function readR2Object(
     };
   }
   if (!object) {
+    // #8276 follow-up: #8278 stopped the pointer WRITER from naming a prefix
+    // nothing writes, but a bad pointer already in KV keeps 404ing every
+    // artifact until the next publish rewrites it -- and a publish is ~50
+    // minutes that can itself fail. A pointer prefix that holds no objects
+    // takes the whole R2-backed API down at once (/api/v1/subnets, /coverage,
+    // every per-subnet artifact), so recover on read instead of waiting:
+    // retry once at the literal latest/ tree, which r2-upload populates for
+    // every artifact on every run.
+    //
+    // Deliberately narrow: only when the pointer sent us somewhere OTHER than
+    // latest/ (so the normal path costs nothing), and it warns rather than
+    // healing silently -- a permanent fallback means the pointer is still
+    // wrong and should be fixed, not tolerated.
+    const fallbackKey = `latest/${artifactPath.replace(/^\/metagraph\//, "")}`;
+    if (fallbackKey !== key) {
+      let fallbackObject;
+      try {
+        fallbackObject = await withTimeout(
+          env.METAGRAPH_ARCHIVE.get(fallbackKey),
+          r2TimeoutMs(env),
+        );
+      } catch {
+        fallbackObject = null;
+      }
+      if (fallbackObject) {
+        logEvent(env, "warn", "r2_pointer_prefix_miss", {
+          key,
+          fallback_key: fallbackKey,
+          storage_tier: storageTier,
+        });
+        return {
+          ok: true,
+          object: fallbackObject,
+          source: "r2",
+          storage_tier: storageTier,
+        };
+      }
+    }
     return {
       ok: false,
       status: 404,
