@@ -12,22 +12,54 @@ import { mockEnv, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-// A SCALE-encoded AccountInfo blob: nonce/consumers/providers/sufficients
-// (u32 LE each) then AccountData's free + reserved (u128 LE each).
-function accountInfoHex(freeRao: bigint, reservedRao: bigint): string {
-  const u128 = (value: bigint): string => {
-    let hex = "";
-    let rest = BigInt(value);
-    for (let index = 0; index < 16; index += 1) {
-      hex += Number(rest & 0xffn)
-        .toString(16)
-        .padStart(2, "0");
-      rest >>= 8n;
-    }
-    return hex;
-  };
-  return `0x${"00000000".repeat(4)}${u128(freeRao)}${u128(reservedRao)}`;
+function uintLeHex(value: bigint, width: number): string {
+  let hex = "";
+  let rest = BigInt(value);
+  for (let index = 0; index < width; index += 1) {
+    hex += Number(rest & 0xffn)
+      .toString(16)
+      .padStart(2, "0");
+    rest >>= 8n;
+  }
+  return hex;
 }
+
+// A minimal u128-layout AccountInfo blob (48 bytes): header (4×u32) then
+// free + reserved as u128 LE — the compatibility shape, NOT what live finney
+// returns (see accountInfoU64Hex).
+function accountInfoHex(freeRao: bigint, reservedRao: bigint): string {
+  return `0x${"00000000".repeat(4)}${uintLeHex(freeRao, 16)}${uintLeHex(reservedRao, 16)}`;
+}
+
+// The live finney shape (#8239): subtensor Balance = u64, so AccountData is
+// free u64 + reserved u64 + frozen u64 + flags u128 → 56 bytes total.
+function accountInfoU64Hex(
+  freeRao: bigint,
+  reservedRao: bigint,
+  frozenRao = 0n,
+  flags = 0x80000000000000000000000000000000n, // FRAME's new-logic flag bit
+): string {
+  return `0x${"00000000".repeat(4)}${uintLeHex(freeRao, 8)}${uintLeHex(reservedRao, 8)}${uintLeHex(frozenRao, 8)}${uintLeHex(flags, 16)}`;
+}
+
+// A full u128 AccountData (80 bytes): free/reserved/frozen/flags, u128 each.
+function accountInfoU128FullHex(
+  freeRao: bigint,
+  reservedRao: bigint,
+  frozenRao = 0n,
+  flags = 0n,
+): string {
+  return `0x${"00000000".repeat(4)}${uintLeHex(freeRao, 16)}${uintLeHex(reservedRao, 16)}${uintLeHex(frozenRao, 16)}${uintLeHex(flags, 16)}`;
+}
+
+// Captured live from finney state_getStorage for a coldkey with a nonzero
+// reserved balance: nonce 685, free 1_850_761_846 rao, reserved 126_000_000
+// rao, frozen 0, flags high-bit set. The pre-#8239 u128 decode read this as
+// ~2.32e27 rao because the u128 "free" read spanned free+reserved.
+const REAL_FINNEY_BLOB =
+  "0xad0200000100000001000000000000007662506e00000000809b8207000000" +
+  "00000000000000000000000000000000000000000000000080";
+const REAL_FINNEY_TOTAL_RAO = 1_850_761_846n + 126_000_000n;
 
 describe("isFinneySs58Address", () => {
   test("accepts a valid finney address", () => {
@@ -72,6 +104,40 @@ describe("systemAccountStorageKey", () => {
 describe("accountInfoTotalRao", () => {
   test("sums free + reserved from a SCALE AccountInfo blob", () => {
     assert.equal(accountInfoTotalRao({ result: accountInfoHex(7n, 3n) }), 10n);
+  });
+
+  test("decodes the live finney u64 layout — reserved > 0 must not corrupt free (#8239)", () => {
+    // The real captured blob: the u128 misread returned ~2.32e27 rao here.
+    assert.equal(
+      accountInfoTotalRao({ result: REAL_FINNEY_BLOB }),
+      REAL_FINNEY_TOTAL_RAO,
+    );
+  });
+
+  test("decodes a synthetic 56-byte u64 blob with nonzero frozen and flags", () => {
+    assert.equal(
+      accountInfoTotalRao({
+        result: accountInfoU64Hex(5_000_000_000n, 250_000_000n, 111n),
+      }),
+      5_250_000_000n,
+    );
+  });
+
+  test("u64-layout blobs with reserved = 0 decode to the same value as before", () => {
+    // Accounts with reserved = 0 were accidentally correct pre-fix; lock that in.
+    assert.equal(
+      accountInfoTotalRao({ result: accountInfoU64Hex(13_687_971_778n, 0n) }),
+      13_687_971_778n,
+    );
+  });
+
+  test("decodes a full 80-byte u128 AccountData at the u128 offsets", () => {
+    assert.equal(
+      accountInfoTotalRao({
+        result: accountInfoU128FullHex(2_000_000_000n, 500_000_000n, 42n, 1n),
+      }),
+      2_500_000_000n,
+    );
   });
 
   test("treats an absent storage entry as a zero balance", () => {

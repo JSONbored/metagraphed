@@ -225,6 +225,34 @@ test("GET /accounts/{ss58}/balance falls through on KV read failure", async () =
   );
 });
 
+test("GET /accounts/{ss58}/balance decodes the live finney u64 AccountInfo layout (#8239)", async () => {
+  // Captured live: 56-byte blob (Balance = u64) for a coldkey with reserved > 0.
+  // free 1_850_761_846 + reserved 126_000_000 rao = 1.976761846 TAO. The old
+  // u128 decode returned ~2.3e18 "tao" for exactly this shape.
+  await withFetchStub(
+    async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result:
+          "0xad0200000100000001000000000000007662506e00000000809b8207000000" +
+          "00000000000000000000000000000000000000000000000080",
+      }),
+    }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {} as unknown as Env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.balance_tao, 1.976761846);
+    },
+  );
+});
+
 test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () => {
   // Real Bittensor RPC returns free+reserved as 0x-prefixed hex u128 strings.
   await withFetchStub(

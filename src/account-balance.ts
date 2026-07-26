@@ -37,12 +37,24 @@ const SYSTEM_ACCOUNT_STORAGE_PREFIX =
   "26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9";
 const ACCOUNT_ID_LENGTH = 32;
 // SCALE AccountInfo: nonce/consumers/providers/sufficients (u32 LE each = 16
-// bytes), then AccountData whose first two fields are free + reserved (u128 LE
-// each). Only free+reserved are read; the trailing frozen/flags (or legacy
-// misc_frozen/fee_frozen) fields are ignored, so both AccountData layouts decode.
-const ACCOUNT_DATA_FREE_OFFSET = 16;
-const ACCOUNT_DATA_RESERVED_OFFSET = 32;
+// bytes), then AccountData. subtensor's Balance type is u64, so a live finney
+// blob is 56 bytes: free u64@16, reserved u64@24, frozen u64@32, flags u128@40
+// (verified against a live state_getStorage response). Generic-Substrate
+// chains use Balance = u128 (free u128@16, reserved u128@32; 80 bytes with
+// frozen+flags). Decoding finney's 56-byte blob with the u128 offsets spans
+// free+reserved in a single read, so any account with reserved > 0 returned
+// ~1e18 "tao" (#8239) — the layout must be picked by blob length.
+const ACCOUNT_INFO_HEADER_BYTES = 16;
+const U64_BYTES = 8;
 const U128_BYTES = 16;
+// header + free/reserved/frozen (u64 each) + flags (u128) — live finney shape.
+const ACCOUNT_INFO_U64_LENGTH =
+  ACCOUNT_INFO_HEADER_BYTES + 3 * U64_BYTES + U128_BYTES; // 56
+// header + free + reserved (u128 each) — the minimum readable u128-layout blob.
+const ACCOUNT_INFO_U128_MIN_LENGTH = ACCOUNT_INFO_HEADER_BYTES + 2 * U128_BYTES; // 48
+// header + free/reserved/frozen/flags (u128 each) — a full u128 AccountData.
+const ACCOUNT_INFO_U128_FULL_LENGTH =
+  ACCOUNT_INFO_HEADER_BYTES + 4 * U128_BYTES; // 80
 const RAO_PER_TAO = 1_000_000_000n;
 
 function decodeBase58(value: string): Uint8Array | null {
@@ -118,9 +130,9 @@ function hexToBytes(hex: string): Uint8Array | null {
   return bytes;
 }
 
-function readU128Le(bytes: Uint8Array, offset: number): bigint {
+function readUintLe(bytes: Uint8Array, offset: number, width: number): bigint {
   let value = 0n;
-  for (let index = U128_BYTES - 1; index >= 0; index -= 1) {
+  for (let index = width - 1; index >= 0; index -= 1) {
     value = (value << 8n) | BigInt(bytes[offset + index]);
   }
   return value;
@@ -159,13 +171,30 @@ export function accountInfoTotalRao(
   if (result == null) return 0n;
   if (typeof result !== "string") return null;
   const bytes = hexToBytes(result);
-  if (!bytes || bytes.length < ACCOUNT_DATA_RESERVED_OFFSET + U128_BYTES) {
-    return null;
+  if (!bytes) return null;
+  // Pick the AccountData layout by blob length (see the constants above):
+  // a full u128 AccountData first (>=80 bytes), then finney's u64 layout
+  // (56..79 — the live-chain shape), then the minimal free+reserved u128
+  // pair (48..55) for compatibility. Anything shorter is undecodable.
+  if (bytes.length >= ACCOUNT_INFO_U128_FULL_LENGTH) {
+    return (
+      readUintLe(bytes, ACCOUNT_INFO_HEADER_BYTES, U128_BYTES) +
+      readUintLe(bytes, ACCOUNT_INFO_HEADER_BYTES + U128_BYTES, U128_BYTES)
+    );
   }
-  return (
-    readU128Le(bytes, ACCOUNT_DATA_FREE_OFFSET) +
-    readU128Le(bytes, ACCOUNT_DATA_RESERVED_OFFSET)
-  );
+  if (bytes.length >= ACCOUNT_INFO_U64_LENGTH) {
+    return (
+      readUintLe(bytes, ACCOUNT_INFO_HEADER_BYTES, U64_BYTES) +
+      readUintLe(bytes, ACCOUNT_INFO_HEADER_BYTES + U64_BYTES, U64_BYTES)
+    );
+  }
+  if (bytes.length >= ACCOUNT_INFO_U128_MIN_LENGTH) {
+    return (
+      readUintLe(bytes, ACCOUNT_INFO_HEADER_BYTES, U128_BYTES) +
+      readUintLe(bytes, ACCOUNT_INFO_HEADER_BYTES + U128_BYTES, U128_BYTES)
+    );
+  }
+  return null;
 }
 
 export interface AccountBalanceResult {
