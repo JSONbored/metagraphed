@@ -1,22 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { DomainsPage } from "./-domains-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// #8311: /domains retired into /subnets. The page was a 32-line wrapper around
+// <DomainsRollup>, and the taxonomy only means anything next to the subnets it
+// classifies -- the rollup now sits under the registry table, below the domain
+// filter chips that were already there.
 export const Route = createFileRoute("/domains")({
-  head: () => ({
-    meta: [
-      { title: "Domains — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Browse Bittensor subnets by capability domain — inference, storage, compute, finance, and more — with member count, total stake, emission share, and within-domain emission concentration per domain.",
-      },
-      { property: "og:title", content: "Domains — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Browse Bittensor subnets by capability domain with real stake and emission context per domain.",
-      },
-    ],
-  }),
-  component: DomainsPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/subnets", hash: "domains", replace: true });
+  },
 });

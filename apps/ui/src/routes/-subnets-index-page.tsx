@@ -3,7 +3,7 @@ import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTaoMarket } from "@/lib/metagraphed/market.functions";
-import { Coins, Layers, Server, Star } from "lucide-react";
+import { ChevronDown, Coins, Layers, Server, Star } from "lucide-react";
 import {
   AsyncPanel,
   Chip,
@@ -87,6 +87,8 @@ import { buildUrl } from "@/lib/metagraphed/client";
 import { joinEconomics, joinHealth, matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
+import { LeaderboardsSection, LeaderboardsCsvExportMenu } from "./-leaderboards-page";
+import { DomainsRollup } from "@/components/metagraphed/domains-rollup";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 
 // #8248: fetch every active subnet in one shot instead of cursor-paginating --
@@ -202,6 +204,17 @@ export function SubnetsPage() {
       search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
       replace: true,
     });
+  const setSection = (section: "registry" | "rankings") =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, section }) as never,
+      resetScroll: false,
+    });
+  const setWindow = (window: "7d" | "30d") =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, window }) as never,
+      replace: true,
+      resetScroll: false,
+    });
   const subnetsCsvUrl = buildUrl("/api/v1/subnets", { limit: ALL_ROWS_LIMIT });
   return (
     <AppShell>
@@ -211,13 +224,23 @@ export function SubnetsPage() {
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
         actions={
           <>
-            <ViewModeToggle value={search.view} onChange={setView} />
-            {search.view === "table" ? (
-              <DensityToggle value={effectiveDensity} onChange={setDensity} />
+            {search.section === "registry" ? (
+              <>
+                <ViewModeToggle value={search.view} onChange={setView} />
+                {search.view === "table" ? (
+                  <DensityToggle value={effectiveDensity} onChange={setDensity} />
+                ) : null}
+              </>
             ) : null}
             <ActionBar>
-              <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-              <DownloadCsvButton url={subnetsCsvUrl} bare />
+              {search.section === "rankings" ? (
+                <LeaderboardsCsvExportMenu win={search.window} />
+              ) : (
+                <>
+                  <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+                  <DownloadCsvButton url={subnetsCsvUrl} bare />
+                </>
+              )}
               <ShareButton bare />
             </ActionBar>
           </>
@@ -229,34 +252,60 @@ export function SubnetsPage() {
           signals (incidents/drift/pilot counts) now live only on their owning
           pages (/apis/endpoints, /status); this page keeps at most 4 inline
           facts a reader of a SUBNET list actually wants first. */}
-      <AsyncPanel
-        context="subnets summary"
-        fallback={<PanelSkeleton height="xs" className="mb-4" />}
-      >
-        <SubnetsCompactStats />
-      </AsyncPanel>
-      <SubnetsSavedViews />
-      <AsyncPanel
-        context="subnets"
-        fallback={
-          <TableSkeleton
-            rows={search.view === "table" ? 10 : 6}
-            columns={search.view === "table" ? 8 : 4}
-            density={effectiveDensity}
-          />
-        }
-      >
-        <SubnetsTable view={search.view} density={effectiveDensity} />
-      </AsyncPanel>
-      <AsyncPanel
-        context="domains rollup"
-        fallback={<PanelSkeleton height="sm" className="mt-6" />}
-      >
-        <SubnetsDomainsRollup />
-      </AsyncPanel>
+      {/* #8311: /leaderboards folded in here. Every board ranks subnets, so a
+          separate top-level route for them was an IA accident. A section tab
+          rather than a `view` mode -- see subnets.index.tsx for why. */}
+      <SectionTabs section={search.section} onChange={setSection} />
+
+      {search.section === "rankings" ? (
+        <LeaderboardsSection win={search.window} onWindowChange={setWindow} />
+      ) : (
+        <>
+          <AsyncPanel
+            context="subnets summary"
+            fallback={<PanelSkeleton height="xs" className="mb-4" />}
+          >
+            <SubnetsCompactStats />
+          </AsyncPanel>
+          <SubnetsSavedViews />
+          <AsyncPanel
+            context="subnets"
+            fallback={
+              <TableSkeleton
+                rows={search.view === "table" ? 10 : 6}
+                columns={search.view === "table" ? 8 : 4}
+                density={effectiveDensity}
+              />
+            }
+          >
+            <SubnetsTable view={search.view} density={effectiveDensity} />
+          </AsyncPanel>
+          <AsyncPanel
+            context="domains rollup"
+            fallback={<PanelSkeleton height="sm" className="mt-6" />}
+          >
+            <SubnetsDomainsRollup />
+          </AsyncPanel>
+          {/* #8311: /domains folded in. The chips above are a filter; this is
+              the taxonomy itself -- members, stake, emission share and
+              within-domain concentration per domain. Collapsed by default so
+              it costs nothing to the reader who came for the table, and its
+              query doesn't fire until opened. */}
+          <SubnetsDomainsTaxonomy />
+        </>
+      )}
       <ApiSourceFooter
-        paths={["/api/v1/subnets", "/api/v1/domains"]}
-        artifacts={["/metagraph/subnets.json"]}
+        paths={
+          search.section === "rankings"
+            ? [
+                "/api/v1/registry/leaderboards",
+                "/api/v1/chain/weights",
+                "/api/v1/chain/deregistrations",
+                "/api/v1/economics",
+              ]
+            : ["/api/v1/subnets", "/api/v1/domains"]
+        }
+        artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
       />
       <SubnetsCompareDrawer />
       <BackToTop />
@@ -2010,5 +2059,85 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         </span>
       </span>
     </SparkLegend>
+  );
+}
+
+/**
+ * Registry / Rankings switch (#8311). Two sections, so a plain two-button
+ * strip rather than the ProfileTabs machinery -- there's no overflow to
+ * manage and no per-tab URL segment.
+ */
+function SectionTabs({
+  section,
+  onChange,
+}: {
+  section: "registry" | "rankings";
+  onChange: (s: "registry" | "rankings") => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Subnets sections"
+      className="mb-4 flex items-center gap-1 border-b border-border"
+    >
+      {(
+        [
+          ["registry", "Registry"],
+          ["rankings", "Rankings"],
+        ] as const
+      ).map(([id, label]) => {
+        const active = section === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(id)}
+            className={classNames(
+              "relative min-h-11 px-3 py-2 mg-type-caption-lg font-medium transition-colors mg-focus-ring",
+              active
+                ? "text-ink-strong after:absolute after:inset-x-2 after:-bottom-px after:h-[1.5px] after:rounded-full after:bg-accent after:content-['']"
+                : "text-ink-muted hover:text-ink-strong",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The full domain taxonomy, absorbed from the retired /domains route (#8311).
+ * Collapsed by default: the reader who came for the subnet table shouldn't pay
+ * for it, and a closed <details> never mounts its child, so the domains query
+ * doesn't fire until it's opened.
+ */
+function SubnetsDomainsTaxonomy() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section id="domains" className="mt-6 scroll-mt-24">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="domains-taxonomy"
+        className="mg-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded px-1 py-1 mg-type-caption font-medium text-ink-muted transition-colors hover:text-ink-strong"
+      >
+        <ChevronDown
+          className={classNames("size-3.5 transition-transform", open && "rotate-180")}
+        />
+        {open ? "Hide" : "Show"} the domain taxonomy
+      </button>
+      {open ? (
+        <div id="domains-taxonomy" className="mt-2">
+          <AsyncPanel context="domain taxonomy" fallback={<PanelSkeleton height="md" />}>
+            <DomainsRollup />
+          </AsyncPanel>
+        </div>
+      ) : null}
+    </section>
   );
 }

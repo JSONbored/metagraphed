@@ -1,19 +1,15 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { ChevronDown, Download, Scale, UserMinus, Zap } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { RegistryLeaderboards } from "@/components/metagraphed/registry-leaderboards";
 import {
   BrandIcon,
   TimeAgo,
   StatTile,
-  ShareButton,
-  ActionBar,
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -84,32 +80,27 @@ function RegistryLeaderboardsSkeleton() {
 // Every chain board on this route ranks the same 7d/30d window, so the window control lives at the
 // page level and governs those sections rather than each board owning a duplicate toggle. The
 // registry-leaderboards section is not windowed and renders independently of it.
-export function LeaderboardsPage() {
-  const search = useSearch({ from: "/leaderboards" });
-  const navigate = useNavigate({ from: "/leaderboards" });
-  const win = search.window;
-
+/**
+ * The boards themselves, with no page shell — so both the retiring
+ * /leaderboards route and the /subnets "Rankings" section render exactly the
+ * same content rather than drifting into two copies (#8311).
+ */
+export function LeaderboardsSection({
+  win,
+  onWindowChange,
+}: {
+  win: LeaderboardWindow;
+  onWindowChange: (w: LeaderboardWindow) => void;
+}) {
   return (
-    <AppShell>
-      <PageMasthead
-        eyebrow="Explorer"
-        live
-        title="Leaderboards"
-        description="Registry and chain-activity boards — ranked by subnet from live registry data and chain-direct analytics."
-        actions={
-          <ActionBar>
-            <CsvExportMenu win={win} />
-            <ShareButton bare />
-          </ActionBar>
-        }
-      />
+    <>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="mg-type-label uppercase text-ink-muted">Window</span>
         {(["7d", "30d"] as const).map((w) => (
           <button
             key={w}
             type="button"
-            onClick={() => navigate({ search: { window: w } })}
+            onClick={() => onWindowChange(w)}
             className={w === win ? WINDOW_BTN_ACTIVE : WINDOW_BTN}
           >
             {w}
@@ -149,17 +140,12 @@ export function LeaderboardsPage() {
           <EmissionsLeaderboard />
         </AsyncPanel>
       </div>
-      <ApiSourceFooter
-        paths={[
-          "/api/v1/registry/leaderboards",
-          "/api/v1/chain/weights",
-          "/api/v1/chain/deregistrations",
-          "/api/v1/economics",
-        ]}
-      />
-    </AppShell>
+    </>
   );
 }
+
+/** CSV export for the boards, re-exported so the hosting page can place it. */
+export { CsvExportMenu as LeaderboardsCsvExportMenu };
 
 // Three boards, three CSV sources (#6577). A third bare DownloadCsvButton here
 // collapses to an unlabeled icon below `sm` — its own two prior PR attempts both
