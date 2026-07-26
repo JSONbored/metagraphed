@@ -79,7 +79,10 @@ export const GlobalValidatorsArtifactSchema = z
       "total_stake",
       "uid_count",
     ]),
-    limit: z.int().min(1).max(100),
+    // #8251: 2000 cap (was 100) so the directory page can fetch the full
+    // validator set in one request -- mirrors GLOBAL_VALIDATOR_LIMIT_MAX in
+    // src/metagraph-neurons.ts.
+    limit: z.int().min(1).max(2000),
     block_number: z.int().min(0).nullable(),
     captured_at: z.string().nullable(),
     validator_count: z.int().min(0),
@@ -105,7 +108,7 @@ export const GlobalValidatorsQuerySchema = z
         "uid_count",
       ])
       .optional(),
-    limit: z.int().min(1).max(100).optional(),
+    limit: z.int().min(1).max(2000).optional(),
     format: z.enum(["json", "csv"]).optional(),
   })
   .strict();

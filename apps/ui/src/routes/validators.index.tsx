@@ -3,22 +3,14 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ValidatorsPage } from "./-validators-index-page";
 
-// The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
-// Stake / emission / dominance / trust get their own columns in #3359; this
-// baseline page only renders hotkey identity + subnet/UID counts (#3360 adds the
-// dedicated active-subnet column), but every sort key stays selectable.
-const validatorSortKeys = [
-  "subnet_count",
-  "uid_count",
-  "stake_dominance",
-  "total_stake",
-  "total_emission",
-  "avg_validator_trust",
-  "max_validator_trust",
-] as const;
-
+// #8251: sort is a plain string (client-side sortBy over the full fetched
+// set) rather than the API's enum -- the page now fetches EVERY validator in
+// one request and sorts locally, so any numeric row field is sortable,
+// including take/apy_estimate/nominator_count that the API's own ?sort=
+// never supported.
 const validatorsSearchSchema = z.object({
-  sort: fallback(z.enum(validatorSortKeys), "subnet_count").default("subnet_count"),
+  q: fallback(z.string(), "").default(""),
+  sort: fallback(z.string(), "total_stake_tao").default("total_stake_tao"),
   // #5344: bring Validators up to the canonical ranked-list interaction model
   // (Subnets) — a sort DIRECTION toggled by clicking a column header, and a row
   // density control — instead of a bare, single-direction <select>.

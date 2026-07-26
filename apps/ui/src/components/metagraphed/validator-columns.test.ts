@@ -62,18 +62,20 @@ describe("VALIDATOR_COLUMNS", () => {
     }
   });
 
-  it("exposes the completed column set the incomplete merge was missing", () => {
+  // #8251 column diet: Hotkey/Coldkey/UIDs/Total emission left the directory
+  // (the Operator cell now carries the detail link + short hotkey; coldkey
+  // and per-subnet emission live on the detail page). This pins the NEW set.
+  it("exposes the #8251 directory column set", () => {
     const headers = VALIDATOR_COLUMNS.map((c) => c.header);
-    for (const h of [
+    expect(headers).toEqual([
       "Operator",
-      "Hotkey",
-      "Coldkey",
       "Take",
       "Est. APY",
+      "Active subnets",
+      "Nominators",
+      "Dominance",
       "Total stake",
-      "Total emission",
-    ]) {
-      expect(headers).toContain(h);
-    }
+      "30d Δ",
+    ]);
   });
 });

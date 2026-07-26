@@ -53,7 +53,12 @@ export const GLOBAL_VALIDATOR_SORTS = [
 ];
 export const DEFAULT_GLOBAL_VALIDATOR_SORT = "subnet_count";
 export const GLOBAL_VALIDATOR_LIMIT_DEFAULT = 20;
-export const GLOBAL_VALIDATOR_LIMIT_MAX = 100;
+// #8251: raised 100 -> 2000 so the validators directory can serve the FULL
+// validator set (~1,014 live) in one request for client-side virtualization,
+// with headroom for growth. ~115KB/100 rows uncompressed (measured live), so
+// a full fetch is ~1.2MB pre-gzip -- acceptable for a once-per-visit, cached,
+// short-stale directory read.
+export const GLOBAL_VALIDATOR_LIMIT_MAX = 2000;
 const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
 const RAO_PER_TAO = 1e9;
 
