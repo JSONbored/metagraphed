@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   stripUrls,
   cleanDescription,
@@ -44,6 +44,8 @@ import {
   withSurfaceFreshness,
   resolveBaseRemote,
   dirtyTrackedPaths,
+  isProductionPublishBuild,
+  revertDeployOwnedArtifactsIfDirty,
 } from "../scripts/lib.ts";
 import { execFileSync } from "node:child_process";
 import type { Row } from "./row-type.ts";
@@ -1921,5 +1923,204 @@ describe("dirtyTrackedPaths", () => {
   test("returns an empty array when the command fails (not a git repository)", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "wj-dirty-paths-not-a-repo-"));
     assert.deepEqual(dirtyTrackedPaths(["a.json"], dir), []);
+  });
+});
+
+describe("isProductionPublishBuild", () => {
+  const ENV_KEYS = [
+    "METAGRAPH_PRODUCTION_BUILD",
+    "GITHUB_ACTIONS",
+    "GITHUB_WORKFLOW",
+    "GITHUB_REF",
+  ] as const;
+
+  function withEnv(
+    overrides: Partial<Record<(typeof ENV_KEYS)[number], string>>,
+    fn: () => void,
+  ) {
+    const previous = Object.fromEntries(
+      ENV_KEYS.map((key) => [key, process.env[key]]),
+    );
+    for (const key of ENV_KEYS) {
+      delete process.env[key];
+    }
+    Object.assign(process.env, overrides);
+    try {
+      fn();
+    } finally {
+      for (const key of ENV_KEYS) {
+        if (previous[key] === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = previous[key];
+        }
+      }
+    }
+  }
+
+  test("true when METAGRAPH_PRODUCTION_BUILD=1, regardless of the GitHub Actions vars", () => {
+    withEnv({ METAGRAPH_PRODUCTION_BUILD: "1" }, () => {
+      assert.equal(isProductionPublishBuild(), true);
+    });
+  });
+
+  test("true for the real publish workflow on main", () => {
+    withEnv(
+      {
+        GITHUB_ACTIONS: "true",
+        GITHUB_WORKFLOW: "Publish Cloudflare Backend",
+        GITHUB_REF: "refs/heads/main",
+      },
+      () => {
+        assert.equal(isProductionPublishBuild(), true);
+      },
+    );
+  });
+
+  test("false for the same workflow on a non-main ref", () => {
+    withEnv(
+      {
+        GITHUB_ACTIONS: "true",
+        GITHUB_WORKFLOW: "Publish Cloudflare Backend",
+        GITHUB_REF: "refs/heads/some-branch",
+      },
+      () => {
+        assert.equal(isProductionPublishBuild(), false);
+      },
+    );
+  });
+
+  test("false for a different workflow on main (e.g. the Validate CI run)", () => {
+    withEnv(
+      {
+        GITHUB_ACTIONS: "true",
+        GITHUB_WORKFLOW: "Validate",
+        GITHUB_REF: "refs/heads/main",
+      },
+      () => {
+        assert.equal(isProductionPublishBuild(), false);
+      },
+    );
+  });
+
+  test("false outside CI with nothing set", () => {
+    withEnv({}, () => {
+      assert.equal(isProductionPublishBuild(), false);
+    });
+  });
+});
+
+describe("revertDeployOwnedArtifactsIfDirty", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // A real remote is required (not just `git remote add`, unlike resolveBaseRemote's
+  // tests above) because the function actually runs `git checkout <remote>/main --
+  // <paths>`, which needs a real, fetched `<remote>/main` ref to revert against.
+  function initRepoWithRemote(files: Record<string, string>) {
+    const bareDir = mkdtempSync(path.join(tmpdir(), "wj-revert-bare-"));
+    execFileSync("git", ["init", "-q", "--bare"], { cwd: bareDir });
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-revert-work-"));
+    execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+    execFileSync("git", ["config", "user.email", "test@example.com"], {
+      cwd: dir,
+    });
+    execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+    for (const [relPath, contents] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(dir, relPath)), { recursive: true });
+      writeFileSync(path.join(dir, relPath), contents);
+    }
+    execFileSync("git", ["add", "-A"], { cwd: dir });
+    execFileSync("git", ["commit", "-q", "-m", "initial"], { cwd: dir });
+    execFileSync("git", ["remote", "add", "origin", bareDir], { cwd: dir });
+    execFileSync("git", ["push", "-q", "origin", "main"], { cwd: dir });
+    execFileSync("git", ["fetch", "-q", "origin"], { cwd: dir });
+    return dir;
+  }
+
+  test("reverts a dirty watched path back to the base remote's content", () => {
+    const dir = initRepoWithRemote({ "a.json": '{"v":1}\n' });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    writeFileSync(path.join(dir, "a.json"), '{"v":2}\n');
+
+    revertDeployOwnedArtifactsIfDirty(["a.json"], dir);
+
+    assert.equal(readFileSync(path.join(dir, "a.json"), "utf8"), '{"v":1}\n');
+    assert.equal(warn.mock.calls.length, 0);
+    assert.equal(log.mock.calls.length, 1);
+  });
+
+  test("only reverts the paths that are actually dirty, leaving a clean one untouched", () => {
+    const dir = initRepoWithRemote({
+      "a.json": '{"v":1}\n',
+      "b.json": '{"v":1}\n',
+    });
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    writeFileSync(path.join(dir, "a.json"), '{"v":2}\n');
+    // b.json is untouched -- exercises that a real caller (build-artifacts.ts)
+    // scoping this to just its own file never risks another watched member.
+
+    revertDeployOwnedArtifactsIfDirty(["a.json", "b.json"], dir);
+
+    assert.equal(readFileSync(path.join(dir, "a.json"), "utf8"), '{"v":1}\n');
+    assert.equal(readFileSync(path.join(dir, "b.json"), "utf8"), '{"v":1}\n');
+  });
+
+  test("is a no-op when none of the watched paths are dirty", () => {
+    const dir = initRepoWithRemote({ "a.json": '{"v":1}\n' });
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    revertDeployOwnedArtifactsIfDirty(["a.json"], dir);
+
+    assert.equal(readFileSync(path.join(dir, "a.json"), "utf8"), '{"v":1}\n');
+    assert.equal(log.mock.calls.length, 0);
+  });
+
+  test("defaults to DEPLOY_OWNED_ARTIFACTS and process.cwd() with no arguments", () => {
+    const dir = initRepoWithRemote({
+      "public/metagraph/r2-manifest.json": '{"v":1}\n',
+    });
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    writeFileSync(
+      path.join(dir, "public/metagraph/r2-manifest.json"),
+      '{"v":2}\n',
+    );
+    const previousCwd = process.cwd();
+    process.chdir(dir);
+    try {
+      revertDeployOwnedArtifactsIfDirty();
+      assert.equal(
+        readFileSync(
+          path.join(dir, "public/metagraph/r2-manifest.json"),
+          "utf8",
+        ),
+        '{"v":1}\n',
+      );
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
+  test("warns instead of throwing when the revert itself can't run (no remote configured)", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-revert-no-remote-"));
+    execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+    execFileSync("git", ["config", "user.email", "test@example.com"], {
+      cwd: dir,
+    });
+    execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+    writeFileSync(path.join(dir, "a.json"), '{"v":1}\n');
+    execFileSync("git", ["add", "-A"], { cwd: dir });
+    execFileSync("git", ["commit", "-q", "-m", "initial"], { cwd: dir });
+    writeFileSync(path.join(dir, "a.json"), '{"v":2}\n');
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    // No "origin" remote exists at all, so `git checkout origin/main -- a.json`
+    // fails -- the fallback-warning path, not the happy path above.
+    revertDeployOwnedArtifactsIfDirty(["a.json"], dir);
+
+    assert.ok(warn.mock.calls.length > 0);
+    assert.equal(readFileSync(path.join(dir, "a.json"), "utf8"), '{"v":2}\n');
   });
 });
