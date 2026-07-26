@@ -3,8 +3,14 @@ import path from "node:path";
 import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { generateClientSource } from "./generate-client.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
-import { readJson, repoRoot, stableStringify } from "./lib.ts";
+import {
+  readJson,
+  repoRoot,
+  stableStringify,
+  stripJsonComments,
+} from "./lib.ts";
 import { promises as fs } from "node:fs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 
 // The OpenAPI document read below is generated JSON, deep-traversed only to
 // compare against a freshly-rebuilt copy or report a route path -- never
@@ -14,6 +20,29 @@ import { promises as fs } from "node:fs";
 type Row = Record<string, any>;
 
 const errors: string[] = [];
+
+// #stale-contract-version-env: wrangler.jsonc's vars.METAGRAPH_CONTRACT_VERSION
+// is a hardcoded literal, separate from src/contracts.ts's CONTRACT_VERSION
+// constant it's meant to seed the deployed Worker's default with (see
+// workers/responses.ts's contractVersion(): env.METAGRAPH_CONTRACT_VERSION ||
+// CONTRACT_VERSION -- the env var exists so a specific deploy CAN override it,
+// e.g. for testing, but the checked-in default must track the real constant).
+// PR #2828 bumped CONTRACT_VERSION without updating this literal, and nothing
+// caught the drift -- resolveLiveEconomics (src/health-serving.ts) then
+// silently rejected every live-KV economics blob as a "different contract"
+// mismatch and permanently fell back to the stale committed R2 artifact, with
+// no error anywhere (discovered 2026-07-26, confirmed months after #2828).
+const wranglerConfig: Row = JSON.parse(
+  stripJsonComments(
+    await fs.readFile(path.join(repoRoot, "wrangler.jsonc"), "utf8"),
+  ),
+);
+check(
+  wranglerConfig.vars?.METAGRAPH_CONTRACT_VERSION === CONTRACT_VERSION,
+  `wrangler.jsonc's vars.METAGRAPH_CONTRACT_VERSION ("${wranglerConfig.vars?.METAGRAPH_CONTRACT_VERSION}") ` +
+    `must match src/contracts.ts's CONTRACT_VERSION ("${CONTRACT_VERSION}") -- ` +
+    "run `npm run types:workers` after fixing it (workers/worker-configuration.d.ts embeds the same literal).",
+);
 
 const currentBundle = await readJson(
   path.join(repoRoot, "schemas/api-components.schema.json"),
