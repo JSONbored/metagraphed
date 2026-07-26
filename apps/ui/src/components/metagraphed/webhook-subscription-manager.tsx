@@ -203,7 +203,7 @@ function CreateSubscriptionSection() {
             className={inputCls}
           />
           {netuidsError ? (
-            <p className="mt-1 text-[11px] text-health-down">{netuidsError}</p>
+            <p className="mt-1 mg-type-caption text-health-down">{netuidsError}</p>
           ) : null}
         </Field>
         <Field label="Kinds filter" hint="Optional — leave unchecked to receive all change kinds.">
@@ -234,7 +234,9 @@ function CreateSubscriptionSection() {
             }}
             className={inputCls}
           />
-          {secretError ? <p className="mt-1 text-[11px] text-health-down">{secretError}</p> : null}
+          {secretError ? (
+            <p className="mt-1 mg-type-caption text-health-down">{secretError}</p>
+          ) : null}
         </Field>
         <button
           type="submit"
@@ -264,7 +266,7 @@ function CreateSubscriptionSection() {
             truncate={false}
             className="w-full ph-no-capture"
           />
-          <div className="space-y-1 text-[11px] text-ink-muted">
+          <div className="space-y-1 mg-type-caption text-ink-muted">
             <p>
               Deliveries are signed {result.delivery.signature_algorithm} over the raw request body,
               keyed by the secret above.
@@ -372,7 +374,7 @@ function LookupSubscriptionSection() {
             <Row label="Dead-lettered" value={String(result.delivery.dead_letter)} />
           </dl>
           {result.delivery.last_failure ? (
-            <div className="rounded border border-health-warn/30 bg-health-warn/5 p-2 text-[11px] text-ink-muted">
+            <div className="rounded border border-health-warn/30 bg-health-warn/5 p-2 mg-type-caption text-ink-muted">
               Last failure: {result.delivery.last_failure.reason ?? "unknown"}
               {result.delivery.last_failure.status_code
                 ? ` (HTTP ${result.delivery.last_failure.status_code})`
@@ -524,7 +526,7 @@ function Field({
         {required ? <span className="text-health-down"> *</span> : null}
       </span>
       {children}
-      {hint ? <span className="mt-1 block text-[11px] text-ink-muted">{hint}</span> : null}
+      {hint ? <span className="mt-1 block mg-type-caption text-ink-muted">{hint}</span> : null}
     </label>
   );
 }

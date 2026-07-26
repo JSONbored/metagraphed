@@ -19,6 +19,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
 import { SearchInput } from "@/components/metagraphed/table-controls";
+import { Panel } from "@/components/metagraphed/primitives";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
 import { broadcastStatusLabel } from "@/components/metagraphed/stake-unstake-modal";
@@ -202,10 +203,12 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-4">
-        <div
+        <Panel
+          as="div"
           role="tablist"
           aria-label="Increase or decrease take"
-          className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+          flush
+          bodyClassName="inline-flex items-center !p-0.5"
         >
           {DIRECTIONS.map((d) => {
             const active = d === flow.direction;
@@ -225,7 +228,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
               </button>
             );
           })}
-        </div>
+        </Panel>
 
         <div className="flex flex-col gap-1">
           <span aria-hidden="true" className="mg-type-micro text-ink-muted">
@@ -240,7 +243,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
           />
         </div>
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded border border-border bg-surface/40 p-3 text-[11px]">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded border border-border bg-surface/40 p-3 mg-type-caption">
           <dt className="text-ink-muted">Current take</dt>
           <dd className="text-right font-mono text-ink-strong">
             {flow.currentTakePct != null ? `${flow.currentTakePct.toFixed(2)}%` : "—"}
@@ -327,7 +330,7 @@ function TakeConfirmationStep({
         loading={flow.feeTao === null}
       />
 
-      <div className="flex items-start gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-2 text-[11px] text-ink-muted">
+      <div className="flex items-start gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
         <span>
           metagraphed builds this transaction for your wallet to sign — we never see your keys and
@@ -378,7 +381,7 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0">
-      <span className="text-[11px] text-ink-muted">{label}</span>
+      <span className="mg-type-caption text-ink-muted">{label}</span>
       <span
         className={classNames(
           "block mg-type-caption font-medium text-ink-strong",
@@ -415,7 +418,7 @@ function StatusView({
           >
             {shortHash(txHash, 8)}
           </Link>
-          <p className="text-[10px] text-ink-muted">
+          <p className="mg-type-caption text-ink-muted">
             May take a few moments to appear once indexed.
           </p>
         </div>

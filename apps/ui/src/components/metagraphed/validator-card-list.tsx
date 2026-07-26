@@ -52,7 +52,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
               {/* Same AccountAddress hover-card treatment as the desktop column (#6338). */}
               <AccountAddress ss58={v.coldkey} compact fallback="—" />
             </div>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
               <Stat label="Active subnets" value={f.subnetsLabel} />
               <Stat label="UIDs" value={f.uidsLabel} />
               <Stat label="Nominators" value={f.nominatorsLabel} />

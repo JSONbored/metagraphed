@@ -105,7 +105,7 @@ export function SearchInput({
         // the aria-labelled sibling controls (SortButton, PageSizeSelect) in this file.
         aria-label={placeholder ?? "Search"}
         className={classNames(
-          "w-full rounded border border-border bg-paper pl-8 pr-14 py-1.5 text-sm text-ink-strong",
+          "w-full rounded border border-border bg-paper pl-8 pr-16 py-1.5 text-sm text-ink-strong",
           "placeholder:text-ink-muted focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-ring transition-colors",
         )}
       />
@@ -298,8 +298,8 @@ export function ResetFiltersButton({
       onClick={onReset}
       className={
         bare
-          ? "inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-          : "inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] font-medium text-ink hover:border-ink/30 min-h-7"
+          ? "inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+          : "inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 mg-type-caption font-medium text-ink hover:border-ink/30 min-h-7"
       }
       title="Clear search, filters, and pagination"
     >

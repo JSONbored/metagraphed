@@ -250,7 +250,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
                 <HotkeyCell hotkey={p.hotkey} />
               </div>
             ) : null}
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
               <Stat label="Spot τ" value={taoCompact(p.spotTao)} />
               <Stat label="Exit τ" value={taoCompact(exitTaoFor(i, p))} />
               <Stat label="Yield" value={pct(p.yield)} />
@@ -312,7 +312,7 @@ function ManageButton({ hotkey, netuid }: { hotkey: string | null; netuid: numbe
         <button
           type="button"
           onClick={open}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
         >
           <Coins className="size-3 text-ink-muted" aria-hidden />
           Manage
@@ -345,7 +345,7 @@ function MoveButton({
         <button
           type="button"
           onClick={open}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
         >
           <ArrowRightLeft className="size-3 text-ink-muted" aria-hidden />
           Move

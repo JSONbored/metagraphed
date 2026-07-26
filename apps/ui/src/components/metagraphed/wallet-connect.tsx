@@ -1,15 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Wallet,
-  Check,
-  Copy,
-  LogOut,
-  Loader2,
-  ShieldCheck,
-  ExternalLink as ExternalLinkIcon,
-} from "lucide-react";
-import { Popover, PopoverTrigger, safeExternalUrl } from "@jsonbored/ui-kit";
+import { Wallet, Check, Copy, LogOut, Loader2, ShieldCheck } from "lucide-react";
+import { Popover, PopoverTrigger, ExternalLink } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
 import { EmptyState } from "./states";
 import { useWallet } from "@/hooks/use-wallet";
@@ -109,7 +101,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
     <div className="space-y-3">
       <Disclaimer />
       {status === "no-accounts" ? (
-        <div className="rounded border border-border bg-surface/40 px-2 py-1.5 text-[11px] text-ink-muted">
+        <div className="rounded border border-border bg-surface/40 px-2 py-1.5 mg-type-caption text-ink-muted">
           No accounts available — open your wallet extension and make sure at least one account is
           shared with this site.
         </div>
@@ -117,7 +109,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
       {status === "error" ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 text-[11px] text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
         >
           {error ?? "Failed to connect wallet."}
         </div>
@@ -148,7 +140,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
 
 function Disclaimer() {
   return (
-    <div className="flex items-start gap-1.5 text-[10px] text-ink-muted">
+    <div className="flex items-start gap-1.5 mg-type-caption text-ink-muted">
       <ShieldCheck className="mt-0.5 size-3 shrink-0 text-ink-muted" aria-hidden="true" />
       <span>{DISCLAIMER}</span>
     </div>
@@ -164,23 +156,16 @@ function NoExtensionView() {
         description="Install a supported extension, then reopen this menu."
       />
       <ul className="space-y-1">
-        {SUPPORTED_WALLETS.map((w) => {
-          const href = safeExternalUrl(w.href);
-          if (!href) return null;
-          return (
-            <li key={w.label}>
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between gap-2 rounded border border-border bg-card px-2 py-1.5 text-[11px] text-ink-strong hover:border-ink/30 transition-colors"
-              >
-                {w.label}
-                <ExternalLinkIcon className="size-3 text-ink-muted" aria-hidden="true" />
-              </a>
-            </li>
-          );
-        })}
+        {SUPPORTED_WALLETS.map((w) => (
+          <li key={w.label}>
+            <ExternalLink
+              href={w.href}
+              className="w-full justify-between gap-2 rounded border border-border bg-card px-2 py-1.5 mg-type-caption text-ink-strong hover:border-ink/30 transition-colors"
+            >
+              {w.label}
+            </ExternalLink>
+          </li>
+        ))}
       </ul>
     </div>
   );
@@ -208,7 +193,7 @@ function AccountPicker({
                 <span className="block mg-type-caption font-medium text-ink-strong truncate">
                   {account.meta.name || shortHash(account.address, 6)}
                 </span>
-                <span className="block text-[10px] text-ink-muted truncate">
+                <span className="block mg-type-caption text-ink-muted truncate">
                   {shortHash(account.address, 6)} · {account.meta.source}
                 </span>
               </span>
@@ -238,7 +223,9 @@ function ConnectedView({
             <span className="block mg-type-caption font-medium text-ink-strong font-mono truncate">
               {shortHash(wallet.address, 6)}
             </span>
-            <span className="block text-[10px] text-ink-muted">Connected via {wallet.source}</span>
+            <span className="block mg-type-caption text-ink-muted">
+              Connected via {wallet.source}
+            </span>
           </span>
           <button
             type="button"
@@ -258,7 +245,7 @@ function ConnectedView({
       {/* #5243: the connected wallet's read-side entry point into its portfolio. */}
       <Link
         to="/portfolio"
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[11px] font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
       >
         <Wallet className="size-3.5" aria-hidden="true" />
         Your positions
@@ -266,12 +253,12 @@ function ConnectedView({
       <button
         type="button"
         onClick={onDisconnect}
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
       >
         <LogOut className="size-3.5" aria-hidden="true" />
         Disconnect
       </button>
-      <p className="flex items-start gap-1.5 text-[9px] text-ink-muted">
+      <p className="flex items-start gap-1.5 mg-type-caption text-ink-muted">
         <ShieldCheck className="mt-0.5 size-2.5 shrink-0" aria-hidden="true" />
         <span>metagraphed never sees your keys.</span>
       </p>

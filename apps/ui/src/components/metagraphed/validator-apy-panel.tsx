@@ -62,7 +62,7 @@ export function ValidatorApyPanel({
               <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-ink-strong">
                 {anyLoading && row.apy == null ? "…" : formatApyPct(row.apy)}
               </div>
-              <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+              <p className="mt-1 mg-type-caption leading-relaxed text-ink-muted">
                 Net of take · daily neuron_daily rollup
               </p>
             </div>
@@ -70,7 +70,7 @@ export function ValidatorApyPanel({
         ))}
       </div>
       {!anyLoading && !anyValue ? (
-        <p className="text-[11px] text-ink-muted">
+        <p className="mg-type-caption text-ink-muted">
           APY estimates need stake and emission history — they appear once enough daily snapshots
           exist for this validator.
         </p>
@@ -80,7 +80,7 @@ export function ValidatorApyPanel({
         windowLabel="history windows"
         stakeRisk
       />
-      <p className="text-[11px] leading-relaxed text-ink-muted">
+      <p className="mg-type-caption leading-relaxed text-ink-muted">
         Delegator APY annualizes the latest daily rewards-per-1k-τ rate from neuron_daily, net of
         validator take. Snapshot-tier emission can lag; server-side modelling (#2551) will replace
         this client estimate.

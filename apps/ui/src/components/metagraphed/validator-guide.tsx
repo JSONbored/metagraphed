@@ -88,7 +88,7 @@ export function ValidatorGuide() {
         </button>
         {open ? (
           <div className="border-t border-border px-3 py-3">
-            <dl className="grid gap-3 text-[11.5px] leading-relaxed text-ink-muted md:grid-cols-2">
+            <dl className="grid gap-3 mg-type-caption leading-relaxed text-ink-muted md:grid-cols-2">
               {METRICS.map((m) => (
                 <div key={m.term}>
                   <dt className="font-medium text-ink-strong">{m.term}</dt>
@@ -96,7 +96,7 @@ export function ValidatorGuide() {
                 </div>
               ))}
             </dl>
-            <p className="mt-3 border-t border-border pt-3 text-[11.5px] leading-relaxed text-ink-muted">
+            <p className="mt-3 border-t border-border pt-3 mg-type-caption leading-relaxed text-ink-muted">
               {GUIDANCE}
             </p>
           </div>
@@ -119,11 +119,11 @@ export function ValidatorGuide() {
                 <span>{m.term}</span>
                 <ChevronDown className="size-3.5 shrink-0 text-ink-muted transition-transform group-open:rotate-180" />
               </summary>
-              <p className="pb-2.5 text-[11.5px] leading-relaxed text-ink-muted">{m.def}</p>
+              <p className="pb-2.5 mg-type-caption leading-relaxed text-ink-muted">{m.def}</p>
             </details>
           ))}
         </div>
-        <p className="border-t border-border px-3 py-3 text-[11.5px] leading-relaxed text-ink-muted">
+        <p className="border-t border-border px-3 py-3 mg-type-caption leading-relaxed text-ink-muted">
           {GUIDANCE}
         </p>
       </div>

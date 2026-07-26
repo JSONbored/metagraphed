@@ -60,7 +60,7 @@ export function Field({
         {required ? <span className="text-health-down"> *</span> : null}
       </span>
       {children}
-      {hint ? <span className="mt-1 block text-[11px] text-ink-muted">{hint}</span> : null}
+      {hint ? <span className="mt-1 block mg-type-caption text-ink-muted">{hint}</span> : null}
     </label>
   );
 }
