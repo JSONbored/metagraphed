@@ -8,6 +8,8 @@
 // function is pure + exported for unit tests; the Worker does the D1 read +
 // envelope. Null-safe: an empty snapshot yields a schema-stable zeroed card.
 
+import { median, percentile } from "./lib/stats.ts";
+
 // The neurons-tier columns the network yield handler reads. `netuid` lets the
 // artifact report how many subnets the snapshot spans (mirrors
 // CHAIN_PERFORMANCE_READ_COLUMNS); no per-UID list is served, so only the economic
@@ -100,24 +102,6 @@ function computeYieldValue(
   return round9(emission / stake);
 }
 
-// Nearest-rank percentile over a non-empty ascending array (rank = ceil(p/100 · n),
-// 1-based), matching the subnet-yield / chain-performance convention. Only called
-// after yieldDistribution has established count > 0, so it is never empty.
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.max(1, Math.ceil((p / 100) * ascending.length));
-  return ascending[rank - 1];
-}
-
-// Conventional median of an ascending array: the middle value for an odd count,
-// the average of the two middle values for an even count (so [0.2, 0.4] -> 0.3,
-// not the lower-middle a nearest-rank p50 would give). Only called after count > 0.
-function median(ascending: number[]): number {
-  const mid = Math.floor(ascending.length / 2);
-  return ascending.length % 2 === 1
-    ? ascending[mid]
-    : round9((ascending[mid - 1] + ascending[mid]) / 2);
-}
-
 export interface YieldDistribution {
   count: number;
   mean: number;
@@ -142,12 +126,12 @@ export function yieldDistribution(
   const summary: YieldDistribution = {
     count,
     mean: round9(total / count),
-    median: median(defined),
+    median: round9(median(defined)!),
     min: round9(defined[0]),
     max: round9(defined[count - 1]),
   };
   for (const p of YIELD_PERCENTILES) {
-    summary[`p${p}`] = round9(percentile(defined, p));
+    summary[`p${p}`] = round9(percentile(defined, p)!);
   }
   return summary;
 }
