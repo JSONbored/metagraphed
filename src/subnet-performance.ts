@@ -9,6 +9,7 @@
 // `null` block (never throws), matching the concentration tier it mirrors.
 
 import { computeConcentration } from "./concentration.ts";
+import { percentile } from "./lib/stats.ts";
 
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -74,14 +75,6 @@ function finiteValues(values: unknown[]): number[] {
   return out;
 }
 
-// Nearest-rank percentile over a non-empty ascending array (rank = ceil(p/100 · n),
-// 1-based), matching the subnet-yield / health-percentile convention. Only called
-// after scoreDistribution has established count > 0, so the array is never empty.
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.max(1, Math.ceil((p / 100) * ascending.length));
-  return ascending[rank - 1];
-}
-
 // Conventional median of a 0..1 score column: the middle value for an odd count,
 // the average of the two middle values for an even count — NOT the nearest-rank
 // p50, which returns the lower-middle for an even count (e.g. [0.2, 0.8] -> 0.2).
@@ -125,7 +118,7 @@ export function scoreDistribution(
     max: round(ascending[count - 1]),
   };
   for (const p of SCORE_PERCENTILES) {
-    summary[`p${p}`] = round(percentile(ascending, p));
+    summary[`p${p}`] = round(percentile(ascending, p)!);
   }
   return summary;
 }

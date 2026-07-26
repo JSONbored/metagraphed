@@ -7,6 +7,8 @@
 // the most emission per unit of stake, and how is that return distributed across the set".
 // Null-safe: a cold/empty subnet yields a zeroed, empty-neuron card (never throws).
 
+import { median, percentile } from "./lib/stats.ts";
+
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
@@ -16,6 +18,13 @@ const SCALE = 1e9;
 function round9(value: unknown): number {
   const n = toNumber(value);
   return Math.round(n * SCALE) / SCALE;
+}
+
+// The shared median() returns its raw, unrounded value -- round it to rao precision
+// here, preserving null (an empty yield set) rather than coercing it to 0.
+function roundedMedian(ascending: number[]): number | null {
+  const m = median(ascending);
+  return m == null ? null : round9(m);
 }
 
 // Coerce a D1 numeric cell (number, numeric string, or null) to a finite number.
@@ -84,27 +93,6 @@ function computeYieldValue(
   if (!(stake != null && stake > 0)) return null;
   if (emission == null) return null;
   return round9(emission / stake);
-}
-
-// Nearest-rank percentile of an ascending numeric array (deterministic, no interpolation
-// ambiguity), used for the p25/p75/p90 spread. Null on an empty set.
-function percentile(ascending: number[], p: number): number | null {
-  if (ascending.length === 0) return null;
-  const rank = Math.ceil((p / 100) * ascending.length) - 1;
-  const index = Math.min(ascending.length - 1, Math.max(0, rank));
-  return ascending[index];
-}
-
-// Conventional median of an ascending array: the middle value for an odd count, the
-// average of the two middle values for an even count (so [0.2, 0.4] -> 0.3, not the
-// lower-middle a nearest-rank p50 would give). Null on an empty set.
-function median(ascending: number[]): number | null {
-  const n = ascending.length;
-  if (n === 0) return null;
-  const mid = Math.floor(n / 2);
-  return n % 2 === 1
-    ? ascending[mid]
-    : round9((ascending[mid - 1] + ascending[mid]) / 2);
 }
 
 interface YieldNeuron {
@@ -187,7 +175,7 @@ export function buildSubnetYield(
     .map((n) => n.yield)
     .filter((y): y is number => y != null)
     .sort((a, b) => a - b);
-  const medianYield = median(definedYields);
+  const medianYield = roundedMedian(definedYields);
   const meanYield =
     definedYields.length > 0
       ? round9(
@@ -331,7 +319,7 @@ function yieldHistoryPoint(date: string, dayRows: Row[]): Row {
     yield_count: definedYields.length,
     subnet_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
     mean_yield: meanYield,
-    median_yield: median(definedYields),
+    median_yield: roundedMedian(definedYields),
     p25_yield: percentile(definedYields, 25),
     p75_yield: percentile(definedYields, 75),
     p90_yield: percentile(definedYields, 90),

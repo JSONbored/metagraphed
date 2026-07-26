@@ -22,6 +22,7 @@ import {
   type AlphaVolumeResult,
   type AlphaVolumeSentiment,
 } from "./alpha-volume.ts";
+import { median, percentile } from "./lib/stats.ts";
 
 export const CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT = 20;
 export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
@@ -61,23 +62,6 @@ function toIso(value: unknown): string | null {
   return n == null ? null : new Date(n).toISOString();
 }
 
-// Nearest-rank percentile of a NON-EMPTY ascending numeric array. Mirrors
-// chain-stake-flow.ts's percentile, applied here to total_volume_tao instead of net flow.
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.ceil((p / 100) * ascending.length);
-  return ascending[Math.min(rank, ascending.length) - 1];
-}
-
-// Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd
-// count, the mean of the two middle values for an even count. Mirrors chain-stake-flow.ts's
-// median (itself matching subnet-yield.ts / chain-yield.ts), applied to total_volume_tao.
-function median(ascending: number[]): number {
-  const mid = (ascending.length - 1) / 2;
-  return roundUnit(
-    (ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2,
-  );
-}
-
 export interface VolumeDistribution {
   count: number;
   mean: number;
@@ -101,10 +85,10 @@ function volumeDistribution(values: number[]): VolumeDistribution | null {
     count: ascending.length,
     mean: roundUnit(sum / ascending.length),
     min: ascending[0],
-    p25: percentile(ascending, 25),
-    median: median(ascending),
-    p75: percentile(ascending, 75),
-    p90: percentile(ascending, 90),
+    p25: percentile(ascending, 25)!,
+    median: roundUnit(median(ascending)!),
+    p75: percentile(ascending, 75)!,
+    p90: percentile(ascending, 90)!,
     max: ascending[ascending.length - 1],
   };
 }
