@@ -490,13 +490,13 @@ function SiteFooter() {
           <FooterLink to="/chain/blocks">Blocks</FooterLink>
           <FooterLink to="/apis">Surfaces</FooterLink>
           <FooterLink to="/apis/endpoints">Endpoints</FooterLink>
-          <FooterLink to="/providers">Providers</FooterLink>
+          <FooterLink to="/apis/providers">Providers</FooterLink>
           <FooterLink to="/validators">Validators</FooterLink>
         </FooterCol>
         <FooterCol title="Operations">
           <FooterLink to="/health">Health</FooterLink>
           <FooterLink to="/status">Status</FooterLink>
-          <FooterLink to="/schemas">Schemas</FooterLink>
+          <FooterLink to="/apis/schemas">Schemas</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>

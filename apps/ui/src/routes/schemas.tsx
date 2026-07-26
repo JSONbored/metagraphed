@@ -1,32 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { fallback } from "@tanstack/zod-adapter";
-import { z } from "zod";
-import { SchemasPage } from "./-schemas-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const schemasSearchSchema = z.object({
-  drift: fallback(z.enum(["all", "drift", "stable"]), "all").default("all"),
-  q: fallback(z.string(), "").default(""),
-  open: fallback(z.string(), "").default(""),
-  driftDetail: fallback(z.string(), "").default(""),
-});
-
+/** /schemas moved into the APIs hub (#8303, part of #8245). */
 export const Route = createFileRoute("/schemas")({
-  validateSearch: schemasSearchSchema,
-  head: () => ({
-    meta: [
-      { title: "Schemas — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "OpenAPI, contracts, schema index, and drift between current and previous snapshots.",
-      },
-      { property: "og:title", content: "Schemas — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "OpenAPI, contracts, schema index, and drift between current and previous snapshots.",
-      },
-    ],
-  }),
-  component: SchemasPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/apis/schemas", search, replace: true });
+  },
 });

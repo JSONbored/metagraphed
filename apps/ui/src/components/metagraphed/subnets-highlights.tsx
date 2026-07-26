@@ -175,7 +175,7 @@ export function SubnetsHighlights() {
         eyebrow="Schema drift (24h)"
         value={drift > 0 ? String(drift) : "Stable"}
         hint={drift > 0 ? "New drift events detected" : "No recent drift"}
-        href="/schemas"
+        href="/apis/schemas"
         tone={driftTone}
         spark={recentDrift}
         sparkLabel="Recent schema drift"

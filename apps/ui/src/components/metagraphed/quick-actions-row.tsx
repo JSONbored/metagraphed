@@ -47,7 +47,7 @@ const ACTIONS: QuickAction[] = [
     icon: Activity,
   },
   {
-    to: "/providers",
+    to: "/apis/providers",
     eyebrow: "Sources",
     title: "Discover providers",
     description: "Subnet teams, infrastructure operators, and registry sources.",

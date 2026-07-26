@@ -73,7 +73,7 @@ const NAV_LINKS = [
     Icon: Wifi,
   },
   {
-    to: "/providers",
+    to: "/apis/providers",
     label: "Providers",
     hint: "Teams & infrastructure",
     Icon: Network,

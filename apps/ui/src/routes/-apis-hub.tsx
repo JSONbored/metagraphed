@@ -31,6 +31,18 @@ export const APIS_TABS: readonly ApisTab[] = [
     blurb:
       "Callable Subtensor and subnet endpoints — health, latency and pool eligibility, plus the managed RPC proxy.",
   },
+  {
+    to: "/apis/schemas",
+    label: "Schemas",
+    blurb:
+      "JSON Schema is canonical truth. Drift compares the current snapshot against the previous published version.",
+  },
+  {
+    to: "/apis/providers",
+    label: "Providers",
+    blurb:
+      "The teams, infra operators, docs registries and community sources behind these public interfaces.",
+  },
 ] as const;
 
 export function activeApisTab(pathname: string): ApisTab {

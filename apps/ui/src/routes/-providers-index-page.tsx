@@ -2,7 +2,6 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -10,7 +9,6 @@ import {
   AsyncPanel,
   FilterChipRow,
   FilterSheet,
-  PageMasthead,
   QueryBar,
   QueryProgress,
   type FilterChipItem,
@@ -42,13 +40,14 @@ import {
 import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
-import type { ProviderSortKey } from "./providers.index";
-import { providerSortKeys } from "./providers.index";
+import type { ProviderSortKey } from "./apis.providers";
+import { providerSortKeys } from "./apis.providers";
+import { ApisTabActions } from "./-apis-hub";
 
 export function ProvidersPage() {
-  const search = useSearch({ from: "/providers/" });
-  const navigate = useNavigate({ from: "/providers/" });
-  const view = search.view ?? "grid";
+  const search = useSearch({ from: "/apis/providers" });
+  const navigate = useNavigate({ from: "/apis/providers" });
+  const view = search.view ?? "table";
   const filtersActive = Boolean(
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
@@ -62,31 +61,24 @@ export function ProvidersPage() {
   // route rejects them with 400 invalid_query.
   const providersCsvUrl = buildUrl("/api/v1/providers");
   return (
-    <AppShell>
-      <PageMasthead
-        live
-        title="Providers"
-        description="Teams, infra operators, docs registries, and community sources behind public interfaces."
-        actions={
-          <>
-            <ViewModeToggle
-              value={view}
-              options={["table", "grid"]}
-              onChange={(v) =>
-                navigate({
-                  search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
-                  replace: true,
-                })
-              }
-            />
-            <ActionBar>
-              <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
-              <DownloadCsvButton url={providersCsvUrl} bare />
-              <ShareButton bare />
-            </ActionBar>
-          </>
-        }
-      />
+    <>
+      <ApisTabActions>
+        <ViewModeToggle
+          value={view}
+          options={["table", "grid"]}
+          onChange={(v) =>
+            navigate({
+              search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
+              replace: true,
+            })
+          }
+        />
+        <ActionBar>
+          <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+          <DownloadCsvButton url={providersCsvUrl} bare />
+          <ShareButton bare />
+        </ActionBar>
+      </ApisTabActions>
       <AsyncPanel
         height="sm"
         context="providers pulse"
@@ -108,7 +100,7 @@ export function ProvidersPage() {
         paths={["/api/v1/providers", "/api/v1/source-health"]}
         artifacts={["/metagraph/providers.json"]}
       />
-    </AppShell>
+    </>
   );
 }
 
@@ -155,8 +147,8 @@ function authorityTone(a?: string): string {
 }
 
 function ProvidersGrid({ view }: { view: "grid" | "table" }) {
-  const search = useSearch({ from: "/providers/" });
-  const navigate = useNavigate({ from: "/providers/" });
+  const search = useSearch({ from: "/apis/providers" });
+  const navigate = useNavigate({ from: "/apis/providers" });
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,

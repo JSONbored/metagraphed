@@ -2,8 +2,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo } from "react";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, Panel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
   TimeAgo,
   CopyableCode,
@@ -31,6 +30,7 @@ import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { SearchInput, ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
+import { ApisTabActions } from "./-apis-hub";
 
 function sameOriginApiUrl(url?: string) {
   if (typeof url !== "string" || url.trim() === "") return undefined;
@@ -46,7 +46,7 @@ function sameOriginApiUrl(url?: string) {
 
 export function SchemasPage() {
   return (
-    <AppShell>
+    <>
       <AsyncPanel
         context="schemas overview"
         fallback={<Skeleton className="h-64 w-full" />}
@@ -129,13 +129,13 @@ export function SchemasPage() {
       <AsyncPanel context="schema drift detail" fallback={null}>
         <SchemaDriftDetailHost />
       </AsyncPanel>
-    </AppShell>
+    </>
   );
 }
 
 function SchemaDriftDetailHost() {
-  const search = useSearch({ from: "/schemas" });
-  const navigate = useNavigate({ from: "/schemas" });
+  const search = useSearch({ from: "/apis/schemas" });
+  const navigate = useNavigate({ from: "/apis/schemas" });
   const { data } = useSuspenseQuery(schemasQuery());
   const all = (data.data ?? []) as SchemaInfo[];
   const schema = search.driftDetail ? (all.find((s) => s.id === search.driftDetail) ?? null) : null;
@@ -174,42 +174,39 @@ function SchemasHero() {
   const contractsCount = (cRes.data ?? []).length;
 
   return (
-    <PageMasthead
-      eyebrow="Operations"
-      live
-      title="Schemas & contracts"
-      description="JSON Schema is canonical truth. Drift compares the current snapshot to the previous published version."
-      caption={<>schemas / v1</>}
-      actions={
-        <>
-          <CopyableCode
-            label="openapi"
-            value={`${API_BASE}/api/v1/openapi.json`}
-            truncate={false}
-          />
-          <DownloadOpenApiButton url={`${DEFAULT_API_BASE}/metagraph/openapi.json`} />
-          <Link
-            to="/docs/$"
-            params={{ _splat: "api-reference" }}
-            className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 mg-type-label uppercase text-accent-text transition-colors hover:bg-accent/15"
-          >
-            Browse reference
-          </Link>
-        </>
-      }
-      kpis={[
-        { label: "Schemas", value: <AnimatedNumber value={schemas.length} /> },
-        {
-          label: "Stable",
-          value: <AnimatedNumber value={stable} />,
-          hint: schemas.length ? `${Math.round((stable / schemas.length) * 100)}%` : undefined,
-        },
-        { label: "New", value: <AnimatedNumber value={fresh} /> },
-        { label: "Drift", value: <AnimatedNumber value={drift} /> },
-        { label: "Contracts", value: <AnimatedNumber value={contractsCount} /> },
-        { label: "Subnets covered", value: <AnimatedNumber value={subnets} /> },
-      ]}
-    />
+    <>
+      {/* The hub owns title/description now (#8303), so this renders only the
+          actions and the KPI row that used to hang off this page's own
+          masthead — two stacked mastheads would otherwise repeat the heading. */}
+      <ApisTabActions>
+        <CopyableCode label="openapi" value={`${API_BASE}/api/v1/openapi.json`} truncate={false} />
+        <DownloadOpenApiButton url={`${DEFAULT_API_BASE}/metagraph/openapi.json`} />
+        <Link
+          to="/docs/$"
+          params={{ _splat: "api-reference" }}
+          className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 mg-type-label uppercase text-accent-text transition-colors hover:bg-accent/15"
+        >
+          Browse reference
+        </Link>
+      </ApisTabActions>
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          { label: "Schemas", value: schemas.length },
+          { label: "Stable", value: stable },
+          { label: "New", value: fresh },
+          { label: "Drift", value: drift },
+          { label: "Contracts", value: contractsCount },
+          { label: "Subnets covered", value: subnets },
+        ].map((k) => (
+          <div key={k.label} className="rounded-md border border-border bg-card px-3 py-2.5">
+            <div className="mg-label">{k.label}</div>
+            <div className="mt-0.5 mg-type-data text-ink-strong">
+              <AnimatedNumber value={k.value} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -225,7 +222,7 @@ function SchemasMethodology() {
 function DriftActivityRibbon() {
   const { data } = useSuspenseQuery(schemasQuery());
   const all = (data.data ?? []) as SchemaInfo[];
-  return <DriftActivity schemas={all} fromPath="/schemas" />;
+  return <DriftActivity schemas={all} fromPath="/apis/schemas" />;
 }
 
 /* --------------------------- Contracts --------------------------- */
@@ -273,8 +270,8 @@ function ContractsList() {
 /* --------------------------- Split explorer --------------------------- */
 
 function SchemaExplorer() {
-  const search = useSearch({ from: "/schemas" });
-  const navigate = useNavigate({ from: "/schemas" });
+  const search = useSearch({ from: "/apis/schemas" });
+  const navigate = useNavigate({ from: "/apis/schemas" });
   const { data } = useSuspenseQuery(schemasQuery());
   const all = useMemo(() => (data.data ?? []) as SchemaInfo[], [data.data]);
 
@@ -450,7 +447,7 @@ function SchemaExplorer() {
 
 function SchemaViewer({ schema }: { schema: SchemaInfo }) {
   const { copied, copy } = useCopy({ label: "schema url" });
-  const navigate = useNavigate({ from: "/schemas" });
+  const navigate = useNavigate({ from: "/apis/schemas" });
 
   // No backend /schemas/{id}/diff or /snapshots endpoint exists — both 404. The
   // drift/snapshot summary is rendered inline from the record's own fields

@@ -46,7 +46,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
         lastChecked={generated}
         action={{
           label: "Browse all schemas",
-          href: "/schemas",
+          href: "/apis/schemas",
         }}
       />
     );

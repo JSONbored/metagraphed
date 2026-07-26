@@ -140,7 +140,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
 
   const onOpen = (s: SchemaInfo) => {
     if (setOpenSchema) setOpenSchema(s.id);
-    else navigate({ to: "/schemas", search: { open: s.id } as never, replace: false });
+    else navigate({ to: "/apis/schemas", search: { open: s.id } as never, replace: false });
   };
 
   return (

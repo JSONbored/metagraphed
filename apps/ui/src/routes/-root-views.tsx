@@ -66,9 +66,9 @@ export function NotFoundComponent() {
     { href: "/subnets/0", label: "/subnets/0", note: "Root · Subtensor RPC/WSS" },
     { href: "/subnets/7", label: "/subnets/7", note: "Allways · adapter-backed" },
     { href: "/subnets/74", label: "/subnets/74", note: "Gittensor · adapter-backed" },
-    { href: "/providers", label: "/providers", note: "Provider directory" },
+    { href: "/apis/providers", label: "/apis/providers", note: "Provider directory" },
     { href: "/apis/endpoints", label: "/apis/endpoints", note: "All public endpoints" },
-    { href: "/schemas", label: "/schemas", note: "OpenAPI & schema drift" },
+    { href: "/apis/schemas", label: "/apis/schemas", note: "OpenAPI & schema drift" },
   ];
 
   return (
@@ -187,7 +187,7 @@ export function NotFoundComponent() {
               Subnets
             </Link>
             <Link
-              to="/providers"
+              to="/apis/providers"
               className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-ink-muted hover:border-accent/60 hover:text-ink-strong"
             >
               Providers
