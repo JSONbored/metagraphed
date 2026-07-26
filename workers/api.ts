@@ -87,7 +87,7 @@ import {
   handleChainStakeMoves,
   handleChainStakeTransfers,
   handleGlobalIncidents,
-  loadGlobalIncidentsLedger,
+  resolveGlobalIncidents,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
@@ -1873,8 +1873,13 @@ export async function handleRequest(
         handleFeedRequest(feedRequest, env, url, {
           readArtifact,
           errorResponse,
+          // Must go through resolveGlobalIncidents, not the ledger stub
+          // directly: the stub hardcodes an empty incident list and is only
+          // meant as the Postgres-tier-miss fallback, so calling it here made
+          // this feed permanently report "no incidents" while /status showed
+          // dozens from the same data (#8242).
           loadLiveIncidents: async (feedEnv) => {
-            const { data } = await loadGlobalIncidentsLedger(feedEnv);
+            const { data } = await resolveGlobalIncidents(feedRequest, feedEnv);
             return data;
           },
         }),
