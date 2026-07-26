@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, type QueryKey } from "@tanstack/react-query";
 import {
   BookOpen,
+  ChevronDown,
+  Code2,
   Github,
   Globe,
   LayoutDashboard,
@@ -9,7 +11,8 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { useRegisterApiSource, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import {
   Tooltip,
   TooltipContent,
@@ -26,10 +29,12 @@ import {
   NoDataSpark,
   ShareButton,
   Sparkline,
+  type SparklinePoint,
 } from "@jsonbored/ui-kit";
 import { StaleBanner } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import {
+  economicsQuery,
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,
   subnetEventSummaryQuery,
@@ -183,7 +188,36 @@ export function SubnetMasthead({
 }: Props) {
   const name = profile?.name ?? `Subnet ${netuid}`;
   const description = profile?.description;
-  const categories = (profile?.categories ?? []).slice(0, 4);
+  // #8247: identity header carries at most 3 type chips (subnet_type + up to
+  // 2 categories) -- was slice(0, 4) categories alone, uncapped against
+  // subnet_type, which could put 5 chips on one row.
+  const categories = (profile?.categories ?? []).slice(0, profile?.subnet_type ? 2 : 3);
+
+  // #8247: the masthead is the one place mounted on every tab, so it owns the
+  // canonical API-source registration for this profile -- replacing the
+  // "data sources"/"artifacts" footer strip (ApiSourceFooter) that used to
+  // render this same list at the bottom of the page. A visible `{ } API`
+  // chip in the links row opens the exact same drawer the header's hidden
+  // ⌘J trigger does.
+  useRegisterApiSource(
+    [
+      `/api/v1/subnets/${netuid}/profile`,
+      `/api/v1/subnets/${netuid}/overview`,
+      `/api/v1/subnets/${netuid}/surfaces`,
+      `/api/v1/subnets/${netuid}/endpoints`,
+      `/api/v1/subnets/${netuid}/candidates`,
+      `/api/v1/subnets/${netuid}/gaps`,
+      `/api/v1/subnets/${netuid}/identity-history`,
+      `/api/v1/subnets/${netuid}/hyperparameters/history`,
+      `/api/v1/subnets/${netuid}/volume`,
+      `/api/v1/subnets/${netuid}/stake-quote?amount=100&direction=stake`,
+      `/api/v1/subnets/${netuid}/lease`,
+      `/api/v1/subnets/${netuid}/lease/history`,
+      `/api/v1/agent-catalog/${netuid}`,
+    ],
+    [`/metagraph/subnets/${netuid}.json`],
+  );
+  const { open: openApiDrawer } = useApiSourceCtx();
 
   // Pull supporting series for the spark tiles. All three queries are already
   // primed by other panels on the page — no additional network hits. The live
@@ -195,6 +229,21 @@ export function SubnetMasthead({
   const { data: trajRes } = useQuery(subnetTrajectoryQuery(netuid));
   const { data: uptimeRes } = useQuery(subnetUptimeQuery(netuid));
   const { data: endpointsRes } = useQuery(subnetEndpointsQuery(netuid));
+  // #8247: source for the new 6-tile KPI band (price/emission/stake/miners-
+  // validators). Same economicsQuery() the Economics tab's EconomicsPanel
+  // reads -- one shared cache entry, not a second fetch of the same data.
+  const { data: econRes } = useQuery(economicsQuery());
+  const econ = econRes?.data.find((x) => x.netuid === netuid);
+  // #8247: disclosure for the demoted 11-tile registry-stat spine below.
+  const [showMoreStats, setShowMoreStats] = useState(false);
+  // Same extraction as economics-panel.tsx's Alpha price tile -- one shared
+  // shape, not a second definition that could quietly diverge from it.
+  const pricePoints: SparklinePoint[] = (trajRes?.data.points ?? []).flatMap((p) =>
+    typeof p.alpha_price_tao === "number" && Number.isFinite(p.alpha_price_tao)
+      ? [{ t: p.date, v: p.alpha_price_tao }]
+      : [],
+  );
+  const priceValues = pricePoints.map((p) => p.v);
   const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
   const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
@@ -462,119 +511,95 @@ export function SubnetMasthead({
                   </Tooltip>
                 );
               })}
+              <Tooltip delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={openApiDrawer}
+                    aria-label="View API sources for this subnet"
+                    className="inline-flex size-8 items-center justify-center text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
+                  >
+                    <Code2 className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="mg-type-data">
+                  {"{ } API"}
+                </TooltipContent>
+              </Tooltip>
               <ShareButton connected />
             </Panel>
           }
         </div>
       </div>
 
-      {/* Stat spine — sparkline-bearing tiles. Flex-wrap (not grid) so a
-          trailing partial row's tiles stretch to fill the row instead of
-          leaving empty column slots — grid tracks are shared across every
-          row, but flex lines size independently (same pattern as the
-          flex-wrap strip in operational-panel.tsx). */}
+      {/* #8247: the 6-fact KPI band replacing the 11-tile registry spine below.
+          Exactly the six the issue specifies -- price, emission, stake,
+          miners/validators, uptime, integration readiness -- each fact
+          appearing once on the whole page. Registry/activity meta-stats
+          (netuid, registrations, participants, endpoints, surfaces,
+          completeness, evidence) move to the "More stats" disclosure right
+          after it: real information, just not headline-of-the-page
+          information, and nothing here is deleted. */}
       <Panel
         as="div"
         flush
         className="mt-4"
-        bodyClassName="flex flex-wrap divide-x divide-border overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]"
+        bodyClassName="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden sm:grid-cols-3 sm:divide-y-0 xl:grid-cols-6"
       >
         <StatWithSpark
-          label="Netuid"
-          value={String(netuid).padStart(3, "0")}
-          hint="Native chain id"
-          full="Native Bittensor metagraph identifier"
-          updatedAt={generatedAt}
-        />
-        <StatWithSpark
-          label="Registrations"
-          value={formatNumber(reg?.registrations)}
-          hint={`${formatNumber(reg?.distinct_registrants ?? 0)} registrants`}
-          full={`Neuron-registration events on this subnet over the trailing ${reg?.window ?? "30d"} window.`}
-          updatedAt={reg?.observed_at ?? null}
-          windowLabel={reg?.window ?? "30d"}
-        />
-        <StatWithSpark
-          label="Deregistrations"
-          value={formatNumber(dereg?.deregistrations)}
-          hint={`${formatNumber(dereg?.distinct_deregistered_hotkeys ?? 0)} hotkeys`}
-          full={`Neuron-deregistration (eviction) events on this subnet over the trailing ${dereg?.window ?? "30d"} window.`}
-          updatedAt={dereg?.observed_at ?? null}
-          windowLabel={dereg?.window ?? "30d"}
-        />
-        <StatWithSpark
-          label="Activity"
-          value={formatNumber(eventSummary?.total_events)}
-          hint={activityHint}
-          full="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
-          updatedAt={activityAt}
-          windowLabel={eventSummary?.window ?? "7d"}
-          viz={<MiniStack segments={categorySegments} />}
-        />
-        <StatWithSpark
-          label="Participants"
-          value={formatNumber(profile?.participants)}
-          hint="Active UIDs"
-          full="UIDs registered in this subnet's metagraph. Spark plots verified-surface growth from weekly registry snapshots (no participant time-series is exposed)."
-          updatedAt={trajAt}
-          windowLabel="weekly"
+          label="Price"
+          value={econ?.alpha_price_tao != null ? `${econ.alpha_price_tao.toFixed(4)} τ` : "—"}
+          hint="alpha price"
+          full="Current alpha price against TAO, from the live chain economics tier."
+          updatedAt={econRes?.meta?.generated_at}
+          windowLabel="7d"
           viz={
             <div className="h-[18px]">
-              {surfaceCountSeries.length > 1 ? (
+              {priceValues.length > 1 ? (
                 <Sparkline
-                  values={surfaceCountSeries}
-                  color="var(--ink-muted)"
-                  fill={false}
+                  values={priceValues}
+                  color="var(--accent)"
                   height={18}
-                  ariaLabel="Verified surface count trend"
+                  ariaLabel="Alpha price trend"
+                  formatValue={(v) => `${v.toFixed(4)} τ`}
                 />
               ) : (
-                <NoDataSpark updatedAt={trajAt} windowLabel="weekly" />
+                <NoDataSpark updatedAt={econRes?.meta?.generated_at} windowLabel="7d" />
               )}
             </div>
           }
         />
         <StatWithSpark
-          label="Endpoints"
-          value={formatNumber(profile?.endpoint_count ?? endpoints.length)}
-          hint={
-            stackSegments.length
-              ? stackSegments.map((s) => `${s.value} ${s.label}`).join(" · ")
-              : "tracked"
-          }
-          full="Tracked public endpoints, by kind"
-          updatedAt={endpointsAt}
-          viz={<MiniStack segments={stackSegments} />}
+          label="Emission share"
+          value={econ?.emission_share != null ? `${(econ.emission_share * 100).toFixed(3)}%` : "—"}
+          hint="of network emission"
+          full="Share of total network emission this subnet currently receives."
+          updatedAt={econRes?.meta?.generated_at}
         />
         <StatWithSpark
-          label="Surfaces"
-          value={formatNumber(profile?.surface_count)}
-          hint={`${profile?.supported_interface_kinds?.length ?? 0} kinds supported`}
-          full="Verified curated public interfaces"
-          updatedAt={generatedAt}
-          viz={
-            <MiniStack
-              segments={[
-                {
-                  label: "verified",
-                  value: profile?.surface_count ?? 0,
-                  color: "var(--accent)",
-                },
-                {
-                  label: "missing",
-                  value: profile?.missing_kinds?.length ?? 0,
-                  color: "var(--health-warn)",
-                },
-              ]}
-            />
+          label="Total stake"
+          value={formatTao(econ?.total_stake_tao)}
+          hint="staked alpha"
+          full="Total alpha staked into this subnet."
+          updatedAt={econRes?.meta?.generated_at}
+        />
+        <StatWithSpark
+          label="Miners / Validators"
+          value={
+            econ?.miner_count != null && econ?.validator_count != null
+              ? `${formatNumber(econ.miner_count)} / ${formatNumber(econ.validator_count)}`
+              : "—"
           }
+          hint={econ?.max_uids ? `of ${econ.max_uids} max UIDs` : undefined}
+          full="Active miner and validator counts against this subnet's registered UID cap."
+          updatedAt={econRes?.meta?.generated_at}
         />
         <StatWithSpark
           label="Uptime"
           value={liveUptime != null ? `${liveUptime.toFixed(2)}%` : "—"}
           tone={uptimeTone}
-          hint="current window"
-          full="Mean uptime across all tracked endpoints"
+          hint="24h"
+          full="Mean uptime across all tracked endpoints, trailing 24h."
           delta={deltaChip}
           updatedAt={trendsAt}
           windowLabel={trendWindowKey}
@@ -603,58 +628,232 @@ export function SubnetMasthead({
           }
         />
         <StatWithSpark
-          label="Latency p50"
-          value={latP50 != null ? `${Math.round(latP50)}` : "—"}
-          unit={latP50 != null ? "ms" : undefined}
-          hint="median probe latency"
-          full="Median request latency across probed surfaces (p50)"
-          updatedAt={latAt}
-          windowLabel={latWindow}
-          viz={
-            <div className="h-[18px]">
-              {latencySeries.length > 1 ? (
-                <Sparkline
-                  values={latencySeries}
-                  color="var(--ink-muted)"
-                  height={18}
-                  ariaLabel="Latency sparkline"
-                  formatValue={(v) => `${Math.round(v)}ms`}
-                />
-              ) : (
-                <NoDataSpark updatedAt={trendsAt} windowLabel={trendWindowKey} />
-              )}
-            </div>
+          label="Integration readiness"
+          value={
+            profile?.integration_readiness != null ? `${profile.integration_readiness}/100` : "—"
           }
-        />
-
-        <StatWithSpark
-          label="Completeness"
-          value={completenessPct != null ? `${completenessPct}%` : "—"}
-          hint="registry profile"
-          full="Registry profile completeness across expected fields"
+          hint="ready to integrate"
+          full="Objective integration-readiness score: callable API, documented, auth clarity, active lifecycle, profile completeness."
           updatedAt={generatedAt}
           viz={
-            <div className="flex items-center gap-2">
-              <MiniRadial
-                value={completenessPct != null ? completenessPct / 100 : 0}
-                size={22}
-                stroke={3}
-              />
-              <span className="mg-type-data-sm text-ink-muted truncate">
-                {profile?.curation_level ?? "—"}
-              </span>
-            </div>
+            profile?.integration_readiness != null ? (
+              <MiniRadial value={profile.integration_readiness / 100} size={22} stroke={3} />
+            ) : undefined
           }
-        />
-        <StatWithSpark
-          label="Evidence"
-          value={evidenceCount != null ? String(evidenceCount) : "—"}
-          hint="primary sources"
-          full="Number of primary source links recorded"
-          updatedAt={generatedAt}
-          viz={<DotRow dots={sourceKinds} />}
         />
       </Panel>
+
+      {/* #8247: the former 11-tile stat spine (netuid/registrations/
+          deregistrations/activity/participants/endpoints/surfaces/uptime/
+          latency/completeness/evidence), demoted from the headline KPI band
+          above to an on-demand disclosure. Nothing here is deleted --
+          registry/activity meta-stats are real information, just not the six
+          facts a visitor scans this page for first. Collapsed by default on
+          every viewport; this IS the mobile "All stats" bottom-sheet
+          equivalent the issue asks for, as a disclosure rather than a
+          separate sheet component since the content is identical either way.
+          Inline (not extracted) so it keeps closure access to the many local
+          values above it -- an earlier extraction attempt needed 15+ props
+          and still missed several before this. */}
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setShowMoreStats((v) => !v)}
+          aria-expanded={showMoreStats}
+          aria-controls={`masthead-more-stats-${netuid}`}
+          className="mg-focus-ring inline-flex items-center gap-1.5 rounded px-1 py-1 mg-type-caption font-medium text-ink-muted transition-colors hover:text-ink-strong"
+        >
+          <ChevronDown
+            className={`size-3.5 transition-transform ${showMoreStats ? "rotate-180" : ""}`}
+          />
+          {showMoreStats ? "Hide" : "Show"} more stats
+        </button>
+        {showMoreStats ? (
+          <Panel
+            as="div"
+            flush
+            id={`masthead-more-stats-${netuid}`}
+            className="mt-2"
+            bodyClassName="flex flex-wrap divide-x divide-border overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]"
+          >
+            <StatWithSpark
+              label="Netuid"
+              value={String(netuid).padStart(3, "0")}
+              hint="Native chain id"
+              full="Native Bittensor metagraph identifier"
+              updatedAt={generatedAt}
+            />
+            <StatWithSpark
+              label="Registrations"
+              value={formatNumber(reg?.registrations)}
+              hint={`${formatNumber(reg?.distinct_registrants ?? 0)} registrants`}
+              full={`Neuron-registration events on this subnet over the trailing ${reg?.window ?? "30d"} window.`}
+              updatedAt={reg?.observed_at ?? null}
+              windowLabel={reg?.window ?? "30d"}
+            />
+            <StatWithSpark
+              label="Deregistrations"
+              value={formatNumber(dereg?.deregistrations)}
+              hint={`${formatNumber(dereg?.distinct_deregistered_hotkeys ?? 0)} hotkeys`}
+              full={`Neuron-deregistration (eviction) events on this subnet over the trailing ${dereg?.window ?? "30d"} window.`}
+              updatedAt={dereg?.observed_at ?? null}
+              windowLabel={dereg?.window ?? "30d"}
+            />
+            <StatWithSpark
+              label="Activity"
+              value={formatNumber(eventSummary?.total_events)}
+              hint={activityHint}
+              full="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
+              updatedAt={activityAt}
+              windowLabel={eventSummary?.window ?? "7d"}
+              viz={<MiniStack segments={categorySegments} />}
+            />
+            <StatWithSpark
+              label="Participants"
+              value={formatNumber(profile?.participants)}
+              hint="Active UIDs"
+              full="UIDs registered in this subnet's metagraph. Spark plots verified-surface growth from weekly registry snapshots (no participant time-series is exposed)."
+              updatedAt={trajAt}
+              windowLabel="weekly"
+              viz={
+                <div className="h-[18px]">
+                  {surfaceCountSeries.length > 1 ? (
+                    <Sparkline
+                      values={surfaceCountSeries}
+                      color="var(--ink-muted)"
+                      fill={false}
+                      height={18}
+                      ariaLabel="Verified surface count trend"
+                    />
+                  ) : (
+                    <NoDataSpark updatedAt={trajAt} windowLabel="weekly" />
+                  )}
+                </div>
+              }
+            />
+            <StatWithSpark
+              label="Endpoints"
+              value={formatNumber(profile?.endpoint_count ?? endpoints.length)}
+              hint={
+                stackSegments.length
+                  ? stackSegments.map((s) => `${s.value} ${s.label}`).join(" · ")
+                  : "tracked"
+              }
+              full="Tracked public endpoints, by kind"
+              updatedAt={endpointsAt}
+              viz={<MiniStack segments={stackSegments} />}
+            />
+            <StatWithSpark
+              label="Surfaces"
+              value={formatNumber(profile?.surface_count)}
+              hint={`${profile?.supported_interface_kinds?.length ?? 0} kinds supported`}
+              full="Verified curated public interfaces"
+              updatedAt={generatedAt}
+              viz={
+                <MiniStack
+                  segments={[
+                    {
+                      label: "verified",
+                      value: profile?.surface_count ?? 0,
+                      color: "var(--accent)",
+                    },
+                    {
+                      label: "missing",
+                      value: profile?.missing_kinds?.length ?? 0,
+                      color: "var(--health-warn)",
+                    },
+                  ]}
+                />
+              }
+            />
+            <StatWithSpark
+              label="Uptime"
+              value={liveUptime != null ? `${liveUptime.toFixed(2)}%` : "—"}
+              tone={uptimeTone}
+              hint="current window"
+              full="Mean uptime across all tracked endpoints"
+              delta={deltaChip}
+              updatedAt={trendsAt}
+              windowLabel={trendWindowKey}
+              viz={
+                <div className="h-[18px]">
+                  {uptimeSeries.length > 1 ? (
+                    <Sparkline
+                      values={uptimeSeries}
+                      color={
+                        uptimeTone === "ok"
+                          ? "var(--health-ok)"
+                          : uptimeTone === "warn"
+                            ? "var(--health-warn)"
+                            : uptimeTone === "down"
+                              ? "var(--health-down)"
+                              : "var(--accent)"
+                      }
+                      height={18}
+                      ariaLabel="Uptime sparkline"
+                      formatValue={(v) => `${v.toFixed(2)}%`}
+                    />
+                  ) : (
+                    <NoDataSpark updatedAt={trendsAt} windowLabel={trendWindowKey} />
+                  )}
+                </div>
+              }
+            />
+            <StatWithSpark
+              label="Latency p50"
+              value={latP50 != null ? `${Math.round(latP50)}` : "—"}
+              unit={latP50 != null ? "ms" : undefined}
+              hint="median probe latency"
+              full="Median request latency across probed surfaces (p50)"
+              updatedAt={latAt}
+              windowLabel={latWindow}
+              viz={
+                <div className="h-[18px]">
+                  {latencySeries.length > 1 ? (
+                    <Sparkline
+                      values={latencySeries}
+                      color="var(--ink-muted)"
+                      height={18}
+                      ariaLabel="Latency sparkline"
+                      formatValue={(v) => `${Math.round(v)}ms`}
+                    />
+                  ) : (
+                    <NoDataSpark updatedAt={trendsAt} windowLabel={trendWindowKey} />
+                  )}
+                </div>
+              }
+            />
+
+            <StatWithSpark
+              label="Completeness"
+              value={completenessPct != null ? `${completenessPct}%` : "—"}
+              hint="registry profile"
+              full="Registry profile completeness across expected fields"
+              updatedAt={generatedAt}
+              viz={
+                <div className="flex items-center gap-2">
+                  <MiniRadial
+                    value={completenessPct != null ? completenessPct / 100 : 0}
+                    size={22}
+                    stroke={3}
+                  />
+                  <span className="mg-type-data-sm text-ink-muted truncate">
+                    {profile?.curation_level ?? "—"}
+                  </span>
+                </div>
+              }
+            />
+            <StatWithSpark
+              label="Evidence"
+              value={evidenceCount != null ? String(evidenceCount) : "—"}
+              hint="primary sources"
+              full="Number of primary source links recorded"
+              updatedAt={generatedAt}
+              viz={<DotRow dots={sourceKinds} />}
+            />
+          </Panel>
+        ) : null}
+      </div>
     </header>
   );
 }

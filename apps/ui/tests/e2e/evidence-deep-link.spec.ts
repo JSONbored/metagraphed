@@ -2,18 +2,22 @@ import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 
-// #6434: /subnets/:netuid renders EvidencePanel twice -- a preview embedded in
-// the Overview tab and the full section under the dedicated Evidence tab. Both
-// used to claim id="evidence", and SECTION_TO_TAB mapped that id to "overview",
-// so useHashScroll bounced a reader who opened the Evidence tab with #evidence
-// straight back to Overview: the tab's own SectionAnchor "copy link" button
-// produced a URL that navigated away from the tab it was copied from.
+// #6434 (historical): /subnets/:netuid used to render EvidencePanel twice -- a
+// preview embedded in the Overview tab and the full section under a dedicated
+// Evidence tab, both claiming id="evidence" with SECTION_TO_TAB mapping that
+// id to "overview" -- so a reader who opened the Evidence tab with #evidence
+// bounced straight back to Overview. The fix gave the Overview embed its own
+// `evidence-preview` id and pointed the bare `evidence` id at the tab that
+// actually owned it.
 //
-// The fix gives the Overview embed its own `evidence-preview` id (the
-// preview-vs-full split providers.$slug.tsx already uses for
-// `subnets-served-preview` vs `subnets-served`) and points the bare `evidence`
-// id at the tab that actually owns it. These two tests pin both directions of
-// that mapping -- the first one fails on the pre-fix code, which is the point.
+// #8247 retired the Overview preview embed entirely (Overview is now a
+// one-screen page of only the highest-signal facts, and a second, lower-
+// density copy of the same primary-sources list the About tab already owns
+// is exactly the kind of duplicate-fact the redesign removed) and folded the
+// dedicated Evidence tab into the broader About tab. `evidence-preview` stays
+// in SECTION_TO_TAB pointing at "overview" so an old bookmarked link degrades
+// gracefully (lands on Overview, finds no matching element, no-ops) rather
+// than erroring -- but there is no longer a section to assert visible there.
 //
 // Deterministic by design, mirroring responsive-overflow.spec.ts: the route
 // replays tests/e2e/har/subnets-1.har rather than hitting live chain data, so
@@ -54,22 +58,27 @@ async function openWithHar(page: import("@playwright/test").Page, url: string) {
   }
 }
 
-test.describe("#6434 evidence deep links", () => {
-  test("#evidence resolves to the dedicated Evidence tab", async ({ page }) => {
+test.describe("#6434 evidence deep links (updated for #8247's 7-tab consolidation)", () => {
+  test("#evidence resolves to the About tab", async ({ page }) => {
     await openWithHar(page, `${ROUTE}#evidence`);
 
     // useHashScroll rewrites the tab search param when the hash's owning tab
-    // isn't active, so landing on Overview with #evidence must switch tabs.
-    await expect(page).toHaveURL(/[?&]tab=evidence/);
+    // isn't active -- Evidence now lives inside the broader About tab rather
+    // than a dedicated tab of its own.
+    await expect(page).toHaveURL(/[?&]tab=about/);
     await expect(page.locator("section#evidence")).toBeVisible();
   });
 
-  test("#evidence-preview stays on the Overview tab", async ({ page }) => {
+  test("#evidence-preview lands on Overview without erroring (the preview embed itself was retired)", async ({
+    page,
+  }) => {
     await openWithHar(page, `${ROUTE}#evidence-preview`);
 
-    // The preview lives on Overview (the default tab), so the hash must not
-    // drag the reader onto the Evidence tab.
-    await expect(page).not.toHaveURL(/[?&]tab=evidence/);
-    await expect(page.locator("section#evidence-preview")).toBeVisible();
+    // SECTION_TO_TAB still maps this legacy id to "overview" so an old
+    // bookmarked link degrades gracefully instead of dragging the reader onto
+    // a tab that doesn't own it -- but the Overview preview section itself no
+    // longer exists (retired as a duplicate of About's full EvidencePanel).
+    await expect(page).not.toHaveURL(/[?&]tab=(about|evidence)/);
+    await expect(page.locator("section#evidence-preview")).toHaveCount(0);
   });
 });
