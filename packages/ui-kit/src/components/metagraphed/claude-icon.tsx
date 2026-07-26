@@ -3,14 +3,15 @@ import type { SVGProps } from "react";
 // lucide-react ships no Claude brand glyph, so we render the official mark
 // (simple-icons, CC0) as an SVG that follows lucide's sizing API (pass
 // `className="size-4"` etc., exactly like a lucide icon). Fixed to Claude's
-// official brand hex (#D97757, simple-icons) rather than currentColor --
+// brand color (--claude-brand, packages/ui-kit/src/styles.css, converted
+// from simple-icons' official hex #D97757) rather than currentColor --
 // unlike a monochrome utility glyph, this is a recognizable brand mark and
 // should read as "Claude" at a glance regardless of surrounding text color.
 export function ClaudeIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="#D97757"
+      fill="var(--claude-brand)"
       aria-hidden="true"
       className={className}
       {...props}

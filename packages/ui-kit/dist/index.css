@@ -117,6 +117,7 @@
   --mg-dot-color: color-mix(in oklab, var(--ink-strong) 6%, transparent);
   --mg-dot-size: 24px;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 3.5%, transparent);
+  --claude-brand: oklch(0.67 0.13 39);
 }
 :root {
   --mg-space-3xs: 0.125rem;

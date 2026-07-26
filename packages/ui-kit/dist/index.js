@@ -2888,7 +2888,7 @@ function ClaudeIcon({ className, ...props }) {
     "svg",
     {
       viewBox: "0 0 24 24",
-      fill: "#D97757",
+      fill: "var(--claude-brand)",
       "aria-hidden": "true",
       className,
       ...props,
