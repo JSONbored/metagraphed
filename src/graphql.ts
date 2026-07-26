@@ -519,6 +519,21 @@ import { SDL } from "./graphql-sdl.ts";
 // here, not the Resolver wrapper. Same class of codegen/runtime-convention
 // mismatch the epic already anticipated for the Subscription resolver.
 import type {
+  QueryAccountArgs,
+  QueryAccountsArgs,
+  QueryAccount_Axon_RemovalsArgs,
+  QueryAccount_DeregistrationsArgs,
+  QueryAccount_EntitiesArgs,
+  QueryAccount_PortfolioArgs,
+  QueryAccount_Position_HistoryArgs,
+  QueryAccount_PositionsArgs,
+  QueryAccount_PrometheusArgs,
+  QueryAccount_RegistrationsArgs,
+  QueryAccount_ServingArgs,
+  QueryAccount_Stake_FlowArgs,
+  QueryAccount_Stake_MovesArgs,
+  QueryAccount_SubnetsArgs,
+  QueryAccount_Weight_SettersArgs,
   QueryAdapterArgs,
   QueryAgent_CatalogArgs,
   QueryBlockArgs,
@@ -608,6 +623,10 @@ import type {
   QuerySubnetsArgs,
   QuerySurfacesArgs,
   QueryTop_HoldersArgs,
+  QueryValidatorArgs,
+  QueryValidatorsArgs,
+  QueryValidator_HistoryArgs,
+  QueryValidator_NominatorsArgs,
 } from "../generated/graphql/types.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1746,9 +1765,9 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 6-9 (types-epic D, #7862 tracks follow-up
+// Row-erased: pending D batches 7-9 (types-epic D, #7862 tracks follow-up
 // batches -- see #8158-#8166 for each batch's exact field list). The 5 pilot
-// fields plus D batches 1-5's 95 fields (#8158-#8162) are typed against the
+// fields plus D batches 1-6's 115 fields (#8158-#8163) are typed against the
 // generated Args types below; the remaining root fields on this object keep
 // their `Row`-typed destructured params for now, adopted incrementally in
 // later batches rather than all at once here.
@@ -4657,7 +4676,10 @@ const rootValue = {
     return loadBlockChainEvents(mcpCtx(context), blockNumber);
   },
 
-  async validators({ sort, limit, cursor }: Row, context: GqlContext) {
+  async validators(
+    { sort, limit, cursor }: QueryValidatorsArgs,
+    context: GqlContext,
+  ) {
     const requestedSort = sort ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
     if (!GLOBAL_VALIDATOR_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -4699,7 +4721,7 @@ const rootValue = {
   },
 
   async validator_nominators(
-    { hotkey, window, sort, coldkey }: Row,
+    { hotkey, window, sort, coldkey }: QueryValidator_NominatorsArgs,
     context: GqlContext,
   ) {
     // Same window/sort allow-lists handleValidatorNominators validates against --
@@ -4769,7 +4791,7 @@ const rootValue = {
     };
   },
 
-  async validator({ hotkey }: Row, context: GqlContext) {
+  async validator({ hotkey }: QueryValidatorArgs, context: GqlContext) {
     const data = await tryPostgresTier(
       context.env,
       postgresTierRequest(
@@ -4781,7 +4803,10 @@ const rootValue = {
     return validatorDetailNode(data as Row, hotkey);
   },
 
-  async validator_history({ hotkey, window }: Row, context: GqlContext) {
+  async validator_history(
+    { hotkey, window }: QueryValidator_HistoryArgs,
+    context: GqlContext,
+  ) {
     // Same parseHistoryWindow REST's handleValidatorHistory uses, so accepted
     // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
     const windowResult = parseHistoryWindow(window);
@@ -4818,7 +4843,7 @@ const rootValue = {
   },
 
   async account_position_history(
-    { ss58, netuid, window }: Row,
+    { ss58, netuid, window }: QueryAccount_Position_HistoryArgs,
     context: GqlContext,
   ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -4868,7 +4893,7 @@ const rootValue = {
     };
   },
 
-  async accounts({ sort, limit }: Row, context: GqlContext) {
+  async accounts({ sort, limit }: QueryAccountsArgs, context: GqlContext) {
     const requestedSort = sort ?? DEFAULT_ACCOUNTS_LIST_SORT;
     if (!ACCOUNTS_LIST_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -4902,7 +4927,7 @@ const rootValue = {
     };
   },
 
-  async account({ ss58 }: Row, context: GqlContext) {
+  async account({ ss58 }: QueryAccountArgs, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4920,7 +4945,10 @@ const rootValue = {
     return accountSummaryNode(data, ss58);
   },
 
-  async account_prometheus({ ss58, window }: Row, context: GqlContext) {
+  async account_prometheus(
+    { ss58, window }: QueryAccount_PrometheusArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -4965,7 +4993,7 @@ const rootValue = {
   },
 
   async account_stake_flow(
-    { ss58, window, direction }: Row,
+    { ss58, window, direction }: QueryAccount_Stake_FlowArgs,
     context: GqlContext,
   ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -5026,7 +5054,10 @@ const rootValue = {
     };
   },
 
-  async account_portfolio({ ss58 }: Row, context: GqlContext) {
+  async account_portfolio(
+    { ss58 }: QueryAccount_PortfolioArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5061,7 +5092,10 @@ const rootValue = {
     };
   },
 
-  async account_positions({ ss58 }: Row, context: GqlContext) {
+  async account_positions(
+    { ss58 }: QueryAccount_PositionsArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5091,7 +5125,10 @@ const rootValue = {
     };
   },
 
-  async account_subnets({ ss58 }: Row, context: GqlContext) {
+  async account_subnets(
+    { ss58 }: QueryAccount_SubnetsArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5119,7 +5156,10 @@ const rootValue = {
     };
   },
 
-  async account_registrations({ ss58, window }: Row, context: GqlContext) {
+  async account_registrations(
+    { ss58, window }: QueryAccount_RegistrationsArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountRegistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5170,7 +5210,10 @@ const rootValue = {
     };
   },
 
-  async account_deregistrations({ ss58, window }: Row, context: GqlContext) {
+  async account_deregistrations(
+    { ss58, window }: QueryAccount_DeregistrationsArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountDeregistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5221,7 +5264,10 @@ const rootValue = {
     };
   },
 
-  async account_serving({ ss58, window }: Row, context: GqlContext) {
+  async account_serving(
+    { ss58, window }: QueryAccount_ServingArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountServing (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5272,7 +5318,10 @@ const rootValue = {
     };
   },
 
-  async account_axon_removals({ ss58, window }: Row, context: GqlContext) {
+  async account_axon_removals(
+    { ss58, window }: QueryAccount_Axon_RemovalsArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountAxonRemovals (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5323,7 +5372,10 @@ const rootValue = {
     };
   },
 
-  async account_stake_moves({ ss58, window }: Row, context: GqlContext) {
+  async account_stake_moves(
+    { ss58, window }: QueryAccount_Stake_MovesArgs,
+    context: GqlContext,
+  ) {
     // Same SS58 + window validation handleAccountStakeMoves (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -5375,7 +5427,10 @@ const rootValue = {
     };
   },
 
-  async account_weight_setters({ ss58, window }: Row, context: GqlContext) {
+  async account_weight_setters(
+    { ss58, window }: QueryAccount_Weight_SettersArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5420,7 +5475,10 @@ const rootValue = {
     };
   },
 
-  async account_entities({ ss58 }: Row, context: GqlContext) {
+  async account_entities(
+    { ss58 }: QueryAccount_EntitiesArgs,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
