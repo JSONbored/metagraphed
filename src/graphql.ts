@@ -521,7 +521,9 @@ import { SDL } from "./graphql-sdl.ts";
 import type {
   QueryAccountArgs,
   QueryAccountsArgs,
+  QueryAccount_BalanceArgs,
   QueryAccount_Axon_RemovalsArgs,
+  QueryAccount_ChildrenArgs,
   QueryAccount_CounterpartiesArgs,
   QueryAccount_DeregistrationsArgs,
   QueryAccount_EntitiesArgs,
@@ -530,11 +532,13 @@ import type {
   QueryAccount_HistoryArgs,
   QueryAccount_IdentityArgs,
   QueryAccount_Identity_HistoryArgs,
+  QueryAccount_ParentsArgs,
   QueryAccount_PortfolioArgs,
   QueryAccount_Position_HistoryArgs,
   QueryAccount_PositionsArgs,
   QueryAccount_PrometheusArgs,
   QueryAccount_RegistrationsArgs,
+  QueryAccount_Root_ClaimArgs,
   QueryAccount_ServingArgs,
   QueryAccount_Stake_FlowArgs,
   QueryAccount_Stake_MovesArgs,
@@ -579,6 +583,8 @@ import type {
   QueryEndpoint_PoolsArgs,
   QueryEndpointsArgs,
   QueryEvidenceArgs,
+  QueryEvm_AddressArgs,
+  QueryEvm_Address_MappingArgs,
   QueryExtrinsicArgs,
   QueryExtrinsicsArgs,
   QueryFixtureArgs,
@@ -609,6 +615,7 @@ import type {
   QuerySearch_IndexArgs,
   QuerySource_SnapshotsArgs,
   QuerySubnetArgs,
+  QuerySudoArgs,
   QuerySubnet_Axon_RemovalsArgs,
   QuerySubnet_BurnArgs,
   QuerySubnet_CandidatesArgs,
@@ -630,6 +637,8 @@ import type {
   QuerySubnet_Hyperparameters_HistoryArgs,
   QuerySubnet_Identity_HistoryArgs,
   QuerySubnet_Idle_StakeArgs,
+  QuerySubnet_LeaseArgs,
+  QuerySubnet_Lease_HistoryArgs,
   QuerySubnet_MetagraphArgs,
   QuerySubnet_MoversArgs,
   QuerySubnet_OhlcArgs,
@@ -1800,12 +1809,10 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batch 9 (types-epic D, #7862 tracks follow-up
-// batches -- see #8158-#8166 for each batch's exact field list). The 5 pilot
-// fields plus D batches 1-8's 155 fields (#8158-#8165) are typed against the
-// generated Args types below; the remaining root fields on this object keep
-// their `Row`-typed destructured params for now, adopted incrementally in
-// the final batch rather than all at once here.
+// Row-erased (types-epic D, #7862, batches #8158-#8166 -- see PR #8005 for
+// the pilot conversion + the codegen mechanism). Every Query root field on
+// this object is now typed against the generated Query<Field>Args types
+// below rather than a Row-typed destructured param.
 const rootValue = {
   subnets(
     {
@@ -4373,7 +4380,7 @@ const rootValue = {
       to,
       call_function: callFunction,
       success,
-    }: Row,
+    }: QuerySudoArgs,
     context: GqlContext,
   ) {
     // The Sudo governance feed is the /extrinsics feed with call_module fixed
@@ -7659,7 +7666,10 @@ const rootValue = {
     };
   },
 
-  async subnet_lease_history({ netuid }: Row, context: GqlContext) {
+  async subnet_lease_history(
+    { netuid }: QuerySubnet_Lease_HistoryArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7678,7 +7688,7 @@ const rootValue = {
     };
   },
 
-  async subnet_lease({ netuid }: Row, context: GqlContext) {
+  async subnet_lease({ netuid }: QuerySubnet_LeaseArgs, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -7692,7 +7702,10 @@ const rootValue = {
     return loadSubnetLease(context.env, netuid);
   },
 
-  async account_balance({ ss58 }: Row, context: GqlContext) {
+  async account_balance(
+    { ss58 }: QueryAccount_BalanceArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7706,7 +7719,10 @@ const rootValue = {
     return loadAccountBalance(context.env, ss58);
   },
 
-  async account_root_claim({ ss58 }: Row, context: GqlContext) {
+  async account_root_claim(
+    { ss58 }: QueryAccount_Root_ClaimArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7718,7 +7734,10 @@ const rootValue = {
     return loadAccountRootClaim(context.env, ss58);
   },
 
-  async account_children({ ss58 }: Row, context: GqlContext) {
+  async account_children(
+    { ss58 }: QueryAccount_ChildrenArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7732,7 +7751,10 @@ const rootValue = {
     return loadAccountChildren(context.env, ss58);
   },
 
-  async account_parents({ ss58 }: Row, context: GqlContext) {
+  async account_parents(
+    { ss58 }: QueryAccount_ParentsArgs,
+    context: GqlContext,
+  ) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7778,13 +7800,16 @@ const rootValue = {
   async randomness_status(_args: unknown, context: GqlContext) {
     return rootValue.network_randomness(_args, context);
   },
-  async evm_address({ h160 }: Row, context: GqlContext) {
+  async evm_address({ h160 }: QueryEvm_AddressArgs, context: GqlContext) {
     return resolveEvmAddressMapping(h160, context);
   },
   // Same resolver as evm_address, under the get_evm_address_mapping tool name so
   // MCP and GraphQL agree; delegating rather than duplicating keeps the two
   // fields from ever drifting apart.
-  async evm_address_mapping({ h160 }: Row, context: GqlContext) {
+  async evm_address_mapping(
+    { h160 }: QueryEvm_Address_MappingArgs,
+    context: GqlContext,
+  ) {
     return resolveEvmAddressMapping(h160, context);
   },
 };
