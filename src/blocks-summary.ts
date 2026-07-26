@@ -11,6 +11,7 @@
 // blocks, a base-layer validator-set decentralization signal, not a tx-fee signal.
 
 import { computeConcentration } from "./concentration.ts";
+import { percentile } from "./lib/stats.ts";
 
 // The `blocks` columns the summary reads. `author` is best-effort/nullable; the
 // counts are nullable INTEGERs; `observed_at` is the block timestamp (epoch ms).
@@ -63,13 +64,6 @@ function toCount(value: unknown): number {
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 0;
 }
 
-// Nearest-rank percentile over a non-empty ascending array (rank = ceil(p/100 · n),
-// 1-based). Only called after the caller establishes the array is non-empty.
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.max(1, Math.ceil((p / 100) * ascending.length));
-  return ascending[rank - 1];
-}
-
 interface BlockTimeDistribution {
   count: number;
   mean_ms: number;
@@ -95,7 +89,7 @@ function blockTimeDistribution(
     max_ms: roundMs(ascending[count - 1]),
   };
   for (const p of BLOCK_TIME_PERCENTILES) {
-    summary[`p${p}_ms`] = roundMs(percentile(ascending, p));
+    summary[`p${p}_ms`] = roundMs(percentile(ascending, p)!);
   }
   return summary;
 }

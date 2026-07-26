@@ -9,6 +9,7 @@
 // envelope. Null-safe: an empty snapshot yields a schema-stable `null` block.
 
 import { computeConcentration } from "./concentration.ts";
+import { percentile } from "./lib/stats.ts";
 
 // The neurons-tier columns the network performance handler reads — like the
 // per-subnet read but with `netuid`, so the artifact can report how many subnets
@@ -73,14 +74,6 @@ function finiteValues(values: unknown[]): number[] {
   return out;
 }
 
-// Nearest-rank percentile over a non-empty ascending array (rank = ceil(p/100 · n),
-// 1-based), matching the subnet-yield / health-percentile convention. Only called
-// after scoreDistribution has established count > 0, so the array is never empty.
-function percentile(ascending: number[], p: number): number {
-  const rank = Math.max(1, Math.ceil((p / 100) * ascending.length));
-  return ascending[rank - 1];
-}
-
 export interface ScoreDistribution {
   count: number;
   mean: number;
@@ -105,7 +98,7 @@ export function scoreDistribution(values: unknown[]): ScoreDistribution | null {
     max: round(ascending[count - 1]),
   };
   for (const p of SCORE_PERCENTILES) {
-    summary[`p${p}`] = round(percentile(ascending, p));
+    summary[`p${p}`] = round(percentile(ascending, p)!);
   }
   return summary;
 }
