@@ -5,13 +5,28 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
+import { summarizeChainEvent, isNoiseEvent } from "@/lib/metagraphed/chain-event-summary";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 
 const TH = "px-4 py-2.5 mg-type-micro text-ink-muted";
+
+/** Subnet chip for a decoded `netuid` arg — links to that subnet. */
+function SubnetChip({ netuid }: { netuid: number }) {
+  return (
+    <Link
+      to="/subnets/$netuid"
+      params={{ netuid }}
+      className="inline-flex items-center rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted transition-colors hover:border-accent/40 hover:text-accent"
+    >
+      SN{netuid}
+    </Link>
+  );
+}
 
 /** Page size for the raw all-events feed, shared by /events and /explorer. */
 export const CHAIN_EVENTS_PAGE_SIZE = 50;
@@ -38,11 +53,16 @@ interface Props {
   method: string;
   cursor: string;
   /**
+   * #8253: show the high-volume plumbing events. Defaults to false (hidden)
+   * at every call site; the flag exists so the raw firehose stays reachable.
+   */
+  showNoise?: boolean;
+  /**
    * Patch the pallet/method filter state. The caller owns URL state and is
    * responsible for resetting its own cursor param so a new filter restarts
    * from the newest page.
    */
-  onFilter: (patch: { pallet?: string; method?: string }) => void;
+  onFilter: (patch: { pallet?: string; method?: string; noise?: boolean }) => void;
 }
 
 /**
@@ -56,7 +76,7 @@ interface Props {
  * the existing manual/stale-refresh path remains the gap-cover when the stream
  * is down.
  */
-export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
+export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onFilter }: Props) {
   const baseParams = chainEventsBaseParams(pallet, method);
 
   const {
@@ -82,7 +102,14 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
   const pages = data?.pages ?? [];
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!(lastPage as { cursorInvalid?: boolean } | undefined)?.cursorInvalid;
-  const events = pages.flatMap((p) => (p.data ?? []) as ChainEvent[]);
+  const allEvents = pages.flatMap((p) => (p.data ?? []) as ChainEvent[]);
+  // #8253: noise filtering is CLIENT-side because the API has no "exclude
+  // these pallet.methods" param -- it only filters TO a pallet/method, not
+  // away from several. That means a page can arrive mostly-hidden; the
+  // hidden-count line below says so explicitly rather than leaving a reader
+  // wondering why 50 fetched rows rendered as 16.
+  const events = showNoise ? allEvents : allEvents.filter((e) => !isNoiseEvent(e.pallet, e.method));
+  const hiddenCount = allEvents.length - events.length;
   const filtersActive = !!(pallet.trim() || method.trim());
 
   const streamLabel =
@@ -122,6 +149,29 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         active={filtersActive}
         onReset={() => onFilter({ pallet: "", method: "" })}
       />
+      {/* #8253: accent lit only while the toggle is NARROWING the feed --
+          the same convention /subnets' own exclude-toggle uses, so the
+          default (noise hidden) reads as the quiet normal state. */}
+      <button
+        type="button"
+        onClick={() => onFilter({ noise: showNoise ? false : true })}
+        aria-pressed={!showNoise}
+        title={
+          showNoise
+            ? "Showing every event, including ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid"
+            : "System plumbing events (ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid) are hidden — click to show them"
+        }
+        className={classNames(
+          "mg-type-micro inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
+          !showNoise
+            ? "border-accent/40 bg-accent/10 text-accent"
+            : "border-border bg-card text-ink-muted hover:text-ink-strong",
+        )}
+      >
+        <span className={classNames("size-1.5 rounded-full", !showNoise && "bg-accent")} />
+        Hide system noise
+        {hiddenCount > 0 ? <span className="text-ink-muted">· {hiddenCount}</span> : null}
+      </button>
       {streamLabel ? (
         <span
           className={classNames(
@@ -150,15 +200,22 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
   const emptyNode = (
     <EmptyState
       title={
-        filtersActive
-          ? "No chain events match these filters."
-          : "No chain events indexed yet — the all-events backfill fills this feed."
+        // #8253: a page that fetched rows but hid all of them is a distinct
+        // state from a genuinely empty feed -- say which one it is, and offer
+        // the toggle as the fix, rather than claiming nothing is indexed.
+        hiddenCount > 0
+          ? `Every event on this page was system noise (${hiddenCount} hidden).`
+          : filtersActive
+            ? "No chain events match these filters."
+            : "No chain events indexed yet — the all-events backfill fills this feed."
       }
       // #6340: a genuinely-empty feed offers the same "open the API" action every
       // other empty list page does; the filtered-empty case keeps no action,
-      // matching the filter-empty convention elsewhere.
+      // matching the filter-empty convention elsewhere. #8253: the
+      // all-hidden-by-the-noise-toggle case is also "filtered", so it gets no
+      // API link either -- the toggle beside the feed is the fix there.
       action={
-        filtersActive
+        filtersActive || hiddenCount > 0
           ? undefined
           : {
               label: "Open /api/v1/chain-events",
@@ -169,69 +226,116 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
     />
   );
 
+  // #8253: decoded columns replace the old three-column
+  // `Pallet.Method · block · age` row, which answered none of who / what /
+  // how-much / where. The args have carried this all along -- see
+  // lib/metagraphed/chain-event-summary.ts.
   const table = (
     <table className="w-full text-left text-sm">
       <thead className="bg-surface/40">
         <tr>
-          <th className={TH}>Pallet.method</th>
+          <th className={TH}>Event</th>
+          <th className={`${TH} text-right`}>Amount</th>
+          <th className={TH}>From</th>
+          <th className={TH}>To</th>
+          <th className={TH}>Subnet</th>
           <th className={TH}>Block</th>
           <th className={`${TH} text-right`}>Observed</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border">
-        {events.map((event) => (
-          <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface/40">
-            <td className="px-4 py-2.5 mg-type-data text-ink-strong">
-              {extrinsicCall(event.pallet, event.method)}
-            </td>
-            <td className="px-4 py-2.5 mg-type-data">
-              {event.block_number != null ? (
-                <Link
-                  to="/blocks/$ref"
-                  params={{ ref: String(event.block_number) }}
-                  className="text-ink-strong hover:text-accent hover:underline"
-                >
-                  #{formatNumber(event.block_number)}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </td>
-            <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
-              <TimeAgo at={event.observed_at} />
-            </td>
-          </tr>
-        ))}
+        {events.map((event) => {
+          const s = summarizeChainEvent(event.args);
+          return (
+            <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface/40">
+              <td className="px-4 py-2.5 mg-type-data text-ink-strong">
+                {extrinsicCall(event.pallet, event.method)}
+              </td>
+              <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
+                {s.amountTao != null ? formatTao(s.amountTao) : "—"}
+              </td>
+              <td className="px-4 py-2.5 mg-type-data">
+                <AccountAddress ss58={s.from} compact fallback="—" />
+              </td>
+              <td className="px-4 py-2.5 mg-type-data">
+                <AccountAddress ss58={s.to} compact fallback="—" />
+              </td>
+              <td className="px-4 py-2.5 mg-type-data">
+                {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : "—"}
+              </td>
+              <td className="px-4 py-2.5 mg-type-data">
+                {event.block_number != null ? (
+                  <Link
+                    to="/blocks/$ref"
+                    params={{ ref: String(event.block_number) }}
+                    className="text-ink-strong hover:text-accent hover:underline"
+                  >
+                    #{formatNumber(event.block_number)}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
+                <TimeAgo at={event.observed_at} />
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
 
-  const cards = events.map((event) => (
-    <Panel
-      as="div"
-      dense
-      key={`${event.block_number}-${event.event_index}-card`}
-      className="min-h-11"
-    >
-      <div className="mg-type-data text-ink-strong">
-        {extrinsicCall(event.pallet, event.method)}
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-2 mg-type-data-sm text-ink-muted">
-        {event.block_number != null ? (
-          <Link
-            to="/blocks/$ref"
-            params={{ ref: String(event.block_number) }}
-            className="hover:text-accent hover:underline"
-          >
-            #{formatNumber(event.block_number)}
-          </Link>
-        ) : (
-          <span>—</span>
-        )}
-        <TimeAgo at={event.observed_at} />
-      </div>
-    </Panel>
-  ));
+  const cards = events.map((event) => {
+    const s = summarizeChainEvent(event.args);
+    return (
+      <Panel
+        as="div"
+        dense
+        key={`${event.block_number}-${event.event_index}-card`}
+        className="min-h-11"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 truncate mg-type-data text-ink-strong">
+            {extrinsicCall(event.pallet, event.method)}
+          </span>
+          {s.amountTao != null ? (
+            <span className="shrink-0 mg-type-data tabular-nums text-ink">
+              {formatTao(s.amountTao)}
+            </span>
+          ) : null}
+        </div>
+        {s.from || s.to ? (
+          <div className="mt-1 flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
+            <AccountAddress ss58={s.from} compact fallback="—" />
+            {s.to ? (
+              <>
+                <span aria-hidden>→</span>
+                <AccountAddress ss58={s.to} compact fallback="—" />
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="mt-1 flex items-center justify-between gap-2 mg-type-data-sm text-ink-muted">
+          <span className="flex items-center gap-2">
+            {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : null}
+            {event.block_number != null ? (
+              <Link
+                to="/blocks/$ref"
+                params={{ ref: String(event.block_number) }}
+                className="hover:text-accent hover:underline"
+              >
+                #{formatNumber(event.block_number)}
+              </Link>
+            ) : (
+              <span>—</span>
+            )}
+          </span>
+          <TimeAgo at={event.observed_at} />
+        </div>
+      </Panel>
+    );
+  });
 
   if (isPending) return <Skeleton className="h-56 w-full" />;
   if (error && !data)

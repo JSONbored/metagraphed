@@ -21,9 +21,6 @@ import {
   healthQuery,
   globalIncidentsQuery,
   incidentsFeedQuery,
-  chainConcentrationQuery,
-  chainPerformanceQuery,
-  chainYieldQuery,
   sourceHealthProvidersQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -34,14 +31,6 @@ import {
   HealthHistoryDrilldown,
   SourceHealthTable,
 } from "@/components/metagraphed/status-diagnostics";
-import {
-  NetworkDecentralizationPanel,
-  NetworkDecentralizationSkeleton,
-} from "@/components/metagraphed/network-decentralization-panel";
-import {
-  EmissionYieldPanel,
-  EmissionYieldSkeleton,
-} from "@/components/metagraphed/emission-yield-panel";
 
 const SURFACES_INITIAL = 10;
 // A downtime event whose last failure is within this of the latest snapshot is
@@ -109,40 +98,11 @@ export function StatusPage() {
           </AsyncPanel>
         </section>
 
-        {/* #3471: network-scope decentralization scorecard — stake &
-            emission concentration (Gini / HHI / Nakamoto / entropy / top-1%)
-            plus the trust/consensus score spread, mirroring the per-subnet
-            concentration panel at chain scope. */}
-        <section>
-          <SectionHeading
-            title="Network decentralization"
-            intro="Chain-wide stake & emission concentration (Gini, HHI, Nakamoto coefficient, entropy, top-1% share) and the trust/consensus score spread, computed across every subnet from the metagraph snapshot."
-          />
-          <AsyncPanel
-            context="network decentralization"
-            fallback={<NetworkDecentralizationSkeleton />}
-            retryQueryKeys={[chainConcentrationQuery().queryKey, chainPerformanceQuery().queryKey]}
-          >
-            <NetworkDecentralizationPanel />
-          </AsyncPanel>
-        </section>
-
-        {/* #3472: network emission-yield summary — the return-rate companion to
-            the decentralization scorecard: aggregate network return split by
-            validator/miner role plus the per-neuron return spread. */}
-        <section>
-          <SectionHeading
-            title="Network emission yield"
-            intro="Chain-wide emission yield — total emission over total stake, split by validator/miner role — plus the per-neuron return distribution, computed across every neuron from the metagraph snapshot."
-          />
-          <AsyncPanel
-            context="network emission yield"
-            fallback={<EmissionYieldSkeleton />}
-            retryQueryKeys={[chainYieldQuery().queryKey]}
-          >
-            <EmissionYieldPanel />
-          </AsyncPanel>
-        </section>
+        {/* #8253: the network-decentralization (#3471) and emission-yield
+            (#3472) scorecards moved to the Chain hub's Overview tab. They are
+            chain-wide metagraph rollups, not uptime — /status answers "is it
+            up", and mixing concentration analytics into that made the page
+            answer two unrelated questions at once. */}
 
         {/* #8: operational diagnostics — a per-day probe drill-down and a
             provider verification rollup, both probe-derived. */}
@@ -181,9 +141,6 @@ export function StatusPage() {
           "/api/v1/feeds/incidents",
           "/api/v1/health/history/{date}",
           "/api/v1/source-health",
-          "/api/v1/chain/concentration",
-          "/api/v1/chain/performance",
-          "/api/v1/chain/yield",
         ]}
       />
     </AppShell>
