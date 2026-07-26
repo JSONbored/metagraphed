@@ -62,6 +62,21 @@ const pointer = {
   // than a brief mixed read, so this takes the tradeoff rather than the outage.
   latest_prefix: manifest.latest_prefix,
   run_prefix: manifest.run_prefix,
+  // #8277: the immutable, per-run FULL manifest (path -> content-addressed
+  // by-hash key for every artifact this run published). r2-upload already
+  // writes it as a control object under both the run prefix and latest/, so
+  // this names an object that exists without any new upload machinery.
+  //
+  // This is what restores read-atomicity. `latest_prefix` above resolves into
+  // a MUTABLE tree that an in-flight publish overwrites in place, so a reader
+  // mid-publish can see a mix of runs. Resolving through this manifest instead
+  // means the pointer flip is the single switch between runs and everything it
+  // names is immutable -- and it makes rollback a one-key KV edit rather than
+  // a ~50-minute republish, which is exactly what the 2026-07-26 outage needed
+  // and did not have. workers/storage.ts treats it as best-effort and falls
+  // back to latest_prefix, so an absent or stale value degrades rather than
+  // 404s.
+  full_manifest_run_key: manifest.full_manifest_run_key,
   manifest_hash: hashJson(manifest),
   artifact_count: manifest.artifact_count,
   native_snapshot_captured_at: (freshness.summary as Row)

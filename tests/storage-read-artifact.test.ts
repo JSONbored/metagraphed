@@ -418,3 +418,196 @@ test("readArtifact returns the non-404 R2 error over the asset 404 for an R2-pre
   vi.doUnmock("../src/artifact-storage.ts");
   vi.resetModules();
 });
+
+// ---- #8277: manifest-resolved, content-addressed reads -----------------------
+// The pointer names an IMMUTABLE per-run manifest (path -> by-hash key), so a
+// publish overwriting the mutable latest/ tree can never be observed mid-run.
+// Every case below also asserts the degrade path, because this resolution is
+// deliberately best-effort: it must never turn a readable artifact into a 404.
+
+function manifestEnv(
+  manifest: unknown,
+  pointer: Record<string, unknown>,
+  onGet?: (key: string) => void,
+) {
+  return {
+    METAGRAPH_CONTROL: {
+      async get() {
+        return pointer;
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        onGet?.(key);
+        if (key !== pointer.full_manifest_run_key) return null;
+        if (manifest === null) return null;
+        return {
+          async json() {
+            return manifest;
+          },
+        };
+      },
+    },
+  } as unknown as Env;
+}
+
+const RUN_MANIFEST_KEY = "runs/2026-07-26T12-00-00-000Z/r2-manifest.json";
+const RUN_MANIFEST = {
+  artifacts: [
+    { path: "/metagraph/subnets.json", key: "by-hash/aaa111" },
+    { path: "/metagraph/coverage.json", key: "by-hash/bbb222" },
+  ],
+};
+
+test("#8277 latestR2Key resolves through the run manifest to the immutable by-hash key", async () => {
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(RUN_MANIFEST, {
+    latest_prefix: "latest/",
+    full_manifest_run_key: RUN_MANIFEST_KEY,
+  });
+  assert.equal(await resolve("/metagraph/subnets.json", env), "by-hash/aaa111");
+  assert.equal(
+    await resolve("/metagraph/coverage.json", env),
+    "by-hash/bbb222",
+  );
+});
+
+test("#8277 the run manifest is fetched once per isolate, not per artifact", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const fetched: string[] = [];
+  const env = manifestEnv(
+    RUN_MANIFEST,
+    { latest_prefix: "latest/", full_manifest_run_key: RUN_MANIFEST_KEY },
+    (key) => fetched.push(key),
+  );
+  await resolve("/metagraph/subnets.json", env);
+  await resolve("/metagraph/coverage.json", env);
+  await resolve("/metagraph/subnets.json", env);
+  // Immutable per run, so it is memoized with no TTL -- three resolutions,
+  // one ~585 KB read.
+  assert.deepEqual(fetched, [RUN_MANIFEST_KEY]);
+});
+
+test("#8277 a path the manifest does not name falls back to the prefix", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(RUN_MANIFEST, {
+    latest_prefix: "latest/",
+    full_manifest_run_key: RUN_MANIFEST_KEY,
+  });
+  assert.equal(
+    await resolve("/metagraph/not-in-manifest.json", env),
+    "latest/not-in-manifest.json",
+  );
+});
+
+test("#8277 an unreadable manifest degrades to the prefix instead of 404ing", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(null, {
+    latest_prefix: "latest/",
+    full_manifest_run_key: RUN_MANIFEST_KEY,
+  });
+  assert.equal(
+    await resolve("/metagraph/subnets.json", env),
+    "latest/subnets.json",
+  );
+});
+
+test("#8277 a pointer with no manifest key behaves exactly as before", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(RUN_MANIFEST, {
+    latest_prefix: "runs/2026-07-17T11-21-50-971Z/",
+  });
+  assert.equal(
+    await resolve("/metagraph/subnets.json", env),
+    "runs/2026-07-17T11-21-50-971Z/subnets.json",
+  );
+});
+
+test("#8277 stable-latest artifacts still bypass the manifest entirely", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(
+    {
+      artifacts: [
+        {
+          path: "/metagraph/health/history/2026-07-01.json",
+          key: "by-hash/ccc333",
+        },
+      ],
+    },
+    { latest_prefix: "latest/", full_manifest_run_key: RUN_MANIFEST_KEY },
+  );
+  // health/history is write-once per date and accumulates only under latest/;
+  // routing it through a run manifest would lose every prior date.
+  assert.equal(
+    await resolve("/metagraph/health/history/2026-07-01.json", env),
+    "latest/health/history/2026-07-01.json",
+  );
+});
+
+test("#8277 a manifest entry missing path or key is skipped, not indexed", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  const env = manifestEnv(
+    {
+      artifacts: [
+        { path: "/metagraph/subnets.json" }, // no key
+        { key: "by-hash/orphan" }, // no path
+        { path: "/metagraph/coverage.json", key: "by-hash/bbb222" }, // valid
+      ],
+    },
+    { latest_prefix: "latest/", full_manifest_run_key: RUN_MANIFEST_KEY },
+  );
+  // A half-written entry must not shadow the prefix fallback with a bad key.
+  assert.equal(
+    await resolve("/metagraph/subnets.json", env),
+    "latest/subnets.json",
+  );
+  // ...and must not poison the rest of the index.
+  assert.equal(
+    await resolve("/metagraph/coverage.json", env),
+    "by-hash/bbb222",
+  );
+});
+
+test("#8277 a manifest read that throws degrades to the prefix and is not retried", async () => {
+  vi.resetModules();
+  const { latestR2Key: resolve } = await import("../workers/storage.ts");
+  let reads = 0;
+  const env = {
+    METAGRAPH_CONTROL: {
+      async get() {
+        return {
+          latest_prefix: "latest/",
+          full_manifest_run_key: RUN_MANIFEST_KEY,
+        };
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        reads += 1;
+        return {
+          async json() {
+            throw new Error("malformed body");
+          },
+        };
+      },
+    },
+  } as unknown as Env;
+
+  assert.equal(
+    await resolve("/metagraph/subnets.json", env),
+    "latest/subnets.json",
+  );
+  assert.equal(
+    await resolve("/metagraph/coverage.json", env),
+    "latest/coverage.json",
+  );
+  // The null result is memoized too, so a broken manifest costs one read per
+  // isolate rather than a ~585 KB fetch on every single request.
+  assert.equal(reads, 1);
+});
