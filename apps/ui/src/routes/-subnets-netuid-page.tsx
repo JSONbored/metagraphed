@@ -31,6 +31,7 @@ import { EmptyState, Skeleton, RECOVERY } from "@/components/metagraphed/states"
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
+import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import {
   CandidateChip,
   CurationChip,
@@ -267,6 +268,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
               defaultTab="overview"
               trailing={
                 <>
+                  <WatchStarButton kind="subnet" id={netuid} label={`SN${netuid}`} />
                   <SubnetWindowToggle />
                   {/* Restored, not removed: CopyLinkButton was imported here and
                       never rendered, and subnet detail had NO share affordance at

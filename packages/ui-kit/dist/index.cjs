@@ -2523,6 +2523,7 @@ function SectionHeading({
     }
   );
 }
+var SHARE_COPIED_EVENT = "mg:share-copied";
 function ShareButton({
   url,
   label = "Share view",
@@ -2546,6 +2547,9 @@ function ShareButton({
         description: "Filters, sort, and pagination are preserved in the URL."
       });
       setAnnouncement(`Link copied to clipboard: ${href}`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(SHARE_COPIED_EVENT));
+      }
     } else {
       setAnnouncement("Couldn't copy link to clipboard.");
     }
@@ -6230,6 +6234,7 @@ exports.ResponsiveTable = ResponsiveTable;
 exports.ReviewChip = ReviewChip;
 exports.RoutePending = RoutePending;
 exports.SCOPES = SCOPES;
+exports.SHARE_COPIED_EVENT = SHARE_COPIED_EVENT;
 exports.ScrollReveal = ScrollReveal;
 exports.ScrollShadow = ScrollShadow;
 exports.SectionAnchor = SectionAnchor;

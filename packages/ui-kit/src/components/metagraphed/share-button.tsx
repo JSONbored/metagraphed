@@ -3,6 +3,12 @@ import { Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { classNames } from "@/lib/format";
 import { useCopy } from "@/hooks/use-copy";
+
+/**
+ * Fired on `window` when a share link is successfully copied. Consumers that
+ * care (analytics) subscribe; ui-kit itself stays dependency-free.
+ */
+export const SHARE_COPIED_EVENT = "mg:share-copied";
 import { CopyStatusRegion } from "./copy-status-region";
 
 interface Props {
@@ -73,6 +79,14 @@ export function ShareButton({
         description: "Filters, sort, and pagination are preserved in the URL.",
       });
       setAnnouncement(`Link copied to clipboard: ${href}`);
+      // #8256: ui-kit is a design-system package and deliberately has no
+      // analytics dependency, so it announces the copy as a DOM event instead
+      // of calling captureEvent. apps/ui registers one listener in AppShell.
+      // The event carries no URL -- the pathname alone would identify which
+      // subnet or account was being shared.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(SHARE_COPIED_EVENT));
+      }
     } else {
       setAnnouncement("Couldn't copy link to clipboard.");
     }

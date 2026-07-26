@@ -41,7 +41,10 @@ import type { GlobalValidator } from "@/lib/metagraphed/types";
 // cap was raised 100 -> 2000 in the same change) — the table body is
 // virtualized client-side, so there is no pagination tier and every row is
 // searchable/sortable locally.
-const ALL_VALIDATORS_LIMIT = 2000;
+// Exported so the homepage's Watched module can request the identical query
+// (same sort + limit = same cache key) and read from cache rather than firing
+// a second 2000-row fetch (#8256).
+export const ALL_VALIDATORS_LIMIT = 2000;
 const CONCENTRATION_TOP_N = 10;
 
 export function ValidatorsPage() {
@@ -136,8 +139,10 @@ function ValidatorsDirectory({
   // Client-side search + sort over the full set. Watched rows pin to the top
   // within the current sort (stable partition, not a separate list).
   const rows = useMemo(() => {
-    const filtered = all.filter((v) =>
-      matchesQuery([v.hotkey, v.coldkey, v.coldkey_identity?.name], search.q),
+    const filtered = all.filter(
+      (v) =>
+        matchesQuery([v.hotkey, v.coldkey, v.coldkey_identity?.name], search.q) &&
+        (!search.watched || watchlist.isWatched(v.hotkey)),
     );
     const sorted = sortBy(filtered, sort, order, (row, key) => {
       const rec = row as unknown as Record<string, unknown>;
@@ -148,7 +153,7 @@ function ValidatorsDirectory({
     const rest: GlobalValidator[] = [];
     for (const v of sorted) (watchlist.isWatched(v.hotkey) ? watched : rest).push(v);
     return [...watched, ...rest];
-  }, [all, search.q, sort, order, watchlist]);
+  }, [all, search.q, search.watched, sort, order, watchlist]);
 
   // #8251: virtualized table body — the same padding-row technique the
   // /subnets table established (#8314): only the visible slice mounts as real
@@ -186,6 +191,27 @@ function ValidatorsDirectory({
           placeholder="Search by operator, hotkey, or coldkey"
           className="w-full sm:w-80"
         />
+        {/* #8256: only offered once something is starred -- an always-visible
+            filter that can only ever return nothing is furniture. */}
+        {watchlist.count > 0 ? (
+          <button
+            type="button"
+            onClick={() => setSearch({ watched: !search.watched })}
+            aria-pressed={search.watched}
+            className={classNames(
+              "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 mg-type-caption font-medium transition-colors",
+              search.watched
+                ? "border-accent/40 bg-accent/10 text-accent-text"
+                : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
+            )}
+          >
+            <Star
+              className={classNames("size-3.5", search.watched && "fill-accent text-accent")}
+              aria-hidden
+            />
+            Watched · {watchlist.count}
+          </button>
+        ) : null}
         <span className="mg-type-data text-ink-muted">
           {formatNumber(rows.length)} of {formatNumber(all.length)} validators
         </span>

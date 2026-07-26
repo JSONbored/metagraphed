@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
 import { ArrowUpRight, ChevronDown, Terminal } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { HomeWatchedModule } from "@/components/metagraphed/home-watched-module";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -106,6 +107,22 @@ export function OverviewPage() {
             <HomeForAgentsModule />
           </Suspense>
         </QueryErrorBoundary>
+      </section>
+
+      {/* #8256: the watchlist is the site's only personalization, and until
+          now starring a subnet on /subnets had no payoff anywhere the user
+          actually lands. This sits above "keep exploring" because a returning
+          visitor's own stars beat a generic browse prompt -- and below the
+          two live modules, which a first-time visitor (no stars yet) needs
+          more. The module renders a one-line nudge, not a framed panel, when
+          nothing is starred. */}
+      <section className="mt-section-gap">
+        <SectionHeader
+          eyebrow="Watched"
+          title="Your watchlist."
+          description="Stars live in this browser — no account, nothing sent to us."
+        />
+        <HomeWatchedModule />
       </section>
 
       <ContinueExploring />
