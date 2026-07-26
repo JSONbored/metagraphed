@@ -125,7 +125,7 @@ function ValidatorPreviewRow({
             <button
               type="button"
               onClick={open}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
             >
               <Coins className="size-3 text-ink-muted" aria-hidden />
               Delegate

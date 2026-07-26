@@ -64,7 +64,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
         <SheetTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors mg-focus-ring"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors mg-focus-ring"
           >
             <GitCompare className="size-3 text-ink-muted" />
             Compare
@@ -106,7 +106,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/50 hover:text-accent"
             >
               Compare <ArrowRight className="size-3" />
             </button>

@@ -303,7 +303,7 @@ function StatusView({
           >
             {shortHash(txHash, 8)}
           </Link>
-          <p className="text-[10px] text-ink-muted">
+          <p className="mg-type-caption text-ink-muted">
             May take a few moments to appear once indexed.
           </p>
         </div>

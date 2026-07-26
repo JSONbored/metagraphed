@@ -120,15 +120,22 @@ export function RegistryEmpty({
           ) : null}
 
           {freshnessHint ? (
-            <p className="text-[11px] leading-relaxed text-ink-muted/80">
+            <p className="mg-type-caption leading-relaxed text-ink-muted/80">
               <span className="mg-type-micro opacity-70">how freshness works · </span>
               {freshnessHint}
             </p>
           ) : null}
 
           {evidenceHref ? (
-            <p className="text-[11px] text-ink-muted">
+            <p className="mg-type-caption text-ink-muted">
               <span className="mg-type-micro opacity-70">where to verify · </span>
+              {/* Stays a raw anchor deliberately: evidenceHref is a
+                  same-origin relative artifact path (e.g. /metagraph/gaps.json
+                  on -gaps-page / -surfaces-page), and <ExternalLink>'s
+                  safeExternalUrl rejects relative URLs outright -- converting
+                  would render the "blocked unsafe URL" fallback and break the
+                  link. Residual no-restricted-syntax warning flagged in the
+                  PR body per the issue's req-2 escape hatch. */}
               <a
                 href={evidenceHref}
                 target="_blank"

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { TimeAgo, safeExternalUrl } from "@jsonbored/ui-kit";
+import { TimeAgo, safeExternalUrl, ExternalLink } from "@jsonbored/ui-kit";
 import { ApiError } from "@/lib/metagraphed/client";
 import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
@@ -114,20 +114,19 @@ export function ErrorState({
         {onRetry ? (
           <button
             onClick={onRetry}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
           >
             <RefreshCw className="size-3" /> Retry
           </button>
         ) : null}
         {safeUrl ? (
-          <a
+          <ExternalLink
+            bare
             href={safeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong"
           >
             <ExternalLinkIcon className="size-3" /> Open API URL
-          </a>
+          </ExternalLink>
         ) : null}
       </div>
     </div>
@@ -183,7 +182,7 @@ export function EmptyState({
         <a
           href={actionHref}
           {...(action.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-          className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+          className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
         >
           {action.label}
           {action.external ? <ExternalLinkIcon className="size-3" /> : null}

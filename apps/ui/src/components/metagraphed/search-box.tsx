@@ -41,7 +41,7 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
       <div className="min-w-0">
         <p className="truncate mg-type-caption-lg text-ink-strong">{resultLabel(result)}</p>
         {result.subtitle ? (
-          <p className="truncate text-[11px] text-ink-muted">{result.subtitle}</p>
+          <p className="truncate mg-type-caption text-ink-muted">{result.subtitle}</p>
         ) : null}
         {tags.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">

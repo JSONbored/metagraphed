@@ -75,7 +75,7 @@ export function ShortcutsPopover() {
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent side="right" className="text-[11px]">
+        <TooltipContent side="right" className="mg-type-caption">
           Keyboard shortcuts (?)
         </TooltipContent>
       </Tooltip>
