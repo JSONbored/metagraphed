@@ -68,6 +68,13 @@ const uploadRetryBaseDelayMs =
   1000;
 const uploadTimeoutMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_TIMEOUT_MS) || 45_000;
+
+const R2_API_BASE_URL_DEFAULT = "https://api.cloudflare.com/client/v4";
+// Test-only seam (mirrors the old METAGRAPH_WRANGLER_BIN override this
+// replaced): lets tests/r2-upload.test.ts point at a local mock HTTP server
+// instead of the real Cloudflare API. Never set in production.
+const r2ApiBaseUrl =
+  process.env.METAGRAPH_R2_API_BASE_URL || R2_API_BASE_URL_DEFAULT;
 // #stale-publish-pipeline/D: replacing the per-object wrangler subprocess with
 // direct API fetches (#8209) removed the CLI overhead and exposed the next
 // ceiling — Cloudflare's client-API rate limit (documented ~1,200 requests /
@@ -81,8 +88,15 @@ const uploadTimeoutMs =
 // retries that honor Retry-After, back off in tens of seconds, and push a
 // shared cooldown so ALL workers pause together instead of 23 siblings
 // draining the budget while one sleeps.
+// The ceiling being respected is Cloudflare's, so the gate only defaults ON
+// when this process is actually talking to Cloudflare. Pointed at a local mock
+// (tests/artifacts.test.ts uploads the FULL manifest -- thousands of HEAD+PUT
+// pairs -- against an in-process server), 3.5 rps turns a sub-second run into
+// hours and blows the test timeout. An explicit METAGRAPH_R2_UPLOAD_MAX_RPS
+// still wins either way, so a staging/proxy base URL can opt back in.
 const uploadMaxRps =
-  parsePositiveNumber(process.env.METAGRAPH_R2_UPLOAD_MAX_RPS) || 3.5;
+  parsePositiveNumber(process.env.METAGRAPH_R2_UPLOAD_MAX_RPS) ||
+  (r2ApiBaseUrl === R2_API_BASE_URL_DEFAULT ? 3.5 : Infinity);
 const uploadRateLimitRetries =
   parseNonNegativeInteger(process.env.METAGRAPH_R2_UPLOAD_429_RETRIES) ?? 6;
 const uploadRateLimitBaseDelayMs =
@@ -120,12 +134,6 @@ class R2PutError extends Error {
   status?: number;
   retryAfterMs?: number;
 }
-// Test-only seam (mirrors the old METAGRAPH_WRANGLER_BIN override this
-// replaced): lets tests/r2-upload.test.ts point at a local mock HTTP server
-// instead of the real Cloudflare API. Never set in production.
-const r2ApiBaseUrl =
-  process.env.METAGRAPH_R2_API_BASE_URL ||
-  "https://api.cloudflare.com/client/v4";
 const manifest: Row = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
