@@ -525,14 +525,30 @@ import type {
   QueryCompare_ValidatorsArgs,
   QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
+  QueryEndpoint_IncidentsArgs,
+  QueryEndpoint_PoolsArgs,
+  QueryEndpointsArgs,
+  QueryEvidenceArgs,
   QueryFixtureArgs,
+  QueryGapsArgs,
   QueryNeuronArgs,
   QueryNeuron_HistoryArgs,
+  QueryProfilesArgs,
   QueryProviderArgs,
+  QueryProvider_EndpointsArgs,
   QueryProvidersArgs,
+  QueryReview_Adapter_CandidatesArgs,
+  QueryReview_Enrichment_EvidenceArgs,
+  QueryReview_Enrichment_QueueArgs,
+  QueryReview_Enrichment_TargetsArgs,
+  QueryReview_GapsArgs,
+  QueryReview_Profile_CompletenessArgs,
+  QueryRpc_EndpointsArgs,
+  QueryRpc_PoolsArgs,
   QuerySaved_QueryArgs,
   QuerySearchArgs,
   QuerySearch_IndexArgs,
+  QuerySource_SnapshotsArgs,
   QuerySubnetArgs,
   QuerySubnet_Axon_RemovalsArgs,
   QuerySubnet_CandidatesArgs,
@@ -1715,7 +1731,7 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   return loadAddressMapping(context.env, h160);
 }
 
-// Row-erased: pending D batches 4-9 (types-epic D, #7862 tracks follow-up
+// Row-erased: pending D batches 5-9 (types-epic D, #7862 tracks follow-up
 // batches). The 5 pilot fields (subnets, subnet, subnet_health,
 // subnet_stake_quote, economics) plus D batch 1's 20 fields
 // (subnet_registrations, subnet_hyperparameters,
@@ -1735,9 +1751,15 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
 // subnet_concentration, subnet_concentration_history, neuron, neuron_history,
 // subnet_identity_history, subnet_trajectory, subnet_metagraph,
 // subnet_overview, subnet_profile, providers, provider, adapter, surfaces)
-// are typed against the generated Args types below; the remaining root
-// fields on this object keep their `Row`-typed destructured params for now,
-// adopted incrementally in later batches rather than all at once here.
+// plus D batch 4's 20 fields (endpoints, provider_endpoints, endpoint_pools,
+// rpc_pools, endpoint_incidents, source_snapshots, gaps, evidence, profiles,
+// review_adapter_candidates, review_enrichment_evidence,
+// review_enrichment_queue, review_enrichment_targets, review_gaps,
+// review_profile_completeness, registry_summary, schemas, source_health,
+// lineage, rpc_endpoints) are typed against the generated Args types below;
+// the remaining root fields on this object keep their `Row`-typed
+// destructured params for now, adopted incrementally in later batches
+// rather than all at once here.
 const rootValue = {
   subnets(
     {
@@ -3137,7 +3159,7 @@ const rootValue = {
     });
   },
 
-  endpoints(args: Row, context: GqlContext) {
+  endpoints(args: QueryEndpointsArgs, context: GqlContext) {
     return loadEndpointsPage(context, args);
   },
 
@@ -3148,7 +3170,7 @@ const rootValue = {
   // that throw becomes a GraphQL error, matching endpoint_pools/gaps' "an
   // unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
-  provider_endpoints(args: Row, context: GqlContext) {
+  provider_endpoints(args: QueryProvider_EndpointsArgs, context: GqlContext) {
     return loadProviderEndpointsList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3160,11 +3182,11 @@ const rootValue = {
   // executor surfaces as a normal GraphQL error, matching every other field's
   // "an unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
-  endpoint_pools(args: Row, context: GqlContext) {
+  endpoint_pools(args: QueryEndpoint_PoolsArgs, context: GqlContext) {
     return loadEndpointPoolsList(mcpCtx(context), args, { readArtifact });
   },
 
-  rpc_pools(args: Row, context: GqlContext) {
+  rpc_pools(args: QueryRpc_PoolsArgs, context: GqlContext) {
     // rpc-pools' loader additionally reads ctx.readHealthKv for its live
     // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.mjs's
     // own context has no such property, so it's supplied here from the same
@@ -3178,7 +3200,7 @@ const rootValue = {
     );
   },
 
-  endpoint_incidents(args: Row, context: GqlContext) {
+  endpoint_incidents(args: QueryEndpoint_IncidentsArgs, context: GqlContext) {
     return loadEndpointIncidentsList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3188,7 +3210,7 @@ const rootValue = {
   // as a normal GraphQL error, matching every other field's "an unsupported
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention.
-  source_snapshots(args: Row, context: GqlContext) {
+  source_snapshots(args: QuerySource_SnapshotsArgs, context: GqlContext) {
     return loadSourceSnapshotsList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3197,11 +3219,11 @@ const rootValue = {
   // error, matching source_snapshots' "unsupported filter/sort is a GraphQL
   // error, not a silently substituted default" convention. A cold/absent
   // artifact is likewise a GraphQL error (matching REST/MCP not_found).
-  gaps(args: Row, context: GqlContext) {
+  gaps(args: QueryGapsArgs, context: GqlContext) {
     return loadGapsList(mcpCtx(context), args, { readArtifact });
   },
 
-  evidence(args: Row, context: GqlContext) {
+  evidence(args: QueryEvidenceArgs, context: GqlContext) {
     return loadEvidenceList(mcpCtx(context), args, { readArtifact });
   },
 
@@ -3210,7 +3232,7 @@ const rootValue = {
   // (not a throw) -- this file's own loadArtifact(context, path) already has
   // exactly that shape (readArtifact(context.env, path), null if not ok), so
   // it's reused directly rather than adding a redundant wrapper.
-  profiles(args: Row, context: GqlContext) {
+  profiles(args: QueryProfilesArgs, context: GqlContext) {
     return loadProfilesList(mcpCtx(context), args, {
       readOptionalArtifact: loadArtifact as AnyFn,
     });
@@ -3259,7 +3281,7 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/lineage.json");
   },
 
-  rpc_endpoints(args: Row, context: GqlContext) {
+  rpc_endpoints(args: QueryRpc_EndpointsArgs, context: GqlContext) {
     // #7886: reuse loadRpcEndpointsList — same live 15-minute cron overlay +
     // endpoints-collection list-query transforms REST applies. The loader
     // validates its own args and throws on an invalid filter/sort or a cold
@@ -3316,29 +3338,44 @@ const rootValue = {
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention. A cold/missing artifact is also a GraphQL error (matches
   // REST 404 / MCP not_found); an empty filtered page is a success with total 0.
-  review_adapter_candidates(args: Row, context: GqlContext) {
+  review_adapter_candidates(
+    args: QueryReview_Adapter_CandidatesArgs,
+    context: GqlContext,
+  ) {
     return loadAdapterCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_evidence(args: Row, context: GqlContext) {
+  review_enrichment_evidence(
+    args: QueryReview_Enrichment_EvidenceArgs,
+    context: GqlContext,
+  ) {
     return loadEnrichmentEvidenceList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_queue(args: Row, context: GqlContext) {
+  review_enrichment_queue(
+    args: QueryReview_Enrichment_QueueArgs,
+    context: GqlContext,
+  ) {
     return loadEnrichmentQueueList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_targets(args: Row, context: GqlContext) {
+  review_enrichment_targets(
+    args: QueryReview_Enrichment_TargetsArgs,
+    context: GqlContext,
+  ) {
     return loadReviewEnrichmentTargetsList(mcpCtx(context), args, {
       readArtifact,
     });
   },
 
-  review_gaps(args: Row, context: GqlContext) {
+  review_gaps(args: QueryReview_GapsArgs, context: GqlContext) {
     return loadReviewGapsList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_profile_completeness(args: Row, context: GqlContext) {
+  review_profile_completeness(
+    args: QueryReview_Profile_CompletenessArgs,
+    context: GqlContext,
+  ) {
     return loadProfileCompletenessList(mcpCtx(context), args, { readArtifact });
   },
 
