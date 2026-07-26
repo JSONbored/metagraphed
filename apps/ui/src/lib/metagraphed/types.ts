@@ -2510,6 +2510,39 @@ export interface GlobalValidators {
 }
 
 /**
+ * #8252: one row of the site-wide accounts leaderboard (GET /api/v1/accounts)
+ * — the collection-level counterpart to /api/v1/validators, generalized to
+ * every currently-registered hotkey (miners included), not just
+ * validator_permit=1 rows. Shares the validator row's aggregate shape; it
+ * carries no take/APY/nominator fields (those are validator-only concepts).
+ */
+export interface AccountListEntry {
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_count: number;
+  subnet_count: number;
+  uid_count: number;
+  validator_count: number;
+  miner_count: number;
+  total_stake_tao: number;
+  total_emission_tao: number;
+  stake_dominance: number | null;
+  latest_captured_at: string | null;
+  latest_block_number: number | null;
+}
+
+/** Site-wide accounts leaderboard from GET /api/v1/accounts. */
+export interface AccountsList {
+  schema_version?: number;
+  sort: string;
+  limit: number;
+  account_count: number;
+  captured_at?: string;
+  block_number?: number;
+  accounts: AccountListEntry[];
+}
+
+/**
  * One validator projected to the stake-decision fields by
  * /api/v1/compare/validators (#6325/#6998) — take rate, estimated APY,
  * nominator count, identity, plus the cross-subnet aggregates that give those

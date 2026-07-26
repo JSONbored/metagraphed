@@ -242,9 +242,11 @@ function ConnectedView({
           </button>
         </div>
       </div>
-      {/* #5243: the connected wallet's read-side entry point into its portfolio. */}
+      {/* #5243: the connected wallet's read-side entry point into its
+          portfolio. #8252: that view moved from the retired /portfolio route
+          into /accounts' own "Your wallet" panel. */}
       <Link
-        to="/portfolio"
+        to="/accounts"
         className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
       >
         <Wallet className="size-3.5" aria-hidden="true" />

@@ -78,6 +78,11 @@ import { ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
+import {
+  accountRole,
+  isImplausibleTao,
+  IMPLAUSIBLE_TAO_NOTE,
+} from "@/lib/metagraphed/account-role";
 import type {
   AccountCounterparty,
   AccountDelegationGraph,
@@ -129,6 +134,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const signedExtrinsics = extrinsicsResult.data?.data ?? [];
   const transfers = transfersResult.data?.data ?? [];
 
+  // #8252: guard against an absurd balance rendering as fact. TAO's total
+  // issuance is capped at 21M, so anything above it is definitionally a
+  // decode/unit bug upstream (exactly the class the Phase-0 u64-vs-u128 fix
+  // in #8259 corrected, which had rendered "2,324,289,753,287.40M τ" on a
+  // whale coldkey). Show "—" with an explanatory tooltip rather than a number
+  // no reader can distinguish from a real holding.
+  const balanceImplausible = isImplausibleTao(balance?.balance_tao);
   const balanceValue = balanceResult.isError ? (
     <span className="inline-flex items-center gap-2">
       <AlertCircle aria-hidden className="size-4 text-health-down" />
@@ -143,6 +155,11 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
     </span>
   ) : balanceResult.isPending ? (
     <span className="text-ink-muted">…</span>
+  ) : balanceImplausible ? (
+    <span className="inline-flex items-center gap-1.5" title={IMPLAUSIBLE_TAO_NOTE}>
+      <span>—</span>
+      <AlertCircle aria-hidden className="size-3.5 text-health-warn" />
+    </span>
   ) : balance?.balance_tao != null ? (
     formatTao(balance.balance_tao)
   ) : (
@@ -151,6 +168,12 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
   const hasActivity =
     account.event_count > 0 || account.registrations.length > 0 || account.recent_events.length > 0;
+
+  // #8252: which face of this page leads. A coldkey's story is balance /
+  // positions / transfers; a hotkey's is registrations / validator context /
+  // serving. The same ss58 string can be either -- infer from what the
+  // account actually does on-chain rather than guessing from the address.
+  const role = accountRole(account);
 
   return (
     <>
@@ -245,17 +268,6 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
       <AccountIdentitySection ss58={ss58} />
 
-      <SectionAnchor
-        id="history"
-        title="Daily activity"
-        subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
-        tone="accent"
-        info="History is keyed by hotkey activity only. Coldkey-only addresses legitimately return an empty series."
-        right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
-      >
-        <AccountHistoryChart ss58={ss58} />
-      </SectionAnchor>
-
       {!hasActivity ? (
         <EmptyState
           title="No activity indexed for this account"
@@ -264,12 +276,42 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         />
       ) : null}
 
-      <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
-      {/* #3341: staking-flow scorecard over the same subnet footprint. */}
-      <AccountStakeFlowSection ss58={ss58} />
-
-      <AccountPortfolioSection ss58={ss58} />
-      <AccountStakeMovesSection ss58={ss58} />
+      {/* #8252: role-adaptive ordering. A coldkey leads with what it holds
+          and moves (positions, then stake flow); a hotkey leads with its
+          registrations and validator context. Both eventually render the
+          same section set -- this changes WHICH ONE IS FIRST, so the whale
+          coldkey whose positions used to sit below four irrelevant panels
+          now opens on them. Sections with no data for this key hide
+          themselves entirely (see each one's own early return). */}
+      {role === "coldkey" ? (
+        <>
+          <AccountPortfolioSection ss58={ss58} />
+          <AccountStakeFlowSection ss58={ss58} />
+          <AccountStakeMovesSection ss58={ss58} />
+          <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+        </>
+      ) : (
+        <>
+          <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+          {/* Daily activity is a hotkey-keyed rollup -- rendering it for a
+              coldkey guarantees the framed "No daily hotkey activity yet"
+              panel the redesign removes, so it's hotkey-only by construction
+              rather than relying on an empty state to explain itself. */}
+          <SectionAnchor
+            id="history"
+            title="Daily activity"
+            subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
+            tone="accent"
+            info="History is keyed by hotkey activity only."
+            right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
+          >
+            <AccountHistoryChart ss58={ss58} />
+          </SectionAnchor>
+          <AccountStakeFlowSection ss58={ss58} />
+          <AccountPortfolioSection ss58={ss58} />
+          <AccountStakeMovesSection ss58={ss58} />
+        </>
+      )}
 
       <AccountTeardownActivitySection ss58={ss58} />
 
@@ -2110,6 +2152,13 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
     );
   }
 
+  // #8252: hide entirely rather than render a framed "No weight-setting
+  // activity" panel. Weight-setting is structurally irrelevant to a coldkey
+  // or a non-validator hotkey -- an empty box explaining it doesn't apply is
+  // exactly the noise the redesign removes. Matches the self-hiding
+  // convention the registration/deregistration/teardown sections already use.
+  if (totalSets === 0 && subnets.length === 0) return null;
+
   return (
     <SectionAnchor
       id="weight-setting"
@@ -2119,13 +2168,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
       info="The account-level companion to subnet weight-setter leaderboards — keyed on the validator hotkey submitting its weight vector."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
-      {totalSets === 0 && subnets.length === 0 ? (
-        <TableState
-          variant="empty"
-          title="No weight-setting activity"
-          description="This account has not submitted WeightsSet events in the trailing window — typical for non-validator hotkeys or coldkey-only addresses."
-        />
-      ) : (
+      {
         <>
           <div className="mb-4 grid max-w-2xl gap-4 sm:grid-cols-2">
             <StatTile
@@ -2177,7 +2220,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
             </table>
           </DataPanel>
         </>
-      )}
+      }
     </SectionAnchor>
   );
 }
@@ -2247,8 +2290,15 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
   const prometheusFailed = prometheusResult.isError && !prometheus;
   const servingCount = serving?.total_announcements ?? 0;
   const prometheusCount = prometheus?.total_announcements ?? 0;
+  // #8252: hide entirely rather than render a framed "No endpoint
+  // announcements" panel — serving/Prometheus announcements are structurally
+  // irrelevant to a coldkey or a non-miner hotkey. Note this is gated on
+  // BOTH sources genuinely reporting zero (not on either having failed), so
+  // a failed tier still renders the section and surfaces its own error rather
+  // than silently vanishing as if the account had no activity.
   const isEmpty =
     !servingFailed && !prometheusFailed && servingCount === 0 && prometheusCount === 0;
+  if (isEmpty) return null;
 
   return (
     <SectionAnchor
@@ -2259,12 +2309,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
       info="The account-level companion to subnet serving + prometheus activity — counts how often this hotkey announced axon and Prometheus endpoints."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
-      {isEmpty ? (
-        <EmptyState
-          title="No endpoint announcements"
-          description="This account had no AxonServed or PrometheusServed events in the window — typical for non-miner accounts or coldkeys without serving activity."
-        />
-      ) : (
+      {
         <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
           <StatTile
             icon={Radar}
@@ -2291,7 +2336,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
             className={KPI_TILE}
           />
         </div>
-      )}
+      }
     </SectionAnchor>
   );
 }
