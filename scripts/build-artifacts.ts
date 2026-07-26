@@ -2085,6 +2085,7 @@ const agentResourcesContent = {
       title: "Bittensor skill",
       kind: "skill",
       url: `${llmsApiBase}/skills/bittensor/SKILL.md`,
+      install: "gh skill install JSONbored/metagraphed bittensor",
     },
     {
       id: "llms",
