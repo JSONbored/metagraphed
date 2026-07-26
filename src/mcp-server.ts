@@ -1753,6 +1753,21 @@ function toolError(code: string, message: string) {
   return error;
 }
 
+// #8228: rewrite a mainnet artifact path for the requested chain network.
+// Mirrors the Worker's own /metagraph/{prefix}/… partitioning (see
+// NETWORK_KEY_PREFIXES in src/artifact-storage.ts): finney is the unprefixed
+// default, test lives under metagraph/testnet/. Only pass paths whose artifact
+// is genuinely published per-network — testnet is a native-only registry, so
+// composed/curated artifacts (overview, agent-catalog, health) have no testnet
+// key and would 404 rather than fall back to mainnet.
+function networkArtifactPath(
+  artifactPath: string,
+  network?: "finney" | "test",
+): string {
+  if (!network || network === "finney") return artifactPath;
+  return artifactPath.replace(/^\/metagraph\//, "/metagraph/testnet/");
+}
+
 async function loadArtifactData(ctx: McpCtx, artifactPath: string) {
   const result = await ctx.readArtifact!(ctx.env, artifactPath);
   if (!result || !result.ok) {
@@ -3070,12 +3085,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "subnet's netuid, slug, title, type, status, integration-readiness score " +
       "(0-100), and callable-surface count. Use this to walk or page through the " +
       "whole registry; for keyword or capability discovery use search_subnets / " +
-      "find_subnets_by_capability instead.",
+      "find_subnets_by_capability instead. Defaults to mainnet; pass " +
+      'network:"test" for the Bittensor testnet registry, which is native-only ' +
+      "(chain identity, no curated surfaces/health, so readiness and " +
+      "surface_count are zero there).",
     inputSchema: z.toJSONSchema(ListSubnetsInputSchema, {
       target: "draft-2020-12",
     }),
     async handler(args: z.infer<typeof ListSubnetsInputSchema>, ctx: McpCtx) {
-      const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
+      const index = await loadArtifactData(
+        ctx,
+        networkArtifactPath("/metagraph/subnets.json", args?.network),
+      );
       const all = Array.isArray(index.subnets) ? index.subnets : [];
       // Categorical inclusion (status/subnet_type/domain) and exclusion
       // (not_status/not_subnet_type/not_domain), then the numeric range bounds.
@@ -3216,7 +3237,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "overview is assembled from. Use get_subnet for the curated dashboard " +
       "view (profile + health + curation + gaps + counts); use this for the " +
       "raw structural record itself, or get_subnet_economics for economics " +
-      "alone. Mirrors GET /api/v1/subnets/{netuid}.",
+      "alone. Mirrors GET /api/v1/subnets/{netuid}. Defaults to mainnet; pass " +
+      'network:"test" for the testnet record (native-only: chain identity and ' +
+      "chain economics, no curated surfaces/health, and no mainnet live-economics " +
+      "overlay). Testnet netuids are independent of mainnet netuids.",
     inputSchema: z.toJSONSchema(GetSubnetDetailInputSchema, {
       target: "draft-2020-12",
     }),
@@ -3227,11 +3251,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const detail = await loadArtifactData(
         ctx,
-        `/metagraph/subnets/${netuid}.json`,
+        networkArtifactPath(`/metagraph/subnets/${netuid}.json`, args?.network),
       );
       // Same live-economics overlay /api/v1/subnets/{netuid} attaches (#1308):
       // one call carries validator/miner counts, registration, stake, and
-      // alpha price alongside the structural record.
+      // alpha price alongside the structural record. Mainnet only -- that
+      // overlay reads the finney live-KV blob, so attaching it to a testnet
+      // record would report mainnet numbers against a testnet subnet (the
+      // exact leak tests/network-routing.test.ts guards on the REST side).
+      // Testnet carries its own chain economics inside `subnet.economics`.
+      if (args?.network && args.network !== "finney") return detail;
       const { economics } = await loadSubnetEconomics(ctx, netuid);
       return economics ? { ...detail, economics } : detail;
     },
