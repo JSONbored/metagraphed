@@ -82,7 +82,7 @@ const SITEMAP_STATIC_PATHS = [
   "/health",
   "/status",
   "/apis/schemas",
-  "/gaps",
+  "/contribute",
   "/about",
 ];
 
@@ -315,7 +315,7 @@ const OG_SECTION_TITLES: Record<string, string> = {
   "/health": "Health",
   "/status": "Status",
   "/apis/schemas": "Schemas",
-  "/gaps": "Registry gaps",
+  "/contribute": "Contribute",
   "/about": "About",
 };
 function ogCardTitle(pathname: string): string {

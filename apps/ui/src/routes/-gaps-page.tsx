@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
@@ -37,7 +37,12 @@ import { GITHUB_REPO } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import type { CurationLevel, Gap, Subnet } from "@/lib/metagraphed/types";
-import { MISSING_KINDS, STATUS_OPTIONS, TARGET_OPTIONS, SORT_OPTIONS } from "./gaps";
+import { MISSING_KINDS, STATUS_OPTIONS, TARGET_OPTIONS, SORT_OPTIONS } from "./contribute";
+
+// #8304: gap rows rendered before the explicit expander. Module scope so it
+// is initialised before the component that reads it, not after (a `const`
+// declared below the component would be in its TDZ at first render).
+const GAP_PAGE = 25;
 
 export function GapsPage() {
   return (
@@ -45,8 +50,8 @@ export function GapsPage() {
       <PageMasthead
         eyebrow="Operations"
         live
-        title="Registry gaps"
-        description="Public read-only view of missing resources and enrichment priorities. Submit corrections through the GitHub repo."
+        title="Contribute"
+        description="The contributor work queue — which subnets are missing which public interfaces, and where a correction or addition helps most. Submit through the GitHub repo."
         actions={
           <ExternalLink href={GITHUB_REPO} className="text-xs">
             github
@@ -285,8 +290,8 @@ function GapsKpiStrip() {
 function MissingKindsAtAGlance() {
   const gapsRes = useSuspenseQuery(gapsQuery()).data;
   const rows = useMemo(() => (gapsRes.data ?? []) as Gap[], [gapsRes.data]);
-  const navigate = useNavigate({ from: "/gaps" });
-  const search = useSearch({ from: "/gaps" });
+  const navigate = useNavigate({ from: "/contribute" });
+  const search = useSearch({ from: "/contribute" });
   const activeMissing = useMemo<Set<string>>(
     () => new Set((search.missing ?? "").split(",").filter(Boolean)),
     [search.missing],
@@ -429,8 +434,8 @@ function OpenGapsSection() {
     return m;
   }, [snRes]);
   const rows = useMemo(() => (data.data ?? []) as Gap[], [data.data]);
-  const search = useSearch({ from: "/gaps" });
-  const navigate = useNavigate({ from: "/gaps" });
+  const search = useSearch({ from: "/contribute" });
+  const navigate = useNavigate({ from: "/contribute" });
 
   const setSearch = (patch: Partial<typeof search>) =>
     navigate({
@@ -464,6 +469,13 @@ function OpenGapsSection() {
     });
   }, [rows, search.status, search.target, search.q, missingSet]);
 
+  // Bounded first paint for the gap list (#8304). Resets whenever the filter
+  // set changes, so narrowing the query never leaves a stale "show more" count.
+  const [gapLimit, setGapLimit] = useState(GAP_PAGE);
+  useEffect(() => {
+    setGapLimit(GAP_PAGE);
+  }, [search.status, search.target, search.q, search.sort]);
+
   const sorted = useMemo(() => {
     const sevRank = { high: 0, medium: 1, low: 2 } as Record<string, number>;
     const arr = [...filtered];
@@ -480,6 +492,8 @@ function OpenGapsSection() {
     }
     return arr;
   }, [filtered, search.sort]);
+
+  const visibleGaps = useMemo(() => sorted.slice(0, gapLimit), [sorted, gapLimit]);
 
   const hasFilters =
     search.status !== "all" ||
@@ -622,7 +636,12 @@ function OpenGapsSection() {
         </div>
       ) : (
         <ul className="mt-6 space-y-2">
-          {sorted.map((g) => (
+          {/* #8304: this rendered EVERY gap unconditionally -- 126 rich cards,
+              which is where the page's 52,681px came from (the coverage matrix
+              above was already capped at 24). Bounded to an initial page with
+              an explicit expand, so first paint is finite and nothing is
+              hidden from anyone who wants it. */}
+          {visibleGaps.map((g) => (
             <GapRow
               key={g.id}
               gap={g}
@@ -632,6 +651,17 @@ function OpenGapsSection() {
           ))}
         </ul>
       )}
+      {sorted.length > visibleGaps.length ? (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setGapLimit((n) => n + GAP_PAGE)}
+            className="mg-focus-ring rounded-full border border-border bg-card px-4 py-2 mg-type-caption font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-ink-strong"
+          >
+            Show more gaps ({sorted.length - visibleGaps.length} remaining)
+          </button>
+        </div>
+      ) : null}
     </PageSection>
   );
 }

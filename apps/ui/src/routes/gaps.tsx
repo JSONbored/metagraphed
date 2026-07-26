@@ -1,55 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { GapsPage } from "./-gaps-page";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const STATUS_OPTIONS = ["all", "open", "in-review", "resolved", "wont-fix"] as const;
-export const TARGET_OPTIONS = [
-  "all",
-  "native",
-  "candidate-discovered",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
-export const MISSING_KINDS = [
-  "docs",
-  "repo",
-  "openapi",
-  "endpoint",
-  "dashboard",
-  "data",
-  "sdk",
-  "example",
-  "rpc",
-] as const;
-export const SORT_OPTIONS = ["priority", "netuid", "updated"] as const;
-
-const searchSchema = z.object({
-  status: fallback(z.enum(STATUS_OPTIONS), "all").default("all"),
-  target: fallback(z.enum(TARGET_OPTIONS), "all").default("all"),
-  missing: fallback(z.string(), "").default(""), // comma-separated
-  q: fallback(z.string(), "").default(""),
-  sort: fallback(z.enum(SORT_OPTIONS), "priority").default("priority"),
-});
-
+/**
+ * /gaps renamed to /contribute (#8304, part of #8245).
+ *
+ * It was never a browse destination — it is the contributor work queue, which
+ * is why it sat in the public nav describing work nobody browsing wanted to do.
+ * Search params forward so an existing filtered link keeps working.
+ */
 export const Route = createFileRoute("/gaps")({
-  validateSearch: zodValidator(searchSchema),
-  head: () => ({
-    meta: [
-      { title: "Gaps — Metagraphed" },
-      {
-        name: "description",
-        content:
-          "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo.",
-      },
-      { property: "og:title", content: "Gaps — Metagraphed" },
-      {
-        property: "og:description",
-        content:
-          "Registry gaps, profile completeness, adapter candidates, and enrichment priorities. Corrections via the public repo.",
-      },
-    ],
-  }),
-  component: GapsPage,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/contribute", search, replace: true });
+  },
 });
