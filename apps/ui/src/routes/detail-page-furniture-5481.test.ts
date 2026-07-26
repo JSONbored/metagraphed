@@ -76,19 +76,27 @@ describe("subnet-masthead ShareButton", () => {
   });
 });
 
-describe("subnets.$netuid.tsx ApiSourceFooter", () => {
-  it("imports ApiSourceFooter", () => {
-    expect(subnetRouteSource).toContain(
-      'import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";',
-    );
+// #8247: the subnet detail page's "data sources"/"artifacts" ApiSourceFooter
+// strip was itself a duplicate-fact the redesign audit flagged -- the
+// masthead (mounted on every tab) now owns the same registration via
+// useRegisterApiSource, surfaced through a visible `{ } API` chip that opens
+// the identical drawer. The route no longer renders ApiSourceFooter at all.
+describe("subnets.$netuid.tsx API source registration (moved to the masthead)", () => {
+  it("no longer imports or renders ApiSourceFooter", () => {
+    expect(subnetRouteSource).not.toContain("api-source-footer");
+    expect(subnetRouteSource).not.toContain("<ApiSourceFooter");
   });
 
-  it("renders exactly one ApiSourceFooter outside the tab switch, citing the profile/overview/identity-history paths", () => {
-    expect(subnetRouteSource.match(/<ApiSourceFooter/g)?.length).toBe(1);
-    const footerCall = subnetRouteSource.slice(subnetRouteSource.indexOf("<ApiSourceFooter"));
-    expect(footerCall).toContain("`/api/v1/subnets/${netuid}/profile`");
-    expect(footerCall).toContain("`/api/v1/subnets/${netuid}/overview`");
-    expect(footerCall).toContain("`/api/v1/subnets/${netuid}/identity-history`");
+  it("subnet-masthead.tsx registers the profile/overview/identity-history paths and opens the drawer from a visible chip", () => {
+    expect(mastheadSource).toContain(
+      'import { useRegisterApiSource, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";',
+    );
+    const registerCall = mastheadSource.slice(mastheadSource.indexOf("useRegisterApiSource("));
+    expect(registerCall).toContain("`/api/v1/subnets/${netuid}/profile`");
+    expect(registerCall).toContain("`/api/v1/subnets/${netuid}/overview`");
+    expect(registerCall).toContain("`/api/v1/subnets/${netuid}/identity-history`");
+    expect(mastheadSource).toContain("const { open: openApiDrawer } = useApiSourceCtx();");
+    expect(mastheadSource).toContain("onClick={openApiDrawer}");
   });
 });
 
