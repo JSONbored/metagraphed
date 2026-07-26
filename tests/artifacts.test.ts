@@ -1246,18 +1246,45 @@ test("public artifacts are internally consistent", () => {
   );
   const serviceById = (catalog: Row, surfaceId: string) =>
     catalog.services.find((service: Row) => service.surface_id === surfaceId);
+  // Same-origin/schema-url projection depends on a THIRD PARTY's site still
+  // serving a machine-readable OpenAPI/Swagger document at snapshot time
+  // (schemas/index.json's committed entry reflects whatever the last
+  // production capture actually observed -- see that entry's own
+  // drift_status when it isn't "captured"). That is live external network
+  // state this repo doesn't control, so none of these per-subnet assertions
+  // may hardcode "the projection always succeeds" -- doing so previously
+  // broke CI for unrelated PRs the moment a subnet's site went down
+  // (metagraphed#8212, SN110/Green Compute). Dedicated drift tracking lives
+  // in schema-drift.json (R2-only, refreshed every publish, never a CI
+  // gate) -- this test's own job is only to confirm the derivation logic
+  // matches whatever schemas/index.json currently says, so every assertion
+  // below is guarded on that entry's real current `status` rather than an
+  // assumption independent of it.
+  const liveSchemaEntries = readArtifact("schemas/index.json").schemas;
+  const isSchemaCaptured = (schemaSurfaceId: string): boolean =>
+    liveSchemaEntries.find((entry: Row) => entry.surface_id === schemaSurfaceId)
+      ?.status === "captured";
+
   const catalog7 = readArtifact("agent-catalog/7.json");
   const allwaysHealth = serviceById(catalog7, "allways-api-health");
-  assert.equal(
-    allwaysHealth.schema_artifact,
-    "/metagraph/schemas/allways-swagger.json",
-    "SN7 endpoint rows should inherit the same-origin captured OpenAPI artifact",
-  );
-  assert.equal(allwaysHealth.schema_source.match, "same-origin-openapi");
-  assert.equal(
-    allwaysHealth.schema_source.url,
-    "https://api.all-ways.io/swagger-json",
-  );
+  if (isSchemaCaptured("allways-swagger")) {
+    assert.equal(
+      allwaysHealth.schema_artifact,
+      "/metagraph/schemas/allways-swagger.json",
+      "SN7 endpoint rows should inherit the same-origin captured OpenAPI artifact while that schema is captured",
+    );
+    assert.equal(allwaysHealth.schema_source.match, "same-origin-openapi");
+    assert.equal(
+      allwaysHealth.schema_source.url,
+      "https://api.all-ways.io/swagger-json",
+    );
+  } else {
+    assert.equal(
+      allwaysHealth.schema_source,
+      null,
+      "allways-swagger is not currently captured -- same-origin resolution correctly yields no schema_source",
+    );
+  }
   const allwaysSse = serviceById(catalog7, "allways-sse");
   assert.equal(
     allwaysSse.schema_artifact,
@@ -1269,28 +1296,35 @@ test("public artifacts are internally consistent", () => {
     catalog56,
     "sn-56-gradients-last-boss-battle",
   );
-  assert.equal(
-    gradientsPerformance.schema_source.match,
-    "schema-url",
-    "SN56 endpoint rows with schema_url should resolve by exact schema URL",
-  );
+  if (isSchemaCaptured("sn-56-gradients-openapi")) {
+    assert.equal(
+      gradientsPerformance.schema_source.match,
+      "schema-url",
+      "SN56 endpoint rows with schema_url should resolve by exact schema URL while that schema is captured",
+    );
+  } else {
+    assert.equal(
+      gradientsPerformance.schema_source,
+      null,
+      "sn-56-gradients-openapi is not currently captured -- exact schema_url resolution correctly yields no schema_source",
+    );
+  }
   const catalog110 = readArtifact("agent-catalog/110.json");
   const greenComputeChat = serviceById(
     catalog110,
     "sn-110-green-compute-chat-completions-api",
   );
-  // Green Compute's OpenAPI capture (api.green-compute.com/openapi.json) is
-  // live external network state, re-probed daily by the schema-index sync
-  // bot -- it legitimately resolves to null when that endpoint stops
-  // returning a machine-readable schema, independent of any code change
-  // here. Assert the match only when a same-origin schema is actually
-  // captured; SN7's allwaysHealth assertion above already covers the
-  // same-origin-openapi mechanism itself against a currently-stable capture.
-  if (greenComputeChat.schema_source) {
+  if (isSchemaCaptured("sn-110-green-compute-openapi")) {
     assert.equal(
       greenComputeChat.schema_source.match,
       "same-origin-openapi",
-      "SN110 endpoint rows should resolve through same-origin OpenAPI when a same-origin schema is captured",
+      "SN110 endpoint rows should resolve through same-origin OpenAPI while that schema is captured",
+    );
+  } else {
+    assert.equal(
+      greenComputeChat.schema_source,
+      null,
+      "sn-110-green-compute-openapi is not currently captured (external site unreachable at last snapshot) -- same-origin resolution correctly yields no schema_source rather than stale/fabricated data",
     );
   }
   const catalog64ForSchemas = readArtifact("agent-catalog/64.json");
