@@ -129,6 +129,22 @@ const patterns: SafetyPattern[] = [
   // unambiguous format that a leaked Maps/Cloud key takes; none of the URL/token
   // rules above catch a bare key value.
   { name: "google api key", regex: /AIza[0-9A-Za-z_-]{35}/ },
+  // Telegram bot token: an 8-10 digit bot id, a colon, then a 35-char secret
+  // (e.g. 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw). This repo actively
+  // builds api.telegram.org/bot${token}/sendMessage requests (src/alert-
+  // delivery.ts), so a leaked token is a real credential; the colon-joined
+  // id:secret shape is unambiguous and no URL/token rule above catches a bare
+  // literal of it.
+  { name: "telegram bot token", regex: /\b\d{8,10}:[A-Za-z0-9_-]{35}\b/ },
+  // Discord webhook URL: a Discord webhook URL is itself a bearer credential —
+  // anyone holding it can post to that channel. This repo builds them in
+  // src/alert-delivery.ts's buildDiscordDeliveryRequest. The fixed
+  // /api/webhooks/{id}/{token} path is distinctive; the generic private/token
+  // rules do not flag a public discord.com URL.
+  {
+    name: "discord webhook url",
+    regex: /https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+/,
+  },
   {
     name: "private or loopback URL",
     // Includes link-local 169.254.0.0/16 — the cloud-metadata endpoint
