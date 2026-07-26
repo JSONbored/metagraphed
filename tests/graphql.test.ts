@@ -26,6 +26,7 @@ import {
   schema as chainEventsSchema,
 } from "../src/graphql.ts";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.ts";
+import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../src/metagraph-neurons.ts";
 import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.ts";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.ts";
@@ -4618,6 +4619,14 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_tao: 1000 }]);
   });
 
+  // #8251: GLOBAL_VALIDATOR_LIMIT_MAX went 100 -> 2000 so the /validators UI
+  // can fetch the full ~1,014-validator directory in one request. This
+  // resolver's own contract is "fetch the max REST window once, then paginate
+  // in-process" (see its comment in src/graphql.ts), so the raise ALSO fixes a
+  // latent GraphQL limitation: cursor-paginating past rank 100 previously
+  // returned nothing, because only the top 100 were ever fetched to paginate
+  // over. These assert the forwarded window tracks the constant, not a
+  // hardcoded 100.
   test("validators: sort is forwarded to the Postgres tier; limit is always the REST max window", async () => {
     let capturedUrl: URL | undefined;
     const env = {
@@ -4628,7 +4637,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           return Response.json({
             schema_version: 1,
             sort: "uid_count",
-            limit: 100,
+            limit: GLOBAL_VALIDATOR_LIMIT_MAX,
             captured_at: null,
             block_number: null,
             validator_count: 0,
@@ -4640,7 +4649,10 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     await gql('{ validators(sort: "uid_count", limit: 5) { total } }', env);
     assert.equal(capturedUrl!.pathname, "/api/v1/validators");
     assert.equal(capturedUrl!.searchParams.get("sort"), "uid_count");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+    assert.equal(
+      capturedUrl!.searchParams.get("limit"),
+      String(GLOBAL_VALIDATOR_LIMIT_MAX),
+    );
   });
 
   test("validators: an omitted GraphQL limit still fetches the REST max window from the Postgres tier", async () => {
@@ -4653,7 +4665,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           return Response.json({
             schema_version: 1,
             sort: "subnet_count",
-            limit: 100,
+            limit: GLOBAL_VALIDATOR_LIMIT_MAX,
             captured_at: null,
             block_number: null,
             validator_count: 0,
@@ -4664,7 +4676,10 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     await gql("{ validators { total } }", env);
     assert.equal(capturedUrl!.searchParams.get("sort"), "subnet_count");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+    assert.equal(
+      capturedUrl!.searchParams.get("limit"),
+      String(GLOBAL_VALIDATOR_LIMIT_MAX),
+    );
   });
 
   test("validators: paginate with a hotkey cursor", async () => {
