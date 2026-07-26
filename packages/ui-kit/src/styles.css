@@ -1531,6 +1531,37 @@ html[data-density="compact"] .bg-card > table td {
   border-radius: 6px;
 }
 
+/* Expands a small control's touch area to the 44x44 CSS-px minimum without
+   changing its painted size or the surrounding layout (#8254). Icon buttons
+   in dense rows -- watchlist stars, copy buttons, row overflow triggers --
+   are deliberately 24-32px so they don't dominate a card; the ::after
+   overlay gives the finger the target the eye doesn't need.
+
+   The overlay is centred via the 50%/translate pair rather than negative
+   insets so it stays correct whatever the control's own size is. */
+.mg-tap-target {
+  position: relative;
+}
+.mg-tap-target::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
+}
+/* Pointer-precise input doesn't need the slop, and on a dense desktop table
+   the invisible 44px boxes would overlap each other and swallow neighbouring
+   clicks. Gate it to coarse pointers. */
+@media (pointer: fine) {
+  .mg-tap-target::after {
+    display: none;
+  }
+}
+
 /* Horizontal-scroll fade mask for wide data tables — soft-clips left/right
    edges instead of hard-cutting mid-column so users see there's more to
    scroll. The table's <thead> sticks against the page scroll (under the

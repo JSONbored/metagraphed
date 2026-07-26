@@ -257,7 +257,7 @@ function ValidatorsDirectory({
                               ? "Remove from watchlist"
                               : "Add to watchlist"
                           }
-                          className="flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                          className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
                         >
                           <Star
                             className={classNames(

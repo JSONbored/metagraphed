@@ -2078,7 +2078,9 @@ function ListShell({
               "border-b border-border md:border md:rounded md:bg-card",
               "px-3 py-2 md:p-2.5"
             ),
-            style: { top: "var(--mg-sticky-offset, 3.5rem)" },
+            style: {
+              top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))"
+            },
             children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
           }
         ),

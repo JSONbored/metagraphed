@@ -133,10 +133,10 @@ export function EndpointOperationalList({
               className="mg-section-rule sticky z-[var(--mg-z-sticky)] -mx-1 flex items-center justify-between gap-3 bg-paper/92 px-1 py-2 backdrop-blur"
               // #8302: was a hardcoded +3.75rem for the old page's sub-header. Inside
               // the APIs hub the chrome above this is the hub tab strip, which
-              // publishes its measured height as --mg-hub-tabs-h; the literal is
+              // publishes its measured height as --mg-tabs-h; the literal is
               // only the fallback for pages that render this list outside a hub.
               style={{
-                top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-hub-tabs-h, 3.75rem))",
+                top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 3.75rem))",
               }}
             >
               <div className="flex min-w-0 items-center gap-2.5">
