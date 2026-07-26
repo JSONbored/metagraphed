@@ -318,12 +318,48 @@ const OG_SECTION_TITLES: Record<string, string> = {
   "/contribute": "Contribute",
   "/about": "About",
 };
-function ogCardTitle(pathname: string): string {
+/** Shortens an ss58/hotkey for a card, which has no room for 48 characters. */
+function shortKey(key: string): string {
+  return key.length > 16 ? `${key.slice(0, 6)}…${key.slice(-6)}` : key;
+}
+
+/**
+ * Title + subtitle for the rendered OG card, derived from the path (#8257).
+ *
+ * Entity pages get a card that names the entity instead of the same generic
+ * tagline every page shared. Derived from the URL only -- deliberately no API
+ * fetch here: this runs on every SSR of the page, and a link unfurl isn't
+ * worth adding a blocking request to the critical path. The card is
+ * identifying, not a live dashboard.
+ */
+function ogCardCopy(pathname: string): { title: string; subtitle?: string } {
   const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
-  if (subnet) return `Subnet ${safeDecodePathSegment(subnet[1])}`;
+  if (subnet) {
+    const id = safeDecodePathSegment(subnet[1]);
+    return { title: `Subnet ${id}`, subtitle: "Surfaces, health and economics on Bittensor" };
+  }
+  const validator = pathname.match(/^\/validators\/([^/]+)\/?$/);
+  if (validator) {
+    return {
+      title: shortKey(safeDecodePathSegment(validator[1])),
+      subtitle: "Validator — stake, take and subnet memberships",
+    };
+  }
+  const account = pathname.match(/^\/accounts\/([^/]+)\/?$/);
+  if (account) {
+    return {
+      title: shortKey(safeDecodePathSegment(account[1])),
+      subtitle: "Account — balance, positions and on-chain activity",
+    };
+  }
   const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
-  if (provider) return safeDecodePathSegment(provider[1]);
-  return OG_SECTION_TITLES[pathname] ?? "Metagraphed";
+  if (provider) {
+    return {
+      title: safeDecodePathSegment(provider[1]),
+      subtitle: "Provider — endpoints and operational health",
+    };
+  }
+  return { title: OG_SECTION_TITLES[pathname] ?? "Metagraphed" };
 }
 
 // Warm the TCP+TLS connection to the API origin before the first data fetch
@@ -373,7 +409,10 @@ function injectAnalytics(response: Response, request: Request): Response {
   // a static homepage value.
   const ogUrlTag = `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}">`;
   const jsonLdTag = `<script type="application/ld+json">${buildJsonLd(pathname)}</script>`;
-  const ogImage = `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCardTitle(pathname))}`;
+  const ogCopy = ogCardCopy(pathname);
+  const ogImage =
+    `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCopy.title)}` +
+    (ogCopy.subtitle ? `&subtitle=${encodeURIComponent(ogCopy.subtitle)}` : "");
   const ogImageTags =
     `<meta property="og:image" content="${escapeHtmlAttr(ogImage)}">` +
     `<meta property="og:image:width" content="1200">` +

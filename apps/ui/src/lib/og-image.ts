@@ -11,6 +11,11 @@ type WorkersOg = typeof import("workers-og");
 
 const OG_PATH = "/og";
 const SUBTITLE = "The Bittensor subnet integration registry";
+// #8257: bumped whenever the rendered card changes, so already-unfurled links
+// pick up the new design instead of serving last month's PNG from the edge
+// cache for its full 7-day stale-while-revalidate window.
+const CARD_VERSION = "2";
+const MAX_SUBTITLE_LENGTH = 90;
 const DEFAULT_TITLE = "Metagraphed";
 const MAX_TITLE_LENGTH = 110;
 const MAX_QUERY_LENGTH = 512;
@@ -45,10 +50,28 @@ export function normalizeTitle(value: string | null): string {
   return trimmed.length > MAX_TITLE_LENGTH ? `${trimmed.slice(0, MAX_TITLE_LENGTH - 1)}…` : trimmed;
 }
 
-function makeCacheKey(url: URL, title: string): Request {
+/**
+ * The card's second line. Entity pages pass their own (#8257) -- "SN64 ·
+ * 0.083 τ · healthy" says far more in a link unfurl than the same generic
+ * tagline on every page did. Falls back to the tagline when absent, and is
+ * bounded like the title so a long one can't overflow the card.
+ */
+export function normalizeSubtitle(value: string | null): string {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return SUBTITLE;
+  return trimmed.length > MAX_SUBTITLE_LENGTH
+    ? `${trimmed.slice(0, MAX_SUBTITLE_LENGTH - 1)}…`
+    : trimmed;
+}
+
+function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   const cacheUrl = new URL(url);
   cacheUrl.search = "";
   cacheUrl.searchParams.set("title", title);
+  cacheUrl.searchParams.set("subtitle", subtitle);
+  // Part of the key, not just the markup: bumping it retires every cached
+  // card at once rather than waiting each entry out.
+  cacheUrl.searchParams.set("v", CARD_VERSION);
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
@@ -81,7 +104,8 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
   }
 
   const normalizedTitle = normalizeTitle(url.searchParams.get("title"));
-  const cacheKey = makeCacheKey(url, normalizedTitle);
+  const normalizedSubtitle = normalizeSubtitle(url.searchParams.get("subtitle"));
+  const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle);
   const cached = await cacheStorage?.match(cacheKey);
   if (cached) {
     const response = withOgHeaders(cached);
@@ -111,8 +135,9 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
   }
 
   const title = escapeText(normalizedTitle);
+  const subtitle = escapeText(normalizedSubtitle);
   // Subset each weight to only the bounded glyphs we render (smaller + faster fetch).
-  const glyphs = `${normalizedTitle}${SUBTITLE}metagraph.sh`;
+  const glyphs = `${normalizedTitle}${normalizedSubtitle}metagraph.sh`;
   let bold: ArrayBuffer;
   let regular: ArrayBuffer;
   try {
@@ -129,7 +154,7 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     <div style="display:flex;flex-direction:column;justify-content:space-between;width:100%;height:100%;padding:80px;background:#0a0a0a;color:#fafafa;font-family:Inter;">
       <div style="display:flex;align-items:center;font-size:30px;font-weight:400;color:#a1a1aa;letter-spacing:1px;">metagraph.sh</div>
       <div style="display:flex;font-size:76px;font-weight:700;line-height:1.05;max-width:1040px;">${title}</div>
-      <div style="display:flex;font-size:34px;font-weight:400;color:#a1a1aa;">${SUBTITLE}</div>
+      <div style="display:flex;font-size:34px;font-weight:400;color:#a1a1aa;">${subtitle}</div>
     </div>`;
 
   try {

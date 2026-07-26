@@ -32,6 +32,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
+import { WatchEntitySheet } from "@/components/metagraphed/watch-entity-sheet";
 import {
   CandidateChip,
   CurationChip,
@@ -268,7 +269,11 @@ function ProfileShell({ netuid }: { netuid: number }) {
               defaultTab="overview"
               trailing={
                 <>
+                  {/* Star (#8256) pins this subnet to your homepage; Follow
+                      (#8257) hands you a feed or webhook. Complementary, not
+                      alternatives: one is for you, the other is for a machine. */}
                   <WatchStarButton kind="subnet" id={netuid} label={`SN${netuid}`} />
+                  <WatchEntitySheet netuid={netuid} name={profile?.name ?? undefined} />
                   <SubnetWindowToggle />
                   {/* Restored, not removed: CopyLinkButton was imported here and
                       never rendered, and subnet detail had NO share affordance at
