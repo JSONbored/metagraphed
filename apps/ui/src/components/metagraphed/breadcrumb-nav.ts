@@ -2,7 +2,10 @@ export type Crumb = { label: string; to: string };
 
 export function buildCrumbs(pathname: string): Crumb[] {
   const parts = pathname.split("/").filter(Boolean);
-  const crumbs: Crumb[] = [{ label: "Registry", to: "/" }];
+  // #8246: the first crumb said "Registry" on every page — registry-internal
+  // vocabulary in the one element that should orient a visitor. "Home" is what
+  // the link actually does.
+  const crumbs: Crumb[] = [{ label: "Home", to: "/" }];
   let acc = "";
   for (const p of parts) {
     acc += "/" + p;
