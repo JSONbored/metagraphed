@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="200" height="200" fill="none">
+  <!--
+    FAVICON — V4 Gold Origin
+    Colors: outer #B89B3B, inner #0063C4
+  -->
+  <defs>
+    <mask id="eye-cutout">
+      <rect width="32" height="32" fill="white"/>
+      <polygon points="20.2,15.2 21,18.6 17.6,17.2 16.4,13.5" fill="black"/>
+    </mask>
+  </defs>
+
+  <g mask="url(#eye-cutout)">
+    <!-- Outer silhouette -->
+    <polygon points="
+      10.4,6.8
+      13.4,12.6
+      16.2,4.2
+      20.2,15.2
+      25.8,19
+      21.6,24.8
+      15.6,22
+      5.2,27
+      5.9,18.6
+      10.4,6.8
+    " fill="#B89B3B"/>
+
+    <!-- Inner face -->
+    <polygon points="
+      16.2,4.2
+      20.2,15.2
+      21.6,24.8
+      15.6,22
+      12.4,19.6
+      13.4,12.6
+    " fill="#0063C4"/>
+
+    <!-- Left triangle — C, I, G -->
+    <polygon points="
+      13.4,12.6
+      12.4,19.6
+      5.9,18.6
+    " fill="#0063C4"/>
+  </g>
+</svg>
