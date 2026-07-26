@@ -43,13 +43,25 @@ describe("sanitizeApiBase", () => {
 // A minimal browser `window` for the CSR paths: an EventTarget (so add/remove/dispatch work) plus a
 // Map-backed localStorage. Node 22 provides EventTarget + CustomEvent globally, so setApiBase's
 // `new CustomEvent(...)` + `window.dispatchEvent(...)` broadcast exercises for real.
-function makeWindow(seed: Record<string, string> = {}) {
+function makeWindow(seed: Record<string, string> = {}, hostname?: string) {
   const store = new Map<string, string>(Object.entries(seed));
   const win = new EventTarget() as EventTarget & {
     localStorage: Storage;
     store: Map<string, string>;
+    location?: { hostname: string; href: string; assign: (url: string) => void };
+    assigned: string[];
   };
   win.store = store;
+  // Only attach a location when a case opts in, so the existing cases keep
+  // exercising the no-location path (config.ts must never assume a DOM).
+  win.assigned = [];
+  if (hostname !== undefined) {
+    win.location = {
+      hostname,
+      href: `https://${hostname}/subnets?view=table`,
+      assign: (url: string) => void win.assigned.push(url),
+    };
+  }
   win.localStorage = {
     getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
     setItem: (k: string, v: string) => void store.set(k, v),
@@ -159,6 +171,75 @@ describe("getNetwork / setNetwork (CSR: caching, persistence, broadcast)", () =>
     expect(win.store.has("metagraphed:network")).toBe(false);
     cfg.setNetwork("nope");
     expect(cfg.getNetwork().id).toBe(cfg.DEFAULT_NETWORK.id);
+  });
+});
+
+// #8229: testnet.metagraph.sh is a per-network custom domain on the same
+// Worker, so the hostname -- not localStorage -- is the source of truth.
+describe("per-network hostname (#8229)", () => {
+  it("resolves the network from the hostname label", async () => {
+    const cfg = await freshConfig(makeWindow({}, "testnet.metagraph.sh"));
+    expect(cfg.getNetwork().id).toBe("testnet");
+    expect(cfg.getNetworkPrefix()).toBe("testnet");
+  });
+
+  it("hostname beats a conflicting stored preference in both directions", async () => {
+    // Stale "mainnet" preference must not win on the testnet host...
+    const onTestnet = await freshConfig(
+      makeWindow({ "metagraphed:network": "mainnet" }, "testnet.metagraph.sh"),
+    );
+    expect(onTestnet.getNetwork().id).toBe("testnet");
+
+    // ...and a "testnet" preference must not follow you back to the apex.
+    const onApex = await freshConfig(
+      makeWindow({ "metagraphed:network": "testnet" }, "metagraph.sh"),
+    );
+    expect(onApex.getNetwork().id).toBe("mainnet");
+  });
+
+  it("falls back to the stored preference on a host with no network label", async () => {
+    const cfg = await freshConfig(
+      makeWindow({ "metagraphed:network": "testnet" }, "metagraphed-ui.zeronode.workers.dev"),
+    );
+    expect(cfg.getNetwork().id).toBe("testnet");
+  });
+
+  it("setNetwork navigates to the sibling host, preserving path + query", async () => {
+    const win = makeWindow({}, "metagraph.sh");
+    const cfg = await freshConfig(win);
+    cfg.setNetwork("testnet");
+    expect(win.assigned).toEqual(["https://testnet.metagraph.sh/subnets?view=table"]);
+  });
+
+  it("setNetwork back to mainnet strips the network label rather than stacking it", async () => {
+    const win = makeWindow({}, "testnet.metagraph.sh");
+    const cfg = await freshConfig(win);
+    cfg.setNetwork("mainnet");
+    expect(win.assigned).toEqual(["https://metagraph.sh/subnets?view=table"]);
+  });
+
+  it("stays in-page (no navigation) where no sibling host exists", async () => {
+    for (const host of ["localhost", "127.0.0.1", "app.localhost"]) {
+      const win = makeWindow({}, host);
+      const cfg = await freshConfig(win);
+      const seen: string[] = [];
+      cfg.onNetworkChange((next) => seen.push(next.id));
+      cfg.setNetwork("testnet");
+      expect(win.assigned, `${host} must not navigate`).toEqual([]);
+      // The in-page broadcast still fires so subscribers reconnect.
+      expect(seen).toEqual(["testnet"]);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("networkHostname maps both directions and declines hostless targets", async () => {
+    const cfg = await freshConfig(makeWindow({}, "metagraph.sh"));
+    const testnet = cfg.CHAIN_NETWORKS.find((n) => n.id === "testnet")!;
+    expect(cfg.networkHostname(testnet, "metagraph.sh")).toBe("testnet.metagraph.sh");
+    expect(cfg.networkHostname(testnet, "testnet.metagraph.sh")).toBe("testnet.metagraph.sh");
+    expect(cfg.networkHostname(cfg.DEFAULT_NETWORK, "testnet.metagraph.sh")).toBe("metagraph.sh");
+    expect(cfg.networkHostname(testnet, "localhost")).toBeNull();
+    expect(cfg.networkHostname(testnet, "192.168.1.10")).toBeNull();
   });
 });
 
