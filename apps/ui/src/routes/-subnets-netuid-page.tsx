@@ -201,7 +201,21 @@ export function SubnetDetailPage() {
 }
 
 function ProfileShell({ netuid }: { netuid: number }) {
-  const { data: profile, meta } = useSuspenseQuery(subnetProfileQuery(netuid)).data;
+  // #8225: non-suspending on purpose. The route loader already primed this
+  // same query key via ensureQueryData (subnets.$netuid.tsx), so this never
+  // introduces an extra fetch or a loading flash -- it only changes how a
+  // FAILURE behaves. `/profile` isn't published for every network (e.g.
+  // testnet), and every consumer of `profile` below already tolerates it
+  // being undefined (SubnetMasthead falls back to "Subnet {netuid}",
+  // ReadinessScorecard renders null, tab badge counts go blank). Using
+  // useSuspenseQuery here used to throw that one failure up to the page's
+  // root AsyncPanel and blank out the ENTIRE page -- masthead, tabs, and
+  // every other independently-fetched section -- even though only the
+  // profile-specific "Subnet profile" section (SubnetProfilePanel, which
+  // re-reads this same query in its own AsyncPanel) actually needs it.
+  const { data: profileResult } = useQuery(subnetProfileQuery(netuid));
+  const profile = profileResult?.data;
+  const meta = profileResult?.meta;
   const { data: gapsResult } = useQuery(subnetGapsQuery(netuid));
   const subnetGaps = gapsResult?.data;
   const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
