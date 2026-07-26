@@ -64,6 +64,8 @@ import type {
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
+  AccountListEntry,
+  AccountsList,
   PortfolioConcentration,
   PortfolioPosition,
   Block,
@@ -6570,6 +6572,69 @@ export const validatorsQuery = ({
         meta: res.meta,
         url: res.url,
       } as ApiResult<GlobalValidators>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// #8252: site-wide accounts leaderboard -- the collection-level counterpart
+// to validatorsQuery above, generalized to every registered hotkey (miners
+// included) rather than just validator_permit=1 rows. Same aggregate row
+// shape minus the validator-only take/APY/nominator fields.
+function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
+  if (!isRecord(raw)) return null;
+  const hotkey = firstString(raw.hotkey);
+  if (!hotkey) return null;
+  return {
+    hotkey,
+    coldkey: firstString(raw.coldkey) ?? null,
+    coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? 0,
+    subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
+    uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
+    validator_count: coerceFiniteNumber(raw.validator_count) ?? 0,
+    miner_count: coerceFiniteNumber(raw.miner_count) ?? 0,
+    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
+    total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
+    stake_dominance: coerceFiniteNumber(raw.stake_dominance) ?? null,
+    latest_captured_at: firstString(raw.latest_captured_at) ?? null,
+    latest_block_number: coerceFiniteNumber(raw.latest_block_number) ?? null,
+  };
+}
+
+export function normalizeAccountsList(raw: unknown): AccountsList {
+  const d = isRecord(raw) ? raw : {};
+  const accounts = Array.isArray(d.accounts)
+    ? d.accounts.flatMap((account) => {
+        const normalized = normalizeAccountListEntry(account);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version),
+    sort: coerceString(d.sort) ?? "total_stake",
+    limit: coerceFiniteNumber(d.limit) ?? accounts.length,
+    account_count: coerceFiniteNumber(d.account_count) ?? accounts.length,
+    captured_at: coerceString(d.captured_at),
+    block_number: coerceFiniteNumber(d.block_number),
+    accounts,
+  };
+}
+
+export const accountsListQuery = ({
+  sort = "total_stake",
+  limit = 10,
+}: { sort?: string; limit?: number } = {}) =>
+  queryOptions({
+    queryKey: k("accounts-list", sort, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/accounts", {
+        params: { sort, limit },
+        signal,
+      });
+      return {
+        data: normalizeAccountsList(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountsList>;
     },
     staleTime: STALE_SHORT,
   });

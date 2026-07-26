@@ -221,7 +221,9 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
   },
   {
     label: "SS58 inspector",
-    to: "/tools/ss58",
+    // #8252: folded into /accounts as the "Inspect an address" utility --
+    // the standalone /tools/ss58 route now redirects here.
+    to: "/accounts",
     hint: "Decode & verify any SS58 address",
     icon: Fingerprint,
     scope: "route",

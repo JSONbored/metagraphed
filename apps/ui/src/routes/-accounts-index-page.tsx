@@ -1,6 +1,7 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Wallet } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
@@ -8,8 +9,15 @@ import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts"
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
 import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { Ss58Inspector } from "@/components/metagraphed/ss58-inspector";
+import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
+import { WalletConnectButton } from "@/components/metagraphed/wallet-connect";
+import { useWallet } from "@/hooks/use-wallet";
+import { AccountAddress } from "@/components/metagraphed/account-address";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
-import { chainSignersQuery } from "@/lib/metagraphed/queries";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { accountsListQuery, chainSignersQuery } from "@/lib/metagraphed/queries";
 
 export function AccountsPage() {
   const navigate = useNavigate();
@@ -30,7 +38,7 @@ export function AccountsPage() {
         eyebrow="Explorer"
         live
         title="Accounts"
-        description="Look up a Bittensor account by ss58 address (hotkey or coldkey) — its cross-subnet activity, current registrations, and first-party chain-event history."
+        description="Look up a Bittensor account by ss58 address (hotkey or coldkey) — its balance, staked positions, cross-subnet activity, and first-party chain-event history."
         actions={
           <ActionBar>
             <ShareButton bare />
@@ -71,6 +79,46 @@ export function AccountsPage() {
             : "Paste a hotkey or coldkey ss58 address to view its activity."}
         </p>
       </form>
+
+      {/* #8252: /portfolio folded in as "Your wallet" -- a whole route for a
+          connect prompt was the thing the redesign removed. Read-only
+          connect + flows unchanged. */}
+      <YourWalletPanel />
+
+      {/* #8252: the two new leaderboards the issue asks for, wired to the
+          already-shipped /api/v1/accounts sorts (which had no frontend
+          consumer until now). Stake and emission are the two aggregates that
+          endpoint actually ranks by -- there is no balance-ranked tier on it
+          (balance is a per-account live RPC call, not an indexed column), so
+          "Top by balance" would have to fabricate a ranking it can't compute.
+          Ranking by what the data really supports instead. */}
+      <div className="mx-auto mt-10 grid w-full max-w-4xl gap-4 md:grid-cols-2">
+        <AsyncPanel
+          context="top accounts by stake"
+          fallback={<Skeleton className="h-64 w-full" />}
+          retryQueryKeys={[accountsListQuery({ sort: "total_stake" }).queryKey]}
+        >
+          <AccountsLeaderboard
+            sort="total_stake"
+            title="Top by stake"
+            blurb="Accounts holding the most stake across every subnet."
+            metric={(a) => `${taoCompact(a.total_stake_tao)} τ`}
+          />
+        </AsyncPanel>
+        <AsyncPanel
+          context="top accounts by emission"
+          fallback={<Skeleton className="h-64 w-full" />}
+          retryQueryKeys={[accountsListQuery({ sort: "total_emission" }).queryKey]}
+        >
+          <AccountsLeaderboard
+            sort="total_emission"
+            title="Top by emission"
+            blurb="Accounts earning the most emission across every subnet."
+            metric={(a) => `${taoCompact(a.total_emission_tao)} τ`}
+          />
+        </AsyncPanel>
+      </div>
+
       <Panel
         dense
         className="mx-auto mt-10 w-full max-w-2xl"
@@ -89,7 +137,94 @@ export function AccountsPage() {
           <TopActiveAccounts />
         </AsyncPanel>
       </Panel>
-      <ApiSourceFooter paths={["/api/v1/accounts/{ss58}", "/api/v1/chain/signers"]} />
+
+      {/* #8252: /tools/ss58 folded in as an "Inspect address" utility. */}
+      <Panel dense className="mx-auto mt-10 w-full max-w-2xl">
+        <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Inspect an address</h2>
+        <p className="mb-4 mg-type-data text-ink-muted">
+          Decode any SS58 address&apos;s network prefix and public key, and verify its checksum —
+          useful for catching a mistyped or wrong-network address before sending to it.
+        </p>
+        <Ss58Inspector />
+      </Panel>
+
+      <ApiSourceFooter
+        paths={["/api/v1/accounts/{ss58}", "/api/v1/accounts", "/api/v1/chain/signers"]}
+      />
     </AppShell>
+  );
+}
+
+function YourWalletPanel() {
+  const { wallet } = useWallet();
+  return (
+    // ph-no-capture: this panel shows the CONNECTED wallet's own address and
+    // positions. The retired /portfolio route was replay-blocked wholesale for
+    // exactly that reason (see REPLAY_BLOCKED_ROUTES in lib/analytics.ts);
+    // /accounts is a public any-address lookup page, so the protection moves
+    // to this element rather than blocking the whole route.
+    <Panel dense className="ph-no-capture mx-auto mt-10 w-full max-w-4xl">
+      <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Your wallet</h2>
+      <p className="mb-4 mg-type-data text-ink-muted">
+        Your staking positions across every subnet for the connected wallet — hotkey-owned and
+        delegated. Read-only: this app never constructs or signs a transaction.
+      </p>
+      {wallet ? (
+        <AsyncPanel context="your positions" fallback={<Skeleton className="h-64 w-full" />}>
+          <YourPositionsPanel address={wallet.address} />
+        </AsyncPanel>
+      ) : (
+        <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-6 text-center">
+          <Wallet className="mx-auto mb-3 size-5 text-ink-muted" aria-hidden />
+          <p className="mx-auto mb-4 max-w-md mg-type-caption-lg text-ink-muted">
+            Connecting only reads your public on-chain positions from a browser wallet extension.
+          </p>
+          <div className="flex justify-center">
+            <WalletConnectButton />
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function AccountsLeaderboard({
+  sort,
+  title,
+  blurb,
+  metric,
+}: {
+  sort: string;
+  title: string;
+  blurb: string;
+  metric: (a: { total_stake_tao: number; total_emission_tao: number }) => string;
+}) {
+  const { data } = useSuspenseQuery(accountsListQuery({ sort, limit: 10 }));
+  const rows = data.data.accounts;
+  if (rows.length === 0) return null;
+  return (
+    <Panel dense>
+      <h2 className="mb-1 mg-type-label uppercase text-ink-muted">{title}</h2>
+      <p className="mb-3 mg-type-data text-ink-muted">{blurb}</p>
+      <ol className="divide-y divide-border">
+        {rows.map((a, i) => (
+          <li key={a.hotkey} className="flex items-center gap-3 py-2 mg-type-data">
+            <span className="w-4 shrink-0 text-right tabular-nums text-ink-muted">{i + 1}</span>
+            <span className="min-w-0 flex-1">
+              <AccountAddress ss58={a.hotkey} compact fallback="—" />
+            </span>
+            <span className="shrink-0 tabular-nums text-ink-muted">
+              {formatNumber(a.subnet_count)} SN
+            </span>
+            <span className="shrink-0 tabular-nums font-medium text-ink-strong">{metric(a)}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-2 border-t border-border pt-2">
+        <Link to="/validators" className="mg-type-data-sm text-ink-muted hover:text-accent">
+          Validator directory →
+        </Link>
+      </div>
+    </Panel>
   );
 }

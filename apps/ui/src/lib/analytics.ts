@@ -120,6 +120,13 @@ const SDK_DEFAULTS_DATE = "2026-05-30";
  * substring: `/admin-changes` is a PUBLIC route (the AdminUtils config-change
  * feed) that a loose `/admin` substring rule would wrongly suppress.
  */
+// #8252: /portfolio was retired into /accounts' "Your wallet" panel. It stays
+// listed (the route still exists as a redirect, and a direct nav there should
+// not be recorded even for the instant before it fires), but /accounts is
+// deliberately NOT added: it's a public lookup page for ANY address, and
+// route-level blocking would kill replay across the whole accounts explorer
+// to protect one panel. The connected-wallet panel carries element-level
+// `ph-no-capture` instead -- the same scoping the secret-reveal panels use.
 const REPLAY_BLOCKED_ROUTES = ["/settings", "/portfolio"] as const;
 
 export function isReplayBlockedRoute(pathname: string | null | undefined): boolean {
