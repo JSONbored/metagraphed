@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "./use-wallet";
 import { useTxStatus, type TxUiStatus, type UseTxStatusResult } from "./use-tx-status";
 import { useFlowSession, useFeeEstimate } from "./use-flow-session";
-import { raoToTao, type Rao } from "@/lib/metagraphed/units";
+import { raoToTao } from "@/lib/metagraphed/units";
 import {
   percentToTakeParts,
   takePartsToPercent,

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ConnectedWallet } from "@/lib/metagraphed/wallet";
 import { ApiError } from "@/lib/metagraphed/client";

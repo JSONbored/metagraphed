@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Boxes, Coins, Gauge, Percent, TriangleAlert, Users, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";

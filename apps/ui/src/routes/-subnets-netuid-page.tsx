@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Suspense, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -273,6 +273,10 @@ function ProfileShell({ netuid }: { netuid: number }) {
               trailing={
                 <>
                   <SubnetWindowToggle />
+                  {/* Restored, not removed: CopyLinkButton was imported here and
+                      never rendered, and subnet detail had NO share affordance at
+                      all while every comparable page has one (#8294). */}
+                  <CopyLinkButton />
                   <SubnetCompareDrawer netuid={netuid} />
                 </>
               }

@@ -48,7 +48,6 @@ function nakamotoTone(n?: number): "ok" | "warn" | "down" | "default" {
  */
 export function ConcentrationLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetConcentrationQuery(netuid));
-  const meta = data.meta;
   const c = data.data;
   const stake = c.stake;
   const emission = c.emission;
@@ -319,7 +318,6 @@ function DriftRow({
  */
 function PerformanceLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetPerformanceQuery(netuid));
-  const meta = data.meta;
   const p = data.data;
   const incentive = p.incentive;
   const dividends = p.dividends;

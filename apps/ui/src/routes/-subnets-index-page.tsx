@@ -1593,47 +1593,6 @@ function ParticipantsCell({
   );
 }
 
-function FinancialCell({
-  value,
-  digits = 2,
-  compact = false,
-  usdPerTao,
-}: {
-  value?: number;
-  digits?: number;
-  compact?: boolean;
-  usdPerTao?: number;
-}) {
-  const usd = value != null && usdPerTao != null ? value * usdPerTao : undefined;
-  const fmtUsd = (n: number) =>
-    n >= 1_000_000
-      ? `$${(n / 1_000_000).toFixed(2)}M`
-      : n >= 1_000
-        ? `$${(n / 1_000).toFixed(1)}K`
-        : `$${n.toFixed(2)}`;
-  return (
-    <td
-      className={classNames(
-        compact ? "px-3 py-1.5" : "px-4 py-2.5",
-        "text-right mg-type-data tabular-nums text-ink",
-      )}
-    >
-      <div>
-        {value == null
-          ? "—"
-          : `${value.toLocaleString(undefined, { maximumFractionDigits: digits })} τ`}
-      </div>
-      {usd != null ? <div className="text-[10px] text-ink-muted/80">{fmtUsd(usd)}</div> : null}
-    </td>
-  );
-}
-
-// Per-row financial cell with a tone-colored value + sparkline over the
-// selected window. Data source depends on the field:
-//   - total_stake_tao       → /subnets/{n}/history (daily snapshots)
-//   - alpha_price_tao       → /subnets/{n}/trajectory (daily price)
-//   - alpha_market_cap_tao  → trajectory price × 21_000_000 alpha cap
-// React Query dedupes each underlying request across rows/cells.
 const ALPHA_MAX_SUPPLY = 21_000_000;
 
 function FinancialTrendCell({

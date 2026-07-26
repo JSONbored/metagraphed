@@ -17,7 +17,6 @@ import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { ValidatorDominanceChart } from "@/components/metagraphed/charts/validator-dominance-chart";
-import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";

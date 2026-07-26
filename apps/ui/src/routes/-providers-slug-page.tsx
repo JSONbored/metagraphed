@@ -141,7 +141,7 @@ function ProviderShell({ slug }: { slug: string }) {
           {tab === "overview" ? <OverviewPanel slug={slug} /> : null}
           {tab === "endpoints" ? <EndpointsPanel slug={slug} /> : null}
           {tab === "subnets" ? <SubnetsServedPanel slug={slug} /> : null}
-          {tab === "evidence" ? <EvidencePanel slug={slug} provider={p} /> : null}
+          {tab === "evidence" ? <EvidencePanel provider={p} /> : null}
         </div>
 
         <aside className="space-y-3 border-t border-border pt-4 lg:sticky lg:top-32 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 self-start">
@@ -395,10 +395,8 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
 }
 
 function EvidencePanel({
-  slug,
   provider,
 }: {
-  slug: string;
   provider: { website?: string; homepage?: string; docs?: string; repo?: string };
 }) {
   return (

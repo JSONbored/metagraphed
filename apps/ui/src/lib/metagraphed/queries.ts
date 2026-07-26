@@ -4979,7 +4979,7 @@ export function normalizeSubnetOhlcCandle(raw: unknown): SubnetOhlcCandle | null
 // Cold/absent store, an empty window, or root (netuid 0) all yield a
 // schema-stable empty candles array -- never throws. A malformed individual
 // candle row is dropped rather than poisoning the whole series.
-export function normalizeSubnetOhlc(netuid: number, interval: string, raw: unknown): SubnetOhlc {
+export function normalizeSubnetOhlc(netuid: number, _interval: string, raw: unknown): SubnetOhlc {
   const d = isRecord(raw) ? raw : {};
   const candles = Array.isArray(d.candles)
     ? d.candles.map(normalizeSubnetOhlcCandle).filter((c): c is SubnetOhlcCandle => c != null)
