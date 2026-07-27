@@ -867,6 +867,28 @@ function buildProxyIconUrl(host, size, theme = "light") {
   u.searchParams.set("theme", theme);
   return u.toString();
 }
+var GITHUB_ORG_RE = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+function githubOrgFromUrl(input) {
+  if (!input) return null;
+  try {
+    const u = new URL(input.includes("://") ? input : `https://${input}`);
+    const host = u.hostname.toLowerCase();
+    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
+    const org = u.pathname.split("/").filter(Boolean)[0];
+    return org && GITHUB_ORG_RE.test(org) ? org : null;
+  } catch {
+    return null;
+  }
+}
+function buildProxyGithubAvatarUrl(repoUrl, size, theme = "light") {
+  const org = githubOrgFromUrl(repoUrl);
+  if (!org) return null;
+  const u = new URL(ICON_PROXY_URL);
+  u.searchParams.set("github_org", org);
+  u.searchParams.set("size", String(size));
+  u.searchParams.set("theme", theme);
+  return u.toString();
+}
 function pickIconSource(src, theme) {
   if (!src) return null;
   if (typeof src === "string") return src;
@@ -946,21 +968,6 @@ function extractHost(input) {
     return null;
   }
 }
-function githubOrgFromUrl(input) {
-  if (!input) return null;
-  try {
-    const u = new URL(input.includes("://") ? input : `https://${input}`);
-    const host = u.hostname.toLowerCase();
-    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
-    const seg = u.pathname.split("/").filter(Boolean);
-    return seg[0] ?? null;
-  } catch {
-    return null;
-  }
-}
-function githubAvatarUrl(org, size = 192) {
-  return `https://github.com/${encodeURIComponent(org)}.png?size=${size}`;
-}
 var LOCAL_HOSTNAMES = /* @__PURE__ */ new Set(["localhost", "localhost.localdomain"]);
 function normaliseImageHostname(hostname) {
   return hostname.trim().toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
@@ -1022,8 +1029,7 @@ function buildCandidateChain({
   if (lookup) push(resolveBrandOverride(lookup, theme));
   const host = extractHost(url);
   if (host) push(buildProxyIconUrl(host, size * 2, theme));
-  const repoOrg = githubOrgFromUrl(repoUrl);
-  if (repoOrg) push(githubAvatarUrl(repoOrg, 192));
+  push(buildProxyGithubAvatarUrl(repoUrl, 192, theme));
   return out;
 }
 function prefetchBrandIcon(url, size = 32, extra) {

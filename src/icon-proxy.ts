@@ -108,6 +108,68 @@ interface IconProxyOptions {
   now?: number;
 }
 
+/**
+ * GitHub's own username/org rules: 1-39 chars, alphanumeric or single hyphens,
+ * no leading/trailing hyphen. Deliberately strict (#8309) -- this value becomes
+ * a PATH SEGMENT on a hardcoded origin, so anything that could contain `/`,
+ * `..`, a query, or an encoded separator must be rejected outright rather than
+ * escaped. No dots either, which also rules out `org.png`-style confusion.
+ */
+const GITHUB_ORG_RE = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+
+export function normalizeGithubOrg(input: unknown): string | null {
+  const org = String(input ?? "").trim();
+  return GITHUB_ORG_RE.test(org) ? org : null;
+}
+
+/** The org of a github.com repo URL, or null. Exact-host check -- a bare
+ * `endsWith("github.com")` would also accept "evilgithub.com". */
+function githubOrgFromRepoUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const u = new URL(value.includes("://") ? value : `https://${value}`);
+    const host = u.hostname.toLowerCase();
+    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
+    return normalizeGithubOrg(u.pathname.split("/").filter(Boolean)[0]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Orgs reachable through the avatar mode, derived from the same artifacts the
+ * host allowlist uses (#8309).
+ *
+ * The point of an allowlist here is the same as for hosts: without it this
+ * becomes an open GitHub-avatar proxy that anyone can point at any account.
+ * Only orgs that actually appear as a repo in the registry are proxied.
+ */
+function collectGithubOrgs(
+  value: unknown,
+  orgs: Set<string> = new Set(),
+): Set<string> {
+  if (!value || typeof value !== "object") return orgs;
+  if (Array.isArray(value)) {
+    for (const item of value) collectGithubOrgs(item, orgs);
+    return orgs;
+  }
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      (key === "repo" ||
+        key === "source_repo" ||
+        key === "github_repo" ||
+        key === "repository") &&
+      typeof item === "string"
+    ) {
+      const org = githubOrgFromRepoUrl(item);
+      if (org) orgs.add(org);
+    } else if (item && typeof item === "object") {
+      collectGithubOrgs(item, orgs);
+    }
+  }
+  return orgs;
+}
+
 // In-isolate memo of the derived host allowlist, TTL'd so a newly published
 // provider/subnet host becomes allowed within one interval instead of staying
 // rejected until the isolate recycles. Same {env, value, expiresAt} pattern as
@@ -116,8 +178,9 @@ const ICON_ALLOWLIST_TTL_MS = 300_000; // 5 min
 let allowlistMemo: {
   env: Env | null;
   value: Set<string> | null;
+  orgs: Set<string> | null;
   expiresAt: number;
-} = { env: null, value: null, expiresAt: 0 };
+} = { env: null, value: null, orgs: null, expiresAt: 0 };
 
 async function iconHostAllowlist(
   env: Env,
@@ -129,10 +192,15 @@ async function iconHostAllowlist(
     .map(normalizeHost)
     .filter((h): h is string => Boolean(h));
   if (!options.readArtifact) return new Set(configured);
-  if (allowlistMemo.env === env && now < allowlistMemo.expiresAt) {
+  if (
+    allowlistMemo.env === env &&
+    allowlistMemo.orgs &&
+    now < allowlistMemo.expiresAt
+  ) {
     return allowlistMemo.value as Set<string>;
   }
   const hosts = new Set(configured);
+  const orgs = new Set<string>();
   for (const path of [
     "/metagraph/subnets.json",
     "/metagraph/providers.json",
@@ -140,13 +208,38 @@ async function iconHostAllowlist(
   ]) {
     try {
       const artifact = await options.readArtifact(env, path);
-      if (artifact?.ok) collectHosts(artifact.data, hosts);
+      if (artifact?.ok) {
+        collectHosts(artifact.data, hosts);
+        collectGithubOrgs(artifact.data, orgs);
+      }
     } catch {
       // Missing artifacts fail closed except for explicit configured hosts.
     }
   }
-  allowlistMemo = { env, value: hosts, expiresAt: now + ICON_ALLOWLIST_TTL_MS };
+  allowlistMemo = {
+    env,
+    value: hosts,
+    orgs,
+    expiresAt: now + ICON_ALLOWLIST_TTL_MS,
+  };
   return hosts;
+}
+
+/** Orgs allowed through the avatar mode. Shares iconHostAllowlist's fetch +
+ * memo so the avatar path costs no extra artifact reads (#8309).
+ *
+ * Returns the memo's set directly rather than re-deriving or defensively
+ * defaulting: iconHostAllowlist always writes `orgs` alongside `value` for
+ * this env, so a `?? new Set()` here would be a branch that can never be
+ * taken. The empty case is the no-reader early return above, which is real. */
+async function iconGithubOrgAllowlist(
+  env: Env,
+  options: IconProxyOptions = {},
+  now: number = Date.now(),
+): Promise<Set<string>> {
+  if (!options.readArtifact) return new Set();
+  await iconHostAllowlist(env, options, now);
+  return allowlistMemo.orgs as Set<string>;
 }
 
 async function boundedArrayBuffer(res: Response): Promise<ArrayBuffer | null> {
@@ -186,6 +279,17 @@ async function boundedArrayBuffer(res: Response): Promise<ArrayBuffer | null> {
 // target. Do NOT add `https://${host}/...` entries here: fetching a registry-controlled
 // host directly is an SSRF surface (operator-controlled / DNS-rebindable) for marginal
 // gain. The UI's GitHub-avatar fallback covers most subnets.
+/**
+ * The org-avatar source (#8309). `github.com` is a CONSTANT origin written
+ * here, exactly like the two aggregators below -- the org is only ever a path
+ * segment, and normalizeGithubOrg has already restricted it to GitHub's own
+ * username charset, so this preserves the "never fetch a registry-controlled
+ * target" property that keeps this proxy SSRF-safe.
+ */
+function githubAvatarSources(org: string, size: number): string[] {
+  return [`https://github.com/${org}.png?size=${Math.min(size * 2, MAX_SIZE)}`];
+}
+
 function faviconSources(host: string, size: number): string[] {
   return [
     `https://icons.duckduckgo.com/ip3/${host}.ico`,
@@ -193,8 +297,8 @@ function faviconSources(host: string, size: number): string[] {
   ];
 }
 
-function etagFor(host: string, size: number): string {
-  return `"icon-${host}-${size}"`;
+function etagFor(subject: string, size: number): string {
+  return `"icon-${subject}-${size}"`;
 }
 
 // A HEAD must carry the same status + headers as the GET but no body (mirrors the
@@ -247,22 +351,51 @@ export async function handleIconProxy(
     });
   }
   const isHead = request.method === "HEAD";
-  const host = normalizeHost(url.searchParams.get("host"));
-  if (!host) {
-    return new Response("invalid host", {
-      status: 400,
-      headers: { "access-control-allow-origin": "*" },
-    });
-  }
   const now = typeof options.now === "number" ? options.now : Date.now();
-  const allowlist = await iconHostAllowlist(env, options, now);
-  if (!allowlist.has(host)) {
-    // Stable "no": this host isn't (yet) a registered surface. Cache a full day.
-    return notFound(NEGATIVE_CACHE_STABLE);
+
+  // #8309: two modes. `?github_org=` proxies an org's GitHub avatar; anything
+  // else is the original `?host=` favicon lookup. The avatar mode exists so
+  // BrandIcon's repo fallback stops making a genuine cross-origin request from
+  // the visitor's browser -- it now asks us, and we ask GitHub.
+  //
+  // Both are allowlisted against the same published artifacts, for the same
+  // reason: without that this is an open proxy anyone can point anywhere.
+  const orgParam = url.searchParams.get("github_org");
+  let subject: string;
+  let sources: (size: number) => string[];
+  if (orgParam !== null) {
+    const org = normalizeGithubOrg(orgParam);
+    if (!org) {
+      return new Response("invalid github_org", {
+        status: 400,
+        headers: { "access-control-allow-origin": "*" },
+      });
+    }
+    const orgs = await iconGithubOrgAllowlist(env, options, now);
+    if (!orgs.has(org)) return notFound(NEGATIVE_CACHE_STABLE);
+    // Namespaced so an org can never collide with a host of the same string
+    // in the R2 cache or the ETag.
+    subject = `gh:${org}`;
+    sources = (sz) => githubAvatarSources(org, sz);
+  } else {
+    const host = normalizeHost(url.searchParams.get("host"));
+    if (!host) {
+      return new Response("invalid host", {
+        status: 400,
+        headers: { "access-control-allow-origin": "*" },
+      });
+    }
+    const allowlist = await iconHostAllowlist(env, options, now);
+    if (!allowlist.has(host)) {
+      // Stable "no": this host isn't (yet) a registered surface. Cache a full day.
+      return notFound(NEGATIVE_CACHE_STABLE);
+    }
+    subject = host;
+    sources = (sz) => faviconSources(host, sz);
   }
 
   const size = clampSize(url.searchParams.get("size"));
-  const etag = etagFor(host, size);
+  const etag = etagFor(subject, size);
   if ((request.headers.get("if-none-match") || "") === etag) {
     return new Response(null, {
       status: 304,
@@ -275,7 +408,7 @@ export async function handleIconProxy(
   }
 
   const bucket = env?.METAGRAPH_ARCHIVE;
-  const cacheKey = `${ICON_CACHE_PREFIX}/${host}/${size}`;
+  const cacheKey = `${ICON_CACHE_PREFIX}/${subject}/${size}`;
 
   // R2 cache hit -> single edge read. A HEAD short-circuits to a bodyless 200 but
   // still wants an accurate content-length, so prefer R2's stored object size and
@@ -309,7 +442,7 @@ export async function handleIconProxy(
   // that only saw transient failures must be retried soon, so it gets the short
   // negative-cache window; a clean negative is a stable "no" and keeps 24h.
   let transient = false;
-  for (const src of faviconSources(host, size)) {
+  for (const src of sources(size)) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

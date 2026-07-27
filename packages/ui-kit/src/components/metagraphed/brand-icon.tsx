@@ -4,6 +4,7 @@ import { useTheme, type ResolvedTheme } from "@/lib/theme";
 import {
   resolveBrandOverride,
   buildProxyIconUrl,
+  buildProxyGithubAvatarUrl,
   pickIconSource,
   ICON_PROXY_URL,
   type BrandOverrideLookup,
@@ -42,25 +43,6 @@ function extractHost(input?: string | null): string | null {
   } catch {
     return null;
   }
-}
-
-function githubOrgFromUrl(input?: string | null): string | null {
-  if (!input) return null;
-  try {
-    const u = new URL(input.includes("://") ? input : `https://${input}`);
-    // Exact host or a real github.com subdomain — `endsWith("github.com")` alone
-    // would also accept an attacker host like "evilgithub.com".
-    const host = u.hostname.toLowerCase();
-    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
-    const seg = u.pathname.split("/").filter(Boolean);
-    return seg[0] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function githubAvatarUrl(org: string, size = 192): string {
-  return `https://github.com/${encodeURIComponent(org)}.png?size=${size}`;
 }
 
 const LOCAL_HOSTNAMES = new Set(["localhost", "localhost.localdomain"]);
@@ -194,8 +176,16 @@ function buildCandidateChain({
   const host = extractHost(url);
   if (host) push(buildProxyIconUrl(host, size * 2, theme));
 
-  const repoOrg = githubOrgFromUrl(repoUrl);
-  if (repoOrg) push(githubAvatarUrl(repoOrg, 192));
+  // #8309: this used to push `github.com/<org>.png` directly -- a genuine
+  // cross-origin request from the visitor's browser, for any entity with no
+  // logo_url and a resolvable org (32 of 129 subnets have no logo_url at all).
+  //
+  // The fallback itself is unchanged in position and effect; it just goes
+  // through our own proxy now, which fetches GitHub server-side and caches the
+  // result in R2. `github.com` is a constant origin in the proxy, and the org
+  // is validated to GitHub's username charset on both sides, so this keeps the
+  // "never fetch a registry-controlled target" property intact.
+  push(buildProxyGithubAvatarUrl(repoUrl, 192, theme));
 
   return out;
 }
