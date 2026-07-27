@@ -7995,6 +7995,36 @@ export const endpointIncidentsQuery = () =>
   });
 
 /**
+ * Resolved-only endpoint incidents, newest-first (metagraphed#8355).
+ *
+ * A DIFFERENT query from endpointIncidentsQuery above, not a client-side
+ * filter over it: that one is the ops-console feed (incident-strip,
+ * endpoints-priority-strip, network-pulse-band, the /health and /endpoints
+ * pages) and deliberately shows every state, active included -- that's the
+ * whole point of an ops incident view. The "What changed" digest wants the
+ * opposite: "this surface recovered" is a real change worth reporting,
+ * "this surface is currently timing out" is operational noise that belongs
+ * on /status and the ops console, not competing with registry/identity/
+ * runtime changes for the reader's attention. `state: "resolved"` is a
+ * server-side filter (not fetched-then-hidden) so the digest never has to
+ * download the whole active-incident set just to throw most of it away.
+ */
+export const resolvedEndpointIncidentsQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("endpoint-incidents", { state: "resolved", limit }),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        "/api/v1/endpoint-incidents",
+        "incidents",
+        { state: "resolved", sort: "detected_at", order: "desc", limit },
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeIncident) } as ApiResult<EndpointIncident[]>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/**
  * Global, cross-subnet incident ledger (/api/v1/incidents) — recent downtime
  * reconstructed from probe history, grouped by surface, over a 7d/30d window.
  * Broader than endpoint-incidents (which is RPC-only); powers the /status page.
