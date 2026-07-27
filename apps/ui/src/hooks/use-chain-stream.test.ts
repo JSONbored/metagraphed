@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ChainStreamSource, ChainStreamSessionDeps } from "./use-chain-stream";
 import {
+  accountEventHotkeyIn,
   accountEventMatchesNetuid,
+  accountEventNetuidIn,
   buildChainStreamUrl,
   chainStreamEventMatchesFilters,
   createChainStreamSession,
@@ -58,6 +60,38 @@ describe("accountEventMatchesNetuid", () => {
     expect(accountEventMatchesNetuid({ table: "chain_events", netuid: 19 }, 19)).toBe(false);
     expect(accountEventMatchesNetuid(null, 19)).toBe(false);
     expect(accountEventMatchesNetuid("x", 19)).toBe(false);
+  });
+});
+
+describe("accountEventNetuidIn", () => {
+  const watched = new Set(["19", "4"]);
+
+  it("matches when the payload's netuid is in the watched set", () => {
+    expect(accountEventNetuidIn({ table: "account_events", netuid: 19 }, watched)).toBe(true);
+    expect(accountEventNetuidIn({ table: "account_events", netuid: 4 }, watched)).toBe(true);
+  });
+
+  it("rejects a netuid outside the set, non-account_events tables, and junk", () => {
+    expect(accountEventNetuidIn({ table: "account_events", netuid: 8 }, watched)).toBe(false);
+    expect(accountEventNetuidIn({ table: "chain_events", netuid: 19 }, watched)).toBe(false);
+    expect(accountEventNetuidIn(null, watched)).toBe(false);
+    expect(accountEventNetuidIn("x", watched)).toBe(false);
+  });
+});
+
+describe("accountEventHotkeyIn", () => {
+  const watched = new Set(["5abc", "5def"]);
+
+  it("matches when the payload's hotkey is in the watched set", () => {
+    expect(accountEventHotkeyIn({ table: "account_events", hotkey: "5abc" }, watched)).toBe(true);
+  });
+
+  it("rejects a hotkey outside the set, non-account_events tables, and junk", () => {
+    expect(accountEventHotkeyIn({ table: "account_events", hotkey: "5zzz" }, watched)).toBe(false);
+    expect(accountEventHotkeyIn({ table: "chain_events", hotkey: "5abc" }, watched)).toBe(false);
+    expect(accountEventHotkeyIn({ table: "account_events" }, watched)).toBe(false);
+    expect(accountEventHotkeyIn(null, watched)).toBe(false);
+    expect(accountEventHotkeyIn("x", watched)).toBe(false);
   });
 });
 
