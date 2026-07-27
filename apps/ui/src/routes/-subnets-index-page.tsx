@@ -41,6 +41,7 @@ import {
   DownloadCsvButton,
   ActionBar,
   ListShell,
+  LoadMore,
   SparkLegend,
   MiniStack,
   Sparkline,
@@ -97,6 +98,12 @@ import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagra
 // (verified: GET /api/v1/subnets?limit=200 already returns all 129 with
 // next_cursor: null) with headroom for registry growth.
 const ALL_ROWS_LIMIT = 200;
+
+// #8362: the mobile card branch (below) is a plain, unvirtualized map --
+// unlike the desktop table's `useVirtualizer` above it, so it mounted all
+// ~129 cards up-front (20,870px at 375x812). Bound the initial mobile DOM
+// to this many cards, grown via the standard `LoadMore` affordance.
+const MOBILE_CARD_PAGE_SIZE = 30;
 
 // #9: a list row enriched with its agent-catalog capability fields (flattened
 // from the netuid-keyed catalog map so client-side sort/filter can read them).
@@ -664,6 +671,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     [filtered, effectiveSort, effectiveOrder],
   );
 
+  // #8362: mobile-only render cap -- filtering/sorting above still runs over
+  // the full `rows` set (matches desktop), only the mobile card *mount* is
+  // sliced. Resets to the first page whenever the filtered/sorted set
+  // actually changes so switching filters can't strand the count at a
+  // stale offset from a previous view of the list.
+  const [mobileCardLimit, setMobileCardLimit] = useState(MOBILE_CARD_PAGE_SIZE);
+  useEffect(() => {
+    setMobileCardLimit(MOBILE_CARD_PAGE_SIZE);
+  }, [rows]);
+  const mobileRows = rows.slice(0, mobileCardLimit);
+
   // #8248: virtualize the table body -- all 129+ rows are fetched/filtered/
   // sorted in full above (no server pagination left), but only the rows
   // actually in view are ever mounted as real DOM `<tr>`s. Kept as genuine
@@ -1080,79 +1098,96 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         isEmpty={rows.length === 0}
         isStale={isFetching}
         empty={emptyNode}
-        cards={rows.map((s) => (
-          <Link
-            key={s.netuid}
-            to="/subnets/$netuid"
-            params={{ netuid: s.netuid }}
-            className="relative block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                watchlist.toggle(s.netuid);
-              }}
-              aria-pressed={watchlist.isWatched(s.netuid)}
-              aria-label={
-                watchlist.isWatched(s.netuid) ? "Remove from watchlist" : "Add to watchlist"
-              }
-              className="mg-tap-target absolute right-2 top-2 rounded p-1 text-ink-muted hover:text-ink-strong"
-            >
-              <Star
-                className={classNames(
-                  "size-4",
-                  watchlist.isWatched(s.netuid) && "fill-accent text-accent",
-                )}
-              />
-            </button>
-            <div className="flex items-center gap-3 min-w-0 pr-8">
-              <BrandIcon
-                url={s.website}
-                repoUrl={s.repo}
-                iconUrl={s.icon_url}
-                netuid={s.netuid}
-                name={s.name}
-                fallback={s.netuid}
-                size={32}
-              />
-              <div className="min-w-0">
-                <div className="mg-type-data text-ink-muted">
-                  #{String(s.netuid).padStart(3, "0")}
-                  {s.symbol ? ` · ${s.symbol}` : ""}
-                  {" · "}
-                  {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+        cards={
+          <>
+            {mobileRows.map((s) => (
+              <Link
+                key={s.netuid}
+                to="/subnets/$netuid"
+                params={{ netuid: s.netuid }}
+                className="relative block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    watchlist.toggle(s.netuid);
+                  }}
+                  aria-pressed={watchlist.isWatched(s.netuid)}
+                  aria-label={
+                    watchlist.isWatched(s.netuid) ? "Remove from watchlist" : "Add to watchlist"
+                  }
+                  className="mg-tap-target absolute right-2 top-2 rounded p-1 text-ink-muted hover:text-ink-strong"
+                >
+                  <Star
+                    className={classNames(
+                      "size-4",
+                      watchlist.isWatched(s.netuid) && "fill-accent text-accent",
+                    )}
+                  />
+                </button>
+                <div className="flex items-center gap-3 min-w-0 pr-8">
+                  <BrandIcon
+                    url={s.website}
+                    repoUrl={s.repo}
+                    iconUrl={s.icon_url}
+                    netuid={s.netuid}
+                    name={s.name}
+                    fallback={s.netuid}
+                    size={32}
+                  />
+                  <div className="min-w-0">
+                    <div className="mg-type-data text-ink-muted">
+                      #{String(s.netuid).padStart(3, "0")}
+                      {s.symbol ? ` · ${s.symbol}` : ""}
+                      {" · "}
+                      {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                    </div>
+                    <div className="font-medium text-ink-strong truncate">
+                      {s.name ?? `Subnet ${s.netuid}`}
+                    </div>
+                  </div>
                 </div>
-                <div className="font-medium text-ink-strong truncate">
-                  {s.name ?? `Subnet ${s.netuid}`}
+                {/* #8248: lead mobile cards with the 3 facts a reader actually
+                    compares subnets by -- price, emission share, health -- in
+                    place of the old participants/surfaces/updated registry-
+                    plumbing row. */}
+                <div className="mt-2 grid grid-cols-3 gap-2 mg-type-data">
+                  <div>
+                    <div className="mg-type-caption text-ink-muted">Price</div>
+                    <div className="tabular-nums text-ink-strong">
+                      {s.alpha_price_tao != null ? `${s.alpha_price_tao.toFixed(4)} τ` : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mg-type-caption text-ink-muted">Emission</div>
+                    <div className="tabular-nums text-ink-strong">
+                      {s.emission_share != null
+                        ? `${(s.emission_share * 100).toFixed(2)}%`
+                        : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mg-type-caption text-ink-muted">Health</div>
+                    <HealthPill state={s.health} />
+                  </div>
                 </div>
+              </Link>
+            ))}
+            {rows.length > MOBILE_CARD_PAGE_SIZE ? (
+              <div id="subnets-mobile-loadmore">
+                <LoadMore
+                  shown={mobileRows.length}
+                  total={rows.length}
+                  hasMore={mobileCardLimit < rows.length}
+                  isLoading={false}
+                  onLoadMore={() => setMobileCardLimit((n) => n + MOBILE_CARD_PAGE_SIZE)}
+                />
               </div>
-            </div>
-            {/* #8248: lead mobile cards with the 3 facts a reader actually
-                compares subnets by -- price, emission share, health -- in
-                place of the old participants/surfaces/updated registry-
-                plumbing row. */}
-            <div className="mt-2 grid grid-cols-3 gap-2 mg-type-data">
-              <div>
-                <div className="mg-type-caption text-ink-muted">Price</div>
-                <div className="tabular-nums text-ink-strong">
-                  {s.alpha_price_tao != null ? `${s.alpha_price_tao.toFixed(4)} τ` : "—"}
-                </div>
-              </div>
-              <div>
-                <div className="mg-type-caption text-ink-muted">Emission</div>
-                <div className="tabular-nums text-ink-strong">
-                  {s.emission_share != null ? `${(s.emission_share * 100).toFixed(2)}%` : "—"}
-                </div>
-              </div>
-              <div>
-                <div className="mg-type-caption text-ink-muted">Health</div>
-                <HealthPill state={s.health} />
-              </div>
-            </div>
-          </Link>
-        ))}
+            ) : null}
+          </>
+        }
         table={(() => {
           const compact = density === "compact";
           const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
