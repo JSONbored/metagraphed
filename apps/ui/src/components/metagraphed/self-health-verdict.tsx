@@ -140,6 +140,12 @@ function ComponentStrip({ component }: { component: SelfHealthComponentView }) {
           ? `${component.days.length} day${component.days.length === 1 ? "" : "s"} measured`
           : "not yet measured"}
       </div>
+      {/* #8352: a stale publish is a cadence miss, not an HTTP-level outage --
+          the bare "down" above already says that much; this line says WHY, so
+          a reader doesn't read it as the same failure class as api/site. */}
+      {component.note ? (
+        <div className="mt-1 mg-type-caption text-health-warn">{component.note}</div>
+      ) : null}
       <UptimeStrip days={component.days} />
     </div>
   );

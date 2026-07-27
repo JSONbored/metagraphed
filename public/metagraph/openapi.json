@@ -22632,6 +22632,16 @@
               }
             ]
           },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "uptime_90d": {
             "anyOf": [
               {
@@ -22651,6 +22661,7 @@
           "http_status",
           "latency_ms",
           "checked_at",
+          "note",
           "days",
           "uptime_90d"
         ],
@@ -56114,6 +56125,7 @@
                         ],
                         "http_status": 1,
                         "latency_ms": 120,
+                        "note": "example",
                         "uptime_90d": 0.5
                       }
                     ],
