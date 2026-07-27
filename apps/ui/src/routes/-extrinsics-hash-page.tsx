@@ -217,13 +217,19 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           </FieldRow>
           <FieldRow label="Signer">
             {/* #6424: linked like every other ss58 on this page (see the events
-                table below) -- untruncated, so the full value stays readable and
-                copyable exactly as it was. */}
-            <AccountAddress
-              ss58={extrinsic.signer}
-              truncate={false}
-              fallback={<span className="text-ink-muted">—</span>}
-            />
+                table below). #8357: wrapped in the same flex/min-w-0/truncate
+                shell as the hotkey+coldkey rows on the validator detail page
+                (#6427) so the address ellipsizes to the row's actual width
+                instead of forcing the page wide -- the full value stays
+                available via the copy button and the title attribute. */}
+            <span className="flex w-full min-w-0 items-center">
+              <AccountAddress
+                ss58={extrinsic.signer}
+                truncate={false}
+                valueClassName="truncate min-w-0"
+                fallback={<span className="text-ink-muted">—</span>}
+              />
+            </span>
           </FieldRow>
           <FieldRow label="Result">
             <span className="font-mono text-sm text-ink">{result}</span>

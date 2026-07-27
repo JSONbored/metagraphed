@@ -51,5 +51,17 @@
   ],
   "/explorer@768": ["DIV:flex items-center gap-1"],
   "/explorer@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
-  "/explorer@1280": ["DIV:flex items-center gap-1"]
+  "/explorer@1280": ["DIV:flex items-center gap-1"],
+  "/extrinsics/0x1a96fc8af6dcd56635ba0c919c9ed1fd64061a93c40158eccec9d65a06fe4429@375": [],
+  "/extrinsics/0x1a96fc8af6dcd56635ba0c919c9ed1fd64061a93c40158eccec9d65a06fe4429@768": [],
+  "/extrinsics/0x1a96fc8af6dcd56635ba0c919c9ed1fd64061a93c40158eccec9d65a06fe4429@1024": [],
+  "/extrinsics/0x1a96fc8af6dcd56635ba0c919c9ed1fd64061a93c40158eccec9d65a06fe4429@1280": [],
+  "/apis/schemas@375": ["SECTION:rounded border border-border bg-card mg-hover-lift"],
+  "/apis/schemas@768": [],
+  "/apis/schemas@1024": [],
+  "/apis/schemas@1280": [],
+  "/validators@375": [],
+  "/validators@768": [],
+  "/validators@1024": [],
+  "/validators@1280": []
 }

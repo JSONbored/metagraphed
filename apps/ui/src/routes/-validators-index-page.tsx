@@ -222,98 +222,108 @@ function ValidatorsDirectory({
 
       {rows.length > 0 ? (
         <div className="hidden md:block rounded-md border border-border">
-          <div ref={tableScrollRef} className="max-h-[70vh] overflow-auto">
-            <table
-              className={classNames(
-                "w-full text-left text-sm",
-                compact && "[&_td]:!py-1 [&_th]:!py-1",
-              )}
-            >
-              <thead className="sticky top-0 z-[var(--mg-z-sticky)] bg-surface">
-                <tr>
-                  <th className="w-6 px-3 py-2" aria-label="Watch" />
-                  <th className="w-6 px-3 py-2" aria-label="Compare" />
-                  {VALIDATOR_COLUMNS.map((col) => (
-                    <th
-                      key={col.header}
-                      className={col.thClassName}
-                      aria-sort={col.sortKey ? ariaSort(sort === col.sortKey, order) : undefined}
-                    >
-                      {col.sortKey ? (
-                        <SortHeader
-                          label={col.header}
-                          field={col.sortKey}
-                          active={sort === col.sortKey}
-                          order={order}
-                          onSort={onSort}
-                          align={col.thClassName.includes("text-right") ? "right" : "left"}
-                        />
-                      ) : (
-                        col.header
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {virtualPaddingTop > 0 ? (
-                  <tr aria-hidden>
-                    <td
-                      colSpan={VALIDATOR_COLUMNS.length + 2}
-                      style={{ height: virtualPaddingTop }}
-                    />
-                  </tr>
-                ) : null}
-                {virtualRows.map((vRow) => {
-                  const v = rows[vRow.index];
-                  return (
-                    <tr
-                      key={v.hotkey}
-                      data-index={vRow.index}
-                      ref={rowVirtualizer.measureElement}
-                      className="hover:bg-surface/40"
-                    >
-                      <td className="px-3 py-2 align-middle">
-                        <button
-                          type="button"
-                          onClick={() => watchlist.toggle(v.hotkey)}
-                          aria-pressed={watchlist.isWatched(v.hotkey)}
-                          aria-label={
-                            watchlist.isWatched(v.hotkey)
-                              ? "Remove from watchlist"
-                              : "Add to watchlist"
-                          }
-                          className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
-                        >
-                          <Star
-                            className={classNames(
-                              "size-3.5",
-                              watchlist.isWatched(v.hotkey) && "fill-accent text-accent",
-                            )}
+          {/* #8357: horizontal and vertical scroll split into their own
+              single-axis containers (the /subnets table's #8314 pattern) --
+              a lone `overflow-auto` div left the Nominators/Dominance/Total
+              stake/30d columns scrolled-but-undiscoverable at 768px, with no
+              edge-fade or visible scrollbar hinting more columns existed
+              off-screen. mg-table-scroll on the outer div supplies that
+              affordance; tableScrollRef stays the vertical-only viewport
+              react-virtual measures against. */}
+          <div className="mg-table-scroll overflow-x-auto">
+            <div ref={tableScrollRef} className="max-h-[70vh] overflow-y-auto">
+              <table
+                className={classNames(
+                  "w-full text-left text-sm",
+                  compact && "[&_td]:!py-1 [&_th]:!py-1",
+                )}
+              >
+                <thead className="sticky top-0 z-[var(--mg-z-sticky)] bg-surface">
+                  <tr>
+                    <th className="w-6 px-3 py-2" aria-label="Watch" />
+                    <th className="w-6 px-3 py-2" aria-label="Compare" />
+                    {VALIDATOR_COLUMNS.map((col) => (
+                      <th
+                        key={col.header}
+                        className={col.thClassName}
+                        aria-sort={col.sortKey ? ariaSort(sort === col.sortKey, order) : undefined}
+                      >
+                        {col.sortKey ? (
+                          <SortHeader
+                            label={col.header}
+                            field={col.sortKey}
+                            active={sort === col.sortKey}
+                            order={order}
+                            onSort={onSort}
+                            align={col.thClassName.includes("text-right") ? "right" : "left"}
                           />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 align-middle">
-                        <ValidatorCompareToggle hotkey={v.hotkey} />
-                      </td>
-                      {VALIDATOR_COLUMNS.map((col) => (
-                        <td key={col.header} className={col.tdClassName}>
-                          {col.cell(v)}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-                {virtualPaddingBottom > 0 ? (
-                  <tr aria-hidden>
-                    <td
-                      colSpan={VALIDATOR_COLUMNS.length + 2}
-                      style={{ height: virtualPaddingBottom }}
-                    />
+                        ) : (
+                          col.header
+                        )}
+                      </th>
+                    ))}
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {virtualPaddingTop > 0 ? (
+                    <tr aria-hidden>
+                      <td
+                        colSpan={VALIDATOR_COLUMNS.length + 2}
+                        style={{ height: virtualPaddingTop }}
+                      />
+                    </tr>
+                  ) : null}
+                  {virtualRows.map((vRow) => {
+                    const v = rows[vRow.index];
+                    return (
+                      <tr
+                        key={v.hotkey}
+                        data-index={vRow.index}
+                        ref={rowVirtualizer.measureElement}
+                        className="hover:bg-surface/40"
+                      >
+                        <td className="px-3 py-2 align-middle">
+                          <button
+                            type="button"
+                            onClick={() => watchlist.toggle(v.hotkey)}
+                            aria-pressed={watchlist.isWatched(v.hotkey)}
+                            aria-label={
+                              watchlist.isWatched(v.hotkey)
+                                ? "Remove from watchlist"
+                                : "Add to watchlist"
+                            }
+                            className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                          >
+                            <Star
+                              className={classNames(
+                                "size-3.5",
+                                watchlist.isWatched(v.hotkey) && "fill-accent text-accent",
+                              )}
+                            />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          <ValidatorCompareToggle hotkey={v.hotkey} />
+                        </td>
+                        {VALIDATOR_COLUMNS.map((col) => (
+                          <td key={col.header} className={col.tdClassName}>
+                            {col.cell(v)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  {virtualPaddingBottom > 0 ? (
+                    <tr aria-hidden>
+                      <td
+                        colSpan={VALIDATOR_COLUMNS.length + 2}
+                        style={{ height: virtualPaddingBottom }}
+                      />
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : (
