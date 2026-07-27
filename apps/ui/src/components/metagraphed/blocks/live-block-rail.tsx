@@ -102,15 +102,25 @@ export function LiveBlockRail() {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span className="mg-type-caption text-ink-muted">Latest</span>
-            {streamLabel && streamStatus !== "open" ? (
-              <span
-                className="mg-type-caption text-ink-muted"
-                data-testid="live-block-rail-stream-status"
-                data-stream-status={streamStatus}
-              >
-                ({streamLabel})
-              </span>
-            ) : null}
+            {/* #8365: always rendered (never conditionally unmounted) so a
+                status transition doesn't shift the block-number link and
+                everything after it on this row -- `invisible` reserves the
+                parenthetical's width while hiding it, the same fix applied
+                to StreamStatusChip for the same reason. Visible only for
+                connecting/error: "Live" (open) and idle (nothing to report,
+                including while #8365's tab-hidden gating pauses the stream)
+                both stay silent, matching StreamStatusChip's own idle/open
+                treatment. */}
+            <span
+              className={classNames(
+                "mg-type-caption text-ink-muted",
+                streamStatus !== "connecting" && streamStatus !== "error" && "invisible",
+              )}
+              data-testid="live-block-rail-stream-status"
+              data-stream-status={streamStatus}
+            >
+              ({streamLabel ?? "Connecting"})
+            </span>
             <Link
               to="/blocks/$ref"
               params={{ ref: String(latest.block_number) }}

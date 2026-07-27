@@ -2655,6 +2655,18 @@ function PagerBar({
     )
   ] });
 }
+var LiveTickerContext = React3.createContext(null);
+function LiveTickerProvider({ children }) {
+  const [tick, setTick] = React3.useState(0);
+  React3.useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1e3);
+    return () => clearInterval(id);
+  }, []);
+  return /* @__PURE__ */ jsxRuntime.jsx(LiveTickerContext.Provider, { value: tick, children });
+}
+function useLiveTicker() {
+  return React3.useContext(LiveTickerContext);
+}
 function timeAgoAbsoluteTitle(at) {
   if (!isUsableTimestamp(at)) return void 0;
   return formatFreshnessAbsolute(at) ?? void 0;
@@ -2669,9 +2681,11 @@ function TimeAgo({
 }) {
   const [mounted, setMounted] = React3.useState(false);
   const [, forceTick] = React3.useState(0);
+  const sharedTicker = useLiveTicker();
+  const hasSharedTicker = sharedTicker !== null;
   React3.useEffect(() => setMounted(true), []);
   React3.useEffect(() => {
-    if (!mounted || !at) return void 0;
+    if (!mounted || !at || hasSharedTicker) return void 0;
     const ts = new Date(at).getTime();
     if (!Number.isFinite(ts)) return void 0;
     let timeoutId;
@@ -2686,7 +2700,7 @@ function TimeAgo({
     };
     schedule();
     return () => clearTimeout(timeoutId);
-  }, [mounted, at]);
+  }, [mounted, at, hasSharedTicker]);
   const text = !at ? fallback : mounted ? formatRelative(at) : "";
   return /* @__PURE__ */ jsxRuntime.jsx(
     "span",
@@ -6293,6 +6307,7 @@ exports.InfoTooltip = InfoTooltip;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
 exports.ListShell = ListShell;
+exports.LiveTickerProvider = LiveTickerProvider;
 exports.LoadMore = LoadMore;
 exports.LoadingPill = LoadingPill;
 exports.McpToolsList = McpToolsList;
@@ -6377,6 +6392,7 @@ exports.rovingTabIndex = rovingTabIndex;
 exports.safeExternalUrl = safeExternalUrl;
 exports.tierFreshnessLabel = tierFreshnessLabel;
 exports.useColumnVisibility = useColumnVisibility;
+exports.useLiveTicker = useLiveTicker;
 exports.useQueryBarContext = useQueryBarContext;
 exports.useRovingTablist = useRovingTablist;
 exports.useScrolled = useScrolled;

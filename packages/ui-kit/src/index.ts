@@ -148,6 +148,10 @@ export {
 export { TableState } from "@/components/metagraphed/table-state";
 export { TimeAgo } from "@/components/metagraphed/time-ago";
 export {
+  LiveTickerProvider,
+  useLiveTicker,
+} from "@/components/metagraphed/live-ticker-context";
+export {
   type ViewMode,
   ViewModeToggle,
 } from "@/components/metagraphed/view-mode-toggle";

@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ChainStreamSource, ChainStreamSessionDeps } from "./use-chain-stream";
+import type { ChainStreamSource, ChainStreamSessionDeps, SseStatus } from "./use-chain-stream";
 import {
   accountEventHotkeyIn,
   accountEventMatchesNetuid,
   accountEventNetuidIn,
   buildChainStreamUrl,
   chainStreamEventMatchesFilters,
+  CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES,
+  CHAIN_STREAM_DOWNGRADE_RETRY_MS,
   createChainStreamSession,
   createDebouncedHandler,
   parseChainStreamPayload,
@@ -167,12 +169,29 @@ class MockChainSource implements ChainStreamSource {
     const ev = { data: JSON.stringify(payload) } as MessageEvent;
     for (const listener of this.listeners.get("chain") ?? []) listener(ev);
   }
+
+  /** Simulates a successful connection -- fires every registered "open" listener. */
+  emitOpen(): void {
+    for (const listener of this.listeners.get("open") ?? []) listener({} as Event);
+  }
+
+  /**
+   * Simulates one failed connection attempt on this SAME source object --
+   * matching real `EventSource` semantics, where a native auto-reconnect
+   * retry that fails fires ANOTHER "error" on the same instance rather than
+   * creating a new one. Callable repeatedly to build up
+   * `consecutiveFailures` (#8365).
+   */
+  emitError(): void {
+    for (const listener of this.listeners.get("error") ?? []) listener({} as Event);
+  }
 }
 
 describe("createChainStreamSession", () => {
   function makeSession(overrides: Partial<ChainStreamSessionDeps> = {}) {
     const sources: MockChainSource[] = [];
     const onEvent = vi.fn();
+    const statuses: SseStatus[] = [];
     const session = createChainStreamSession({
       openSource: () => {
         const source = new MockChainSource();
@@ -182,11 +201,11 @@ describe("createChainStreamSession", () => {
       getOnEvent: () => onEvent,
       getMatches: () => undefined,
       debounceMs: 400,
-      setStatus: () => {},
+      setStatus: (s) => statuses.push(s),
       markActivity: () => {},
       ...overrides,
     });
-    return { session, sources, onEvent };
+    return { session, sources, onEvent, statuses };
   }
 
   it("delivers a debounced frame that is not superseded by a reconnect", () => {
@@ -244,5 +263,108 @@ describe("createChainStreamSession", () => {
     expect(onEvent).not.toHaveBeenCalled();
 
     vi.useRealTimers();
+  });
+
+  // --- auto-downgrade after repeated connect failures (#8365) -------------
+  //
+  // Every consumer already has its own polling fallback (the documented
+  // gap-cover); these tests are about the STREAM itself no longer hammering
+  // a down endpoint in a tight loop once it's clearly not coming back soon.
+
+  it("under the failure threshold, lets EventSource's own auto-reconnect keep retrying on the same source", () => {
+    const { session, sources } = makeSession();
+    session.connect();
+
+    for (let i = 0; i < CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES - 1; i += 1) {
+      sources[0]!.emitError();
+    }
+
+    // Not closed, and no second `openSource()` call -- we haven't taken
+    // over yet, so the native EventSource is left to keep retrying itself.
+    expect(sources[0]!.closed).toBe(false);
+    expect(sources).toHaveLength(1);
+  });
+
+  it("at the failure threshold, closes the connection and takes over reconnect scheduling", () => {
+    vi.useFakeTimers();
+    const { session, sources } = makeSession();
+    session.connect();
+
+    for (let i = 0; i < CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES; i += 1) {
+      sources[0]!.emitError();
+    }
+    expect(sources[0]!.closed).toBe(true);
+
+    // No reconnect yet -- it's scheduled, not immediate.
+    vi.advanceTimersByTime(CHAIN_STREAM_DOWNGRADE_RETRY_MS - 1);
+    expect(sources).toHaveLength(1);
+
+    vi.advanceTimersByTime(1);
+    expect(sources).toHaveLength(2);
+
+    vi.useRealTimers();
+  });
+
+  it("a successful open resets the failure counter, so the threshold needs a full fresh run", () => {
+    const { session, sources } = makeSession();
+    session.connect();
+
+    // One short of the threshold, then a successful connect.
+    for (let i = 0; i < CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES - 1; i += 1) {
+      sources[0]!.emitError();
+    }
+    sources[0]!.emitOpen();
+
+    // Two more errors -- still under a FRESH threshold count (2 < 3) --
+    // must not have closed the connection.
+    sources[0]!.emitError();
+    sources[0]!.emitError();
+    expect(sources[0]!.closed).toBe(false);
+  });
+
+  it("the downgrade retry does not fire after dispose()", () => {
+    vi.useFakeTimers();
+    const { session, sources } = makeSession();
+    session.connect();
+
+    for (let i = 0; i < CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES; i += 1) {
+      sources[0]!.emitError();
+    }
+    session.dispose();
+
+    vi.advanceTimersByTime(CHAIN_STREAM_DOWNGRADE_RETRY_MS + 1000);
+    // Only the original source -- the disposed session never reconnects.
+    expect(sources).toHaveLength(1);
+
+    vi.useRealTimers();
+  });
+
+  it("an explicit reconnect (e.g. a network change) resets the failure counter for the new attempt", () => {
+    const { session, sources } = makeSession();
+    session.connect();
+
+    for (let i = 0; i < CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES - 1; i += 1) {
+      sources[0]!.emitError();
+    }
+
+    // A fresh, unrelated connect() -- the new source starts its own count
+    // at 0, not inheriting the old source's near-threshold tally.
+    session.connect();
+    expect(sources).toHaveLength(2);
+    sources[1]!.emitError();
+    sources[1]!.emitError();
+    expect(sources[1]!.closed).toBe(false);
+  });
+
+  it("status transitions: connecting -> open -> error, and error again on each retry", () => {
+    const { session, sources, statuses } = makeSession();
+    session.connect();
+    expect(statuses).toEqual(["connecting"]);
+
+    sources[0]!.emitOpen();
+    expect(statuses).toEqual(["connecting", "open"]);
+
+    sources[0]!.emitError();
+    expect(statuses).toEqual(["connecting", "open", "error"]);
   });
 });

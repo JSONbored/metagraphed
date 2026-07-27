@@ -4,7 +4,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/state
 import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
-import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
+import { TimeAgo, ListShell, LoadMore, LiveTickerProvider } from "@jsonbored/ui-kit";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { StreamStatusChip } from "@/components/metagraphed/stream-status-chip";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
@@ -337,27 +337,33 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
     );
 
   return (
-    <ListShell
-      filters={filters}
-      table={table}
-      cards={cards}
-      isEmpty={events.length === 0 && !isFetching}
-      empty={emptyNode}
-      isStale={isFetching && !isPending && !isFetchingNextPage}
-      footer={
-        events.length > 0 ? (
-          <LoadMore
-            hasMore={!!hasNextPage}
-            isLoading={isFetchingNextPage}
-            onLoadMore={() => {
-              void fetchNextPage();
-            }}
-            shown={events.length}
-            error={isFetchNextPageError ? error : null}
-            cursorInvalid={cursorInvalid}
-          />
-        ) : undefined
-      }
-    />
+    // #8365: a shared 1s clock for every row's TimeAgo instead of one
+    // self-scheduled timer per row -- this list can carry dozens of
+    // sub-minute-old rows simultaneously right after a busy block, which is
+    // exactly the case a per-row timer adds up for.
+    <LiveTickerProvider>
+      <ListShell
+        filters={filters}
+        table={table}
+        cards={cards}
+        isEmpty={events.length === 0 && !isFetching}
+        empty={emptyNode}
+        isStale={isFetching && !isPending && !isFetchingNextPage}
+        footer={
+          events.length > 0 ? (
+            <LoadMore
+              hasMore={!!hasNextPage}
+              isLoading={isFetchingNextPage}
+              onLoadMore={() => {
+                void fetchNextPage();
+              }}
+              shown={events.length}
+              error={isFetchNextPageError ? error : null}
+              cursorInvalid={cursorInvalid}
+            />
+          ) : undefined
+        }
+      />
+    </LiveTickerProvider>
   );
 }

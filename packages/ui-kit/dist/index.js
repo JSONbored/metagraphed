@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as React3 from 'react';
-import { forwardRef, createContext, useId, useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, useContext } from 'react';
+import { createContext, forwardRef, useId, useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, useContext } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { ChevronDown, X, Search, Check, ArrowUp, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, MoreHorizontal, Lock } from 'lucide-react';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
@@ -2626,6 +2626,18 @@ function PagerBar({
     )
   ] });
 }
+var LiveTickerContext = createContext(null);
+function LiveTickerProvider({ children }) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1e3);
+    return () => clearInterval(id);
+  }, []);
+  return /* @__PURE__ */ jsx(LiveTickerContext.Provider, { value: tick, children });
+}
+function useLiveTicker() {
+  return useContext(LiveTickerContext);
+}
 function timeAgoAbsoluteTitle(at) {
   if (!isUsableTimestamp(at)) return void 0;
   return formatFreshnessAbsolute(at) ?? void 0;
@@ -2640,9 +2652,11 @@ function TimeAgo({
 }) {
   const [mounted, setMounted] = useState(false);
   const [, forceTick] = useState(0);
+  const sharedTicker = useLiveTicker();
+  const hasSharedTicker = sharedTicker !== null;
   useEffect(() => setMounted(true), []);
   useEffect(() => {
-    if (!mounted || !at) return void 0;
+    if (!mounted || !at || hasSharedTicker) return void 0;
     const ts = new Date(at).getTime();
     if (!Number.isFinite(ts)) return void 0;
     let timeoutId;
@@ -2657,7 +2671,7 @@ function TimeAgo({
     };
     schedule();
     return () => clearTimeout(timeoutId);
-  }, [mounted, at]);
+  }, [mounted, at, hasSharedTicker]);
   const text = !at ? fallback : mounted ? formatRelative(at) : "";
   return /* @__PURE__ */ jsx(
     "span",
@@ -6193,4 +6207,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, defaultVisible, fmtYield, isScrolledPast, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ClaudeIcon, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LiveTickerProvider, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, OpenAIIcon, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, SHARE_COPIED_EVENT, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, defaultVisible, fmtYield, isScrolledPast, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useLiveTicker, useQueryBarContext, useRovingTablist, useScrolled };
