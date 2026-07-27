@@ -3,36 +3,26 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { SelfHealthVerdict } from "@/components/metagraphed/self-health-verdict";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
-import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import {
   CopyableCode,
   ExternalLink,
   SectionHeading,
   TimeAgo,
   AnimatedNumber,
-  Donut,
-  DonutLegend,
 } from "@jsonbored/ui-kit";
-import {
-  healthQuery,
-  globalIncidentsQuery,
-  incidentsFeedQuery,
-  sourceHealthProvidersQuery,
-} from "@/lib/metagraphed/queries";
+import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
-import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
+import { classNames, humaniseSeconds } from "@/lib/metagraphed/format";
 import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
-import {
-  HealthHistoryDrilldown,
-  SourceHealthTable,
-} from "@/components/metagraphed/status-diagnostics";
 
-const SURFACES_INITIAL = 10;
+// Subnets shown before "Show all" -- groups now, not individual surfaces.
+const GROUPS_INITIAL = 8;
 // A downtime event whose last failure is within this of the latest snapshot is
 // treated as still-ongoing (probe cadence is ~2 min, so ~5 cycles).
 const ONGOING_MS = 10 * 60_000;
@@ -58,27 +48,36 @@ export function StatusPage() {
       <PageHeading
         eyebrow="Public status"
         title="System status"
-        description="Plain-language uptime for everyone — overall verdict, the global incident ledger, and probe history. Probe-derived only; submissions cannot set health. For the ops drill-down (matrix, mosaic, live probes), use Health."
+        description="Is Metagraphed up? That question, answered first — then what we're seeing across the subnet surfaces we track. Probe-derived only; nobody can self-report their own health here."
         right={
           <Link
             to="/health"
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
           >
-            Ops health dashboard
+            Ops console
             <ArrowUpRight className="size-3" aria-hidden="true" />
           </Link>
         }
       />
       <div className="space-y-section">
+        {/* #8250: the verdict is scoped to OUR components and nothing else.
+            The old one derived "Partial outage" from the third-party surface
+            counts below, so 3 of 617 someone-else's endpoints being down
+            painted a red banner that read as "metagraphed is down" -- on the
+            one page whose entire job is answering that accurately. */}
         <AsyncPanel
           context="status verdict"
-          fallback={<Skeleton className="h-28 w-full" />}
+          fallback={<Skeleton className="h-40 w-full" />}
           retryQueryKeys={[healthQuery().queryKey]}
         >
-          <Verdict />
+          <SelfHealthVerdict />
         </AsyncPanel>
+
         <section>
-          <SectionHeading title="Recent incidents" />
+          <SectionHeading
+            title="Recent incidents"
+            intro="Probe-detected downtime across the subnet surfaces we track, newest first."
+          />
           <AsyncPanel context="recent incidents" fallback={<Skeleton className="h-32 w-full" />}>
             <RecentIncidents />
           </AsyncPanel>
@@ -87,7 +86,7 @@ export function StatusPage() {
         <section>
           <SectionHeading
             title="Subscribe"
-            intro="Copy or open the incidents feed in RSS, Atom, or JSON Feed format — the same probe-detected downtime stream shown above."
+            intro="The same downtime stream as a feed — RSS, Atom, or JSON Feed."
           />
           <AsyncPanel
             context="incidents feed"
@@ -98,180 +97,47 @@ export function StatusPage() {
           </AsyncPanel>
         </section>
 
-        {/* #8253: the network-decentralization (#3471) and emission-yield
-            (#3472) scorecards moved to the Chain hub's Overview tab. They are
-            chain-wide metagraph rollups, not uptime — /status answers "is it
-            up", and mixing concentration analytics into that made the page
-            answer two unrelated questions at once. */}
-
-        {/* #8: operational diagnostics — a per-day probe drill-down and a
-            provider verification rollup, both probe-derived. */}
+        {/* #8250: the per-day probe drill-down (96,395px) and the per-provider
+            source-health rollup (11,251px) left this page -- together they were
+            94% of its 115,233px height, and neither answers "is it up". Both
+            are operational drill-downs and now live only on the ops console
+            they were always duplicating. The per-subnet view lives on each
+            subnet's own API tab. */}
         <section>
           <SectionHeading
-            title="Probe history"
-            intro="Per-surface probe results for any captured day. Pick a date to inspect."
+            title="Go deeper"
+            intro="Per-day probe results, per-provider verification, the live mosaic and the full surface ledger are operational views — they live on the ops console."
           />
-          <AsyncPanel
-            context="probe history"
-            fallback={<Skeleton className="h-48 w-full" />}
-            retryQueryKeys={[healthQuery().queryKey]}
-          >
-            <HealthHistoryDrilldown />
-          </AsyncPanel>
-        </section>
-
-        <section>
-          <SectionHeading
-            title="Source health"
-            intro="Per-provider verification status, endpoint counts, and classification mix."
-          />
-          <AsyncPanel
-            context="source health"
-            fallback={<Skeleton className="h-48 w-full" />}
-            retryQueryKeys={[sourceHealthProvidersQuery().queryKey]}
-          >
-            <SourceHealthTable />
-          </AsyncPanel>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/health"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
+            >
+              Ops console
+              <ArrowUpRight className="size-3" aria-hidden="true" />
+            </Link>
+            <Link
+              to="/apis/endpoints"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:border-accent/40"
+            >
+              Browse all surfaces
+              <ArrowUpRight className="size-3" aria-hidden="true" />
+            </Link>
+          </div>
         </section>
       </div>
       <ApiSourceFooter
         paths={[
+          "/api/v1/self-health",
           "/api/v1/health",
           "/api/v1/incidents",
           "/api/v1/feeds/incidents",
-          "/api/v1/health/history/{date}",
-          "/api/v1/source-health",
         ]}
       />
     </AppShell>
   );
 }
 
-/** Overall verdict banner + status mix, derived from /api/v1/health status counts. */
-function Verdict() {
-  const refetchInterval = useRefetchInterval(60_000);
-  const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval });
-  const h = hRes.data;
-  const ok = h?.ok ?? 0;
-  const warn = h?.warn ?? 0;
-  const down = h?.down ?? 0;
-  const unknown = h?.unknown ?? 0;
-  const total = h?.total ?? ok + warn + down + unknown;
-
-  const verdict =
-    down > 0
-      ? {
-          word: "Partial outage",
-          tone: "down" as const,
-          Icon: XCircle,
-          blurb: `${down} ${down === 1 ? "surface is" : "surfaces are"} down`,
-        }
-      : warn > 0
-        ? {
-            word: "Degraded performance",
-            tone: "warn" as const,
-            Icon: AlertTriangle,
-            blurb: `${warn} ${warn === 1 ? "surface is" : "surfaces are"} degraded`,
-          }
-        : {
-            word: "All systems operational",
-            tone: "ok" as const,
-            Icon: CheckCircle2,
-            blurb: `${ok} of ${total} surfaces healthy`,
-          };
-
-  const toneText = {
-    ok: "text-health-ok",
-    warn: "text-health-warn",
-    down: "text-health-down",
-  }[verdict.tone];
-
-  const segs = healthStatusSegments({ ok, warn, down, unknown });
-  // /api/v1/health carries no real 24h uptime series — this is the share of
-  // surfaces healthy in the latest snapshot (ok / total), so label it as such.
-  const healthyRatio = total > 0 ? ok / total : null;
-  const healthyPct = healthyRatio != null ? (healthyRatio * 100).toFixed(2) + "%" : "—";
-
-  const stale = isStaleFreshness(hRes.meta?.generated_at);
-
-  return (
-    <div className="space-y-4">
-      {stale ? (
-        <StaleBanner
-          generatedAt={hRes.meta?.generated_at}
-          refreshQueryKeys={[healthQuery().queryKey, globalIncidentsQuery("7d").queryKey]}
-          refreshLabel="Refresh health now"
-        />
-      ) : null}
-      <Panel
-        as="div"
-        dense
-        tintBorderOnly
-        tone={verdict.tone}
-        bodyClassName="flex items-center gap-4"
-        role="status"
-      >
-        <verdict.Icon className={classNames("size-9 shrink-0", toneText)} aria-hidden="true" />
-        <div className="min-w-0">
-          <div className={classNames("font-display text-2xl font-semibold", toneText)}>
-            {verdict.word}
-          </div>
-          <div className="text-sm text-ink-muted">
-            {verdict.blurb} · snapshot <TimeAgo at={hRes.meta?.generated_at} />
-          </div>
-        </div>
-      </Panel>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <Panel dense bodyClassName="flex items-center gap-4">
-          <Donut
-            segments={segs}
-            size={96}
-            strokeWidth={12}
-            centerLabel={healthyPct}
-            centerSub="healthy now"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="mg-label mb-1">Status mix</div>
-            <div className="mb-1 mg-type-data tabular-nums text-ink-muted">
-              {ok} of {total} healthy
-            </div>
-            <DonutLegend segments={segs} />
-          </div>
-        </Panel>
-        <Panel dense className="md:col-span-2" bodyClassName="grid grid-cols-2 gap-2">
-          <Kpi label="Healthy" num={ok} accent="text-health-ok" />
-          <Kpi label="Degraded" num={warn} accent="text-health-warn" />
-          <Kpi label="Down" num={down} accent="text-health-down" />
-          <Kpi label="Monitored" num={total} />
-        </Panel>
-      </div>
-    </div>
-  );
-}
-
-function Kpi({
-  label,
-  num,
-  accent,
-}: {
-  label: string;
-  num: number | null | undefined;
-  accent?: string;
-}) {
-  return (
-    <div className="bg-card p-3 mg-kpi">
-      <div className="mg-label">{label}</div>
-      <div
-        className={`mg-kpi-num font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}
-      >
-        <AnimatedNumber value={num} />
-      </div>
-    </div>
-  );
-}
-
-/** Global, cross-subnet incident ledger from /api/v1/incidents (7d / 30d window). */
 function RecentIncidents() {
   const window = useSearch({ from: "/status", select: (s) => s.window });
   const navigate = useNavigate({ from: "/status" });
@@ -300,6 +166,19 @@ function RecentIncidents() {
       ongoingCount: list.filter((s) => isGlobalIncidentOngoing(s, ledger?.observed_at)).length,
     };
   }, [ledger]);
+  // One entry per subnet, ordered by "worst first" -- ongoing before resolved,
+  // then by event count. `surfaces` is already sorted that way, so grouping in
+  // iteration order preserves it without a second sort.
+  const groups = useMemo(() => {
+    const byNetuid = new Map<number, GlobalIncidentSurface[]>();
+    for (const s of surfaces) {
+      const list = byNetuid.get(s.netuid);
+      if (list) list.push(s);
+      else byNetuid.set(s.netuid, [s]);
+    }
+    return [...byNetuid.entries()].map(([netuid, list]) => ({ netuid, surfaces: list }));
+  }, [surfaces]);
+
   const summary = ledger?.summary;
   const affected = summary?.affected_surface_count ?? surfaces.length;
 
@@ -349,22 +228,30 @@ function RecentIncidents() {
         <EmptyState title="No sustained downtime in this window" />
       ) : (
         <>
+          {/* #8250: grouped by subnet and collapsed. A flat list of every
+              affected surface was most of this page's height, and it buried
+              the thing a reader wants -- WHICH subnets are having trouble --
+              under one row per endpoint. One row per subnet, expandable to its
+              own surfaces. */}
           <ul className="space-y-2">
-            {(showAll ? surfaces : surfaces.slice(0, SURFACES_INITIAL)).map((s) => (
-              <SurfaceRow
-                key={`${s.netuid}/${s.surface_id}`}
-                surface={s}
-                ongoing={isGlobalIncidentOngoing(s, ledger?.observed_at)}
+            {(showAll ? groups : groups.slice(0, GROUPS_INITIAL)).map((g) => (
+              <SubnetIncidentGroup
+                key={g.netuid}
+                netuid={g.netuid}
+                surfaces={g.surfaces}
+                observedAt={ledger?.observed_at}
               />
             ))}
           </ul>
-          {surfaces.length > SURFACES_INITIAL ? (
+          {groups.length > GROUPS_INITIAL ? (
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="block w-full rounded border border-border bg-card px-3 py-2 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+              className="block w-full rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-11"
             >
-              {showAll ? "Show fewer" : `Show all ${surfaces.length} affected surfaces`}
+              {showAll
+                ? "Show fewer"
+                : `Show all ${groups.length} affected subnets (${surfaces.length} surfaces)`}
             </button>
           ) : null}
         </>
@@ -405,6 +292,74 @@ function IncidentsFeedSubscribe() {
       </Panel>
       {items.length === 0 ? <EmptyState title="No incidents in feed" /> : null}
     </div>
+  );
+}
+
+/** One subnet's incidents, collapsed to a single row until opened (#8250). */
+function SubnetIncidentGroup({
+  netuid,
+  surfaces,
+  observedAt,
+}: {
+  netuid: number;
+  surfaces: GlobalIncidentSurface[];
+  observedAt?: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const ongoing = surfaces.filter((s) => isGlobalIncidentOngoing(s, observedAt)).length;
+  const events = surfaces.reduce((n, s) => n + s.incident_count, 0);
+  const downtime = humaniseSeconds(surfaces.reduce((ms, s) => ms + s.downtime_ms, 0) / 1000);
+
+  return (
+    <li className="rounded border border-border bg-card">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-3 px-3 py-2.5 text-left min-h-11"
+      >
+        <span
+          className={classNames(
+            "inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 mg-type-caption",
+            ongoing > 0
+              ? "border-health-down/40 bg-health-down/5 text-health-down"
+              : "border-border bg-paper text-ink-muted",
+          )}
+        >
+          {ongoing > 0 ? `${ongoing} ongoing` : "Resolved"}
+        </span>
+        <Link
+          to="/subnets/$netuid"
+          params={{ netuid }}
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 mg-type-data text-ink-strong hover:text-accent-text"
+        >
+          SN{netuid}
+        </Link>
+        <span className="mg-type-caption text-ink-muted">
+          {surfaces.length} {surfaces.length === 1 ? "surface" : "surfaces"} · {events}{" "}
+          {events === 1 ? "event" : "events"} · {downtime} down
+        </span>
+        <ChevronDown
+          className={classNames(
+            "ml-auto size-3.5 shrink-0 text-ink-muted transition-transform",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <ul className="space-y-2 border-t border-border p-3">
+          {surfaces.map((s) => (
+            <SurfaceRow
+              key={s.surface_id}
+              surface={s}
+              ongoing={isGlobalIncidentOngoing(s, observedAt)}
+            />
+          ))}
+        </ul>
+      ) : null}
+    </li>
   );
 }
 
