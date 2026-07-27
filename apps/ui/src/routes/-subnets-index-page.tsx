@@ -1192,15 +1192,13 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               </Link>
             ))}
             {rows.length > MOBILE_CARD_PAGE_SIZE ? (
-              <div id="subnets-mobile-loadmore" className="scroll-mt-24">
-                <LoadMore
-                  shown={mobileRows.length}
-                  total={rows.length}
-                  hasMore={mobileCardLimit < rows.length}
-                  isLoading={false}
-                  onLoadMore={() => setMobileCardLimit((n) => n + MOBILE_CARD_PAGE_SIZE)}
-                />
-              </div>
+              <LoadMore
+                shown={mobileRows.length}
+                total={rows.length}
+                hasMore={mobileCardLimit < rows.length}
+                isLoading={false}
+                onLoadMore={() => setMobileCardLimit((n) => n + MOBILE_CARD_PAGE_SIZE)}
+              />
             ) : null}
           </>
         }
