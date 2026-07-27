@@ -1,10 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Coins, Radio, Timer } from "lucide-react";
-import {
-  subnetHealthQuery,
-  subnetProfileQuery,
-  subnetSurfacesQuery,
-} from "@/lib/metagraphed/queries";
+import { subnetHealthQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { useHydrated } from "@/hooks/use-hydrated";
 
@@ -95,7 +91,6 @@ export function SubnetPriorityHighlights({ netuid }: { netuid: number }) {
   const hydrated = useHydrated();
   const { data: healthResult } = useQuery(subnetHealthQuery(netuid));
   const { data: profileResult } = useQuery(subnetProfileQuery(netuid));
-  const { data: surfacesResult } = useQuery(subnetSurfacesQuery(netuid));
 
   const health = healthResult?.data ?? {};
   const down = (health as { down?: number }).down ?? 0;
@@ -111,29 +106,21 @@ export function SubnetPriorityHighlights({ netuid }: { netuid: number }) {
     .map((w) => w[0]?.toUpperCase() + w.slice(1))
     .join(" ");
 
-  const surfaces =
-    (surfacesResult?.data as Array<{ last_verified_at?: string | null }> | undefined) ?? [];
-  const newest = surfaces
-    .map((s) => s.last_verified_at)
-    .filter((v): v is string => Boolean(v))
-    .sort()
-    .reverse()[0];
+  // #8363: this tile names the registry's own curation review, not surface
+  // verification -- a distinct concept from the masthead's data-snapshot
+  // "Snapshot Xh ago" caption, which two "Freshness" labels on the same page
+  // used to conflate. reviewed_at is when a curator last confirmed this
+  // profile; a subnet's on-chain/operational data can be minutes old while
+  // its curation review is genuinely months old, so 90 days (not 7) is the
+  // threshold before that reads as stale.
+  const reviewedAt = profile?.reviewed_at ?? null;
   // Gate Date.now()-derived tone + label behind hydration so SSR and the first
   // client render agree; otherwise this component drives the same hydration
   // mismatch that cascaded into the /subnets/:netuid Suspense-stream crash.
-  const freshMs =
-    hydrated && newest ? Date.now() - new Date(newest).getTime() : Number.POSITIVE_INFINITY;
-  const freshTone: Tone = !hydrated
-    ? "default"
-    : !newest
-      ? "default"
-      : freshMs > 7 * 864e5
-        ? "warn"
-        : freshMs > 24 * 36e5
-          ? "accent"
-          : "ok";
-
-  const surfaceCount = surfaces.length;
+  const reviewMs =
+    hydrated && reviewedAt ? Date.now() - new Date(reviewedAt).getTime() : Number.POSITIVE_INFINITY;
+  const reviewTone: Tone =
+    !hydrated || !reviewedAt ? "default" : reviewMs > 90 * 864e5 ? "warn" : "default";
 
   return (
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -155,15 +142,11 @@ export function SubnetPriorityHighlights({ netuid }: { netuid: number }) {
       />
       <Tile
         icon={Timer}
-        eyebrow="Freshness"
-        value={newest ? (hydrated ? ageLabel(newest) : "Recently") : "No probes"}
-        hint={
-          surfaceCount > 0
-            ? `${surfaceCount} verified surface${surfaceCount === 1 ? "" : "s"}`
-            : "No verified surfaces yet"
-        }
-        href="#resources"
-        tone={freshTone}
+        eyebrow="Last reviewed"
+        value={reviewedAt ? (hydrated ? ageLabel(reviewedAt) : "Recently") : "Not yet reviewed"}
+        hint="registry curation review"
+        href="#profile"
+        tone={reviewTone}
       />
       <Tile
         icon={Radio}

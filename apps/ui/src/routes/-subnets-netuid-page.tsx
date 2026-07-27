@@ -747,26 +747,23 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
   const overview = data.data;
   const health = overview.health as Record<string, unknown> | undefined;
   const curation = overview.curation as Record<string, unknown> | undefined;
-  const topGap = overview.gap_priorities?.[0] as Record<string, unknown> | undefined;
-  const topGapHint =
-    typeof topGap?.suggested_next_action === "string" ? topGap.suggested_next_action : undefined;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {overview.status ? (
-          <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-[10px] text-ink-muted">
-            {overview.status}
-          </span>
-        ) : null}
-        {typeof health?.status === "string" ? <HealthPill state={health.status} /> : null}
-        {typeof curation?.level === "string" ? <CurationChip level={curation.level} /> : null}
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
       {/* Surface / endpoint / candidate counts are already shown (and stay
           visible while scrolling) in the tab-bar badges above, so they're not
           restated as StatTiles here — the strip keeps only the status/curation
-          chips and the top-gap hint the badges don't cover (#5316). */}
-      {topGapHint ? <p className="mg-type-data text-ink-muted">Top gap: {topGapHint}</p> : null}
+          chips (#5316). The top-gap hint that used to sit here was maintainer
+          queue language ("Top gap: evaluate for subnet-specific adapter") --
+          not subnet-page furniture; that same gap already renders on
+          /contribute (#8363). */}
+      {overview.status ? (
+        <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-[10px] text-ink-muted">
+          {overview.status}
+        </span>
+      ) : null}
+      {typeof health?.status === "string" ? <HealthPill state={health.status} /> : null}
+      {typeof curation?.level === "string" ? <CurationChip level={curation.level} /> : null}
     </div>
   );
 }
