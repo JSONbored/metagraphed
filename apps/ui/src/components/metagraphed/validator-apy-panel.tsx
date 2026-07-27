@@ -58,7 +58,7 @@ export function ValidatorApyPanel({
         {rows.map((row) => (
           <Panel as="div" flush key={row.window}>
             <div className="px-4 py-3">
-              <div className="mg-type-micro text-ink-muted">Est. APY · {row.window}</div>
+              <div className="mg-type-caption text-ink-muted">Est. APY · {row.window}</div>
               <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-ink-strong">
                 {anyLoading && row.apy == null ? "…" : formatApyPct(row.apy)}
               </div>

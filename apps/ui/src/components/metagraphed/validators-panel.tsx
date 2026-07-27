@@ -79,7 +79,7 @@ export function ValidatorsTableLoader({
       {stakeBars.length > 0 ? (
         <Panel as="div" dense>
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="mg-type-micro text-ink-muted">
+            <span className="mg-type-caption text-ink-muted">
               Validator stake · top {stakeBars.length}
             </span>
             <span className="ml-auto flex items-center gap-2">
@@ -92,7 +92,7 @@ export function ValidatorsTableLoader({
           <BarMini data={stakeBars} />
           {stakeTiles.length > 1 ? (
             <div className="mt-4 border-t border-border pt-3">
-              <div className="mb-2 mg-type-micro text-ink-muted">
+              <div className="mb-2 mg-type-caption text-ink-muted">
                 Stake dominance
                 <TopShareCaption n={stakeTiles.length} />
               </div>

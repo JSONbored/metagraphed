@@ -77,7 +77,9 @@ export function SubnetHealthMatrix() {
                     SN{s.netuid}{" "}
                     {s.name ? <span className="text-ink-muted">· {s.name}</span> : null}
                   </div>
-                  <div className="mg-type-micro text-ink-muted mt-0.5">{s.health ?? "unknown"}</div>
+                  <div className="mg-type-caption text-ink-muted mt-0.5">
+                    {s.health ?? "unknown"}
+                  </div>
                 </TooltipContent>
               </Tooltip>
             );
@@ -97,7 +99,7 @@ function Legend() {
     { label: "Unknown", state: "unknown" },
   ];
   return (
-    <div className="flex flex-wrap items-center gap-3 mg-type-micro text-ink-muted">
+    <div className="flex flex-wrap items-center gap-3 mg-type-caption text-ink-muted">
       {items.map((i) => (
         <span key={i.state} className="inline-flex items-center gap-1.5">
           <span className={classNames("size-2 rounded", TONE[i.state])} aria-hidden />

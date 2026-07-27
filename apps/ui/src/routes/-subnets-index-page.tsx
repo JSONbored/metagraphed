@@ -371,7 +371,7 @@ function SubnetsCompactStats() {
           <span aria-hidden className="text-border">
             ·
           </span>
-          <span className="inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 mg-type-micro text-health-warn">
+          <span className="inline-flex items-center rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 mg-type-caption text-health-warn">
             Data may be stale
           </span>
         </>
@@ -393,7 +393,7 @@ function SubnetsDomainsRollup() {
   const sorted = [...domains].sort((a, b) => (b.subnet_count ?? 0) - (a.subnet_count ?? 0));
   return (
     <Panel as="div" dense className="mt-6">
-      <div className="mb-2 mg-type-micro text-ink-muted">Domains</div>
+      <div className="mb-2 mg-type-caption text-ink-muted">Domains</div>
       <div className="flex flex-wrap gap-2">
         {sorted.map((d) => {
           const active = search.domain === d.domain;
@@ -455,7 +455,7 @@ function ExcludeToggle({
       aria-pressed={hidden}
       title={title}
       className={classNames(
-        "mg-type-micro inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 text-[10px] transition-colors",
+        "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 text-[10px] transition-colors",
         hidden
           ? "border-accent/40 bg-accent/10 text-accent"
           : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -1135,19 +1135,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                 plumbing row. */}
             <div className="mt-2 grid grid-cols-3 gap-2 mg-type-data">
               <div>
-                <div className="mg-type-micro text-ink-muted">Price</div>
+                <div className="mg-type-caption text-ink-muted">Price</div>
                 <div className="tabular-nums text-ink-strong">
                   {s.alpha_price_tao != null ? `${s.alpha_price_tao.toFixed(4)} τ` : "—"}
                 </div>
               </div>
               <div>
-                <div className="mg-type-micro text-ink-muted">Emission</div>
+                <div className="mg-type-caption text-ink-muted">Emission</div>
                 <div className="tabular-nums text-ink-strong">
                   {s.emission_share != null ? `${(s.emission_share * 100).toFixed(2)}%` : "—"}
                 </div>
               </div>
               <div>
-                <div className="mg-type-micro text-ink-muted">Health</div>
+                <div className="mg-type-caption text-ink-muted">Health</div>
                 <HealthPill state={s.health} />
               </div>
             </div>
@@ -1315,7 +1315,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
                         title={`Alpha price change over the selected trend window (${trendWindow})`}
                       >
-                        <span className="mg-type-micro text-[10px] font-normal text-ink-muted">
+                        <span className="mg-type-caption text-[10px] font-normal text-ink-muted">
                           {trendWindow} %
                         </span>
                       </th>
@@ -1687,7 +1687,7 @@ function SubnetGrid({
                 size={36}
               />
               <div className="min-w-0">
-                <div className="mg-type-micro text-[10px] text-ink-muted">
+                <div className="mg-type-caption text-[10px] text-ink-muted">
                   #{String(s.netuid).padStart(3, "0")}
                   {s.symbol ? ` · ${s.symbol}` : ""}
                 </div>
@@ -1799,7 +1799,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
   return (
     <Panel as="div" dense>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="mg-type-micro text-[10px] text-ink-muted">
+        <div className="mg-type-caption text-[10px] text-ink-muted">
           Health matrix · {rows.length} subnets
         </div>
         <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">

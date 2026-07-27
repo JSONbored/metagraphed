@@ -16,7 +16,7 @@ export function IncidentCard({ incident }: { incident: EndpointIncident }) {
           <HealthPill state={i.state} />
           <span className="mg-type-data text-ink-strong truncate">{i.endpoint_id ?? "—"}</span>
         </div>
-        <span className={`mg-type-micro ${ongoing ? "text-health-down" : "text-ink-muted"}`}>
+        <span className={`mg-type-caption ${ongoing ? "text-health-down" : "text-ink-muted"}`}>
           {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
         </span>
       </div>

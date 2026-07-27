@@ -46,7 +46,7 @@ export function AccountsPage() {
         }
       />
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl">
-        <label htmlFor="ss58" className="mb-2 block mg-type-micro text-ink-muted">
+        <label htmlFor="ss58" className="mb-2 block mg-type-caption text-ink-muted">
           Account address (ss58)
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">

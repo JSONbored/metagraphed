@@ -199,7 +199,7 @@ export function ExplorerPage() {
   );
 }
 
-const TH = "px-4 py-2.5 mg-type-micro text-ink-muted";
+const TH = "px-4 py-2.5 mg-type-caption text-ink-muted";
 
 /**
  * One labeled mini-sparkline cell for a daily series. Aligns `days` labels to
@@ -223,7 +223,7 @@ function MiniSeries({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="mg-type-micro text-ink-muted">{label}</span>
+        <span className="mg-type-caption text-ink-muted">{label}</span>
         <span className="mg-type-data tabular-nums text-ink-strong">
           {latest == null ? "—" : formatValue(latest)}
         </span>
@@ -308,8 +308,8 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
                       <span
                         className={
                           active
-                            ? "mg-type-micro truncate text-[10px] text-accent"
-                            : "mg-type-micro truncate text-[10px] text-ink-muted"
+                            ? "mg-type-caption truncate text-[10px] text-accent"
+                            : "mg-type-caption truncate text-[10px] text-ink-muted"
                         }
                       >
                         {c.call_module}
@@ -326,7 +326,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
 
           {functions.length > 0 ? (
             <div className="border-t border-border pt-3">
-              <div className="mb-2 mg-type-micro text-ink-muted">
+              <div className="mb-2 mg-type-caption text-ink-muted">
                 {selected ? `${selected} functions` : "Function breakdown"}
               </div>
               <BarMini
@@ -375,7 +375,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
             const label = r.method ? `${r.pallet}.${r.method}` : r.pallet;
             return (
               <li key={label} className="grid grid-cols-[10rem_1fr_auto] items-center gap-2">
-                <span className="mg-type-micro truncate text-[10px] text-ink-muted" title={label}>
+                <span className="mg-type-caption truncate text-[10px] text-ink-muted" title={label}>
                   {label}
                 </span>
                 <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -412,7 +412,7 @@ function StakeFlowMetric({
     tone === "ok" ? "text-health-ok" : tone === "down" ? "text-health-down" : "text-ink-strong";
   return (
     <div>
-      <div className="mg-type-micro text-ink-muted">{label}</div>
+      <div className="mg-type-caption text-ink-muted">{label}</div>
       <div className={`mt-0.5 font-mono text-sm tabular-nums ${valueClass}`}>{value}</div>
     </div>
   );
@@ -456,7 +456,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
             <StakeFlowMetric label="Staked" value={formatTao(net.total_staked_tao)} />
             <StakeFlowMetric label="Unstaked" value={formatTao(net.total_unstaked_tao)} />
           </div>
-          <div className="mg-type-micro flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
+          <div className="mg-type-caption flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
             <span className="text-health-ok">{formatNumber(net.gaining)} gaining</span>
             <span className="text-health-down">{formatNumber(net.losing)} losing</span>
             <span className="text-ink-muted">{formatNumber(net.flat)} flat</span>
@@ -469,7 +469,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
 
       {inflows.length > 0 ? (
         <div>
-          <div className="mb-2 mg-type-micro text-ink-muted">Top net inflows</div>
+          <div className="mb-2 mg-type-caption text-ink-muted">Top net inflows</div>
           <ul className="space-y-1.5">
             {inflows.map((s) => {
               const pct = Math.max(2, Math.round((Math.max(0, s.net_flow_tao) / cap) * 100));
@@ -481,7 +481,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="mg-type-micro truncate text-[10px] text-ink-muted">
+                    <span className="mg-type-caption truncate text-[10px] text-ink-muted">
                       SN{s.netuid}
                     </span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -552,7 +552,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
 
       {busiest.length > 0 ? (
         <div>
-          <div className="mb-2 mg-type-micro text-ink-muted">Busiest subnets</div>
+          <div className="mb-2 mg-type-caption text-ink-muted">Busiest subnets</div>
           <ul className="space-y-1.5">
             {busiest.map((s) => {
               const pct = Math.max(2, Math.round((s.movements / cap) * 100));
@@ -563,7 +563,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="mg-type-micro truncate text-[10px] text-ink-muted">
+                    <span className="mg-type-caption truncate text-[10px] text-ink-muted">
                       SN{s.netuid}
                     </span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -1060,7 +1060,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
 
       {volatile.length > 0 ? (
         <div>
-          <div className="mb-2 mg-type-micro text-ink-muted">Most volatile subnets</div>
+          <div className="mb-2 mg-type-caption text-ink-muted">Most volatile subnets</div>
           <ul className="space-y-1.5">
             {volatile.map((s) => {
               const pct = Math.max(
@@ -1074,7 +1074,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="mg-type-micro truncate text-[10px] text-ink-muted">
+                    <span className="mg-type-caption truncate text-[10px] text-ink-muted">
                       SN{s.netuid}
                     </span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -1212,7 +1212,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
-          <div className="mb-2 mg-type-micro text-ink-muted">Top senders</div>
+          <div className="mb-2 mg-type-caption text-ink-muted">Top senders</div>
           {transfers.top_senders.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -1258,7 +1258,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
         </div>
 
         <div>
-          <div className="mb-2 mg-type-micro text-ink-muted">Top receivers</div>
+          <div className="mb-2 mg-type-caption text-ink-muted">Top receivers</div>
           {transfers.top_receivers.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">

@@ -9,7 +9,7 @@ export function DelegatePage() {
       {/* Hero */}
       <section className="mg-hero-slab relative pt-12 pb-8 md:pt-16 md:pb-10">
         <div className="max-w-3xl">
-          <div className="mg-fade-in mg-type-micro text-ink-muted inline-flex items-center gap-2">
+          <div className="mg-fade-in mg-type-caption text-ink-muted inline-flex items-center gap-2">
             <span className="mg-live-dot" />
             Partner validators · {PARTNER_ORG.name}
           </div>
@@ -46,7 +46,7 @@ export function DelegatePage() {
       <section className="mt-10">
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="font-display text-xl font-semibold text-ink-strong">Supported subnets</h2>
-          <span className="mg-type-micro text-ink-muted">
+          <span className="mg-type-caption text-ink-muted">
             {PARTNER_VALIDATORS.length} live · more rolling out
           </span>
         </div>
@@ -61,7 +61,7 @@ export function DelegatePage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="mg-type-micro text-ink-muted">
+                    <div className="mg-type-caption text-ink-muted">
                       SN{p.netuid} · {p.subnetName}
                     </div>
                     <div className="mt-1 font-display text-lg font-semibold text-ink-strong">
@@ -105,7 +105,7 @@ function TrustCell({ icon, title, body }: { icon: React.ReactNode; title: string
         <span className="text-accent" aria-hidden>
           {icon}
         </span>
-        <span className="mg-type-micro">{title}</span>
+        <span className="mg-type-caption">{title}</span>
       </div>
       <p className="mt-1.5 mg-type-caption text-ink-muted leading-relaxed">{body}</p>
     </div>

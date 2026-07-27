@@ -175,7 +175,7 @@ function LeaseStatusCard({
 function KeySs58({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="mg-type-micro text-ink-muted">{label}</dt>
+      <dt className="mg-type-caption text-ink-muted">{label}</dt>
       <dd className="mt-1">
         <CopyableCode value={value} className="max-w-full" />
       </dd>

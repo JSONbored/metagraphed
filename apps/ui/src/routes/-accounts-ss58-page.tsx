@@ -338,7 +338,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 key={entry.kind}
                 className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
               >
-                <div className="mg-type-micro text-ink-muted">event kind</div>
+                <div className="mg-type-caption text-ink-muted">event kind</div>
                 <div className="mt-2 flex items-end justify-between gap-3">
                   <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
                     {entry.kind}
@@ -474,7 +474,7 @@ function SectionBadge({
   );
 }
 
-const TH = "px-4 py-3 mg-type-micro text-ink-muted";
+const TH = "px-4 py-3 mg-type-caption text-ink-muted";
 
 function AccountFeedSectionSkeleton({
   id,
@@ -1312,7 +1312,7 @@ function EntityLabelCard({ label }: { label: AccountEntityLabel }) {
         <Tag className="h-3.5 w-3.5 shrink-0 text-accent" />
         <span className="min-w-0 truncate font-semibold text-ink">{label.name ?? "Unnamed"}</span>
         {label.category ? (
-          <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 mg-type-micro text-ink-muted">
+          <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 mg-type-caption text-ink-muted">
             {label.category}
           </span>
         ) : null}
@@ -1588,7 +1588,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
 
       {bars.length > 0 ? (
         <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
-          <div className="mb-3 mg-type-micro text-ink-muted">gross flow by subnet (τ)</div>
+          <div className="mb-3 mg-type-caption text-ink-muted">gross flow by subnet (τ)</div>
           <BarMini data={bars} showValue={false} />
         </div>
       ) : null}
@@ -2411,7 +2411,7 @@ function AccountFootprintSection({
     >
       {staked.length > 0 ? (
         <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
-          <div className="mb-3 mg-type-micro text-ink-muted">stake by subnet (τ)</div>
+          <div className="mb-3 mg-type-caption text-ink-muted">stake by subnet (τ)</div>
           <BarMini data={staked} showValue={false} />
         </div>
       ) : null}
@@ -2510,11 +2510,11 @@ function AccountFootprintSection({
               )}
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
-              <dt className="mg-type-micro text-[10px] text-ink-muted">UID</dt>
+              <dt className="mg-type-caption text-[10px] text-ink-muted">UID</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {r.uid != null ? formatNumber(r.uid) : "—"}
               </dd>
-              <dt className="mg-type-micro text-[10px] text-ink-muted">Stake</dt>
+              <dt className="mg-type-caption text-[10px] text-ink-muted">Stake</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {fmtStake(r.stake_tao)}
               </dd>
@@ -2783,7 +2783,7 @@ function AccountHeroAside({
     <div className="w-[20rem] rounded-2xl border border-border/80 bg-card/95 p-4 mg-card-glow">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="mg-type-micro text-ink-muted">account signal</div>
+          <div className="mg-type-caption text-ink-muted">account signal</div>
           <div className="mt-2 font-display text-xl font-semibold text-ink-strong">
             Indexed footprint
           </div>
@@ -2834,7 +2834,7 @@ function HeroAsideRow({
         <Icon className="size-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mg-type-micro text-ink-muted">{label}</div>
+        <div className="mg-type-caption text-ink-muted">{label}</div>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="truncate font-display text-lg font-semibold tabular-nums text-ink-strong">
             {value}

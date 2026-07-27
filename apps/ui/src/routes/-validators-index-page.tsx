@@ -385,7 +385,7 @@ function ConcentrationSection({ validators }: { validators: GlobalValidator[] })
     <div id="validator-dominance" className="space-y-3 pt-3">
       <Panel as="div" dense>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <span className="mg-type-micro text-ink-muted">
+          <span className="mg-type-caption text-ink-muted">
             Stake concentration · top {top.length} operators
           </span>
           <span className="mg-type-data-sm text-ink-muted">

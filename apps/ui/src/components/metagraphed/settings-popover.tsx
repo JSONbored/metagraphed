@@ -121,7 +121,7 @@ function Section({
 }) {
   return (
     <div>
-      <div className="mg-type-micro text-ink-muted mb-1.5">{label}</div>
+      <div className="mg-type-caption text-ink-muted mb-1.5">{label}</div>
       {children}
       {sub ? <p className="mt-1 mg-type-caption text-ink-muted">{sub}</p> : null}
     </div>

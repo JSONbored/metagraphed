@@ -366,7 +366,7 @@ function PoolsTable() {
                   <td className="px-3 py-2 text-center">
                     <span
                       className={classNames(
-                        "mg-type-micro inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
+                        "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
                         ELIGIBILITY_TONE[eligibility],
                       )}
                     >
@@ -514,7 +514,7 @@ function RpcEndpointsTable() {
                 <td className="px-3 py-2">
                   <span
                     className={classNames(
-                      "mg-type-micro inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
+                      "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
                       CLASSIFICATION_TONE[e.classification ?? "unknown"] ??
                         CLASSIFICATION_TONE.unknown,
                     )}
@@ -991,7 +991,7 @@ function EndpointsTable() {
                   : "Showing all endpoint records"
               }
               className={classNames(
-                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 mg-type-micro",
+                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 mg-type-caption",
                 search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
               )}
             >

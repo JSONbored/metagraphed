@@ -61,13 +61,13 @@ function ChainThroughputCard() {
     <div className="mg-card-glow relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-start justify-between gap-3 px-4 pt-4">
         <div className="min-w-0">
-          <div className="mg-type-micro text-ink-muted">Blocks today</div>
+          <div className="mg-type-caption text-ink-muted">Blocks today</div>
           <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
             {series.length ? formatNumber(blocksToday) : "—"}
           </div>
         </div>
         <div className="min-w-0 text-right">
-          <div className="mg-type-micro text-ink-muted">Endpoints up</div>
+          <div className="mg-type-caption text-ink-muted">Endpoints up</div>
           <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
             {endpointsTotal ? `${formatNumber(endpointsOk)}/${formatNumber(endpointsTotal)}` : "—"}
           </div>
@@ -90,7 +90,7 @@ function ChainThroughputCard() {
       </div>
 
       <div className="mt-1 flex flex-col items-start gap-1.5 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <span className="mg-type-micro text-ink-muted">/api/v1/chain/activity</span>
+        <span className="mg-type-caption text-ink-muted">/api/v1/chain/activity</span>
         <Link
           to="/chain/blocks"
           className="inline-flex items-center gap-1.5 mg-type-label uppercase text-ink-strong transition-colors hover:text-accent"
@@ -118,10 +118,10 @@ function LiveSubnetsCard() {
   return (
     <div className="mg-card-glow flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="mg-type-micro text-ink-muted">Live subnets · 7d</div>
+        <div className="mg-type-caption text-ink-muted">Live subnets · 7d</div>
         <Link
           to="/subnets"
-          className="inline-flex items-center gap-1 mg-type-micro text-ink-muted transition-colors hover:text-accent"
+          className="inline-flex items-center gap-1 mg-type-caption text-ink-muted transition-colors hover:text-accent"
         >
           View all
           <ArrowUpRight className="size-3" />
@@ -181,7 +181,7 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
         />
         <div className="min-w-0 flex-1">
           <div className="truncate text-ink-strong">{sn.name ?? `Subnet ${sn.netuid}`}</div>
-          <div className="mg-type-micro text-ink-muted">SN{sn.netuid}</div>
+          <div className="mg-type-caption text-ink-muted">SN{sn.netuid}</div>
         </div>
         <div className="hidden shrink-0 sm:block">
           {closes.length >= 2 ? (

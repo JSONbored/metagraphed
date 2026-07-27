@@ -121,14 +121,14 @@ export function RegistryEmpty({
 
           {freshnessHint ? (
             <p className="mg-type-caption leading-relaxed text-ink-muted/80">
-              <span className="mg-type-micro opacity-70">how freshness works · </span>
+              <span className="mg-type-caption opacity-70">how freshness works · </span>
               {freshnessHint}
             </p>
           ) : null}
 
           {evidenceHref ? (
             <p className="mg-type-caption text-ink-muted">
-              <span className="mg-type-micro opacity-70">where to verify · </span>
+              <span className="mg-type-caption opacity-70">where to verify · </span>
               {/* Stays a raw anchor deliberately: evidenceHref is a
                   same-origin relative artifact path (e.g. /metagraph/gaps.json
                   on -gaps-page / -surfaces-page), and <ExternalLink>'s

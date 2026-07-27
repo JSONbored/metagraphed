@@ -48,7 +48,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
                 touch target centers against the value. `compact` folds that height
                 back into the row so it does not add vertical spacing. */}
             <div className="flex min-w-0 items-center gap-1.5 mg-type-data text-ink-muted">
-              <span className="mg-type-micro">coldkey</span>
+              <span className="mg-type-caption">coldkey</span>
               {/* Same AccountAddress hover-card treatment as the desktop column (#6338). */}
               <AccountAddress ss58={v.coldkey} compact fallback="—" />
             </div>

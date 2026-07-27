@@ -185,6 +185,23 @@ const RADIUS_RULES = [
 // file makes that distinction with line context instead.
 const VISUAL_GRAMMAR_RULES = [
   {
+    // #8325 label diet. mg-type-micro is 9.5px mono UPPERCASE with 0.18em
+    // tracking -- reserved for table headers and provenance chips, where a
+    // label is structural furniture the eye skips. Used on a section heading
+    // or an eyebrow it turns every heading into a shout, which is what made
+    // pages read as loud even though the tokens themselves are calm.
+    //
+    // Scoped to the element set the sweep covered, and excludes className
+    // values containing `rounded-full`: that's the chip/pill family, which
+    // keeps micro legitimately (34 sites). th/thead/td/tr aren't listed at
+    // all, so table headers are safe by construction rather than by
+    // exception.
+    selector:
+      "JSXOpeningElement[name.name=/^(?:span|div|button|Link|dt|p|a|label|ExternalLink|CommandShortcut)$/] JSXAttribute[name.name='className'] Literal[value=/\\bmg-type-micro\\b/][value!=/rounded-full/]",
+    message:
+      "mg-type-micro is for table headers and provenance chips only (#8325). Section labels and eyebrows use mg-type-caption / <SectionLabel> / <SectionHeading>.",
+  },
+  {
     // Auto-scrolling text is unreadable, unpausable, and steals attention from
     // whatever the reader actually came for. No markup referenced the marquee
     // any more -- .mg-ticker-track had zero consumers and .mg-ticker is a

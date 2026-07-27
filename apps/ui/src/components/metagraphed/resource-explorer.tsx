@@ -83,7 +83,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
     >
       {!filter.isAll ? (
         <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-paper/40 px-2.5 py-1.5">
-          <span className="mg-type-micro text-ink-muted">Filter</span>
+          <span className="mg-type-caption text-ink-muted">Filter</span>
           {ALL_SEVERITIES.filter((s) => filter.isActive(s)).map((s) => (
             <span
               key={s}
@@ -95,7 +95,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
           <button
             type="button"
             onClick={filter.reset}
-            className="ml-auto inline-flex items-center gap-1 mg-type-micro text-ink-muted hover:text-ink-strong"
+            className="ml-auto inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> clear
           </button>
@@ -346,7 +346,7 @@ function EndpointsView({
   return (
     <div>
       <div className="flex items-center justify-between px-4 py-2 bg-paper/40 border-b border-border">
-        <span className="mg-type-micro text-ink-muted">
+        <span className="mg-type-caption text-ink-muted">
           {rows.length} endpoint{rows.length === 1 ? "" : "s"} · {ordered.length} kind
           {ordered.length === 1 ? "" : "s"}
           {hidden > 0 ? ` · ${hidden} hidden` : ""}
@@ -355,7 +355,7 @@ function EndpointsView({
           to="/subnets/$netuid"
           params={{ netuid }}
           search={{ tab: "endpoints" }}
-          className="inline-flex items-center gap-1 mg-type-micro text-ink-muted hover:text-accent"
+          className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
         >
           full table <ArrowRight className="size-3" />
         </Link>
@@ -364,7 +364,9 @@ function EndpointsView({
         {ordered.map((g) => (
           <li key={g.kind}>
             <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/30">
-              <span className="mg-type-micro text-ink-strong">{KIND_LABEL[g.kind] ?? g.kind}</span>
+              <span className="mg-type-caption text-ink-strong">
+                {KIND_LABEL[g.kind] ?? g.kind}
+              </span>
               <span className="mg-type-data-sm text-ink-muted tabular-nums">{g.items.length}</span>
             </div>
             <ul>
@@ -565,7 +567,7 @@ function SurfacesView({
   return (
     <div>
       <div className="flex items-center justify-between px-4 py-2 bg-paper/40 border-b border-border">
-        <span className="mg-type-micro text-ink-muted">
+        <span className="mg-type-caption text-ink-muted">
           {rows.length} surface{rows.length === 1 ? "" : "s"} · {ordered.length} kind
           {ordered.length === 1 ? "" : "s"}
           {hidden > 0 ? ` · ${hidden} hidden` : ""}
@@ -574,7 +576,7 @@ function SurfacesView({
           to="/subnets/$netuid"
           params={{ netuid }}
           search={{ tab: "surfaces" }}
-          className="inline-flex items-center gap-1 mg-type-micro text-ink-muted hover:text-accent"
+          className="inline-flex items-center gap-1 mg-type-caption text-ink-muted hover:text-accent"
         >
           full list <ArrowRight className="size-3" />
         </Link>
@@ -583,7 +585,7 @@ function SurfacesView({
         {ordered.map(([kind, items]) => (
           <li key={kind}>
             <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/30">
-              <span className="mg-type-micro text-ink-strong">{kind}</span>
+              <span className="mg-type-caption text-ink-strong">{kind}</span>
               <span className="mg-type-data-sm text-ink-muted tabular-nums">{items.length}</span>
             </div>
             <ul>

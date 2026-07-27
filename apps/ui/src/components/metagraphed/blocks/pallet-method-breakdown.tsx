@@ -50,7 +50,7 @@ export function PalletMethodBreakdown({ events }: { events: ChainEvent[] }) {
             >
               <div className="min-w-0">
                 <div className="flex items-baseline gap-1.5 min-w-0">
-                  <span className="mg-type-micro shrink-0 text-ink-subtle tabular-nums">
+                  <span className="mg-type-caption shrink-0 text-ink-subtle tabular-nums">
                     #{i + 1}
                   </span>
                   <span

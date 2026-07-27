@@ -16,7 +16,7 @@ import {
 } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
-const TH_BASE = "px-3 py-2 mg-type-micro text-ink-muted";
+const TH_BASE = "px-3 py-2 mg-type-caption text-ink-muted";
 const TD_BASE = "px-3 py-2 mg-type-data";
 const TD_NUM = `${TD_BASE} text-right tabular-nums`;
 

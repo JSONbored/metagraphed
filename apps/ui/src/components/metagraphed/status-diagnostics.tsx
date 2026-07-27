@@ -65,7 +65,7 @@ export function HealthHistoryDrilldown() {
           <div className="font-display text-sm font-semibold text-ink-strong">{date}</div>
         </div>
         <label className="ml-auto inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-          <span className="mg-type-micro text-ink-muted">date</span>
+          <span className="mg-type-caption text-ink-muted">date</span>
           <input
             type="date"
             value={date}

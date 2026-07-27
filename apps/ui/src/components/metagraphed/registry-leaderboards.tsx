@@ -109,7 +109,7 @@ export function RegistryLeaderboards() {
   return (
     <section id="registry-leaderboards" className="scroll-mt-24 space-y-8">
       <div className="max-w-2xl">
-        <div className="mg-type-micro text-ink-muted inline-flex items-center gap-2">
+        <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
           <span className="mg-live-dot" />
           Registry
         </div>
@@ -169,7 +169,7 @@ function BoardCard({
 }) {
   return (
     <Panel as="div" dense>
-      <div className="mb-1 mg-type-micro text-ink-muted">{label}</div>
+      <div className="mb-1 mg-type-caption text-ink-muted">{label}</div>
       <p className="mb-3 text-xs text-ink-subtle leading-relaxed">{blurb}</p>
       {rows.length === 0 ? (
         <p className="rounded-md border border-dashed border-border px-2 py-3 text-center text-xs text-ink-subtle">

@@ -501,7 +501,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   ? "Loading raw events…"
                   : `${formatNumber(chainEvents.length)} raw pallet events`}
               </span>
-              <span className="mg-type-micro">
+              <span className="mg-type-caption">
                 <span className="group-open:hidden">Show</span>
                 <span className="hidden group-open:inline">Hide</span>
               </span>
@@ -583,7 +583,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           <details className="group rounded border border-border bg-card">
             <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span>API &amp; artifact URLs</span>
-              <span className="mg-type-micro">
+              <span className="mg-type-caption">
                 <span className="group-open:hidden">Show</span>
                 <span className="hidden group-open:inline">Hide</span>
               </span>
@@ -783,7 +783,7 @@ function GroupedEvents({
                 </span>
                 {success != null ? (
                   <span
-                    className={`hidden sm:inline mg-type-micro ${success ? "text-health-ok" : "text-health-down"}`}
+                    className={`hidden sm:inline mg-type-caption ${success ? "text-health-ok" : "text-health-down"}`}
                   >
                     {success ? "success" : "failed"}
                   </span>
@@ -951,7 +951,7 @@ function FieldRow({
 }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="inline-flex items-center gap-1 mg-type-micro text-ink-muted sm:w-40 sm:shrink-0">
+      <dt className="inline-flex items-center gap-1 mg-type-caption text-ink-muted sm:w-40 sm:shrink-0">
         <span>{label}</span>
         {hint ? <InfoTooltip label={hint} /> : null}
       </dt>

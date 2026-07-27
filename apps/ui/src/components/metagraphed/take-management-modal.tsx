@@ -231,7 +231,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         </Panel>
 
         <div className="flex flex-col gap-1">
-          <span aria-hidden="true" className="mg-type-micro text-ink-muted">
+          <span aria-hidden="true" className="mg-type-caption text-ink-muted">
             New take (%)
           </span>
           <SearchInput

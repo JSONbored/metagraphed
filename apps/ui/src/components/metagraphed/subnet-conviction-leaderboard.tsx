@@ -152,7 +152,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                           {entry.is_owner ? (
                             <span
                               className={classNames(
-                                "shrink-0 rounded border border-border px-1.5 py-0.5 mg-type-micro text-ink-muted",
+                                "shrink-0 rounded border border-border px-1.5 py-0.5 mg-type-caption text-ink-muted",
                               )}
                             >
                               owner

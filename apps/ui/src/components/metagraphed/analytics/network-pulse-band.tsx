@@ -106,7 +106,9 @@ export function NetworkPulseBand({ className }: { className?: string }) {
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="mg-type-micro text-ink-muted">Network pulse · {RANGE_LABEL[range]}</div>
+            <div className="mg-type-caption text-ink-muted">
+              Network pulse · {RANGE_LABEL[range]}
+            </div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               ok / warn / down
             </h3>

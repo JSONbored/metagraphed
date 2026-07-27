@@ -787,7 +787,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     onCopy={() => copyLink(n.target, n.label)}
                     onNewTab={() => openInNewTab(n.target, n.kind)}
                   />
-                  <CommandShortcut className="mg-type-micro">{n.kind}</CommandShortcut>
+                  <CommandShortcut className="mg-type-caption">{n.kind}</CommandShortcut>
                 </CommandItem>
               );
             })}
@@ -856,7 +856,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                       onCopy={() => copyLink(target, String(title))}
                       onNewTab={() => openInNewTab(target, kind)}
                     />
-                    <CommandShortcut className="mg-type-micro">{meta.label}</CommandShortcut>
+                    <CommandShortcut className="mg-type-caption">{meta.label}</CommandShortcut>
                   </CommandItem>
                 );
               })}
@@ -906,7 +906,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     onCopy={() => copyLink(target, String(title))}
                     onNewTab={() => openInNewTab(target, kind || "semantic")}
                   />
-                  <CommandShortcut className="mg-type-micro text-accent">
+                  <CommandShortcut className="mg-type-caption text-accent">
                     AI {Math.round(r.score * 100)}%
                   </CommandShortcut>
                 </CommandItem>

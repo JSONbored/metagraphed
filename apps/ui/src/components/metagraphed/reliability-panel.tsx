@@ -91,7 +91,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="mg-type-micro text-ink-muted">
+        <div className="mg-type-caption text-ink-muted">
           Per-surface reliability · uptime · latency percentiles
         </div>
         <div role="tablist" aria-label="Reliability window" className="flex items-center gap-1">

@@ -486,7 +486,7 @@ function DeliveryStatusPill({ status }: { status: WebhookDeliveryStatus["status"
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-2 py-0.5 mg-type-micro",
+        "inline-flex items-center rounded border px-2 py-0.5 mg-type-caption",
         DELIVERY_TONE[status],
       )}
     >
@@ -521,7 +521,7 @@ function Field({
 }) {
   return (
     <label className={classNames("block", className)}>
-      <span className="mb-1 block mg-type-micro text-ink-muted">
+      <span className="mb-1 block mg-type-caption text-ink-muted">
         {label}
         {required ? <span className="text-health-down"> *</span> : null}
       </span>
@@ -534,7 +534,7 @@ function Field({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[auto_1fr] gap-3">
-      <dt className="whitespace-nowrap mg-type-micro text-ink-muted">{label}</dt>
+      <dt className="whitespace-nowrap mg-type-caption text-ink-muted">{label}</dt>
       <dd className="min-w-0 truncate text-ink">{value}</dd>
     </div>
   );

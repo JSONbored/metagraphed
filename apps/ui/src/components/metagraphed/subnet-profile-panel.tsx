@@ -60,7 +60,7 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
         <TooltipTrigger asChild>
           <div
             tabIndex={0}
-            className="mg-type-micro text-ink-muted truncate cursor-help focus:outline-none"
+            className="mg-type-caption text-ink-muted truncate cursor-help focus:outline-none"
           >
             {field.label}
           </div>
@@ -88,7 +88,7 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
           ) : null}
         </Tooltip>
         {field.unit && hasValue ? (
-          <span className="shrink-0 mg-type-micro text-ink-muted">{field.unit}</span>
+          <span className="shrink-0 mg-type-caption text-ink-muted">{field.unit}</span>
         ) : null}
         {trailing}
       </div>
@@ -262,7 +262,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                     centerSub="in"
                   />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mg-type-micro text-ink-muted">
+                    <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
                       Pool composition
                       <InfoTooltip label="Alpha In ÷ (Alpha In + Alpha Out) from the latest on-chain AMM reserves snapshot, taken from /api/v1/economics. Tile shows a `stale` chip when the snapshot is older than the refresh budget; numbers still render from the last known values." />
                     </div>
@@ -307,7 +307,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                     centerSub="endpoints"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 mg-type-micro text-ink-muted">
+                    <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
                       Endpoint topology
                       <InfoTooltip label="Distribution of tracked public endpoints by kind. Only verified surfaces from /api/v1/subnets/{netuid}/endpoints are counted — candidate (unverified) leads are excluded. `unknown` slots indicate the last probe could not classify the endpoint; if the snapshot is stale, values still render from the last known probe." />
                     </div>
@@ -319,7 +319,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
               )}
             </div>
             <div className="p-4">
-              <div className="flex items-center gap-1.5 mg-type-micro text-ink-muted">
+              <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted">
                 Top providers
                 <InfoTooltip label="Ranked by count of verified surfaces this provider operates for this subnet, joined from /api/v1/providers. Candidate (unverified) leads are excluded. If provider attribution is stale, ranking still renders from the last published snapshot." />
               </div>
@@ -327,7 +327,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                 <ul className="mt-2 space-y-1.5">
                   {providerLockup.map((p) => (
                     <li key={p.slug} className="flex items-center gap-2 mg-type-caption">
-                      <span className="inline-flex size-5 items-center justify-center rounded border border-border bg-paper mg-type-micro text-ink-muted">
+                      <span className="inline-flex size-5 items-center justify-center rounded border border-border bg-paper mg-type-caption text-ink-muted">
                         {p.name.slice(0, 2)}
                       </span>
                       <Link
@@ -365,7 +365,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
         {/* Ownership + curation */}
         <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
           <div className="p-4 space-y-2">
-            <div className="mg-type-micro text-ink-muted">Ownership</div>
+            <div className="mg-type-caption text-ink-muted">Ownership</div>
             {(() => {
               // econ is a plain (non-suspense) query — same hydration gate as
               // the other econ-derived conditionals in this component.
@@ -375,13 +375,13 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                 <>
                   {coldkey ? (
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-16 shrink-0 mg-type-micro text-ink-muted">Coldkey</span>
+                      <span className="w-16 shrink-0 mg-type-caption text-ink-muted">Coldkey</span>
                       <KeyChip value={coldkey} label="coldkey" className="min-w-0" />
                     </div>
                   ) : null}
                   {hotkey ? (
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-16 shrink-0 mg-type-micro text-ink-muted">Hotkey</span>
+                      <span className="w-16 shrink-0 mg-type-caption text-ink-muted">Hotkey</span>
                       <KeyChip value={hotkey} label="hotkey" className="min-w-0" />
                     </div>
                   ) : null}
@@ -394,7 +394,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
 
           <div className="p-4 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="mg-type-micro text-ink-muted">Registry curation</span>
+              <span className="mg-type-caption text-ink-muted">Registry curation</span>
               <CurationChip level={profile?.curation_level} />
             </div>
             {completenessPct != null ? (
@@ -456,7 +456,7 @@ function Meta({ label, value, hint }: { label: string; value: string; hint: stri
           tabIndex={0}
           className="px-3 py-2 min-w-0 focus:outline-none focus-visible:bg-surface/40"
         >
-          <div className="mg-type-micro text-ink-muted truncate">{label}</div>
+          <div className="mg-type-caption text-ink-muted truncate">{label}</div>
           <div className="mt-1 font-display text-sm font-semibold tabular-nums text-ink-strong truncate">
             {value}
           </div>

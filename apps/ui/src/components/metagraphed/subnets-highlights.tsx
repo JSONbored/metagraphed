@@ -73,7 +73,7 @@ function Card({
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="mg-type-micro text-ink-muted">{eyebrow}</div>
+        <div className="mg-type-caption text-ink-muted">{eyebrow}</div>
         <div
           className="font-display font-medium text-ink-strong"
           style={{ fontSize: "var(--mg-type-body-lg)" }}

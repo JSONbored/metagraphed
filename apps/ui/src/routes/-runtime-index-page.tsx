@@ -137,7 +137,7 @@ function KpiTile({ label, value, hint }: { label: string; value: ReactNode; hint
   return (
     <Panel as="div" flush>
       <div className="px-4 py-3">
-        <div className="mg-type-micro text-[10px] text-ink-muted">{label}</div>
+        <div className="mg-type-caption text-[10px] text-ink-muted">{label}</div>
         <div className="mt-1 font-mono text-lg text-ink-strong tabular-nums">{value}</div>
         {hint ? <div className="mt-0.5 text-xs text-ink-muted">{hint}</div> : null}
       </div>

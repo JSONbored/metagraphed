@@ -571,7 +571,7 @@ function formatCallArgValue(value: unknown): string {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="mg-type-micro text-[10px] text-ink-muted sm:w-40 sm:shrink-0">{label}</dt>
+      <dt className="mg-type-caption text-[10px] text-ink-muted sm:w-40 sm:shrink-0">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
   );

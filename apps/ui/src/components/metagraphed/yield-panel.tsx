@@ -113,7 +113,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Validator vs miner split. */}
         <Panel as="div" dense>
-          <div className="mb-3 mg-type-micro text-ink-muted">Validator / miner split</div>
+          <div className="mb-3 mg-type-caption text-ink-muted">Validator / miner split</div>
           {splitBars.length ? (
             <BarMini data={splitBars} />
           ) : (
@@ -161,11 +161,11 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   )}
                 </div>
                 {n.role === "validator" ? (
-                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
+                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
                     Validator
                   </span>
                 ) : (
-                  <span className="shrink-0 mg-type-micro text-ink-muted">Miner</span>
+                  <span className="shrink-0 mg-type-caption text-ink-muted">Miner</span>
                 )}
               </div>
               <div className="mt-2 flex items-center justify-between gap-2 mg-type-data tabular-nums">
@@ -217,11 +217,11 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   </td>
                   <td className="px-3 py-2.5">
                     {n.role === "validator" ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
+                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
                         Validator
                       </span>
                     ) : (
-                      <span className="mg-type-micro text-ink-muted">Miner</span>
+                      <span className="mg-type-caption text-ink-muted">Miner</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
@@ -241,7 +241,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             </tbody>
           </table>
         </div>
-        <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 mg-type-micro text-ink-muted">
+        <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 mg-type-caption text-ink-muted">
           top {ranked.length} of {neurons.length} by yield · subnet {netuid}
         </div>
       </Panel>
@@ -307,7 +307,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="mg-type-micro text-ink-muted">Yield drift</span>
+        <span className="mg-type-caption text-ink-muted">Yield drift</span>
         {toggle}
       </div>
       {isLoading ? (

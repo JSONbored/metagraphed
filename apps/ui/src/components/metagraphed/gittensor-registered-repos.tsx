@@ -50,7 +50,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   return (
     <Panel as="div" dense id="registered-repos">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="mg-type-micro text-ink-muted">Registered repositories</span>
+        <span className="mg-type-caption text-ink-muted">Registered repositories</span>
         {total ? (
           <span className="shrink-0 mg-type-data-sm text-ink-muted tabular-nums">
             {total} total

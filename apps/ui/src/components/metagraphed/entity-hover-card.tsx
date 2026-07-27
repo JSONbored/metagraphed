@@ -102,7 +102,7 @@ function SubnetMiniProfile({ netuid }: { netuid: number }) {
           netuid={netuid}
         />
         <div className="min-w-0 flex-1">
-          <div className="mg-type-micro text-ink-muted">
+          <div className="mg-type-caption text-ink-muted">
             SN{netuid}
             {s.symbol ? ` · ${s.symbol}` : ""}
           </div>
@@ -155,7 +155,7 @@ function ProviderMiniProfile({ slug }: { slug: string }) {
           repoUrl={p.repo}
         />
         <div className="min-w-0 flex-1">
-          <div className="mg-type-micro text-ink-muted">{p.kind ?? "provider"}</div>
+          <div className="mg-type-caption text-ink-muted">{p.kind ?? "provider"}</div>
           <div className="font-display text-sm font-semibold text-ink-strong truncate">
             {p.name ?? slug}
           </div>
@@ -183,7 +183,7 @@ function AccountMiniProfile({ ss58 }: { ss58: string }) {
   return (
     <div className="space-y-2">
       <div className="min-w-0">
-        <div className="mg-type-micro text-ink-muted">account</div>
+        <div className="mg-type-caption text-ink-muted">account</div>
         <div className="mg-type-data-sm text-ink-muted truncate">{ss58}</div>
       </div>
       <dl className="grid grid-cols-2 gap-2 pt-1">
@@ -202,7 +202,7 @@ function AccountMiniProfile({ ss58 }: { ss58: string }) {
 function Mini({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded border border-border/60 bg-paper/40 px-2 py-1">
-      <dt className="mg-type-micro text-ink-muted">{label}</dt>
+      <dt className="mg-type-caption text-ink-muted">{label}</dt>
       <dd className="font-mono mg-type-caption text-ink-strong truncate">{value}</dd>
     </div>
   );
@@ -218,5 +218,5 @@ function Loading() {
   );
 }
 function Failed() {
-  return <div className="mg-type-micro text-ink-muted">Preview unavailable</div>;
+  return <div className="mg-type-caption text-ink-muted">Preview unavailable</div>;
 }

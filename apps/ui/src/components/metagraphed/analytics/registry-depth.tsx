@@ -44,7 +44,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
       <div className="p-4">
         <header className="mb-2 flex items-center justify-between">
           <div>
-            <div className="mg-type-micro text-ink-muted">Completeness</div>
+            <div className="mg-type-caption text-ink-muted">Completeness</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Score distribution
             </h3>
@@ -169,7 +169,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
       <div className="p-4">
         <header className="mb-4 flex items-center justify-between">
           <div>
-            <div className="mg-type-micro text-ink-muted">Coverage</div>
+            <div className="mg-type-caption text-ink-muted">Coverage</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Surface dimensions
             </h3>
@@ -321,7 +321,7 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
         {row.severity ? (
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
+              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
               tone,
             )}
           >

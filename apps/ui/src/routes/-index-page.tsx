@@ -233,7 +233,7 @@ export function OverviewPage() {
                   </div>
                 </AsyncPanel>
                 <div className="lg:col-span-12">
-                  <div className="mb-3 mg-type-micro text-ink-muted">Enrichment queue</div>
+                  <div className="mb-3 mg-type-caption text-ink-muted">Enrichment queue</div>
                   <AsyncPanel
                     context="enrichment queue"
                     fallback={<Skeleton className="h-64 w-full" />}
@@ -305,7 +305,7 @@ export function OverviewPage() {
               description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
             />
             <Panel as="div" className="max-w-2xl">
-              <div className="mg-type-micro text-ink-muted mb-2">Try it</div>
+              <div className="mg-type-caption text-ink-muted mb-2">Try it</div>
               <CopyableCode
                 value={`curl ${API_BASE}/api/v1/subnets`}
                 className="w-full mg-type-caption"
@@ -344,7 +344,9 @@ export function OverviewPage() {
       <AccentBand pattern className="mt-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="max-w-xl">
-            <div className="mg-type-micro text-ink-strong/70 mb-2">All registry data is public</div>
+            <div className="mg-type-caption text-ink-strong/70 mb-2">
+              All registry data is public
+            </div>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-ink-strong tracking-tight">
               Browse the full Bittensor registry.
             </h2>
@@ -438,7 +440,7 @@ function HomeHero() {
               <span className="min-w-0 flex-1 truncate">
                 Search subnets, validators, endpoints, accounts…
               </span>
-              <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted">
+              <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
                 ⌘K
               </kbd>
             </button>
@@ -560,7 +562,7 @@ function SectionHeader({
   if (inline) {
     return (
       <div>
-        <div className="mg-type-micro text-ink-muted inline-flex items-center gap-2">
+        <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
           {live ? <span className="mg-live-dot" /> : null}
           {eyebrow}
         </div>
@@ -572,7 +574,7 @@ function SectionHeader({
   }
   return (
     <div className="mb-8 max-w-2xl">
-      <div className="mg-type-micro text-ink-muted inline-flex items-center gap-2">
+      <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
         {live ? <span className="mg-live-dot" /> : null}
         {eyebrow}
       </div>
@@ -629,9 +631,9 @@ function TrackedGrid() {
           to={item.to}
           className="mg-hover-lift group rounded-xl border border-border bg-card p-6 flex flex-col"
         >
-          <div className="mg-type-micro text-ink-muted">{item.label}</div>
+          <div className="mg-type-caption text-ink-muted">{item.label}</div>
           <p className="mt-3 text-sm text-ink-strong leading-relaxed flex-1">{item.desc}</p>
-          <span className="mt-4 inline-flex items-center gap-1 mg-type-micro text-ink-muted group-hover:text-accent transition-colors">
+          <span className="mt-4 inline-flex items-center gap-1 mg-type-caption text-ink-muted group-hover:text-accent transition-colors">
             Explore
             <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
@@ -661,7 +663,7 @@ function LivePerformance() {
     <AccentBand className="mt-20">
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <div className="mg-type-micro text-ink-strong/70 inline-flex items-center gap-2">
+          <div className="mg-type-caption text-ink-strong/70 inline-flex items-center gap-2">
             <span className="mg-live-dot" />
             Live performance
           </div>
@@ -720,7 +722,7 @@ function PerfCard({
     <Panel as="div" flush>
       <div className="p-4">
         <div className="flex items-baseline justify-between mb-3">
-          <div className="mg-type-micro text-ink-muted">{label}</div>
+          <div className="mg-type-caption text-ink-muted">{label}</div>
           <div className="mg-type-data-sm text-ink-muted">{hint}</div>
         </div>
         <div
@@ -828,7 +830,7 @@ function PilotCardFallback({
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="mg-type-micro text-ink-muted">{subtitle}</div>
+          <div className="mg-type-caption text-ink-muted">{subtitle}</div>
           <div className="mt-1 font-display text-lg font-semibold text-ink-strong">{title}</div>
         </div>
         <CurationChip level="adapter-backed" />
@@ -867,7 +869,7 @@ function PilotCard({
     >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="mg-type-micro text-ink-muted">{subtitle}</div>
+          <div className="mg-type-caption text-ink-muted">{subtitle}</div>
           <div className="mt-1 font-display text-lg font-semibold text-ink-strong">{title}</div>
         </div>
         <CurationChip level="adapter-backed" />
@@ -876,7 +878,7 @@ function PilotCard({
         <dl className="grid grid-cols-2 gap-2">
           {metricEntries.map(([k, v]) => (
             <div key={k} className="rounded-md border border-border bg-surface/40 px-3 py-2">
-              <dt className="mg-type-micro text-ink-muted truncate">{k}</dt>
+              <dt className="mg-type-caption text-ink-muted truncate">{k}</dt>
               <dd className="font-mono mg-type-caption text-ink-strong truncate">
                 {typeof v === "object" ? JSON.stringify(v) : String(v)}
               </dd>

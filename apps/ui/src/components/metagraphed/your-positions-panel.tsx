@@ -275,7 +275,7 @@ function SourceBadge({ source }: { source: "owned" | "delegated" }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
         source === "owned"
           ? "border-accent/40 bg-accent-surface text-accent-text"
           : "border-border bg-surface/40 text-ink-muted",
