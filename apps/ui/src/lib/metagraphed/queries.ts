@@ -269,6 +269,7 @@ import type {
   SurfaceUptime,
   SurfaceUptimeDay,
   Uptime,
+  SelfHealth,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -1049,6 +1050,27 @@ export const healthQuery = () =>
       return { data: merged, meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
+  });
+
+/**
+ * GET /api/v1/self-health (#8318/#8250) -- metagraphed's OWN uptime.
+ *
+ * Distinct from healthQuery above, which rolls up THIRD-PARTY subnet surfaces.
+ * Conflating the two is what made /status show a red "Partial outage" banner
+ * because 3 of 617 someone-else's endpoints were down.
+ *
+ * `retry: 0` and a non-suspending caller: until this route is deployed it
+ * 404s, and the page must degrade to "we can't tell" rather than error.
+ */
+export const selfHealthQuery = () =>
+  queryOptions({
+    queryKey: k("self-health"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<SelfHealth>("/api/v1/self-health", { signal });
+      return { data: res.data, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_SHORT,
+    retry: 0,
   });
 
 // Per-subnet probe health, keyed by netuid. The /api/v1/subnets LIST rows carry

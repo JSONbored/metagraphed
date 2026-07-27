@@ -1743,6 +1743,40 @@ export interface ChainIdentityChange extends SubnetIdentityHistoryEntry {
  * (name / symbol / description / URL / logo) across every subnet, newest first.
  * Zeroed with an empty changes list when none have been observed.
  */
+/** One day of a self-health component's probe history (#8318). */
+export interface SelfHealthDay {
+  day: string;
+  checks: number;
+  ok_count: number;
+  uptime_ratio: number;
+}
+
+/** One of metagraphed's OWN components -- api / site / publish. */
+export interface SelfHealthComponentView {
+  component: string;
+  /** Null, not false, when never probed: "unmeasured" is not "down". */
+  current_ok: boolean | null;
+  http_status: number | null;
+  latency_ms: number | null;
+  checked_at: string | null;
+  /** Days with no probe rows are ABSENT, never zero-filled. */
+  days: SelfHealthDay[];
+  uptime_90d: number | null;
+}
+
+/**
+ * GET /api/v1/self-health (#8318) -- OUR uptime, scoped strictly to our own
+ * components. Never mixes in the third-party subnet-surface health that
+ * /api/v1/health covers; that distinction is the whole point of the route.
+ */
+export interface SelfHealth {
+  schema_version: number;
+  verdict: "operational" | "degraded" | "outage";
+  components: SelfHealthComponentView[];
+  measured_component_count: number;
+  observed_at: string | null;
+}
+
 export interface ChainIdentityHistory {
   schema_version: number;
   count: number;
