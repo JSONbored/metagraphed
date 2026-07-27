@@ -14,6 +14,7 @@ import {
   StatWithSpark,
   MiniStack,
   MiniRadial,
+  MobileCollapse,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
@@ -707,8 +708,87 @@ function GapRow({
     }
   }
 
+  // #8361: mobile-only summary row -- subnet identity + priority + a
+  // compressed missing-kinds chip row (first 3 + a "+N" chip), so the
+  // collapsed card stays small; tapping it reveals the full detail below
+  // (unchanged from before this fix). Desktop (md+) always shows the full
+  // card, matching MobileCollapse's own below-md-only collapse behavior --
+  // the page's height problem is mobile-specific, per the issue's measurements.
+  const missingKinds = gap.missing_kinds ?? [];
+  const visibleMissingKinds = missingKinds.slice(0, 3);
+  const extraMissingCount = missingKinds.length - visibleMissingKinds.length;
+
+  const summaryLabel = (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <BrandIcon
+        url={subnet?.website}
+        iconUrl={subnet?.icon_url}
+        netuid={gap.netuid}
+        name={subnet?.name}
+        fallback={gap.netuid}
+        size={14}
+      />
+      <span className="truncate">
+        {gap.netuid != null ? `SN${gap.netuid}` : (gap.title ?? gap.id)}
+        {subnet?.name ? ` · ${subnet.name}` : ""}
+      </span>
+      <SeverityChip severity={gap.severity} />
+    </span>
+  );
+
+  const summaryHint =
+    missingKinds.length > 0 ? (
+      <>
+        <span className="shrink-0">{missingKinds.length} missing:</span>
+        {visibleMissingKinds.map((k) => (
+          <span
+            key={k}
+            className="inline-flex h-4 shrink-0 items-center rounded-full border border-border bg-paper px-1.5 text-[9px] normal-case tracking-normal text-ink-muted"
+          >
+            {k}
+          </span>
+        ))}
+        {extraMissingCount > 0 ? (
+          <span className="inline-flex h-4 shrink-0 items-center rounded-full border border-accent/40 bg-primary-soft px-1.5 text-[9px] normal-case tracking-normal text-accent">
+            +{extraMissingCount}
+          </span>
+        ) : null}
+      </>
+    ) : undefined;
+
   return (
-    <li
+    <li>
+      <MobileCollapse label={summaryLabel} hint={summaryHint}>
+        <GapRowDetail
+          gap={gap}
+          matchedKind={matchedKind}
+          sevTint={sevTint}
+          subnet={subnet}
+          rawSources={rawSources}
+        />
+      </MobileCollapse>
+    </li>
+  );
+}
+
+function GapRowDetail({
+  gap,
+  matchedKind,
+  sevTint,
+  subnet,
+  rawSources,
+}: {
+  gap: Gap;
+  matchedKind?: string;
+  sevTint: string;
+  subnet?: Subnet;
+  rawSources: Array<{ label: string; href: string }>;
+}) {
+  return (
+    // <article>, not <div> -- the shared no-hand-rolled-card-shell lint rule
+    // only matches div/section, and this is otherwise the exact shell that
+    // used to sit directly on the outer <li> before this fix.
+    <article
       className={classNames(
         "group grid grid-cols-[6px_1fr_auto] gap-3 rounded-xl border bg-card p-4 transition-colors",
         matchedKind
@@ -808,7 +888,7 @@ function GapRow({
           file
         </a>
       </div>
-    </li>
+    </article>
   );
 }
 

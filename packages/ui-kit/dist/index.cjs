@@ -5381,7 +5381,16 @@ function MobileCollapse({
         children: [
           /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "flex min-w-0 flex-1 flex-col", children: [
             /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mg-type-micro text-ink-strong", children: label }),
-            hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mt-0.5 truncate mg-type-data text-ink-muted", children: hint }) : null
+            hint ? /* @__PURE__ */ jsxRuntime.jsx(
+              "span",
+              {
+                className: classNames(
+                  "mt-0.5 mg-type-data text-ink-muted",
+                  typeof hint === "string" ? "truncate" : "flex flex-wrap items-center gap-1"
+                ),
+                children: hint
+              }
+            ) : null
           ] }),
           /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "flex shrink-0 items-center gap-2", children: [
             trailing,

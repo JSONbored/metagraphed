@@ -5,11 +5,12 @@ import { classNames } from "@/lib/format";
 export interface MobileCollapseProps {
   /**
    * Short label shown as the mobile disclosure trigger. Should match the
-   * SectionAnchor title above so users know what they're expanding.
+   * SectionAnchor title above so users know what they're expanding. Usually
+   * plain text; ReactNode is allowed for callers that need inline icons/chips.
    */
-  label: string;
-  /** Optional one-line hint under the label while collapsed. */
-  hint?: string;
+  label: ReactNode;
+  /** Optional hint under the label while collapsed — a string truncates to one line; a ReactNode (e.g. a chip row) renders as-is. */
+  hint?: ReactNode;
   /** Optional micro-count / status chip rendered on the trigger's right. */
   trailing?: ReactNode;
   /**
@@ -56,7 +57,12 @@ export function MobileCollapse({
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="mg-type-micro text-ink-strong">{label}</span>
           {hint ? (
-            <span className="mt-0.5 truncate mg-type-data text-ink-muted">
+            <span
+              className={classNames(
+                "mt-0.5 mg-type-data text-ink-muted",
+                typeof hint === "string" ? "truncate" : "flex flex-wrap items-center gap-1",
+              )}
+            >
               {hint}
             </span>
           ) : null}
