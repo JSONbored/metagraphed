@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isTablistNavKey,
-  nextTabIndex,
-  rovingTabIndex,
-} from "./use-roving-tablist";
+import { nextTabIndex, rovingTabIndex } from "./use-roving-tablist";
 
 describe("nextTabIndex", () => {
   it("ArrowRight/ArrowDown advance and wrap at the end", () => {
@@ -34,27 +30,6 @@ describe("nextTabIndex", () => {
   it("returns null for an empty list", () => {
     expect(nextTabIndex(0, "ArrowRight", 0)).toBeNull();
     expect(nextTabIndex(0, "Home", 0)).toBeNull();
-  });
-});
-
-describe("isTablistNavKey", () => {
-  it("recognizes the six navigation keys", () => {
-    for (const k of [
-      "ArrowRight",
-      "ArrowLeft",
-      "ArrowDown",
-      "ArrowUp",
-      "Home",
-      "End",
-    ]) {
-      expect(isTablistNavKey(k)).toBe(true);
-    }
-  });
-
-  it("rejects non-navigation keys", () => {
-    for (const k of ["Enter", " ", "Tab", "Escape", "a"]) {
-      expect(isTablistNavKey(k)).toBe(false);
-    }
   });
 });
 

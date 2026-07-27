@@ -42,18 +42,6 @@ export function nextTabIndex(
   }
 }
 
-/** The keys `nextTabIndex` treats as navigation (and the tablist should preventDefault on). */
-export function isTablistNavKey(key: string): boolean {
-  return (
-    key === "ArrowRight" ||
-    key === "ArrowLeft" ||
-    key === "ArrowDown" ||
-    key === "ArrowUp" ||
-    key === "Home" ||
-    key === "End"
-  );
-}
-
 interface RovingTablist {
   /** Ref callback to attach to each tab button, in list order (call with the item's index). */
   tabRef: (index: number) => (el: HTMLElement | null) => void;
