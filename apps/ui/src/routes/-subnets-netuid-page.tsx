@@ -601,11 +601,23 @@ function ApiEndpointsPanel({ netuid }: { netuid: number }) {
 /* ----------------------------- Economics tab ----------------------------- */
 
 // #8247: economics/volume/OHLC/stake-quote grouped under their own tab
-// instead of stacked on Overview -- OHLC candles stay exactly as-is per the
-// issue's scope fence (no chart redesign here).
+// instead of stacked on Overview. #8377 then promoted price history to the
+// lead module -- every comparable explorer opens its market view on the
+// price chart, and it's the one module here a visitor scrolls looking for.
 function EconomicsTabPanel({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-8">
+      <SectionAnchor
+        id="ohlc"
+        title="Price history"
+        subtitle="Open/high/low/close candles and traded volume, built from executed stake/unstake trades."
+        info="GET /api/v1/subnets/{netuid}/ohlc — OHLCV candles over a ?days= window, bucketed by ?interval=1h|1d, from the same account_events StakeAdded/StakeRemoved stream as 24h Volume below. Each trade's price is amount_tao / alpha_amount; empty buckets are gaps, never synthesized flat candles."
+      >
+        <QueryErrorBoundary>
+          <SubnetOhlcChart netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
       <SectionAnchor
         id="economics"
         title="Economics"
@@ -623,17 +635,6 @@ function EconomicsTabPanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <AlphaVolumeScorecard netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
-
-      <SectionAnchor
-        id="ohlc"
-        title="Price history"
-        subtitle="Open/high/low/close candles built from executed stake/unstake trades."
-        info="GET /api/v1/subnets/{netuid}/ohlc — OHLCV candles bucketed by ?interval=1h|1d from the same account_events StakeAdded/StakeRemoved stream as 24h Volume above. Each trade's price is amount_tao / alpha_amount; empty buckets are gaps, never synthesized flat candles."
-      >
-        <QueryErrorBoundary>
-          <SubnetOhlcChart netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 
