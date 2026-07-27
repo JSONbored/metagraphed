@@ -369,8 +369,17 @@ export function OverviewPage() {
 // #3372: a compact chain-head tip in the hero — "head #NNNN · N ago" from the
 // live /api/v1/blocks feed (limit 1), linking to that block. Plain useQuery so a
 // cold/failed fetch silently renders null and never disrupts the primary hero.
+//
+// Hydration-gated like nav-status-dot.tsx's health dot (#8241) and its
+// -explorer-page.tsx twin: `enabled` only once hydrated, so SSR and the first
+// client paint both render `null` and the live link only ever appears in a
+// client-only render after that. Without this, a block landing between the
+// SSR snapshot and the client's own fetch resolving (blocks land ~every 12s)
+// made the two sides disagree on `head.block_number` (or null vs the Link),
+// throwing React's hydration-mismatch error (#418).
 function ChainHeadTip() {
-  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const hydrated = useHydrated();
+  const { data } = useQuery({ ...blocksQuery({ limit: 1 }), enabled: hydrated });
   const head = data?.data?.[0];
   if (!head || head.block_number == null) return null;
   return (

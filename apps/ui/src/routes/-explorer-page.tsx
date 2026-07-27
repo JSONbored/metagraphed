@@ -56,6 +56,7 @@ import {
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
 import type {
   ChainCalls,
@@ -76,8 +77,23 @@ import type {
 // live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
 // ChainHeadTip on the home page: plain useQuery so a cold/failed fetch silently
 // renders null and never disrupts the primary hero or the daily-aggregate KPIs.
+//
+// Hydration-gated like nav-status-dot.tsx's health dot (#8241): `enabled`
+// keeps the query from fetching until the client has hydrated, AND the
+// render itself checks `hydrated` before ever reading `data` -- registry-
+// ticker.tsx queries this exact same key, so `enabled: false` alone isn't
+// enough (it only blocks a new fetch, not a read of whatever's already in
+// the shared cache from that other consumer). Both together guarantee SSR
+// and the first client paint render `null`, and the live link only ever
+// appears in a client-only render after that -- never diffed against server
+// HTML. Without this, a block landing between the SSR snapshot and the
+// client's own fetch resolving (blocks land ~every 12s) made the two sides
+// render a different `head.block_number`, or one side `null` and the other
+// the Link, throwing React's hydration-mismatch error (#418).
 function ChainHeadTip() {
-  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const hydrated = useHydrated();
+  const { data } = useQuery({ ...blocksQuery({ limit: 1 }), enabled: hydrated });
+  if (!hydrated) return null;
   const head = data?.data?.[0];
   if (!head || head.block_number == null) return null;
   return (
