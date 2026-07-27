@@ -673,13 +673,29 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
 
   // #8362: mobile-only render cap -- filtering/sorting above still runs over
   // the full `rows` set (matches desktop), only the mobile card *mount* is
-  // sliced. Resets to the first page whenever the filtered/sorted set
-  // actually changes so switching filters can't strand the count at a
-  // stale offset from a previous view of the list.
+  // sliced. Resets to the first page when the user actually changes a
+  // filter/sort input -- keyed on those primitive values rather than the
+  // `rows` array reference, since a background refetch of healthMap/
+  // catalogMap/economicsMap (e.g. refetchOnWindowFocus) produces a new
+  // `rows` reference with the same content and would otherwise silently
+  // collapse an already-expanded card list back to the first page.
   const [mobileCardLimit, setMobileCardLimit] = useState(MOBILE_CARD_PAGE_SIZE);
   useEffect(() => {
     setMobileCardLimit(MOBILE_CARD_PAGE_SIZE);
-  }, [rows]);
+  }, [
+    search.q,
+    search.curation,
+    search.health,
+    search.serviceKind,
+    search.readiness,
+    search.kind,
+    search.stale,
+    search.includeRoot,
+    search.domain,
+    search.watched,
+    effectiveSort,
+    effectiveOrder,
+  ]);
   const mobileRows = rows.slice(0, mobileCardLimit);
 
   // #8248: virtualize the table body -- all 129+ rows are fetched/filtered/
@@ -1176,7 +1192,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               </Link>
             ))}
             {rows.length > MOBILE_CARD_PAGE_SIZE ? (
-              <div id="subnets-mobile-loadmore">
+              <div id="subnets-mobile-loadmore" className="scroll-mt-24">
                 <LoadMore
                   shown={mobileRows.length}
                   total={rows.length}
