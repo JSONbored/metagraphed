@@ -14,6 +14,7 @@ import {
   StatWithSpark,
   MiniStack,
   MiniRadial,
+  MobileCollapse,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
@@ -707,107 +708,167 @@ function GapRow({
     }
   }
 
-  return (
-    <li
-      className={classNames(
-        "group grid grid-cols-[6px_1fr_auto] gap-3 rounded-xl border bg-card p-4 transition-colors",
-        matchedKind
-          ? "border-accent/50 ring-1 ring-inset ring-accent/30"
-          : "border-border hover:border-accent/40",
-      )}
-    >
-      <span aria-hidden className={classNames("rounded-full", sevTint)} />
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <SeverityChip severity={gap.severity} />
-          {gap.category ? (
+  // #8361: /contribute averaged ~700px per card on mobile with every gap
+  // rendered in full. Collapse to a summary row (identity, count, priority,
+  // first 3 missing kinds) via the shared MobileCollapse pattern; the full
+  // detail below is unchanged, just gated behind the mobile trigger. Each
+  // card owns its own open state (no single-expanded coordination) -- the
+  // simpler option the issue allows, and it keeps expand/collapse purely
+  // presentational so it never has to touch the URL-synced filters/sort.
+  const identityLabel =
+    gap.netuid != null
+      ? `SN${gap.netuid}${subnet?.name ? ` · ${subnet.name}` : ""}`
+      : "Unscoped gap";
+  const hintText = gap.title ?? gap.description ?? undefined;
+  const visibleKinds = gapKinds.slice(0, 3);
+  const overflowKindCount = gapKinds.length - visibleKinds.length;
+
+  const trailing = (
+    <span className="flex items-center gap-1.5">
+      <span aria-hidden className={classNames("size-1.5 shrink-0 rounded-full", sevTint)} />
+      {gapKinds.length > 0 ? (
+        <span className="mg-type-data-sm text-ink-muted">{gapKinds.length}</span>
+      ) : null}
+      {visibleKinds.length > 0 ? (
+        <span className="flex items-center gap-1">
+          {visibleKinds.map((k) => (
             <span
-              className={classNames(
-                "mg-type-micro inline-flex h-5 items-center rounded-full border px-2 text-[10px]",
-                matchedKind
-                  ? "border-accent/50 bg-primary-soft text-accent"
-                  : "border-transparent text-ink-muted",
-              )}
+              key={k}
+              className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-[10px] text-ink-muted"
             >
-              {gap.category}
+              {k}
+            </span>
+          ))}
+          {overflowKindCount > 0 ? (
+            <span className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-[10px] text-ink-muted">
+              +{overflowKindCount}
             </span>
           ) : null}
-          {gap.netuid != null ? (
-            <Link
-              to="/subnets/$netuid"
-              params={{ netuid: gap.netuid }}
-              className="inline-flex items-center gap-1.5 mg-type-data-sm text-accent hover:underline"
-            >
-              <BrandIcon
-                url={subnet?.website}
-                iconUrl={subnet?.icon_url}
-                netuid={gap.netuid}
-                name={subnet?.name}
-                fallback={gap.netuid}
-                size={14}
-              />
-              <span>SN{gap.netuid}</span>
-              {subnet?.name ? (
-                <span className="font-display text-[11px] text-ink normal-case tracking-normal">
-                  · {subnet.name}
-                </span>
-              ) : null}
-            </Link>
-          ) : null}
-        </div>
-        <div className="font-medium text-ink-strong">{gap.title ?? gap.id}</div>
-        {gap.description ? (
-          <p className="mt-1 mg-type-caption-lg text-ink-muted leading-relaxed line-clamp-2">
-            {gap.description}
-          </p>
-        ) : null}
-        {gap.suggested_action ? (
-          <p className="mt-1.5 mg-type-caption text-ink">↳ {gap.suggested_action}</p>
-        ) : null}
-        {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
-          <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
-            <span>relevant sources:</span>
-            {rawSources.map((s) => (
-              <ExternalLink
-                key={s.href}
-                href={s.href}
-                className="text-[10px] normal-case tracking-normal"
-              >
-                {s.label}
-              </ExternalLink>
-            ))}
-            {rawSources.length === 0 && gap.netuid != null ? (
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: gap.netuid }}
-                hash="evidence"
-                className="text-accent hover:underline normal-case tracking-normal"
-              >
-                evidence on SN{gap.netuid}
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
-        {gap.netuid != null ? (
-          <Link
-            to="/subnets/$netuid"
-            params={{ netuid: gap.netuid }}
-            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
-          >
-            open
-          </Link>
-        ) : null}
-        <a
-          href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
+        </span>
+      ) : null}
+    </span>
+  );
+
+  return (
+    <li>
+      <MobileCollapse
+        label={identityLabel}
+        hint={hintText}
+        trailing={trailing}
+        className={classNames(
+          "md:rounded-xl md:border md:bg-card md:p-4 md:transition-colors",
+          matchedKind
+            ? "rounded ring-1 ring-inset ring-accent/30 md:border-accent/50"
+            : "md:border-border md:hover:border-accent/40",
+        )}
+      >
+        <Panel
+          as="div"
+          flush
+          interactive={!matchedKind}
+          tone={matchedKind ? "accent" : "default"}
+          tintBorderOnly={!!matchedKind}
+          className={classNames(
+            matchedKind ? "ring-1 ring-inset ring-accent/30" : null,
+            "md:border-0 md:rounded-none md:bg-transparent md:p-0 md:ring-0",
+          )}
         >
-          file
-        </a>
-      </div>
+          <div className="grid grid-cols-[6px_1fr_auto] gap-3 p-4">
+            <span aria-hidden className={classNames("rounded-full", sevTint)} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <SeverityChip severity={gap.severity} />
+                {gap.category ? (
+                  <span
+                    className={classNames(
+                      "mg-type-micro inline-flex h-5 items-center rounded-full border px-2 text-[10px]",
+                      matchedKind
+                        ? "border-accent/50 bg-primary-soft text-accent"
+                        : "border-transparent text-ink-muted",
+                    )}
+                  >
+                    {gap.category}
+                  </span>
+                ) : null}
+                {gap.netuid != null ? (
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: gap.netuid }}
+                    className="inline-flex items-center gap-1.5 mg-type-data-sm text-accent hover:underline"
+                  >
+                    <BrandIcon
+                      url={subnet?.website}
+                      iconUrl={subnet?.icon_url}
+                      netuid={gap.netuid}
+                      name={subnet?.name}
+                      fallback={gap.netuid}
+                      size={14}
+                    />
+                    <span>SN{gap.netuid}</span>
+                    {subnet?.name ? (
+                      <span className="font-display text-[11px] text-ink normal-case tracking-normal">
+                        · {subnet.name}
+                      </span>
+                    ) : null}
+                  </Link>
+                ) : null}
+              </div>
+              <div className="font-medium text-ink-strong">{gap.title ?? gap.id}</div>
+              {gap.description ? (
+                <p className="mt-1 mg-type-caption-lg text-ink-muted leading-relaxed line-clamp-2">
+                  {gap.description}
+                </p>
+              ) : null}
+              {gap.suggested_action ? (
+                <p className="mt-1.5 mg-type-caption text-ink">↳ {gap.suggested_action}</p>
+              ) : null}
+              {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
+                <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
+                  <span>relevant sources:</span>
+                  {rawSources.map((s) => (
+                    <ExternalLink
+                      key={s.href}
+                      href={s.href}
+                      className="text-[10px] normal-case tracking-normal"
+                    >
+                      {s.label}
+                    </ExternalLink>
+                  ))}
+                  {rawSources.length === 0 && gap.netuid != null ? (
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: gap.netuid }}
+                      hash="evidence"
+                      className="text-accent hover:underline normal-case tracking-normal"
+                    >
+                      evidence on SN{gap.netuid}
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              {gap.netuid != null ? (
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid: gap.netuid }}
+                  className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
+                >
+                  open
+                </Link>
+              ) : null}
+              <a
+                href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
+              >
+                file
+              </a>
+            </div>
+          </div>
+        </Panel>
+      </MobileCollapse>
     </li>
   );
 }
