@@ -4,7 +4,7 @@
 
 ### Every subnet, metagraphed.
 
-The Bittensor subnet integration registry. For every subnet it answers: **what does it expose** (public APIs, docs, schemas), **is it healthy**, and **how do I call it** — machine-readable, for AI agents and developers alike.
+Bittensor didn't ship with a map, so we drew one. For every subnet: **what does it expose** (public APIs, docs, schemas), **is it healthy**, and **how do I call it** — machine-readable and agent-native from the ground up.
 
 [![Website](https://img.shields.io/badge/website-metagraph.sh-111?logo=cloudflare&logoColor=white)](https://metagraph.sh)
 [![MCP](https://img.shields.io/badge/MCP-api.metagraph.sh%2Fmcp-7c3aed)](https://api.metagraph.sh/mcp)
@@ -18,15 +18,21 @@ The Bittensor subnet integration registry. For every subnet it answers: **what d
 
 **[Website](https://metagraph.sh)** &nbsp;·&nbsp; [API](https://api.metagraph.sh) &nbsp;·&nbsp; [OpenAPI](https://api.metagraph.sh/metagraph/openapi.json) &nbsp;·&nbsp; [GraphQL](https://api.metagraph.sh/api/v1/graphql) &nbsp;·&nbsp; [MCP](https://api.metagraph.sh/mcp) &nbsp;·&nbsp; [Agent docs](https://api.metagraph.sh/llms.txt) &nbsp;·&nbsp; [Agent workflows](https://api.metagraph.sh/agent-workflows.md) &nbsp;·&nbsp; [Feeds](https://api.metagraph.sh/api/v1/feeds/registry) &nbsp;·&nbsp; [npm](https://www.npmjs.com/package/@jsonbored/metagraphed) &nbsp;·&nbsp; [PyPI](https://pypi.org/project/metagraphed/)
 
+<a href="https://gittensor.io/miners/repository?name=JSONbored/metagraphed">
+  <img src="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-dark.svg" alt="Gittensor contributor impact" width="600">
+</a>
+
+<sub>Gittensor contributor impact — refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows/gittensor-impact.yml)</sub>
+
 </div>
 
 ---
 
 ## What it is
 
-The native Bittensor metagraph tells you what's happening at the protocol layer. Metagraphed adds the **builder-facing layer it lacks** — a registry of public subnet interfaces, endpoint health, and machine-readable schemas, built for **integration developers** (often reached through their AI agents) who need to discover and call subnet APIs.
+The native Bittensor metagraph tells you what's happening at the protocol layer. Metagraphed adds the **builder-facing layer it lacks**: a chain-direct block explorer (its own Rust indexer, no third-party RPC dependency), a registry of every subnet's public interfaces, endpoint health, and machine-readable schemas, and an agent toolkit — 200+ MCP tools, paste-ready OpenAI/Anthropic specs, a drop-in skill — built for **integration developers**, often reached through their AI agents. A live read-only RPC/WSS proxy and non-custodial, wallet-signed staking/delegation round it out.
 
-> **Not** an official OpenTensor/Bittensor project · **not** a replacement for the native metagraph · **not** an alpha/price dashboard · **not** a wallet, validator, or credential tool.
+> **Not** an official OpenTensor/Bittensor project · **not** a replacement for the native metagraph · **not** an alpha/price dashboard · **not** custodial — staking and delegation are wallet-signed client-side; keys and credentials never touch our backend.
 
 The web UI lives at **[metagraph.sh](https://metagraph.sh)**. The API is served from **`https://api.metagraph.sh`** (REST under `/api/v1`, artifacts under `/metagraph`).
 
@@ -36,7 +42,7 @@ Three ways to use Metagraphed. Pick one.
 
 #### 🤖 AI agent (MCP)
 
-Agent-native, public, read-only, Streamable-HTTP. 173 tools to discover a subnet, check if it's up, read its economics and metagraph, trace what a wallet does across the network, and learn how to call it.
+Agent-native, public, read-only, Streamable-HTTP. 200+ tools to explore the chain, discover a subnet, check if it's up, read its economics and metagraph, trace what a wallet does across the network, and learn how to call it.
 
 ```bash
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
@@ -109,17 +115,7 @@ Open the repo in a [devcontainer](.devcontainer/devcontainer.json)-aware tool (V
 - **Schema-first edits** require `npm run build` (regenerates `openapi.json` + types).
 - **Community submissions** are PR-first: add a surface to exactly one `registry/subnets/<slug>.json` file (via `npm run surface:add`; use `npm run subnet:new` first when that subnet has no file yet), no generated artifacts.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/curation-playbook.md).
-
-### Gittensor contributor impact
-
-<p align="center">
-  <a href="https://gittensor.io/miners/repository?name=JSONbored/metagraphed">
-    <img src="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-dark.svg" alt="Gittensor contributor impact" width="600">
-  </a>
-</p>
-
-Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows/gittensor-impact.yml).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/curation-playbook.md). Gittensor contributor impact is pinned at the top of this README.
 
 ## Subnet catalog
 
@@ -265,7 +261,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 
 ## Related
 
-- **Frontend** — [`apps/ui/`](./apps/ui) in this repo (folded in from the standalone `metagraphed-ui` repo via monorepo consolidation): the web app at [metagraph.sh](https://metagraph.sh). Vite + React 19 + TanStack Start, deployed as its own independent Cloudflare Worker. Holds no subnet data — it renders what this backend serves.
+- **Frontend** — [`apps/ui/`](./apps/ui) in this repo (folded in from the standalone `metagraphed-ui` repo via monorepo consolidation): the web app at [metagraph.sh](https://metagraph.sh) — block explorer, subnet directory, and a non-custodial staking/delegation flow (`/delegate`). Vite + React 19 + TanStack Start, deployed as its own independent Cloudflare Worker. Holds no subnet data — it renders what this backend serves.
 
 ## License
 
