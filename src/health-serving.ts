@@ -1575,9 +1575,10 @@ export async function loadReliabilityAggregate(
     avgLatencyMs: latencySamples > 0 ? latencyWeighted / latencySamples : null,
     latencySamples,
   });
-  return scored
-    ? { grade: scored.grade, uptime_ratio: scored.uptime_ratio }
-    : null;
+  // Total, not a fallback: scoreFromStats returns null only for samples === 0,
+  // which the guard above already excluded. A `scored ? … : null` here would
+  // be a branch that can never be taken.
+  return { grade: scored!.grade, uptime_ratio: scored!.uptime_ratio };
 }
 
 // --- Live-everywhere health resolution + composed-artifact overlays ----------
