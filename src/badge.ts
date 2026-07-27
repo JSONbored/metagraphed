@@ -7,7 +7,8 @@
 // Query options (allow-listed / sanitized in parseBadgeOptions):
 //   metric=readiness   integration readiness 0–100 (default)
 //   metric=uptime      window uptime %, colored by the A–F reliability grade
-//                      (alias: reliability), from the live uptime rollup in D1
+//                      (alias: reliability), from the live uptime rollup
+//                      (Postgres tier, same source as /subnets/{n}/uptime)
 //   metric=grade       the A–F reliability grade letter itself (e.g. "A") —
 //                      same uptime data + color band as uptime, one-glyph message
 //   metric=apis        count of callable API surfaces the subnet exposes
@@ -545,7 +546,12 @@ export async function handleBadgeRequest(
     target: target as BadgeTarget,
     readArtifact: readArtifact as ReadArtifactFn,
     env,
-    loadReliability: deps.loadReliability || loadReliabilityAggregate,
+    // #8329: bound to this request so the aggregate can synthesize its own
+    // internal /uptime reads through the Postgres tier. The injected `deps`
+    // form stays the test seam.
+    loadReliability:
+      deps.loadReliability ||
+      ((options) => loadReliabilityAggregate(env, request, options)),
   };
 
   let content: BadgeContent = NA_CONTENT;
