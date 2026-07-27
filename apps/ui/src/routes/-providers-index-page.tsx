@@ -1,6 +1,6 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
@@ -14,7 +14,7 @@ import {
   type FilterChipItem,
 } from "@/components/metagraphed/primitives";
 import { CopyLinkButton } from "@/components/metagraphed/primitives/copy-link-button";
-import { ResponsiveTable } from "@jsonbored/ui-kit";
+import { LoadMore, ResponsiveTable } from "@jsonbored/ui-kit";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import {
   providersQuery,
@@ -28,6 +28,7 @@ import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
+import { APIS_HUB_PAGE_STEP, nextListLimit } from "@/lib/metagraphed/list-page-window";
 import {
   BrandIcon,
   prefetchBrandIcon,
@@ -224,6 +225,37 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
     return arr;
   }, [filtered, sortKey, counts]);
 
+  // #8360: bound DOM at 25 rows/cards; filters/sort still run over the full set.
+  // One effect owns both filter-reset and `#provider-{slug}` expansion so a
+  // deep-link past page 1 cannot be clobbered by a same-tick reset (#8420).
+  const location = useLocation();
+  const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
+  const filterKey = `${q}\0${kind}\0${authority}\0${sortKey}`;
+  const prevFilterKeyRef = useRef(filterKey);
+  useEffect(() => {
+    const filtersChanged = prevFilterKeyRef.current !== filterKey;
+    prevFilterKeyRef.current = filterKey;
+    const hash = location.hash?.replace(/^#/, "") ?? "";
+    const m = /^provider-(.+)$/.exec(hash);
+    const slug = m ? decodeURIComponent(m[1]!) : null;
+    const idx = slug ? sorted.findIndex((p) => p.slug === slug) : -1;
+    setListLimit((prev) =>
+      nextListLimit({
+        prev,
+        filtersChanged,
+        targetIndex: idx,
+        step: APIS_HUB_PAGE_STEP,
+      }),
+    );
+    if (slug && idx >= 0) {
+      const id = `provider-${slug}`;
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+      });
+    }
+  }, [filterKey, location.hash, sorted]);
+  const visible = useMemo(() => sorted.slice(0, listLimit), [sorted, listLimit]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const ric =
@@ -375,15 +407,16 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
               (#5320/#5321). Wider than those 5-column boards, so the cutover
               is `lg` (1024px) rather than `md`. */}
           <div className="space-y-2 lg:hidden">
-            {sorted.map((p) => {
+            {visible.map((p) => {
               const f = resolveProviderCard(p, counts[p.slug]);
               const host = maskHost(p.website ?? p.homepage);
               return (
                 <Link
                   key={p.slug}
+                  id={`provider-${p.slug}`}
                   to="/providers/$slug"
                   params={{ slug: p.slug }}
-                  className="block rounded border border-border bg-card p-3 transition-colors hover:border-accent/60"
+                  className="block rounded border border-border bg-card p-3 transition-colors hover:border-accent/60 target:border-accent/60"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex min-w-0 items-center gap-2">
@@ -451,7 +484,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {sorted.map((p) => {
+                {visible.map((p) => {
                   const host = maskHost(p.website ?? p.homepage);
                   const c = counts[p.slug];
                   return (
@@ -529,7 +562,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
         </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {sorted.map((p) => {
+          {visible.map((p) => {
             const webHost = maskHost(p.website);
             const repoHost = maskHost(p.repo);
             const docsHost = maskHost(p.docs);
@@ -537,11 +570,13 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
             return (
               <EntityHoverCard key={p.slug} kind="provider" slug={p.slug}>
                 <Link
+                  id={`provider-${p.slug}`}
                   to="/providers/$slug"
                   params={{ slug: p.slug }}
                   className={classNames(
                     "group block rounded-md border border-border bg-card p-4 transition-colors",
                     "hover:border-accent/60 hover:shadow-[var(--mg-shadow-ring-accent)]",
+                    "target:border-accent/60",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -625,6 +660,18 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
           })}
         </div>
       )}
+
+      {sorted.length > APIS_HUB_PAGE_STEP ? (
+        <div id="providers-pager">
+          <LoadMore
+            shown={visible.length}
+            total={sorted.length}
+            hasMore={listLimit < sorted.length}
+            isLoading={false}
+            onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

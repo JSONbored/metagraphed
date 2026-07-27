@@ -4756,9 +4756,6 @@ function nextTabIndex(current, key, count) {
       return null;
   }
 }
-function isTablistNavKey(key) {
-  return key === "ArrowRight" || key === "ArrowLeft" || key === "ArrowDown" || key === "ArrowUp" || key === "Home" || key === "End";
-}
 function rovingTabIndex(index, activeIndex) {
   return index === activeIndex ? 0 : -1;
 }
@@ -6284,7 +6281,6 @@ exports.cn = cn;
 exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
 exports.isScrolledPast = isScrolledPast;
-exports.isTablistNavKey = isTablistNavKey;
 exports.nextTabIndex = nextTabIndex;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.rovingTabIndex = rovingTabIndex;

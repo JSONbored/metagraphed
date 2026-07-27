@@ -36,3 +36,21 @@ export type AccountRole = "coldkey" | "hotkey";
 export function accountRole(account: Pick<AccountSummary, "registrations">): AccountRole {
   return (account.registrations?.length ?? 0) > 0 ? "hotkey" : "coldkey";
 }
+
+/**
+ * Does this address act as BOTH a hotkey and a coldkey? (#8358 KPI band.)
+ *
+ * `accountRole` alone answers "which face leads" with a coldkey default —
+ * it can't say whether the *other* face is also genuinely present, since a
+ * plain hotkey with zero wallet balance and a true dual-role address both
+ * satisfy `registrations.length > 0`. The distinguishing signal is whether
+ * this same address independently holds spendable TAO in its own wallet
+ * (the coldkey capacity) on top of being registered on-chain (the hotkey
+ * capacity) — two separate on-chain roles the same ss58 can occupy at once.
+ */
+export function isDualRoleAccount(
+  account: Pick<AccountSummary, "registrations">,
+  freeBalanceTao: number | null | undefined,
+): boolean {
+  return (account.registrations?.length ?? 0) > 0 && (freeBalanceTao ?? 0) > 0;
+}

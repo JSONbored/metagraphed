@@ -60,6 +60,46 @@ export const GetBuildOutputSchema = z
   .passthrough();
 export type GetBuildOutput = z.infer<typeof GetBuildOutputSchema>;
 
+// #8422: get_self_health -- GET /api/v1/self-health parity, baked
+// /metagraph/self-health.json passthrough. Mirrors src/self-health.ts's
+// SelfHealth / SelfHealthComponentView / SelfHealthDay interfaces field for
+// field. Nullable (never optional-absent) where the interface says `| null`.
+export const GetSelfHealthInputSchema = z.object({}).strict();
+export type GetSelfHealthInput = z.infer<typeof GetSelfHealthInputSchema>;
+
+const SelfHealthDaySchema = z
+  .object({
+    day: z.string(),
+    checks: z.int(),
+    ok_count: z.int(),
+    uptime_ratio: z.number(),
+  })
+  .passthrough();
+
+const SelfHealthComponentViewSchema = z
+  .object({
+    component: z.string(),
+    current_ok: z.boolean().nullable(),
+    http_status: z.int().nullable(),
+    latency_ms: z.number().nullable(),
+    checked_at: z.string().nullable(),
+    note: z.string().nullable(),
+    days: z.array(SelfHealthDaySchema),
+    uptime_90d: z.number().nullable(),
+  })
+  .passthrough();
+
+export const GetSelfHealthOutputSchema = z
+  .object({
+    schema_version: z.int(),
+    verdict: z.string(),
+    components: z.array(SelfHealthComponentViewSchema),
+    measured_component_count: z.int(),
+    observed_at: z.string().nullable(),
+  })
+  .passthrough();
+export type GetSelfHealthOutput = z.infer<typeof GetSelfHealthOutputSchema>;
+
 export const GetCoverageInputSchema = z.object({}).strict();
 export type GetCoverageInput = z.infer<typeof GetCoverageInputSchema>;
 

@@ -17,20 +17,52 @@ export const SDL = /* GraphQL */ `
   "Opaque JSON value, for dynamic-keyed maps with no fixed field set (e.g. the incident summary's by_kind/by_provider/by_status count maps) -- matching how the MCP mirror serves them."
   scalar JSON
 
+  "The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument."
+  enum Network {
+    finney
+    test
+  }
+
   type Query {
-    "Paginated active-subnet index."
+    "Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order."
     subnets(
       netuid: Int
+      network: Network
       status: String
       subnet_type: String
       domain: String
       coverage_level: String
       curation_level: String
+      not_status: String
+      not_subnet_type: String
+      not_domain: String
+      not_coverage_level: String
+      not_curation_level: String
+      min_readiness: Int
+      max_readiness: Int
+      min_surface_count: Int
+      max_surface_count: Int
+      min_block: Int
+      max_block: Int
+      min_candidate_count: Int
+      max_candidate_count: Int
+      min_mechanism_count: Int
+      max_mechanism_count: Int
+      min_participant_count: Int
+      max_participant_count: Int
+      min_probed_surface_count: Int
+      max_probed_surface_count: Int
+      min_tempo: Int
+      max_tempo: Int
+      min_netuid: Int
+      max_netuid: Int
+      sort: String
+      order: String
       limit: Int
       cursor: String
     ): SubnetList!
-    "One subnet with its health, surfaces, endpoints, and economics."
-    subnet(netuid: Int!): Subnet
+    "One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets."
+    subnet(netuid: Int!, network: Network): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
     "One subnet's live on-chain hyperparameters (latest snapshot only). The hyperparameters block is null when the subnet has no captured row -- a schema-stable card, never a GraphQL error, matching the Query.block ref-lookup convention. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters."
@@ -542,6 +574,8 @@ export const SDL = /* GraphQL */ `
     contracts: Contracts
     "The generated build summary: artifact inventory counts and sizes, subnet/provider/surface totals, coverage rollup, and publish metadata. Resolves to a GraphQL error (not null) when the build-summary artifact has not been baked in this environment, matching the REST route's 404 and the get_build MCP tool. Mirrors GET /api/v1/build."
     build: BuildSummary!
+    "metagraphed's OWN uptime: the api/site/publish component views with their latest probe state and trailing-90-day daily uptime ratios, plus the rolled-up operational/degraded/outage verdict. Scoped strictly to our own surfaces -- never third-party subnet health (that is the health rollup). Resolves to a GraphQL error (not null) when the self-health artifact has not been baked in this environment, matching the REST route's 404 and the get_self_health MCP tool. Mirrors GET /api/v1/self-health."
+    self_health: SelfHealth!
     "A compact daily operational health snapshot for one UTC date (YYYY-MM-DD): per-surface status/latency plus summary incident counts from the archived health/history tier. Filter by netuid/kind/provider/status/classification, sort with sort/order, and page with limit (1-1000)/cursor. An invalid date/filter/sort/limit/cursor or a missing snapshot is a GraphQL error, not a silently substituted default. Distinct from the live health rollup and health_trends. Mirrors GET /api/v1/health/history/{date}."
     health_history(
       date: String!
@@ -2138,6 +2172,42 @@ export const SDL = /* GraphQL */ `
     artifacts: JSON
     coverage: JSON
     artifact_budget_summary: JSON
+  }
+
+  "One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled."
+  type SelfHealthDay {
+    day: String!
+    checks: Int!
+    ok_count: Int!
+    "ok_count / checks, 0..1."
+    uptime_ratio: Float!
+  }
+
+  "One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios."
+  type SelfHealthComponentView {
+    component: String!
+    "Null when the component has never been probed -- NOT false."
+    current_ok: Boolean
+    http_status: Int
+    latency_ms: Float
+    checked_at: String
+    "Qualifies a false current_ok with why, for non-HTTP failure modes. Null when there's nothing to add."
+    note: String
+    "Trailing-90d daily ratios, oldest first; gaps are absent, never zero-filled."
+    days: [SelfHealthDay!]!
+    "Mean uptime across the days we actually have. Null when there are none."
+    uptime_90d: Float
+  }
+
+  "metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health."
+  type SelfHealth {
+    schema_version: Int!
+    "operational | degraded | outage."
+    verdict: String!
+    components: [SelfHealthComponentView!]!
+    "Components with data. Zero means the poller hasn't written anything yet."
+    measured_component_count: Int!
+    observed_at: String
   }
 
   type HealthHistory {

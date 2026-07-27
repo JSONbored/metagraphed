@@ -427,6 +427,12 @@ import {
   loadBuildSummary,
 } from "./build-mcp.ts";
 import {
+  GET_SELF_HEALTH_INSTRUCTIONS,
+  GET_SELF_HEALTH_MCP_TOOL,
+  GET_SELF_HEALTH_OUTPUT_SCHEMA,
+  loadSelfHealth,
+} from "./self-health-mcp.ts";
+import {
   GET_ADAPTER_INSTRUCTIONS,
   GET_ADAPTER_MCP_TOOL,
   GET_ADAPTER_OUTPUT_SCHEMA,
@@ -956,6 +962,8 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
+  trimChainActivityToWindow,
+  trimChainFeesToWindow,
 } from "./chain-analytics.ts";
 import {
   loadCompareSubnets,
@@ -1526,6 +1534,7 @@ export const MCP_INSTRUCTIONS =
   GET_CHANGELOG_INSTRUCTIONS +
   GET_FEED_INSTRUCTIONS +
   GET_BUILD_INSTRUCTIONS +
+  GET_SELF_HEALTH_INSTRUCTIONS +
   GET_ADAPTER_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
@@ -1760,7 +1769,7 @@ function toolError(code: string, message: string) {
 // is genuinely published per-network — testnet is a native-only registry, so
 // composed/curated artifacts (overview, agent-catalog, health) have no testnet
 // key and would 404 rather than fall back to mainnet.
-function networkArtifactPath(
+export function networkArtifactPath(
   artifactPath: string,
   network?: "finney" | "test",
 ): string {
@@ -2785,7 +2794,7 @@ function subnetSortValue(subnet: Row, field: string) {
  * @param {"asc"|"desc"} order - sort direction
  * @returns {object[]}
  */
-function sortSubnets(rows: Row[], field: string, order: unknown) {
+export function sortSubnets(rows: Row[], field: string, order: unknown) {
   const dir = order === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
     const av = subnetSortValue(a, field);
@@ -2836,7 +2845,7 @@ const LIST_SUBNETS_RANGE_BOUNDS = [
 // non-numeric cannot satisfy a bound, so it is excluded once any bound on that
 // field is set — identical to rangeFilterRows in workers/list-query.mjs. Only
 // finite numeric args count (tools/call does not enforce inputSchema types).
-function rangeFilterSubnets(rows: Row[], args: Row) {
+export function rangeFilterSubnets(rows: Row[], args: Row) {
   const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
     Number.isFinite(args?.[arg]),
   ).map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
@@ -2884,7 +2893,7 @@ function subnetCategoricalMatch(subnet: Row, field: string, value: unknown) {
 // Apply the categorical filters: keep rows matching every `field=v` and matching
 // none of the `not_field=v` exclusions (case-insensitive). A row missing the
 // field never matches, so it survives an exclusion but fails an inclusion.
-function categoricalFilterSubnets(rows: Row[], args: Row) {
+export function categoricalFilterSubnets(rows: Row[], args: Row) {
   const includes: { field: string; value: string }[] = [];
   const excludes: { field: string; value: string }[] = [];
   for (const arg of LIST_SUBNETS_CATEGORICAL) {
@@ -8048,7 +8057,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed!;
+      const { label, days } = parsed!;
       const limit = clampLimit(args?.limit, 25, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
@@ -8069,11 +8078,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         }),
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
-      if (postgres) return postgres;
-      return buildChainFees({
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
+      // the requested window so a 7d request never reports 8 days.
+      if (postgres)
+        return trimChainFeesToWindow(
+          postgres as unknown as ReturnType<typeof buildChainFees>,
+          days,
+        );
+      return trimChainFeesToWindow(
+        buildChainFees({
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        }),
+        days,
+      );
     },
   },
   {
@@ -8292,7 +8310,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed!;
+      const { label, days } = parsed!;
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
@@ -8302,11 +8320,21 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         mcpNeuronsTierRequest("/api/v1/chain/activity", { window: label }),
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
-      if (postgres) return postgres;
-      return buildChainActivity({
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      // #8421: mirror handleChainActivity's #8242 fix -- the UTC-day buckets
+      // span one extra calendar day, so trim to the requested window before
+      // returning so day_count can't contradict the window label.
+      if (postgres)
+        return trimChainActivityToWindow(
+          postgres as unknown as ReturnType<typeof buildChainActivity>,
+          days,
+        );
+      return trimChainActivityToWindow(
+        buildChainActivity({
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        }),
+        days,
+      );
     },
   },
   {
@@ -8950,6 +8978,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     ...GET_BUILD_MCP_TOOL,
     async handler(_args: unknown, ctx: McpCtx) {
       return loadBuildSummary(asMcpLoaderCtx(ctx));
+    },
+  },
+  {
+    ...GET_SELF_HEALTH_MCP_TOOL,
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadSelfHealth(asMcpLoaderCtx(ctx));
     },
   },
   {
@@ -10770,6 +10804,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
   get_feed: GET_FEED_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
+  get_self_health: GET_SELF_HEALTH_OUTPUT_SCHEMA,
   get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
   get_agent_catalog: z.toJSONSchema(GetAgentCatalogOutputSchema, {
     target: "draft-2020-12",

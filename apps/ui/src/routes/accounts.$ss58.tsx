@@ -7,6 +7,9 @@ import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 import { AccountDetailPage } from "./-accounts-ss58-page";
 
 type SearchParams = {
+  // #8358: the detail-page template's tab strip, same key/shape as
+  // subnets.$netuid.tsx's `tab`.
+  tab?: string;
   // Paginated /events feed controls (#266). Prefixed so they never collide with
   // other future per-account search params.
   ev_kind?: string;
@@ -22,6 +25,7 @@ export const Route = createFileRoute("/accounts/$ss58")({
     const limitNum = Number(s.ev_limit);
     const offsetNum = Number(s.ev_offset);
     return {
+      tab: typeof s.tab === "string" ? s.tab : undefined,
       ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
       ev_limit: (EVENTS_LIMITS as readonly number[]).includes(limitNum) ? limitNum : undefined,
       ev_offset: Number.isInteger(offsetNum) && offsetNum > 0 ? offsetNum : undefined,

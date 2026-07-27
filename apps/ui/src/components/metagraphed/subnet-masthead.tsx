@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, type QueryKey } from "@tanstack/react-query";
 import {
   BookOpen,
@@ -29,6 +29,7 @@ import {
   NoDataSpark,
   ShareButton,
   Sparkline,
+  TimeAgo,
   type SparklinePoint,
 } from "@jsonbored/ui-kit";
 import { StaleBanner } from "@/components/metagraphed/states";
@@ -76,6 +77,106 @@ function host(u?: string) {
   } catch {
     return u;
   }
+}
+
+/**
+ * The lede's fallback when a subnet has no real description (#8363).
+ * `description` now only ever holds the subnet's own product description or
+ * the notes-derived short blurb -- see queries.ts's normalizeSubnetProfile --
+ * never curation-review provenance, so this never has provenance text to
+ * accidentally surface either. Built from the same subnet_type/categories
+ * fields already shown as chips just above the lede, restated as a sentence,
+ * rather than showing nothing.
+ */
+export function kindDomainSummary(
+  subnetType: string | null | undefined,
+  categories: string[],
+): string | null {
+  const parts = [
+    subnetType ? `${subnetType} subnet` : null,
+    categories.length > 0 ? categories.join(", ") : null,
+  ].filter((v): v is string => Boolean(v));
+  return parts.length ? parts.join(" — ") : null;
+}
+
+/**
+ * The curation chip, wrapped as a disclosure trigger for the full review
+ * note (#8363). The chip alone used to be the only affordance for this
+ * subnet's diligence; the note itself used to sit in the header's lede,
+ * ahead of the subnet's own description. Tap/click opens a small popover
+ * with the untruncated note and the review date -- the registry's diligence
+ * stays one tap away, labeled as diligence, rather than crowding out the
+ * product's own voice.
+ */
+function ReviewProvenanceChip({
+  level,
+  notes,
+  reviewedAt,
+}: {
+  level?: string;
+  notes: string;
+  reviewedAt?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className="mg-focus-ring rounded transition-opacity hover:opacity-80"
+        title="Review provenance"
+      >
+        <CurationChip level={level} />
+      </button>
+      {open ? (
+        <Panel
+          as="div"
+          role="dialog"
+          aria-label="Review provenance"
+          glow
+          title="Review provenance"
+          action={
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="mg-focus-ring shrink-0 text-ink-muted hover:text-ink-strong"
+            >
+              ×
+            </button>
+          }
+          className="absolute left-0 top-full z-[var(--mg-z-popover,50)] mt-2 w-80 max-w-[min(90vw,20rem)] shadow-lg"
+        >
+          <p className="text-sm leading-relaxed text-ink-muted">{notes}</p>
+          {reviewedAt ? (
+            <p className="mt-2 mg-type-caption text-ink-muted">
+              Reviewed <TimeAgo at={reviewedAt} />
+            </p>
+          ) : null}
+        </Panel>
+      ) : null}
+    </div>
+  );
 }
 
 interface LinkChip {
@@ -192,6 +293,7 @@ export function SubnetMasthead({
   // 2 categories) -- was slice(0, 4) categories alone, uncapped against
   // subnet_type, which could put 5 chips on one row.
   const categories = (profile?.categories ?? []).slice(0, profile?.subnet_type ? 2 : 3);
+  const lede = description || kindDomainSummary(profile?.subnet_type, categories);
 
   // #8247: the masthead is the one place mounted on every tab, so it owns the
   // canonical API-source registration for this profile -- replacing the
@@ -439,7 +541,15 @@ export function SubnetMasthead({
               of the title's own metadata line at every viewport. */}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <HealthPill state={probeHealth} />
-            <CurationChip level={profile?.curation_level} />
+            {profile?.notes ? (
+              <ReviewProvenanceChip
+                level={profile?.curation_level}
+                notes={profile.notes}
+                reviewedAt={profile?.reviewed_at}
+              />
+            ) : (
+              <CurationChip level={profile?.curation_level} />
+            )}
             <StaleBanner
               generatedAt={generatedAt}
               refreshQueryKeys={stale ? refreshQueryKeys : undefined}
@@ -448,9 +558,9 @@ export function SubnetMasthead({
               bare
             />
           </div>
-          {description ? (
+          {lede ? (
             <p className="mt-2 text-sm text-ink-muted max-w-3xl leading-relaxed line-clamp-2">
-              {description}
+              {lede}
             </p>
           ) : null}
           {

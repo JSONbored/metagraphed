@@ -1,5 +1,5 @@
 import { useTaoPrice } from "@/hooks/use-tao-price";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatUsdApprox } from "@/lib/metagraphed/format";
 import { useValueUnit } from "@/lib/metagraphed/value-unit";
 
 /**
@@ -35,10 +35,7 @@ export function TaoValue({
   }
 
   const tao = `τ ${formatNumber(Number(amount.toFixed(precision)))}`;
-  const usd =
-    price != null
-      ? `$${formatNumber(Number((amount * price).toFixed(amount * price >= 1 ? 2 : 4)))}`
-      : null;
+  const usd = formatUsdApprox(amount, price);
 
   // Fall back to τ when USD is requested but unavailable.
   const showTao = unit === "tao" || unit === "both" || (unit === "usd" && usd == null);
@@ -55,7 +52,7 @@ export function TaoValue({
 
   const taoNode = showTao ? <span className={taoClass}>{tao}</span> : null;
   const usdNode = showUsd ? (
-    <span className={usdClass} title="TAO price via coinpaprika, refreshed ~1×/min">
+    <span className={usdClass} title="at current price">
       {unit === "both" ? `≈ ${usd}` : usd}
     </span>
   ) : null;

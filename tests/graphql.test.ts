@@ -626,6 +626,138 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.deepEqual(body.data.subnets.items, [{ netuid: 2 }]);
   });
 
+  test("subnets scopes to the testnet artifact via network: test (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 1, name: "Main", slug: "main", status: "active" }],
+      },
+      "/metagraph/testnet/subnets.json": {
+        subnets: [
+          { netuid: 99, name: "Testnet", slug: "tn", status: "active" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnets(network: test) { items { netuid } total } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 1);
+    assert.deepEqual(body.data.subnets.items, [{ netuid: 99 }]);
+  });
+
+  test("subnets applies negation + range + sort like list_subnets (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 1,
+            name: "A",
+            slug: "a",
+            status: "active",
+            surface_count: 2,
+          },
+          {
+            netuid: 2,
+            name: "B",
+            slug: "b",
+            status: "deprecated",
+            surface_count: 9,
+          },
+          {
+            netuid: 3,
+            name: "C",
+            slug: "c",
+            status: "active",
+            surface_count: 5,
+          },
+          {
+            netuid: 4,
+            name: "D",
+            slug: "d",
+            status: "active",
+            surface_count: 1,
+          },
+        ],
+      },
+    });
+    // not_status excludes #2; min_surface_count: 2 excludes #4 (count 1);
+    // sort surface_count desc orders the survivors #3 (5) before #1 (2).
+    const { status, body } = await gql(
+      '{ subnets(not_status: "deprecated", min_surface_count: 2, sort: "surface_count", order: "desc") { items { netuid } total } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 2);
+    assert.deepEqual(
+      body.data.subnets.items.map((row: Row) => row.netuid),
+      [3, 1],
+    );
+  });
+
+  test("subnets sort without an explicit order defaults to ascending (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a", surface_count: 5 },
+          { netuid: 2, name: "B", slug: "b", surface_count: 2 },
+          { netuid: 3, name: "C", slug: "c", surface_count: 9 },
+        ],
+      },
+    });
+    // No order arg -> the resolver's `order ?? "asc"` default applies.
+    const { status, body } = await gql(
+      '{ subnets(sort: "surface_count") { items { netuid } } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(
+      body.data.subnets.items.map((row: Row) => row.netuid),
+      [2, 1, 3],
+    );
+  });
+
+  test("subnet scopes its reads to the testnet artifact via network: test (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets/7.json": {
+        netuid: 7,
+        name: "Mainnet Seven",
+        slug: "main-7",
+      },
+      "/metagraph/testnet/subnets/7.json": {
+        netuid: 7,
+        name: "Testnet Seven",
+        slug: "tn-7",
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet(netuid: 7, network: test) { netuid name slug } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet.name, "Testnet Seven");
+    assert.equal(body.data.subnet.slug, "tn-7");
+  });
+
+  test("subnets rejects an unsupported sort or order as BAD_USER_INPUT (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": { subnets: [] },
+    });
+    const bad = await gql(
+      '{ subnets(sort: "bogus") { total } }',
+      env as unknown as Env,
+    );
+    assert.equal(bad.body.data, null);
+    assert.match(bad.body.errors[0].message, /not a supported sort/);
+    assert.equal(bad.body.errors[0].extensions.code, "BAD_USER_INPUT");
+    const badOrder = await gql(
+      '{ subnets(sort: "netuid", order: "sideways") { total } }',
+      env as unknown as Env,
+    );
+    assert.equal(badOrder.body.data, null);
+    assert.equal(badOrder.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
   test("subnet resolves a single subnet by netuid", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets/7.json": {
@@ -2026,6 +2158,61 @@ describe("graphql — build", () => {
 
   test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
     assert.equal(FIELD_COMPLEXITY.build, 5);
+  });
+});
+
+// #8422: GraphQL parity for GET /api/v1/self-health, reusing loadSelfHealth that
+// MCP get_self_health already calls (same artifact read + error behavior as
+// REST and MCP), matching the build/changelog/contracts meta-route precedent.
+describe("graphql — self_health", () => {
+  const SELF_HEALTH_BLOB = {
+    schema_version: 1,
+    verdict: "operational",
+    components: [
+      {
+        component: "api",
+        current_ok: true,
+        http_status: 200,
+        latency_ms: 42,
+        checked_at: "2026-07-01T00:00:00.000Z",
+        note: null,
+        days: [
+          { day: "2026-06-30", checks: 1440, ok_count: 1440, uptime_ratio: 1 },
+        ],
+        uptime_90d: 0.999,
+      },
+    ],
+    measured_component_count: 1,
+    observed_at: "2026-07-01T00:00:00.000Z",
+  };
+
+  test("serves the baked self-health artifact verbatim", async () => {
+    const env = fixtureEnv({ "/metagraph/self-health.json": SELF_HEALTH_BLOB });
+    const { status, body } = await gql(
+      "{ self_health { schema_version verdict measured_component_count observed_at components { component current_ok http_status latency_ms checked_at note uptime_90d days { day checks ok_count uptime_ratio } } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const sh = body.data.self_health;
+    assert.equal(sh.schema_version, 1);
+    assert.equal(sh.verdict, "operational");
+    assert.equal(sh.measured_component_count, 1);
+    assert.equal(sh.observed_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(sh.components[0].component, "api");
+    assert.equal(sh.components[0].current_ok, true);
+    assert.equal(sh.components[0].uptime_90d, 0.999);
+    assert.equal(sh.components[0].days[0].ok_count, 1440);
+    assert.equal(sh.components[0].days[0].uptime_ratio, 1);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ self_health { schema_version } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.self_health, 5);
   });
 });
 
@@ -16164,6 +16351,49 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     assert.equal(d.days[0].unique_signers, 2);
   });
 
+  test("trims an 8-day series to the requested 7d window (#8421)", async () => {
+    // The UTC-day buckets span 8 calendar days for a 7d request; the resolver
+    // must trim to 7 so day_count can't contradict the window label.
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 8,
+            days: eightDays.map((day) => ({
+              day,
+              block_count: 1,
+              extrinsic_count: 1,
+              event_count: 1,
+              successful_extrinsics: 1,
+              success_rate: 1,
+              unique_signers: 1,
+            })),
+          }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(`(window: "7d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.day_count, 7);
+    assert.equal(d.days.length, 7);
+    assert.equal(d.days[0].day, "2026-07-26");
+    assert.ok(!d.days.some((x: Row) => x.day === "2026-07-19"));
+  });
+
   test("partial day rows degrade missing fields to their schema-stable defaults", async () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
@@ -16301,6 +16531,45 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.daily[0].median_tip_tao, 0.004);
     assert.equal(d.top_fee_payers[0].signer, "5Signer");
     assert.equal(d.top_fee_payers[0].extrinsic_count, 4);
+  });
+
+  test("trims an 8-day daily series to the requested 7d window (#8421)", async () => {
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 8,
+            daily: eightDays.map((day) => ({
+              day,
+              extrinsic_count: 1,
+              total_fee_tao: 1,
+              total_tip_tao: 0,
+            })),
+            top_fee_payers: [],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(`(window: "7d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.day_count, 7);
+    assert.equal(d.daily.length, 7);
+    assert.equal(d.daily[0].day, "2026-07-26");
+    assert.ok(!d.daily.some((x: Row) => x.day === "2026-07-19"));
   });
 
   test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {

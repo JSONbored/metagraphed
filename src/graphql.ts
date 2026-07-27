@@ -107,6 +107,9 @@ import { loadContracts } from "./contracts-mcp.ts";
 // #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that
 // MCP get_build already calls -- not a reimplementation.
 import { loadBuildSummary } from "./build-mcp.ts";
+// #8422: GraphQL parity for GET /api/v1/self-health, reusing loadSelfHealth
+// that MCP get_self_health already calls -- not a reimplementation.
+import { loadSelfHealth } from "./self-health-mcp.ts";
 import { loadHealthHistory } from "./health-history-mcp.ts";
 import {
   buildChainAxonRemovals,
@@ -437,9 +440,22 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
+  trimChainActivityToWindow,
+  trimChainFeesToWindow,
 } from "./chain-analytics.ts";
 import { buildChainPerformance } from "./chain-performance.ts";
 import { buildChainConcentration } from "./concentration.ts";
+// #8423: reuse list_subnets' own network-scoping + categorical/range/sort
+// helpers directly rather than reimplementing them here. mcp-server.ts already
+// imports handleGraphQLRequest from this file, so this reverse import closes a
+// cycle -- safe because every binding on both sides is referenced only at
+// call time (resolver / request handler), never during module evaluation.
+import {
+  categoricalFilterSubnets,
+  networkArtifactPath,
+  rangeFilterSubnets,
+  sortSubnets,
+} from "./mcp-server.ts";
 import {
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
@@ -925,6 +941,7 @@ export const FIELD_COMPLEXITY = {
   changelog: RELATIONSHIP_FIELD_COMPLEXITY,
   contracts: RELATIONSHIP_FIELD_COMPLEXITY,
   build: RELATIONSHIP_FIELD_COMPLEXITY,
+  self_health: RELATIONSHIP_FIELD_COMPLEXITY,
   health_history: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1672,38 +1689,18 @@ async function loadProviderSubnets(context: GqlContext, netuids: number[]) {
 
 // --- Resolvers ---
 
-// Case-insensitive categorical filters for Query.subnets (#6251) — mirrors REST
-// /api/v1/subnets list-query semantics (workers/list-query.mjs filterRows +
-// contracts subnets.arrayFilters.domain). Unrecognized values simply match zero
-// rows; GraphQL does not 400 on bad filter tokens.
-function matchesSubnetListFilters(
-  row: Row,
-  { status, subnet_type, domain, coverage_level, curation_level }: Row = {},
-) {
-  for (const [key, raw] of [
-    ["status", status],
-    ["subnet_type", subnet_type],
-    ["coverage_level", coverage_level],
-    ["curation_level", curation_level],
-  ]) {
-    if (raw == null) continue;
-    const expected = String(raw).toLowerCase();
-    const value = row?.[key];
-    if (value == null) return false;
-    if (String(value).toLowerCase() !== expected) return false;
-  }
-  if (domain != null) {
-    const expected = String(domain).toLowerCase();
-    const tags = [
-      ...(Array.isArray(row?.categories) ? row.categories : []),
-      ...(Array.isArray(row?.derived_categories) ? row.derived_categories : []),
-    ];
-    if (!tags.map((tag) => String(tag).toLowerCase()).includes(expected)) {
-      return false;
-    }
-  }
-  return true;
-}
+// #8423: the sort fields Query.subnets accepts, mirroring MCP's
+// LIST_SUBNETS_SORT_FIELDS. Categorical inclusion/negation + range filtering are
+// delegated wholesale to list_subnets' own categoricalFilterSubnets/
+// rangeFilterSubnets (imported), so the earlier hand-rolled inclusion-only
+// matchesSubnetListFilters is retired in favor of that shared, negation-aware
+// helper -- keeping the two surfaces from drifting.
+const SUBNET_SORT_FIELDS = [
+  "netuid",
+  "integration_readiness",
+  "surface_count",
+  "name",
+];
 
 // Shared list shape: load → optional netuid filter → paginate → wrap. `map`
 // node-wraps rows; `resultKey` is the list field's name (economics uses
@@ -1712,11 +1709,26 @@ async function listPage(
   context: GqlContext,
   path: string,
   key: string,
-  { limit, cursor, keyFn, netuid, map, resultKey = "items", filterFn }: Row,
+  {
+    limit,
+    cursor,
+    keyFn,
+    netuid,
+    map,
+    resultKey = "items",
+    filterFn,
+    transform,
+  }: Row,
 ) {
   let all = await loadRows(context, path, key, netuid);
   if (filterFn) {
     all = all.filter(filterFn);
+  }
+  // #8423: an optional whole-list transform (multi-filter + sort) applied after
+  // any row-wise filterFn and before pagination, so a sort orders the full
+  // matching set rather than a single page.
+  if (transform) {
+    all = transform(all);
   }
   const { page, total, nextCursor } = paginate(all, limit, cursor, keyFn);
   return {
@@ -1814,48 +1826,60 @@ function resolveEvmAddressMapping(h160: string, context: GqlContext) {
 // this object is now typed against the generated Query<Field>Args types
 // below rather than a Row-typed destructured param.
 const rootValue = {
-  subnets(
-    {
-      netuid,
-      status,
-      subnet_type,
-      domain,
-      coverage_level,
-      curation_level,
-      limit,
-      cursor,
-    }: QuerySubnetsArgs,
-    context: GqlContext,
-  ) {
-    const hasCategoricalFilters =
-      status != null ||
-      subnet_type != null ||
-      domain != null ||
-      coverage_level != null ||
-      curation_level != null;
-    return listPage(context, ARTIFACT.subnets, "subnets", {
-      limit,
-      cursor,
-      netuid,
-      keyFn: (s: Row) => s.netuid,
-      map: subnetNode,
-      filterFn: hasCategoricalFilters
-        ? (row: Row) =>
-            matchesSubnetListFilters(row, {
-              status,
-              subnet_type,
-              domain,
-              coverage_level,
-              curation_level,
-            })
-        : undefined,
-    });
+  subnets(args: QuerySubnetsArgs, context: GqlContext) {
+    // #8423: full parity with the list_subnets MCP tool over the same static
+    // /metagraph/subnets.json artifact -- network scoping, categorical
+    // inclusion + negation, min_/max_ range bounds, and sort/order -- by reusing
+    // its exact shared helpers rather than reimplementing the filter logic.
+    const { netuid, network, limit, cursor, sort, order } = args;
+    // Same allow-lists list_subnets validates against (LIST_SUBNETS_SORT_FIELDS /
+    // asc|desc); an unsupported value is a GraphQL BAD_USER_INPUT error, not a
+    // silently ignored arg.
+    if (sort != null && !SUBNET_SORT_FIELDS.includes(sort)) {
+      throw new GraphQLError(
+        `"${sort}" is not a supported sort. Supported: ${SUBNET_SORT_FIELDS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (order != null && order !== "asc" && order !== "desc") {
+      throw new GraphQLError(
+        `"${order}" is not a supported order. Supported: asc, desc.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    return listPage(
+      context,
+      networkArtifactPath(
+        ARTIFACT.subnets,
+        (network ?? undefined) as "finney" | "test" | undefined,
+      ),
+      "subnets",
+      {
+        limit,
+        cursor,
+        netuid,
+        keyFn: (s: Row) => s.netuid,
+        map: subnetNode,
+        // list_subnets' own pipeline: categorical inclusion + negation, then the
+        // numeric range bounds, then the optional sort -- applied to the full
+        // matching set before pagination via the shared helpers.
+        transform: (rows: Row[]) => {
+          const filtered = rangeFilterSubnets(
+            categoricalFilterSubnets(rows, args as Row),
+            args as Row,
+          );
+          return sort ? sortSubnets(filtered, sort, order ?? "asc") : filtered;
+        },
+      },
+    );
   },
 
-  async subnet({ netuid }: QuerySubnetArgs, context: GqlContext) {
+  async subnet({ netuid, network }: QuerySubnetArgs, context: GqlContext) {
+    const scopedNetwork = (network ?? undefined) as
+      "finney" | "test" | undefined;
     const data = await loadArtifact(
       context,
-      `/metagraph/subnets/${netuid}.json`,
+      networkArtifactPath(`/metagraph/subnets/${netuid}.json`, scopedNetwork),
     );
     if (!data) return null;
     // The detail artifact nests identity under `subnet` (flat shapes fall back)
@@ -1869,7 +1893,12 @@ const rootValue = {
     // shared per request, so at most one extra read; the detail identity still
     // wins on any shared key.
     const listRow = (
-      await loadRows(context, ARTIFACT.subnets, "subnets", netuid)
+      await loadRows(
+        context,
+        networkArtifactPath(ARTIFACT.subnets, scopedNetwork),
+        "subnets",
+        netuid,
+      )
     )[0];
     return subnetNode(listRow ? { ...listRow, ...identity } : identity, {
       surfaces: data.surfaces,
@@ -3372,6 +3401,14 @@ const rootValue = {
   // which the graphql executor surfaces as a normal GraphQL error.
   build(_args: unknown, context: GqlContext) {
     return loadBuildSummary(mcpCtx(context), { readArtifact });
+  },
+
+  // #8422: reuse get_self_health's own loader unchanged (the same baked
+  // /metagraph/self-health.json read REST and MCP already use). A cold/absent
+  // artifact makes the loader throw, surfaced as a normal GraphQL error --
+  // matching build/changelog/contracts.
+  self_health(_args: unknown, context: GqlContext) {
+    return loadSelfHealth(mcpCtx(context), { readArtifact });
   },
 
   // #7170: reuse get_health_history's own loader unchanged. It takes deps as
@@ -6244,19 +6281,25 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
     // fallback handleChainActivity uses; the tier owns the per-day extrinsic/block
     // rollup (no logic duplicated here), and a cold store yields a schema-stable
     // empty series.
-    const data =
+    // #8421: mirror handleChainActivity's #8242 fix -- the UTC-day buckets span
+    // one extra calendar day, so trim the resolved result to the requested
+    // window before returning, keeping day_count consistent with the label.
+    const data = trimChainActivityToWindow(
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/activity", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) as Row | null) ?? buildChainActivity({ window: label });
+      )) as ReturnType<typeof buildChainActivity> | null) ??
+        buildChainActivity({ window: label }),
+      days,
+    );
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
@@ -6361,7 +6404,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     if (callModule != null && callModule.length > 100) {
       throw new GraphQLError("call_module must be at most 100 characters.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6375,12 +6418,17 @@ const rootValue = {
     // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainFees fallback
     // handleChainFees uses; the tier owns the daily/median/payer aggregation (no
     // logic duplicated here), and a cold store yields a schema-stable empty series.
-    const data =
+    // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
+    // the requested window so a 7d request never reports 8 days.
+    const data = trimChainFeesToWindow(
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/fees", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) as Row | null) ?? buildChainFees({ window: label });
+      )) as ReturnType<typeof buildChainFees> | null) ??
+        buildChainFees({ window: label }),
+      days,
+    );
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,

@@ -4716,7 +4716,14 @@ export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProf
     native_name: pickStr(subnet.native_name, profile.native_name),
     icon_url: pickStr(profile.icon_url as string, subnet.logo_url as string),
     symbol: pickStr(subnet.symbol),
-    description: pickStr(subnet.notes, profile.notes),
+    // #8363: copy-paste bug -- description was reading subnet.notes (curator
+    // review-provenance text, e.g. "Reviewed overlay for SN8 Vanta using...")
+    // instead of the subnet's own description field, so the masthead's lede
+    // paragraph showed internal curation notes as if they were the product
+    // description. derived_description (scripts/build-artifacts.ts) is the
+    // existing, intentionally-separate notes-derived fallback for the ~28
+    // subnets with no real description -- a short blurb, not raw provenance.
+    description: pickStr(subnet.description, profile.derived_description),
     notes: pickStr(subnet.notes, profile.notes),
     subnet_type: pickStr(subnet.subnet_type, profile.subnet_type),
     categories: stringArrayFromUnknown(profile.categories ?? subnet.categories),
@@ -7564,6 +7571,21 @@ export const chainEventsInfiniteQuery = (baseParams: QueryParams = {}, initialCu
 
 /** Alias for {@link chainEventsInfiniteQuery} — raw /api/v1/chain-events paginator. */
 export const chainEventsQuery = chainEventsInfiniteQuery;
+
+/**
+ * A single bounded, newest-first page of /api/v1/chain-events with no
+ * pagination machinery — for small previews (metagraphed#8359) that just want
+ * "the latest N", optionally pallet/method-filtered (e.g. Balances.Transfer).
+ */
+export const recentChainEventsQuery = (baseParams: QueryParams = {}) =>
+  queryOptions({
+    queryKey: k("chain-events-recent", baseParams),
+    queryFn: async ({ signal }) => {
+      const page = await fetchChainEventsInfinitePage(baseParams, "", signal);
+      return page.data;
+    },
+    staleTime: STALE_SHORT,
+  });
 
 /** Server-driven cursor-paginated subnets. */
 /** Server-driven cursor-paginated surfaces. */

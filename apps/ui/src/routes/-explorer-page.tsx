@@ -1,7 +1,7 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { useState } from "react";
-import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
+import { Activity, Boxes, ChevronDown, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import {
@@ -18,7 +18,7 @@ import {
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
-import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
+import { ChainEventCard } from "@/components/metagraphed/chain-events-feed";
 import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import {
@@ -52,11 +52,14 @@ import {
   chainPerformanceQuery,
   chainYieldQuery,
   economicsTrendsQuery,
+  recentChainEventsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
+import { BlockCard } from "./-blocks-index-page";
 import type {
   ChainCalls,
   ChainEventsStats,
@@ -76,8 +79,23 @@ import type {
 // live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
 // ChainHeadTip on the home page: plain useQuery so a cold/failed fetch silently
 // renders null and never disrupts the primary hero or the daily-aggregate KPIs.
+//
+// Hydration-gated like nav-status-dot.tsx's health dot (#8241): `enabled`
+// keeps the query from fetching until the client has hydrated, AND the
+// render itself checks `hydrated` before ever reading `data` -- registry-
+// ticker.tsx queries this exact same key, so `enabled: false` alone isn't
+// enough (it only blocks a new fetch, not a read of whatever's already in
+// the shared cache from that other consumer). Both together guarantee SSR
+// and the first client paint render `null`, and the live link only ever
+// appears in a client-only render after that -- never diffed against server
+// HTML. Without this, a block landing between the SSR snapshot and the
+// client's own fetch resolving (blocks land ~every 12s) made the two sides
+// render a different `head.block_number`, or one side `null` and the other
+// the Link, throwing React's hydration-mismatch error (#418).
 function ChainHeadTip() {
-  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const hydrated = useHydrated();
+  const { data } = useQuery({ ...blocksQuery({ limit: 1 }), enabled: hydrated });
+  if (!hydrated) return null;
   const head = data?.data?.[0];
   if (!head || head.block_number == null) return null;
   return (
@@ -92,6 +110,118 @@ function ChainHeadTip() {
   );
 }
 
+/** Section head for a bounded preview — title plus a link to the full feed. */
+function PreviewHeader({
+  title,
+  to,
+  search,
+}: {
+  title: string;
+  to: "/chain/blocks" | "/chain/events";
+  search?: Record<string, string>;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h3 className="mg-type-label uppercase text-ink-muted">{title}</h3>
+      <Link
+        to={to}
+        search={search as never}
+        className="mg-type-data text-ink-muted transition-colors hover:text-accent hover:underline"
+      >
+        View all →
+      </Link>
+    </div>
+  );
+}
+
+const PREVIEW_ROW_COUNT = 8;
+const PREVIEW_TRANSFER_COUNT = 5;
+
+/**
+ * Latest 8 blocks, newest first — a small taste of /chain/blocks reusing its
+ * own card row (metagraphed#8359), not a second block-production feed.
+ */
+function BlocksPreview() {
+  const { data } = useQuery(blocksQuery({ limit: PREVIEW_ROW_COUNT }));
+  const rows = data?.data ?? [];
+  return (
+    <Panel className="min-w-0">
+      <PreviewHeader title="Latest blocks" to="/chain/blocks" />
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map((b) => (
+            <BlockCard key={b.block_hash || b.block_number} block={b} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No blocks indexed yet." />
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Latest 8 chain events, newest first — replaces the old inline
+ * ChainEventsFeedSection (a full, unbounded copy of /chain/events, confirmed
+ * as genuine duplication during metagraphed#8359's investigation) with a
+ * bounded taste that reuses the feed's own ChainEventCard row.
+ */
+function EventsPreview() {
+  const { data } = useQuery(recentChainEventsQuery({ limit: PREVIEW_ROW_COUNT }));
+  const rows = data ?? [];
+  return (
+    <Panel className="min-w-0">
+      <PreviewHeader title="Latest events" to="/chain/events" />
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map((event) => (
+            <ChainEventCard key={`${event.block_number}-${event.event_index}`} event={event} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No events indexed yet." />
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Latest 5 native-TAO transfers, newest first. There is no standalone
+ * "transfers" tab on the hub (metagraphed#8359's investigation found the
+ * issue's premise wrong on this point — transfers aren't duplicated
+ * anywhere) — a transfer is just a Balances.Transfer chain event, so this
+ * reuses the same events endpoint pre-filtered, and "View all" deep-links
+ * into /chain/events with that filter already applied.
+ */
+function TransfersPreview() {
+  const { data } = useQuery(
+    recentChainEventsQuery({
+      limit: PREVIEW_TRANSFER_COUNT,
+      pallet: "Balances",
+      method: "Transfer",
+    }),
+  );
+  const rows = data ?? [];
+  return (
+    <Panel className="min-w-0">
+      <PreviewHeader
+        title="Latest transfers"
+        to="/chain/events"
+        search={{ pallet: "Balances", method: "Transfer" }}
+      />
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map((event) => (
+            <ChainEventCard key={`${event.block_number}-${event.event_index}`} event={event} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No transfers in this window yet." />
+      )}
+    </Panel>
+  );
+}
+
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 }
@@ -101,6 +231,15 @@ function fmtTaoSigned(v: number): string {
 }
 
 export function ExplorerPage() {
+  // #8359: Overview's default view is KPI band + one activity viz + 3 bounded
+  // previews (blocks/events/transfers) — everything else (the per-window
+  // analytics tabs, network decentralization, emission yield, and the full
+  // "what changed" feed) is real, non-duplicated content, just not part of
+  // that default read. It stays reachable behind one disclosure toggle
+  // shared across the whole page, rather than being deleted — see
+  // ExplorerDashboard's own doc comment for why the issue's "already
+  // duplicates the hub's sibling tabs" premise only held for chain events.
+  const [showAnalytics, setShowAnalytics] = useState(false);
   return (
     <>
       <ChainTabActions>
@@ -110,65 +249,74 @@ export function ExplorerPage() {
         </ActionBar>
       </ChainTabActions>
       <AsyncPanel context="explorer dashboard" fallback={<Skeleton className="h-[40rem] w-full" />}>
-        <ExplorerDashboard />
+        <ExplorerDashboard
+          showAnalytics={showAnalytics}
+          onShowAnalytics={() => setShowAnalytics(true)}
+        />
       </AsyncPanel>
 
-      {/* #8253: chain-scope decentralization + emission-yield move here from
-          /status, where they were off-topic — /status answers "is it up", not
-          "how concentrated is the network". Both are chain-wide metagraph
-          rollups, which is exactly what this Overview is. */}
-      <section className="mt-10">
-        <div className="mb-4">
-          <h2 className="mg-type-label uppercase text-ink-muted">Network decentralization</h2>
-          <p className="mt-1 mg-type-data text-ink-muted">
-            Chain-wide stake &amp; emission concentration (Gini, HHI, Nakamoto coefficient, entropy,
-            top-1% share) and the trust/consensus score spread, computed across every subnet from
-            the metagraph snapshot.
-          </p>
-        </div>
-        <AsyncPanel
-          context="network decentralization"
-          fallback={<NetworkDecentralizationSkeleton />}
-          retryQueryKeys={[chainConcentrationQuery().queryKey, chainPerformanceQuery().queryKey]}
-        >
-          <NetworkDecentralizationPanel />
-        </AsyncPanel>
-      </section>
+      {showAnalytics && (
+        <>
+          {/* #8253: chain-scope decentralization + emission-yield move here from
+              /status, where they were off-topic — /status answers "is it up", not
+              "how concentrated is the network". Both are chain-wide metagraph
+              rollups, which is exactly what this Overview is. */}
+          <section className="mt-10">
+            <div className="mb-4">
+              <h2 className="mg-type-label uppercase text-ink-muted">Network decentralization</h2>
+              <p className="mt-1 mg-type-data text-ink-muted">
+                Chain-wide stake &amp; emission concentration (Gini, HHI, Nakamoto coefficient,
+                entropy, top-1% share) and the trust/consensus score spread, computed across every
+                subnet from the metagraph snapshot.
+              </p>
+            </div>
+            <AsyncPanel
+              context="network decentralization"
+              fallback={<NetworkDecentralizationSkeleton />}
+              retryQueryKeys={[
+                chainConcentrationQuery().queryKey,
+                chainPerformanceQuery().queryKey,
+              ]}
+            >
+              <NetworkDecentralizationPanel />
+            </AsyncPanel>
+          </section>
 
-      <section className="mt-10">
-        <div className="mb-4">
-          <h2 className="mg-type-label uppercase text-ink-muted">Network emission yield</h2>
-          <p className="mt-1 mg-type-data text-ink-muted">
-            Chain-wide emission yield — total emission over total stake, split by validator/miner
-            role — plus the per-neuron return distribution, computed across every neuron from the
-            metagraph snapshot.
-          </p>
-        </div>
-        <AsyncPanel
-          context="network emission yield"
-          fallback={<EmissionYieldSkeleton />}
-          retryQueryKeys={[chainYieldQuery().queryKey]}
-        >
-          <EmissionYieldPanel />
-        </AsyncPanel>
-      </section>
+          <section className="mt-10">
+            <div className="mb-4">
+              <h2 className="mg-type-label uppercase text-ink-muted">Network emission yield</h2>
+              <p className="mt-1 mg-type-data text-ink-muted">
+                Chain-wide emission yield — total emission over total stake, split by
+                validator/miner role — plus the per-neuron return distribution, computed across
+                every neuron from the metagraph snapshot.
+              </p>
+            </div>
+            <AsyncPanel
+              context="network emission yield"
+              fallback={<EmissionYieldSkeleton />}
+              retryQueryKeys={[chainYieldQuery().queryKey]}
+            >
+              <EmissionYieldPanel />
+            </AsyncPanel>
+          </section>
 
-      <ChainEventsFeedSection />
-      {/* #8257: the full "what changed" view. The homepage carries a 7-item
-          compact version; this one is unbounded within the range and adds the
-          per-kind filter chips. Chain Overview rather than /subnets Rankings:
-          runtime upgrades and incidents aren't subnet rankings. */}
-      <section>
-        <SectionHeading
-          title="What changed"
-          intro="Registry updates, incidents, on-chain identity edits and runtime upgrades — grouped by day, newest first."
-        />
-        <TimeRangeProvider>
-          <AsyncPanel context="what changed" fallback={<Skeleton className="h-64 w-full" />}>
-            <WhatChangedFeed showFilters />
-          </AsyncPanel>
-        </TimeRangeProvider>
-      </section>
+          {/* #8257: the full "what changed" view. The homepage carries a 7-item
+              compact version; this one is unbounded within the range and adds the
+              per-kind filter chips. Chain Overview rather than /subnets Rankings:
+              runtime upgrades and incidents aren't subnet rankings. */}
+          <section className="mt-10">
+            <SectionHeading
+              title="What changed"
+              intro="Registry updates, incidents, on-chain identity edits and runtime upgrades — grouped by day, newest first."
+            />
+            <TimeRangeProvider>
+              <AsyncPanel context="what changed" fallback={<Skeleton className="h-64 w-full" />}>
+                <WhatChangedFeed showFilters />
+              </AsyncPanel>
+            </TimeRangeProvider>
+          </section>
+        </>
+      )}
 
       <ApiSourceFooter
         paths={[
@@ -1315,7 +1463,27 @@ const EXPLORER_TABS: { id: ExplorerTab; label: string }[] = [
   { id: "governance", label: "Governance" },
 ];
 
-function ExplorerDashboard() {
+/**
+ * metagraphed#8359 correction: the issue that spawned this trim assumed the
+ * ~20 analytics panels below (call mix, stake flow, leaderboards, ...) were
+ * duplicates of the hub's Blocks/Extrinsics/Events/Governance/Runtime tabs.
+ * Investigation found that's only true for one of them — the old
+ * ChainEventsFeedSection, a full unbounded copy of /chain/events (now
+ * replaced by EventsPreview below). Everything else here is unique,
+ * already-tabbed content (see EXPLORER_TABS) with no sibling-tab equivalent;
+ * deleting it would be a real regression, not de-duplication. So instead of
+ * removing it, `showAnalytics` (owned by the caller, ExplorerPage, so the
+ * same toggle also gates the network-decentralization/emission-yield/
+ * what-changed sections below this component) keeps it out of the default
+ * mobile read without taking it away.
+ */
+function ExplorerDashboard({
+  showAnalytics,
+  onShowAnalytics,
+}: {
+  showAnalytics: boolean;
+  onShowAnalytics: () => void;
+}) {
   const search = useSearch({ from: "/chain/" });
   const navigate = useNavigate({ from: "/chain/" });
   const win = search.window;
@@ -1474,416 +1642,446 @@ function ExplorerDashboard() {
         />
       </div>
 
-      <div
-        className="flex flex-wrap gap-2 border-b border-border pb-3"
-        role="tablist"
-        aria-label="Explorer sections"
-      >
-        {EXPLORER_TABS.map((t, i) => (
-          <button
-            key={t.id}
-            ref={explorerTabRef(i)}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            tabIndex={rovingTabIndex(i, tabActiveIndex)}
-            onClick={() => setTab(t.id)}
-            onKeyDown={explorerTabKeyDown(i)}
-            className={
-              tab === t.id
-                ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 mg-type-label uppercase text-accent-text"
-                : "rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-label uppercase text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-            }
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* one activity viz, always visible (#8359) */}
+      <Panel className="min-w-0">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+          <h2 className="mg-type-label uppercase text-ink-muted">Daily activity</h2>
+          <span className="mg-type-data text-ink-muted">{activity.day_count} days</span>
+        </div>
+        {chrono.length > 0 ? (
+          <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+            <MiniSeries
+              label="Extrinsics"
+              days={chrono.map((d) => d.day)}
+              values={chrono.map((d) => d.extrinsic_count)}
+              color="var(--accent)"
+              formatValue={(v) => formatNumber(v)}
+            />
+            <MiniSeries
+              label="Events"
+              days={chrono.map((d) => d.day)}
+              values={chrono.map((d) => d.event_count)}
+              color="var(--chart-3)"
+              formatValue={(v) => formatNumber(v)}
+            />
+            <MiniSeries
+              label="Unique signers"
+              days={chrono.map((d) => d.day)}
+              values={chrono.map((d) => d.unique_signers)}
+              color="var(--chart-1)"
+              formatValue={(v) => formatNumber(v)}
+            />
+          </div>
+        ) : (
+          <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
+        )}
+      </Panel>
+
+      {/* 3 bounded previews, always visible (#8359) */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <BlocksPreview />
+        <EventsPreview />
+        <TransfersPreview />
       </div>
 
-      {tab === "activity" && (
-        <>
-          {/* daily activity series */}
-          <Panel className="min-w-0">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="mg-type-label uppercase text-ink-muted">Daily activity</h2>
-              <span className="mg-type-data text-ink-muted">{activity.day_count} days</span>
-            </div>
-            {chrono.length > 0 ? (
-              <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
-                <MiniSeries
-                  label="Extrinsics"
-                  days={chrono.map((d) => d.day)}
-                  values={chrono.map((d) => d.extrinsic_count)}
-                  color="var(--accent)"
-                  formatValue={(v) => formatNumber(v)}
-                />
-                <MiniSeries
-                  label="Events"
-                  days={chrono.map((d) => d.day)}
-                  values={chrono.map((d) => d.event_count)}
-                  color="var(--chart-3)"
-                  formatValue={(v) => formatNumber(v)}
-                />
-                <MiniSeries
-                  label="Unique signers"
-                  days={chrono.map((d) => d.day)}
-                  values={chrono.map((d) => d.unique_signers)}
-                  color="var(--chart-1)"
-                  formatValue={(v) => formatNumber(v)}
-                />
-              </div>
-            ) : (
-              <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
-            )}
-          </Panel>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* call mix */}
-            <CallMixSection calls={calls} />
-
-            {/* top signers */}
-            <Panel className="min-w-0">
-              <h2 className="mb-4 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
-              {signers.signers.length > 0 ? (
-                <ExplorerLeaderboardTableShell
-                  leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}
-                >
-                  <thead>
-                    <tr>
-                      <th className={TH}>Account</th>
-                      <th className={`${TH} text-right`}>Txs</th>
-                      {/* #8292: these read 0.0000 τ for every row in every
-                          window observed — subtensor's fee market is
-                          effectively idle. A column of zeroes is not data, so
-                          it renders only when some row actually has a value. */}
-                      {anySignerFees ? <th className={`${TH} text-right`}>Fees</th> : null}
-                      {anySignerTips ? <th className={`${TH} text-right`}>Tips</th> : null}
-                      <th className={`${TH} text-right`}>Last block</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {signers.signers.slice(0, 12).map((s) => (
-                      <tr key={s.signer} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 mg-type-data">
-                          <div className="flex items-center gap-1.5">
-                            <Link
-                              to="/accounts/$ss58"
-                              params={{ ss58: s.signer }}
-                              className="text-ink-strong hover:text-accent hover:underline"
-                              title={s.signer}
-                            >
-                              {shortHash(s.signer) ?? s.signer}
-                            </Link>
-                            <CopyButton value={s.signer} label="signer" compact />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
-                          {formatNumber(s.tx_count)}
-                        </td>
-                        {anySignerFees ? (
-                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                            {formatTao(s.total_fee_tao)}
-                          </td>
-                        ) : null}
-                        {anySignerTips ? (
-                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                            {formatTao(s.total_tip_tao)}
-                          </td>
-                        ) : null}
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {s.last_tx_block != null ? (
-                            <Link
-                              to="/blocks/$ref"
-                              params={{ ref: String(s.last_tx_block) }}
-                              className="hover:text-accent hover:underline"
-                            >
-                              #{formatNumber(s.last_tx_block)}
-                            </Link>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </ExplorerLeaderboardTableShell>
-              ) : (
-                <EmptyState title="No signers in this window yet." />
-              )}
-            </Panel>
-          </div>
-          <NetworkOperationsSection serving={serving} prometheus={prometheus} />
-          {/* #8292: showed "0 axon teardowns across 0 removers" in every
-              window observed. Hidden until the tier reports something, rather
-              than rendering an empty framed board. */}
-          {axonChurn.network?.removals ? <AxonChurnSection churn={axonChurn} /> : null}
-          <PalletEventMixSection stats={eventMix} />
-        </>
-      )}
-
-      {tab === "fees" && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Panel className="min-w-0">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="mg-type-label uppercase text-ink-muted">Daily fees &amp; tips</h2>
-              <span className="mg-type-data text-ink-muted">{fees.day_count} days</span>
-            </div>
-            {feeChrono.length > 0 ? (
-              <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-                <MiniSeries
-                  label="Total fees"
-                  days={feeChrono.map((d) => d.day)}
-                  values={feeChrono.map((d) => d.total_fee_tao)}
-                  color="var(--accent)"
-                  formatValue={formatTao}
-                />
-                <MiniSeries
-                  label="Avg fee"
-                  days={feeChrono.map((d) => d.day)}
-                  values={feeChrono.map((d) => d.avg_fee_tao ?? 0)}
-                  color="var(--chart-3)"
-                  formatValue={formatTao}
-                />
-                <MiniSeries
-                  label="Total tips"
-                  days={feeChrono.map((d) => d.day)}
-                  values={feeChrono.map((d) => d.total_tip_tao)}
-                  color="var(--chart-6)"
-                  formatValue={formatTao}
-                />
-                <MiniSeries
-                  label="Avg tip"
-                  days={feeChrono.map((d) => d.day)}
-                  values={feeChrono.map((d) => d.avg_tip_tao ?? 0)}
-                  color="var(--chart-1)"
-                  formatValue={formatTao}
-                />
-              </div>
-            ) : (
-              <EmptyState title="No fees in this window yet." />
-            )}
-          </Panel>
-          <Panel className="min-w-0">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="mg-type-label uppercase text-ink-muted">Top fee payers</h2>
-              <span className="mg-type-data text-ink-muted">
-                {fees.top_fee_payers.length} accounts
-              </span>
-            </div>
-            {fees.top_fee_payers.length > 0 ? (
-              // Table alone — the former BarMini restated the same ranked fee
-              // list with no distinct cut of the data (#5313).
-              <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
-                <thead>
-                  <tr>
-                    <th className={TH}>Account</th>
-                    <th className={`${TH} text-right`}>Fees</th>
-                    <th className={`${TH} text-right`}>Tips</th>
-                    <th className={`${TH} text-right`}>Txs</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {fees.top_fee_payers.map((p) => (
-                    <tr key={p.signer} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 mg-type-data">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: p.signer }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                            title={p.signer}
-                          >
-                            {shortHash(p.signer) ?? p.signer}
-                          </Link>
-                          <CopyButton value={p.signer} label="signer" compact />
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
-                        {formatTao(p.total_fee_tao)}
-                      </td>
-                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                        {formatTao(p.total_tip_tao)}
-                      </td>
-                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                        {formatNumber(p.extrinsic_count)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </ExplorerLeaderboardTableShell>
-            ) : (
-              <EmptyState title="No fee payers in this window yet." />
-            )}
-          </Panel>
+      {!showAnalytics && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onShowAnalytics}
+            aria-expanded={false}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+          >
+            Show more chain analytics
+            <ChevronDown className="size-4" />
+          </button>
         </div>
       )}
 
-      {tab === "stake" && (
+      {showAnalytics && (
         <>
-          {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
-          different data source from the chain-indexer sections above/below */}
-          <EconomicsTrendsSection trends={trends} />
-          {/* network-wide native-TAO transfer-volume leaderboard (#3475) */}
-          <TransfersLeaderboardSection transfers={transfers} />
-          <TransferPairsSection win={win} />
-          <StakeFlowSection flow={stakeFlow} />
-          <StakeMovesSection moves={stakeMoves} />
-          <NetworkIdleStakeSection idleStake={idleStake} />
-          {/* stake-transfer leaderboard */}
-          <Panel className="min-w-0">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <div>
-                <h2 className="mg-type-label uppercase text-ink-muted">
-                  Stake-transfer leaderboard
-                </h2>
-                <p className="mt-1 mg-type-data text-ink-muted">
-                  {formatNumber(stakeTransfers.network.transfers)} transfers across{" "}
-                  {formatNumber(stakeTransfers.network.distinct_senders)} senders network-wide
-                </p>
-              </div>
-              <span className="mg-type-data text-ink-muted">
-                {stakeTransfers.subnets.length} subnets
-              </span>
-            </div>
-            {stakeTransfers.subnets.length > 0 ? (
-              <>
-                {/* < md: a squeezed 4-column table either clips its last column or
-                requires an undiscoverable horizontal scroll, so narrow
-                viewports get a stacked card per subnet instead (mirrors the
-                cards/table split ListShell uses for paginated lists). */}
-                <div className="md:hidden space-y-2">
-                  {stakeTransfers.subnets.map((s) => (
-                    <Panel as="div" dense key={s.netuid}>
-                      <div className="flex items-center justify-between gap-2">
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: s.netuid }}
-                          className="font-mono mg-type-caption font-medium text-ink-strong hover:text-accent hover:underline"
-                        >
-                          SN{s.netuid}
-                        </Link>
-                        <span className="mg-type-data tabular-nums text-ink-muted">
-                          {s.transfers_per_sender != null
-                            ? `${s.transfers_per_sender.toFixed(2)} / sender`
-                            : "—"}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between mg-type-data tabular-nums text-ink-muted">
-                        <span>{formatNumber(s.transfers)} transfers</span>
-                        <span>{formatNumber(s.distinct_senders)} senders</span>
-                      </div>
-                    </Panel>
-                  ))}
-                </div>
-                <ExplorerLeaderboardTableShell
-                  leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
-                  visibility="desktop-only"
-                >
-                  <thead>
-                    <tr>
-                      <th className={TH}>Subnet</th>
-                      <th className={`${TH} text-right`}>Transfers</th>
-                      <th className={`${TH} text-right`}>Distinct senders</th>
-                      <th className={`${TH} text-right`}>Transfers per sender</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {stakeTransfers.subnets.map((s) => (
-                      <tr key={s.netuid} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 mg-type-data">
-                          <Link
-                            to="/subnets/$netuid"
-                            params={{ netuid: s.netuid }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                          >
-                            SN{s.netuid}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
-                          {formatNumber(s.transfers)}
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {formatNumber(s.distinct_senders)}
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </ExplorerLeaderboardTableShell>
-              </>
-            ) : (
-              <EmptyState title="No stake transfers in this window yet." />
-            )}
-          </Panel>
-        </>
-      )}
+          <div
+            className="flex flex-wrap gap-2 border-b border-border pb-3"
+            role="tablist"
+            aria-label="Explorer sections"
+          >
+            {EXPLORER_TABS.map((t, i) => (
+              <button
+                key={t.id}
+                ref={explorerTabRef(i)}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                tabIndex={rovingTabIndex(i, tabActiveIndex)}
+                onClick={() => setTab(t.id)}
+                onKeyDown={explorerTabKeyDown(i)}
+                className={
+                  tab === t.id
+                    ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 mg-type-label uppercase text-accent-text"
+                    : "rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-label uppercase text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                }
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-      {tab === "governance" && (
-        <>
-          <Panel className="min-w-0 lg:col-span-2">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="mg-type-label uppercase text-ink-muted">Network weight-setters</h2>
-              <span className="mg-type-data text-ink-muted">
-                {formatNumber(weightSetters.distinct_setters)} validators
-              </span>
-            </div>
-            {weightSetters.setters.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th className={TH}>Validator</th>
-                      <th className={`${TH} text-right`}>WeightsSet</th>
-                      <th className={`${TH} text-right`}>Share</th>
-                      <th className={`${TH} text-right`}>Last set</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {weightSetters.setters.map((setter) => (
-                      <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 mg-type-data">
-                          {setter.hotkey ? (
+          {tab === "activity" && (
+            <>
+              {/* call mix + most active accounts */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <CallMixSection calls={calls} />
+
+                {/* top signers */}
+                <Panel className="min-w-0">
+                  <h2 className="mb-4 mg-type-label uppercase text-ink-muted">
+                    Most active accounts
+                  </h2>
+                  {signers.signers.length > 0 ? (
+                    <ExplorerLeaderboardTableShell
+                      leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}
+                    >
+                      <thead>
+                        <tr>
+                          <th className={TH}>Account</th>
+                          <th className={`${TH} text-right`}>Txs</th>
+                          {/* #8292: these read 0.0000 τ for every row in every
+                          window observed — subtensor's fee market is
+                          effectively idle. A column of zeroes is not data, so
+                          it renders only when some row actually has a value. */}
+                          {anySignerFees ? <th className={`${TH} text-right`}>Fees</th> : null}
+                          {anySignerTips ? <th className={`${TH} text-right`}>Tips</th> : null}
+                          <th className={`${TH} text-right`}>Last block</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {signers.signers.slice(0, 12).map((s) => (
+                          <tr key={s.signer} className="hover:bg-surface/40">
+                            <td className="px-4 py-2 mg-type-data">
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  to="/accounts/$ss58"
+                                  params={{ ss58: s.signer }}
+                                  className="text-ink-strong hover:text-accent hover:underline"
+                                  title={s.signer}
+                                >
+                                  {shortHash(s.signer) ?? s.signer}
+                                </Link>
+                                <CopyButton value={s.signer} label="signer" compact />
+                              </div>
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
+                              {formatNumber(s.tx_count)}
+                            </td>
+                            {anySignerFees ? (
+                              <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                                {formatTao(s.total_fee_tao)}
+                              </td>
+                            ) : null}
+                            {anySignerTips ? (
+                              <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                                {formatTao(s.total_tip_tao)}
+                              </td>
+                            ) : null}
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                              {s.last_tx_block != null ? (
+                                <Link
+                                  to="/blocks/$ref"
+                                  params={{ ref: String(s.last_tx_block) }}
+                                  className="hover:text-accent hover:underline"
+                                >
+                                  #{formatNumber(s.last_tx_block)}
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </ExplorerLeaderboardTableShell>
+                  ) : (
+                    <EmptyState title="No signers in this window yet." />
+                  )}
+                </Panel>
+              </div>
+              <NetworkOperationsSection serving={serving} prometheus={prometheus} />
+              {/* #8292: showed "0 axon teardowns across 0 removers" in every
+              window observed. Hidden until the tier reports something, rather
+              than rendering an empty framed board. */}
+              {axonChurn.network?.removals ? <AxonChurnSection churn={axonChurn} /> : null}
+              <PalletEventMixSection stats={eventMix} />
+            </>
+          )}
+
+          {tab === "fees" && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Panel className="min-w-0">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+                  <h2 className="mg-type-label uppercase text-ink-muted">Daily fees &amp; tips</h2>
+                  <span className="mg-type-data text-ink-muted">{fees.day_count} days</span>
+                </div>
+                {feeChrono.length > 0 ? (
+                  <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+                    <MiniSeries
+                      label="Total fees"
+                      days={feeChrono.map((d) => d.day)}
+                      values={feeChrono.map((d) => d.total_fee_tao)}
+                      color="var(--accent)"
+                      formatValue={formatTao}
+                    />
+                    <MiniSeries
+                      label="Avg fee"
+                      days={feeChrono.map((d) => d.day)}
+                      values={feeChrono.map((d) => d.avg_fee_tao ?? 0)}
+                      color="var(--chart-3)"
+                      formatValue={formatTao}
+                    />
+                    <MiniSeries
+                      label="Total tips"
+                      days={feeChrono.map((d) => d.day)}
+                      values={feeChrono.map((d) => d.total_tip_tao)}
+                      color="var(--chart-6)"
+                      formatValue={formatTao}
+                    />
+                    <MiniSeries
+                      label="Avg tip"
+                      days={feeChrono.map((d) => d.day)}
+                      values={feeChrono.map((d) => d.avg_tip_tao ?? 0)}
+                      color="var(--chart-1)"
+                      formatValue={formatTao}
+                    />
+                  </div>
+                ) : (
+                  <EmptyState title="No fees in this window yet." />
+                )}
+              </Panel>
+              <Panel className="min-w-0">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+                  <h2 className="mg-type-label uppercase text-ink-muted">Top fee payers</h2>
+                  <span className="mg-type-data text-ink-muted">
+                    {fees.top_fee_payers.length} accounts
+                  </span>
+                </div>
+                {fees.top_fee_payers.length > 0 ? (
+                  // Table alone — the former BarMini restated the same ranked fee
+                  // list with no distinct cut of the data (#5313).
+                  <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
+                    <thead>
+                      <tr>
+                        <th className={TH}>Account</th>
+                        <th className={`${TH} text-right`}>Fees</th>
+                        <th className={`${TH} text-right`}>Tips</th>
+                        <th className={`${TH} text-right`}>Txs</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {fees.top_fee_payers.map((p) => (
+                        <tr key={p.signer} className="hover:bg-surface/40">
+                          <td className="px-4 py-2 mg-type-data">
                             <div className="flex items-center gap-1.5">
                               <Link
                                 to="/accounts/$ss58"
-                                params={{ ss58: setter.hotkey }}
+                                params={{ ss58: p.signer }}
                                 className="text-ink-strong hover:text-accent hover:underline"
-                                title={setter.hotkey}
+                                title={p.signer}
                               >
-                                {shortHash(setter.hotkey) ?? setter.hotkey}
+                                {shortHash(p.signer) ?? p.signer}
                               </Link>
-                              <CopyButton value={setter.hotkey} label="hotkey" compact />
+                              <CopyButton value={p.signer} label="signer" compact />
                             </div>
-                          ) : (
-                            <span
-                              className="text-ink-muted"
-                              title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
+                          </td>
+                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
+                            {formatTao(p.total_fee_tao)}
+                          </td>
+                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                            {formatTao(p.total_tip_tao)}
+                          </td>
+                          <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                            {formatNumber(p.extrinsic_count)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </ExplorerLeaderboardTableShell>
+                ) : (
+                  <EmptyState title="No fee payers in this window yet." />
+                )}
+              </Panel>
+            </div>
+          )}
+
+          {tab === "stake" && (
+            <>
+              {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
+          different data source from the chain-indexer sections above/below */}
+              <EconomicsTrendsSection trends={trends} />
+              {/* network-wide native-TAO transfer-volume leaderboard (#3475) */}
+              <TransfersLeaderboardSection transfers={transfers} />
+              <TransferPairsSection win={win} />
+              <StakeFlowSection flow={stakeFlow} />
+              <StakeMovesSection moves={stakeMoves} />
+              <NetworkIdleStakeSection idleStake={idleStake} />
+              {/* stake-transfer leaderboard */}
+              <Panel className="min-w-0">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+                  <div>
+                    <h2 className="mg-type-label uppercase text-ink-muted">
+                      Stake-transfer leaderboard
+                    </h2>
+                    <p className="mt-1 mg-type-data text-ink-muted">
+                      {formatNumber(stakeTransfers.network.transfers)} transfers across{" "}
+                      {formatNumber(stakeTransfers.network.distinct_senders)} senders network-wide
+                    </p>
+                  </div>
+                  <span className="mg-type-data text-ink-muted">
+                    {stakeTransfers.subnets.length} subnets
+                  </span>
+                </div>
+                {stakeTransfers.subnets.length > 0 ? (
+                  <>
+                    {/* < md: a squeezed 4-column table either clips its last column or
+                requires an undiscoverable horizontal scroll, so narrow
+                viewports get a stacked card per subnet instead (mirrors the
+                cards/table split ListShell uses for paginated lists). */}
+                    <div className="md:hidden space-y-2">
+                      {stakeTransfers.subnets.map((s) => (
+                        <Panel as="div" dense key={s.netuid}>
+                          <div className="flex items-center justify-between gap-2">
+                            <Link
+                              to="/subnets/$netuid"
+                              params={{ netuid: s.netuid }}
+                              className="font-mono mg-type-caption font-medium text-ink-strong hover:text-accent hover:underline"
                             >
-                              {weightSetterLabel(setter)}
+                              SN{s.netuid}
+                            </Link>
+                            <span className="mg-type-data tabular-nums text-ink-muted">
+                              {s.transfers_per_sender != null
+                                ? `${s.transfers_per_sender.toFixed(2)} / sender`
+                                : "—"}
                             </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
-                          {formatNumber(setter.weight_sets)}
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {fmtShare(setter.share)}
-                        </td>
-                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
-                          {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState title="No weight-setters in this window yet." />
-            )}
-          </Panel>
-          <ValidatorTurnoverSection turnover={turnover} />
-          <NetworkRegistrationsSection registrations={registrations} />
+                          </div>
+                          <div className="mt-2 flex items-center justify-between mg-type-data tabular-nums text-ink-muted">
+                            <span>{formatNumber(s.transfers)} transfers</span>
+                            <span>{formatNumber(s.distinct_senders)} senders</span>
+                          </div>
+                        </Panel>
+                      ))}
+                    </div>
+                    <ExplorerLeaderboardTableShell
+                      leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
+                      visibility="desktop-only"
+                    >
+                      <thead>
+                        <tr>
+                          <th className={TH}>Subnet</th>
+                          <th className={`${TH} text-right`}>Transfers</th>
+                          <th className={`${TH} text-right`}>Distinct senders</th>
+                          <th className={`${TH} text-right`}>Transfers per sender</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {stakeTransfers.subnets.map((s) => (
+                          <tr key={s.netuid} className="hover:bg-surface/40">
+                            <td className="px-4 py-2 mg-type-data">
+                              <Link
+                                to="/subnets/$netuid"
+                                params={{ netuid: s.netuid }}
+                                className="text-ink-strong hover:text-accent hover:underline"
+                              >
+                                SN{s.netuid}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
+                              {formatNumber(s.transfers)}
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                              {formatNumber(s.distinct_senders)}
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                              {s.transfers_per_sender != null
+                                ? s.transfers_per_sender.toFixed(2)
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </ExplorerLeaderboardTableShell>
+                  </>
+                ) : (
+                  <EmptyState title="No stake transfers in this window yet." />
+                )}
+              </Panel>
+            </>
+          )}
+
+          {tab === "governance" && (
+            <>
+              <Panel className="min-w-0 lg:col-span-2">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+                  <h2 className="mg-type-label uppercase text-ink-muted">Network weight-setters</h2>
+                  <span className="mg-type-data text-ink-muted">
+                    {formatNumber(weightSetters.distinct_setters)} validators
+                  </span>
+                </div>
+                {weightSetters.setters.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr>
+                          <th className={TH}>Validator</th>
+                          <th className={`${TH} text-right`}>WeightsSet</th>
+                          <th className={`${TH} text-right`}>Share</th>
+                          <th className={`${TH} text-right`}>Last set</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {weightSetters.setters.map((setter) => (
+                          <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
+                            <td className="px-4 py-2 mg-type-data">
+                              {setter.hotkey ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Link
+                                    to="/accounts/$ss58"
+                                    params={{ ss58: setter.hotkey }}
+                                    className="text-ink-strong hover:text-accent hover:underline"
+                                    title={setter.hotkey}
+                                  >
+                                    {shortHash(setter.hotkey) ?? setter.hotkey}
+                                  </Link>
+                                  <CopyButton value={setter.hotkey} label="hotkey" compact />
+                                </div>
+                              ) : (
+                                <span
+                                  className="text-ink-muted"
+                                  title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
+                                >
+                                  {weightSetterLabel(setter)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
+                              {formatNumber(setter.weight_sets)}
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                              {fmtShare(setter.share)}
+                            </td>
+                            <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
+                              {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState title="No weight-setters in this window yet." />
+                )}
+              </Panel>
+              <ValidatorTurnoverSection turnover={turnover} />
+              <NetworkRegistrationsSection registrations={registrations} />
+            </>
+          )}
         </>
       )}
     </div>
@@ -2010,35 +2208,6 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
       ) : (
         <EmptyState title="No transfer pairs in this window yet." />
       )}
-    </Panel>
-  );
-}
-
-function ChainEventsFeedSection() {
-  const search = useSearch({ from: "/chain/" });
-  const navigate = useNavigate({ from: "/chain/" });
-
-  const onFilter = (patch: { pallet?: string; method?: string }) =>
-    navigate({
-      search: (prev: Record<string, unknown>) =>
-        ({ ...prev, ...patch, events_cursor: "" }) as never,
-      resetScroll: false,
-    });
-
-  return (
-    <Panel className="mt-10">
-      <div className="mb-4">
-        <h2 className="mg-type-label uppercase text-ink-muted">Chain events</h2>
-        <p className="mt-1 mg-type-data text-ink-muted">
-          Browse individual pallet events newest-first — distinct from aggregate activity stats.
-        </p>
-      </div>
-      <ChainEventsFeed
-        pallet={search.pallet}
-        method={search.method}
-        cursor={search.events_cursor}
-        onFilter={onFilter}
-      />
     </Panel>
   );
 }
