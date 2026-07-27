@@ -86,6 +86,28 @@ describe("readme-catalog renderCatalog", () => {
       .find((line) => line.startsWith("**Focus areas:**"));
     assert.equal((focusLine!.match(/`focus-\d+`/g) || []).length, 12);
   });
+
+  test("excludes root (netuid 0) from the curated-subnets count and stats, but still lists it", () => {
+    const overlays = [
+      {
+        netuid: 0,
+        name: "root",
+        website_url: "https://bittensor.com",
+        categories: ["root", "system", "chain-rpc"],
+      },
+      { netuid: 1, name: "Apex", website_url: "https://apex.example" },
+      { netuid: 2, name: "Targon" },
+    ];
+    const rendered = renderCatalog(overlays);
+    const summaryLine = rendered
+      .split("\n")
+      .find((line) => line.startsWith("**"));
+    assert.equal(
+      summaryLine,
+      "**2 curated subnets** — 1 with a site, 0 with docs, 0 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`. Root (SN0) is base-layer chain infrastructure, listed separately below, not counted as a subnet.",
+    );
+    assert.ok(rendered.includes("`SN0`"), "root is still listed in the body");
+  });
 });
 
 describe("readme-catalog injectedReadme", () => {

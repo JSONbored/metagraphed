@@ -61,8 +61,13 @@ export function links(overlay: Row): string {
 }
 
 export function renderCatalog(overlays: Row[]): string {
+  // Root (netuid 0) is base-layer chain infrastructure, not an application
+  // subnet (see registry/subnets/root.json's own notes) — it's still listed
+  // below, but excluded from the "N curated subnets" count and its stats.
+  const subnetOverlays = overlays.filter((o) => o.netuid !== 0);
+
   const focusCounts = new Map<string, number>();
-  for (const overlay of overlays) {
+  for (const overlay of subnetOverlays) {
     for (const tag of focusTags(overlay)) {
       focusCounts.set(tag, (focusCounts.get(tag) || 0) + 1);
     }
@@ -73,9 +78,9 @@ export function renderCatalog(overlays: Row[]): string {
     .map(([tag, count]) => `\`${tag}\` ${count}`)
     .join(" · ");
 
-  const withSite = overlays.filter((o) => o.website_url).length;
-  const withDocs = overlays.filter((o) => o.docs_url).length;
-  const withRepo = overlays.filter((o) => o.source_repo).length;
+  const withSite = subnetOverlays.filter((o) => o.website_url).length;
+  const withDocs = subnetOverlays.filter((o) => o.docs_url).length;
+  const withRepo = subnetOverlays.filter((o) => o.source_repo).length;
 
   // A bulleted list (not a markdown table): Prettier pads table cells to the
   // widest column, which at ~90 rows of long URLs explodes the diff — a list
@@ -94,7 +99,7 @@ export function renderCatalog(overlays: Row[]): string {
   });
 
   return [
-    `**${overlays.length} curated subnets** — ${withSite} with a site, ${withDocs} with docs, ${withRepo} with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](${SITE})**; per-subnet JSON at \`${API}/api/v1/subnets/{netuid}\`.`,
+    `**${subnetOverlays.length} curated subnets** — ${withSite} with a site, ${withDocs} with docs, ${withRepo} with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](${SITE})**; per-subnet JSON at \`${API}/api/v1/subnets/{netuid}\`. Root (SN0) is base-layer chain infrastructure, listed separately below, not counted as a subnet.`,
     "",
     `**Focus areas:** ${topFocus}`,
     "",

@@ -121,7 +121,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**129 curated subnets** — 118 with a site, 47 with docs, 118 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**128 curated subnets** — 117 with a site, 46 with docs, 117 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`. Root (SN0) is base-layer chain infrastructure, listed separately below, not counted as a subnet.
 
 **Focus areas:** `compute` 9 · `data` 7 · `defi` 7 · `inference` 5 · `language-models` 4 · `prediction-markets` 4 · `computer-vision` 3 · `finance` 3 · `dashboard` 2 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2
 
