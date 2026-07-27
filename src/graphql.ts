@@ -437,6 +437,8 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
+  trimChainActivityToWindow,
+  trimChainFeesToWindow,
 } from "./chain-analytics.ts";
 import { buildChainPerformance } from "./chain-performance.ts";
 import { buildChainConcentration } from "./concentration.ts";
@@ -6244,19 +6246,25 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
     // fallback handleChainActivity uses; the tier owns the per-day extrinsic/block
     // rollup (no logic duplicated here), and a cold store yields a schema-stable
     // empty series.
-    const data =
+    // #8421: mirror handleChainActivity's #8242 fix -- the UTC-day buckets span
+    // one extra calendar day, so trim the resolved result to the requested
+    // window before returning, keeping day_count consistent with the label.
+    const data = trimChainActivityToWindow(
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/activity", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) as Row | null) ?? buildChainActivity({ window: label });
+      )) as ReturnType<typeof buildChainActivity> | null) ??
+        buildChainActivity({ window: label }),
+      days,
+    );
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
@@ -6361,7 +6369,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     if (callModule != null && callModule.length > 100) {
       throw new GraphQLError("call_module must be at most 100 characters.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6375,12 +6383,17 @@ const rootValue = {
     // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainFees fallback
     // handleChainFees uses; the tier owns the daily/median/payer aggregation (no
     // logic duplicated here), and a cold store yields a schema-stable empty series.
-    const data =
+    // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
+    // the requested window so a 7d request never reports 8 days.
+    const data = trimChainFeesToWindow(
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/fees", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) as Row | null) ?? buildChainFees({ window: label });
+      )) as ReturnType<typeof buildChainFees> | null) ??
+        buildChainFees({ window: label }),
+      days,
+    );
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,

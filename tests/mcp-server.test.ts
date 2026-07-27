@@ -4588,6 +4588,48 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
   });
 
+  test("trims an 8-day daily series to the requested 7d window (#8421)", async () => {
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 8,
+            daily: eightDays.map((day) => ({
+              day,
+              extrinsic_count: 1,
+              total_fee_tao: 1,
+              total_tip_tao: 0,
+            })),
+            top_fee_payers: [],
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_chain_fees",
+      { window: "7d", limit: 25 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.day_count, 7);
+    assert.equal(out.daily.length, 7);
+    assert.equal(out.daily[0].day, "2026-07-26");
+    assert.ok(!out.daily.some((x: Row) => x.day === "2026-07-19"));
+  });
+
   test("forwards call_module on the Postgres-tier request", async () => {
     let requestedUrl;
     const env = {
@@ -6272,6 +6314,50 @@ describe("MCP get_network_activity", () => {
     assert.equal(out.days[0].success_rate, 0.99);
     assert.equal(out.days[0].block_count, 7200);
     assert.equal(out.days[0].unique_signers, 40);
+  });
+
+  test("trims an 8-day Postgres-tier series to the requested 7d window (#8421)", async () => {
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 8,
+            days: eightDays.map((day) => ({
+              day,
+              block_count: 1,
+              extrinsic_count: 1,
+              event_count: 1,
+              successful_extrinsics: 1,
+              success_rate: 1,
+              unique_signers: 1,
+            })),
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_network_activity",
+      { window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.day_count, 7);
+    assert.equal(out.days.length, 7);
+    assert.equal(out.days[0].day, "2026-07-26");
+    assert.ok(!out.days.some((x: Row) => x.day === "2026-07-19"));
   });
 
   test("rejects an invalid window", async () => {

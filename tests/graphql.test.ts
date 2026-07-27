@@ -16164,6 +16164,49 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     assert.equal(d.days[0].unique_signers, 2);
   });
 
+  test("trims an 8-day series to the requested 7d window (#8421)", async () => {
+    // The UTC-day buckets span 8 calendar days for a 7d request; the resolver
+    // must trim to 7 so day_count can't contradict the window label.
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 8,
+            days: eightDays.map((day) => ({
+              day,
+              block_count: 1,
+              extrinsic_count: 1,
+              event_count: 1,
+              successful_extrinsics: 1,
+              success_rate: 1,
+              unique_signers: 1,
+            })),
+          }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(`(window: "7d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.day_count, 7);
+    assert.equal(d.days.length, 7);
+    assert.equal(d.days[0].day, "2026-07-26");
+    assert.ok(!d.days.some((x: Row) => x.day === "2026-07-19"));
+  });
+
   test("partial day rows degrade missing fields to their schema-stable defaults", async () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
@@ -16301,6 +16344,45 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.daily[0].median_tip_tao, 0.004);
     assert.equal(d.top_fee_payers[0].signer, "5Signer");
     assert.equal(d.top_fee_payers[0].extrinsic_count, 4);
+  });
+
+  test("trims an 8-day daily series to the requested 7d window (#8421)", async () => {
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 8,
+            daily: eightDays.map((day) => ({
+              day,
+              extrinsic_count: 1,
+              total_fee_tao: 1,
+              total_tip_tao: 0,
+            })),
+            top_fee_payers: [],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(`(window: "7d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.day_count, 7);
+    assert.equal(d.daily.length, 7);
+    assert.equal(d.daily[0].day, "2026-07-26");
+    assert.ok(!d.daily.some((x: Row) => x.day === "2026-07-19"));
   });
 
   test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {

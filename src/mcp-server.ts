@@ -956,6 +956,8 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
+  trimChainActivityToWindow,
+  trimChainFeesToWindow,
 } from "./chain-analytics.ts";
 import {
   loadCompareSubnets,
@@ -8048,7 +8050,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed!;
+      const { label, days } = parsed!;
       const limit = clampLimit(args?.limit, 25, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
@@ -8069,11 +8071,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         }),
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
-      if (postgres) return postgres;
-      return buildChainFees({
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
+      // the requested window so a 7d request never reports 8 days.
+      if (postgres)
+        return trimChainFeesToWindow(
+          postgres as unknown as ReturnType<typeof buildChainFees>,
+          days,
+        );
+      return trimChainFeesToWindow(
+        buildChainFees({
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        }),
+        days,
+      );
     },
   },
   {
@@ -8292,7 +8303,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed!;
+      const { label, days } = parsed!;
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
@@ -8302,11 +8313,21 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         mcpNeuronsTierRequest("/api/v1/chain/activity", { window: label }),
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
-      if (postgres) return postgres;
-      return buildChainActivity({
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      // #8421: mirror handleChainActivity's #8242 fix -- the UTC-day buckets
+      // span one extra calendar day, so trim to the requested window before
+      // returning so day_count can't contradict the window label.
+      if (postgres)
+        return trimChainActivityToWindow(
+          postgres as unknown as ReturnType<typeof buildChainActivity>,
+          days,
+        );
+      return trimChainActivityToWindow(
+        buildChainActivity({
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        }),
+        days,
+      );
     },
   },
   {
