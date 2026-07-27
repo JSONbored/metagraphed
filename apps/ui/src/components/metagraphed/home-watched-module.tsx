@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Star } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Panel, HealthPill } from "@jsonbored/ui-kit";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import {
@@ -9,9 +10,51 @@ import {
   subnetsQuery,
   validatorsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao, classNames } from "@/lib/metagraphed/format";
 import type { HealthState } from "@/lib/metagraphed/types";
 import { ALL_VALIDATORS_LIMIT } from "@/routes/-validators-index-page";
+import {
+  accountEventHotkeyIn,
+  accountEventNetuidIn,
+  useChainStream,
+} from "@/hooks/use-chain-stream";
+
+// #8446: brief, subtle background pulse on a watchlist row that just acted
+// on-chain -- CSS-transition-based (add the highlight class, then remove it
+// after this window so the row's own `transition-colors` fades it back out),
+// not a JS-animated loop, per the epic's own liveness guardrail.
+const FLASH_DURATION_MS = 1600;
+
+/** Shared row-flash state: which ids are currently highlighted. */
+function useRowFlash() {
+  const [flashed, setFlashed] = useState<ReadonlySet<string>>(new Set());
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const map = timers.current;
+    return () => {
+      for (const t of map.values()) clearTimeout(t);
+      map.clear();
+    };
+  }, []);
+  const flash = (id: string) => {
+    setFlashed((prev) => new Set(prev).add(id));
+    const existing = timers.current.get(id);
+    if (existing) clearTimeout(existing);
+    timers.current.set(
+      id,
+      setTimeout(() => {
+        timers.current.delete(id);
+        setFlashed((prev) => {
+          if (!prev.has(id)) return prev;
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, FLASH_DURATION_MS),
+    );
+  };
+  return { flashed, flash };
+}
 
 // The watchlist is the only personalization the site has, and it lives entirely
 // in localStorage -- so this module cannot be server-rendered, and it must not
@@ -78,6 +121,16 @@ function WatchedSubnets({ netuids }: { netuids: string[] }) {
   const healthMap = useQuery(subnetHealthMapQuery()).data?.data ?? {};
   const watched = new Set(netuids);
 
+  const { flashed, flash } = useRowFlash();
+  useChainStream({
+    topics: ["account_events"],
+    matches: (payload) => accountEventNetuidIn(payload, watched),
+    onEvent: (payload) => {
+      const netuid = (payload as { netuid?: unknown }).netuid;
+      if (netuid != null) flash(String(netuid));
+    },
+  });
+
   const rows = subnets.filter((s) => watched.has(String(s.netuid))).slice(0, MAX_ROWS);
   // A star can outlive the subnet it points at (deregistration, or a stale
   // localStorage entry from another environment). Say so rather than silently
@@ -91,7 +144,13 @@ function WatchedSubnets({ netuids }: { netuids: string[] }) {
           const e = econByNetuid.get(s.netuid);
           const health = healthMap[s.netuid]?.health as HealthState | undefined;
           return (
-            <li key={s.netuid}>
+            <li
+              key={s.netuid}
+              className={classNames(
+                "transition-colors duration-1000",
+                flashed.has(String(s.netuid)) && "bg-accent/15",
+              )}
+            >
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: s.netuid }}
@@ -125,6 +184,17 @@ function WatchedValidators({ hotkeys }: { hotkeys: string[] }) {
     useQuery(validatorsQuery({ sort: "total_stake", limit: ALL_VALIDATORS_LIMIT })).data?.data
       ?.validators ?? [];
   const watched = new Set(hotkeys);
+
+  const { flashed, flash } = useRowFlash();
+  useChainStream({
+    topics: ["account_events"],
+    matches: (payload) => accountEventHotkeyIn(payload, watched),
+    onEvent: (payload) => {
+      const hotkey = (payload as { hotkey?: unknown }).hotkey;
+      if (typeof hotkey === "string") flash(hotkey);
+    },
+  });
+
   const rows = validators.filter((v) => watched.has(v.hotkey)).slice(0, MAX_ROWS);
   const missing = hotkeys.length - rows.length;
 
@@ -132,7 +202,13 @@ function WatchedValidators({ hotkeys }: { hotkeys: string[] }) {
     <Panel as="section" title={`Watched validators · ${hotkeys.length}`}>
       <ul className="divide-y divide-border">
         {rows.map((v) => (
-          <li key={v.hotkey}>
+          <li
+            key={v.hotkey}
+            className={classNames(
+              "transition-colors duration-1000",
+              flashed.has(v.hotkey) && "bg-accent/15",
+            )}
+          >
             <Link
               to="/validators/$hotkey"
               params={{ hotkey: v.hotkey }}

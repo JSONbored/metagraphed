@@ -68,6 +68,30 @@ export function accountEventMatchesNetuid(payload: unknown, netuid: number): boo
 }
 
 /**
+ * True when a firehose `account_events` payload's `netuid` is one of the
+ * given watched subnets (#8446). Membership check (vs. `accountEventMatchesNetuid`'s
+ * single value) for the home watchlist module, which flashes whichever
+ * watched row an event lands on rather than watching just one subnet.
+ */
+export function accountEventNetuidIn(payload: unknown, netuids: ReadonlySet<string>): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const row = payload as Record<string, unknown>;
+  if (row.table != null && row.table !== "account_events") return false;
+  return netuids.has(String(row.netuid));
+}
+
+/**
+ * True when a firehose `account_events` payload's `hotkey` is one of the
+ * given watched validators (#8446).
+ */
+export function accountEventHotkeyIn(payload: unknown, hotkeys: ReadonlySet<string>): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const row = payload as Record<string, unknown>;
+  if (row.table != null && row.table !== "account_events") return false;
+  return typeof row.hotkey === "string" && hotkeys.has(row.hotkey);
+}
+
+/**
  * Debounced trigger with an out-of-band cancel handle, so a connection
  * teardown can drop a scheduled-but-not-yet-fired flush (#8179).
  */

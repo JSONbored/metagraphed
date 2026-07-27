@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { blocksQuery, healthQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { Tooltip, TooltipContent, TooltipTrigger, TimeAgo } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { getTaoMarket } from "@/lib/metagraphed/market.functions";
 import type { Subnet } from "@/lib/metagraphed/types";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { useChainStream } from "@/hooks/use-chain-stream";
 
 /**
  * Secondary "ecosystem" strip beneath the primary nav — matches the
@@ -17,10 +18,26 @@ import { useHydrated } from "@/hooks/use-hydrated";
  */
 export function RegistryTicker() {
   const hydrated = useHydrated();
+  const queryClient = useQueryClient();
 
   const subnetsQ = useQuery({ ...subnetsQuery({ limit: 128 }), retry: 0, enabled: hydrated });
   const healthQ = useQuery({ ...healthQuery(), retry: 0, enabled: hydrated });
-  const blockQ = useQuery({ ...blocksQuery({ limit: 1 }), retry: 0, enabled: hydrated });
+  const blocksQueryOptions = blocksQuery({ limit: 1 });
+  const blockQ = useQuery({ ...blocksQueryOptions, retry: 0, enabled: hydrated });
+  // #8446: complements the poll above -- a new block usually lands well
+  // under whatever refetch interval this cell would otherwise sit on, same
+  // invalidate-vs-payload tradeoff as LiveBlockRail (#8444): the `blocks`
+  // topic payload omits fields this cell doesn't even use, but invalidating
+  // is simpler than assembling a partial Block, and this is header chrome
+  // mounted on every page so the diff stays minimal. Gated behind `hydrated`
+  // like the ticker's other queries, matching its own SSR-safety convention.
+  useChainStream({
+    topics: ["blocks"],
+    enabled: hydrated,
+    onEvent: () => {
+      void queryClient.invalidateQueries({ queryKey: blocksQueryOptions.queryKey });
+    },
+  });
   // Same query key/staleTime as use-tao-price.ts's shared hook so this
   // global ticker's fetch dedupes against /subnets' own market-strip query
   // instead of hitting the (rate-limited, external) CoinPaprika API twice.
