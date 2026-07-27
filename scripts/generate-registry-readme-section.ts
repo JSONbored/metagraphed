@@ -43,14 +43,14 @@ function main(): void {
       process.exit(1);
     }
     console.log(
-      `README catalog up to date (${overlays.length} curated subnets).`,
+      `README catalog up to date (${overlays.length} curated overlays, incl. root).`,
     );
     return;
   }
 
   writeFileSync(README_PATH, next);
   console.log(
-    `Wrote README catalog: ${overlays.length} curated subnets injected.`,
+    `Wrote README catalog: ${overlays.length} curated overlays injected (incl. root).`,
   );
 }
 
