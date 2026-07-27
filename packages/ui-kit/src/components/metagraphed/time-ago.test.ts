@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { timeAgoAbsoluteTitle } from "./time-ago";
+import { timeAgoAbsoluteTitle, timeAgoTickDelayMs } from "./time-ago";
+
+describe("timeAgoTickDelayMs (#8444)", () => {
+  it("ticks every second while under a minute old", () => {
+    expect(timeAgoTickDelayMs(0)).toBe(1_000);
+    expect(timeAgoTickDelayMs(59_999)).toBe(1_000);
+  });
+
+  it("ticks once a minute once past a minute old", () => {
+    expect(timeAgoTickDelayMs(60_000)).toBe(60_000);
+    expect(timeAgoTickDelayMs(3_600_000)).toBe(60_000);
+  });
+});
 
 describe("timeAgoAbsoluteTitle", () => {
   it("returns a locale absolute string for usable timestamps", () => {
