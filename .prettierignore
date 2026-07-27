@@ -6,6 +6,9 @@ apps/ui
 # CI-ephemeral: validate.yml's "Classify validation route" step writes this to the
 # workspace root before `prettier --check .` runs, so it must not be format-gated.
 validate-route.json
+# Local contributor-pipeline scratch files (not part of any contribution diff).
+.task-memo.md
+.autopilot_*
 packages/*/dist
 packages/*/src/metagraphed-client.ts
 packages/contract/index.d.ts
