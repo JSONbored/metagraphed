@@ -93,9 +93,18 @@ export function PageMasthead({
 
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-[120px] flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            {live ? <span className="mg-live-dot shrink-0" aria-hidden /> : null}
-            <h1 className="font-display text-2xl md:text-3xl font-semibold leading-[1.15] tracking-[-0.015em] text-ink-strong min-w-0 truncate">
+          <div className="flex items-start gap-2">
+            {/* mt-2 nudges the dot down to the title's cap-height on its first
+                line -- items-start (not items-center) is required so the dot
+                stays pinned to the top when a longer title wraps to two lines
+                instead of drifting to the wrapped block's vertical center. */}
+            {live ? <span className="mg-live-dot mt-2 shrink-0" aria-hidden /> : null}
+            {/* No truncate: every existing masthead title is 1-2 words and
+                never wraps, but a longer one (e.g. /agents' "Use AI to
+                explore Bittensor") must wrap onto a second line instead of
+                being clipped mid-word -- truncate silently ate the final
+                word here (#8458). */}
+            <h1 className="font-display text-2xl md:text-3xl font-semibold leading-[1.15] tracking-[-0.015em] text-ink-strong min-w-0">
               {title}
             </h1>
             {/* `eyebrow` prop intentionally not rendered: the breadcrumb rail
