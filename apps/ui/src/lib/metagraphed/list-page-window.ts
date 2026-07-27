@@ -11,3 +11,21 @@ export function ensureIndexVisible(limit: number, index: number, step: number): 
   if (needed <= limit) return limit;
   return Math.ceil(needed / step) * step;
 }
+
+/**
+ * Single-pass window update used when filter keys and deep-link targets share
+ * one effect (avoids the reset-vs-hash race that closed #8420).
+ *
+ * - Filter change → floor at `step`, then expand for `targetIndex` if ≥ 0.
+ * - No filter change → keep `prev` (preserves Load more), still expand for
+ *   the deep-link target so a late-arriving list or hash update wins.
+ */
+export function nextListLimit(opts: {
+  prev: number;
+  filtersChanged: boolean;
+  targetIndex: number;
+  step: number;
+}): number {
+  const base = opts.filtersChanged ? opts.step : opts.prev;
+  return ensureIndexVisible(base, opts.targetIndex, opts.step);
+}

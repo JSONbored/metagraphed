@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
@@ -28,7 +28,7 @@ import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
-import { APIS_HUB_PAGE_STEP, ensureIndexVisible } from "@/lib/metagraphed/list-page-window";
+import { APIS_HUB_PAGE_STEP, nextListLimit } from "@/lib/metagraphed/list-page-window";
 import {
   BrandIcon,
   prefetchBrandIcon,
@@ -226,24 +226,34 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
   }, [filtered, sortKey, counts]);
 
   // #8360: bound DOM at 25 rows/cards; filters/sort still run over the full set.
+  // One effect owns both filter-reset and `#provider-{slug}` expansion so a
+  // deep-link past page 1 cannot be clobbered by a same-tick reset (#8420).
   const location = useLocation();
   const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
+  const filterKey = `${q}\0${kind}\0${authority}\0${sortKey}`;
+  const prevFilterKeyRef = useRef(filterKey);
   useEffect(() => {
-    setListLimit(APIS_HUB_PAGE_STEP);
-  }, [q, kind, authority, sortKey]);
-  useEffect(() => {
+    const filtersChanged = prevFilterKeyRef.current !== filterKey;
+    prevFilterKeyRef.current = filterKey;
     const hash = location.hash?.replace(/^#/, "") ?? "";
     const m = /^provider-(.+)$/.exec(hash);
-    if (!m) return;
-    const slug = decodeURIComponent(m[1]!);
-    const idx = sorted.findIndex((p) => p.slug === slug);
-    if (idx < 0) return;
-    setListLimit((prev) => ensureIndexVisible(prev, idx, APIS_HUB_PAGE_STEP));
-    const id = `provider-${slug}`;
-    requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ block: "nearest" });
-    });
-  }, [location.hash, sorted]);
+    const slug = m ? decodeURIComponent(m[1]!) : null;
+    const idx = slug ? sorted.findIndex((p) => p.slug === slug) : -1;
+    setListLimit((prev) =>
+      nextListLimit({
+        prev,
+        filtersChanged,
+        targetIndex: idx,
+        step: APIS_HUB_PAGE_STEP,
+      }),
+    );
+    if (slug && idx >= 0) {
+      const id = `provider-${slug}`;
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+      });
+    }
+  }, [filterKey, location.hash, sorted]);
   const visible = useMemo(() => sorted.slice(0, listLimit), [sorted, listLimit]);
 
   useEffect(() => {

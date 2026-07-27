@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
@@ -29,7 +29,7 @@ import {
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
-import { APIS_HUB_PAGE_STEP, ensureIndexVisible } from "@/lib/metagraphed/list-page-window";
+import { APIS_HUB_PAGE_STEP, nextListLimit } from "@/lib/metagraphed/list-page-window";
 import { SearchInput, ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { ApisTabActions } from "./-apis-hub";
@@ -311,16 +311,23 @@ function SchemaExplorer() {
   }, [all, search.drift, search.q]);
 
   // #8360: bound the left-rail DOM at 25 cards; filters still run over `all`.
+  // One effect owns filter-reset and `?open=` expansion (same race fix as providers).
   const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
+  const filterKey = `${search.q}\0${search.drift}`;
+  const prevFilterKeyRef = useRef(filterKey);
   useEffect(() => {
-    setListLimit(APIS_HUB_PAGE_STEP);
-  }, [search.q, search.drift]);
-  useEffect(() => {
-    if (!search.open) return;
-    const idx = filtered.findIndex((s) => s.id === search.open);
-    if (idx < 0) return;
-    setListLimit((prev) => ensureIndexVisible(prev, idx, APIS_HUB_PAGE_STEP));
-  }, [search.open, filtered]);
+    const filtersChanged = prevFilterKeyRef.current !== filterKey;
+    prevFilterKeyRef.current = filterKey;
+    const idx = search.open ? filtered.findIndex((s) => s.id === search.open) : -1;
+    setListLimit((prev) =>
+      nextListLimit({
+        prev,
+        filtersChanged,
+        targetIndex: idx,
+        step: APIS_HUB_PAGE_STEP,
+      }),
+    );
+  }, [filterKey, search.open, filtered]);
   const visible = useMemo(() => filtered.slice(0, listLimit), [filtered, listLimit]);
 
   const selectedId = search.open || filtered[0]?.id || "";
