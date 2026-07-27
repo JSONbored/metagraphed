@@ -53,10 +53,13 @@ export function TimeAgo({
     if (!Number.isFinite(ts)) return undefined;
     let timeoutId: ReturnType<typeof setTimeout>;
     const schedule = () => {
-      timeoutId = setTimeout(() => {
-        forceTick((n) => n + 1);
-        schedule();
-      }, timeAgoTickDelayMs(Date.now() - ts));
+      timeoutId = setTimeout(
+        () => {
+          forceTick((n) => n + 1);
+          schedule();
+        },
+        timeAgoTickDelayMs(Date.now() - ts),
+      );
     };
     schedule();
     return () => clearTimeout(timeoutId);

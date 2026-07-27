@@ -2667,10 +2667,13 @@ function TimeAgo({
     if (!Number.isFinite(ts)) return void 0;
     let timeoutId;
     const schedule = () => {
-      timeoutId = setTimeout(() => {
-        forceTick((n) => n + 1);
-        schedule();
-      }, timeAgoTickDelayMs(Date.now() - ts));
+      timeoutId = setTimeout(
+        () => {
+          forceTick((n) => n + 1);
+          schedule();
+        },
+        timeAgoTickDelayMs(Date.now() - ts)
+      );
     };
     schedule();
     return () => clearTimeout(timeoutId);
