@@ -51,6 +51,7 @@
 //   DATABASE_URL                postgres connection (the same sink ../main.rs writes)
 //   EVENTS_RPC_URL               chain RPC ws(s) url (default: the public archive)
 //   SUBNET_OWNERSHIP_POLL_SECS   how often to re-poll subnet ownership (default 300)
+//   SELF_HEALTH_POLL_SECS        how often to probe our own api/site (default 60)
 //   POLLER_ONLY                  comma-separated job names (e.g. "subnet-hyperparams")
 //                                 to run in isolation -- unset runs every job (the
 //                                 normal/production mode). Genuinely useful beyond
@@ -173,6 +174,11 @@ async fn run() -> Result<()> {
         Duration::from_secs(env_u64("SUBNET_HYPERPARAMS_POLL_SECS").unwrap_or(3600));
     let self_stake_interval =
         Duration::from_secs(env_u64("SELF_STAKE_POLL_SECS").unwrap_or(7 * 24 * 3600));
+    // metagraphed#8317: 60s, far tighter than every other job here. Uptime is
+    // measured in minutes -- a 5-minute probe interval can't distinguish a
+    // 90-second blip from a clean run, and blips are most of what a status
+    // page exists to show.
+    let self_health_interval = Duration::from_secs(env_u64("SELF_HEALTH_POLL_SECS").unwrap_or(60));
     // 900s (15min): matches the retired metagraphed-refresh.timer's own
     // metagraph schedule (roles/data-refresh-cron/vars/main.yml,
     // "*-*-* *:0/15:00 UTC") -- a full 129-subnet/~30k-neuron tick (via the
@@ -210,6 +216,15 @@ async fn run() -> Result<()> {
             rpc_url.clone(),
             db_url.clone(),
             subnet_ownership_interval,
+        )));
+    }
+    // Postgres only -- no chain client. The only poller job that talks to
+    // HTTP rather than the chain (metagraphed#8317).
+    if enabled("self-health") {
+        names.push("self-health");
+        handles.push(tokio::spawn(jobs::self_health::run_loop(
+            db_url.clone(),
+            self_health_interval,
         )));
     }
     if enabled("account-balances") {

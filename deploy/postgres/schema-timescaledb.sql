@@ -32,6 +32,12 @@ SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval 
 -- only a 30-day hot window before pruning, so a 1-day chunk interval keeps
 -- individual chunks small without accumulating chunks indefinitely.
 SELECT create_hypertable('surface_checks', 'checked_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
+-- metagraphed#8317: written every ~60s for 3 components (~4.3k rows/day), the
+-- highest-frequency/lowest-volume table here. 1-day chunks, and unlike every
+-- other hypertable it gets an explicit retention policy -- the 90-day serving
+-- data lives in self_health_daily, so raw ticks are only ever needed for
+-- recent debugging.
+SELECT create_hypertable('self_health_checks', 'checked_at_ms', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 
 -- INTEGER-time hypertables (observed_at is BIGINT epoch-ms, not a native
 -- timestamp) need an explicit "what counts as now" function, or compression/
@@ -54,7 +60,7 @@ DO $$
 DECLARE
   tbl TEXT;
 BEGIN
-  FOREACH tbl IN ARRAY ARRAY['blocks', 'extrinsics', 'account_events', 'chain_events', 'surface_checks'] LOOP
+  FOREACH tbl IN ARRAY ARRAY['blocks', 'extrinsics', 'account_events', 'chain_events', 'surface_checks', 'self_health_checks'] LOOP
     IF NOT EXISTS (
       SELECT 1 FROM timescaledb_information.dimensions
       WHERE hypertable_name = tbl AND integer_now_func IS NOT NULL
@@ -80,3 +86,17 @@ SELECT add_compression_policy('extrinsics',     BIGINT '604800000', if_not_exist
 SELECT add_compression_policy('account_events', BIGINT '604800000', if_not_exists => true);
 SELECT add_compression_policy('chain_events',   BIGINT '604800000', if_not_exists => true);
 SELECT add_compression_policy('surface_checks', BIGINT '604800000', if_not_exists => true);
+
+-- No compression policy for self_health_checks, unlike every other hypertable
+-- above: add_compression_policy requires ALTER TABLE ... SET
+-- (timescaledb.compress ...) first, and compressing chunks that a 14-day
+-- retention policy is about to drop anyway buys nothing -- at ~4.3k rows/day
+-- the whole 7-14 day compressible window is about 30k rows.
+--
+-- The only retention policy in this file. self_health_daily carries the
+-- 90-day serving numbers, so the raw per-tick rows can go after 14 days --
+-- and they should: at ~4.3k rows/day they're the fastest-growing table here
+-- by row count. if_not_exists for the same re-runnability reason as the
+-- compression policies above (metagraphed-infra#95 applies this file on
+-- every Ansible run).
+SELECT add_retention_policy('self_health_checks', BIGINT '1209600000', if_not_exists => true);  -- 14d in ms

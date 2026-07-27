@@ -1113,6 +1113,47 @@ ALTER TABLE api_keys ALTER COLUMN secret_hash DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_unkey_key_id
   ON api_keys (unkey_key_id) WHERE unkey_key_id IS NOT NULL;
 
+-- metagraphed's OWN uptime (metagraphed#8317). Every other health table here
+-- is about someone else -- surface_checks probes subnet APIs -- so /status
+-- could only ever answer "are the things we watch up", never "are WE up".
+--
+-- Probed from this box rather than from a Worker on purpose: a Worker
+-- checking Cloudflare-hosted routes shares a failure domain with what it's
+-- checking and would report green through exactly the outage a reader cares
+-- about. Written by the poller's self-health job, one row per component per
+-- tick (~60s).
+--
+-- Components: api (the Worker + its KV read path), site (the UI Worker), and
+-- publish -- derived from the api response's own meta.generated_at, because
+-- the data pipeline can go stale while every HTTP surface still answers 200.
+--
+-- (component, checked_at_ms) rather than a bare timestamp PK: TimescaleDB
+-- requires the partitioning column in every unique constraint, and three
+-- components share a tick's millisecond.
+CREATE TABLE IF NOT EXISTS self_health_checks (
+  checked_at_ms BIGINT  NOT NULL,
+  component     TEXT    NOT NULL,
+  ok            BOOLEAN NOT NULL,
+  http_status   INTEGER,
+  latency_ms    INTEGER,
+  PRIMARY KEY (component, checked_at_ms)
+);
+CREATE INDEX IF NOT EXISTS idx_self_health_checks_time
+  ON self_health_checks (checked_at_ms);
+
+-- The 90-day serving rollup. Accumulated incrementally as each tick lands
+-- (same convention as account_events_daily) rather than recomputed from raw
+-- rows, because self_health_checks is pruned by a ~14-day retention policy --
+-- the raw ticks only matter for recent debugging, but the daily uptime ratio
+-- has to survive far longer than they do. NEVER expire this table.
+CREATE TABLE IF NOT EXISTS self_health_daily (
+  day       DATE    NOT NULL,
+  component TEXT    NOT NULL,
+  checks    INTEGER NOT NULL,
+  ok_count  INTEGER NOT NULL,
+  PRIMARY KEY (day, component)
+);
+
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only
 -- on a Postgres that actually has the TimescaleDB extension. This file is a
