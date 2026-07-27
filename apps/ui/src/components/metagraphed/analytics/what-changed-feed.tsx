@@ -5,7 +5,7 @@ import { AlertTriangle, GitBranch, Radio, Sparkles, Tag, Boxes } from "lucide-re
 import {
   changelogQuery,
   chainIdentityHistoryQuery,
-  endpointIncidentsQuery,
+  resolvedEndpointIncidentsQuery,
   runtimeVersionHistoryQuery,
 } from "@/lib/metagraphed/queries";
 import { TimeAgo } from "@jsonbored/ui-kit";
@@ -52,6 +52,17 @@ function dayLabel(day: string): string {
  * has a page of its own. See what-changed-digest.ts for why two of the six
  * kinds the issue listed are absent rather than approximated.
  *
+ * The incident kind is RESOLVED-ONLY (metagraphed#8355) — this module reads
+ * resolvedEndpointIncidentsQuery, a server-side `state: "resolved"` filter,
+ * not endpointIncidentsQuery (the ops-console feed, which is every state on
+ * purpose). An ongoing/active incident is operational noise that belongs on
+ * /status and the ops console; a recovered one is a real, bounded "this
+ * changed" event, which is why it stays. Before this fix every ongoing
+ * incident across all ~617 tracked surfaces competed with genuine registry/
+ * identity/runtime changes for this module's limited slots, and on an
+ * unlucky day could fill it entirely with probe noise stuck at whatever
+ * "ongoing · Xh ago" it had been showing since the incident started.
+ *
  * `limit` caps the home module; the full view passes none.
  */
 export function WhatChangedFeed({
@@ -67,7 +78,7 @@ export function WhatChangedFeed({
   const { range } = useTimeRange();
   const cutoff = Date.now() - RANGE_HOURS[range] * 3_600_000;
   const { data: cRes } = useSuspenseQuery(changelogQuery());
-  const { data: iRes } = useSuspenseQuery(endpointIncidentsQuery());
+  const { data: iRes } = useSuspenseQuery(resolvedEndpointIncidentsQuery());
   // The two chain-side sources are non-suspending: they're additive detail, and
   // a slow or failing one shouldn't hold up (or blank) the whole digest.
   const identity = useQuery(chainIdentityHistoryQuery(50)).data?.data?.changes ?? [];
