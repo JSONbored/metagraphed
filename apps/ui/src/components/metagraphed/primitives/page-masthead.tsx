@@ -95,7 +95,19 @@ export function PageMasthead({
         <div className="min-w-[120px] flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             {live ? <span className="mg-live-dot shrink-0" aria-hidden /> : null}
-            <h1 className="font-display text-2xl md:text-3xl font-semibold leading-[1.15] tracking-[-0.015em] text-ink-strong min-w-0 truncate">
+            {/* Was `truncate` (hard single-line ellipsis), which clipped
+                mid-word on mobile whenever the title's flex sibling (`actions`,
+                e.g. a ShareButton) claimed enough of the row that a normal-
+                length title -- not a runaway one -- couldn't fit on one line.
+                `line-clamp-2` matches the treatment `description` already
+                gets below: short titles render exactly as before (one line,
+                nothing clipped), and only a title that's genuinely too long
+                for two lines still gets an ellipsis, rather than every title
+                narrower than whatever width `actions` left it. Every current
+                caller either passes a short static string or a pre-shortened
+                dynamic one (shortHash()/formatNumber()), so this is strictly
+                more forgiving, not a new risk of unbounded layout. */}
+            <h1 className="font-display text-2xl md:text-3xl font-semibold leading-[1.15] tracking-[-0.015em] text-ink-strong min-w-0 line-clamp-2 break-words">
               {title}
             </h1>
             {/* `eyebrow` prop intentionally not rendered: the breadcrumb rail
