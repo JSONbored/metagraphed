@@ -517,9 +517,17 @@ function SubnetRecentActivityFeed({ netuid }: { netuid: number }) {
         {events.map((ev, i) => (
           <li
             key={`${ev.block_number}-${ev.event_index}-${i}`}
-            className="flex items-center justify-between gap-3 mg-type-data"
+            className="flex min-w-0 items-center justify-between gap-3 mg-type-data"
           >
-            <EventKindCell kind={ev.event_kind} />
+            {/* min-w-0 on both the row and the kind cell: the cell is
+                whitespace-nowrap and the timestamp is shrink-0, so without a
+                shrinkable box between them a long event-kind label pushes the
+                timestamp past the viewport at 375px. Caught by the e2e
+                overflow check on CI but not locally -- #8325 swapped these
+                labels from mono to sans, and the two platforms disagree about
+                how wide that is (#8250 follow-up). Truncation is the right
+                behaviour here regardless of glyph metrics. */}
+            <EventKindCell kind={ev.event_kind} className="min-w-0" />
             <TimeAgo at={ev.observed_at} className="shrink-0 text-ink-muted" />
           </li>
         ))}
@@ -1258,14 +1266,20 @@ const EVENT_KIND_CATEGORY_DOT: Record<EventKindCategory, string> = {
   other: "var(--health-unknown)",
 };
 
-function EventKindCell({ kind }: { kind: string | null | undefined }) {
+function EventKindCell({
+  kind,
+  className,
+}: {
+  kind: string | null | undefined;
+  className?: string;
+}) {
   const category = eventKindCategory(kind);
   const categoryLabel = eventKindCategoryLabel(category);
   const label = eventKindLabel(kind);
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      className={classNames("inline-flex items-center gap-1.5", className)}
       title={`${label} · ${categoryLabel}`}
     >
       <span
@@ -1274,7 +1288,7 @@ function EventKindCell({ kind }: { kind: string | null | undefined }) {
         className="inline-block size-2 shrink-0 rounded-full"
         style={{ background: EVENT_KIND_CATEGORY_DOT[category] }}
       />
-      <span className="text-[11px] text-ink-strong">{label}</span>
+      <span className="truncate text-[11px] text-ink-strong">{label}</span>
       <span className="inline-flex items-center rounded border border-border bg-surface/40 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
         {categoryLabel}
       </span>

@@ -65,7 +65,15 @@ test.describe("#6434 evidence deep links (updated for #8247's 7-tab consolidatio
     // useHashScroll rewrites the tab search param when the hash's owning tab
     // isn't active -- Evidence now lives inside the broader About tab rather
     // than a dedicated tab of its own.
-    await expect(page).toHaveURL(/[?&]tab=about/);
+    //
+    // The rewrite runs in a useEffect, so it waits on HYDRATION, not on a
+    // network round-trip -- which is what openWithHar's networkidle wait
+    // covers. On a loaded CI runner (4 parallel workers, cold cache) hydrating
+    // this page can outlast the 5s default expect timeout, and the assertion
+    // then reports the un-rewritten "#evidence" URL. 15s waits for the thing
+    // actually being waited on; the assertion is unchanged, so a rewrite that
+    // never happens still fails.
+    await expect(page).toHaveURL(/[?&]tab=about/, { timeout: 15_000 });
     await expect(page.locator("section#evidence")).toBeVisible();
   });
 
