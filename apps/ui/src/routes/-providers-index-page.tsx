@@ -652,13 +652,15 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
       )}
 
       {sorted.length > APIS_HUB_PAGE_STEP ? (
-        <LoadMore
-          shown={visible.length}
-          total={sorted.length}
-          hasMore={listLimit < sorted.length}
-          isLoading={false}
-          onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
-        />
+        <div id="providers-pager">
+          <LoadMore
+            shown={visible.length}
+            total={sorted.length}
+            hasMore={listLimit < sorted.length}
+            isLoading={false}
+            onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
+          />
+        </div>
       ) : null}
     </div>
   );

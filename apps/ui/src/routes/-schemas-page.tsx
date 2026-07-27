@@ -95,6 +95,7 @@ export function SchemasPage() {
         </PageSection>
 
         <PageSection
+          id="contracts"
           eyebrow="Contracts"
           title="Published contracts"
           description="Versioned envelope contracts that govern API responses."
@@ -109,6 +110,7 @@ export function SchemasPage() {
         </PageSection>
 
         <PageSection
+          id="schema-index"
           eyebrow="Explorer"
           title="Schema index"
           description="Browse every tracked JSON Schema. Select one to inspect the latest snapshot and recent drift."
@@ -272,13 +274,15 @@ function ContractsList() {
         })}
       </div>
       {rows.length > APIS_HUB_PAGE_STEP ? (
-        <LoadMore
-          shown={visible.length}
-          total={rows.length}
-          hasMore={listLimit < rows.length}
-          isLoading={false}
-          onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
-        />
+        <div id="contracts-pager">
+          <LoadMore
+            shown={visible.length}
+            total={rows.length}
+            hasMore={listLimit < rows.length}
+            isLoading={false}
+            onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
+          />
+        </div>
       ) : null}
     </div>
   );
