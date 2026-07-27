@@ -102,7 +102,7 @@ export function asDecodedCall(value: unknown): DecodedCall | null {
  * differently; `type` is decorative and never rendered by either shape's
  * branch in renderCallArgs, so only `name`/`value` need reconciling here).
  * Returns undefined when callArgs is neither shape or the name isn't found. */
-function callArgValue(callArgs: unknown, name: string): unknown {
+export function callArgValue(callArgs: unknown, name: string): unknown {
   if (Array.isArray(callArgs)) {
     return (callArgs as Array<{ name?: string | null; value?: unknown }>).find(
       (a) => a?.name === name,

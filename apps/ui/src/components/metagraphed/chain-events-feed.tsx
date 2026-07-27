@@ -11,6 +11,7 @@ import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { summarizeChainEvent, isNoiseEvent } from "@/lib/metagraphed/chain-event-summary";
+import { summarizeEvent } from "@/lib/metagraphed/chain-summaries";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 
@@ -56,11 +57,18 @@ export function chainEventsBaseParams(
  */
 export function ChainEventCard({ event }: { event: ChainEvent }) {
   const s = summarizeChainEvent(event.args);
+  // #8371: leads with the human-readable sentence when a template covers
+  // this pallet.method; falls back to today's raw module.function otherwise
+  // -- never a guessed sentence.
+  const sentence = summarizeEvent(event.pallet, event.method, event.args);
   return (
     <Panel as="div" dense className="min-h-11">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate mg-type-data text-ink-strong">
-          {extrinsicCall(event.pallet, event.method)}
+        <span
+          className="min-w-0 truncate mg-type-data text-ink-strong"
+          title={sentence ?? undefined}
+        >
+          {sentence ?? extrinsicCall(event.pallet, event.method)}
         </span>
         {s.amountTao != null ? (
           <span className="shrink-0 mg-type-data tabular-nums text-ink">
@@ -268,10 +276,14 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
       <tbody className="divide-y divide-border">
         {events.map((event) => {
           const s = summarizeChainEvent(event.args);
+          const sentence = summarizeEvent(event.pallet, event.method, event.args);
           return (
             <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface/40">
-              <td className="px-4 py-2.5 mg-type-data text-ink-strong">
-                {extrinsicCall(event.pallet, event.method)}
+              <td
+                className="px-4 py-2.5 mg-type-data text-ink-strong"
+                title={sentence ?? undefined}
+              >
+                {sentence ?? extrinsicCall(event.pallet, event.method)}
               </td>
               <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
                 {s.amountTao != null ? formatTao(s.amountTao) : "—"}

@@ -30,6 +30,7 @@ import {
   proxyRealAccount,
   type DecodedCall,
 } from "@/lib/metagraphed/extrinsics";
+import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { TaoValue } from "@/components/metagraphed/tao-value";
 import { ValueUnitProvider, ValueUnitControl } from "@/lib/metagraphed/value-unit";
 import {
@@ -139,6 +140,13 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   }
 
   const result = extrinsic.success == null ? "—" : extrinsic.success ? "Success" : "Failed";
+  // #8371: a human-readable headline over the raw pallet.method decode --
+  // the "Call" field row further down keeps the raw module.function for
+  // anyone who wants it. null (no template for this pallet.method) falls
+  // back to today's raw rendering rather than ever guessing a sentence.
+  const sentence = summarizeCall(extrinsic.call_module, extrinsic.call_function, callArgs, {
+    signer: extrinsic.signer,
+  });
 
   return (
     <>
@@ -147,9 +155,13 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         live
         title={shortHash(extrinsic.extrinsic_hash, 10) ?? "Extrinsic"}
         description={
-          <span className="font-mono text-sm break-all">
-            {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
-          </span>
+          sentence ? (
+            <span className="text-sm">{sentence}</span>
+          ) : (
+            <span className="font-mono text-sm break-all">
+              {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
+            </span>
+          )
         }
         actions={
           <>

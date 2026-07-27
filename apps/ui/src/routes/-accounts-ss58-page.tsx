@@ -83,6 +83,7 @@ import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/met
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
+import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
@@ -924,54 +925,63 @@ function AccountExtrinsicsSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.map((x, i) => (
-              <tr
-                key={x.extrinsic_hash ?? `${x.block_number}-${x.extrinsic_index}-${i}`}
-                className="hover:bg-surface/30"
-              >
-                <td className="px-4 py-4 font-mono mg-type-caption">
-                  {x.block_number != null ? (
-                    <Link
-                      to="/blocks/$ref"
-                      params={{ ref: String(x.block_number) }}
-                      className="text-ink hover:text-accent hover:underline"
-                    >
-                      #{formatNumber(x.block_number)}
-                      {x.extrinsic_index != null ? (
-                        <span className="text-ink-muted">·{x.extrinsic_index}</span>
-                      ) : null}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-4 mg-type-data text-ink">
-                  {x.extrinsic_hash ? (
-                    <Link
-                      to="/extrinsics/$hash"
-                      params={{ hash: x.extrinsic_hash }}
-                      className="hover:text-accent hover:underline"
-                    >
-                      {extrinsicCall(x.call_module, x.call_function)}
-                    </Link>
-                  ) : (
-                    extrinsicCall(x.call_module, x.call_function)
-                  )}
-                </td>
-                <td className="px-4 py-4 mg-type-data">
-                  {x.success == null ? (
-                    <span className="text-ink-muted">—</span>
-                  ) : x.success ? (
-                    <span className="text-health-ok">ok</span>
-                  ) : (
-                    <span className="text-health-down">fail</span>
-                  )}
-                </td>
-                <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
-                  <TimeAgo at={x.observed_at} />
-                </td>
-              </tr>
-            ))}
+            {rows.map((x, i) => {
+              // #8371: this section is scoped to extrinsics `ss58` itself
+              // signed, so it's always the right signer context for the
+              // sentence -- unlike a generic feed, no per-row signer field
+              // to read.
+              const sentence = summarizeCall(x.call_module, x.call_function, x.call_args, {
+                signer: ss58,
+              });
+              return (
+                <tr
+                  key={x.extrinsic_hash ?? `${x.block_number}-${x.extrinsic_index}-${i}`}
+                  className="hover:bg-surface/30"
+                >
+                  <td className="px-4 py-4 font-mono mg-type-caption">
+                    {x.block_number != null ? (
+                      <Link
+                        to="/blocks/$ref"
+                        params={{ ref: String(x.block_number) }}
+                        className="text-ink hover:text-accent hover:underline"
+                      >
+                        #{formatNumber(x.block_number)}
+                        {x.extrinsic_index != null ? (
+                          <span className="text-ink-muted">·{x.extrinsic_index}</span>
+                        ) : null}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-4 mg-type-data text-ink" title={sentence ?? undefined}>
+                    {x.extrinsic_hash ? (
+                      <Link
+                        to="/extrinsics/$hash"
+                        params={{ hash: x.extrinsic_hash }}
+                        className="hover:text-accent hover:underline"
+                      >
+                        {sentence ?? extrinsicCall(x.call_module, x.call_function)}
+                      </Link>
+                    ) : (
+                      (sentence ?? extrinsicCall(x.call_module, x.call_function))
+                    )}
+                  </td>
+                  <td className="px-4 py-4 mg-type-data">
+                    {x.success == null ? (
+                      <span className="text-ink-muted">—</span>
+                    ) : x.success ? (
+                      <span className="text-health-ok">ok</span>
+                    ) : (
+                      <span className="text-health-down">fail</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
+                    <TimeAgo at={x.observed_at} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </DataPanel>
