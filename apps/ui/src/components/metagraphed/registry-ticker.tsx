@@ -9,6 +9,15 @@ import { useHydrated } from "@/hooks/use-hydrated";
 import { useChainStream } from "@/hooks/use-chain-stream";
 
 /**
+ * #8367: kill switch for the live block ticker, independent of the watchlist
+ * row pulse's own flag in home-watched-module.tsx. Turning this off drops
+ * both the stream subscription and the arrival pulse, leaving the cell on the
+ * polling cadence it had before #8446 -- this is header chrome mounted on
+ * every page, so it needs to be retreatable on its own.
+ */
+const HEADER_BLOCK_TICKER_ENABLED = true;
+
+/**
  * Secondary "ecosystem" strip beneath the primary nav — matches the
  * production reference: pulse dot + BITTENSOR ECOSYSTEM, chain head,
  * τ price / active-subnets counter, curated count, endpoints up X/Y;
@@ -33,7 +42,7 @@ export function RegistryTicker() {
   // like the ticker's other queries, matching its own SSR-safety convention.
   useChainStream({
     topics: ["blocks"],
-    enabled: hydrated,
+    enabled: hydrated && HEADER_BLOCK_TICKER_ENABLED,
     onEvent: () => {
       void queryClient.invalidateQueries({ queryKey: blocksQueryOptions.queryKey });
     },
@@ -89,7 +98,22 @@ export function RegistryTicker() {
                   className="hidden lg:inline-flex items-baseline gap-1.5 shrink-0 hover:opacity-80 transition-opacity"
                 >
                   <span className="text-ink-muted">block</span>
-                  <span className="text-ink-strong tabular-nums">#{formatNumber(blockNumber)}</span>
+                  {/* #8367: the arrival cue. Keying on the height remounts the
+                      span, which is what restarts a CSS animation -- toggling a
+                      class on a live node would need a forced reflow to replay.
+                      A 200ms opacity dip and nothing more: no counter roll, no
+                      tint, and nothing at all under prefers-reduced-motion
+                      (ui-kit's own media block covers `.mg-value-pulse`). */}
+                  <span
+                    key={blockNumber}
+                    className={
+                      HEADER_BLOCK_TICKER_ENABLED
+                        ? "text-ink-strong tabular-nums mg-value-pulse"
+                        : "text-ink-strong tabular-nums"
+                    }
+                  >
+                    #{formatNumber(blockNumber)}
+                  </span>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="mg-type-caption">

@@ -19,10 +19,25 @@ import {
   useChainStream,
 } from "@/hooks/use-chain-stream";
 
+/**
+ * #8367: kill switch for the watchlist row pulse, independent of the header
+ * block ticker's own flag, so either liveness cue can be rolled back without
+ * touching the other.
+ */
+const WATCHLIST_ROW_FLASH_ENABLED = true;
+
 // #8446: brief, subtle background pulse on a watchlist row that just acted
-// on-chain -- CSS-transition-based (add the highlight class, then remove it
-// after this window so the row's own `transition-colors` fades it back out),
-// not a JS-animated loop, per the epic's own liveness guardrail.
+// on-chain. #8367 moved the actual animation into ui-kit's `.mg-row-flash`
+// rather than the Tailwind `transition-colors duration-1000` + `bg-accent/15`
+// pair this used to carry inline: those utilities sit outside every
+// `prefers-reduced-motion` block in the codebase (which all name specific
+// `mg-*` classes -- there is no universal reset), so the pulse played
+// regardless of the visitor's motion preference. As a named class it's
+// covered by the same media query as `.mg-flash-up`/`.mg-pulse`.
+//
+// This still gates the highlight's LIFETIME in JS, because the set drives the
+// `key` that replays the animation; the animation duration itself lives in
+// the stylesheet and the two are kept in step deliberately.
 const FLASH_DURATION_MS = 1600;
 
 /** Shared row-flash state: which ids are currently highlighted. */
@@ -37,6 +52,7 @@ function useRowFlash() {
     };
   }, []);
   const flash = (id: string) => {
+    if (!WATCHLIST_ROW_FLASH_ENABLED) return;
     setFlashed((prev) => new Set(prev).add(id));
     const existing = timers.current.get(id);
     if (existing) clearTimeout(existing);
@@ -119,6 +135,14 @@ function WatchedSubnets({ netuids }: { netuids: string[] }) {
   // map query, and without that join every row here rendered a misleading
   // "Unknown" pill. Same query, so it's a shared cache hit.
   const healthMap = useQuery(subnetHealthMapQuery()).data?.data ?? {};
+  // #8367's per-event cost budget. The cross-reference an incoming firehose
+  // event pays is one `Set.prototype.has` (see `accountEventNetuidIn`), which
+  // is O(1) in the number of watched subnets -- NOT a scan of `netuids`, and
+  // NOT proportional to how many rows are on screen. The set is rebuilt per
+  // render rather than memoized on purpose: it is O(watched) over a list the
+  // watchlist UI caps well below a hundred, so building it costs less than the
+  // dependency-array bookkeeping memoizing it would add, and a stale set would
+  // silently stop flashing a just-starred subnet.
   const watched = new Set(netuids);
 
   const { flashed, flash } = useRowFlash();
@@ -146,10 +170,7 @@ function WatchedSubnets({ netuids }: { netuids: string[] }) {
           return (
             <li
               key={s.netuid}
-              className={classNames(
-                "transition-colors duration-1000",
-                flashed.has(String(s.netuid)) && "bg-accent/15",
-              )}
+              className={classNames(flashed.has(String(s.netuid)) && "mg-row-flash")}
             >
               <Link
                 to="/subnets/$netuid"
@@ -202,13 +223,7 @@ function WatchedValidators({ hotkeys }: { hotkeys: string[] }) {
     <Panel as="section" title={`Watched validators · ${hotkeys.length}`}>
       <ul className="divide-y divide-border">
         {rows.map((v) => (
-          <li
-            key={v.hotkey}
-            className={classNames(
-              "transition-colors duration-1000",
-              flashed.has(v.hotkey) && "bg-accent/15",
-            )}
-          >
+          <li key={v.hotkey} className={classNames(flashed.has(v.hotkey) && "mg-row-flash")}>
             <Link
               to="/validators/$hotkey"
               params={{ hotkey: v.hotkey }}
