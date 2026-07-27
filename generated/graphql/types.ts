@@ -2598,6 +2598,8 @@ export type Query = {
   search: SearchDocumentList;
   /** The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Filter by type/netuid/q, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error. Mirrors GET /api/v1/search-index. */
   search_index: SearchIndexList;
+  /** metagraphed's OWN uptime: the api/site/publish component views with their latest probe state and trailing-90-day daily uptime ratios, plus the rolled-up operational/degraded/outage verdict. Scoped strictly to our own surfaces -- never third-party subnet health (that is the health rollup). Resolves to a GraphQL error (not null) when the self-health artifact has not been baked in this environment, matching the REST route's 404 and the get_self_health MCP tool. Mirrors GET /api/v1/self-health. */
+  self_health: SelfHealth;
   /** The per-provider source-health rollup: for each provider/source, the candidate-surface count and its live/redirected/dead classification, endpoint and RPC-endpoint counts, verification-result count, and an overall status. Null when the rollup has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_source_health MCP/REST shape. Mirrors GET /api/v1/source-health. */
   source_health?: Maybe<Scalars['JSON']['output']>;
   /** Per-source input-hash ledger -- each registry data source's captured input hash and record count at ingest time, for detecting hash drift or seeing per-source contribution volume. Filter with q (keyword search across id/kind/path), sort with sort/order, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/source-snapshots. */
@@ -4176,6 +4178,45 @@ export type SearchIndexList = {
   total: Scalars['Int']['output'];
 };
 
+/** metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health. */
+export type SelfHealth = {
+  __typename?: 'SelfHealth';
+  components: Array<SelfHealthComponentView>;
+  /** Components with data. Zero means the poller hasn't written anything yet. */
+  measured_component_count: Scalars['Int']['output'];
+  observed_at?: Maybe<Scalars['String']['output']>;
+  schema_version: Scalars['Int']['output'];
+  /** operational | degraded | outage. */
+  verdict: Scalars['String']['output'];
+};
+
+/** One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios. */
+export type SelfHealthComponentView = {
+  __typename?: 'SelfHealthComponentView';
+  checked_at?: Maybe<Scalars['String']['output']>;
+  component: Scalars['String']['output'];
+  /** Null when the component has never been probed -- NOT false. */
+  current_ok?: Maybe<Scalars['Boolean']['output']>;
+  /** Trailing-90d daily ratios, oldest first; gaps are absent, never zero-filled. */
+  days: Array<SelfHealthDay>;
+  http_status?: Maybe<Scalars['Int']['output']>;
+  latency_ms?: Maybe<Scalars['Float']['output']>;
+  /** Qualifies a false current_ok with why, for non-HTTP failure modes. Null when there's nothing to add. */
+  note?: Maybe<Scalars['String']['output']>;
+  /** Mean uptime across the days we actually have. Null when there are none. */
+  uptime_90d?: Maybe<Scalars['Float']['output']>;
+};
+
+/** One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled. */
+export type SelfHealthDay = {
+  __typename?: 'SelfHealthDay';
+  checks: Scalars['Int']['output'];
+  day: Scalars['String']['output'];
+  ok_count: Scalars['Int']['output'];
+  /** ok_count / checks, 0..1. */
+  uptime_ratio: Scalars['Float']['output'];
+};
+
 export type SourceSnapshotList = {
   __typename?: 'SourceSnapshotList';
   cursor: Scalars['Int']['output'];
@@ -5519,6 +5560,9 @@ export type ResolversTypes = ResolversObject<{
   ScoreDistribution: ResolverTypeWrapper<ScoreDistribution>;
   SearchDocumentList: ResolverTypeWrapper<SearchDocumentList>;
   SearchIndexList: ResolverTypeWrapper<SearchIndexList>;
+  SelfHealth: ResolverTypeWrapper<SelfHealth>;
+  SelfHealthComponentView: ResolverTypeWrapper<SelfHealthComponentView>;
+  SelfHealthDay: ResolverTypeWrapper<SelfHealthDay>;
   SourceSnapshotList: ResolverTypeWrapper<SourceSnapshotList>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subnet: ResolverTypeWrapper<Subnet>;
@@ -5809,6 +5853,9 @@ export type ResolversParentTypes = ResolversObject<{
   ScoreDistribution: ScoreDistribution;
   SearchDocumentList: SearchDocumentList;
   SearchIndexList: SearchIndexList;
+  SelfHealth: SelfHealth;
+  SelfHealthComponentView: SelfHealthComponentView;
+  SelfHealthDay: SelfHealthDay;
   SourceSnapshotList: SourceSnapshotList;
   String: Scalars['String']['output'];
   Subnet: Subnet;
@@ -7917,6 +7964,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   schemas?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   search?: Resolver<ResolversTypes['SearchDocumentList'], ParentType, ContextType, Partial<QuerySearchArgs>>;
   search_index?: Resolver<ResolversTypes['SearchIndexList'], ParentType, ContextType, Partial<QuerySearch_IndexArgs>>;
+  self_health?: Resolver<ResolversTypes['SelfHealth'], ParentType, ContextType>;
   source_health?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   source_snapshots?: Resolver<ResolversTypes['SourceSnapshotList'], ParentType, ContextType, Partial<QuerySource_SnapshotsArgs>>;
   subnet?: Resolver<Maybe<ResolversTypes['Subnet']>, ParentType, ContextType, RequireFields<QuerySubnetArgs, 'netuid'>>;
@@ -8180,6 +8228,32 @@ export type SearchIndexListResolvers<ContextType = GqlContext, ParentType extend
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SelfHealthResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SelfHealth'] = ResolversParentTypes['SelfHealth']> = ResolversObject<{
+  components?: Resolver<Array<ResolversTypes['SelfHealthComponentView']>, ParentType, ContextType>;
+  measured_component_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  verdict?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SelfHealthComponentViewResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SelfHealthComponentView'] = ResolversParentTypes['SelfHealthComponentView']> = ResolversObject<{
+  checked_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  component?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  current_ok?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  days?: Resolver<Array<ResolversTypes['SelfHealthDay']>, ParentType, ContextType>;
+  http_status?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  latency_ms?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  note?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  uptime_90d?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SelfHealthDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SelfHealthDay'] = ResolversParentTypes['SelfHealthDay']> = ResolversObject<{
+  checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  ok_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  uptime_ratio?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type SourceSnapshotListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SourceSnapshotList'] = ResolversParentTypes['SourceSnapshotList']> = ResolversObject<{
@@ -9230,6 +9304,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ScoreDistribution?: ScoreDistributionResolvers<ContextType>;
   SearchDocumentList?: SearchDocumentListResolvers<ContextType>;
   SearchIndexList?: SearchIndexListResolvers<ContextType>;
+  SelfHealth?: SelfHealthResolvers<ContextType>;
+  SelfHealthComponentView?: SelfHealthComponentViewResolvers<ContextType>;
+  SelfHealthDay?: SelfHealthDayResolvers<ContextType>;
   SourceSnapshotList?: SourceSnapshotListResolvers<ContextType>;
   Subnet?: SubnetResolvers<ContextType>;
   SubnetAxonRemovals?: SubnetAxonRemovalsResolvers<ContextType>;

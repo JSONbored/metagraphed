@@ -542,6 +542,8 @@ export const SDL = /* GraphQL */ `
     contracts: Contracts
     "The generated build summary: artifact inventory counts and sizes, subnet/provider/surface totals, coverage rollup, and publish metadata. Resolves to a GraphQL error (not null) when the build-summary artifact has not been baked in this environment, matching the REST route's 404 and the get_build MCP tool. Mirrors GET /api/v1/build."
     build: BuildSummary!
+    "metagraphed's OWN uptime: the api/site/publish component views with their latest probe state and trailing-90-day daily uptime ratios, plus the rolled-up operational/degraded/outage verdict. Scoped strictly to our own surfaces -- never third-party subnet health (that is the health rollup). Resolves to a GraphQL error (not null) when the self-health artifact has not been baked in this environment, matching the REST route's 404 and the get_self_health MCP tool. Mirrors GET /api/v1/self-health."
+    self_health: SelfHealth!
     "A compact daily operational health snapshot for one UTC date (YYYY-MM-DD): per-surface status/latency plus summary incident counts from the archived health/history tier. Filter by netuid/kind/provider/status/classification, sort with sort/order, and page with limit (1-1000)/cursor. An invalid date/filter/sort/limit/cursor or a missing snapshot is a GraphQL error, not a silently substituted default. Distinct from the live health rollup and health_trends. Mirrors GET /api/v1/health/history/{date}."
     health_history(
       date: String!
@@ -2138,6 +2140,42 @@ export const SDL = /* GraphQL */ `
     artifacts: JSON
     coverage: JSON
     artifact_budget_summary: JSON
+  }
+
+  "One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled."
+  type SelfHealthDay {
+    day: String!
+    checks: Int!
+    ok_count: Int!
+    "ok_count / checks, 0..1."
+    uptime_ratio: Float!
+  }
+
+  "One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios."
+  type SelfHealthComponentView {
+    component: String!
+    "Null when the component has never been probed -- NOT false."
+    current_ok: Boolean
+    http_status: Int
+    latency_ms: Float
+    checked_at: String
+    "Qualifies a false current_ok with why, for non-HTTP failure modes. Null when there's nothing to add."
+    note: String
+    "Trailing-90d daily ratios, oldest first; gaps are absent, never zero-filled."
+    days: [SelfHealthDay!]!
+    "Mean uptime across the days we actually have. Null when there are none."
+    uptime_90d: Float
+  }
+
+  "metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health."
+  type SelfHealth {
+    schema_version: Int!
+    "operational | degraded | outage."
+    verdict: String!
+    components: [SelfHealthComponentView!]!
+    "Components with data. Zero means the poller hasn't written anything yet."
+    measured_component_count: Int!
+    observed_at: String
   }
 
   type HealthHistory {

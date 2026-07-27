@@ -427,6 +427,12 @@ import {
   loadBuildSummary,
 } from "./build-mcp.ts";
 import {
+  GET_SELF_HEALTH_INSTRUCTIONS,
+  GET_SELF_HEALTH_MCP_TOOL,
+  GET_SELF_HEALTH_OUTPUT_SCHEMA,
+  loadSelfHealth,
+} from "./self-health-mcp.ts";
+import {
   GET_ADAPTER_INSTRUCTIONS,
   GET_ADAPTER_MCP_TOOL,
   GET_ADAPTER_OUTPUT_SCHEMA,
@@ -1528,6 +1534,7 @@ export const MCP_INSTRUCTIONS =
   GET_CHANGELOG_INSTRUCTIONS +
   GET_FEED_INSTRUCTIONS +
   GET_BUILD_INSTRUCTIONS +
+  GET_SELF_HEALTH_INSTRUCTIONS +
   GET_ADAPTER_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
@@ -8974,6 +8981,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    ...GET_SELF_HEALTH_MCP_TOOL,
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadSelfHealth(asMcpLoaderCtx(ctx));
+    },
+  },
+  {
     ...GET_ADAPTER_MCP_TOOL,
     async handler(args: z.infer<typeof GetAdapterInputSchema>, ctx: McpCtx) {
       return loadAdapter(asMcpLoaderCtx(ctx), args);
@@ -10791,6 +10804,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
   get_feed: GET_FEED_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
+  get_self_health: GET_SELF_HEALTH_OUTPUT_SCHEMA,
   get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
   get_agent_catalog: z.toJSONSchema(GetAgentCatalogOutputSchema, {
     target: "draft-2020-12",

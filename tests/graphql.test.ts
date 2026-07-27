@@ -2029,6 +2029,61 @@ describe("graphql — build", () => {
   });
 });
 
+// #8422: GraphQL parity for GET /api/v1/self-health, reusing loadSelfHealth that
+// MCP get_self_health already calls (same artifact read + error behavior as
+// REST and MCP), matching the build/changelog/contracts meta-route precedent.
+describe("graphql — self_health", () => {
+  const SELF_HEALTH_BLOB = {
+    schema_version: 1,
+    verdict: "operational",
+    components: [
+      {
+        component: "api",
+        current_ok: true,
+        http_status: 200,
+        latency_ms: 42,
+        checked_at: "2026-07-01T00:00:00.000Z",
+        note: null,
+        days: [
+          { day: "2026-06-30", checks: 1440, ok_count: 1440, uptime_ratio: 1 },
+        ],
+        uptime_90d: 0.999,
+      },
+    ],
+    measured_component_count: 1,
+    observed_at: "2026-07-01T00:00:00.000Z",
+  };
+
+  test("serves the baked self-health artifact verbatim", async () => {
+    const env = fixtureEnv({ "/metagraph/self-health.json": SELF_HEALTH_BLOB });
+    const { status, body } = await gql(
+      "{ self_health { schema_version verdict measured_component_count observed_at components { component current_ok http_status latency_ms checked_at note uptime_90d days { day checks ok_count uptime_ratio } } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const sh = body.data.self_health;
+    assert.equal(sh.schema_version, 1);
+    assert.equal(sh.verdict, "operational");
+    assert.equal(sh.measured_component_count, 1);
+    assert.equal(sh.observed_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(sh.components[0].component, "api");
+    assert.equal(sh.components[0].current_ok, true);
+    assert.equal(sh.components[0].uptime_90d, 0.999);
+    assert.equal(sh.components[0].days[0].ok_count, 1440);
+    assert.equal(sh.components[0].days[0].uptime_ratio, 1);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ self_health { schema_version } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.self_health, 5);
+  });
+});
+
 describe("graphql — health_history", () => {
   const SURFACE_ROW = {
     netuid: 7,
