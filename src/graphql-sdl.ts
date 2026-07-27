@@ -17,20 +17,52 @@ export const SDL = /* GraphQL */ `
   "Opaque JSON value, for dynamic-keyed maps with no fixed field set (e.g. the incident summary's by_kind/by_provider/by_status count maps) -- matching how the MCP mirror serves them."
   scalar JSON
 
+  "The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument."
+  enum Network {
+    finney
+    test
+  }
+
   type Query {
-    "Paginated active-subnet index."
+    "Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order."
     subnets(
       netuid: Int
+      network: Network
       status: String
       subnet_type: String
       domain: String
       coverage_level: String
       curation_level: String
+      not_status: String
+      not_subnet_type: String
+      not_domain: String
+      not_coverage_level: String
+      not_curation_level: String
+      min_readiness: Int
+      max_readiness: Int
+      min_surface_count: Int
+      max_surface_count: Int
+      min_block: Int
+      max_block: Int
+      min_candidate_count: Int
+      max_candidate_count: Int
+      min_mechanism_count: Int
+      max_mechanism_count: Int
+      min_participant_count: Int
+      max_participant_count: Int
+      min_probed_surface_count: Int
+      max_probed_surface_count: Int
+      min_tempo: Int
+      max_tempo: Int
+      min_netuid: Int
+      max_netuid: Int
+      sort: String
+      order: String
       limit: Int
       cursor: String
     ): SubnetList!
-    "One subnet with its health, surfaces, endpoints, and economics."
-    subnet(netuid: Int!): Subnet
+    "One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets."
+    subnet(netuid: Int!, network: Network): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
     "One subnet's live on-chain hyperparameters (latest snapshot only). The hyperparameters block is null when the subnet has no captured row -- a schema-stable card, never a GraphQL error, matching the Query.block ref-lookup convention. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters."

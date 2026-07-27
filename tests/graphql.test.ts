@@ -626,6 +626,138 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.deepEqual(body.data.subnets.items, [{ netuid: 2 }]);
   });
 
+  test("subnets scopes to the testnet artifact via network: test (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 1, name: "Main", slug: "main", status: "active" }],
+      },
+      "/metagraph/testnet/subnets.json": {
+        subnets: [
+          { netuid: 99, name: "Testnet", slug: "tn", status: "active" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnets(network: test) { items { netuid } total } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 1);
+    assert.deepEqual(body.data.subnets.items, [{ netuid: 99 }]);
+  });
+
+  test("subnets applies negation + range + sort like list_subnets (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 1,
+            name: "A",
+            slug: "a",
+            status: "active",
+            surface_count: 2,
+          },
+          {
+            netuid: 2,
+            name: "B",
+            slug: "b",
+            status: "deprecated",
+            surface_count: 9,
+          },
+          {
+            netuid: 3,
+            name: "C",
+            slug: "c",
+            status: "active",
+            surface_count: 5,
+          },
+          {
+            netuid: 4,
+            name: "D",
+            slug: "d",
+            status: "active",
+            surface_count: 1,
+          },
+        ],
+      },
+    });
+    // not_status excludes #2; min_surface_count: 2 excludes #4 (count 1);
+    // sort surface_count desc orders the survivors #3 (5) before #1 (2).
+    const { status, body } = await gql(
+      '{ subnets(not_status: "deprecated", min_surface_count: 2, sort: "surface_count", order: "desc") { items { netuid } total } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 2);
+    assert.deepEqual(
+      body.data.subnets.items.map((row: Row) => row.netuid),
+      [3, 1],
+    );
+  });
+
+  test("subnets sort without an explicit order defaults to ascending (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a", surface_count: 5 },
+          { netuid: 2, name: "B", slug: "b", surface_count: 2 },
+          { netuid: 3, name: "C", slug: "c", surface_count: 9 },
+        ],
+      },
+    });
+    // No order arg -> the resolver's `order ?? "asc"` default applies.
+    const { status, body } = await gql(
+      '{ subnets(sort: "surface_count") { items { netuid } } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(
+      body.data.subnets.items.map((row: Row) => row.netuid),
+      [2, 1, 3],
+    );
+  });
+
+  test("subnet scopes its reads to the testnet artifact via network: test (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets/7.json": {
+        netuid: 7,
+        name: "Mainnet Seven",
+        slug: "main-7",
+      },
+      "/metagraph/testnet/subnets/7.json": {
+        netuid: 7,
+        name: "Testnet Seven",
+        slug: "tn-7",
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet(netuid: 7, network: test) { netuid name slug } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet.name, "Testnet Seven");
+    assert.equal(body.data.subnet.slug, "tn-7");
+  });
+
+  test("subnets rejects an unsupported sort or order as BAD_USER_INPUT (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": { subnets: [] },
+    });
+    const bad = await gql(
+      '{ subnets(sort: "bogus") { total } }',
+      env as unknown as Env,
+    );
+    assert.equal(bad.body.data, null);
+    assert.match(bad.body.errors[0].message, /not a supported sort/);
+    assert.equal(bad.body.errors[0].extensions.code, "BAD_USER_INPUT");
+    const badOrder = await gql(
+      '{ subnets(sort: "netuid", order: "sideways") { total } }',
+      env as unknown as Env,
+    );
+    assert.equal(badOrder.body.data, null);
+    assert.equal(badOrder.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
   test("subnet resolves a single subnet by netuid", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets/7.json": {
