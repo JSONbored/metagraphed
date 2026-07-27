@@ -161,18 +161,39 @@ requirements:
    that staging mechanism no longer exists (see "Repo shape" above); nothing
    to symlink into anymore.
 3. Author a `.design-sync/previews/DailyRollupFreshness.tsx` preview —
-   **still outstanding**. Not done here; this pass was scoped to fixing
-   config/NOTES drift, not authoring new previews.
+   **done** (2026-07-27). Three cards: `Fresh`, `Stale`, `NoData`. Reuses the
+   exact timestamps `FreshnessIndicator.tsx`'s preview already uses (2min /
+   14h, either side of `isStaleFreshness`'s real 12h threshold), so the two
+   cards are directly comparable — this component _is_ that one in dot-only
+   mode plus an `InfoTooltip`. `NoData` earns its card because `at` is
+   nullable and `tierFreshnessLabel` has a dedicated "No freshness data"
+   branch for it: a real state, not a degenerate one.
 4. Rebuild, validate (0 `bad` in the render check), capture, grade `good` —
    **still outstanding**, requires the live `/design-sync` interactive
    tooling this pass explicitly did not run.
 5. Re-upload to the live Claude Design project — **still outstanding**, same
    reason.
 
-So #4872 remains open as a real, distinct task — items 3-5 need a live sync
-session with the interactive tooling. Item 1 (and item 2, by virtue of no
-longer applying) are done as a side effect of this fix, not as a substitute
-for the rest of the issue.
+So #4872 is down to items 4-5, which need a live sync session with the
+interactive tooling. Everything authorable from the repo side is in.
+
+### `RealtimeFreshness` — the same gap, one line over
+
+Adding the preview surfaced that `RealtimeFreshness` — `DailyRollupFreshness`'s
+twin, same file, same shape — was never in `componentSrcMap` at all. That is
+precisely the class of gap #4872 exists to close ("zero known gaps against
+what's actually in the component directories"), so it's fixed in the same pass
+rather than filed as a third round trip: one `componentSrcMap` line and a
+sibling preview, zero new dependencies to vet.
+
+Worth knowing for the grading pass: the two render **identically**. They differ
+only in the tooltip's tier prefix — "Live chain read" vs "Daily rollup
+snapshot" — so a grader working from the dot alone cannot tell them apart. That
+difference is the whole reason both need cards rather than one standing in for
+the other.
+
+Map is now **55 components / 16 authored previews**, every path resolving and
+no preview lacking a map entry.
 
 ## Known render warns
 
@@ -225,22 +246,24 @@ these three weights per family (9 `@font-face` blocks total), now built from
 
 ## Other findings (out of scope for this sync)
 
-- `packages/ui-kit/src/components/metagraphed/freshness.tsx`'s
-  `FreshnessIndicator` JSDoc said "default 5 min" staleness threshold; the
-  actual default in `isStaleFreshness` (`@/lib/metagraphed/format.ts:60`) is
-  12h (changed in a past fix — the old 5-minute default fired constantly and
-  was noise). Was stale documentation, not a behavior bug, as of 2026-07-11 —
-  not re-checked in this pass; if still present it's still just a one-line
-  doc fix, not touched here either.
+- ~~`FreshnessIndicator`'s JSDoc said "default 5 min" while `isStaleFreshness`
+  actually defaults to 12h.~~ **Resolved.** Re-checked 2026-07-27: the JSDoc in
+  `packages/ui-kit/src/components/metagraphed/freshness.tsx` no longer makes
+  that claim. The only surviving mention was a comment in
+  `previews/FreshnessIndicator.tsx` describing the drift as if it were still
+  live — corrected in the same pass, since a preview comment asserting a bug
+  that no longer exists is worse than no comment.
 
 ## Re-sync risks
 
 - `cfg.srcDir` now points at `packages/ui-kit/src` directly (real, canonical
   source, not a staged copy) — regenerating a scope-src cache is no longer
   part of the workflow. Don't recreate it.
-- No preview authoring happened for `DailyRollupFreshness` in this pass — see
-  "#4872 status" above. A future sync session should treat that as the next
-  concrete gap to close, not re-derive it from scratch.
+- `DailyRollupFreshness` and `RealtimeFreshness` previews are now authored
+  (2026-07-27) but have **never been rendered, captured or graded** — they are
+  the two cards a future sync session should validate first. Both are three
+  plain calls with literal props and no app context, so a `bad` render would
+  point at the sync harness, not at them.
 - This pass did not re-run the live `/design-sync` tooling (interactive-only,
   out of scope here) — `cfg.json`/`NOTES.md` are corrected and every path was
   confirmed to resolve via `tsc --noEmit` (both `packages/ui-kit`'s own

@@ -38,6 +38,7 @@
     "ExternalLink": "../../packages/ui-kit/src/components/metagraphed/external-link.tsx",
     "FreshnessIndicator": "../../packages/ui-kit/src/components/metagraphed/freshness.tsx",
     "DailyRollupFreshness": "../../packages/ui-kit/src/components/metagraphed/freshness.tsx",
+    "RealtimeFreshness": "../../packages/ui-kit/src/components/metagraphed/freshness.tsx",
     "HoverPreview": "../../packages/ui-kit/src/components/metagraphed/hover-preview.tsx",
     "InfoTooltip": "../../packages/ui-kit/src/components/metagraphed/info-tooltip.tsx",
     "Kbd": "../../packages/ui-kit/src/components/metagraphed/kbd.tsx",
