@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
@@ -10,6 +10,7 @@ import {
   PageSection,
   AnimatedNumber,
   MethodologyCallout,
+  LoadMore,
 } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { DownloadOpenApiButton } from "@/components/metagraphed/download-openapi-button";
@@ -28,6 +29,7 @@ import {
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
+import { APIS_HUB_PAGE_STEP, ensureIndexVisible } from "@/lib/metagraphed/list-page-window";
 import { SearchInput, ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { ApisTabActions } from "./-apis-hub";
@@ -229,7 +231,11 @@ function DriftActivityRibbon() {
 
 function ContractsList() {
   const { data } = useSuspenseQuery(contractsQuery());
-  const rows = data.data ?? [];
+  const rows = useMemo(() => data.data ?? [], [data.data]);
+  // #8360: this grid (not the explorer rail) was the ~33kpx mobile height driver on
+  // /apis/schemas — bound DOM at 25 cards; same step as SchemaExplorer / Providers.
+  const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
+  const visible = useMemo(() => rows.slice(0, listLimit), [rows, listLimit]);
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -239,30 +245,41 @@ function ContractsList() {
     );
   }
   return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((c) => {
-        const artifactUrl = sameOriginApiUrl(c.path);
-        return (
-          <Panel key={c.id} dense interactive>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
-                {c.description ? (
-                  <div className="mg-type-data-sm text-ink-muted mt-0.5">{c.description}</div>
-                ) : null}
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {visible.map((c) => {
+          const artifactUrl = sameOriginApiUrl(c.path);
+          return (
+            <Panel key={c.id} dense interactive>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
+                  {c.description ? (
+                    <div className="mg-type-data-sm text-ink-muted mt-0.5">{c.description}</div>
+                  ) : null}
+                </div>
+                <FileCode className="size-4 text-ink-muted shrink-0" />
               </div>
-              <FileCode className="size-4 text-ink-muted shrink-0" />
-            </div>
-            {c.path && artifactUrl ? (
-              <div className="mt-3">
-                <ExternalLink href={artifactUrl} className="text-[11px]">
-                  {c.path}
-                </ExternalLink>
-              </div>
-            ) : null}
-          </Panel>
-        );
-      })}
+              {c.path && artifactUrl ? (
+                <div className="mt-3">
+                  <ExternalLink href={artifactUrl} className="text-[11px]">
+                    {c.path}
+                  </ExternalLink>
+                </div>
+              ) : null}
+            </Panel>
+          );
+        })}
+      </div>
+      {rows.length > APIS_HUB_PAGE_STEP ? (
+        <LoadMore
+          shown={visible.length}
+          total={rows.length}
+          hasMore={listLimit < rows.length}
+          isLoading={false}
+          onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -288,6 +305,19 @@ function SchemaExplorer() {
       return hay.includes(needle);
     });
   }, [all, search.drift, search.q]);
+
+  // #8360: bound the left-rail DOM at 25 cards; filters still run over `all`.
+  const [listLimit, setListLimit] = useState(APIS_HUB_PAGE_STEP);
+  useEffect(() => {
+    setListLimit(APIS_HUB_PAGE_STEP);
+  }, [search.q, search.drift]);
+  useEffect(() => {
+    if (!search.open) return;
+    const idx = filtered.findIndex((s) => s.id === search.open);
+    if (idx < 0) return;
+    setListLimit((prev) => ensureIndexVisible(prev, idx, APIS_HUB_PAGE_STEP));
+  }, [search.open, filtered]);
+  const visible = useMemo(() => filtered.slice(0, listLimit), [filtered, listLimit]);
 
   const selectedId = search.open || filtered[0]?.id || "";
   const selected = useMemo(
@@ -385,7 +415,7 @@ function SchemaExplorer() {
                 <EmptyState title="No schemas match" />
               </li>
             ) : (
-              filtered.map((s) => {
+              visible.map((s) => {
                 const active = s.id === selected?.id;
                 return (
                   <li key={s.id}>
@@ -423,6 +453,15 @@ function SchemaExplorer() {
               })
             )}
           </ul>
+          {filtered.length > APIS_HUB_PAGE_STEP ? (
+            <LoadMore
+              shown={visible.length}
+              total={filtered.length}
+              hasMore={listLimit < filtered.length}
+              isLoading={false}
+              onLoadMore={() => setListLimit((prev) => prev + APIS_HUB_PAGE_STEP)}
+            />
+          ) : null}
         </aside>
 
         {/* Right viewer */}
