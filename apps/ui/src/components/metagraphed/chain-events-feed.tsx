@@ -6,6 +6,7 @@ import { API_BASE } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
 import { AccountAddress } from "@/components/metagraphed/account-address";
+import { StreamStatusChip } from "@/components/metagraphed/stream-status-chip";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
@@ -163,15 +164,6 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
   const hiddenCount = allEvents.length - events.length;
   const filtersActive = !!(pallet.trim() || method.trim());
 
-  const streamLabel =
-    streamStatus === "open"
-      ? "Live"
-      : streamStatus === "connecting"
-        ? "Connecting"
-        : streamStatus === "error"
-          ? "Polling"
-          : null;
-
   const filters = (
     <>
       <SearchInput
@@ -223,28 +215,7 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
         Hide system noise
         {hiddenCount > 0 ? <span className="text-ink-muted">· {hiddenCount}</span> : null}
       </button>
-      {streamLabel ? (
-        <span
-          className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2 py-1 mg-type-caption",
-            streamStatus === "open"
-              ? "border-accent/40 bg-accent/10 text-accent-text"
-              : "border-border bg-surface text-ink-muted",
-          )}
-          title={
-            streamStatus === "open"
-              ? "Connected to /api/v1/chain/stream — new matching events refresh this feed"
-              : streamStatus === "error"
-                ? "Chain stream unavailable — refresh manually or wait for reconnect"
-                : "Opening /api/v1/chain/stream"
-          }
-          data-testid="chain-events-stream-status"
-          data-stream-status={streamStatus}
-        >
-          {streamStatus === "open" ? <span className="mg-live-dot" aria-hidden /> : null}
-          {streamLabel}
-        </span>
-      ) : null}
+      <StreamStatusChip status={streamStatus} testId="chain-events-stream-status" />
     </>
   );
 

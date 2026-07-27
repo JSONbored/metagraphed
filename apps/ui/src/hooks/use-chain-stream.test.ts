@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ChainStreamSource, ChainStreamSessionDeps } from "./use-chain-stream";
 import {
+  accountEventMatchesNetuid,
   buildChainStreamUrl,
   chainStreamEventMatchesFilters,
   createChainStreamSession,
@@ -43,6 +44,20 @@ describe("chainStreamEventMatchesFilters", () => {
     );
     expect(chainStreamEventMatchesFilters(null, "", "")).toBe(false);
     expect(chainStreamEventMatchesFilters("x", "", "")).toBe(false);
+  });
+});
+
+describe("accountEventMatchesNetuid", () => {
+  it("matches an account_events row for the given netuid", () => {
+    const row = { table: "account_events", netuid: 19, hotkey: "5abc", amount_tao: 1.5 };
+    expect(accountEventMatchesNetuid(row, 19)).toBe(true);
+    expect(accountEventMatchesNetuid(row, 4)).toBe(false);
+  });
+
+  it("rejects non-account_events tables and junk payloads", () => {
+    expect(accountEventMatchesNetuid({ table: "chain_events", netuid: 19 }, 19)).toBe(false);
+    expect(accountEventMatchesNetuid(null, 19)).toBe(false);
+    expect(accountEventMatchesNetuid("x", 19)).toBe(false);
   });
 });
 
