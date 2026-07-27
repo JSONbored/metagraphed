@@ -189,11 +189,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         actions={
           <>
             <ActionBar>
-              <BlockNeighborNav
-                prev={prevBlockNumber}
-                next={nextBlockNumber}
-                hash={sectionHash}
-              />
+              <BlockNeighborNav prev={prevBlockNumber} next={nextBlockNumber} hash={sectionHash} />
               <ValueUnitControl />
               <div className="hidden sm:flex">
                 <JumpToBlock />
