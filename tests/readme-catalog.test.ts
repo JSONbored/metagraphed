@@ -4,6 +4,7 @@ import { describe, test } from "vitest";
 import {
   BEGIN,
   END,
+  curatedSubnetOverlays,
   focusTags,
   injectedReadme,
   links,
@@ -107,6 +108,43 @@ describe("readme-catalog renderCatalog", () => {
       "**2 curated subnets** — 1 with a site, 0 with docs, 0 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`. Root (SN0) is base-layer chain infrastructure, listed separately below, not counted as a subnet.",
     );
     assert.ok(rendered.includes("`SN0`"), "root is still listed in the body");
+  });
+});
+
+describe("readme-catalog curatedSubnetOverlays (#8352)", () => {
+  test("excludes root (netuid 0), keeps every other overlay", () => {
+    const overlays = [
+      { netuid: 0, name: "root" },
+      { netuid: 1, name: "Apex" },
+      { netuid: 2, name: "Targon" },
+    ];
+    assert.deepEqual(
+      curatedSubnetOverlays(overlays).map((o) => o.netuid),
+      [1, 2],
+    );
+  });
+
+  test("is the single source renderCatalog's own count agrees with", () => {
+    // Regression guard for the exact bug this was extracted to fix:
+    // generate-catalog-docs.ts's frontmatter description used to compute
+    // "curated subnets" via the raw, unfiltered overlay length and silently
+    // disagreed with renderCatalog's own body text by one (root/SN0). Both
+    // consumers must derive from this one function, not their own filter.
+    const overlays = [
+      { netuid: 0, name: "root" },
+      { netuid: 1, name: "Apex" },
+      { netuid: 2, name: "Targon" },
+    ];
+    const bodyCount = curatedSubnetOverlays(overlays).length;
+    const summaryLine = renderCatalog(overlays)
+      .split("\n")
+      .find((line) => line.startsWith("**"))!;
+    assert.ok(summaryLine.startsWith(`**${bodyCount} curated subnets**`));
+  });
+
+  test("returns everything when there's no root overlay at all", () => {
+    const overlays = [{ netuid: 1 }, { netuid: 2 }];
+    assert.equal(curatedSubnetOverlays(overlays).length, 2);
   });
 });
 
