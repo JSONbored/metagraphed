@@ -48,11 +48,23 @@ const SITE_URL: &str = "https://metagraph.sh/";
 /// well below the 60s tick, so a hung endpoint can't stall the loop.
 const CHECK_TIMEOUT_SECS: &str = "10";
 
-/// `meta.generated_at` older than this counts as a publish failure. The
-/// registry publishes on a 6h cadence (ADR 0001), so 2x that leaves room for
-/// one missed run before this reports a problem -- a single late publish is
-/// noise, two in a row is the signal.
-const PUBLISH_STALE_MS: i64 = 12 * 60 * 60 * 1000;
+/// `meta.generated_at` older than this counts as a publish failure.
+///
+/// metagraphed#8352: this was 12h, sized against a 6h publish cadence that no
+/// longer exists. The publish pipeline was redesigned to a DAILY floor (cron
+/// `17 7 * * *` in `.github/workflows/publish-cloudflare.yml`) plus
+/// event-triggered runs on registry-content pushes -- the volatile tiers
+/// (surface health, economics) refresh independently on their own faster
+/// cadences and were never gated on this publish at all. A 12h threshold
+/// against a 24h floor meant this component read "down" for up to half of
+/// every quiet day, which is exactly what happened: `/status` spent a full
+/// day publicly reporting a pipeline outage that was the poller's own
+/// miscalibration, not a real failure.
+///
+/// 26h: the 24h floor plus 2h slack for run duration and queue delay. Two
+/// full daily runs missed in a row is the real signal this should catch, not
+/// one daily cron finishing a few hours later than usual.
+const PUBLISH_STALE_MS: i64 = 26 * 60 * 60 * 1000;
 
 /// One component's result for one tick.
 #[derive(Debug, PartialEq)]
@@ -419,7 +431,7 @@ mod tests {
     #[test]
     fn refuses_a_non_utc_or_malformed_timestamp_instead_of_misreading_it() {
         // Silently treating an offset timestamp as UTC would shift the verdict
-        // by hours, which for a 12h staleness threshold can flip it.
+        // by hours, which for a 26h staleness threshold can flip it.
         assert_eq!(parse_utc_iso_ms("2026-07-26T16:27:10+02:00"), None);
         assert_eq!(parse_utc_iso_ms("2026-07-26 16:27:10Z"), None);
         assert_eq!(parse_utc_iso_ms("2026-13-01T00:00:00Z"), None);
@@ -433,8 +445,13 @@ mod tests {
         let fresh = "{\"meta\":{\"generated_at\":\"2026-07-26T15:27:10.973Z\"}}";
         assert_eq!(publish_ok(fresh, now), Some(true));
 
-        // 12h is the threshold; 13h ago is stale.
-        let stale = "{\"meta\":{\"generated_at\":\"2026-07-26T03:27:10.973Z\"}}";
+        // 26h is the threshold: 25h ago is still fresh, 27h ago is stale.
+        // metagraphed#8352 -- was 12h/13h against a publish pipeline that
+        // moved to a daily floor; see PUBLISH_STALE_MS's own doc comment.
+        let still_fresh = "{\"meta\":{\"generated_at\":\"2026-07-25T15:27:10.973Z\"}}";
+        assert_eq!(publish_ok(still_fresh, now), Some(true));
+
+        let stale = "{\"meta\":{\"generated_at\":\"2026-07-25T13:27:10.973Z\"}}";
         assert_eq!(publish_ok(stale, now), Some(false));
     }
 

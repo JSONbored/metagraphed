@@ -77,6 +77,13 @@ export interface SelfHealthComponentView {
   latency_ms: number | null;
   checked_at: string | null;
   /**
+   * Qualifies a false `current_ok` with why, for components whose failure
+   * mode isn't a plain HTTP-level outage. Null whenever there's nothing to
+   * add (healthy, unmeasured, or a component whose bare "down" already says
+   * everything -- see {@link selfHealthVerdict}'s doc comment).
+   */
+  note: string | null;
+  /**
    * Trailing-90d daily ratios, oldest first. Days with no rows are ABSENT,
    * not zero-filled: a gap means "we weren't measuring", and rendering that
    * as 0% uptime would invent an outage that never happened. The house rule
@@ -100,9 +107,21 @@ export interface SelfHealth {
 
 /**
  * `api` is the load-bearing component: if it's down the site has nothing to
- * render and every client is broken, so it alone decides an outage. `site` and
- * `publish` failing are real problems that don't stop the API answering, so
- * they degrade rather than outage.
+ * render and every client is broken, so it alone decides an outage. `site`
+ * failing is a real problem that doesn't stop the API answering, so it
+ * degrades rather than outages.
+ *
+ * `publish` is scored DIFFERENTLY (metagraphed#8352). It measures the DATA
+ * pipeline's cadence, not an HTTP surface -- a stale publish means the api
+ * and site are both fully up and answering correctly, just with whatever
+ * data they last published. That is not a systems outage the way api/site
+ * failing is, so `publish` failing ALONE does not move the verdict off
+ * "operational". It still surfaces honestly on its own component row (see
+ * `componentNote` below) -- this only keeps a data-freshness signal from
+ * painting the public banner the same red as an actual outage, which is
+ * exactly what happened before this fix: a 12h threshold against a pipeline
+ * redesigned to a 24h floor meant this component read "down" for up to half
+ * of every quiet day, and dragged the whole site to "degraded" with it.
  *
  * A component with no data at all is NOT counted as failing -- "we haven't
  * measured this yet" and "this is down" are different claims, and only one of
@@ -118,8 +137,28 @@ export function selfHealthVerdict(
   if (measured.length === 0) return "degraded";
   const api = measured.find((c) => c.component === "api");
   if (api && !api.current_ok) return "outage";
-  if (measured.some((c) => !c.current_ok)) return "degraded";
+  const nonPublishFailing = measured.some(
+    (c) => c.component !== "publish" && !c.current_ok,
+  );
+  if (nonPublishFailing) return "degraded";
   return "operational";
+}
+
+/**
+ * `note` text for a component's current reading. Only `publish` gets one
+ * today -- its bare "down" would otherwise read exactly like an HTTP-level
+ * outage (api/site's failure mode), when it actually means "past its
+ * expected cadence". Every other component's plain up/down already says
+ * everything there is to say.
+ */
+function componentNote(
+  component: string,
+  currentOk: boolean | null,
+): string | null {
+  if (component === "publish" && currentOk === false) {
+    return "publish is past its expected cadence";
+  }
+  return null;
 }
 
 function toIso(ms: number | null | undefined): string | null {
@@ -175,12 +214,14 @@ export function buildSelfHealth(
         }))
         .sort((a, b) => a.day.localeCompare(b.day));
       const latest = latestByComponent.get(component);
+      const currentOk = latest ? latest.ok : null;
       return {
         component,
-        current_ok: latest ? latest.ok : null,
+        current_ok: currentOk,
         http_status: latest?.http_status ?? null,
         latency_ms: latest?.latency_ms ?? null,
         checked_at: latest ? toIso(toMs(latest.checked_at_ms)) : null,
+        note: componentNote(component, currentOk),
         days,
         uptime_90d: meanRatio(days),
       };

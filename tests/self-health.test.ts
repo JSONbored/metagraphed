@@ -44,6 +44,7 @@ function view(
     http_status: null,
     latency_ms: null,
     checked_at: null,
+    note: null,
     days: [],
     uptime_90d: null,
   };
@@ -72,14 +73,38 @@ describe("selfHealthVerdict (#8318)", () => {
     ).toBe("outage");
   });
 
-  it("degrades rather than outages when site or publish alone is failing", () => {
-    // Real problems, but the API is still answering.
+  it("degrades rather than outages when site alone is failing", () => {
+    // A real problem, but the API is still answering.
     expect(selfHealthVerdict([view("api", true), view("site", false)])).toBe(
       "degraded",
     );
+  });
+
+  it("stays operational when publish alone is stale (#8352)", () => {
+    // publish measures data-pipeline CADENCE, not an HTTP surface -- both api
+    // and site are fully up and answering correctly here. A stale publish is
+    // a real, surfaced signal (see the buildSelfHealth `note` tests below),
+    // but it must not drag the public verdict to "degraded" the way an
+    // actual api/site outage does.
+    expect(
+      selfHealthVerdict([
+        view("api", true),
+        view("site", true),
+        view("publish", false),
+      ]),
+    ).toBe("operational");
+    // Holds even without a site reading.
     expect(selfHealthVerdict([view("api", true), view("publish", false)])).toBe(
-      "degraded",
+      "operational",
     );
+  });
+
+  it("still outages on a down api even when publish is also stale", () => {
+    // publish's special-cased leniency must not blunt the load-bearing api
+    // check -- an api outage matters regardless of what else is failing.
+    expect(
+      selfHealthVerdict([view("api", false), view("publish", false)]),
+    ).toBe("outage");
   });
 
   it("does not count an unmeasured component as failing", () => {
@@ -308,5 +333,44 @@ describe("buildSelfHealth", () => {
       [latest("api", false), latest("site", true)],
     );
     expect(out.verdict).toBe("outage");
+  });
+
+  describe("component note (#8352)", () => {
+    it("qualifies a stale publish with why, not a bare down", () => {
+      const out = buildSelfHealth([], [latest("publish", false)]);
+      const publish = out.components.find((c) => c.component === "publish")!;
+      expect(publish.current_ok).toBe(false);
+      expect(publish.note).toBe("publish is past its expected cadence");
+      // And the site-wide verdict stays honest about it: a stale-only
+      // publish is not a systems outage.
+      expect(out.verdict).toBe("operational");
+    });
+
+    it("leaves note null for a healthy publish", () => {
+      const out = buildSelfHealth([], [latest("publish", true)]);
+      expect(
+        out.components.find((c) => c.component === "publish")!.note,
+      ).toBeNull();
+    });
+
+    it("never notes api or site -- their bare down already says everything", () => {
+      const out = buildSelfHealth(
+        [],
+        [latest("api", false), latest("site", false)],
+      );
+      expect(
+        out.components.find((c) => c.component === "api")!.note,
+      ).toBeNull();
+      expect(
+        out.components.find((c) => c.component === "site")!.note,
+      ).toBeNull();
+    });
+
+    it("leaves note null for an unmeasured publish", () => {
+      const out = buildSelfHealth([], []);
+      expect(
+        out.components.find((c) => c.component === "publish")!.note,
+      ).toBeNull();
+    });
   });
 });

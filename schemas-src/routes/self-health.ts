@@ -29,6 +29,12 @@ export const SelfHealthComponentSchema = z
     http_status: z.int().nullable(),
     latency_ms: z.int().nullable(),
     checked_at: z.string().nullable(),
+    // metagraphed#8352: qualifies a false current_ok with WHY, for the one
+    // component class (publish) whose failure is a cadence miss rather than
+    // an HTTP-level outage -- null whenever there's nothing to qualify (the
+    // component is healthy, or its failure IS the plain "down" the label
+    // already says).
+    note: z.string().nullable(),
     // Days with no rows are absent, never zero-filled -- a gap means "we
     // weren't measuring", and 0% would invent an outage.
     days: z.array(SelfHealthDaySchema),
