@@ -99,7 +99,7 @@ export function EmissionYieldPanel() {
 
       {dist ? (
         <div>
-          <div className="mb-3 mg-type-micro text-ink-muted">Per-neuron return spread</div>
+          <div className="mb-3 mg-type-caption text-ink-muted">Per-neuron return spread</div>
           <div className="grid gap-3 sm:grid-cols-3">
             <StatTile
               icon={Coins}

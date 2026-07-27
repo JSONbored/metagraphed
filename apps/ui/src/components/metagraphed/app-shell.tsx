@@ -315,7 +315,7 @@ export function AppShell({
                     <div className="max-w-shell-max mx-auto px-4 h-9 flex items-center">
                       <Link
                         to={parent.to}
-                        className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink-strong transition-colors mg-type-micro"
+                        className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink-strong transition-colors mg-type-caption"
                       >
                         <ChevronLeft className="size-3" />
                         {parent.label}
@@ -335,7 +335,7 @@ export function AppShell({
                           <Link
                             to={c.to}
                             className={classNames(
-                              "truncate hover:text-ink-strong transition-colors mg-type-micro",
+                              "truncate hover:text-ink-strong transition-colors mg-type-caption",
                               i === crumbs.length - 1 && "text-ink-strong",
                             )}
                           >
@@ -394,7 +394,7 @@ export function AppShell({
                 <WalletConnectButton />
               </div>
               <div className="mt-auto border-t border-border pt-3">
-                <div className="mg-type-micro text-ink-muted mb-1.5">API base</div>
+                <div className="mg-type-caption text-ink-muted mb-1.5">API base</div>
                 <ApiBaseRow />
               </div>
             </SheetContent>
@@ -654,7 +654,7 @@ function EndpointHealthPill() {
 function FooterCol({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <div className="mg-type-micro text-ink-strong mb-3">{title}</div>
+      <div className="mg-type-caption text-ink-strong mb-3">{title}</div>
       <div className="flex flex-col gap-2">{children}</div>
     </div>
   );

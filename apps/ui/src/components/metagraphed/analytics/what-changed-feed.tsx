@@ -115,7 +115,9 @@ export function WhatChangedFeed({
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <div className="mg-type-micro text-ink-muted">What changed · {RANGE_LABEL[range]}</div>
+            <div className="mg-type-caption text-ink-muted">
+              What changed · {RANGE_LABEL[range]}
+            </div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Recent registry signal
             </h3>
@@ -162,7 +164,7 @@ export function WhatChangedFeed({
           <div className="space-y-4">
             {days.map((d) => (
               <section key={d.day}>
-                <h4 className="mb-1.5 mg-type-micro text-ink-muted">{dayLabel(d.day)}</h4>
+                <h4 className="mb-1.5 mg-type-caption text-ink-muted">{dayLabel(d.day)}</h4>
                 <ol className="space-y-2.5">
                   {d.items.map((it) => (
                     <DigestRow key={it.id} item={it} />
@@ -199,7 +201,7 @@ function DigestRow({ item }: { item: DigestItem }) {
         </div>
         <div className="mt-0.5 flex items-baseline gap-2">
           {item.detail ? (
-            <span className="truncate mg-type-micro text-ink-muted">{item.detail}</span>
+            <span className="truncate mg-type-caption text-ink-muted">{item.detail}</span>
           ) : null}
           <span className="mg-type-data-sm text-ink-muted">
             <TimeAgo at={item.at} />

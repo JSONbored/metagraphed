@@ -48,7 +48,7 @@ export function CadenceHeatmap({ rows }: { rows: Block[] }) {
         </span>
       }
       action={
-        <div className="flex items-center gap-3 mg-type-micro text-ink-muted">
+        <div className="flex items-center gap-3 mg-type-caption text-ink-muted">
           {mean != null ? <span>mean {humaniseSeconds(mean)}</span> : null}
           <span className={slow ? "text-health-warn-text" : ""}>slow {slow}</span>
           <span className={stalled ? "text-health-down" : ""}>stalled {stalled}</span>
@@ -106,7 +106,7 @@ function Legend() {
     { label: ">48s", cls: "bg-health-down/80" },
   ];
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-2.5 mg-type-micro text-ink-muted">
+    <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-2.5 mg-type-caption text-ink-muted">
       <span>faster</span>
       <div className="flex flex-wrap items-center gap-1">
         {items.map((i) => (

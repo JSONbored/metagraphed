@@ -42,7 +42,7 @@ function NeighborCard({
         <div className="flex items-center justify-between gap-2 text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <Icon className="size-3.5" />
-            <span className="mg-type-micro">{label}</span>
+            <span className="mg-type-caption">{label}</span>
           </span>
           <span className="mg-type-data">{direction === "prev" ? "genesis" : "chain tip"}</span>
         </div>
@@ -63,7 +63,7 @@ function NeighborCard({
         className="mg-focus-ring block -m-[var(--mg-panel-pad-dense)] p-[var(--mg-panel-pad-dense)]"
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="mg-type-micro inline-flex items-center gap-1.5 text-ink-muted">
+          <span className="mg-type-caption inline-flex items-center gap-1.5 text-ink-muted">
             {direction === "prev" ? <Icon className="size-3.5" /> : null}
             {label}
             {direction === "next" ? <Icon className="size-3.5" /> : null}
@@ -100,7 +100,7 @@ function DeltaChip({
         : "text-health-down";
   return (
     <div className="rounded border border-border/60 bg-paper px-2 py-1.5">
-      <div className="mg-type-micro text-ink-subtle">{label}</div>
+      <div className="mg-type-caption text-ink-subtle">{label}</div>
       <div className="mt-0.5 flex items-baseline justify-between gap-2">
         <span className="text-ink-strong">
           {loading ? "…" : value != null ? formatNumber(value) : "—"}

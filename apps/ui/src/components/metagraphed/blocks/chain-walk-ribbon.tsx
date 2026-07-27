@@ -88,7 +88,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     aria-current="true"
                     className="flex h-full flex-col items-center gap-1 rounded border border-accent/60 bg-accent/10 px-2 py-2"
                   >
-                    <span className="mg-type-micro text-accent-text">This</span>
+                    <span className="mg-type-caption text-accent-text">This</span>
                     <span className="font-mono mg-type-caption font-semibold tabular-nums text-ink-strong truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
@@ -105,7 +105,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     )}
                     title={`Block #${formatNumber(slot.n)}`}
                   >
-                    <span className="mg-type-micro text-ink-muted">
+                    <span className="mg-type-caption text-ink-muted">
                       {slot.n < current.block_number ? "prev" : "next"}
                     </span>
                     <span className="font-mono mg-type-caption tabular-nums text-ink-strong truncate w-full text-center">
@@ -118,7 +118,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     aria-disabled
                     className="flex h-full flex-col items-center gap-1 rounded border border-dashed border-border/60 px-2 py-2 opacity-40"
                   >
-                    <span className="mg-type-micro text-ink-muted">—</span>
+                    <span className="mg-type-caption text-ink-muted">—</span>
                     <span className="font-mono mg-type-caption tabular-nums text-ink-muted truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
@@ -141,7 +141,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
           Hidden on mobile (radius=0) — no neighbors → no cadence trend. */}
       {effectiveRadius > 0 ? (
         <div className="mt-3 flex items-center gap-3 border-t border-border/60 pt-2.5">
-          <span className="mg-type-micro text-ink-muted shrink-0 inline-flex items-center gap-1">
+          <span className="mg-type-caption text-ink-muted shrink-0 inline-flex items-center gap-1">
             Cadence
             <InfoTooltip label={BLOCK_TERM_HINTS.cadence} />
           </span>
@@ -161,7 +161,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
               <span className="mg-type-data text-ink-muted">—</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mg-type-micro text-ink-muted shrink-0">
+          <div className="flex items-center gap-1.5 mg-type-caption text-ink-muted shrink-0">
             <Kbd>←</Kbd>
             <Kbd>→</Kbd>
             <span className="hidden sm:inline">to walk</span>

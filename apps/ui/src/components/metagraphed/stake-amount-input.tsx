@@ -147,7 +147,7 @@ export function StakeAmountInput({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <span aria-hidden="true" className="mg-type-micro text-ink-muted">
+          <span aria-hidden="true" className="mg-type-caption text-ink-muted">
             Amount ({unitSymbol(unit)})
           </span>
           <SearchInput
@@ -161,7 +161,7 @@ export function StakeAmountInput({
 
         {showUnitToggle ? (
           <div className="flex flex-col gap-1">
-            <span className="mg-type-micro text-ink-muted">Unit</span>
+            <span className="mg-type-caption text-ink-muted">Unit</span>
             <Panel
               as="div"
               role="tablist"

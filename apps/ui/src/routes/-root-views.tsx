@@ -217,7 +217,7 @@ export function ErrorComponent({ error, reset }: { error: Error; reset: () => vo
     <div className="min-h-screen bg-paper px-4 py-8 text-ink-strong">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center">
         <main className="w-full rounded-xl border border-health-down/30 bg-card p-4 md:p-8">
-          <div className="flex flex-wrap items-center gap-2 mg-type-micro text-health-down">
+          <div className="flex flex-wrap items-center gap-2 mg-type-caption text-health-down">
             <ServerCrash className="size-4" /> Route error
             <span className="rounded border border-border bg-paper px-1.5 py-0.5 text-ink-muted">
               {pathname}

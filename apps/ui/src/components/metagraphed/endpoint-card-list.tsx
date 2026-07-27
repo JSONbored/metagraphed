@@ -46,7 +46,7 @@ export function EndpointCardList({
         return (
           <Panel as="div" dense key={e.id} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="mg-type-micro text-ink-muted">{kindLabel}</span>
+              <span className="mg-type-caption text-ink-muted">{kindLabel}</span>
               <SparkLegend
                 metric="Endpoint health"
                 source="/api/v1/endpoints"

@@ -62,7 +62,7 @@ export function ContinueExploring() {
     <section className="mt-12" aria-labelledby="continue-exploring-title">
       <div className="flex items-end justify-between mb-4 gap-3">
         <div>
-          <div className="mg-type-micro text-ink-muted inline-flex items-center gap-1.5">
+          <div className="mg-type-caption text-ink-muted inline-flex items-center gap-1.5">
             <Compass className="size-3" /> Continue exploring
           </div>
           <h2
@@ -80,7 +80,7 @@ export function ContinueExploring() {
             setVisits([]);
             setRecent([]);
           }}
-          className="mg-type-micro text-ink-muted hover:text-ink-strong transition-colors inline-flex items-center gap-1"
+          className="mg-type-caption text-ink-muted hover:text-ink-strong transition-colors inline-flex items-center gap-1"
           aria-label="Clear continue-exploring history"
         >
           <X className="size-3" /> Clear
@@ -117,7 +117,7 @@ export function ContinueExploring() {
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block mg-type-micro text-ink-muted">
+                  <span className="block mg-type-caption text-ink-muted">
                     {v.kind === "subnet" ? `SN ${String(v.id).padStart(3, "0")}` : v.kind}
                   </span>
                   <span className="block truncate text-sm font-medium text-ink-strong group-hover:text-accent transition-colors">
@@ -133,7 +133,7 @@ export function ContinueExploring() {
 
       {recent.length > 0 ? (
         <div className={classNames(visits.length > 0 ? "mt-4" : "")}>
-          <div className="mg-type-micro text-ink-muted mb-2 inline-flex items-center gap-1.5">
+          <div className="mg-type-caption text-ink-muted mb-2 inline-flex items-center gap-1.5">
             <History className="size-3" /> Recent searches
           </div>
           <ul className="flex flex-wrap gap-1.5">

@@ -142,7 +142,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
   return (
     <Panel as="div" flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper/40">
-        <div className="mg-type-micro text-ink-muted">
+        <div className="mg-type-caption text-ink-muted">
           Uptime by surface · {RANGE_LABEL[range]}
           {usingFallbackWindow ? <span className="text-ink-muted/60"> (7d window)</span> : null}
         </div>
@@ -216,7 +216,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
       {hasIncidents ? (
         <div className="border-t border-border bg-paper/30 px-4 py-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="mg-type-micro text-ink-muted">Downtime windows</span>
+            <span className="mg-type-caption text-ink-muted">Downtime windows</span>
             <div
               className="ml-auto flex flex-wrap items-center gap-1.5"
               role="group"
@@ -281,7 +281,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs mg-type-caption">
-                    <div className="mg-type-micro text-primary-foreground/80">
+                    <div className="mg-type-caption text-primary-foreground/80">
                       {sev} · {dur}
                     </div>
                     <div className="mt-1 break-all">{i.surface_id}</div>

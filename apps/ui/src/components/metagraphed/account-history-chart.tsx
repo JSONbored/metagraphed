@@ -167,7 +167,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
     <div className="space-y-4">
       {availableNetuids.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mg-type-micro text-ink-muted">scope</span>
+          <span className="mg-type-caption text-ink-muted">scope</span>
           {/* #7842: documented exception -- 80% doesn't cleanly snap to either
               glass tier (mg-glass would add unwanted blur; mg-glass-soft's 60%
               visibly lightens this segmented-toggle track). Kept as a bare
@@ -253,11 +253,11 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
 function MetricBlock({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="min-w-0">
-      <div className="mg-type-micro text-ink-muted">{label}</div>
+      <div className="mg-type-caption text-ink-muted">{label}</div>
       <div className="mt-2 font-display text-xl font-semibold tracking-[-0.02em] text-ink-strong">
         {value}
       </div>
-      <div className="mt-1 mg-type-micro text-ink-muted">{hint}</div>
+      <div className="mt-1 mg-type-caption text-ink-muted">{hint}</div>
     </div>
   );
 }

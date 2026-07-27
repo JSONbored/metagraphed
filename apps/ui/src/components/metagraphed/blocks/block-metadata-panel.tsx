@@ -29,7 +29,7 @@ export function BlockMetadataPanel({ block }: { block: Block }) {
             key={r.label}
             className="grid grid-cols-[minmax(120px,auto)_minmax(0,1fr)] gap-3 px-3 py-2 sm:px-4"
           >
-            <dt className="mg-type-micro text-ink-muted inline-flex items-center gap-1.5">
+            <dt className="mg-type-caption text-ink-muted inline-flex items-center gap-1.5">
               {r.label}
               {r.hint ? <InfoTooltip label={r.hint} /> : null}
             </dt>

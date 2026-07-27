@@ -52,7 +52,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
                   <div className="truncate text-ink-strong" title={inc.surface_id}>
                     {shortSurfaceId(inc.surface_id, netuid)}
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 mg-type-micro text-ink-muted">
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 mg-type-caption text-ink-muted">
                     {inc.started_at ? (
                       <span>
                         started <TimeAgo at={inc.started_at} />

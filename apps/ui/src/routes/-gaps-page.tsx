@@ -368,7 +368,7 @@ function MissingKindsAtAGlance() {
               >
                 <span
                   className={classNames(
-                    "mg-type-micro text-[10px]",
+                    "mg-type-caption text-[10px]",
                     isActive ? "text-accent" : "text-ink-strong",
                   )}
                 >
@@ -389,7 +389,7 @@ function MissingKindsAtAGlance() {
         })}
       </ul>
       {activeMissing.size > 0 ? (
-        <div className="mg-type-micro mt-2 flex flex-wrap items-center gap-2 text-[10px] text-ink-muted">
+        <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-2 text-[10px] text-ink-muted">
           <span>filtered by:</span>
           {Array.from(activeMissing).map((k) => (
             <span
@@ -579,7 +579,7 @@ function OpenGapsSection() {
 
       {missingSet.size > 0 ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-accent/30 bg-primary-soft/40 px-3 py-2 mg-type-data text-ink-strong">
-          <span className="mg-type-micro text-ink-muted">filtered by missing kind:</span>
+          <span className="mg-type-caption text-ink-muted">filtered by missing kind:</span>
           {Array.from(missingSet).map((k) => (
             <span
               key={k}
@@ -765,7 +765,7 @@ function GapRow({
           <p className="mt-1.5 mg-type-caption text-ink">↳ {gap.suggested_action}</p>
         ) : null}
         {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
-          <div className="mg-type-micro mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
+          <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
             <span>relevant sources:</span>
             {rawSources.map((s) => (
               <ExternalLink
@@ -794,7 +794,7 @@ function GapRow({
           <Link
             to="/subnets/$netuid"
             params={{ netuid: gap.netuid }}
-            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/40"
+            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
           >
             open
           </Link>
@@ -803,7 +803,7 @@ function GapRow({
           href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/40"
+          className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
         >
           file
         </a>
@@ -845,7 +845,7 @@ function FilterSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 text-[11px] text-ink-muted">
-      <span className="mg-type-micro text-[10px]">{label}</span>
+      <span className="mg-type-caption text-[10px]">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

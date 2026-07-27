@@ -274,7 +274,7 @@ export function NeuronTable({
                   )}
                   <td className="px-3 py-2.5 text-center">
                     {n.validator_permit ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
+                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
                         Validator
                       </span>
                     ) : (
@@ -307,7 +307,7 @@ export function NeuronTable({
           </tbody>
         </table>
       </div>
-      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 mg-type-micro text-ink-muted">
+      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 mg-type-caption text-ink-muted">
         <span>
           {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
         </span>
@@ -349,7 +349,7 @@ function NeuronCard({
     <li className={classNames("min-w-0 space-y-2 p-3", active && "bg-accent-surface")}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 font-mono mg-type-caption tabular-nums text-ink-strong">
-          <span className="mg-type-micro text-ink-muted">UID</span>
+          <span className="mg-type-caption text-ink-muted">UID</span>
           {onSelect ? (
             <button
               type="button"
@@ -363,7 +363,7 @@ function NeuronCard({
           )}
         </div>
         {n.validator_permit ? (
-          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
+          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
             Validator
           </span>
         ) : null}

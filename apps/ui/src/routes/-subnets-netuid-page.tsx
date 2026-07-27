@@ -741,7 +741,7 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {overview.status ? (
-          <span className="mg-type-micro inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-[10px] text-ink-muted">
+          <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-[10px] text-ink-muted">
             {overview.status}
           </span>
         ) : null}
@@ -980,7 +980,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           {/* SearchInput sets its own aria-label from `placeholder` -- this is a
               visual label only, not `<label htmlFor>`, since SearchInput has no
               `id` prop to associate with. */}
-          <span aria-hidden="true" className="mg-type-micro text-[10px] text-ink-muted">
+          <span aria-hidden="true" className="mg-type-caption text-[10px] text-ink-muted">
             Amount ({inputUnit})
           </span>
           <SearchInput
@@ -992,7 +992,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="mg-type-micro text-[10px] text-ink-muted">Direction</span>
+          <span className="mg-type-caption text-[10px] text-ink-muted">Direction</span>
           <div
             role="tablist"
             aria-label="Stake or unstake"
@@ -1322,7 +1322,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="mg-type-micro text-ink-muted">
+        <span className="mg-type-caption text-ink-muted">
           {events.length} event{events.length === 1 ? "" : "s"}
         </span>
         <RealtimeFreshness at={data.meta?.generated_at} />
@@ -1489,14 +1489,14 @@ function AgentReadinessCard({
         {tier ? (
           <span
             className={classNames(
-              "mg-type-micro inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
+              "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
               tone,
             )}
           >
             {tier}
           </span>
         ) : null}
-        {status ? <span className="mg-type-micro text-ink-muted">{status}</span> : null}
+        {status ? <span className="mg-type-caption text-ink-muted">{status}</span> : null}
       </div>
       {blockers.length > 0 ? (
         <div className="mt-3 border-t border-border pt-3">
@@ -1520,7 +1520,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
   return (
     <li className="rounded-md border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mg-type-micro inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-[10px] text-accent-text">
+        <span className="mg-type-caption inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-[10px] text-accent-text">
           {service.kind ?? "service"}
         </span>
         <span className="font-medium text-ink-strong truncate">
@@ -1532,7 +1532,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
         <span className="ml-auto inline-flex items-center gap-2">
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
+              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
               service.auth_required
                 ? "border-health-warn/40 text-health-warn"
                 : "border-border text-ink-muted",
@@ -1743,7 +1743,7 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     >
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
-          <div className="mg-type-micro text-ink-muted">{c.label}</div>
+          <div className="mg-type-caption text-ink-muted">{c.label}</div>
           <div className="mt-0.5 font-mono text-lg tabular-nums text-ink-strong">{c.value}</div>
         </div>
       ))}
@@ -1771,8 +1771,8 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
     <div className="mt-6 min-w-0" data-weight-setters-leaderboard>
       <Panel flush className="overflow-hidden">
         <div className="flex flex-nowrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <span className="shrink-0 mg-type-micro text-ink-muted sm:hidden">Weight-setters</span>
-          <span className="hidden shrink-0 mg-type-micro text-ink-muted sm:inline">
+          <span className="shrink-0 mg-type-caption text-ink-muted sm:hidden">Weight-setters</span>
+          <span className="hidden shrink-0 mg-type-caption text-ink-muted sm:inline">
             Weight-setters · per-validator breakdown
           </span>
           <span className="shrink-0 mg-type-data-sm text-ink-muted whitespace-nowrap">
@@ -1954,7 +1954,7 @@ function boolBadge(v: boolean) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-caption",
         v ? "border-accent/40 bg-accent-surface text-accent-text" : "border-border text-ink-muted",
       )}
     >
@@ -2180,7 +2180,7 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
           <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
             {group.fields.map((field) => (
               <div key={field.key} className="px-4 py-2.5">
-                <div className="mg-type-micro text-[10px] text-ink-muted">{field.label}</div>
+                <div className="mg-type-caption text-[10px] text-ink-muted">{field.label}</div>
                 <div className="mt-1 font-mono mg-type-caption-lg text-ink-strong">
                   {field.format(h)}
                 </div>

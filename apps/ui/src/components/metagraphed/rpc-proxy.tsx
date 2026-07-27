@@ -66,12 +66,12 @@ export function ProxyHero() {
   return (
     <div className="rounded-md border border-accent/30 bg-accent-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 mg-type-micro text-health-ok">
+        <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 mg-type-caption text-health-ok">
           <span className="size-1.5 rounded-full bg-health-ok" />
           Live
         </span>
         <span className="mg-label">Load-balanced reverse proxy</span>
-        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 mg-type-micro text-accent-text">
+        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 mg-type-caption text-accent-text">
           {label}
         </span>
       </div>
@@ -144,7 +144,7 @@ function UsageStat({
     <Panel as="div" flush tintBorderOnly tone={tone} bodyClassName="px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-ink-muted">
         <Icon className="size-3" aria-hidden />
-        <span className="mg-type-micro">{eyebrow}</span>
+        <span className="mg-type-caption">{eyebrow}</span>
       </div>
       <div className="mt-1 font-mono text-lg font-semibold text-ink-strong">{value}</div>
       {hint ? <div className="mg-type-data-sm text-ink-muted">{hint}</div> : null}
@@ -182,7 +182,7 @@ export function ProxyUsagePanel() {
               type="button"
               onClick={() => navigate({ search: (prev) => ({ ...prev, window: w }) })}
               className={classNames(
-                "rounded px-2 py-0.5 mg-type-micro transition-colors",
+                "rounded px-2 py-0.5 mg-type-caption transition-colors",
                 window === w ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
               )}
             >

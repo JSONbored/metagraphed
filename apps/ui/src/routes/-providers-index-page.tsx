@@ -338,7 +338,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
               onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
               bare
             />
-            <span className="hidden px-2 mg-type-micro tabular-nums sm:inline">
+            <span className="hidden px-2 mg-type-caption tabular-nums sm:inline">
               {sorted.length} of {rows.length} providers
             </span>
           </QueryBar.Utility>
@@ -406,7 +406,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     {p.authority ? (
                       <span
                         className={classNames(
-                          "shrink-0 rounded border px-1.5 py-0.5 mg-type-micro",
+                          "shrink-0 rounded border px-1.5 py-0.5 mg-type-caption",
                           authorityTone(p.authority),
                         )}
                       >
@@ -486,7 +486,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                         {p.authority ? (
                           <span
                             className={classNames(
-                              "mg-type-micro rounded border px-1.5 py-0.5",
+                              "mg-type-caption rounded border px-1.5 py-0.5",
                               authorityTone(p.authority),
                             )}
                           >
@@ -578,7 +578,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     {p.authority ? (
                       <span
                         className={classNames(
-                          "mg-type-micro rounded border px-1.5 py-0.5 shrink-0",
+                          "mg-type-caption rounded border px-1.5 py-0.5 shrink-0",
                           authorityTone(p.authority),
                         )}
                       >
@@ -649,7 +649,7 @@ function ProviderCountsRow({
 function ProviderCardStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <span className="mg-type-micro text-ink-muted">{label}</span>
+      <span className="mg-type-caption text-ink-muted">{label}</span>
       <span className="font-mono mg-type-caption-lg tabular-nums text-ink-strong">{value}</span>
     </div>
   );
@@ -658,7 +658,7 @@ function ProviderCardStat({ label, value }: { label: string; value: string }) {
 function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; value: number }) {
   return (
     <div className="flex flex-col">
-      <span className="inline-flex items-center gap-1 mg-type-micro text-ink-muted">
+      <span className="inline-flex items-center gap-1 mg-type-caption text-ink-muted">
         {icon}
         {label}
       </span>

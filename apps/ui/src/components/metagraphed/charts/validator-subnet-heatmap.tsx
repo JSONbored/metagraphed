@@ -53,7 +53,7 @@ export function ValidatorSubnetHeatmap() {
   return (
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="mg-type-micro text-ink-muted">Validator × subnet · stake intensity</div>
+        <div className="mg-type-caption text-ink-muted">Validator × subnet · stake intensity</div>
         <div className="flex flex-wrap items-center gap-2.5 mg-type-data-sm text-ink-muted">
           <span>top {rows.length} validators · top 10 subnets each (server-capped)</span>
           <span className="inline-flex items-center gap-1">

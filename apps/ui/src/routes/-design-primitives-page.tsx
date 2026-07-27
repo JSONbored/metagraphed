@@ -184,7 +184,7 @@ export function PrimitivesPreview() {
       <InteractionSection density={density} setDensity={setDensity} />
       <FeedbackSection updated={updated} />
 
-      <p className="mt-10 mg-type-micro text-ink-muted">
+      <p className="mt-10 mg-type-caption text-ink-muted">
         Applied on: /subnets grid cards · /endpoints card list · every route in the app
       </p>
     </div>
@@ -234,7 +234,7 @@ function Show({
 }) {
   return (
     <div className="min-w-0 space-y-2 rounded border border-border bg-card p-3">
-      <div className="mg-type-micro text-ink-muted">{name}</div>
+      <div className="mg-type-caption text-ink-muted">{name}</div>
       <div>{children}</div>
       <CopyableCode value={`import { ${name} } from "${from}";`} truncate={false} />
     </div>
@@ -274,7 +274,7 @@ const SPACE_TOKENS = [
 ] as const;
 
 const TYPE_TOKENS = [
-  ["mg-type-micro", "10px micro label"],
+  ["mg-type-caption", "10px micro label"],
   ["mg-type-label", "11px uppercase label"],
   ["mg-type-caption", "12px caption"],
   ["mg-type-caption-lg", "13px caption"],
@@ -353,7 +353,7 @@ function TokensSection({
             {SHADOW_TOKENS.map((name) => (
               <div
                 key={name}
-                className="flex h-16 items-center justify-center rounded bg-card mg-type-micro text-ink-muted"
+                className="flex h-16 items-center justify-center rounded bg-card mg-type-caption text-ink-muted"
                 style={{ boxShadow: `var(${name})` }}
               >
                 {name.replace("--mg-shadow-", "")}
@@ -377,7 +377,7 @@ function TokensSection({
             {RADIUS_TOKENS.map(([cls]) => (
               <div key={cls} className="flex flex-col items-center gap-1.5 p-2">
                 <span className={`size-10 border border-accent/60 bg-accent/10 ${cls}`} />
-                <span className="mg-type-micro text-ink-muted text-center">{cls}</span>
+                <span className="mg-type-caption text-ink-muted text-center">{cls}</span>
               </div>
             ))}
           </div>

@@ -160,10 +160,10 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
   return (
     <div className="p-4 space-y-4">
       <section className="space-y-2">
-        <div className="mg-type-micro text-ink-muted">Request</div>
+        <div className="mg-type-caption text-ink-muted">Request</div>
         <Panel as="div" flush>
           <div className="p-3 font-mono mg-type-caption text-ink-strong break-all flex items-start gap-2">
-            <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 mg-type-micro">
+            <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 mg-type-caption">
               GET
             </span>
             <span className="min-w-0 flex-1">{fullUrl}</span>
@@ -185,7 +185,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="mg-type-micro text-ink-muted">
+          <div className="mg-type-caption text-ink-muted">
             Response
             {data?.meta?.cache ? ` · ${data.meta.cache}` : null}
           </div>
@@ -193,7 +193,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
             type="button"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="mg-type-micro text-ink-muted hover:text-ink-strong disabled:opacity-50 inline-flex items-center gap-1"
+            className="mg-type-caption text-ink-muted hover:text-ink-strong disabled:opacity-50 inline-flex items-center gap-1"
           >
             {isFetching ? <Loader2 className="size-3 animate-spin" /> : null}
             refetch

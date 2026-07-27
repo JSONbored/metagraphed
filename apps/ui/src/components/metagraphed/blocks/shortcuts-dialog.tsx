@@ -76,14 +76,14 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
     >
       <Panel as="div" flush className="w-full max-w-md">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 id="mg-shortcut-title" className="mg-type-micro text-ink-muted">
+          <h2 id="mg-shortcut-title" className="mg-type-caption text-ink-muted">
             Keyboard shortcuts
           </h2>
           <button
             type="button"
             autoFocus
             onClick={() => setOpen(false)}
-            className="mg-focus-ring rounded px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong"
+            className="mg-focus-ring rounded px-2 py-1 mg-type-caption text-ink-muted hover:text-ink-strong"
           >
             Esc
           </button>

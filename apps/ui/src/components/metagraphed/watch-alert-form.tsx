@@ -55,7 +55,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block mg-type-micro text-ink-muted">
+      <span className="mb-1 block mg-type-caption text-ink-muted">
         {label}
         {required ? <span className="text-health-down"> *</span> : null}
       </span>

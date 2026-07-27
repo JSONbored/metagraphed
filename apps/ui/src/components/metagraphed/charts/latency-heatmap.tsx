@@ -139,7 +139,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
     <TooltipProvider delayDuration={150}>
       <Panel as="div" flush className="overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
-          <div className="mg-type-micro text-ink-muted">Latency heatmap · provider × kind</div>
+          <div className="mg-type-caption text-ink-muted">Latency heatmap · provider × kind</div>
           <div
             className="flex flex-wrap items-center gap-2.5 mg-type-data-sm text-ink-muted"
             role="list"
@@ -308,7 +308,7 @@ function Cell({ cell }: { cell: Cell }) {
       >
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="m-0 min-w-0 mg-type-micro text-ink-muted truncate">
+            <h3 className="m-0 min-w-0 mg-type-caption text-ink-muted truncate">
               {cell.provider} · {cell.kind}
             </h3>
             <span className="mg-type-data-sm text-ink-strong tabular-nums shrink-0">
@@ -341,7 +341,7 @@ function Cell({ cell }: { cell: Cell }) {
                     category: KIND_TO_CATEGORY[cell.kind] ?? "all",
                   } as never
                 }
-                className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                 aria-label={`Open endpoints filtered to ${cell.provider} ${cell.kind}`}
               >
                 <Filter className="size-3" /> filter endpoints
@@ -402,7 +402,7 @@ function Cell({ cell }: { cell: Cell }) {
 function ChipGroup({ label, id, children }: { label: string; id: string; children: ReactNode }) {
   return (
     <div>
-      <div id={id} className="mg-type-micro text-ink-muted mb-1">
+      <div id={id} className="mg-type-caption text-ink-muted mb-1">
         {label}
       </div>
       <div className="flex flex-wrap gap-1.5" role="list" aria-labelledby={id}>
@@ -416,7 +416,7 @@ function CellStat({ label, value, color }: { label: string; value: number; color
   return (
     <div className="rounded border border-border bg-paper px-2 py-1 text-center" role="listitem">
       <div className={classNames("tabular-nums mg-type-caption font-semibold", color)}>{value}</div>
-      <div className="mg-type-micro text-ink-muted">{label}</div>
+      <div className="mg-type-caption text-ink-muted">{label}</div>
     </div>
   );
 }

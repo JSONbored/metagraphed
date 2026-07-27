@@ -363,7 +363,7 @@ function SchemaExplorer() {
               ))}
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="mg-type-micro text-[10px] text-ink-muted">
+              <div className="mg-type-caption text-[10px] text-ink-muted">
                 {filtered.length} of {all.length}
               </div>
               {/* One-click way back to the unfiltered view for a shared
@@ -468,7 +468,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                   replace: true,
                 })
               }
-              className="mg-type-micro lg:hidden inline-flex items-center gap-1 text-[10px] text-ink-muted hover:text-ink-strong mb-2"
+              className="mg-type-caption lg:hidden inline-flex items-center gap-1 text-[10px] text-ink-muted hover:text-ink-strong mb-2"
             >
               <ChevronLeft className="size-3" /> back
             </button>

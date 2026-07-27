@@ -64,7 +64,7 @@ export function LeaderboardsModule() {
   return (
     <section className="mt-section-gap">
       <div className="mb-8 max-w-2xl">
-        <div className="mg-type-micro text-ink-muted inline-flex items-center gap-2">
+        <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
           <span className="mg-live-dot" />
           Discover
         </div>
@@ -96,7 +96,7 @@ function BoardCard({
 }) {
   return (
     <Panel as="div" dense>
-      <div className="mb-3 mg-type-micro text-ink-muted">{label}</div>
+      <div className="mb-3 mg-type-caption text-ink-muted">{label}</div>
       <ol className="space-y-0.5">
         {rows.map((row, i) => (
           <li key={row.netuid}>

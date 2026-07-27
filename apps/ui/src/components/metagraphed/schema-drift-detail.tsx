@@ -181,14 +181,14 @@ function EvidenceSection({
 
   return (
     <div className="rounded-md border border-border mg-glass-soft p-3">
-      <div className="mb-2 flex items-center gap-2 mg-type-micro text-ink-muted">
+      <div className="mb-2 flex items-center gap-2 mg-type-caption text-ink-muted">
         evidence &amp; sources
         <InfoTooltip label="Where the snapshot diff was derived from. Open or copy these to verify the change against the source." />
       </div>
       <ul className="space-y-1.5">
         {links.map((l) => (
           <li key={l.href} className="flex items-center gap-2 mg-type-data text-ink">
-            <span className="shrink-0 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted">
+            <span className="shrink-0 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-caption text-ink-muted">
               {l.label}
             </span>
             {l.href.startsWith("http") ? (

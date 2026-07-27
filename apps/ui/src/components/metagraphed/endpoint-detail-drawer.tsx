@@ -166,7 +166,7 @@ export function EndpointDetailDrawer({
                 formatValue={(value) => `${Math.round(value)}ms`}
               />
             ) : (
-              <div className="flex h-[88px] items-center justify-center border border-dashed border-border mg-type-micro text-ink-muted">
+              <div className="flex h-[88px] items-center justify-center border border-dashed border-border mg-type-caption text-ink-muted">
                 Collecting latency samples — trend will grow as probes arrive
               </div>
             )}
@@ -212,7 +212,7 @@ export function EndpointDetailDrawer({
                 onClick={() => setStateFilter(id)}
                 aria-pressed={stateFilter === id}
                 className={classNames(
-                  "mg-focus-ring rounded border px-1.5 py-0.5 mg-type-micro",
+                  "mg-focus-ring rounded border px-1.5 py-0.5 mg-type-caption",
                   stateFilter === id
                     ? "border-accent/50 bg-accent/10 text-accent-text"
                     : "border-border text-ink-muted hover:text-ink-strong",
@@ -227,7 +227,7 @@ export function EndpointDetailDrawer({
                 onClick={() => setPoolOnly((v) => !v)}
                 aria-pressed={poolOnly}
                 className={classNames(
-                  "mg-focus-ring ml-auto rounded border px-1.5 py-0.5 mg-type-micro",
+                  "mg-focus-ring ml-auto rounded border px-1.5 py-0.5 mg-type-caption",
                   poolOnly
                     ? "border-accent/50 bg-accent/10 text-accent-text"
                     : "border-border text-ink-muted hover:text-ink-strong",

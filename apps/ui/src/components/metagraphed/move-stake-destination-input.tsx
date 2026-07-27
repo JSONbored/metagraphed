@@ -75,7 +75,7 @@ export function MoveStakeDestinationInput({
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="mg-type-micro text-ink-muted">Destination hotkey</span>
+        <span className="mg-type-caption text-ink-muted">Destination hotkey</span>
         <SearchInput
           value={destinationHotkeyInput}
           onChange={onDestinationHotkeyChange}
@@ -85,7 +85,7 @@ export function MoveStakeDestinationInput({
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="mg-type-micro text-ink-muted">Destination subnet</span>
+        <span className="mg-type-caption text-ink-muted">Destination subnet</span>
         <select
           value={destinationNetuidInput}
           onChange={(e) => onDestinationNetuidChange(e.target.value)}
@@ -102,7 +102,7 @@ export function MoveStakeDestinationInput({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <span className="mg-type-micro text-ink-muted">Amount (α)</span>
+          <span className="mg-type-caption text-ink-muted">Amount (α)</span>
           <SearchInput
             value={amountInput}
             onChange={onAmountInputChange}

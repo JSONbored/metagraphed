@@ -32,7 +32,7 @@ export function RuntimeTimeline() {
       action={
         current != null ? (
           <span
-            className="mg-chip h-6 border-accent/40 text-accent-text px-2 mg-type-micro"
+            className="mg-chip h-6 border-accent/40 text-accent-text px-2 mg-type-caption"
             title="Current runtime spec"
           >
             v{current}

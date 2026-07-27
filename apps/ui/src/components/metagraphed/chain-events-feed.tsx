@@ -13,7 +13,7 @@ import { summarizeChainEvent, isNoiseEvent } from "@/lib/metagraphed/chain-event
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 
-const TH = "px-4 py-2.5 mg-type-micro text-ink-muted";
+const TH = "px-4 py-2.5 mg-type-caption text-ink-muted";
 
 /** Subnet chip for a decoded `netuid` arg — links to that subnet. */
 function SubnetChip({ netuid }: { netuid: number }) {
@@ -162,7 +162,7 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
             : "System plumbing events (ExtrinsicSuccess / ExtrinsicFailed / TransactionFeePaid) are hidden — click to show them"
         }
         className={classNames(
-          "mg-type-micro inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
+          "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
           !showNoise
             ? "border-accent/40 bg-accent/10 text-accent"
             : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -175,7 +175,7 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
       {streamLabel ? (
         <span
           className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2 py-1 mg-type-micro",
+            "inline-flex items-center gap-1.5 rounded border px-2 py-1 mg-type-caption",
             streamStatus === "open"
               ? "border-accent/40 bg-accent/10 text-accent-text"
               : "border-border bg-surface text-ink-muted",

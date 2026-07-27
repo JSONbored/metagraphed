@@ -60,7 +60,7 @@ function readSnapshot(schema: SchemaInfo): SnapshotFields {
 function MetaCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-paper px-3 py-2">
-      <div className="mg-type-micro text-ink-muted">{label}</div>
+      <div className="mg-type-caption text-ink-muted">{label}</div>
       <div className="mt-0.5 font-mono mg-type-caption text-ink-strong tabular-nums truncate">
         {value}
       </div>
@@ -110,12 +110,12 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
             <span className="text-ink-muted">{schema.previous_hash!.slice(0, 12)}</span>
             <span className="text-ink-muted">→</span>
             <span className="text-ink-strong">{schema.hash!.slice(0, 12)}</span>
-            <span className="ml-auto text-health-warn mg-type-micro">hash changed</span>
+            <span className="ml-auto text-health-warn mg-type-caption">hash changed</span>
           </div>
         ) : schema.hash ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-strong">{schema.hash.slice(0, 12)}</span>
-            <span className="ml-auto text-ink-muted mg-type-micro">hash stable</span>
+            <span className="ml-auto text-ink-muted mg-type-caption">hash stable</span>
           </div>
         ) : (
           <span className="text-ink-muted">No hash recorded for this snapshot.</span>

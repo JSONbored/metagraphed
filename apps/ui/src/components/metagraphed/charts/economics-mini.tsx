@@ -96,10 +96,10 @@ export function EconomicsMini({ netuid }: Props) {
         >
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 py-2.5 border-b border-border bg-paper/30">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="mg-type-micro text-ink-muted">Alpha price</span>
+              <span className="mg-type-caption text-ink-muted">Alpha price</span>
               <span className="font-display text-base font-semibold tabular-nums text-ink-strong">
                 {price != null ? `${price.toFixed(6)}` : "—"}
-                <span className="ml-1 mg-type-micro text-ink-muted">TAO</span>
+                <span className="ml-1 mg-type-caption text-ink-muted">TAO</span>
               </span>
             </div>
             {ratio != null ? (
@@ -120,13 +120,13 @@ export function EconomicsMini({ netuid }: Props) {
               />
               <div className="grid flex-1 grid-cols-2 gap-3">
                 <div className="min-w-0">
-                  <div className="mg-type-micro text-ink-muted">Alpha in pool</div>
+                  <div className="mg-type-caption text-ink-muted">Alpha in pool</div>
                   <div className="mt-1 break-words font-display text-lg font-semibold tabular-nums text-ink-strong">
                     {formatNumber(inP)}
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <div className="mg-type-micro text-ink-muted">Alpha out pool</div>
+                  <div className="mg-type-caption text-ink-muted">Alpha out pool</div>
                   <div className="mt-1 break-words font-display text-lg font-semibold tabular-nums text-ink-strong">
                     {formatNumber(outP)}
                   </div>
@@ -142,7 +142,7 @@ export function EconomicsMini({ netuid }: Props) {
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto bg-card p-0">
         <DialogHeader className="border-b border-border bg-paper/40 p-4 pr-12">
-          <div className="flex items-center gap-2 mg-type-micro text-ink-muted">
+          <div className="flex items-center gap-2 mg-type-caption text-ink-muted">
             <BarChart3 className="size-3.5 text-accent" /> Subnet {netuid} economics
           </div>
           <DialogTitle className="font-display text-2xl text-ink-strong">
@@ -197,7 +197,7 @@ function EconomicsDrilldown({
         />
       </div>
       <div className="mt-4 rounded-xl border border-border bg-paper/30 p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 mg-type-micro text-ink-muted">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 mg-type-caption text-ink-muted">
           <span>Pool composition</span>
           <span>SN{netuid}</span>
         </div>
@@ -229,7 +229,7 @@ function DeltaTile({ label, value, tip }: { label: string; value: string; tip?: 
       title={tip}
       aria-label={tip ? `${label}: ${value}. ${tip}` : `${label}: ${value}`}
     >
-      <div className="mg-type-micro text-ink-muted">{label}</div>
+      <div className="mg-type-caption text-ink-muted">{label}</div>
       <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong">
         {value}
       </div>
@@ -249,7 +249,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-b border-border bg-paper/30 px-4 py-2.5">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="mg-type-micro text-ink-muted">No alpha pool registered</span>
+          <span className="mg-type-caption text-ink-muted">No alpha pool registered</span>
           <span className="font-display text-base font-semibold tabular-nums text-ink-strong">
             SN{netuid}
           </span>
@@ -259,7 +259,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
       {uptime.length > 1 ? (
         <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] divide-x divide-border">
           <div className="p-3">
-            <div className="mb-1 mg-type-micro text-ink-muted">
+            <div className="mb-1 mg-type-caption text-ink-muted">
               Uptime trend · {uptime.length} days
             </div>
             <div className="h-[88px] w-full">
@@ -275,7 +275,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
           </div>
           <div className="grid grid-rows-1 divide-y divide-border">
             <div className="p-3">
-              <div className="mg-type-micro text-ink-muted">Latest uptime</div>
+              <div className="mg-type-caption text-ink-muted">Latest uptime</div>
               <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong">
                 {lastUp != null ? `${lastUp.toFixed(2)}%` : "—"}
               </div>

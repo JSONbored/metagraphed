@@ -264,7 +264,7 @@ function BlocksTable() {
           <QueryBar.Divider />
           <QueryBar.Utility className="ml-auto">
             <span
-              className="hidden sm:inline mg-type-micro text-ink-muted"
+              className="hidden sm:inline mg-type-caption text-ink-muted"
               title="Blocks are always listed newest first"
             >
               ↓ Newest
@@ -279,7 +279,7 @@ function BlocksTable() {
         <FilterSheet label="Filters" activeCount={secondaryFilterCount}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-micro text-ink-muted">Spec version</span>
+              <span className="mg-type-caption text-ink-muted">Spec version</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -293,7 +293,7 @@ function BlocksTable() {
             </label>
             <div className="hidden sm:block" aria-hidden />
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-micro text-ink-muted">Block from</span>
+              <span className="mg-type-caption text-ink-muted">Block from</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -306,7 +306,7 @@ function BlocksTable() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-micro text-ink-muted">Block to</span>
+              <span className="mg-type-caption text-ink-muted">Block to</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -319,7 +319,7 @@ function BlocksTable() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-micro text-ink-muted">Min extrinsics</span>
+              <span className="mg-type-caption text-ink-muted">Min extrinsics</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -332,7 +332,7 @@ function BlocksTable() {
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="mg-type-micro text-ink-muted">Min events</span>
+              <span className="mg-type-caption text-ink-muted">Min events</span>
               <input
                 type="text"
                 inputMode="numeric"

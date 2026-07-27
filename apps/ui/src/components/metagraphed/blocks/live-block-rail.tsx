@@ -56,7 +56,7 @@ export function LiveBlockRail() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="mg-type-micro text-ink-muted">Latest</span>
+            <span className="mg-type-caption text-ink-muted">Latest</span>
             <Link
               to="/blocks/$ref"
               params={{ ref: String(latest.block_number) }}
@@ -87,7 +87,7 @@ export function LiveBlockRail() {
 
       {/* MINI CADENCE STRIP */}
       <div className="flex flex-col justify-center gap-1.5 px-1">
-        <div className="mg-type-micro text-ink-muted">Recent blocks · extrinsic density</div>
+        <div className="mg-type-caption text-ink-muted">Recent blocks · extrinsic density</div>
         <ol className="flex h-8 items-end gap-[2px]" aria-label="Recent block extrinsic density">
           {strip.map((b) => {
             const ext = b.extrinsic_count ?? 0;
@@ -114,7 +114,7 @@ export function LiveBlockRail() {
       {/* 7D THROUGHPUT */}
       <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-2 md:border-l md:border-t-0 md:pl-3 md:pt-0">
         <div>
-          <div className="mg-type-micro text-ink-muted">Blocks · last 7d</div>
+          <div className="mg-type-caption text-ink-muted">Blocks · last 7d</div>
           {/* eslint-disable-next-line no-restricted-syntax -- block-number display at 14px: no mg-type-body utility exists (--mg-type-body is a reserved CSS var per styles.css, not exposed as a class); nearest utility would resize */}
           <div className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums text-ink-strong">
             {formatNumber(daily.reduce((s, n) => s + n, 0))}
