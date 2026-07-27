@@ -2621,13 +2621,34 @@ function timeAgoAbsoluteTitle(at) {
   if (!isUsableTimestamp(at)) return void 0;
   return formatFreshnessAbsolute(at) ?? void 0;
 }
+function timeAgoTickDelayMs(ageMs) {
+  return ageMs < 6e4 ? 1e3 : 6e4;
+}
 function TimeAgo({
   at,
   className,
   fallback = "\u2014"
 }) {
   const [mounted, setMounted] = useState(false);
+  const [, forceTick] = useState(0);
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!mounted || !at) return void 0;
+    const ts = new Date(at).getTime();
+    if (!Number.isFinite(ts)) return void 0;
+    let timeoutId;
+    const schedule = () => {
+      timeoutId = setTimeout(
+        () => {
+          forceTick((n) => n + 1);
+          schedule();
+        },
+        timeAgoTickDelayMs(Date.now() - ts)
+      );
+    };
+    schedule();
+    return () => clearTimeout(timeoutId);
+  }, [mounted, at]);
   const text = !at ? fallback : mounted ? formatRelative(at) : "";
   return /* @__PURE__ */ jsx(
     "span",

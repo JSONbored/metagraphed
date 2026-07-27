@@ -1,9 +1,10 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Sparkline, TimeAgo } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
+import { useChainStream } from "@/hooks/use-chain-stream";
 import { blocksQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -16,16 +17,46 @@ import type { Block } from "@/lib/metagraphed/types";
  * Mid   : last N blocks as a mini cadence strip (bar per block, height = ext).
  * Right : 7d blocks/day sparkline from /api/v1/chain/activity.
  *
- * Auto-refreshes every 12s, matching Bittensor's block cadence.
+ * Auto-refreshes every 12s, matching Bittensor's block cadence, as the
+ * baseline that works with no JS/EventSource support. #8444 additionally
+ * subscribes to the chain firehose's `blocks` topic (ADR 0015) so a new
+ * block usually lands well under that 12s ceiling -- the poll interval is
+ * the floor, not the only path in. The firehose's own `blocks` payload
+ * (deploy/postgres/schema.sql's enqueue_chain_firehose()) omits `author`,
+ * which this rail displays, so an event triggers a real refetch rather than
+ * assembling a `Block` from a partial payload.
  */
 export function LiveBlockRail() {
+  const queryClient = useQueryClient();
+  const blocksQueryOptions = blocksQuery({ limit: 30 });
   // First-page blocks feed, polled — that's where "latest" lives.
   const refetchInterval = useRefetchInterval(12_000, true);
   const rows = (useSuspenseQuery({
-    ...blocksQuery({ limit: 30 }),
+    ...blocksQueryOptions,
     refetchInterval,
   }).data.data ?? []) as Block[];
   const chrono = [...useSuspenseQuery(chainActivityQuery()).data.data.days].reverse();
+
+  const { status: streamStatus } = useChainStream({
+    topics: ["blocks"],
+    onEvent: () => {
+      void queryClient.invalidateQueries({ queryKey: blocksQueryOptions.queryKey });
+    },
+  });
+  const streamLabel =
+    streamStatus === "open"
+      ? "Live"
+      : streamStatus === "connecting"
+        ? "Connecting"
+        : streamStatus === "error"
+          ? "Polling"
+          : null;
+  const streamTitle =
+    streamStatus === "open"
+      ? "Connected to /api/v1/chain/stream — new blocks refresh this rail immediately"
+      : streamStatus === "error"
+        ? "Chain stream unavailable — falling back to the 12s poll"
+        : "Opening /api/v1/chain/stream";
 
   if (rows.length === 0) return null;
   const latest = rows[0]!;
@@ -50,13 +81,36 @@ export function LiveBlockRail() {
           anchor/button can't contain another without invalid HTML nesting
           (breaks hydration). The block number is its own link instead. */}
       <div className="flex items-center gap-3 rounded border border-transparent px-2 py-1.5">
-        <span aria-hidden className="relative inline-flex size-2 items-center justify-center">
-          <span className="absolute inline-flex size-2 animate-ping rounded-full bg-health-ok/60" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-health-ok" />
+        {/* #8444: this dot now reflects the actual firehose connection,
+            matching chain-events-feed.tsx's Live/Connecting/Polling
+            language -- it used to pulse unconditionally regardless of
+            whether anything was actually pushing updates. */}
+        <span
+          aria-hidden
+          className="relative inline-flex size-2 items-center justify-center"
+          title={streamTitle}
+        >
+          {streamStatus === "open" ? (
+            <>
+              <span className="absolute inline-flex size-2 animate-ping rounded-full bg-health-ok/60" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-health-ok" />
+            </>
+          ) : (
+            <span className="relative inline-flex size-1.5 rounded-full bg-ink-muted/50" />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span className="mg-type-caption text-ink-muted">Latest</span>
+            {streamLabel && streamStatus !== "open" ? (
+              <span
+                className="mg-type-caption text-ink-muted"
+                data-testid="live-block-rail-stream-status"
+                data-stream-status={streamStatus}
+              >
+                ({streamLabel})
+              </span>
+            ) : null}
             <Link
               to="/blocks/$ref"
               params={{ ref: String(latest.block_number) }}
