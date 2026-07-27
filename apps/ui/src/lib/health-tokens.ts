@@ -3,8 +3,8 @@
 // values; a `var(--health-*, <fallback>)` reference only uses the fallback hex on
 // the vanishingly rare occasion the token is absent — it is otherwise inert.
 //
-// Consumers (endpoint-list, subnet-history-chart, subnet-price-ticker,
-// health-segments, …) each previously re-declared their OWN fallback hex for the
+// Consumers (endpoint-list, subnet-history-chart, subnet-price-ticker, …)
+// each previously re-declared their OWN fallback hex for the
 // same token, and those hexes disagreed (#3458): `--health-ok` was written as
 // `#16a34a`, `#4ade80`, and `#22c55e` across files. This centralizes one agreed
 // fallback per tier so they can never drift again.
