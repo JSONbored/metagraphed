@@ -88,7 +88,7 @@ import {
   handleChainStakeMoves,
   handleChainStakeTransfers,
   handleGlobalIncidents,
-  resolveGlobalIncidents,
+  resolveGlobalIncidentsForFeed,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
@@ -1875,15 +1875,13 @@ export async function handleRequest(
         handleFeedRequest(feedRequest, env, url, {
           readArtifact,
           errorResponse,
-          // Must go through resolveGlobalIncidents, not the ledger stub
-          // directly: the stub hardcodes an empty incident list and is only
-          // meant as the Postgres-tier-miss fallback, so calling it here made
-          // this feed permanently report "no incidents" while /status showed
-          // dozens from the same data (#8242).
-          loadLiveIncidents: async (feedEnv) => {
-            const { data } = await resolveGlobalIncidents(feedRequest, feedEnv);
-            return data;
-          },
+          // Must go through resolveGlobalIncidentsForFeed, not the ledger
+          // stub directly (#8242) and not resolveGlobalIncidents(feedRequest,
+          // ...) either (metagraphed#8353 -- that still forwarded THIS
+          // route's own request, a path DATA_API has no route for, which
+          // silently degraded to the empty stub the same way #8242's bug
+          // did). See that function's own doc comment for the full mechanism.
+          loadLiveIncidents: resolveGlobalIncidentsForFeed,
         }),
       feedCachePath,
     );
