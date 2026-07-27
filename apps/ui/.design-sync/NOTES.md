@@ -164,7 +164,7 @@ requirements:
    **done** (2026-07-27). Three cards: `Fresh`, `Stale`, `NoData`. Reuses the
    exact timestamps `FreshnessIndicator.tsx`'s preview already uses (2min /
    14h, either side of `isStaleFreshness`'s real 12h threshold), so the two
-   cards are directly comparable — this component *is* that one in dot-only
+   cards are directly comparable — this component _is_ that one in dot-only
    mode plus an `InfoTooltip`. `NoData` earns its card because `at` is
    nullable and `tierFreshnessLabel` has a dedicated "No freshness data"
    branch for it: a real state, not a degenerate one.
