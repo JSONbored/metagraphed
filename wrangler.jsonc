@@ -238,6 +238,15 @@
     // empty-leaderboard behavior on a DATA_API outage, not for an actual
     // tier migration. Always "postgres" from this route's first deploy.
     "METAGRAPH_TOP_HOLDERS_SOURCE": "postgres",
+    // self-health (#8318): same situation as top-holders above -- self_health_*
+    // are Postgres-only tables written by the indexer box's poller, with no D1
+    // predecessor and no other tier to fall back to. The flag exists to reuse
+    // tryPostgresTier's fail-closed behavior on a DATA_API outage, where
+    // falling back to the schema-stable empty shape (verdict "degraded", every
+    // component unmeasured) is exactly right: we genuinely have no readings in
+    // that moment, and claiming "operational" would be a lie told by an
+    // outage. Always "postgres" from this route's first deploy.
+    "METAGRAPH_SELF_HEALTH_SOURCE": "postgres",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started

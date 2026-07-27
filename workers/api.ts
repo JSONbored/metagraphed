@@ -113,6 +113,7 @@ import {
   handleChainPerformance,
   handleChainIdentityHistory,
   canonicalChainIdentityHistoryCachePath,
+  handleSelfHealth,
   handleChainYield,
   canonicalSubnetHistoryCachePath,
   canonicalValidatorHistoryCachePath,
@@ -3231,6 +3232,14 @@ export async function handleRequest(
         canonicalChainIdentityHistoryCachePath(resolved.url),
       );
     }
+    // GET /api/v1/self-health (#8318): our OWN uptime. Edge-cached like every
+    // sibling Postgres-tier route; the 60s poller cadence is far tighter than
+    // the cache window, so a reader always sees a recent-but-cheap answer.
+    if (resolved.url.pathname === "/api/v1/self-health") {
+      return withEdgeCache(request, ctx, env, "self-health", () =>
+        handleSelfHealth(request, env, resolved.url),
+      );
+    }
     // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
     // — edge-cache busts on the shared health-cron stamp like every sibling
     // Postgres-tier route (like chain/performance, but the emission/stake return-rate lens).
@@ -3335,6 +3344,7 @@ function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/idle-stake" ||
     pathname === "/api/v1/chain/identity-history" ||
+    pathname === "/api/v1/self-health" ||
     pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/chain/turnover" ||
     pathname === "/api/v1/blocks/summary" ||
