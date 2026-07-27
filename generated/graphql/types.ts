@@ -2132,6 +2132,12 @@ export type IncidentList = {
   total: Scalars['Int']['output'];
 };
 
+/** The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument. */
+export enum Network {
+  Finney = 'finney',
+  Test = 'test'
+}
+
 /** Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope. */
 export type NetworkParameters = {
   __typename?: 'NetworkParameters';
@@ -2602,7 +2608,7 @@ export type Query = {
   source_health?: Maybe<Scalars['JSON']['output']>;
   /** Per-source input-hash ledger -- each registry data source's captured input hash and record count at ingest time, for detecting hash drift or seeing per-source contribution volume. Filter with q (keyword search across id/kind/path), sort with sort/order, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/source-snapshots. */
   source_snapshots: SourceSnapshotList;
-  /** One subnet with its health, surfaces, endpoints, and economics. */
+  /** One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. */
   subnet?: Maybe<Subnet>;
   /** Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals. */
   subnet_axon_removals: SubnetAxonRemovals;
@@ -2700,7 +2706,7 @@ export type Query = {
   subnet_yield: SubnetYield;
   /** Per-subnet per-day emission-per-stake yield trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's subnet-wide yield plus the mean/median/p25/p75/p90 distribution across UIDs, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/yield/history. */
   subnet_yield_history: SubnetYieldHistory;
-  /** Paginated active-subnet index. */
+  /** Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order. */
   subnets: SubnetList;
   /** Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Optionally narrow by block (exact height), block_start/block_end (inclusive height range), or from/to (observed_at epoch-ms range — String args because epoch-ms exceeds GraphQL Int's 32-bit range, matching account_history) — the same block/time filters GET /api/v1/sudo and the get_sudo MCP tool accept. Mirrors GET /api/v1/sudo. */
   sudo: ExtrinsicList;
@@ -3530,6 +3536,7 @@ export type QuerySource_SnapshotsArgs = {
 
 export type QuerySubnetArgs = {
   netuid: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3868,7 +3875,33 @@ export type QuerySubnetsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   domain?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  max_block?: InputMaybe<Scalars['Int']['input']>;
+  max_candidate_count?: InputMaybe<Scalars['Int']['input']>;
+  max_mechanism_count?: InputMaybe<Scalars['Int']['input']>;
+  max_netuid?: InputMaybe<Scalars['Int']['input']>;
+  max_participant_count?: InputMaybe<Scalars['Int']['input']>;
+  max_probed_surface_count?: InputMaybe<Scalars['Int']['input']>;
+  max_readiness?: InputMaybe<Scalars['Int']['input']>;
+  max_surface_count?: InputMaybe<Scalars['Int']['input']>;
+  max_tempo?: InputMaybe<Scalars['Int']['input']>;
+  min_block?: InputMaybe<Scalars['Int']['input']>;
+  min_candidate_count?: InputMaybe<Scalars['Int']['input']>;
+  min_mechanism_count?: InputMaybe<Scalars['Int']['input']>;
+  min_netuid?: InputMaybe<Scalars['Int']['input']>;
+  min_participant_count?: InputMaybe<Scalars['Int']['input']>;
+  min_probed_surface_count?: InputMaybe<Scalars['Int']['input']>;
+  min_readiness?: InputMaybe<Scalars['Int']['input']>;
+  min_surface_count?: InputMaybe<Scalars['Int']['input']>;
+  min_tempo?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
+  not_coverage_level?: InputMaybe<Scalars['String']['input']>;
+  not_curation_level?: InputMaybe<Scalars['String']['input']>;
+  not_domain?: InputMaybe<Scalars['String']['input']>;
+  not_status?: InputMaybe<Scalars['String']['input']>;
+  not_subnet_type?: InputMaybe<Scalars['String']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
   subnet_type?: InputMaybe<Scalars['String']['input']>;
 };
@@ -5482,6 +5515,7 @@ export type ResolversTypes = ResolversObject<{
   IncidentList: ResolverTypeWrapper<IncidentList>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
+  Network: ResolverTypeWrapper<Network>;
   NetworkParameters: ResolverTypeWrapper<NetworkParameters>;
   NetworkRandomness: ResolverTypeWrapper<NetworkRandomness>;
   Neuron: ResolverTypeWrapper<Neuron>;

@@ -1760,7 +1760,7 @@ function toolError(code: string, message: string) {
 // is genuinely published per-network — testnet is a native-only registry, so
 // composed/curated artifacts (overview, agent-catalog, health) have no testnet
 // key and would 404 rather than fall back to mainnet.
-function networkArtifactPath(
+export function networkArtifactPath(
   artifactPath: string,
   network?: "finney" | "test",
 ): string {
@@ -2785,7 +2785,7 @@ function subnetSortValue(subnet: Row, field: string) {
  * @param {"asc"|"desc"} order - sort direction
  * @returns {object[]}
  */
-function sortSubnets(rows: Row[], field: string, order: unknown) {
+export function sortSubnets(rows: Row[], field: string, order: unknown) {
   const dir = order === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
     const av = subnetSortValue(a, field);
@@ -2836,7 +2836,7 @@ const LIST_SUBNETS_RANGE_BOUNDS = [
 // non-numeric cannot satisfy a bound, so it is excluded once any bound on that
 // field is set — identical to rangeFilterRows in workers/list-query.mjs. Only
 // finite numeric args count (tools/call does not enforce inputSchema types).
-function rangeFilterSubnets(rows: Row[], args: Row) {
+export function rangeFilterSubnets(rows: Row[], args: Row) {
   const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
     Number.isFinite(args?.[arg]),
   ).map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
@@ -2884,7 +2884,7 @@ function subnetCategoricalMatch(subnet: Row, field: string, value: unknown) {
 // Apply the categorical filters: keep rows matching every `field=v` and matching
 // none of the `not_field=v` exclusions (case-insensitive). A row missing the
 // field never matches, so it survives an exclusion but fails an inclusion.
-function categoricalFilterSubnets(rows: Row[], args: Row) {
+export function categoricalFilterSubnets(rows: Row[], args: Row) {
   const includes: { field: string; value: string }[] = [];
   const excludes: { field: string; value: string }[] = [];
   for (const arg of LIST_SUBNETS_CATEGORICAL) {
