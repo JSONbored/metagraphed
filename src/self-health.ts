@@ -20,7 +20,13 @@
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
 export type SelfHealthComponent = (typeof SELF_HEALTH_COMPONENTS)[number];
 
-/** One row of the 90-day rollup, as stored. */
+/** One row of the 90-day rollup.
+ *
+ * `day` is DATE in Postgres (generated as `Date` by Kanel), but the route
+ * selects it as `day::text` so it arrives as a plain YYYY-MM-DD string -- a
+ * Date object here would serialize with a spurious time component and a
+ * timezone the column never carried.
+ */
 export interface SelfHealthDailyRow {
   day: string;
   component: string;
@@ -28,13 +34,31 @@ export interface SelfHealthDailyRow {
   ok_count: number;
 }
 
-/** Latest raw tick per component, for current state. */
+/** Latest raw tick per component, for current state.
+ *
+ * `checked_at_ms` is BIGINT in Postgres, and postgres.js hands BIGINT back as
+ * a STRING (this Worker runs with `fetch_types: false`) -- hence the union and
+ * the coercion below. Typing it as a bare number and comparing directly would
+ * do a lexicographic compare on the newest-tick pick and silently null out
+ * every timestamp in `toIso`, since Number.isFinite("1785...") is false.
+ * Confirmed against the generated row type (generated/db/public/SelfHealthChecks.ts,
+ * `checked_at_ms: string & {...}`) and the existing BIGINT fixtures in
+ * tests/data-api.test.ts (`block_number: "123"`).
+ */
 export interface SelfHealthLatestRow {
   component: string;
   ok: boolean;
   http_status: number | null;
   latency_ms: number | null;
-  checked_at_ms: number;
+  checked_at_ms: number | string;
+}
+
+/** BIGINT-as-string tolerant numeric coercion. NaN for anything unusable, so
+ * the callers' own Number.isFinite guards stay meaningful. */
+function toMs(value: number | string | null | undefined): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() !== "") return Number(value);
+  return NaN;
 }
 
 export interface SelfHealthDay {
@@ -134,7 +158,7 @@ export function buildSelfHealth(
   const latestByComponent = new Map<string, SelfHealthLatestRow>();
   for (const row of latestRows) {
     const existing = latestByComponent.get(row.component);
-    if (!existing || row.checked_at_ms > existing.checked_at_ms) {
+    if (!existing || toMs(row.checked_at_ms) > toMs(existing.checked_at_ms)) {
       latestByComponent.set(row.component, row);
     }
   }
@@ -156,17 +180,18 @@ export function buildSelfHealth(
         current_ok: latest ? latest.ok : null,
         http_status: latest?.http_status ?? null,
         latency_ms: latest?.latency_ms ?? null,
-        checked_at: toIso(latest?.checked_at_ms),
+        checked_at: latest ? toIso(toMs(latest.checked_at_ms)) : null,
         days,
         uptime_90d: meanRatio(days),
       };
     },
   );
 
-  const observedMs = latestRows.reduce<number | null>(
-    (max, r) => (max == null || r.checked_at_ms > max ? r.checked_at_ms : max),
-    null,
-  );
+  const observedMs = latestRows.reduce<number | null>((max, r) => {
+    const ms = toMs(r.checked_at_ms);
+    if (!Number.isFinite(ms)) return max;
+    return max == null || ms > max ? ms : max;
+  }, null);
 
   return {
     schema_version: 1,

@@ -225,6 +225,39 @@ describe("buildSelfHealth", () => {
     expect(out.observed_at).toBeNull();
   });
 
+  it("handles checked_at_ms arriving as a BIGINT string, which is what postgres.js sends", () => {
+    // Regression guard. BIGINT comes back as a string under this Worker's
+    // `fetch_types: false`, and treating it as a number made Number.isFinite
+    // false -- nulling every timestamp -- while `>` compared lexicographically
+    // on the newest-tick pick. Caught by the generated row type, not by tsc.
+    const out = buildSelfHealth(
+      [],
+      [
+        { ...latest("api", false), checked_at_ms: String(TICK - 60_000) },
+        { ...latest("api", true), checked_at_ms: String(TICK) },
+      ],
+    );
+    const api = out.components.find((c) => c.component === "api")!;
+    expect(api.checked_at).toBe(new Date(TICK).toISOString());
+    expect(api.current_ok).toBe(true);
+    expect(out.observed_at).toBe(new Date(TICK).toISOString());
+  });
+
+  it("picks the newest tick numerically, not lexicographically", () => {
+    // "9" > "10" as strings. A 10-digit-to-11-digit epoch rollover, or any
+    // pair straddling a digit-count change, would pick the older row.
+    const out = buildSelfHealth(
+      [],
+      [
+        { ...latest("api", false), checked_at_ms: "9999999999" },
+        { ...latest("api", true), checked_at_ms: "10000000000" },
+      ],
+    );
+    expect(out.components.find((c) => c.component === "api")!.current_ok).toBe(
+      true,
+    );
+  });
+
   it("derives the verdict from its own components, never from anything else", () => {
     const out = buildSelfHealth(
       [],

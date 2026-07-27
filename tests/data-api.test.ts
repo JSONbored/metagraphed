@@ -2595,7 +2595,7 @@ test("GET /api/v1/self-health serves the scoped verdict and per-component 90d se
         ok: true,
         http_status: 200,
         latency_ms: 42,
-        checked_at_ms: 1785083230973,
+        checked_at_ms: "1785083230973",
       },
     ],
   ] as unknown as Row[];
@@ -2641,14 +2641,14 @@ test("GET /api/v1/self-health calls an outage when the api component is down", a
         ok: false,
         http_status: 503,
         latency_ms: null,
-        checked_at_ms: 1785083230973,
+        checked_at_ms: "1785083230973",
       },
       {
         component: "site",
         ok: true,
         http_status: 200,
         latency_ms: 30,
-        checked_at_ms: 1785083230973,
+        checked_at_ms: "1785083230973",
       },
     ],
   ] as unknown as Row[];
