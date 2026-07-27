@@ -13,6 +13,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { SubnetsResponseSchema } from "../schemas-src/routes/subnets.ts";
 import { SubnetDetailResponseSchema } from "../schemas-src/routes/subnet-detail.ts";
 import { HealthResponseSchema } from "../schemas-src/routes/health.ts";
+import { SelfHealthResponseSchema } from "../schemas-src/routes/self-health.ts";
 import { EconomicsResponseSchema } from "../schemas-src/routes/economics.ts";
 import { StakeQuoteResponseSchema } from "../schemas-src/routes/stake-quote.ts";
 import { SubnetAlphaVolumeResponseSchema } from "../schemas-src/routes/subnet-alpha-volume.ts";
@@ -383,6 +384,10 @@ const cases: [string, string, z.ZodType][] = [
   ["subnets", "/api/v1/subnets", SubnetsResponseSchema],
   ["subnet-detail", "/api/v1/subnets/64", SubnetDetailResponseSchema],
   ["health", "/api/v1/health", HealthResponseSchema],
+  // #8318: our OWN uptime, distinct from the third-party rollup above. Parses
+  // the cold-store shape here (three components, verdict "degraded"), which is
+  // exactly what the route serves before the poller has written anything.
+  ["self-health", "/api/v1/self-health", SelfHealthResponseSchema],
   ["economics", "/api/v1/economics", EconomicsResponseSchema],
   [
     "stake-quote",

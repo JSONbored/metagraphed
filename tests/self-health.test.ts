@@ -258,6 +258,50 @@ describe("buildSelfHealth", () => {
     );
   });
 
+  it("rejects a finite but out-of-range epoch instead of emitting Invalid Date", () => {
+    // |ms| > 8.64e15 is past the JS Date limit: finite, so it survives
+    // Number.isFinite, but new Date(ms) is Invalid and toISOString() throws.
+    const out = buildSelfHealth(
+      [],
+      [latest("api", true, { checked_at_ms: 8.7e15 })],
+    );
+    expect(
+      out.components.find((c) => c.component === "api")!.checked_at,
+    ).toBeNull();
+  });
+
+  it("keeps the first tick when a later row for the same component is older", () => {
+    // The reverse order of the newest-wins case above, so the comparison
+    // itself is exercised in both directions rather than only via !existing.
+    const out = buildSelfHealth(
+      [],
+      [
+        { ...latest("api", true), checked_at_ms: TICK },
+        { ...latest("api", false), checked_at_ms: TICK - 60_000 },
+      ],
+    );
+    const api = out.components.find((c) => c.component === "api")!;
+    expect(api.current_ok).toBe(true);
+    expect(api.checked_at).toBe(new Date(TICK).toISOString());
+  });
+
+  it("treats a null or missing timestamp as unusable rather than as epoch zero", () => {
+    // Number(null) is 0, which would date an unmeasured tick to 1970 and make
+    // it beat every real one in the newest-tick comparison.
+    const out = buildSelfHealth(
+      [],
+      [
+        {
+          ...latest("api", true),
+          checked_at_ms: null as unknown as number,
+        },
+      ],
+    );
+    const api = out.components.find((c) => c.component === "api")!;
+    expect(api.checked_at).toBeNull();
+    expect(out.observed_at).toBeNull();
+  });
+
   it("derives the verdict from its own components, never from anything else", () => {
     const out = buildSelfHealth(
       [],
