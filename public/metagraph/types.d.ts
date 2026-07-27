@@ -1959,6 +1959,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/self-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file). */
+        get: operations["selfHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/source-health": {
         parameters: {
             query?: never;
@@ -7034,6 +7051,35 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
+        } & {
+            [key: string]: unknown;
+        };
+        SelfHealthArtifact: {
+            components: components["schemas"]["SelfHealthComponent"][];
+            measured_component_count: number;
+            observed_at: string | null;
+            schema_version: number;
+            /** @enum {string} */
+            verdict: "operational" | "degraded" | "outage";
+        } & {
+            [key: string]: unknown;
+        };
+        SelfHealthComponent: {
+            checked_at: string | null;
+            component: string;
+            current_ok: boolean | null;
+            days: components["schemas"]["SelfHealthDay"][];
+            http_status: number | null;
+            latency_ms: number | null;
+            uptime_90d: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        SelfHealthDay: {
+            checks: number;
+            day: string;
+            ok_count: number;
+            uptime_ratio: number;
         } & {
             [key: string]: unknown;
         };
@@ -24231,6 +24277,126 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SearchIndexArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    selfHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "components": [
+                     *           {
+                     *             "checked_at": "2026-06-01T00:00:00.000Z",
+                     *             "component": "example",
+                     *             "current_ok": false,
+                     *             "days": [
+                     *               {
+                     *                 "checks": 1,
+                     *                 "day": "2026-06-01",
+                     *                 "ok_count": 1,
+                     *                 "uptime_ratio": 0.9966
+                     *               }
+                     *             ],
+                     *             "http_status": 1,
+                     *             "latency_ms": 120,
+                     *             "uptime_90d": 0.5
+                     *           }
+                     *         ],
+                     *         "measured_component_count": 1,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "verdict": "operational"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SelfHealthArtifact"];
                     };
                 };
             };

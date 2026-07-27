@@ -5,6 +5,7 @@
     "health-history",
     "health-trends-bulk",
     "incidents",
+    "self-health",
     "subnet-health",
     "subnet-health-incidents",
     "subnet-health-percentiles",

@@ -1322,6 +1322,29 @@ const checks: [string, (body: Row) => void][] = [
     },
   ],
   [
+    "/api/v1/self-health",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(
+        ["operational", "degraded", "outage"].includes(body.data.verdict),
+        true,
+      );
+      assert.equal(Array.isArray(body.data.components), true);
+      // Three components always present, even before the poller has written
+      // anything -- their current_ok is null in that case, never false.
+      assert.equal(body.data.components.length, 3);
+      assert.equal(typeof body.data.measured_component_count, "number");
+      for (const c of body.data.components) {
+        assert.equal(typeof c.component, "string");
+        assert.equal(
+          c.current_ok === null || typeof c.current_ok === "boolean",
+          true,
+        );
+        assert.equal(Array.isArray(c.days), true);
+      }
+    },
+  ],
+  [
     "/api/v1/chain/yield",
     (body) => {
       assert.equal(body.data.schema_version, 1);

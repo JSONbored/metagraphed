@@ -2579,6 +2579,88 @@ test("GET /api/v1/chain/idle-stake shapes the network-wide idle-stake rollup", a
   expect(queryText()).not.toContain("WHERE netuid");
 });
 
+// #8318: two queries per request (the 90d rollup, then the latest tick per
+// component). The leading [] matches every other multi-query test here --
+// the router issues one call before the handler's own.
+test("GET /api/v1/self-health serves the scoped verdict and per-component 90d series", async () => {
+  mockQueue.current = [
+    [],
+    [
+      { day: "2026-07-25", component: "api", checks: 1440, ok_count: 1440 },
+      { day: "2026-07-26", component: "api", checks: 1000, ok_count: 500 },
+    ],
+    [
+      {
+        component: "api",
+        ok: true,
+        http_status: 200,
+        latency_ms: 42,
+        checked_at_ms: 1785083230973,
+      },
+    ],
+  ] as unknown as Row[];
+  const res = await req("/api/v1/self-health");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.schema_version).toBe(1);
+  expect(body.verdict).toBe("operational");
+  expect(body.measured_component_count).toBe(1);
+  const api = (body.components as Row[]).find((c) => c.component === "api")!;
+  expect((api.days as Row[]).map((d) => d.uptime_ratio)).toEqual([1, 0.5]);
+  expect(api.uptime_90d).toBe(0.75);
+  // Windowed to 90 days, and reading the rollup rather than the raw table.
+  expect(queryText()).toContain("FROM self_health_daily");
+  expect(queryText()).toContain("90 days");
+  // DISTINCT ON gives the newest tick per component in one pass.
+  expect(queryText()).toContain("DISTINCT ON (component)");
+});
+
+test("GET /api/v1/self-health reports degraded, not operational, on an empty table", async () => {
+  // Before the poller has written anything we can't assert health -- but an
+  // empty table isn't an outage either, and the three components must still
+  // be present with current_ok null rather than false.
+  mockQueue.current = [[], [], []] as unknown as Row[];
+  const res = await req("/api/v1/self-health");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.verdict).toBe("degraded");
+  expect((body.components as Row[]).length).toBe(3);
+  expect((body.components as Row[]).every((c) => c.current_ok === null)).toBe(
+    true,
+  );
+  expect(body.observed_at).toBeNull();
+});
+
+test("GET /api/v1/self-health calls an outage when the api component is down", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [
+      {
+        component: "api",
+        ok: false,
+        http_status: 503,
+        latency_ms: null,
+        checked_at_ms: 1785083230973,
+      },
+      {
+        component: "site",
+        ok: true,
+        http_status: 200,
+        latency_ms: 30,
+        checked_at_ms: 1785083230973,
+      },
+    ],
+  ] as unknown as Row[];
+  const res = await req("/api/v1/self-health");
+  const body = (await res.json()) as Row;
+  expect(body.verdict).toBe("outage");
+  // Partial history: no daily rows yet, but current state is real.
+  expect(
+    (body.components as Row[]).find((c) => c.component === "api")!.days,
+  ).toEqual([]);
+});
+
 test("GET /api/v1/chain/yield shapes the network-wide emission-yield distribution", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/chain/yield");

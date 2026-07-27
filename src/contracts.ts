@@ -1680,6 +1680,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainIdentityHistoryArtifact",
   ),
   artifact(
+    "self-health",
+    "/metagraph/self-health.json",
+    "metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file).",
+    "SelfHealthArtifact",
+  ),
+  artifact(
     "chain-yield",
     "/metagraph/chain/yield.json",
     "Network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, and the subnet_count the snapshot spans — the return-rate companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/yield (no static file).",
@@ -4020,6 +4026,17 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics"],
     [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } }],
+    [],
+  ),
+  route(
+    "self-health",
+    "GET",
+    "/api/v1/self-health",
+    "/metagraph/self-health.json",
+    "metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file).",
+    "short",
+    ["health"],
+    [],
     [],
   ),
   route(

@@ -35,6 +35,8 @@ type Row = Record<string, any>;
 // file on disk (served from D1/KV). Their schema is exercised by validate-api's
 // per-route response validation, not by validating files here.
 const COMPUTED_ARTIFACTS = new Set([
+  // #8318: served live from the self_health_* Postgres tier, no static file.
+  "self-health",
   "health-trends",
   "health-trends-bulk",
   "health-percentiles",
