@@ -1445,6 +1445,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "self-health",
+      "path": "/metagraph/self-health.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SelfHealthArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-yield",
       "path": "/metagraph/chain/yield.json",
       "retirement": null,
@@ -9003,6 +9012,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/self-health.json",
+      "cache": "short",
+      "description": "metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file).",
+      "id": "self-health",
+      "method": "GET",
+      "path": "/api/v1/self-health",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/chain/yield.json",

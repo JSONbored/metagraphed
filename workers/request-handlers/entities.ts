@@ -147,6 +147,7 @@ import {
 } from "../../src/concentration.ts";
 import { buildChainPerformance } from "../../src/chain-performance.ts";
 import { buildChainYield } from "../../src/chain-yield.ts";
+import { buildSelfHealth } from "../../src/self-health.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
@@ -1740,6 +1741,40 @@ export async function handleChainIdentityHistory(
         // null when the store is cold.
         (data.changes as unknown as Array<Record<string, unknown>>)[0]
           ?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/self-health (#8318): metagraphed's OWN uptime -- the verdict plus
+// each component's trailing-90-day series, from the self_health_* Postgres
+// tier the indexer box's poller writes.
+//
+// Scoped strictly to our own components; never mixes in the third-party
+// subnet-surface health that /api/v1/health covers.
+//
+// A cold or absent store returns the schema-stable empty shape (three
+// components, current_ok null, verdict "degraded") rather than a 404 -- the
+// same convention as every sibling Postgres-tier route, and the right answer
+// besides: "we have no readings" is a real state, not a missing resource.
+export async function handleSelfHealth(request: Request, env: Env, url: URL) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data =
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_SELF_HEALTH_SOURCE",
+    )) as ReturnType<typeof buildSelfHealth> | null) ?? buildSelfHealth([], []);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/self-health.json",
+        data.observed_at,
       ),
     },
     "short",

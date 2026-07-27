@@ -39,6 +39,7 @@ import {
   handleChainConcentration,
   handleChainPerformance,
   handleChainYield,
+  handleSelfHealth,
   handleAccountPortfolio,
   handleAccountPositions,
   handleAccountsList,
@@ -5648,6 +5649,55 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSelfHealth: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_SELF_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSelfHealth(
+        req("/api/v1/self-health"),
+        env as unknown as Env,
+        url("/api/v1/self-health"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSelfHealth: a cold tier serves the empty shape, never a 404", async () => {
+    // "We have no readings" is a real state, not a missing resource -- and a
+    // status page that 404s is the worst possible status report.
+    const { env } = dbWith({ neurons: [] });
+    const res = await handleSelfHealth(
+      req("/api/v1/self-health"),
+      env as unknown as Env,
+      url("/api/v1/self-health"),
+    );
+    assert.equal(res.status, 200);
+    const body = await json(res);
+    assert.equal(body.data.verdict, "degraded");
+    assert.equal(body.data.components.length, 3);
+    // Null, not false: unmeasured is not down.
+    assert.equal(
+      body.data.components.every(
+        (c: { current_ok: unknown }) => c.current_ok === null,
+      ),
+      true,
+    );
+  });
+
+  test("handleSelfHealth: rejects an unknown query param", async () => {
+    const { env } = dbWith({ neurons: [] });
+    const res = await handleSelfHealth(
+      req("/api/v1/self-health?bogus=1"),
+      env as unknown as Env,
+      url("/api/v1/self-health?bogus=1"),
+    );
+    assert.equal(res.status, 400);
   });
 
   test("handleAccountPortfolio: flag=postgres uses Postgres data, D1 never queried", async () => {

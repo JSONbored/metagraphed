@@ -105,6 +105,11 @@ import {
 } from "../src/subnet-idle-stake.ts";
 import { buildChainYield } from "../src/chain-yield.ts";
 import {
+  buildSelfHealth,
+  type SelfHealthDailyRow,
+  type SelfHealthLatestRow,
+} from "../src/self-health.ts";
+import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   YIELD_HISTORY_ROW_CAP,
@@ -8869,6 +8874,31 @@ async function dispatchDataApiRequest(
           >`
           SELECT stake_tao, dividends, netuid, captured_at FROM neurons`;
           return json(buildChainIdleStake(rows));
+        }
+
+        // GET /api/v1/self-health (#8318): metagraphed's OWN uptime. Every
+        // other health surface here is about someone else -- /api/v1/health
+        // rolls up probed SUBNET surfaces -- so /status could only ever
+        // answer "are the things we watch up", never "are WE up".
+        //
+        // Two queries rather than one join: the 90-day rollup and the latest
+        // tick per component come from different tables with different
+        // retention (self_health_checks is pruned at 14d, self_health_daily
+        // never), and a join would silently drop a component whose raw ticks
+        // have aged out but whose daily history is intact.
+        if (url.pathname === "/api/v1/self-health") {
+          const daily = await sql<SelfHealthDailyRow[]>`
+          SELECT day::text AS day, component, checks, ok_count
+          FROM self_health_daily
+          WHERE day >= (CURRENT_DATE - INTERVAL '90 days')
+          ORDER BY component, day`;
+          // DISTINCT ON gives the newest row per component in one pass.
+          const latest = await sql<SelfHealthLatestRow[]>`
+          SELECT DISTINCT ON (component)
+            component, ok, http_status, latency_ms, checked_at_ms
+          FROM self_health_checks
+          ORDER BY component, checked_at_ms DESC`;
+          return json(buildSelfHealth(daily, latest));
         }
 
         // GET /api/v1/chain/yield (#4832 Tier 2): network-wide emission-yield

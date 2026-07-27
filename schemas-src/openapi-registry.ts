@@ -259,6 +259,11 @@ import {
 import { ChainTurnoverArtifactSchema } from "./routes/chain-turnover.ts";
 import { ChainWeightSettersArtifactSchema } from "./routes/chain-weight-setters.ts";
 import { ChainYieldArtifactSchema } from "./routes/chain-yield.ts";
+import {
+  SelfHealthArtifactSchema,
+  SelfHealthComponentSchema,
+  SelfHealthDaySchema,
+} from "./routes/self-health.ts";
 import { CompareArtifactSchema } from "./routes/compare.ts";
 import {
   AgentReadinessBlockerSchema,
@@ -484,6 +489,11 @@ register(ChainTransfersArtifactSchema, "ChainTransfersArtifact");
 register(ChainTurnoverArtifactSchema, "ChainTurnoverArtifact");
 register(ChainWeightSettersArtifactSchema, "ChainWeightSettersArtifact");
 register(ChainYieldArtifactSchema, "ChainYieldArtifact");
+// #8318: the two leaf shapes are registered explicitly, not just the artifact
+// -- an unregistered named sub-shape is inlined rather than $ref'd.
+register(SelfHealthDaySchema, "SelfHealthDay");
+register(SelfHealthComponentSchema, "SelfHealthComponent");
+register(SelfHealthArtifactSchema, "SelfHealthArtifact");
 
 // Batch 3 (#8057) additions.
 register(SubnetMetagraphArtifactSchema, "SubnetMetagraphArtifact");
@@ -837,6 +847,9 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "ChainTurnoverArtifact",
   "ChainWeightSettersArtifact",
   "ChainYieldArtifact",
+  "SelfHealthDay",
+  "SelfHealthComponent",
+  "SelfHealthArtifact",
   "BlocksFeedArtifact",
   "BlockDetailArtifact",
   "BlocksSummaryArtifact",

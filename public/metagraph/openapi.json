@@ -22529,6 +22529,163 @@
         ],
         "type": "object"
       },
+      "SelfHealthArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/SelfHealthComponent"
+            },
+            "type": "array"
+          },
+          "measured_component_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "verdict": {
+            "enum": [
+              "operational",
+              "degraded",
+              "outage"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "verdict",
+          "components",
+          "measured_component_count",
+          "observed_at"
+        ],
+        "type": "object"
+      },
+      "SelfHealthComponent": {
+        "additionalProperties": {},
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "component": {
+            "type": "string"
+          },
+          "current_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/SelfHealthDay"
+            },
+            "type": "array"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uptime_90d": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "component",
+          "current_ok",
+          "http_status",
+          "latency_ms",
+          "checked_at",
+          "days",
+          "uptime_90d"
+        ],
+        "type": "object"
+      },
+      "SelfHealthDay": {
+        "additionalProperties": {},
+        "properties": {
+          "checks": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "day": {
+            "type": "string"
+          },
+          "ok_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uptime_ratio": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "checks",
+          "ok_count",
+          "uptime_ratio"
+        ],
+        "type": "object"
+      },
       "SourceHealthArtifact": {
         "additionalProperties": {},
         "properties": {
@@ -55929,6 +56086,144 @@
         "summary": "Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing.",
         "tags": [
           "search"
+        ]
+      }
+    },
+    "/api/v1/self-health": {
+      "get": {
+        "operationId": "selfHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "components": [
+                      {
+                        "checked_at": "2026-06-01T00:00:00.000Z",
+                        "component": "example",
+                        "current_ok": false,
+                        "days": [
+                          {
+                            "checks": 1,
+                            "day": "2026-06-01",
+                            "ok_count": 1,
+                            "uptime_ratio": 0.9966
+                          }
+                        ],
+                        "http_status": 1,
+                        "latency_ms": 120,
+                        "uptime_90d": 0.5
+                      }
+                    ],
+                    "measured_component_count": 1,
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "verdict": "operational"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SelfHealthArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file).",
+        "tags": [
+          "health"
         ]
       }
     },

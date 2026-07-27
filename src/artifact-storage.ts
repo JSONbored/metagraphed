@@ -29,6 +29,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // the account_balances/nominator_positions Postgres tier, the coldkey/
   // balance-centric counterpart to accounts.json above.
   /^top-holders\.json$/,
+  // metagraphed's own uptime (#8318): computed live from the self_health_*
+  // Postgres tier the indexer box's poller writes. Never a file -- a status
+  // page served from a build-time artifact would keep reporting the health
+  // the site had when it last built, which is the one moment it must not.
+  /^self-health\.json$/,
   // Cross-subnet validator detail (#4334/7.1): computed live from the neurons D1 tier.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\.json$/,
   // Validator nominator list (#4334/7.2): computed live from account_events.
