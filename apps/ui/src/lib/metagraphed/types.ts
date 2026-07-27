@@ -1759,6 +1759,12 @@ export interface SelfHealthComponentView {
   http_status: number | null;
   latency_ms: number | null;
   checked_at: string | null;
+  /**
+   * Qualifies a false `current_ok` with why, for components (currently only
+   * `publish`) whose failure isn't a plain HTTP-level outage (#8352). Null
+   * otherwise.
+   */
+  note: string | null;
   /** Days with no probe rows are ABSENT, never zero-filled. */
   days: SelfHealthDay[];
   uptime_90d: number | null;

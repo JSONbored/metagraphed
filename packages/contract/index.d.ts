@@ -7071,6 +7071,7 @@ export interface components {
             days: components["schemas"]["SelfHealthDay"][];
             http_status: number | null;
             latency_ms: number | null;
+            note: string | null;
             uptime_90d: number | null;
         } & {
             [key: string]: unknown;
@@ -24361,6 +24362,7 @@ export interface operations {
                      *             ],
                      *             "http_status": 1,
                      *             "latency_ms": 120,
+                     *             "note": "example",
                      *             "uptime_90d": 0.5
                      *           }
                      *         ],
