@@ -2500,6 +2500,7 @@ function SectionAnchor({
 }
 function SectionHeading({
   title,
+  step,
   intro,
   right,
   className,
@@ -2514,12 +2515,15 @@ function SectionHeading({
       ),
       children: [
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "max-w-2xl", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(
+          /* @__PURE__ */ jsxRuntime.jsxs(
             "h2",
             {
               id,
               className: "font-display text-sm font-semibold uppercase tracking-wider text-ink-strong",
-              children: title
+              children: [
+                step != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "mr-2 tabular-nums text-accent-text", children: String(step).padStart(2, "0") }) : null,
+                title
+              ]
             }
           ),
           intro ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1.5 text-sm leading-relaxed text-ink-muted", children: intro }) : null
