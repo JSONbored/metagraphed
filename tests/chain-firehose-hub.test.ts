@@ -11,7 +11,7 @@
 // equivalent) is out of reach here -- see that branch's own /* v8 ignore */
 // comment in the source and #4982's issue body.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   ALERTER_HUB_EVALUATE_TIMEOUT_MS,
   CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK,
@@ -23,15 +23,23 @@ import {
   CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
   CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
+  CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
+  CHAIN_FIREHOSE_SSE_MAX_CONNECTION_LIFETIME_MS,
+  CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS,
+  CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS,
   CHAIN_FIREHOSE_TABLES,
   GRAPHQL_WS_SOCKET_TAG,
   ChainFirehoseHub,
+  chainFirehoseMatchesNetuid,
   chainFirehoseMatchesTopics,
+  chainFirehoseSseResumeHasGap,
   createAsyncRepeater,
   type AsyncRepeater,
   type ChainFirehoseIngestPayload,
   formatChainFirehoseSseFrame,
+  formatChainFirehoseSseResetFrame,
+  parseChainFirehoseNetuidFilter,
   parseChainFirehoseTopics,
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
@@ -303,6 +311,81 @@ test("chainFirehoseMatchesTopics: an empty Set matches nothing", () => {
   );
 });
 
+// --- parseChainFirehoseNetuidFilter / chainFirehoseMatchesNetuid (#8364) --------
+
+test("parseChainFirehoseNetuidFilter: absent, blank, non-integer, and negative all read as unfiltered", () => {
+  assert.equal(parseChainFirehoseNetuidFilter(new URLSearchParams()), null);
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=")),
+    null,
+  );
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=  ")),
+    null,
+  );
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=abc")),
+    null,
+  );
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=3.5")),
+    null,
+  );
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=-1")),
+    null,
+  );
+});
+
+test("parseChainFirehoseNetuidFilter: a well-formed non-negative integer parses, including 0 (root)", () => {
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=1")),
+    1,
+  );
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=0")),
+    0,
+  );
+  assert.equal(
+    parseChainFirehoseNetuidFilter(new URLSearchParams("netuid=118")),
+    118,
+  );
+});
+
+test("chainFirehoseMatchesNetuid: null filter matches every payload", () => {
+  assert.equal(
+    chainFirehoseMatchesNetuid({ table: "account_events", netuid: 5 }, null),
+    true,
+  );
+});
+
+test("chainFirehoseMatchesNetuid: a row that carries netuid must match exactly", () => {
+  const rows = { table: "account_events", netuid: 5 };
+  assert.equal(chainFirehoseMatchesNetuid(rows, 5), true);
+  assert.equal(chainFirehoseMatchesNetuid(rows, 6), false);
+});
+
+test("chainFirehoseMatchesNetuid: a row with no netuid field passes through unfiltered (the param doesn't apply to it)", () => {
+  // blocks/extrinsics/chain_events carry no netuid column at all -- see the
+  // function's own comment for why this is "doesn't apply" rather than "zero
+  // results".
+  assert.equal(
+    chainFirehoseMatchesNetuid({ table: "blocks", block_number: 1 }, 5),
+    true,
+  );
+});
+
+test("chainFirehoseMatchesNetuid: a null/undefined payload passes through", () => {
+  assert.equal(chainFirehoseMatchesNetuid(null, 5), true);
+  assert.equal(chainFirehoseMatchesNetuid(undefined, 5), true);
+});
+
+test("chainFirehoseMatchesNetuid: netuid 0 (root) is matched literally, not treated as falsy/absent", () => {
+  const rows = { table: "account_events", netuid: 0 };
+  assert.equal(chainFirehoseMatchesNetuid(rows, 0), true);
+  assert.equal(chainFirehoseMatchesNetuid(rows, 1), false);
+});
+
 // --- validateChainFirehoseIngestPayload -----------------------------------------
 
 test("validateChainFirehoseIngestPayload: accepts a well-formed blocks payload", () => {
@@ -527,14 +610,21 @@ test("validateChainFirehoseIngestPayload: a non-finite numeric field round-trips
 
 // --- formatChainFirehoseSseFrame -------------------------------------------------
 
-test("formatChainFirehoseSseFrame: frames a payload as an SSE `chain` event", () => {
-  const frame = formatChainFirehoseSseFrame({
+test("formatChainFirehoseSseFrame: frames a payload as an SSE `chain` event with an id: line", () => {
+  const frame = formatChainFirehoseSseFrame(7, {
     table: "blocks",
     block_number: 1,
   });
   assert.equal(
     frame,
-    'event: chain\ndata: {"table":"blocks","block_number":1}\n\n',
+    'id: 7\nevent: chain\ndata: {"table":"blocks","block_number":1}\n\n',
+  );
+});
+
+test("formatChainFirehoseSseResetFrame: frames a bare reset event", () => {
+  assert.equal(
+    formatChainFirehoseSseResetFrame(),
+    "event: reset\ndata: {}\n\n",
   );
 });
 
@@ -686,13 +776,13 @@ test("ChainFirehoseHub /subscribe (SSE) -> broadcast: a connected client receive
   const reader = res.body!.getReader();
   await reader.read(); // drain the initial ": connected" comment frame
 
-  hub.broadcast({ table: "extrinsics", block_number: 1 }); // filtered out
-  hub.broadcast({ table: "blocks", block_number: 2 }); // matches
+  hub.broadcast({ table: "extrinsics", block_number: 1 }); // filtered out -- still consumes id 1
+  hub.broadcast({ table: "blocks", block_number: 2 }); // matches -- id 2
 
   const { value } = await reader.read();
   assert.equal(
     new TextDecoder().decode(value),
-    'event: chain\ndata: {"table":"blocks","block_number":2}\n\n',
+    'id: 2\nevent: chain\ndata: {"table":"blocks","block_number":2}\n\n',
   );
   await reader.cancel();
 });
@@ -741,6 +831,259 @@ test("ChainFirehoseHub /subscribe (SSE): cancelling the stream removes it from s
   assert.equal(hub.sseClients.size, 1);
   await res.body!.cancel();
   assert.equal(hub.sseClients.size, 0);
+});
+
+// --- SSE netuid filter (#8364) ---------------------------------------------------
+
+test("ChainFirehoseHub /subscribe (SSE) -> broadcast: ?netuid= filters account_events to the one subnet, unfiltered tables pass through", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const res = await hub.fetch(
+    new Request(
+      "https://chain-firehose-hub.internal/subscribe?topics=account_events,blocks&netuid=5",
+    ),
+  );
+  const reader = res.body!.getReader();
+  const decode = async () =>
+    new TextDecoder().decode((await reader.read()).value);
+  await decode(); // ": connected"
+
+  hub.broadcast({ table: "account_events", block_number: 1, netuid: 9 }); // wrong subnet -- filtered
+  hub.broadcast({ table: "account_events", block_number: 2, netuid: 5 }); // id 2 -- matches
+  hub.broadcast({ table: "blocks", block_number: 3 }); // id 3 -- netuid doesn't apply to blocks
+
+  assert.equal(
+    await decode(),
+    'id: 2\nevent: chain\ndata: {"table":"account_events","block_number":2,"netuid":5}\n\n',
+  );
+  assert.equal(
+    await decode(),
+    'id: 3\nevent: chain\ndata: {"table":"blocks","block_number":3}\n\n',
+  );
+  await reader.cancel();
+});
+
+// --- SSE Last-Event-ID resume / reset (#8364) -------------------------------------
+
+test("ChainFirehoseHub /subscribe (SSE) Last-Event-ID resume: replays only events after the given id, through this connection's own topics/netuid filters", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+
+  // recordSseEvent runs on every broadcast() regardless of connected
+  // clients (see its own comment) -- this history exists before the client
+  // below ever connects, exactly like a real reconnect scenario.
+  hub.broadcast({ table: "blocks", block_number: 1 }); // id 1
+  hub.broadcast({ table: "account_events", block_number: 2, netuid: 5 }); // id 2 -- matches
+  hub.broadcast({ table: "blocks", block_number: 99 }); // id 3 -- wrong TABLE (topics=account_events only)
+  hub.broadcast({ table: "account_events", block_number: 4, netuid: 9 }); // id 4 -- right table, wrong subnet
+  hub.broadcast({ table: "account_events", block_number: 5, netuid: 5 }); // id 5 -- matches
+
+  const res = await hub.fetch(
+    new Request(
+      "https://chain-firehose-hub.internal/subscribe?topics=account_events&netuid=5",
+      { headers: { "Last-Event-ID": "1" } },
+    ),
+  );
+  const reader = res.body!.getReader();
+  const decode = async () =>
+    new TextDecoder().decode((await reader.read()).value);
+
+  assert.equal(await decode(), ": connected\n\n");
+  assert.equal(
+    await decode(),
+    'id: 2\nevent: chain\ndata: {"table":"account_events","block_number":2,"netuid":5}\n\n',
+  );
+  assert.equal(
+    await decode(),
+    'id: 5\nevent: chain\ndata: {"table":"account_events","block_number":5,"netuid":5}\n\n',
+  );
+  await reader.cancel();
+});
+
+test("ChainFirehoseHub /subscribe (SSE) Last-Event-ID resume: an id that has aged out of the retained buffer gets a reset frame, not a partial replay", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  for (let i = 0; i < CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS + 5; i += 1) {
+    hub.broadcast({ table: "blocks", block_number: i });
+  }
+  // ids 1..5 have since been pruned by the count bound.
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/subscribe", {
+      headers: { "Last-Event-ID": "1" },
+    }),
+  );
+  const reader = res.body!.getReader();
+  const decode = async () =>
+    new TextDecoder().decode((await reader.read()).value);
+  assert.equal(await decode(), ": connected\n\n");
+  assert.equal(await decode(), "event: reset\ndata: {}\n\n");
+  await reader.cancel();
+});
+
+test("ChainFirehoseHub /subscribe (SSE) Last-Event-ID resume: a malformed header gets reset rather than throwing or silently resuming from nowhere", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  hub.broadcast({ table: "blocks", block_number: 1 });
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/subscribe", {
+      headers: { "Last-Event-ID": "not-a-number" },
+    }),
+  );
+  const reader = res.body!.getReader();
+  const decode = async () =>
+    new TextDecoder().decode((await reader.read()).value);
+  assert.equal(await decode(), ": connected\n\n");
+  assert.equal(await decode(), "event: reset\ndata: {}\n\n");
+  await reader.cancel();
+});
+
+test("ChainFirehoseHub /subscribe (SSE) Last-Event-ID resume: a fresh hub with nothing ever broadcast sends no reset, even for a large-looking id", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/subscribe", {
+      headers: { "Last-Event-ID": "999" },
+    }),
+  );
+  const reader = res.body!.getReader();
+  const decode = async () =>
+    new TextDecoder().decode((await reader.read()).value);
+  assert.equal(await decode(), ": connected\n\n");
+  // Frames are strictly ordered -- if a reset had been queued after
+  // "connected", it would be read before this broadcast's own frame. Reading
+  // the broadcast's `id: 1` frame directly here proves no reset was sent.
+  hub.broadcast({ table: "blocks", block_number: 1 });
+  assert.equal(
+    await decode(),
+    'id: 1\nevent: chain\ndata: {"table":"blocks","block_number":1}\n\n',
+  );
+  await reader.cancel();
+});
+
+// --- chainFirehoseSseResumeHasGap (#8364) -----------------------------------------
+
+test("chainFirehoseSseResumeHasGap: no gap when nothing has ever been retained, or the client is even ahead", () => {
+  assert.equal(chainFirehoseSseResumeHasGap(0, 1), false);
+  assert.equal(chainFirehoseSseResumeHasGap(500, 1), false);
+});
+
+test("chainFirehoseSseResumeHasGap: no gap exactly at the boundary or above it", () => {
+  assert.equal(chainFirehoseSseResumeHasGap(9, 10), false);
+  assert.equal(chainFirehoseSseResumeHasGap(15, 10), false);
+});
+
+test("chainFirehoseSseResumeHasGap: a gap when the id is older than what's retained", () => {
+  assert.equal(chainFirehoseSseResumeHasGap(8, 10), true);
+  assert.equal(chainFirehoseSseResumeHasGap(0, 10), true);
+});
+
+test("chainFirehoseSseResumeHasGap: a non-finite id is always a gap", () => {
+  assert.equal(chainFirehoseSseResumeHasGap(Number.NaN, 1), true);
+  assert.equal(chainFirehoseSseResumeHasGap(Number.POSITIVE_INFINITY, 1), true);
+});
+
+// --- SSE retained-event log / recordSseEvent (#8364) ------------------------------
+
+test("ChainFirehoseHub.recordSseEvent: assigns dense, monotonically increasing ids starting at 1", () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  assert.equal(hub.recordSseEvent({ table: "blocks", block_number: 1 }), 1);
+  assert.equal(hub.recordSseEvent({ table: "blocks", block_number: 2 }), 2);
+  assert.equal(hub.recordSseEvent({ table: "blocks", block_number: 3 }), 3);
+});
+
+test("ChainFirehoseHub.recordSseEvent: prunes by count once CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS is exceeded", () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  for (let i = 0; i < CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS + 10; i += 1) {
+    hub.recordSseEvent({ table: "blocks", block_number: i });
+  }
+  assert.equal(hub.sseEventLog.length, CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS);
+  assert.equal(hub.sseEventLog[0]!.id, 11);
+});
+
+test("ChainFirehoseHub.recordSseEvent: prunes by age once CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS is exceeded, independent of count", () => {
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    hub.recordSseEvent({ table: "blocks", block_number: 1 }); // id 1, will age out
+    vi.setSystemTime(
+      new Date(Date.now() + CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS + 1),
+    );
+    hub.recordSseEvent({ table: "blocks", block_number: 2 }); // id 2, triggers the prune
+    assert.equal(hub.sseEventLog.length, 1);
+    assert.equal(hub.sseEventLog[0]!.id, 2);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("ChainFirehoseHub.oldestRetainedSseEventId: 1 on a fresh hub, the log's head once populated", () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  assert.equal(hub.oldestRetainedSseEventId(), 1);
+  hub.recordSseEvent({ table: "blocks", block_number: 1 });
+  hub.recordSseEvent({ table: "blocks", block_number: 2 });
+  assert.equal(hub.oldestRetainedSseEventId(), 1);
+});
+
+// --- SSE heartbeat / max connection lifetime (#8364) ------------------------------
+
+test("ChainFirehoseHub /subscribe (SSE): sends a heartbeat comment every CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS", async () => {
+  vi.useFakeTimers();
+  try {
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    const res = await hub.fetch(
+      new Request("https://chain-firehose-hub.internal/subscribe"),
+    );
+    const reader = res.body!.getReader();
+    await reader.read(); // ": connected"
+
+    const readPromise = reader.read();
+    await vi.advanceTimersByTimeAsync(CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS);
+    const { value } = await readPromise;
+    assert.equal(new TextDecoder().decode(value), ": heartbeat\n\n");
+
+    await reader.cancel();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("ChainFirehoseHub /subscribe (SSE): heartbeat ticks are cleared on cancel -- no leaked interval", async () => {
+  vi.useFakeTimers();
+  try {
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    const res = await hub.fetch(
+      new Request("https://chain-firehose-hub.internal/subscribe"),
+    );
+    await res.body!.cancel();
+    // If the interval survived cancellation, advancing past several ticks
+    // would throw trying to enqueue on a closed/released controller (or at
+    // minimum indicate a leaked timer) -- vitest's fake-timer clock has
+    // nothing left scheduled once real cleanup has run, so this simply must
+    // not throw.
+    await vi.advanceTimersByTimeAsync(
+      CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS * 5,
+    );
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("ChainFirehoseHub /subscribe (SSE): force-closes and releases the connection at CHAIN_FIREHOSE_SSE_MAX_CONNECTION_LIFETIME_MS", async () => {
+  vi.useFakeTimers();
+  try {
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    const res = await hub.fetch(
+      new Request("https://chain-firehose-hub.internal/subscribe"),
+    );
+    assert.equal(hub.sseClients.size, 1);
+
+    await vi.advanceTimersByTimeAsync(
+      CHAIN_FIREHOSE_SSE_MAX_CONNECTION_LIFETIME_MS,
+    );
+
+    // Released immediately by the timeout itself -- independent of whether
+    // the client has drained every already-queued heartbeat frame yet.
+    assert.equal(hub.sseClients.size, 0);
+    await res.body!.cancel();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 // --- SSE per-IP connection sub-quota (#5004 item 1) -------------------------------
