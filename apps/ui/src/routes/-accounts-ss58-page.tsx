@@ -12,7 +12,6 @@ import {
   ChevronRight,
   Clock,
   Coins,
-  Fingerprint,
   Gauge,
   Github,
   Globe,
@@ -20,7 +19,6 @@ import {
   Network,
   Radar,
   RefreshCw,
-  Rows3,
   Scale,
   Tag,
   Unplug,
@@ -45,10 +43,13 @@ import {
   BarMini,
   DownloadCsvButton,
   ExternalLink,
+  BackToTop,
 } from "@jsonbored/ui-kit";
 import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
+import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
+import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   accountAxonRemovalsQuery,
   accountChildrenQuery,
@@ -70,7 +71,14 @@ import {
   accountServingQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
+  validatorDetailQuery,
+  validatorHistoryQuery,
 } from "@/lib/metagraphed/queries";
+import {
+  apyFromRewardsPer1000,
+  formatApyPct,
+  formatTakePct,
+} from "@/lib/metagraphed/validator-apy";
 import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -81,14 +89,17 @@ import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
 import {
   accountRole,
+  isDualRoleAccount,
   isImplausibleTao,
   IMPLAUSIBLE_TAO_NOTE,
+  type AccountRole,
 } from "@/lib/metagraphed/account-role";
 import type {
   AccountCounterparty,
   AccountDelegationGraph,
   AccountDelegationSubnet,
   AccountEntityLabel,
+  AccountEvent,
   AccountOwnershipTie,
   AccountStakeFlowSubnet,
   AccountRegistration,
@@ -97,6 +108,41 @@ import type {
   Transfer,
 } from "@/lib/metagraphed/types";
 import { DEFAULT_EVENTS_LIMIT } from "./accounts.$ss58";
+
+// #8358: detail-page template tabs. Overview carries the KPI band's context
+// plus a bounded recent-activity preview; everything else is a full,
+// unbounded view one tap away. Mirrors -subnets-netuid-page.tsx's TABS/
+// SECTION_TO_TAB pair so cross-tab hash deep links keep working.
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "positions", label: "Positions" },
+  { id: "transfers", label: "Transfers" },
+  { id: "activity", label: "Activity" },
+  { id: "extrinsics", label: "Extrinsics" },
+  { id: "api", label: "API" },
+] as const;
+
+const SECTION_TO_TAB: Record<string, string> = {
+  identity: "overview",
+  entities: "overview",
+  portfolio: "positions",
+  "stake-flow": "positions",
+  "stake-moves": "positions",
+  footprint: "positions",
+  delegation: "positions",
+  history: "activity",
+  teardown: "activity",
+  registrations: "activity",
+  deregistrations: "activity",
+  "weight-setting": "activity",
+  "endpoint-announcements": "activity",
+  kinds: "activity",
+  events: "activity",
+  extrinsics: "extrinsics",
+  transfers: "transfers",
+  counterparties: "transfers",
+  call: "api",
+};
 
 export function AccountDetailPage() {
   const { ss58 } = useParams({ from: "/accounts/$ss58" });
@@ -128,6 +174,39 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   // RPC never stalls or errors the rest of the entity page.
   const balanceResult = useQuery(accountBalanceQuery(ss58));
   const balance = balanceResult.data?.data;
+  const identityResult = useQuery(accountIdentityQuery(ss58));
+  const identity = identityResult.data?.data;
+  // #8358 KPI band: the same portfolio/stake-flow/validator/prometheus queries
+  // the Positions and Activity tab sections already fetch below, called once
+  // more here (React Query dedupes by key -- this is a shared cache read, not
+  // a second network round-trip) so the always-visible band above the tabs
+  // can show live numbers without waiting for whichever tab first mounts them.
+  const portfolioResult = useQuery(accountPortfolioQuery(ss58));
+  const portfolio = portfolioResult.data?.data;
+  const stakeFlowResult = useQuery(accountStakeFlowQuery(ss58, { window: "30d" }));
+  const stakeFlow = stakeFlowResult.data?.data;
+  const validatorResult = useQuery(validatorDetailQuery(ss58));
+  const validator = validatorResult.data?.data;
+  // #2551 methodology, same as ValidatorApyPanel/validator-columns.tsx's "Est.
+  // APY" column: annualized from the daily neuron_daily rewards-per-1000-TAO
+  // rollup, net of take. validatorDetailQuery's own /validators/{hotkey}
+  // response has no rate field to read directly (only the list endpoint's
+  // apy_estimate does) -- history is the correct source, not a substitute.
+  const validatorHistoryResult = useQuery(validatorHistoryQuery(ss58, "30d"));
+  const latestRewardsPer1000 = validatorHistoryResult.data?.data?.points.find(
+    (p) => p.rewards_per_1000_tao != null && Number.isFinite(p.rewards_per_1000_tao),
+  )?.rewards_per_1000_tao;
+  const estApyPct = apyFromRewardsPer1000(latestRewardsPer1000, validator?.take);
+  const prometheusResult = useQuery(accountPrometheusQuery(ss58));
+  const prometheus = prometheusResult.data?.data;
+  // Prometheus/serving announcements are per-subnet; the KPI band's "Serving"
+  // tile wants one liveness signal, so this takes the most recent
+  // announcement across every subnet this hotkey has announced on.
+  const lastAnnouncedAt =
+    prometheus?.subnets.reduce<string | null>((latest, s) => {
+      if (!s.last_announced_at) return latest;
+      return !latest || s.last_announced_at > latest ? s.last_announced_at : latest;
+    }, null) ?? null;
   // Signed extrinsics + native-TAO transfers are separate sub-resources (#264),
   // fetched non-blocking so a cold/slow tier never stalls the summary above.
   const extrinsicsResult = useQuery(accountExtrinsicsQuery(ss58, { limit: 25 }));
@@ -142,54 +221,53 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   // whale coldkey). Show "—" with an explanatory tooltip rather than a number
   // no reader can distinguish from a real holding.
   const balanceImplausible = isImplausibleTao(balance?.balance_tao);
-  const balanceValue = balanceResult.isError ? (
-    <span className="inline-flex items-center gap-2">
-      <AlertCircle aria-hidden className="size-4 text-health-down" />
-      <span className="text-base font-medium text-health-down">Unavailable</span>
-      <button
-        type="button"
-        onClick={() => void balanceResult.refetch()}
-        className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-[11px] font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
-      >
-        <RefreshCw className="size-3" /> Retry
-      </button>
-    </span>
-  ) : balanceResult.isPending ? (
-    <span className="text-ink-muted">…</span>
-  ) : balanceImplausible ? (
-    <span className="inline-flex items-center gap-1.5" title={IMPLAUSIBLE_TAO_NOTE}>
-      <span>—</span>
-      <AlertCircle aria-hidden className="size-3.5 text-health-warn" />
-    </span>
-  ) : balance?.balance_tao != null ? (
-    formatTao(balance.balance_tao)
-  ) : (
-    "—"
-  );
 
   const hasActivity =
     account.event_count > 0 || account.registrations.length > 0 || account.recent_events.length > 0;
 
-  // #8252: which face of this page leads. A coldkey's story is balance /
+  // #8252: which face leads by default. A coldkey's story is balance /
   // positions / transfers; a hotkey's is registrations / validator context /
-  // serving. The same ss58 string can be either -- infer from what the
-  // account actually does on-chain rather than guessing from the address.
-  const role = accountRole(account);
+  // serving. #8358 adds a third case: the same address can genuinely be both
+  // (registered on-chain AND independently holding wallet balance) -- that
+  // gets the coldkey KPI set by default, with an explicit toggle to the
+  // hotkey set, rather than guessing which the visitor wants.
+  const detectedRole = accountRole(account);
+  const dualRole = isDualRoleAccount(account, balance?.balance_tao);
+  const [roleView, setRoleView] = useState<AccountRole>(detectedRole);
+
+  const tab = useActiveTab("overview");
+  useHashScroll(tab, SECTION_TO_TAB);
+
+  const tabsWithCounts = TABS.map((t) => {
+    if (t.id === "positions") return { ...t, count: portfolio?.position_count || undefined };
+    if (t.id === "transfers") return { ...t, count: transfers.length || undefined };
+    if (t.id === "activity") return { ...t, count: account.event_count || undefined };
+    if (t.id === "extrinsics") return { ...t, count: signedExtrinsics.length || undefined };
+    return { ...t };
+  });
 
   return (
     <>
       <PageMasthead
         eyebrow="Explorer · account"
         live
-        title={shortHash(ss58, 8) ?? "Account"}
+        title={
+          identity?.has_identity && identity.name
+            ? identity.name
+            : (shortHash(ss58, 8) ?? "Account")
+        }
         description={
           <div className="space-y-4">
             <p className="max-w-2xl">
-              Cross-subnet registrations, first-party chain events, and daily activity rollups for
-              one Bittensor account.
+              {identity?.has_identity && identity.description
+                ? identity.description
+                : "Cross-subnet registrations, first-party chain events, and daily activity rollups for one Bittensor account."}
             </p>
-            <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
-              <CopyableCode value={ss58} truncate={false} className="max-w-full" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
+                <CopyableCode value={ss58} truncate={false} className="max-w-full" />
+              </div>
+              <RoleChip role={detectedRole} dual={dualRole} />
             </div>
           </div>
         }
@@ -199,18 +277,6 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
               <WatchStarButton kind="account" id={ss58} label="this account" />
               <ShareButton bare />
             </ActionBar>
-            <a
-              href="#history"
-              className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 mg-type-label uppercase text-accent-text transition-colors hover:bg-accent/15"
-            >
-              View activity
-            </a>
-            <a
-              href="#call"
-              className="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 mg-type-label uppercase text-ink-muted transition-colors hover:border-ink/20 hover:text-ink-strong"
-            >
-              API endpoints
-            </a>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
                 compact
@@ -220,55 +286,26 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             ) : null}
           </>
         }
-        aside={
-          <AccountHeroAside
-            registrations={account.registrations.length}
-            eventKinds={account.event_kinds.length}
-            firstSeenAt={account.first_seen_at ?? null}
-          />
-        }
         caption="explorer / v1"
       />
 
-      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          icon={balanceResult.isError ? AlertCircle : Coins}
-          eyebrow="Balance"
-          value={balanceValue}
-          hint={
-            balanceResult.isError
-              ? "live RPC failed"
-              : balance?.balance_tao != null
-                ? "free + reserved · live RPC"
-                : "live RPC"
-          }
-          tone={balanceResult.isError ? "down" : "accent"}
-          className="rounded-2xl bg-card/95 p-4 mg-card-glow-accent"
-        />
-        <StatTile
-          icon={Activity}
-          eyebrow="Events"
-          value={formatNumber(account.event_count)}
-          hint="indexed first-party"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
-        />
-        <StatTile
-          icon={Boxes}
-          eyebrow="Subnets"
-          value={formatNumber(account.subnet_count)}
-          hint="active footprint"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
-        />
-        <StatTile
-          icon={Clock}
-          eyebrow="Last seen"
-          value={<TimeAgo at={account.last_seen_at ?? undefined} />}
-          hint="near-realtime · chain-direct index"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
-        />
-      </div>
+      <AccountKpiBand
+        role={dualRole ? roleView : detectedRole}
+        dual={dualRole}
+        onRoleChange={setRoleView}
+        account={account}
+        balance={balance}
+        balanceError={balanceResult.isError}
+        balanceImplausible={balanceImplausible}
+        onRetryBalance={() => void balanceResult.refetch()}
+        portfolio={portfolio}
+        stakeFlow={stakeFlow}
+        validator={validator}
+        estApyPct={estApyPct}
+        lastAnnouncedAt={lastAnnouncedAt}
+      />
 
-      <AccountIdentitySection ss58={ss58} />
+      <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
 
       {!hasActivity ? (
         <EmptyState
@@ -278,107 +315,144 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         />
       ) : null}
 
-      {/* #8252: role-adaptive ordering. A coldkey leads with what it holds
-          and moves (positions, then stake flow); a hotkey leads with its
-          registrations and validator context. Both eventually render the
-          same section set -- this changes WHICH ONE IS FIRST, so the whale
-          coldkey whose positions used to sit below four irrelevant panels
-          now opens on them. Sections with no data for this key hide
-          themselves entirely (see each one's own early return). */}
-      {role === "coldkey" ? (
+      {tab === "overview" && (
         <>
-          <AccountPortfolioSection ss58={ss58} />
-          <AccountStakeFlowSection ss58={ss58} />
-          <AccountStakeMovesSection ss58={ss58} />
-          <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+          {identity?.has_identity ? <AccountIdentitySection ss58={ss58} /> : null}
+          <AccountRecentActivityPreview events={account.recent_events} />
+          <AccountEntitiesSection ss58={ss58} />
         </>
-      ) : (
+      )}
+
+      {tab === "positions" && (
         <>
-          <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+          {/* #8252: coldkey leads with what it holds; hotkey leads with its
+              registrations. Both render the same section set within this tab. */}
+          {detectedRole === "coldkey" ? (
+            <>
+              <AccountPortfolioSection ss58={ss58} />
+              <AccountStakeFlowSection ss58={ss58} />
+              <AccountStakeMovesSection ss58={ss58} />
+              <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+            </>
+          ) : (
+            <>
+              <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+              <AccountStakeFlowSection ss58={ss58} />
+              <AccountPortfolioSection ss58={ss58} />
+              <AccountStakeMovesSection ss58={ss58} />
+            </>
+          )}
+          {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
+          <AccountDelegationSection ss58={ss58} />
+        </>
+      )}
+
+      {tab === "transfers" && (
+        <>
+          <AccountTransfersSection
+            ss58={ss58}
+            rows={transfers}
+            isPending={transfersResult.isPending}
+            isError={transfersResult.isError}
+            error={transfersResult.error}
+            onRetry={() => void transfersResult.refetch()}
+          />
+          {/* #3340: the aggregated fund-flow view over the same transfer data. */}
+          <AccountCounterpartiesSection ss58={ss58} />
+        </>
+      )}
+
+      {tab === "activity" && (
+        <>
           {/* Daily activity is a hotkey-keyed rollup -- rendering it for a
               coldkey guarantees the framed "No daily hotkey activity yet"
               panel the redesign removes, so it's hotkey-only by construction
               rather than relying on an empty state to explain itself. */}
-          <SectionAnchor
-            id="history"
-            title="Daily activity"
-            subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
-            tone="accent"
-            info="History is keyed by hotkey activity only."
-            right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
-          >
-            <AccountHistoryChart ss58={ss58} />
-          </SectionAnchor>
-          <AccountStakeFlowSection ss58={ss58} />
-          <AccountPortfolioSection ss58={ss58} />
-          <AccountStakeMovesSection ss58={ss58} />
+          {detectedRole === "hotkey" ? (
+            <SectionAnchor
+              id="history"
+              title="Daily activity"
+              subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
+              tone="accent"
+              info="History is keyed by hotkey activity only."
+              right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
+            >
+              <AccountHistoryChart ss58={ss58} />
+            </SectionAnchor>
+          ) : null}
+          <AccountTeardownActivitySection ss58={ss58} />
+          <AccountRegistrationActivitySection ss58={ss58} />
+          <AccountDeregistrationActivitySection ss58={ss58} />
+          <AccountWeightSettingSection ss58={ss58} />
+          <AccountEndpointAnnouncementSection ss58={ss58} />
+          {account.event_kinds.length > 0 ? (
+            <SectionAnchor
+              id="kinds"
+              title="Activity by kind"
+              subtitle="Relative event mix across the indexed sample for this account."
+              tone="accent"
+              right={<SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>}
+            >
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {account.event_kinds.map((entry) => (
+                  <div
+                    key={entry.kind}
+                    className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
+                  >
+                    <div className="mg-type-caption text-ink-muted">event kind</div>
+                    <div className="mt-2 flex items-end justify-between gap-3">
+                      <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
+                        {entry.kind}
+                      </span>
+                      <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
+                        {formatNumber(entry.count)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionAnchor>
+          ) : null}
+          <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
         </>
       )}
 
-      <AccountTeardownActivitySection ss58={ss58} />
+      {tab === "extrinsics" && (
+        <AccountExtrinsicsSection
+          ss58={ss58}
+          rows={signedExtrinsics}
+          isPending={extrinsicsResult.isPending}
+          isError={extrinsicsResult.isError}
+          error={extrinsicsResult.error}
+          onRetry={() => void extrinsicsResult.refetch()}
+        />
+      )}
 
-      <AccountRegistrationActivitySection ss58={ss58} />
-      <AccountDeregistrationActivitySection ss58={ss58} />
-
-      <AccountWeightSettingSection ss58={ss58} />
-
-      <AccountEndpointAnnouncementSection ss58={ss58} />
-
-      {account.event_kinds.length > 0 ? (
+      {tab === "api" && (
         <SectionAnchor
-          id="kinds"
-          title="Activity by kind"
-          subtitle="Relative event mix across the indexed sample for this account."
-          tone="accent"
-          right={<SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>}
+          id="call"
+          title="Call this endpoint"
+          subtitle="Copy a ready-to-run request for this account."
         >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {account.event_kinds.map((entry) => (
-              <div
-                key={entry.kind}
-                className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
-              >
-                <div className="mg-type-caption text-ink-muted">event kind</div>
-                <div className="mt-2 flex items-end justify-between gap-3">
-                  <span className="min-w-0 truncate font-mono mg-type-caption text-ink-strong">
-                    {entry.kind}
-                  </span>
-                  <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
-                    {formatNumber(entry.count)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <EndpointSnippet
+            rows={[
+              { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
+              { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
+              { label: "identity", path: `/api/v1/accounts/${sourceRef}/identity` },
+              { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
+              { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
+              { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+              { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
+              { label: "children", path: `/api/v1/accounts/${sourceRef}/children` },
+              { label: "parents", path: `/api/v1/accounts/${sourceRef}/parents` },
+              { label: "entities", path: `/api/v1/accounts/${sourceRef}/entities` },
+              { label: "stake-flow", path: `/api/v1/accounts/${sourceRef}/stake-flow` },
+              { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
+              { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
+            ]}
+          />
         </SectionAnchor>
-      ) : null}
-
-      <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
-
-      <AccountExtrinsicsSection
-        ss58={ss58}
-        rows={signedExtrinsics}
-        isPending={extrinsicsResult.isPending}
-        isError={extrinsicsResult.isError}
-        error={extrinsicsResult.error}
-        onRetry={() => void extrinsicsResult.refetch()}
-      />
-      <AccountTransfersSection
-        ss58={ss58}
-        rows={transfers}
-        isPending={transfersResult.isPending}
-        isError={transfersResult.isError}
-        error={transfersResult.error}
-        onRetry={() => void transfersResult.refetch()}
-      />
-      {/* #3340: the aggregated fund-flow view over the same transfer data. */}
-      <AccountCounterpartiesSection ss58={ss58} />
-
-      {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
-      <AccountDelegationSection ss58={ss58} />
-
-      {/* #6740: community entity labels + subnet-ownership ties. */}
-      <AccountEntitiesSection ss58={ss58} />
+      )}
 
       {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
           back-links. /accounts is a lookup form, not an index -- there is no
@@ -393,30 +467,6 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           ← Account lookup
         </Link>
       </div>
-
-      <SectionAnchor
-        id="call"
-        title="Call this endpoint"
-        subtitle="Copy a ready-to-run request for this account."
-      >
-        <EndpointSnippet
-          rows={[
-            { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
-            { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
-            { label: "identity", path: `/api/v1/accounts/${sourceRef}/identity` },
-            { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
-            { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
-            { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
-            { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
-            { label: "children", path: `/api/v1/accounts/${sourceRef}/children` },
-            { label: "parents", path: `/api/v1/accounts/${sourceRef}/parents` },
-            { label: "entities", path: `/api/v1/accounts/${sourceRef}/entities` },
-            { label: "stake-flow", path: `/api/v1/accounts/${sourceRef}/stake-flow` },
-            { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
-            { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
-          ]}
-        />
-      </SectionAnchor>
 
       <ApiSourceFooter
         paths={[
@@ -434,7 +484,315 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/prometheus`,
         ]}
       />
+      <BackToTop />
     </>
+  );
+}
+
+/** Detected on-chain role, always visible in the header regardless of which
+ * KPI set is currently shown (#8358). */
+function RoleChip({ role, dual }: { role: AccountRole; dual: boolean }) {
+  const label = dual ? "coldkey + hotkey" : role;
+  return (
+    <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption text-ink-muted">
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Role-adaptive KPI band (#8358) -- what leads depends on what this address
+ * actually does, same inference `accountRole` already uses. A coldkey's
+ * facts are about what it holds and moves; a hotkey's are about what it's
+ * staked to validate/mine. A dual-role address gets the coldkey set by
+ * default (identical to a pure coldkey) plus an explicit toggle, rather than
+ * silently picking one -- the visitor decides which story they want.
+ *
+ * "Est. APY" reuses the exact #2551 methodology the validators list/detail
+ * pages already compute (`apyFromRewardsPer1000`) rather than deriving a new,
+ * possibly-wrong rate from emission/stake -- `validatorDetailQuery`'s own
+ * response has no rate field, so the caller also fetches a 30d
+ * `validatorHistoryQuery` just for this tile (see ValidAccountDetail).
+ */
+function AccountKpiBand({
+  role,
+  dual,
+  onRoleChange,
+  account,
+  balance,
+  balanceError,
+  balanceImplausible,
+  onRetryBalance,
+  portfolio,
+  stakeFlow,
+  validator,
+  estApyPct,
+  lastAnnouncedAt,
+}: {
+  role: AccountRole;
+  dual: boolean;
+  onRoleChange: (role: AccountRole) => void;
+  account: AccountSummary;
+  balance?: { balance_tao: number | null } | null;
+  balanceError: boolean;
+  balanceImplausible: boolean;
+  onRetryBalance: () => void;
+  portfolio?: {
+    position_count: number;
+    subnet_count: number;
+    total_stake_tao: number | null;
+  } | null;
+  stakeFlow?: { net_flow_tao: number | null; window: string } | null;
+  validator?: {
+    total_stake_tao: number;
+    nominator_count: number | null;
+    take: number | null;
+  } | null;
+  estApyPct: number | null;
+  lastAnnouncedAt: string | null;
+}) {
+  const freeValue = balanceError ? (
+    <span className="inline-flex items-center gap-2">
+      <AlertCircle aria-hidden className="size-4 text-health-down" />
+      <span className="text-base font-medium text-health-down">Unavailable</span>
+      <button
+        type="button"
+        onClick={onRetryBalance}
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-[11px] font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
+      >
+        <RefreshCw className="size-3" /> Retry
+      </button>
+    </span>
+  ) : balanceImplausible ? (
+    <span className="inline-flex items-center gap-1.5" title={IMPLAUSIBLE_TAO_NOTE}>
+      <span>—</span>
+      <AlertCircle aria-hidden className="size-3.5 text-health-warn" />
+    </span>
+  ) : balance?.balance_tao != null ? (
+    formatTao(balance.balance_tao)
+  ) : (
+    "—"
+  );
+
+  const staked = portfolio?.total_stake_tao ?? null;
+  const free = balanceImplausible || balanceError ? null : (balance?.balance_tao ?? null);
+  const total = free != null && staked != null ? free + staked : null;
+
+  const netFlow = stakeFlow?.net_flow_tao ?? null;
+  const netFlowStr =
+    netFlow == null ? "—" : `${netFlow >= 0 ? "+" : "−"}${fmtTaoCompact(Math.abs(netFlow))}`;
+
+  return (
+    <div className="mb-8">
+      {dual ? (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="mg-type-caption text-ink-muted">Showing:</span>
+          {(["coldkey", "hotkey"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => onRoleChange(r)}
+              aria-pressed={role === r}
+              className={classNames(
+                "rounded-full border px-3 py-1 mg-type-label uppercase transition-colors",
+                role === r
+                  ? "border-accent/40 bg-accent/10 text-accent-text"
+                  : "border-border bg-card text-ink-muted hover:border-ink/30",
+              )}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {role === "coldkey" ? (
+          <>
+            <StatTile
+              icon={balanceError ? AlertCircle : Coins}
+              eyebrow="Total balance"
+              value={total != null ? fmtTaoCompact(total) : freeValue}
+              hint="free + staked · live RPC"
+              tone={balanceError ? "down" : "accent"}
+              className="rounded-2xl bg-card/95 p-4 mg-card-glow-accent"
+            />
+            <StatTile
+              icon={Scale}
+              eyebrow="Free / staked"
+              value={
+                <span className="mg-type-data">
+                  {freeValue} <span className="text-ink-muted">/</span>{" "}
+                  {staked != null ? fmtTaoCompact(staked) : "—"}
+                </span>
+              }
+              hint="wallet · positions"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Boxes}
+              eyebrow="Positions"
+              value={formatNumber(portfolio?.position_count ?? 0)}
+              hint={
+                portfolio
+                  ? `across ${formatNumber(portfolio.subnet_count)} subnets`
+                  : "no positions"
+              }
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Clock}
+              eyebrow="First seen"
+              value={<TimeAgo at={account.first_seen_at ?? undefined} />}
+              hint="chain-direct index"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Clock}
+              eyebrow="Last active"
+              value={<TimeAgo at={account.last_seen_at ?? undefined} />}
+              hint="near-realtime"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={TrendingUp}
+              eyebrow="Net stake flow"
+              value={
+                <span
+                  className={
+                    netFlow != null && netFlow < 0 ? "text-health-warn-text" : "text-health-ok"
+                  }
+                >
+                  {netFlowStr}
+                </span>
+              }
+              hint={`over ${stakeFlow?.window ?? "30d"}`}
+              className={KPI_TILE}
+            />
+          </>
+        ) : (
+          <>
+            <StatTile
+              icon={Coins}
+              eyebrow="Stake"
+              value={fmtTaoCompact(validator?.total_stake_tao)}
+              hint="validator detail · cross-subnet"
+              tone="accent"
+              className="rounded-2xl bg-card/95 p-4 mg-card-glow-accent"
+            />
+            <StatTile
+              icon={Users}
+              eyebrow="Nominators"
+              value={
+                validator?.nominator_count != null ? formatNumber(validator.nominator_count) : "—"
+              }
+              hint="delegating coldkeys"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Scale}
+              eyebrow="Take"
+              value={formatTakePct(validator?.take)}
+              hint="validator cut"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Sparkles}
+              eyebrow="Est. APY"
+              value={formatApyPct(estApyPct)}
+              hint="net of take · 30d rewards"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Radar}
+              eyebrow="Serving"
+              value={lastAnnouncedAt ? <TimeAgo at={lastAnnouncedAt} /> : "—"}
+              hint="last endpoint announcement"
+              className={KPI_TILE}
+            />
+            <StatTile
+              icon={Clock}
+              eyebrow="Last active"
+              value={<TimeAgo at={account.last_seen_at ?? undefined} />}
+              hint="near-realtime"
+              className={KPI_TILE}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Overview tab's bounded activity preview (#8358) -- reuses the same first
+ * page the summary payload already carries (`account.recent_events`, no extra
+ * query), capped to 10 rows, deep-linking into the full Activity tab feed. */
+function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
+  const rows = events.slice(0, 10);
+  if (rows.length === 0) return null;
+  return (
+    <SectionAnchor
+      id="recent-activity"
+      title="Recent activity"
+      subtitle="The newest first-party events for this account."
+      tone="accent"
+      right={
+        <Link
+          to="."
+          search={(prev: Record<string, unknown>) => ({ ...prev, tab: "activity" })}
+          className="mg-type-data text-ink-muted transition-colors hover:text-accent hover:underline"
+        >
+          View all →
+        </Link>
+      }
+    >
+      <div className="space-y-2">
+        {rows.map((ev, i) => (
+          <div
+            key={`${ev.block_number}-${ev.event_index}-${i}`}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
+          >
+            <div className="min-w-0 flex-1">
+              <div
+                className="truncate mg-type-data text-ink-strong"
+                title={ev.event_kind ?? undefined}
+              >
+                {eventKindLabel(ev.event_kind)}
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 mg-type-data-sm text-ink-muted">
+                {ev.block_number != null ? (
+                  <Link
+                    to="/blocks/$ref"
+                    params={{ ref: String(ev.block_number) }}
+                    className="hover:text-accent hover:underline"
+                  >
+                    #{formatNumber(ev.block_number)}
+                  </Link>
+                ) : null}
+                {ev.netuid != null ? (
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: ev.netuid }}
+                    className="hover:text-accent hover:underline"
+                  >
+                    SN{ev.netuid}
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              {ev.amount_tao != null ? (
+                <div className="mg-type-data tabular-nums text-ink">
+                  {formatNumber(ev.amount_tao)} τ
+                </div>
+              ) : null}
+              <div className="mg-type-data-sm text-ink-muted">
+                <TimeAgo at={ev.observed_at} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </SectionAnchor>
   );
 }
 
@@ -1657,6 +2015,13 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
   );
 }
 
+// #8358: the detail-page template's "each tab's first page ≤25 rows behind
+// the standard Load-more" budget. A top validator can carry 100+ positions --
+// this table had no cap before the template applied, which is fine when it's
+// the whole page but not once it's one entry in a tab a visitor expects to
+// stay short.
+const POSITIONS_PAGE_SIZE = 25;
+
 function AccountPortfolioSection({ ss58 }: { ss58: string }) {
   const result = useQuery(accountPortfolioQuery(ss58));
   const p = result.data?.data;
@@ -1664,6 +2029,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
   // row expands in place rather than navigating away, so a viewer can compare
   // several positions' history without losing the portfolio table.
   const [expandedNetuid, setExpandedNetuid] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(POSITIONS_PAGE_SIZE);
 
   if (result.isPending && !p) {
     return (
@@ -1748,7 +2114,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {positions.map((pos) => {
+            {positions.slice(0, visibleCount).map((pos) => {
               const expanded = expandedNetuid === pos.netuid;
               return (
                 <Fragment key={`${pos.netuid}-${pos.uid ?? "x"}`}>
@@ -1809,6 +2175,17 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
             })}
           </tbody>
         </table>
+        {positions.length > visibleCount ? (
+          <div className="flex justify-center border-t border-border p-3">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+            >
+              Show {Math.min(POSITIONS_PAGE_SIZE, positions.length - visibleCount)} more
+            </button>
+          </div>
+        ) : null}
       </DataPanel>
     </SectionAnchor>
   );
@@ -2358,6 +2735,10 @@ function AccountFootprintSection({
 }) {
   const subnetsResult = useQuery(accountSubnetsQuery(ss58));
   const rows = subnetsResult.data?.data.subnets ?? fallback;
+  // #8358: same "≤25 rows behind Load-more" budget as the portfolio table --
+  // a top validator's registration footprint is as large as its position
+  // count (same account, same magnitude).
+  const [visibleCount, setVisibleCount] = useState(POSITIONS_PAGE_SIZE);
 
   // Keep this optional enrichment non-blocking: fallback registrations should
   // render while the dedicated subnet feed is pending or has failed.
@@ -2433,7 +2814,7 @@ function AccountFootprintSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.map((r) => (
+            {rows.slice(0, visibleCount).map((r) => (
               <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
                 <td className="px-4 py-4 font-mono mg-type-caption">
                   {r.netuid != null ? (
@@ -2482,7 +2863,7 @@ function AccountFootprintSection({
       </DataPanel>
 
       <ul className="space-y-2 md:hidden">
-        {rows.map((r) => (
+        {rows.slice(0, visibleCount).map((r) => (
           <li key={`${r.netuid}-${r.uid}`} className="rounded-md border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
@@ -2522,6 +2903,17 @@ function AccountFootprintSection({
           </li>
         ))}
       </ul>
+      {rows.length > visibleCount ? (
+        <div className="flex justify-center pt-3">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+          >
+            Show {Math.min(POSITIONS_PAGE_SIZE, rows.length - visibleCount)} more
+          </button>
+        </div>
+      ) : null}
     </SectionAnchor>
   );
 }
@@ -2766,82 +3158,6 @@ function DataPanel({ children, className }: { children: ReactNode; className?: s
       )}
     >
       {children}
-    </div>
-  );
-}
-
-function AccountHeroAside({
-  registrations,
-  eventKinds,
-  firstSeenAt,
-}: {
-  registrations: number;
-  eventKinds: number;
-  firstSeenAt: string | null;
-}) {
-  return (
-    <div className="w-[20rem] rounded-2xl border border-border/80 bg-card/95 p-4 mg-card-glow">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="mg-type-caption text-ink-muted">account signal</div>
-          <div className="mt-2 font-display text-xl font-semibold text-ink-strong">
-            Indexed footprint
-          </div>
-        </div>
-        <div className="rounded-2xl bg-accent/10 p-3 text-accent">
-          <Fingerprint className="size-5" />
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-3">
-        <HeroAsideRow
-          icon={Rows3}
-          label="Registered subnets"
-          value={formatNumber(registrations)}
-          accent="live"
-        />
-        <HeroAsideRow
-          icon={Radar}
-          label="Activity kinds"
-          value={formatNumber(eventKinds)}
-          accent="decoded"
-        />
-        <HeroAsideRow
-          icon={Clock}
-          label="First indexed"
-          value={firstSeenAt ? <TimeAgo at={firstSeenAt} /> : "—"}
-          accent="near-realtime"
-        />
-      </div>
-    </div>
-  );
-}
-
-function HeroAsideRow({
-  icon: Icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: typeof Clock;
-  label: string;
-  value: ReactNode;
-  accent: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-surface/35 px-3.5 py-3">
-      <div className="rounded-xl bg-paper p-2 text-ink-muted">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="mg-type-caption text-ink-muted">{label}</div>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="truncate font-display text-lg font-semibold tabular-nums text-ink-strong">
-            {value}
-          </span>
-          <span className="mg-type-data-sm text-ink-muted">{accent}</span>
-        </div>
-      </div>
     </div>
   );
 }
