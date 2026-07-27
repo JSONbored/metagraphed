@@ -26,6 +26,22 @@ export function formatTao(v?: number | null): string {
 }
 
 /**
+ * Approximate USD for a τ amount at the live client-side TAO price (#8373).
+ * Convenience conversion only — not historical price-at-tx. Returns null when
+ * either input is missing/non-finite so callers can omit the secondary line.
+ * Precision mirrors TaoValue: 2dp for ≥$1, 4dp for dust.
+ */
+export function formatUsdApprox(
+  tao: number | null | undefined,
+  priceUsd: number | null | undefined,
+): string | null {
+  if (tao == null || !Number.isFinite(tao)) return null;
+  if (priceUsd == null || !Number.isFinite(priceUsd)) return null;
+  const usd = tao * priceUsd;
+  return `$${formatNumber(Number(usd.toFixed(Math.abs(usd) >= 1 ? 2 : 4)))}`;
+}
+
+/**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any
  * pre-2000 date as "unknown" so the UI doesn't claim freshness/staleness

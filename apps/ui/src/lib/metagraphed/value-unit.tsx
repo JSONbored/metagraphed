@@ -47,3 +47,40 @@ export function ValueUnitProvider({ children }: { children: ReactNode }) {
 export function useValueUnit() {
   return useContext(ValueUnitContext);
 }
+
+/** Compact τ / $ / Both toggle for explorer mastheads. */
+export function ValueUnitControl() {
+  const { unit, setUnit } = useValueUnit();
+  const opts: Array<{ v: ValueUnit; label: string; title: string }> = [
+    { v: "tao", label: "τ", title: "Show TAO only" },
+    { v: "usd", label: "$", title: "Show USD only" },
+    { v: "both", label: "Both", title: "Show TAO and USD" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Value display unit"
+      className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+    >
+      {opts.map((o) => {
+        const active = o.v === unit;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            title={o.title}
+            onClick={() => setUnit(o.v)}
+            className={
+              "inline-flex items-center rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8 " +
+              (active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong")
+            }
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

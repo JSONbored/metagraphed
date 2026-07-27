@@ -7,6 +7,7 @@ import {
   relativeFromDiff,
   isStaleFreshness,
   formatTao,
+  formatUsdApprox,
   subnetAgeDays,
   formatSubnetAge,
 } from "./format";
@@ -197,6 +198,23 @@ describe("formatTao", () => {
     expect(formatTao(-999_999)).toBe("-1000.0k τ"); // still < 1e6 → k-tier
     expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // lower boundary of M-tier
     expect(formatTao(-2_500_000)).toBe("-2.50M τ");
+  });
+});
+
+describe("formatUsdApprox", () => {
+  it("returns null when tao or price is missing / non-finite", () => {
+    expect(formatUsdApprox(null, 10)).toBeNull();
+    expect(formatUsdApprox(1, null)).toBeNull();
+    expect(formatUsdApprox(Number.NaN, 10)).toBeNull();
+    expect(formatUsdApprox(1, Number.NaN)).toBeNull();
+    expect(formatUsdApprox(undefined, undefined)).toBeNull();
+  });
+
+  it("formats ≥$1 with 2 decimals and dust with 4", () => {
+    expect(formatUsdApprox(2, 5)).toBe("$10");
+    expect(formatUsdApprox(1, 1.234)).toBe("$1.23");
+    expect(formatUsdApprox(0.01, 5)).toBe("$0.05");
+    expect(formatUsdApprox(0.001, 1)).toBe("$0.001");
   });
 });
 
