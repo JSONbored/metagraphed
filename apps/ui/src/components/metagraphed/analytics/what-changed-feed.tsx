@@ -31,7 +31,19 @@ const KIND_ICON: Record<DigestKind, typeof GitBranch> = {
 
 const KINDS: DigestKind[] = ["registry", "incident", "identity", "runtime"];
 
-function dayLabel(day: string): string {
+// metagraphed#8356: `toLocaleDateString(undefined, ...)` resolves "undefined
+// locale" to whatever the RUNTIME's default happens to be -- Cloudflare
+// Workers' V8 (SSR) and a visitor's own browser (hydration) usually don't
+// agree, and for any non-en-US client they never do. React's hydration diff
+// compares this text node's rendered content between the two, so a French
+// "27 juil." (client) landing under a server-rendered "Jul 27" (en-US)
+// throws the exact React #418 mismatch the 2026-07-27 audit found on
+// mobile UA (mobile devices commonly carry a non-en-US locale). Today/
+// Yesterday are unaffected -- pure day-key string comparison, no formatting
+// call -- so only the fallback branch needed a fix: an EXPLICIT "en-US"
+// locale is deterministic regardless of which runtime renders it, matching
+// this app's own English-only copy voice, so server and client always agree.
+export function dayLabel(day: string): string {
   const today = new Date();
   const yesterday = new Date(today.getTime() - 86_400_000);
   const fmt = (d: Date) =>
@@ -39,7 +51,7 @@ function dayLabel(day: string): string {
   if (day === fmt(today)) return "Today";
   if (day === fmt(yesterday)) return "Yesterday";
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(y!, (m ?? 1) - 1, d).toLocaleDateString(undefined, {
+  return new Date(y!, (m ?? 1) - 1, d).toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
