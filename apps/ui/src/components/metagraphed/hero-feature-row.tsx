@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { AnimatedTraceSparkline } from "@/components/metagraphed/charts/animated-trace-sparkline";
-import { BrandIcon, Sparkline } from "@jsonbored/ui-kit";
+import { BrandIcon, Sparkline, TimeAgo } from "@jsonbored/ui-kit";
 import {
   chainActivityQuery,
   healthQuery,
@@ -12,8 +12,48 @@ import {
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
-import type { Subnet } from "@/lib/metagraphed/types";
+import type { ChainActivity, Subnet } from "@/lib/metagraphed/types";
 import { useHydrated } from "@/hooks/use-hydrated";
+
+/**
+ * The UTC calendar-day string (YYYY-MM-DD) "today" means for this card,
+ * derived from the API's own `observed_at` rather than the client clock so a
+ * reader whose local time has already rolled to a new UTC day doesn't
+ * disagree with what the server just measured. Falls back to the client
+ * clock only when there's no reading yet (nothing has loaded) or the
+ * timestamp is unusable.
+ */
+export function chainActivityTodayUtc(observedAt?: string | null): string {
+  const d = observedAt ? new Date(observedAt) : new Date();
+  const base = Number.isNaN(d.getTime()) ? new Date() : d;
+  return base.toISOString().slice(0, 10);
+}
+
+/**
+ * metagraphed#8354: `activity.days` covers the window's most recent UTC
+ * calendar days INCLUDING the current, still-accumulating one --
+ * buildChainActivity's own trim (src/chain-analytics.ts) keeps "today" and
+ * only drops the OLDER boundary day, which is correct for a live "blocks
+ * today" counter and wrong for a trend LINE: plotting a partial day's count
+ * on equal footing with whole prior days draws a cliff that reads as "the
+ * chain stopped producing blocks," when it's actually just "fewer hours have
+ * elapsed today than in a full day" (the exact illusion the 2026-07-27 audit
+ * flagged). This mirrors buildChainActivity's own convention for the OTHER
+ * boundary -- exclude the partial day from what gets DRAWN, keep it for the
+ * number that's supposed to grow over the day.
+ */
+export function splitChainActivityToday(
+  days: ChainActivity["days"] | null | undefined,
+  todayUtc: string,
+): { fullDayBlockCounts: number[]; blocksToday: number } {
+  const list = days ?? [];
+  const todayEntry = list.find((d) => d.day === todayUtc);
+  const fullDayBlockCounts = list
+    .filter((d) => d.day !== todayUtc)
+    .map((d) => d.block_count)
+    .filter((v) => Number.isFinite(v));
+  return { fullDayBlockCounts, blocksToday: todayEntry?.block_count ?? 0 };
+}
 
 /**
  * Two-up feature row that lives directly beneath the centered hero.
@@ -45,11 +85,19 @@ function ChainThroughputCard() {
   const activity = hydrated ? activityData?.data : undefined;
   const health = hydrated ? healthData?.data : undefined;
 
+  const todayUtc = useMemo(
+    () => chainActivityTodayUtc(activity?.observed_at),
+    [activity?.observed_at],
+  );
+
   const { series, blocksToday } = useMemo(() => {
-    const days = activity?.days?.length ? [...activity.days].reverse() : [];
-    const s = days.map((d) => d.block_count).filter((v) => Number.isFinite(v));
-    return { series: s, blocksToday: s.at(-1) ?? 0 };
-  }, [activity]);
+    const oldestFirst = activity?.days?.length ? [...activity.days].reverse() : [];
+    const { fullDayBlockCounts, blocksToday: today } = splitChainActivityToday(
+      oldestFirst,
+      todayUtc,
+    );
+    return { series: fullDayBlockCounts, blocksToday: today };
+  }, [activity, todayUtc]);
 
   const endpointsOk = health?.ok;
   const endpointsTotal =
@@ -63,8 +111,17 @@ function ChainThroughputCard() {
         <div className="min-w-0">
           <div className="mg-type-caption text-ink-muted">Blocks today</div>
           <div className="mt-2 font-display text-3xl md:text-4xl font-semibold tabular-nums text-ink-strong leading-none">
-            {series.length ? formatNumber(blocksToday) : "—"}
+            {activity ? formatNumber(blocksToday) : "—"}
           </div>
+          {/* #8354: "today" is a live, still-accumulating count -- explicit
+              about that (never appears as if it were a completed day's
+              total) and carries the same freshness signal every other
+              live-tier surface in this app already shows. */}
+          {activity ? (
+            <div className="mg-type-caption text-ink-muted">
+              so far · <TimeAgo at={activity.observed_at} className="tabular-nums" />
+            </div>
+          ) : null}
         </div>
         <div className="min-w-0 text-right">
           <div className="mg-type-caption text-ink-muted">Endpoints up</div>
@@ -81,7 +138,11 @@ function ChainThroughputCard() {
             direction="flat"
             width={640}
             height={180}
-            ariaLabel="Blocks produced per day over the last 7 days"
+            // #8354: today (still accumulating, not comparable to a whole
+            // day's total) is deliberately excluded from this trend --
+            // labeled by what's actually drawn, not the window the API call
+            // asked for.
+            ariaLabel={`Blocks produced per full UTC day over the last ${series.length} days`}
             className="w-full"
           />
         ) : (
