@@ -226,7 +226,12 @@ async function iconHostAllowlist(
 }
 
 /** Orgs allowed through the avatar mode. Shares iconHostAllowlist's fetch +
- * memo so the avatar path costs no extra artifact reads (#8309). */
+ * memo so the avatar path costs no extra artifact reads (#8309).
+ *
+ * Returns the memo's set directly rather than re-deriving or defensively
+ * defaulting: iconHostAllowlist always writes `orgs` alongside `value` for
+ * this env, so a `?? new Set()` here would be a branch that can never be
+ * taken. The empty case is the no-reader early return above, which is real. */
 async function iconGithubOrgAllowlist(
   env: Env,
   options: IconProxyOptions = {},
@@ -234,9 +239,7 @@ async function iconGithubOrgAllowlist(
 ): Promise<Set<string>> {
   if (!options.readArtifact) return new Set();
   await iconHostAllowlist(env, options, now);
-  return allowlistMemo.env === env && allowlistMemo.orgs
-    ? allowlistMemo.orgs
-    : new Set();
+  return allowlistMemo.orgs as Set<string>;
 }
 
 async function boundedArrayBuffer(res: Response): Promise<ArrayBuffer | null> {
