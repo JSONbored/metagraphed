@@ -35,3 +35,7 @@ tmp
 # they are machine-generated, not prettier-gated (python/CHANGELOG.md is covered by the `python` entry above).
 CHANGELOG.md
 packages/client/CHANGELOG.md
+
+# Rust build output. Already gitignored, but prettier walks it anyway --
+# `cargo build` locally makes `format:check` report hundreds of false warns.
+apps/indexer-rs/target
