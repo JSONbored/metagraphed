@@ -379,6 +379,28 @@
   animation: mg-flash-down 700ms ease-out;
   border-radius: 3px;
 }
+@keyframes mg-row-flash {
+  0% {
+    background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.mg-row-flash {
+  animation: mg-row-flash 1600ms ease-out;
+}
+@keyframes mg-value-pulse {
+  0% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.mg-value-pulse {
+  animation: mg-value-pulse 200ms ease-out;
+}
 .mg-row-hover {
   transition: background-color 120ms ease;
 }
@@ -432,7 +454,9 @@ html[data-density=compact] .bg-card > table td {
   }
   .mg-pulse,
   .mg-flash-up,
-  .mg-flash-down {
+  .mg-flash-down,
+  .mg-row-flash,
+  .mg-value-pulse {
     animation: none;
   }
   .mg-row-hover,

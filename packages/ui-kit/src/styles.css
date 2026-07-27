@@ -632,6 +632,38 @@
   border-radius: 3px;
 }
 
+/* #8367: one-shot background pulse on a row whose entity just acted on-chain.
+   Distinct from mg-flash-up/down, which signal DIRECTION of a value change --
+   this only says "something happened here", so it carries the neutral accent
+   and no up/down variant. The keyframes end at the resting state, so removing
+   the class after it plays causes no visual jump. */
+@keyframes mg-row-flash {
+  0% {
+    background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.mg-row-flash {
+  animation: mg-row-flash 1600ms ease-out;
+}
+
+/* #8367: the header block ticker's arrival cue. Deliberately a brief opacity
+   dip and nothing else -- the issue rules out a counter-roll tween and rules
+   out color cycling, so this neither moves the digits nor tints them. */
+@keyframes mg-value-pulse {
+  0% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.mg-value-pulse {
+  animation: mg-value-pulse 200ms ease-out;
+}
+
 .mg-row-hover {
   transition: background-color 120ms ease;
 }
@@ -692,7 +724,13 @@ html[data-density="compact"] .bg-card > table td {
   }
   .mg-pulse,
   .mg-flash-up,
-  .mg-flash-down {
+  .mg-flash-down,
+  /* #8367: both liveness cues are ambience, so under reduced motion they
+     simply don't play -- the row and the block number still update, they just
+     don't announce it. `animation: none` leaves no residual tint, because
+     each keyframe set ends at the resting state rather than starting there. */
+  .mg-row-flash,
+  .mg-value-pulse {
     animation: none;
   }
   .mg-row-hover,
