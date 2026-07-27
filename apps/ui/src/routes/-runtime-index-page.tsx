@@ -5,11 +5,12 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { ShareButton, DownloadCsvButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
+import { NetworkParametersPanel } from "@/components/metagraphed/network-parameters-panel";
 import {
   RuntimeUpgradeCardList,
   orderRuntimeUpgradesNewestFirst,
 } from "@/components/metagraphed/runtime-upgrade-card-list";
-import { runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
+import { networkParametersQuery, runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { RuntimeVersionHistory } from "@/lib/metagraphed/types";
@@ -29,13 +30,23 @@ export function RuntimePage() {
         </ActionBar>
       </ChainTabActions>
       <AsyncPanel
+        context="network parameters"
+        height="sm"
+        retryQueryKeys={[networkParametersQuery().queryKey]}
+      >
+        <NetworkParametersPanel />
+      </AsyncPanel>
+      <AsyncPanel
         context="runtime upgrades"
         fallback={<Skeleton className="h-96 w-full" />}
         retryQueryKeys={[runtimeVersionHistoryQuery().queryKey]}
       >
         <RuntimeContent />
       </AsyncPanel>
-      <ApiSourceFooter paths={["/api/v1/runtime"]} artifacts={["/metagraph/runtime.json"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/runtime", "/api/v1/network/parameters"]}
+        artifacts={["/metagraph/runtime.json"]}
+      />
     </>
   );
 }
