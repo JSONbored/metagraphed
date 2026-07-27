@@ -728,7 +728,14 @@ export async function loadGlobalIncidentsLedger(
  * which is exactly what /api/v1/feeds/incidents did: it bypassed the Postgres
  * tier, so the feed reported "no incidents" while /status, reading through the
  * route below, showed dozens ongoing from the same underlying data (#8242).
- * One resolver, used by both, so those two can't disagree again.
+ *
+ * `request` matters here, not just as plumbing: `tryPostgresTier` forwards it
+ * VERBATIM to the DATA_API service binding, so the caller must already be
+ * handling the same path DATA_API should answer (as handleGlobalIncidents
+ * below does for its own /api/v1/incidents request). #8242 fixed every OTHER
+ * caller this way but missed that /api/v1/feeds/incidents's own request
+ * doesn't qualify — see resolveGlobalIncidentsForFeed, the fix for that
+ * (metagraphed#8353).
  */
 export async function resolveGlobalIncidents(
   request: Request,
@@ -746,6 +753,36 @@ export async function resolveGlobalIncidents(
     data: result.data as unknown as Record<string, unknown>,
     isFallback: true,
   };
+}
+
+/**
+ * The one correct way for /api/v1/feeds/incidents to reach the same data
+ * /status shows (metagraphed#8353).
+ *
+ * resolveGlobalIncidents's `request` argument isn't incidental — tryPostgresTier
+ * forwards it, unmodified, to the DATA_API service binding, so whatever path
+ * that request carries is the path DATA_API tries to route. The feed handler's
+ * OWN incoming request is for /api/v1/feeds/incidents(.json|.rss|.atom), a path
+ * DATA_API has no route for at all; forwarding it verbatim (what #8242's fix
+ * did) makes DATA_API 404, which tryPostgresTier reads as a tier miss and
+ * silently degrades to the empty stub — the exact "feed says zero incidents,
+ * /status says dozens" symptom #8242 believed it had fixed.
+ *
+ * The fix is a synthetic request for the path the status page's own default
+ * view actually queries (GET /api/v1/incidents?window=7d) — the "https://d"
+ * placeholder origin matches this file's sibling readChainEventsDb, which
+ * constructs the same kind of same-worker service-binding request for the
+ * same reason. Both share `resolveGlobalIncidents`'s 7d default label so a
+ * future window-default change to one can't silently orphan the other.
+ */
+export async function resolveGlobalIncidentsForFeed(
+  env: Env,
+): Promise<Record<string, unknown>> {
+  const { data } = await resolveGlobalIncidents(
+    new Request("https://d/api/v1/incidents?window=7d"),
+    env,
+  );
+  return data;
 }
 
 // The list-query params GET /api/v1/incidents accepts on top of its own `window`
