@@ -359,7 +359,6 @@ export {
 } from "@/components/metagraphed/route-pending";
 export {
   nextTabIndex,
-  isTablistNavKey,
   rovingTabIndex,
   useRovingTablist,
 } from "@/hooks/use-roving-tablist";
