@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import {
   AlertCircle,
@@ -69,6 +69,8 @@ import { TurnoverLoader } from "@/components/metagraphed/turnover-panel";
 import { NeuronDetailCard } from "@/components/metagraphed/neuron-detail-card";
 import { NeuronHistoryChart } from "@/components/metagraphed/neuron-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
+import { StreamStatusChip } from "@/components/metagraphed/stream-status-chip";
+import { accountEventMatchesNetuid, useChainStream } from "@/hooks/use-chain-stream";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
@@ -1301,8 +1303,21 @@ function EventKindCell({
 
 function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }) {
   const navigate = useNavigate({ from: "/subnets/$netuid" });
-  const { data } = useSuspenseQuery(subnetEventsQuery(netuid, { kind }));
+  const queryClient = useQueryClient();
+  const eventsQueryOptions = subnetEventsQuery(netuid, { kind });
+  const { data } = useSuspenseQuery(eventsQueryOptions);
   const events = (data.data.events ?? []) as AccountEvent[];
+
+  // #8445: subscribe to the firehose's `account_events` topic (the only one
+  // that carries `netuid` on the payload -- `chain_events` doesn't) so a new
+  // event for this subnet refreshes the table well under the existing poll.
+  const { status: streamStatus } = useChainStream({
+    topics: ["account_events"],
+    matches: (payload) => accountEventMatchesNetuid(payload, netuid),
+    onEvent: () => {
+      void queryClient.invalidateQueries({ queryKey: eventsQueryOptions.queryKey });
+    },
+  });
   if (events.length === 0) {
     return (
       <div className="space-y-3">
@@ -1342,7 +1357,10 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
         <span className="mg-type-caption text-ink-muted">
           {events.length} event{events.length === 1 ? "" : "s"}
         </span>
-        <RealtimeFreshness at={data.meta?.generated_at} />
+        <div className="flex items-center gap-2">
+          <StreamStatusChip status={streamStatus} testId="subnet-activity-stream-status" />
+          <RealtimeFreshness at={data.meta?.generated_at} />
+        </div>
       </div>
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-left text-sm">
