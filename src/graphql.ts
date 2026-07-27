@@ -107,6 +107,9 @@ import { loadContracts } from "./contracts-mcp.ts";
 // #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that
 // MCP get_build already calls -- not a reimplementation.
 import { loadBuildSummary } from "./build-mcp.ts";
+// #8422: GraphQL parity for GET /api/v1/self-health, reusing loadSelfHealth
+// that MCP get_self_health already calls -- not a reimplementation.
+import { loadSelfHealth } from "./self-health-mcp.ts";
 import { loadHealthHistory } from "./health-history-mcp.ts";
 import {
   buildChainAxonRemovals,
@@ -925,6 +928,7 @@ export const FIELD_COMPLEXITY = {
   changelog: RELATIONSHIP_FIELD_COMPLEXITY,
   contracts: RELATIONSHIP_FIELD_COMPLEXITY,
   build: RELATIONSHIP_FIELD_COMPLEXITY,
+  self_health: RELATIONSHIP_FIELD_COMPLEXITY,
   health_history: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3372,6 +3376,14 @@ const rootValue = {
   // which the graphql executor surfaces as a normal GraphQL error.
   build(_args: unknown, context: GqlContext) {
     return loadBuildSummary(mcpCtx(context), { readArtifact });
+  },
+
+  // #8422: reuse get_self_health's own loader unchanged (the same baked
+  // /metagraph/self-health.json read REST and MCP already use). A cold/absent
+  // artifact makes the loader throw, surfaced as a normal GraphQL error --
+  // matching build/changelog/contracts.
+  self_health(_args: unknown, context: GqlContext) {
+    return loadSelfHealth(mcpCtx(context), { readArtifact });
   },
 
   // #7170: reuse get_health_history's own loader unchanged. It takes deps as

@@ -1484,3 +1484,20 @@ describe("get_build — branch coverage", () => {
     assert.match(res.body.result.content[0].text, /build-summary\.json/);
   });
 });
+
+// ── get_self_health — self-health verdict artifact (#8422) ─────────────────
+describe("get_self_health — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("get_self_health", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /self-health\.json/);
+  });
+});
