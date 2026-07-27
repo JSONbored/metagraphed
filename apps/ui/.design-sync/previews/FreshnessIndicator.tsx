@@ -1,8 +1,9 @@
 import { FreshnessIndicator } from "@jsonbored/ui-kit";
 
 const fresh = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-// isStaleFreshness's real default threshold is 12h (see @/lib/metagraphed/format.ts) —
-// the component's own JSDoc says "default 5 min", which is stale documentation.
+// Either side of isStaleFreshness's 12h default threshold (packages/ui-kit/
+// src/lib/format.ts) — data refreshes on a ~6h cycle, so a snapshot is only
+// stale once it has clearly missed multiple cycles.
 const stale = new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString();
 
 export function Fresh() {
