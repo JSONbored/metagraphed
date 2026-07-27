@@ -60,11 +60,21 @@ export function links(overlay: Row): string {
   return out.join(" · ") || "—";
 }
 
+// Root (netuid 0) is base-layer chain infrastructure, not an application
+// subnet (see registry/subnets/root.json's own notes) — excluded from every
+// "N curated subnets" count and stat, though it's still listed in the
+// catalog body. Exported (not inlined in renderCatalog) so every consumer
+// of the "how many curated subnets" number computes it the same way —
+// generate-catalog-docs.ts's frontmatter description used to compute this
+// itself via the raw, unfiltered overlay count and silently disagreed with
+// this function's own body text by one (metagraphed#8352 found it: the
+// frontmatter said "129 curated subnets" while the body said "128").
+export function curatedSubnetOverlays(overlays: Row[]): Row[] {
+  return overlays.filter((o) => o.netuid !== 0);
+}
+
 export function renderCatalog(overlays: Row[]): string {
-  // Root (netuid 0) is base-layer chain infrastructure, not an application
-  // subnet (see registry/subnets/root.json's own notes) — it's still listed
-  // below, but excluded from the "N curated subnets" count and its stats.
-  const subnetOverlays = overlays.filter((o) => o.netuid !== 0);
+  const subnetOverlays = curatedSubnetOverlays(overlays);
 
   const focusCounts = new Map<string, number>();
   for (const overlay of subnetOverlays) {
