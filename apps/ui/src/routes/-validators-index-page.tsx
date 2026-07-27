@@ -222,7 +222,11 @@ function ValidatorsDirectory({
 
       {rows.length > 0 ? (
         <div className="hidden md:block rounded-md border border-border">
-          <div ref={tableScrollRef} className="max-h-[70vh] overflow-auto">
+          {/* #8357: mg-table-scroll gives the tablet-width horizontal scroll a
+              fade-mask + thin-scrollbar affordance -- below lg the 10-column
+              table is wider than the viewport (real, needed scrolling), and
+              without this class that scroll had no visible cue at all. */}
+          <div ref={tableScrollRef} className="mg-table-scroll max-h-[70vh] overflow-auto">
             <table
               className={classNames(
                 "w-full text-left text-sm",

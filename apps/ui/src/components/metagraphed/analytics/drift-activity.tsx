@@ -188,7 +188,7 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
       >
         <WeightBar weight={w} tone="warn" />
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="min-w-0 break-words font-display mg-type-caption-lg font-medium text-ink-strong">
               {label}
             </span>
