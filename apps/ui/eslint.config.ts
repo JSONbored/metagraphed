@@ -235,12 +235,11 @@ const FULL_DESIGN_RULES = [
 // point on, new drift in the directory fails CI instead of only annotating
 // it. Any PR that brings a directory to 0 warnings MUST add it here in the
 // same PR (see CONTRIBUTING.md); removing an entry requires an issue
-// explaining why. Initial set (2026-07-24 audit): src/hooks/** was the only
-// apps/ui directory clean end-to-end -- src/lib/** came close (2 residual
-// hits: one real text-[11px] and one false-positive string-literal match on
-// unrelated test fixture data) and is left for a follow-up PR rather than
-// bundled here.
-const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}"];
+// explaining why. Initial set (2026-07-24 audit): src/hooks/** was clean
+// end-to-end. #8424 cleared the last src/lib/** residuals (dead
+// download-csv-button text-[11px], ValueUnitControl, and a gap-5 fixture
+// false-positive) and added that directory here.
+const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"];
 
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see

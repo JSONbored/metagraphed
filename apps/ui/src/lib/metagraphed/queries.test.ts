@@ -525,7 +525,7 @@ describe("normalizeGap", () => {
 
   it("synthesizes a name and id when only netuid is present", () => {
     const out = normalizeGap({ netuid: 5 });
-    expect(out.id).toBe("gap-5");
+    expect(out.id).toBe(`gap-${5}`);
     expect(out.title).toBe("SN5 — 0 missing surfaces");
     expect(out.description).toBeUndefined();
     expect(out.missing_kinds).toEqual([]);
