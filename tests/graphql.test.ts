@@ -16189,6 +16189,39 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     assert.equal(day.unique_signers, 0);
   });
 
+  test("#8421: trims an 8-day Postgres-tier series down to the requested 7d window", async () => {
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            day_count: 8,
+            days: eightDays.map((day) => ({ day, extrinsic_count: 10 })),
+          }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(`(window: "7d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.day_count, 7);
+    assert.equal(d.days.length, 7);
+    assert.equal(d.days[0].day, "2026-07-26");
+    assert.equal(d.days[6].day, "2026-07-20");
+    assert.ok(!d.days.some((day: Row) => day.day === "2026-07-19"));
+  });
+
   test("an empty Postgres-tier body (no days key) degrades to an empty series", async () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
@@ -16301,6 +16334,45 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.daily[0].median_tip_tao, 0.004);
     assert.equal(d.top_fee_payers[0].signer, "5Signer");
     assert.equal(d.top_fee_payers[0].extrinsic_count, 4);
+  });
+
+  test("#8421: trims an 8-day Postgres-tier series down to the requested 7d window", async () => {
+    const eightDays = [
+      "2026-07-26",
+      "2026-07-25",
+      "2026-07-24",
+      "2026-07-23",
+      "2026-07-22",
+      "2026-07-21",
+      "2026-07-20",
+      "2026-07-19",
+    ];
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            day_count: 8,
+            daily: eightDays.map((day) => ({
+              day,
+              extrinsic_count: 10,
+              total_fee_tao: 1,
+              total_tip_tao: 0,
+            })),
+            top_fee_payers: [],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(`(window: "7d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.day_count, 7);
+    assert.equal(d.daily.length, 7);
+    assert.equal(d.daily[0].day, "2026-07-26");
+    assert.equal(d.daily[6].day, "2026-07-20");
+    assert.ok(!d.daily.some((day: Row) => day.day === "2026-07-19"));
   });
 
   test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {
