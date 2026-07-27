@@ -11,9 +11,6 @@ import { ExplorerPage } from "./-explorer-page";
  */
 const overviewSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
-  pallet: fallback(z.string(), "").default(""),
-  method: fallback(z.string(), "").default(""),
-  events_cursor: fallback(z.string(), "").default(""),
 });
 
 export const Route = createFileRoute("/chain/")({

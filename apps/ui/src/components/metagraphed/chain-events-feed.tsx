@@ -48,6 +48,57 @@ export function chainEventsBaseParams(
   return params;
 }
 
+/**
+ * One chain-event row in card form — who/what/how-much/where, newest data
+ * first. Shared by the full feed's mobile card layout and any bounded
+ * preview that reuses the same row shape (metagraphed#8359).
+ */
+export function ChainEventCard({ event }: { event: ChainEvent }) {
+  const s = summarizeChainEvent(event.args);
+  return (
+    <Panel as="div" dense className="min-h-11">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate mg-type-data text-ink-strong">
+          {extrinsicCall(event.pallet, event.method)}
+        </span>
+        {s.amountTao != null ? (
+          <span className="shrink-0 mg-type-data tabular-nums text-ink">
+            {formatTao(s.amountTao)}
+          </span>
+        ) : null}
+      </div>
+      {s.from || s.to ? (
+        <div className="mt-1 flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
+          <AccountAddress ss58={s.from} compact fallback="—" />
+          {s.to ? (
+            <>
+              <span aria-hidden>→</span>
+              <AccountAddress ss58={s.to} compact fallback="—" />
+            </>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="mt-1 flex items-center justify-between gap-2 mg-type-data-sm text-ink-muted">
+        <span className="flex items-center gap-2">
+          {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : null}
+          {event.block_number != null ? (
+            <Link
+              to="/blocks/$ref"
+              params={{ ref: String(event.block_number) }}
+              className="hover:text-accent hover:underline"
+            >
+              #{formatNumber(event.block_number)}
+            </Link>
+          ) : (
+            <span>—</span>
+          )}
+        </span>
+        <TimeAgo at={event.observed_at} />
+      </div>
+    </Panel>
+  );
+}
+
 interface Props {
   pallet: string;
   method: string;
@@ -286,56 +337,9 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
     </table>
   );
 
-  const cards = events.map((event) => {
-    const s = summarizeChainEvent(event.args);
-    return (
-      <Panel
-        as="div"
-        dense
-        key={`${event.block_number}-${event.event_index}-card`}
-        className="min-h-11"
-      >
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="min-w-0 truncate mg-type-data text-ink-strong">
-            {extrinsicCall(event.pallet, event.method)}
-          </span>
-          {s.amountTao != null ? (
-            <span className="shrink-0 mg-type-data tabular-nums text-ink">
-              {formatTao(s.amountTao)}
-            </span>
-          ) : null}
-        </div>
-        {s.from || s.to ? (
-          <div className="mt-1 flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
-            <AccountAddress ss58={s.from} compact fallback="—" />
-            {s.to ? (
-              <>
-                <span aria-hidden>→</span>
-                <AccountAddress ss58={s.to} compact fallback="—" />
-              </>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="mt-1 flex items-center justify-between gap-2 mg-type-data-sm text-ink-muted">
-          <span className="flex items-center gap-2">
-            {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : null}
-            {event.block_number != null ? (
-              <Link
-                to="/blocks/$ref"
-                params={{ ref: String(event.block_number) }}
-                className="hover:text-accent hover:underline"
-              >
-                #{formatNumber(event.block_number)}
-              </Link>
-            ) : (
-              <span>—</span>
-            )}
-          </span>
-          <TimeAgo at={event.observed_at} />
-        </div>
-      </Panel>
-    );
-  });
+  const cards = events.map((event) => (
+    <ChainEventCard key={`${event.block_number}-${event.event_index}-card`} event={event} />
+  ));
 
   if (isPending) return <Skeleton className="h-56 w-full" />;
   if (error && !data)

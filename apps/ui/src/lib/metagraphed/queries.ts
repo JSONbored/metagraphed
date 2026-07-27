@@ -7565,6 +7565,21 @@ export const chainEventsInfiniteQuery = (baseParams: QueryParams = {}, initialCu
 /** Alias for {@link chainEventsInfiniteQuery} — raw /api/v1/chain-events paginator. */
 export const chainEventsQuery = chainEventsInfiniteQuery;
 
+/**
+ * A single bounded, newest-first page of /api/v1/chain-events with no
+ * pagination machinery — for small previews (metagraphed#8359) that just want
+ * "the latest N", optionally pallet/method-filtered (e.g. Balances.Transfer).
+ */
+export const recentChainEventsQuery = (baseParams: QueryParams = {}) =>
+  queryOptions({
+    queryKey: k("chain-events-recent", baseParams),
+    queryFn: async ({ signal }) => {
+      const page = await fetchChainEventsInfinitePage(baseParams, "", signal);
+      return page.data;
+    },
+    staleTime: STALE_SHORT,
+  });
+
 /** Server-driven cursor-paginated subnets. */
 /** Server-driven cursor-paginated surfaces. */
 export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>

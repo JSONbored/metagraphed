@@ -146,6 +146,36 @@ function BlockProductionHeader() {
   );
 }
 
+/**
+ * One block row in card form — block #, age, hash, author, ext/evt counts.
+ * Shared by the full table's mobile card layout and any bounded preview that
+ * reuses the same row shape (metagraphed#8359).
+ */
+export function BlockCard({ block }: { block: Block }) {
+  return (
+    <Link
+      to="/blocks/$ref"
+      params={{ ref: String(block.block_number) }}
+      className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-mono text-sm font-medium text-ink-strong">
+          #{formatNumber(block.block_number)}
+        </div>
+        <span className="mg-type-data text-ink-muted">
+          <TimeAgo at={block.observed_at} />
+        </span>
+      </div>
+      <div className="mt-1 mg-type-data text-ink-muted truncate">{shortHash(block.block_hash)}</div>
+      <div className="mt-2 flex items-center justify-between mg-type-data text-ink-muted">
+        <span>{shortHash(block.author) ?? "no author"}</span>
+        <span>{formatNumber(block.extrinsic_count ?? 0)} ext</span>
+        <span>{formatNumber(block.event_count ?? 0)} evt</span>
+      </div>
+    </Link>
+  );
+}
+
 function BlocksTable() {
   const search = useSearch({ from: "/chain/blocks" });
   const navigate = useNavigate({ from: "/blocks/" });
@@ -422,29 +452,7 @@ function BlocksTable() {
         isEmpty={rows.length === 0}
         empty={emptyNode}
         cards={rows.map((b) => (
-          <Link
-            key={b.block_hash || b.block_number}
-            to="/blocks/$ref"
-            params={{ ref: String(b.block_number) }}
-            className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-sm font-medium text-ink-strong">
-                #{formatNumber(b.block_number)}
-              </div>
-              <span className="mg-type-data text-ink-muted">
-                <TimeAgo at={b.observed_at} />
-              </span>
-            </div>
-            <div className="mt-1 mg-type-data text-ink-muted truncate">
-              {shortHash(b.block_hash)}
-            </div>
-            <div className="mt-2 flex items-center justify-between mg-type-data text-ink-muted">
-              <span>{shortHash(b.author) ?? "no author"}</span>
-              <span>{formatNumber(b.extrinsic_count ?? 0)} ext</span>
-              <span>{formatNumber(b.event_count ?? 0)} evt</span>
-            </div>
-          </Link>
+          <BlockCard key={b.block_hash || b.block_number} block={b} />
         ))}
         table={
           <table className="w-full text-left text-sm">
