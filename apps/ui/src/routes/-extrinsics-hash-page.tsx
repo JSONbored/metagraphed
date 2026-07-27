@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -18,7 +18,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
+import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
@@ -30,18 +30,28 @@ import {
   proxyRealAccount,
   type DecodedCall,
 } from "@/lib/metagraphed/extrinsics";
+import { TaoValue } from "@/components/metagraphed/tao-value";
+import { ValueUnitProvider, ValueUnitControl } from "@/lib/metagraphed/value-unit";
+import {
+  RelatedEntityChip,
+  RelatedEntityChipRow,
+  relatedEntityChipLinkClass,
+  shortSs58Chip,
+} from "@/components/metagraphed/related-entity-chips";
 
 export function ExtrinsicDetailPage() {
   const { hash } = useParams({ from: "/extrinsics/$hash" });
   return (
     <AppShell>
-      <AsyncPanel
-        context="extrinsic detail"
-        fallback={<DetailSkeleton />}
-        retryQueryKeys={[extrinsicQuery(hash).queryKey]}
-      >
-        <ExtrinsicDetail hash={hash} />
-      </AsyncPanel>
+      <ValueUnitProvider>
+        <AsyncPanel
+          context="extrinsic detail"
+          fallback={<DetailSkeleton />}
+          retryQueryKeys={[extrinsicQuery(hash).queryKey]}
+        >
+          <ExtrinsicDetail hash={hash} />
+        </AsyncPanel>
+      </ValueUnitProvider>
     </AppShell>
   );
 }
@@ -95,6 +105,18 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
     (e) => e.extrinsic_hash?.toLowerCase() !== hash.toLowerCase(),
   );
 
+  // Related-entity chips from data already on this payload (#8373) — no new queries.
+  // Prefer a single netuid when events agree; otherwise skip the chip.
+  const relatedNetuid = useMemo(() => {
+    const ids = new Set<number>();
+    for (const ev of extrinsic?.events ?? []) {
+      if (typeof ev.netuid === "number" && Number.isFinite(ev.netuid) && ev.netuid >= 0) {
+        ids.add(ev.netuid);
+      }
+    }
+    return ids.size === 1 ? [...ids][0]! : null;
+  }, [extrinsic?.events]);
+
   if (!extrinsic) {
     return (
       <>
@@ -132,6 +154,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         actions={
           <>
             <ActionBar>
+              <ValueUnitControl />
               <ShareButton bare />
             </ActionBar>
             {isStaleFreshness(generatedAt) ? (
@@ -145,6 +168,42 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         }
         caption="explorer / v1"
       />
+
+      <RelatedEntityChipRow>
+        {extrinsic.signer ? (
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58: extrinsic.signer }}
+            className={relatedEntityChipLinkClass}
+          >
+            <RelatedEntityChip label="signer" title="Signer account">
+              {shortSs58Chip(extrinsic.signer)}
+            </RelatedEntityChip>
+          </Link>
+        ) : null}
+        {extrinsic.block_number != null ? (
+          <Link
+            to="/blocks/$ref"
+            params={{ ref: String(extrinsic.block_number) }}
+            className={relatedEntityChipLinkClass}
+          >
+            <RelatedEntityChip label="block" title="Including block">
+              #{formatNumber(extrinsic.block_number)}
+            </RelatedEntityChip>
+          </Link>
+        ) : null}
+        {relatedNetuid != null ? (
+          <Link
+            to="/subnets/$netuid"
+            params={{ netuid: relatedNetuid }}
+            className={relatedEntityChipLinkClass}
+          >
+            <RelatedEntityChip label="subnet" title={`Subnet ${relatedNetuid}`}>
+              SN{relatedNetuid}
+            </RelatedEntityChip>
+          </Link>
+        ) : null}
+      </RelatedEntityChipRow>
 
       {realAccount ? (
         <div className="mb-8 flex flex-wrap items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3">
@@ -229,14 +288,10 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             <span className="font-mono text-sm text-ink">{result}</span>
           </FieldRow>
           <FieldRow label="Inclusion fee">
-            <span className="font-mono text-sm text-ink-strong">
-              {extrinsic.fee_tao != null ? formatTao(extrinsic.fee_tao) : "—"}
-            </span>
+            <TaoValue amount={extrinsic.fee_tao} precision={4} align="left" />
           </FieldRow>
           <FieldRow label="Tip">
-            <span className="font-mono text-sm text-ink-strong">
-              {extrinsic.tip_tao != null ? formatTao(extrinsic.tip_tao) : "—"}
-            </span>
+            <TaoValue amount={extrinsic.tip_tao} precision={4} align="left" />
           </FieldRow>
           <FieldRow label="Observed at">
             <span className="font-mono mg-type-caption text-ink-muted">
@@ -352,8 +407,8 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                     <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                       <AccountAddress ss58={ev.hotkey} compact fallback="—" />
                     </td>
-                    <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
-                      {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                    <td className="px-4 py-2.5 text-right">
+                      <TaoValue amount={ev.amount_tao} precision={4} />
                     </td>
                     <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
                       <TimeAgo at={ev.observed_at} />

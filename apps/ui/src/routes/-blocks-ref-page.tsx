@@ -1,4 +1,4 @@
-import { Link, useLoaderData, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useLoaderData, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   useCallback,
@@ -50,7 +50,15 @@ import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import { BLOCK_SECTION_HINTS, BLOCK_TERM_HINTS } from "@/lib/metagraphed/section-hints";
 import { TaoValue } from "@/components/metagraphed/tao-value";
-import { ValueUnitProvider, useValueUnit, type ValueUnit } from "@/lib/metagraphed/value-unit";
+import { ValueUnitProvider, ValueUnitControl } from "@/lib/metagraphed/value-unit";
+import {
+  BlockNeighborNav,
+  RelatedEntityChip,
+  RelatedEntityChipHash,
+  RelatedEntityChipRow,
+  relatedEntityChipLinkClass,
+  shortSs58Chip,
+} from "@/components/metagraphed/related-entity-chips";
 import { nextTabIndex } from "@jsonbored/ui-kit";
 
 export function BlockDetailPage() {
@@ -85,6 +93,7 @@ function BlockDetail({ refValue }: { refValue: string }) {
 
 function ValidBlockDetail({ refValue }: { refValue: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const sourceRef = blockRefPathSegment(refValue);
   const blockResult = useSuspenseQuery(blockQuery(refValue)).data;
   const block = blockResult.data;
@@ -95,6 +104,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
 
   const prevBlockNumber = block?.prev_block_number ?? null;
   const nextBlockNumber = block?.next_block_number ?? null;
+  const sectionHash = location.hash?.replace(/^#/, "") || undefined;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -107,14 +117,23 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
 
       // ArrowLeft / J → previous block; ArrowRight / K → next block.
       // Matches the vim-style bindings used across the explorer feeds.
+      // Preserve the current section hash so tab/section context survives (#8373).
       if ((e.key === "ArrowLeft" || e.key === "j" || e.key === "J") && prevBlockNumber != null) {
         e.preventDefault();
-        navigate({ to: "/blocks/$ref", params: { ref: String(prevBlockNumber) } });
+        navigate({
+          to: "/blocks/$ref",
+          params: { ref: String(prevBlockNumber) },
+          hash: sectionHash,
+        });
         return;
       }
       if ((e.key === "ArrowRight" || e.key === "k" || e.key === "K") && nextBlockNumber != null) {
         e.preventDefault();
-        navigate({ to: "/blocks/$ref", params: { ref: String(nextBlockNumber) } });
+        navigate({
+          to: "/blocks/$ref",
+          params: { ref: String(nextBlockNumber) },
+          hash: sectionHash,
+        });
         return;
       }
       // G → jump to blocks feed (head).
@@ -126,7 +145,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate, prevBlockNumber, nextBlockNumber]);
+  }, [navigate, prevBlockNumber, nextBlockNumber, sectionHash]);
 
   const extrinsics = extrinsicsQuery.data?.data.extrinsics ?? [];
   const events = eventsQuery.data?.data.events ?? [];
@@ -170,6 +189,11 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         actions={
           <>
             <ActionBar>
+              <BlockNeighborNav
+                prev={prevBlockNumber}
+                next={nextBlockNumber}
+                hash={sectionHash}
+              />
               <ValueUnitControl />
               <div className="hidden sm:flex">
                 <JumpToBlock />
@@ -187,6 +211,29 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         }
         caption="explorer / v1"
       />
+
+      <RelatedEntityChipRow>
+        {block.author ? (
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58: block.author }}
+            className={relatedEntityChipLinkClass}
+          >
+            <RelatedEntityChip label="author" title="Block author">
+              {shortSs58Chip(block.author)}
+            </RelatedEntityChip>
+          </Link>
+        ) : null}
+        {(block.extrinsic_count ?? 0) > 0 ? (
+          <RelatedEntityChipHash
+            label="extrinsics"
+            title="Jump to extrinsics in this block"
+            hash="extrinsics"
+          >
+            {formatNumber(block.extrinsic_count ?? 0)}
+          </RelatedEntityChipHash>
+        ) : null}
+      </RelatedEntityChipRow>
 
       <div className="space-y-10">
         {(() => {
@@ -852,42 +899,6 @@ function GroupedEvents({
         })}
       </ul>
     </Panel>
-  );
-}
-
-function ValueUnitControl() {
-  const { unit, setUnit } = useValueUnit();
-  const opts: Array<{ v: ValueUnit; label: string; title: string }> = [
-    { v: "tao", label: "τ", title: "Show TAO only" },
-    { v: "usd", label: "$", title: "Show USD only" },
-    { v: "both", label: "Both", title: "Show TAO and USD" },
-  ];
-  return (
-    <div
-      role="tablist"
-      aria-label="Value display unit"
-      className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
-    >
-      {opts.map((o) => {
-        const active = o.v === unit;
-        return (
-          <button
-            key={o.v}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            title={o.title}
-            onClick={() => setUnit(o.v)}
-            className={
-              "inline-flex items-center rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8 " +
-              (active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong")
-            }
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
