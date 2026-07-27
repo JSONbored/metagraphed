@@ -116,6 +116,49 @@ export function buildProxyIconUrl(
   return u.toString();
 }
 
+/**
+ * A GitHub org's avatar, served by OUR icon proxy (#8309).
+ *
+ * The org is validated here to GitHub's own username charset before it ever
+ * reaches a URL -- the proxy validates again server-side (it has to; a client
+ * check guards nobody), but a bad value should never leave the browser either.
+ *
+ * Returns null when the proxy isn't configured, which drops the candidate and
+ * degrades to the monogram rather than falling back to a direct github.com
+ * request -- the whole point of the change.
+ */
+const GITHUB_ORG_RE = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+
+export function githubOrgFromUrl(input?: string | null): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input.includes("://") ? input : `https://${input}`);
+    // Exact host or a real github.com subdomain -- `endsWith("github.com")`
+    // alone would also accept an attacker host like "evilgithub.com".
+    const host = u.hostname.toLowerCase();
+    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
+    const org = u.pathname.split("/").filter(Boolean)[0];
+    return org && GITHUB_ORG_RE.test(org) ? org : null;
+  } catch {
+    return null;
+  }
+}
+
+export function buildProxyGithubAvatarUrl(
+  repoUrl: string | null | undefined,
+  size: number,
+  theme: ResolvedTheme = "light",
+): string | null {
+  if (!ICON_PROXY_URL) return null;
+  const org = githubOrgFromUrl(repoUrl);
+  if (!org) return null;
+  const u = new URL(ICON_PROXY_URL);
+  u.searchParams.set("github_org", org);
+  u.searchParams.set("size", String(size));
+  u.searchParams.set("theme", theme);
+  return u.toString();
+}
+
 /** Picks the right URL for the current theme out of an IconSource. */
 export function pickIconSource(
   src: IconSource | null | undefined,

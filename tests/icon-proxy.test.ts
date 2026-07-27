@@ -253,6 +253,177 @@ test("builds the allowlist from artifact url/base_url/website fields (nested + a
   assert.equal(r2.status, 200);
 });
 
+// #8309: BrandIcon's repo fallback used to request github.com/<org>.png
+// straight from the visitor's browser. It now asks this proxy instead, so the
+// avatar still renders but the cross-origin request happens server-side.
+const orgArtifact = async (_env: unknown, path: string) => {
+  if (path.endsWith("subnets.json")) {
+    return {
+      ok: true,
+      data: {
+        subnets: [
+          { source_repo: "https://github.com/opentensor/subtensor" },
+          { repo: "https://github.com/evilgithub.com/nope" },
+        ],
+      },
+    };
+  }
+  return { ok: false, data: null };
+};
+
+test("github_org mode proxies an allowlisted org's avatar", async () => {
+  const env = {
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const fetched: string[] = [];
+  const res = await call("?github_org=opentensor&size=64", {
+    env,
+    options: { readArtifact: orgArtifact },
+    fetchImpl: async (u: string) => {
+      fetched.push(String(u));
+      return new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    },
+  });
+  assert.equal(res.status, 200);
+  // github.com is a CONSTANT origin in the proxy -- the org is only ever a
+  // path segment, which is what keeps this SSRF-safe.
+  assert.equal(fetched.length, 1);
+  assert.ok(fetched[0].startsWith("https://github.com/opentensor.png?size="));
+});
+
+test("github_org mode rejects an org that isn't in the registry", async () => {
+  // Without the allowlist this is an open GitHub-avatar proxy anyone can point
+  // at any account.
+  const res = await call("?github_org=some-random-user", {
+    env: { METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} } },
+    options: { readArtifact: orgArtifact },
+    fetchImpl: async () => {
+      throw new Error("must not fetch a non-allowlisted org");
+    },
+  });
+  assert.equal(res.status, 404);
+});
+
+test("github_org mode 400s on anything outside GitHub's username charset", async () => {
+  // The org becomes a PATH SEGMENT on a hardcoded origin, so a value that
+  // could carry a slash, a traversal, or a query must be refused outright
+  // rather than escaped.
+  for (const bad of [
+    "org/../../etc",
+    "org?x=1",
+    "org.png",
+    "-leading",
+    "trailing-",
+    "a".repeat(40),
+    "",
+  ]) {
+    const res = await call(`?github_org=${encodeURIComponent(bad)}`, {
+      env: {
+        METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+      },
+      options: { readArtifact: orgArtifact },
+      fetchImpl: async () => {
+        throw new Error("must not fetch");
+      },
+    });
+    assert.equal(res.status, 400, `expected 400 for ${JSON.stringify(bad)}`);
+  }
+});
+
+test("github_org does not resolve an org from a lookalike host", async () => {
+  // "evilgithub.com" must not be read as github.com -- the second artifact
+  // entry above uses exactly that shape.
+  const res = await call("?github_org=evilgithub", {
+    env: { METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} } },
+    options: { readArtifact: orgArtifact },
+    fetchImpl: async () => {
+      throw new Error("must not fetch");
+    },
+  });
+  assert.equal(res.status, 404);
+});
+
+test("github_org and host namespaces can't collide in the cache", async () => {
+  // An org and a host with the same string must not share an R2 key or ETag.
+  const puts: string[] = [];
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      get: async () => null,
+      put: async (k: string) => {
+        puts.push(k);
+      },
+    },
+  };
+  await call("?github_org=opentensor&size=64", {
+    env,
+    options: { readArtifact: orgArtifact },
+    fetchImpl: async () =>
+      new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
+  });
+  assert.ok(puts.some((k) => k.includes("gh:opentensor")));
+});
+
+test("github_org org collection survives junk repo values", async () => {
+  // Registry repo fields are operator-set: a number, a malformed URL, a
+  // non-GitHub host, or a bare org with no repo path all have to be skipped
+  // without throwing, or one bad row takes the whole allowlist down.
+  const readArtifact = async (_env: unknown, path: string) =>
+    path.endsWith("subnets.json")
+      ? {
+          ok: true,
+          data: {
+            subnets: [
+              { repo: 42 },
+              { repo: "" },
+              { repo: "ht!tp://[[[" },
+              { repo: "https://gitlab.com/someorg/x" },
+              { repo: "github.com/barehost" },
+              { repo: "https://github.com/" },
+              { source_repo: "https://github.com/opentensor/subtensor" },
+            ],
+          },
+        }
+      : { ok: false, data: null };
+
+  // The bare-host form still yields an org, and the good one is present.
+  for (const [org, expected] of [
+    ["barehost", 200],
+    ["opentensor", 200],
+    ["someorg", 404],
+  ] as const) {
+    const res = await call(`?github_org=${org}`, {
+      env: {
+        METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+      },
+      options: { readArtifact },
+      fetchImpl: async () =>
+        new Response(PNG, {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        }),
+    });
+    assert.equal(res.status, expected, `org=${org}`);
+  }
+});
+
+test("github_org fails closed when no artifact reader is configured", async () => {
+  // No reader -> no allowlist -> nothing is proxied, rather than everything.
+  const res = await call("?github_org=opentensor", {
+    env: { METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} } },
+    options: {},
+    fetchImpl: async () => {
+      throw new Error("must not fetch");
+    },
+  });
+  assert.equal(res.status, 404);
+});
+
 test("memoizes the artifact allowlist per env (readArtifact not re-read)", async () => {
   let reads = 0;
   const env = {
