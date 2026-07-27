@@ -46,7 +46,7 @@ describe("subnet-masthead ShareButton", () => {
     expect(mastheadSource).not.toContain("hidden md:flex shrink-0 flex-col items-end");
     const identityBody = mastheadSource.slice(
       mastheadSource.indexOf('<div className="min-w-0">'),
-      mastheadSource.indexOf("{description ?"),
+      mastheadSource.indexOf("{lede ?"),
     );
     expect(identityBody).toContain("<HealthPill");
     expect(identityBody).toContain("<CurationChip");
@@ -58,7 +58,7 @@ describe("subnet-masthead ShareButton", () => {
 
   it("renders the Website/Docs/Repo/Dashboard + Share row as one connected icon bar, not separately boxed pills", () => {
     const linksRow = mastheadSource.slice(
-      mastheadSource.indexOf("{description ?"),
+      mastheadSource.indexOf("{lede ?"),
       mastheadSource.indexOf("Stat spine"),
     );
     // One shared divide-x bar (SegmentedToggle/ViewModeToggle's look), not a
