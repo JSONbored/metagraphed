@@ -695,6 +695,50 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     );
   });
 
+  test("subnets sort without an explicit order defaults to ascending (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a", surface_count: 5 },
+          { netuid: 2, name: "B", slug: "b", surface_count: 2 },
+          { netuid: 3, name: "C", slug: "c", surface_count: 9 },
+        ],
+      },
+    });
+    // No order arg -> the resolver's `order ?? "asc"` default applies.
+    const { status, body } = await gql(
+      '{ subnets(sort: "surface_count") { items { netuid } } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(
+      body.data.subnets.items.map((row: Row) => row.netuid),
+      [2, 1, 3],
+    );
+  });
+
+  test("subnet scopes its reads to the testnet artifact via network: test (#8423)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets/7.json": {
+        netuid: 7,
+        name: "Mainnet Seven",
+        slug: "main-7",
+      },
+      "/metagraph/testnet/subnets/7.json": {
+        netuid: 7,
+        name: "Testnet Seven",
+        slug: "tn-7",
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet(netuid: 7, network: test) { netuid name slug } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet.name, "Testnet Seven");
+    assert.equal(body.data.subnet.slug, "tn-7");
+  });
+
   test("subnets rejects an unsupported sort or order as BAD_USER_INPUT (#8423)", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets.json": { subnets: [] },
