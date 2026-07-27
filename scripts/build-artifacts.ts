@@ -2049,7 +2049,9 @@ await writeJson(
 // drift from what POST /mcp advertises.
 const agentResourcesContent = {
   summary: {
-    subnet_count: mergedSubnets.length,
+    subnet_count: mergedSubnets.filter(
+      (subnet) => subnet.subnet_type !== "root",
+    ).length,
     callable_service_count: callableServiceCount,
   },
   copyable_agent: {

@@ -1409,6 +1409,11 @@ test("public artifacts are internally consistent", () => {
   assert.equal(allwaysHistoryFixtureService.fixture_status.status, "missing");
 
   // AI-resources index: the copyable agent + the live MCP tool list + resources.
+  assert.equal(
+    agentResources.summary.subnet_count,
+    coverage.application_subnet_count,
+    "agent-resources subnet_count must exclude root (netuid 0), matching coverage.json's application_subnet_count",
+  );
   assert.match(agentResources.copyable_agent.url, /\/agent\.md$/);
   assert.match(agentResources.mcp.install, /^claude mcp add/);
   assert.ok(agentResources.mcp.tools.length > 5, "expected MCP tools listed");
