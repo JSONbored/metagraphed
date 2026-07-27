@@ -1496,15 +1496,89 @@ export async function loadSubnetReliability(): Promise<null> {
   return null;
 }
 
-// Sample-weighted reliability score over one or many subnets in a single
-// aggregate query, so a provider spanning dozens of subnets stays one D1
-// round-trip. D1 fully eliminated (2026-07-17): this table has no
-// Postgres-tier mirror wired for the badge read path yet, so it always
-// returns null now rather than adding new tier plumbing out of scope for D1
-// retirement -- the reliability badge renders "n/a" for this metric, exactly
-// as it already did whenever D1 was cold/unbound.
-export async function loadReliabilityAggregate(): Promise<null> {
-  return null;
+/** Cap on how many subnets a provider badge will aggregate over.
+ *
+ * One synthesized request per netuid (see below). A subnet badge -- the case
+ * that matters, and the one the README flywheel is about -- is always exactly
+ * one. This bounds the pathological provider spanning the whole registry;
+ * beyond it the badge scores the first N by netuid rather than timing out. */
+const RELIABILITY_BADGE_MAX_NETUIDS = 24;
+
+/**
+ * Sample-weighted reliability across one or many subnets, for the badge.
+ *
+ * This was a stub returning null from the 2026-07-17 D1 elimination onward --
+ * its own comment said the table had "no Postgres-tier mirror wired for the
+ * badge read path yet", so `?metric=uptime` and `?metric=grade` rendered "n/a"
+ * for every subnet on earth. Confirmed live before this fix: SN64's badge said
+ * `metagraphed: n/a` while /api/v1/subnets/64/uptime reported a real 0.9161
+ * ratio at grade C from the same underlying data.
+ *
+ * There was never a missing mirror -- /api/v1/subnets/{netuid}/uptime already
+ * serves exactly this, Postgres-tier, through METAGRAPH_HEALTH_SOURCE. So this
+ * synthesizes an internal request per netuid rather than adding new plumbing,
+ * the same "no client request to forward, synthesize one" shape handleCompare
+ * uses for this table.
+ *
+ * Aggregation is sample-weighted, not a mean of ratios: a subnet with 30k
+ * probes and one with 40 shouldn't count equally. Re-derives the composite via
+ * scoreFromStats so the badge's grade bands can't drift from the ones
+ * /uptime's own `reliability` block reports.
+ */
+export async function loadReliabilityAggregate(
+  env: Env,
+  request: Request,
+  { netuids }: { netuids: number[] },
+): Promise<{ grade: string; uptime_ratio: number } | null> {
+  const targets = netuids.slice(0, RELIABILITY_BADGE_MAX_NETUIDS);
+  if (targets.length === 0) return null;
+
+  const blocks = await Promise.all(
+    targets.map(async (netuid) => {
+      const pgUrl = new URL(request.url);
+      pgUrl.pathname = `/api/v1/subnets/${netuid}/uptime`;
+      pgUrl.search = "";
+      const data = (await tryPostgresTier(
+        env,
+        new Request(pgUrl),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) as { reliability?: Record<string, unknown> | null } | null;
+      return data?.reliability ?? null;
+    }),
+  );
+
+  // Reconstruct ok-counts from ratio x samples: /uptime publishes the ratio and
+  // the sample count, not the raw ok total.
+  let samples = 0;
+  let okCount = 0;
+  let latencyWeighted = 0;
+  let latencySamples = 0;
+  for (const r of blocks) {
+    if (!r) continue;
+    const n = Number(r.sample_count);
+    const ratio = Number(r.uptime_ratio);
+    if (!Number.isFinite(n) || n <= 0 || !Number.isFinite(ratio)) continue;
+    samples += n;
+    okCount += ratio * n;
+    const ls = Number(r.latency_sample_count);
+    const avg = Number(r.avg_latency_ms);
+    if (Number.isFinite(ls) && ls > 0 && Number.isFinite(avg)) {
+      latencySamples += ls;
+      latencyWeighted += avg * ls;
+    }
+  }
+  if (samples === 0) return null;
+
+  const scored = scoreFromStats({
+    samples,
+    okCount: Math.round(okCount),
+    avgLatencyMs: latencySamples > 0 ? latencyWeighted / latencySamples : null,
+    latencySamples,
+  });
+  // Total, not a fallback: scoreFromStats returns null only for samples === 0,
+  // which the guard above already excluded. A `scored ? … : null` here would
+  // be a branch that can never be taken.
+  return { grade: scored!.grade, uptime_ratio: scored!.uptime_ratio };
 }
 
 // --- Live-everywhere health resolution + composed-artifact overlays ----------

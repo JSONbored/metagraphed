@@ -2958,9 +2958,94 @@ describe("loadSubnetReliability (D1 retired, no Postgres-tier mirror yet)", () =
   });
 });
 
-describe("loadReliabilityAggregate (D1 retired, no Postgres-tier mirror yet)", () => {
-  test("always returns null", async () => {
-    assert.equal(await loadReliabilityAggregate(), null);
+// #8329: no longer a stub. It reads /api/v1/subnets/{netuid}/uptime through
+// the Postgres tier -- the mirror the old comment said didn't exist actually
+// did, just under the uptime route rather than a badge-specific one.
+describe("loadReliabilityAggregate", () => {
+  const req = () =>
+    new Request("https://metagraph.sh/api/v1/subnets/1/badge.svg");
+  // tryPostgresTier returns null unless the flag is "postgres" AND DATA_API is
+  // bound, so an unconfigured env exercises the no-data path without a stub.
+  const coldEnv = {} as unknown as Parameters<
+    typeof loadReliabilityAggregate
+  >[0];
+
+  test("returns null for an empty netuid list rather than querying", async () => {
+    assert.equal(
+      await loadReliabilityAggregate(coldEnv, req(), { netuids: [] }),
+      null,
+    );
+  });
+
+  test("returns null when the tier is cold, so the badge renders n/a", async () => {
+    assert.equal(
+      await loadReliabilityAggregate(coldEnv, req(), { netuids: [64] }),
+      null,
+    );
+  });
+
+  test("weights by sample count and re-derives the grade from the composite", async () => {
+    // A 100%-uptime subnet with 40 probes must not drag a 90%/30,000-probe
+    // subnet up to a mean of 95% -- weighting is the whole point.
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r: Request) => {
+          const netuid = Number(new URL(r.url).pathname.split("/")[4]);
+          const reliability =
+            netuid === 1
+              ? {
+                  uptime_ratio: 0.9,
+                  sample_count: 30000,
+                  avg_latency_ms: 400,
+                  latency_sample_count: 27000,
+                }
+              : {
+                  uptime_ratio: 1,
+                  sample_count: 40,
+                  avg_latency_ms: 400,
+                  latency_sample_count: 40,
+                };
+          // data-api returns the BARE payload -- tryPostgresTier hands the
+          // whole body back, and the ok/schema_version envelope is added by
+          // the public Worker downstream, not here.
+          return new Response(JSON.stringify({ reliability }), {
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    } as unknown as Parameters<typeof loadReliabilityAggregate>[0];
+    const out = await loadReliabilityAggregate(env, req(), { netuids: [1, 2] });
+    assert.ok(out);
+    // (0.9*30000 + 1*40) / 30040 ≈ 0.9001, not the 0.95 an unweighted mean gives.
+    assert.ok(out.uptime_ratio > 0.9 && out.uptime_ratio < 0.905);
+    // 90.01 with no latency penalty (400ms is under the free threshold) → "C".
+    assert.equal(out.grade, "C");
+  });
+
+  test("skips subnets with no probe samples instead of counting them as failures", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r: Request) => {
+          const netuid = Number(new URL(r.url).pathname.split("/")[4]);
+          const reliability =
+            netuid === 1
+              ? { uptime_ratio: 1, sample_count: 100, avg_latency_ms: null }
+              : { uptime_ratio: null, sample_count: 0, avg_latency_ms: null };
+          // data-api returns the BARE payload -- tryPostgresTier hands the
+          // whole body back, and the ok/schema_version envelope is added by
+          // the public Worker downstream, not here.
+          return new Response(JSON.stringify({ reliability }), {
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    } as unknown as Parameters<typeof loadReliabilityAggregate>[0];
+    const out = await loadReliabilityAggregate(env, req(), { netuids: [1, 2] });
+    assert.ok(out);
+    assert.equal(out.uptime_ratio, 1);
+    assert.equal(out.grade, "A");
   });
 });
 

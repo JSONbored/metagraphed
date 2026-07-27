@@ -34,6 +34,7 @@ import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import { WatchEntitySheet } from "@/components/metagraphed/watch-entity-sheet";
 import { SurfacePlayground } from "@/components/metagraphed/surface-playground";
+import { UptimeBadgeEmbed } from "@/components/metagraphed/uptime-badge-embed";
 import {
   CandidateChip,
   CurationChip,
@@ -584,6 +585,11 @@ function ApiEndpointsPanel({ netuid }: { netuid: number }) {
       <SurfacePlayground netuid={netuid} />
 
       <CandidatesPanel netuid={netuid} />
+
+      {/* #8329: the subnet-team flywheel -- a badge in their own README
+          advertises the registry to exactly the audience we want, and it's
+          honest in a way a self-reported one can't be. */}
+      <UptimeBadgeEmbed netuid={netuid} />
 
       <ApiPanel netuid={netuid} />
     </div>
