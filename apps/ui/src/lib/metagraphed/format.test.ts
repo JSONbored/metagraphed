@@ -7,6 +7,7 @@ import {
   relativeFromDiff,
   isStaleFreshness,
   formatTao,
+  formatUsdApprox,
   subnetAgeDays,
   formatSubnetAge,
 } from "./format";
@@ -197,6 +198,29 @@ describe("formatTao", () => {
     expect(formatTao(-999_999)).toBe("-1000.0k τ"); // still < 1e6 → k-tier
     expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // lower boundary of M-tier
     expect(formatTao(-2_500_000)).toBe("-2.50M τ");
+  });
+});
+
+describe("formatUsdApprox", () => {
+  it("returns null when the price hasn't loaded", () => {
+    expect(formatUsdApprox(1, null)).toBeNull();
+  });
+
+  it("returns null for nullish or non-finite tao", () => {
+    expect(formatUsdApprox(null, 400)).toBeNull();
+    expect(formatUsdApprox(undefined, 400)).toBeNull();
+    expect(formatUsdApprox(Number.NaN, 400)).toBeNull();
+    expect(formatUsdApprox(Infinity, 400)).toBeNull();
+  });
+
+  it("converts a τ amount to a 2-decimal USD string", () => {
+    expect(formatUsdApprox(1, 412.5)).toBe("$412.50");
+    expect(formatUsdApprox(0.1, 412.5)).toBe("$41.25");
+    expect(formatUsdApprox(0, 412.5)).toBe("$0.00");
+  });
+
+  it("thousands-separates large conversions", () => {
+    expect(formatUsdApprox(1000, 412.5)).toBe("$412,500.00");
   });
 });
 

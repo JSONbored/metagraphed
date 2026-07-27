@@ -26,6 +26,25 @@ export function formatTao(v?: number | null): string {
 }
 
 /**
+ * Convenience USD conversion for a τ amount at the current live price —
+ * explicitly NOT historical price-at-tx (that needs a per-block price lookup,
+ * separate maintainer work). Returns null when the amount or price isn't a
+ * usable number, so a caller renders nothing rather than a bogus "$NaN".
+ */
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatUsdApprox(
+  tao: number | null | undefined,
+  price: number | null,
+): string | null {
+  if (typeof tao !== "number" || !Number.isFinite(tao) || price == null) return null;
+  return `$${usdFormatter.format(tao * price)}`;
+}
+
+/**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any
  * pre-2000 date as "unknown" so the UI doesn't claim freshness/staleness

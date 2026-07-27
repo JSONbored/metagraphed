@@ -1,7 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
+import { Boxes, Clock, FileText, Layers, Link2, User, UserCog } from "lucide-react";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -16,9 +16,16 @@ import {
   StatTile,
   TableState,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Chip, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
+import {
+  formatNumber,
+  formatTao,
+  formatUsdApprox,
+  isStaleFreshness,
+} from "@/lib/metagraphed/format";
+import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { useTaoPrice } from "@/hooks/use-tao-price";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
@@ -79,6 +86,11 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   const realAccount = extrinsic
     ? proxyRealAccount(extrinsic.call_module, extrinsic.call_function, callArgs)
     : null;
+  // Only render entity chips for data this page already fetched -- an
+  // extrinsic has no netuid field of its own, but its own emitted events do,
+  // so the first event that names one is the subnet this call touched.
+  const netuid = events.find((ev) => typeof ev.netuid === "number")?.netuid ?? null;
+  const { price: taoPrice } = useTaoPrice();
   // #4322: link a Multisig call to the rest of its approval chain (the
   // initiating `as_multi`, later `approve_as_multi`s, the final execution) --
   // all of them carry the same call_hash. A plain useQuery (not suspense):
@@ -145,6 +157,30 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         }
         caption="explorer / v1"
       />
+
+      <div className="mb-8 flex flex-wrap items-center gap-2">
+        {extrinsic.signer && isValidSs58(extrinsic.signer) ? (
+          <Link to="/accounts/$ss58" params={{ ss58: extrinsic.signer }}>
+            <Chip icon={<User className="size-3" />} title="Signer">
+              {shortHash(extrinsic.signer) ?? extrinsic.signer}
+            </Chip>
+          </Link>
+        ) : null}
+        {netuid != null ? (
+          <Link to="/subnets/$netuid" params={{ netuid }}>
+            <Chip icon={<Layers className="size-3" />} title="Subnet touched by this call">
+              Subnet {netuid}
+            </Chip>
+          </Link>
+        ) : null}
+        {extrinsic.block_number != null ? (
+          <Link to="/blocks/$ref" params={{ ref: String(extrinsic.block_number) }}>
+            <Chip icon={<Boxes className="size-3" />} title="Containing block">
+              #{formatNumber(extrinsic.block_number)}
+            </Chip>
+          </Link>
+        ) : null}
+      </div>
 
       {realAccount ? (
         <div className="mb-8 flex flex-wrap items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3">
@@ -229,14 +265,10 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             <span className="font-mono text-sm text-ink">{result}</span>
           </FieldRow>
           <FieldRow label="Inclusion fee">
-            <span className="font-mono text-sm text-ink-strong">
-              {extrinsic.fee_tao != null ? formatTao(extrinsic.fee_tao) : "—"}
-            </span>
+            <TaoAmount tao={extrinsic.fee_tao} price={taoPrice} />
           </FieldRow>
           <FieldRow label="Tip">
-            <span className="font-mono text-sm text-ink-strong">
-              {extrinsic.tip_tao != null ? formatTao(extrinsic.tip_tao) : "—"}
-            </span>
+            <TaoAmount tao={extrinsic.tip_tao} price={taoPrice} />
           </FieldRow>
           <FieldRow label="Observed at">
             <span className="font-mono mg-type-caption text-ink-muted">
@@ -353,7 +385,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                       <AccountAddress ss58={ev.hotkey} compact fallback="—" />
                     </td>
                     <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
-                      {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                      <TaoAmount tao={ev.amount_tao} price={taoPrice} />
                     </td>
                     <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
                       <TimeAgo at={ev.observed_at} />
@@ -566,6 +598,26 @@ function formatCallArgValue(value: unknown): string {
   } catch {
     return "[Unserializable value]";
   }
+}
+
+/**
+ * A τ amount plus its live-price USD equivalent as secondary muted text — a
+ * convenience conversion, not the historical price at the time of the tx
+ * (that needs a per-block price lookup, separate maintainer work).
+ */
+function TaoAmount({ tao, price }: { tao: number | null | undefined; price: number | null }) {
+  if (tao == null) return <span className="text-ink-muted">—</span>;
+  const usd = formatUsdApprox(tao, price);
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="font-mono text-sm text-ink-strong">{formatTao(tao)}</span>
+      {usd ? (
+        <span className="mg-type-data-sm text-ink-muted" title="at current price">
+          ≈ {usd}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {

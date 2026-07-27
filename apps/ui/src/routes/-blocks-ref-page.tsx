@@ -1,4 +1,10 @@
-import { Link, useLoaderData, useNavigate, useParams } from "@tanstack/react-router";
+import {
+  Link,
+  useLoaderData,
+  useNavigate,
+  useParams,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   useCallback,
@@ -9,7 +15,16 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { FileText, Zap, CheckCircle2, ChevronDown, ChevronRight, DollarSign } from "lucide-react";
+import {
+  FileText,
+  Zap,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  User,
+} from "lucide-react";
 
 import { ChainWalkRibbon } from "@/components/metagraphed/blocks/chain-walk-ribbon";
 import { NeighborCompare } from "@/components/metagraphed/blocks/neighbor-compare";
@@ -18,7 +33,7 @@ import { PalletMethodBreakdown } from "@/components/metagraphed/blocks/pallet-me
 import { ShortcutsDialog } from "@/components/metagraphed/blocks/shortcuts-dialog";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Chip, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -44,6 +59,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
+import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
@@ -95,6 +111,10 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
 
   const prevBlockNumber = block?.prev_block_number ?? null;
   const nextBlockNumber = block?.next_block_number ?? null;
+  // Current section anchor (e.g. "#extrinsics"), so stepping to a neighbor
+  // block keeps whatever section the viewer had open instead of resetting
+  // scroll position to the top of the page.
+  const hash = useRouterState({ select: (s) => s.location.hash });
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -109,12 +129,20 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
       // Matches the vim-style bindings used across the explorer feeds.
       if ((e.key === "ArrowLeft" || e.key === "j" || e.key === "J") && prevBlockNumber != null) {
         e.preventDefault();
-        navigate({ to: "/blocks/$ref", params: { ref: String(prevBlockNumber) } });
+        navigate({
+          to: "/blocks/$ref",
+          params: { ref: String(prevBlockNumber) },
+          hash: hash || undefined,
+        });
         return;
       }
       if ((e.key === "ArrowRight" || e.key === "k" || e.key === "K") && nextBlockNumber != null) {
         e.preventDefault();
-        navigate({ to: "/blocks/$ref", params: { ref: String(nextBlockNumber) } });
+        navigate({
+          to: "/blocks/$ref",
+          params: { ref: String(nextBlockNumber) },
+          hash: hash || undefined,
+        });
         return;
       }
       // G → jump to blocks feed (head).
@@ -126,7 +154,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate, prevBlockNumber, nextBlockNumber]);
+  }, [navigate, prevBlockNumber, nextBlockNumber, hash]);
 
   const extrinsics = extrinsicsQuery.data?.data.extrinsics ?? [];
   const events = eventsQuery.data?.data.events ?? [];
@@ -170,6 +198,11 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         actions={
           <>
             <ActionBar>
+              <BlockNavControls
+                prevBlockNumber={prevBlockNumber}
+                nextBlockNumber={nextBlockNumber}
+                hash={hash}
+              />
               <ValueUnitControl />
               <div className="hidden sm:flex">
                 <JumpToBlock />
@@ -187,6 +220,22 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         }
         caption="explorer / v1"
       />
+
+      <div className="mb-8 flex flex-wrap items-center gap-2">
+        {block.author && isValidSs58(block.author) ? (
+          <Link to="/accounts/$ss58" params={{ ss58: block.author }}>
+            <Chip icon={<User className="size-3" />} title="Block proposer">
+              {shortHash(block.author) ?? block.author}
+            </Chip>
+          </Link>
+        ) : null}
+        <a href="#extrinsics">
+          <Chip icon={<FileText className="size-3" />} title="Jump to this block's extrinsics">
+            {formatNumber(block.extrinsic_count ?? 0)} extrinsic
+            {block.extrinsic_count === 1 ? "" : "s"}
+          </Chip>
+        </a>
+      </div>
 
       <div className="space-y-10">
         {(() => {
@@ -852,6 +901,70 @@ function GroupedEvents({
         })}
       </ul>
     </Panel>
+  );
+}
+
+/**
+ * Visible ← previous / next → controls mirroring the page's existing
+ * ArrowLeft/ArrowRight keyboard bindings (see the onKey handler above and
+ * ShortcutsDialog). Each side is disabled when the block API hasn't linked a
+ * neighbor yet -- for `nextBlockNumber` that's exactly the chain-tip case, since
+ * the indexer only populates it once a later block has actually landed.
+ */
+function BlockNavControls({
+  prevBlockNumber,
+  nextBlockNumber,
+  hash,
+}: {
+  prevBlockNumber: number | null;
+  nextBlockNumber: number | null;
+  hash: string;
+}) {
+  const linkClass =
+    "mg-focus-ring inline-flex items-center gap-0.5 rounded text-ink-muted hover:text-ink-strong hover:underline";
+  const disabledClass = "inline-flex items-center gap-0.5 text-ink-subtle";
+  return (
+    <div
+      role="group"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 mg-type-caption font-medium"
+      aria-label="Adjacent blocks"
+    >
+      {prevBlockNumber != null ? (
+        <Link
+          to="/blocks/$ref"
+          params={{ ref: String(prevBlockNumber) }}
+          hash={hash || undefined}
+          className={linkClass}
+          title={`Previous block #${formatNumber(prevBlockNumber)}`}
+        >
+          <ChevronLeft className="size-3.5" aria-hidden="true" />#{formatNumber(prevBlockNumber)}
+        </Link>
+      ) : (
+        <span aria-disabled className={disabledClass}>
+          <ChevronLeft className="size-3.5" aria-hidden="true" />—
+        </span>
+      )}
+      <span className="text-ink-subtle" aria-hidden="true">
+        ·
+      </span>
+      {nextBlockNumber != null ? (
+        <Link
+          to="/blocks/$ref"
+          params={{ ref: String(nextBlockNumber) }}
+          hash={hash || undefined}
+          className={linkClass}
+          title={`Next block #${formatNumber(nextBlockNumber)}`}
+        >
+          #{formatNumber(nextBlockNumber)}
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </Link>
+      ) : (
+        <span aria-disabled className={disabledClass} title="No later block indexed yet">
+          —
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </span>
+      )}
+    </div>
   );
 }
 
