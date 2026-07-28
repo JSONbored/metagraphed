@@ -83,7 +83,7 @@ one), it must not silently break native staking. Two concrete requirements
 for whoever writes that CSP:
 
 - **`connect-src` must include every entry in
-  `TRUSTED_RPC_UPSTREAM_ORIGINS`** (`workers/config.mjs:425-440`) — both the
+  `TRUSTED_RPC_UPSTREAM_ORIGINS`** (`workers/config.ts:425-440`) — both the
   `https://` and `wss://` forms. `@polkadot/api`'s `WsProvider`
   (`chain-connection.ts`'s `getApi()`) opens a genuine WebSocket connection
   **from the page's own JS**, which `connect-src` does govern. Omitting even
@@ -119,7 +119,7 @@ for whoever writes that CSP:
 
 ## Links/resources
 
-- `workers/config.mjs:425-440` (`TRUSTED_RPC_UPSTREAM_ORIGINS`, the exact set
+- `workers/config.ts:425-440` (`TRUSTED_RPC_UPSTREAM_ORIGINS`, the exact set
   any future CSP's `connect-src` must cover)
 - `apps/ui/src/lib/metagraphed/chain-connection.ts` (`getApi()`'s `WsProvider`
   connection — the CSP-governed surface)

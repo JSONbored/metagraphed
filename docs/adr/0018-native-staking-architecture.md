@@ -21,12 +21,12 @@ in the epic inherits them:
    write/broadcast infrastructure today, and its existing RPC-facing surfaces
    are _deliberately_ read-only-enforced at three independent layers: the
    HTTP proxy's method allowlist (`SAFE_RPC_METHODS`,
-   `workers/config.mjs:327-339`), `wss-lb`'s own copy of that allowlist
-   (`deploy/wss-lb/src/rpc-policy.mjs:1-49`), and a hard-coded
+   `workers/config.ts:327-339`), `wss-lb`'s own copy of that allowlist
+   (`deploy/wss-lb/src/rpc-policy.ts:1-49`), and a hard-coded
    `DENIED_RPC_PREFIXES` blocking `author_` as defense-in-depth
-   (`workers/config.mjs:360-366`). `author_submitExtrinsic` appears nowhere
+   (`workers/config.ts:360-366`). `author_submitExtrinsic` appears nowhere
    in this repo except test fixtures asserting it's rejected
-   (`tests/request-handlers-rpc-proxy.test.mjs:478-495`). Building a broadcast
+   (`tests/request-handlers-rpc-proxy.test.ts:478-495`). Building a broadcast
    path means adding new infrastructure, not extending the read path — and
    deciding _how much_ new infrastructure is exactly the fork this ADR
    resolves.
@@ -74,7 +74,7 @@ subtensor as "just another Substrate chain" client-side.
 
 For v1, the signed extrinsic goes straight from the browser to a trusted,
 already-public RPC endpoint from the existing `TRUSTED_RPC_UPSTREAM_ORIGINS`
-allowlist (`workers/config.mjs:419-436`) — the same shape Polkadot.js Apps
+allowlist (`workers/config.ts:419-436`) — the same shape Polkadot.js Apps
 itself uses, and the lowest-engineering, lowest-security-surface option
 available today. **Signed extrinsics never transit metagraphed's own
 backend** in v1: no new relay endpoint, no new rate-limiter binding, no new
@@ -95,7 +95,7 @@ functional benefit to the user over the direct path.
 Consequence: #5238 ("implement the broadcast path") builds the direct-to-RPC
 path only; #5250 ("broadcast-path rate limiting") is deferred and only
 becomes relevant if a future ADR revisits this decision. Signed extrinsics
-are never routed through `workers/request-handlers/rpc-proxy.mjs` — that
+are never routed through `workers/request-handlers/rpc-proxy.ts` — that
 code path is architecturally and repeatedly guarded against exactly this, by
 design, and stays that way.
 
@@ -136,7 +136,7 @@ narrow, additive capability, not a reversal of section 2's broadcast-path
 decision: no extrinsic is ever constructed or submitted by this path, and
 `lib/metagraphed/wallet.ts` itself still persists only an address, never a
 signature. The signature format (bare hex, no `0x` prefix, sr25519) matches
-`src/wallet-auth.mjs`'s existing challenge/verify machinery, built for ADR
+`src/wallet-auth.ts`'s existing challenge/verify machinery, built for ADR
 0021's fullnode-gate login and reused here unchanged.
 
 ## Consequences
@@ -172,7 +172,7 @@ signature. The signature format (bare hex, no `0x` prefix, sr25519) matches
   mechanics this ADR's §3 relies on)
 - Polkadot.js Extension Cookbook — `polkadot.js.org/docs/extension/cookbook`
   (the injection flow §1 targets)
-- `workers/config.mjs:327-436` (existing read-only RPC allowlist enforcement
+- `workers/config.ts:327-436` (existing read-only RPC allowlist enforcement
   this ADR deliberately does not touch)
 - `docs/adr/0013-hybrid-deployment-topology.md:118-120` (the planned,
   unshipped first-party RPC origin — this ADR's future-upgrade path)

@@ -16,7 +16,7 @@ maintainers' heads:
    published from `publish-python.yml`. Blocked on the one-time PyPI
    pending-publisher bootstrap (#378) before its first publish.
 3. **Hosted Worker / API / MCP**: continuous-deploy via `publish-cloudflare.yml`,
-   versioned by the date-string `CONTRACT_VERSION` in `src/contracts.mjs` — **not**
+   versioned by the date-string `CONTRACT_VERSION` in `src/contracts.ts` — **not**
    a packaged release.
 
 Both package workflows already use OIDC trusted publishing (no long-lived

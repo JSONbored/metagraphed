@@ -44,7 +44,7 @@ not a candidate: it is fully retired end-to-end (2026-07-17), not merely
 deprioritized.
 
 - **System of record: a new `api_keys` Postgres table**, reached through
-  `workers/data-api.mjs` the same way `chain_alert_triggers` CRUD is (own
+  `workers/data-api.ts` the same way `chain_alert_triggers` CRUD is (own
   route, own `*_SYNC_SECRET`-style internal auth for any maintainer-only
   action). Columns (indicative, finalized in #6735's implementation):
   `id`, `prefix` (public, see §2), `secret_hash`, `owner_contact` (see §3),
@@ -56,7 +56,7 @@ deprioritized.
   connection pool ADR 0014 already treats as the scarce resource. Mirrors
   two already-shipped precedents exactly: `src/network-parameters.ts`'s
   `METAGRAPH_CONTROL`-KV-front-of-RPC pattern (300s TTL, negative-cached
-  shorter), and `workers/alerter-hub.mjs`'s `ALERTER_HUB_TRIGGER_CACHE_TTL_MS`
+  shorter), and `workers/alerter-hub.ts`'s `ALERTER_HUB_TRIGGER_CACHE_TTL_MS`
   (5 min) front-of-Postgres trigger cache. A key lookup misses KV on first
   use, fetches+validates against Postgres, caches the (key → tier, revoked)
   tuple for a TTL (proposed 5 min, matching AlerterHub's), then serves purely
@@ -69,7 +69,7 @@ deprioritized.
 
 ### 2. Key format: `mg_<32-hex prefix>_<64-hex secret>`, hashed at rest
 
-- **Generation:** reuse `generateSecret()` (`src/webhooks.mjs`) — 32 random
+- **Generation:** reuse `generateSecret()` (`src/webhooks.ts`) — 32 random
   bytes, hex-encoded — for the secret portion. Add a short, non-secret
   **prefix** (8 random bytes, hex-encoded) so a key can be identified/looked
   up (support requests, a caller's own key list, revocation) without ever
@@ -81,8 +81,8 @@ deprioritized.
 - **Storage: hash the secret portion (SHA-256) before it reaches Postgres;
   store the prefix in cleartext.** This is a deliberate **departure** from
   this codebase's existing `owner_token`/webhook-subscription-secret
-  precedent (`src/alert-triggers.mjs`'s `isValidAlertOwnerToken`,
-  `src/webhooks.mjs`'s subscription secrets), which store the generated
+  precedent (`src/alert-triggers.ts`'s `isValidAlertOwnerToken`,
+  `src/webhooks.ts`'s subscription secrets), which store the generated
   secret in plaintext and compare it directly via `timingSafeEqual`. That
   precedent is proportionate for those credentials — narrow-scope,
   single-record blast radius (a leaked webhook secret lets someone delete
@@ -96,7 +96,7 @@ deprioritized.
   plain equality check on the hash — a SHA-256 digest has no meaningful
   timing side-channel to protect once both sides are fixed-length hex).
 - **Returned to the caller exactly once, at creation** — mirrors
-  `owner_token`'s own convention (`src/alert-triggers.mjs`'s comment: "the
+  `owner_token`'s own convention (`src/alert-triggers.ts`'s comment: "the
   sole ownership credential ... never echoed back on read"). A caller who
   loses their secret must revoke + reissue; there is no recovery flow,
   matching the no-user-account-system constraint this whole tier operates
@@ -194,13 +194,13 @@ cost, in particular, may warrant a smaller multiplier than the rest).
   rule this decision applies)
 - [ADR 0014](0014-chain-data-infrastructure-and-postgres-cutover.md) (why
   Postgres via Hyperdrive, not D1, is the only live dynamic-data tier)
-- `src/webhooks.mjs` (`generateSecret`, `timingSafeEqual`, the existing
+- `src/webhooks.ts` (`generateSecret`, `timingSafeEqual`, the existing
   per-subscription-secret precedent this ADR partially follows and partially
   departs from)
-- `src/alert-triggers.mjs` (`generateAlertTriggerOwnerToken`,
+- `src/alert-triggers.ts` (`generateAlertTriggerOwnerToken`,
   `isValidAlertOwnerToken` — the closest existing "mint a per-caller
   credential, validate on later requests" precedent)
-- `workers/alerter-hub.mjs` (`ALERTER_HUB_TRIGGER_CACHE_TTL_MS` — the
+- `workers/alerter-hub.ts` (`ALERTER_HUB_TRIGGER_CACHE_TTL_MS` — the
   KV-front-of-Postgres caching precedent this ADR's validation path mirrors)
 - `wrangler.jsonc` `ratelimits` (the existing per-IP anonymous buckets a
   keyed tier sits alongside, never replaces)

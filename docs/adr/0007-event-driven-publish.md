@@ -48,14 +48,14 @@ trigger to carry freshness.** `publish-cloudflare.yml` is repurposed:
 2. **A once-daily schedule floor** (07:17 UTC) catches slow chain/registry drift
    that no human-input event covered.
 3. **Freshness by construction, not by trigger.** Every run fresh-fetches the
-   chain snapshot _first_ (`build.mjs` `productionSteps`, tolerant), so the KV
+   chain snapshot _first_ (`build.ts` `productionSteps`, tolerant), so the KV
    `latest` pointer always flips onto freshly-built data regardless of what
    triggered the run. This is what makes a push trigger safe — the pointer can
    never advance onto stale data, because there is no "reuse the last snapshot"
    path.
 
 The two volatile tiers stay decoupled and refresh independently: operational
-health via the 15-minute prober (`src/health-prober.mjs`, ADR 0002), economics
+health via the 15-minute prober (`src/health-prober.ts`, ADR 0002), economics
 via the indexer-box `data-refresh-economics` systemd timer (~3h KV tier,
 JSONbored/metagraphed-infra -- moved off the former GitHub Actions
 refresh-economics.yml 2026-07-15). `operational-surfaces.json` is

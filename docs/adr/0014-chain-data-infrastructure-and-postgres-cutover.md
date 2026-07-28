@@ -102,7 +102,7 @@ tell a genuine hit from a masked fallback). Live re-testing found the
 `DATA_API` service-binding subrequest reporting `outcome: "canceled"` on a
 real, reproducible fraction of requests (#4686), so the flag was reverted
 same day. **Root-caused 2026-07-10** against Cloudflare's own Hyperdrive
-documentation: neither `data-api.mjs` nor `registry-sync-api.mjs` wrapped
+documentation: neither `data-api.ts` nor `registry-sync-api.ts` wrapped
 their per-request queries in a transaction, so a standalone `SET
 statement_timeout` had no guarantee of landing on the same physical
 connection as the query that followed it (Hyperdrive resets session state
@@ -214,8 +214,8 @@ silently drift from each other.
    the indexer box, replacing the original Railway plan. Done.
 2. ✅ **D1 capacity emergency fixed.** `blocks`/`extrinsics` retention
    corrected to match `account_events`' precedent (merged 2026-07-10).
-3. ✅ **Hyperdrive connection-affinity fixed.** `data-api.mjs` and
-   `registry-sync-api.mjs` now run each request's queries inside a
+3. ✅ **Hyperdrive connection-affinity fixed.** `data-api.ts` and
+   `registry-sync-api.ts` now run each request's queries inside a
    transaction and no longer call `sql.end()` (merged 2026-07-10),
    addressing #4686's two documented root-cause candidates.
 4. ✅ **All three flags flipped to `"postgres"`, same day.** With no real
@@ -258,7 +258,7 @@ silently drift from each other.
    tables after this code deploys is provably safe — sequenced as
    code-first-then-`DROP TABLE`, not simultaneous. `account_position_daily`,
    `account_events_daily`'s independent Postgres-side rollup, and the ~40 dead
-   D1-fallback branches in `workers/request-handlers/entities.mjs` are
+   D1-fallback branches in `workers/request-handlers/entities.ts` are
    explicitly out of scope, tracked as follow-up.
 9. 🔲 **The extrinsics parity harness (#4695)** remains valuable to actually
    quantify what step 4's accepted gap covers, now that it's no longer a
@@ -266,12 +266,12 @@ silently drift from each other.
    not to re-gate a decision already made.
 10. ✅ **neurons/neuron_daily write path built + flipped (#4771).** Unlike
     blocks/extrinsics/account_events, this tier had NO Postgres equivalent at
-    all before #4771 — `workers/data-api.mjs` gained one write route
+    all before #4771 — `workers/data-api.ts` gained one write route
     (`POST /api/v1/internal/neurons-sync`, `handleNeuronsSync`) that upserts
     both tables from the same daily `refresh-metagraph.yml` fetch, alongside
     (not replacing) the existing R2-stage-to-D1 path. Deliberately NOT a
     fifth dedicated Worker: it targets the IDENTICAL Postgres instance
-    `data-api.mjs` already reads from, unlike `registry-sync-api.mjs`'s split
+    `data-api.ts` already reads from, unlike `registry-sync-api.ts`'s split
     (a genuinely separate database, isolated on purpose) — splitting read and
     write for the same database would have added a whole Worker/config/
     binding/secret for zero bundle-budget benefit.
@@ -302,7 +302,7 @@ NOTHING`, so a backfill re-run would have silently preserved
 12. ✅ **`account_position_daily`'s D1 rollup/prune retired + its dead D1
     read-route fallback removed (2026-07-12).** Item 8 left this tier's D1
     rollup (`rollupAccountPositionDaily`/`pruneAccountPositionDaily`,
-    formerly `src/account-position-history.mjs`, wired from
+    formerly `src/account-position-history.ts`, wired from
     `NEURON_HISTORY_ROLLUP_CRON`) untouched because it had "no Postgres
     migration yet" — that premise, and #4910 (filed on the same belief), were
     both stale: #4839 had already shipped this tier's Postgres write path
@@ -338,7 +338,7 @@ NOTHING`, so a backfill re-run would have silently preserved
     deliberate scope choice matching item 12's precedent, not a forced one:
     removes the two READ routes' `?? d1Fallback()` branches
     (`handleSubnetHyperparams`/`handleSubnetHyperparamsHistory` in
-    `workers/request-handlers/entities.mjs`) rather than deferring them to
+    `workers/request-handlers/entities.ts`) rather than deferring them to
     #4909 — #4909 explicitly excluded `subnet_hyperparams`/`account_identity`
     from its ~40-branch cleanup as "not part of this [item 8] retirement,"
     and this step IS that table's own retirement, so its read fallback is in
@@ -349,9 +349,9 @@ NOTHING`, so a backfill re-run would have silently preserved
 
 ## Links/resources
 
-- `workers/data-api.mjs`, `workers/registry-sync-api.mjs` — the Hyperdrive-backed
+- `workers/data-api.ts`, `workers/registry-sync-api.ts` — the Hyperdrive-backed
   Postgres serving/write Workers (connection-affinity fix, 2026-07-10)
-- `workers/postgres-tier.mjs` (`tryPostgresTier`) — the per-tier fallback
+- `workers/postgres-tier.ts` (`tryPostgresTier`) — the per-tier fallback
   contract shared by REST and MCP callers
 - `src/extrinsics.ts`'s `EXTRINSIC_RETENTION_MS` — the one D1 retention
   constant that survives #4772: no longer a prune-cron window (that cron is
@@ -365,7 +365,7 @@ NOTHING`, so a backfill re-run would have silently preserved
   serving tier
 - `wrangler.jsonc` — `METAGRAPH_BLOCKS_SOURCE` / `METAGRAPH_EXTRINSICS_SOURCE`
   / `METAGRAPH_ACCOUNT_EVENTS_SOURCE` / `METAGRAPH_NEURONS_SOURCE`
-- `workers/data-api.mjs`'s `handleNeuronsSync` (#4771) — the neurons/
+- `workers/data-api.ts`'s `handleNeuronsSync` (#4771) — the neurons/
   neuron_daily write route, deliberately kept in this same Worker rather
   than a new one (same Postgres instance as its read routes)
 - #4746, #4686, #4695, #4669, #4698, #4684, #4654, #4771, #4772 — the issues
