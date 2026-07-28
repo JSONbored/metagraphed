@@ -501,10 +501,12 @@ function latestObservedIso(rows: Row[], field: string = "last_observed") {
 }
 import { timingSafeEqual } from "../src/webhooks.ts";
 import {
+  ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_MAX_BODY_BYTES,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
   ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER,
+  deliveryRecordView,
   evaluatorAlertTriggerView,
   generateAlertTriggerOwnerToken,
   isValidAlertOwnerToken,
@@ -3859,11 +3861,11 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
     const v = validated.value;
     const [row] = await sql`
       INSERT INTO chain_alert_triggers
-        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, owner_ss58, created_at, updated_at)
+        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, active, owner_ss58, created_at, updated_at)
       VALUES (
         ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
         ${v.account}, ${v.minAmountTao}, ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
-        ${v.channel}, ${v.destination}, ${ownerSs58}, ${now}, ${now}
+        ${v.channel}, ${v.destination}, ${v.active}, ${ownerSs58}, ${now}, ${now}
       )
       RETURNING *`;
     return writeJson(
@@ -3918,6 +3920,64 @@ function omitNullValues(obj: Row) {
   return out;
 }
 
+// Shared by both PATCH routes (owner-token, watch-token) -- see
+// handleAlertTriggerUpdate's own comment for why the existing row is merged
+// onto the incoming body rather than validating the raw PATCH body directly
+// (a naive full-replace silently NULLs out/widens every condition field the
+// caller didn't resend). `active` is included in the base like every other
+// column -- it is never null (NOT NULL DEFAULT true), so omitNullValues
+// never strips it, meaning an update that doesn't mention `active` always
+// preserves the row's current pause/resume state.
+function mergeAlertTriggerUpdateBody(existing: Row, body: Row): Row {
+  return {
+    ...omitNullValues({
+      name: existing.name,
+      table_filter: existing.table_filter,
+      netuid: existing.netuid,
+      event_kind: existing.event_kind,
+      account: existing.account,
+      min_amount_tao:
+        existing.min_amount_tao === null
+          ? null
+          : Number(existing.min_amount_tao),
+      condition: existing.condition,
+      channel: existing.channel,
+      destination: existing.destination,
+      active: existing.active,
+    }),
+    ...omitNullValues(body),
+  };
+}
+
+async function runAlertTriggerUpdate(
+  sql: postgres.Sql,
+  id: string,
+  merged: Row,
+) {
+  const validated = validateAlertTriggerInput(merged);
+  if (!validated.ok) {
+    return writeJson({ error: validated.error }, 400);
+  }
+  const v = validated.value;
+  const now = Date.now();
+  const [row] = await sql`
+    UPDATE chain_alert_triggers SET
+      name = ${v.name},
+      table_filter = ${v.tableFilter},
+      netuid = ${v.netuid},
+      event_kind = ${v.eventKind},
+      account = ${v.account},
+      min_amount_tao = ${v.minAmountTao},
+      condition = ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
+      channel = ${v.channel},
+      destination = ${v.destination},
+      active = ${v.active},
+      updated_at = ${now}
+    WHERE id = ${id}
+    RETURNING *`;
+  return writeJson(ownerAlertTriggerView(row));
+}
+
 async function handleAlertTriggerUpdate(
   request: Request,
   env: Env,
@@ -3937,53 +3997,8 @@ async function handleAlertTriggerUpdate(
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
     const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
-
-    // Found by adversarial review: validating the raw PATCH body directly
-    // (the original version of this function) meant validateAlertTriggerInput's
-    // CREATE-oriented "omitted -> null" defaulting silently NULLed out any
-    // condition field the caller didn't resend, unintentionally WIDENING a
-    // trigger's match scope on every partial edit (e.g. renaming a
-    // netuid-scoped trigger without resending netuid would drop the netuid
-    // filter entirely). Merging onto the existing row first fixes this.
-    const merged = {
-      ...omitNullValues({
-        name: existing.name,
-        table_filter: existing.table_filter,
-        netuid: existing.netuid,
-        event_kind: existing.event_kind,
-        account: existing.account,
-        min_amount_tao:
-          existing.min_amount_tao === null
-            ? null
-            : Number(existing.min_amount_tao),
-        condition: existing.condition,
-        channel: existing.channel,
-        destination: existing.destination,
-      }),
-      ...omitNullValues(body),
-    };
-    const validated = validateAlertTriggerInput(merged);
-    if (!validated.ok) {
-      return writeJson({ error: validated.error }, 400);
-    }
-
-    const v = validated.value;
-    const now = Date.now();
-    const [row] = await sql`
-      UPDATE chain_alert_triggers SET
-        name = ${v.name},
-        table_filter = ${v.tableFilter},
-        netuid = ${v.netuid},
-        event_kind = ${v.eventKind},
-        account = ${v.account},
-        min_amount_tao = ${v.minAmountTao},
-        condition = ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
-        channel = ${v.channel},
-        destination = ${v.destination},
-        updated_at = ${now}
-      WHERE id = ${id}
-      RETURNING *`;
-    return writeJson(ownerAlertTriggerView(row));
+    const merged = mergeAlertTriggerUpdateBody(existing, body);
+    return runAlertTriggerUpdate(sql, id, merged);
   });
 }
 
@@ -4099,6 +4114,95 @@ async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
       [now, ...ids],
     );
     return writeJson({ updated: updated.length });
+  });
+}
+
+// How many chain_alert_deliveries rows handleAlertTriggersDeliveryLogWrite
+// keeps per trigger -- matches #8375's own "last 20 deliveries" deliverable,
+// so the Alert Center never needs a separate retention/pagination story.
+const ALERT_TRIGGER_DELIVERY_LOG_RETAIN = 20;
+
+// Internal-only: the #8375 evaluator write-back for the Alert Center's
+// delivery history. AlerterHub.evaluate() (workers/alerter-hub.mjs) POSTs one
+// record per delivery ATTEMPT (not per match -- a rate-limited match never
+// reaches here, matching handleAlertTriggersMatchedWriteback's own
+// "matched" vs "delivered" distinction). Gated the SAME way as the
+// active-list/matched-writeback/dereg-risk routes above (same
+// ALERT_TRIGGERS_INTERNAL_TOKEN secret).
+async function handleAlertTriggersDeliveryLogWrite(request: Request, env: Env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers delivery-log write-back is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  const records = Array.isArray(body?.records)
+    ? body.records.filter(
+        (r: unknown) =>
+          r &&
+          typeof r === "object" &&
+          isValidAlertTriggerId((r as Row).trigger_id) &&
+          Number.isInteger((r as Row).delivered_at),
+      )
+    : [];
+  if (records.length === 0) {
+    return writeJson(
+      { error: "records must be a non-empty array of delivery outcomes" },
+      400,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    // Distinct trigger ids touched by this batch -- pruned to the most
+    // recent ALERT_TRIGGER_DELIVERY_LOG_RETAIN rows each, after every insert
+    // in the batch lands, so a single request never leaves a trigger's
+    // history over the retention bound mid-batch.
+    const triggerIds = new Set<string>();
+    for (const r of records as Row[]) {
+      const responseSnippet =
+        typeof r.response_snippet === "string"
+          ? r.response_snippet.slice(
+              0,
+              ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
+            )
+          : null;
+      await sql`
+        INSERT INTO chain_alert_deliveries
+          (trigger_id, delivered_at, success, status_code, retry_count, response_snippet)
+        VALUES (
+          ${String(r.trigger_id)}, ${r.delivered_at}, ${r.success === true},
+          ${Number.isInteger(r.status_code) ? r.status_code : null}, 0,
+          ${responseSnippet}
+        )`;
+      triggerIds.add(String(r.trigger_id));
+    }
+    for (const triggerId of triggerIds) {
+      await sql`
+        DELETE FROM chain_alert_deliveries
+        WHERE trigger_id = ${triggerId}
+          AND id NOT IN (
+            SELECT id FROM chain_alert_deliveries
+            WHERE trigger_id = ${triggerId}
+            ORDER BY delivered_at DESC
+            LIMIT ${ALERT_TRIGGER_DELIVERY_LOG_RETAIN}
+          )`;
+    }
+    return writeJson({ inserted: records.length });
   });
 }
 
@@ -4227,6 +4331,158 @@ async function handleAlertTriggersRoute(request: Request, env: Env, url: URL) {
     {
       error:
         "Use POST /api/v1/alerts/triggers, or GET/PATCH/DELETE /api/v1/alerts/triggers/{id}.",
+    },
+    405,
+  );
+}
+
+// #8375: Alert Center -- the address-scoped counterpart to
+// handleAlertTriggersRoute above. Every route here authorizes via a
+// wallet-verified WATCH_TRIGGER_TOKEN_HEADER (src/wallet-auth.ts's
+// createTriggerToken/verifyTriggerToken, the SAME token
+// resolveAlertTriggerCreateAuth already accepts for trigger creation) rather
+// than a trigger's own owner_token -- a verified address manages every
+// trigger IT created, without needing to have squirreled away each one's
+// individual owner_token. A request never sees another address' triggers:
+// every lookup below filters/checks by `owner_ss58 = <verified ss58>`, and a
+// mismatch returns the SAME 404 a nonexistent id gets (requireAlertTriggerOwner's
+// own anti-oracle posture, applied here too).
+async function requireVerifiedWatchSs58(
+  request: Request,
+  env: Env,
+): Promise<{ ok: true; ss58: string } | { ok: false; response: Response }> {
+  const tokenSecret = env.WATCH_TRIGGER_TOKEN_SECRET;
+  if (!tokenSecret) {
+    return {
+      ok: false,
+      response: writeJson(
+        {
+          error:
+            "wallet-verified alert issuance is not provisioned on this deployment",
+        },
+        503,
+      ),
+    };
+  }
+  const token = request.headers.get(WATCH_TRIGGER_TOKEN_HEADER) || "";
+  const verified = await verifyTriggerToken(tokenSecret, token);
+  if (!verified) {
+    return {
+      ok: false,
+      response: writeJson(
+        { error: `invalid or expired ${WATCH_TRIGGER_TOKEN_HEADER}` },
+        401,
+      ),
+    };
+  }
+  return { ok: true, ss58: verified.ss58 };
+}
+
+async function handleWatchTriggersList(request: Request, env: Env) {
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    const rows = await sql`
+      SELECT * FROM chain_alert_triggers
+      WHERE owner_ss58 = ${auth.ss58}
+      ORDER BY created_at DESC`;
+    return writeJson({ triggers: rows.map(ownerAlertTriggerView) });
+  });
+}
+
+async function handleWatchTriggerUpdate(
+  request: Request,
+  env: Env,
+  id: string,
+) {
+  if (!isValidAlertTriggerId(id)) {
+    return writeJson({ error: "malformed trigger id" }, 400);
+  }
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return writeJson({ error: "Request body must be a JSON object." }, 400);
+  }
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    const [existing] =
+      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
+    if (!existing || existing.owner_ss58 !== auth.ss58) {
+      return writeJson({ error: "no such trigger" }, 404);
+    }
+    const merged = mergeAlertTriggerUpdateBody(existing, body);
+    return runAlertTriggerUpdate(sql, id, merged);
+  });
+}
+
+async function handleWatchTriggerDelete(
+  request: Request,
+  env: Env,
+  id: string,
+) {
+  if (!isValidAlertTriggerId(id)) {
+    return writeJson({ error: "malformed trigger id" }, 400);
+  }
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    const [existing] =
+      await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
+    if (!existing || existing.owner_ss58 !== auth.ss58) {
+      return writeJson({ error: "no such trigger" }, 404);
+    }
+    await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
+    return writeJson({ id, deleted: true });
+  });
+}
+
+async function handleWatchTriggerDeliveries(
+  request: Request,
+  env: Env,
+  id: string,
+) {
+  if (!isValidAlertTriggerId(id)) {
+    return writeJson({ error: "malformed trigger id" }, 400);
+  }
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    const [existing] =
+      await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
+    if (!existing || existing.owner_ss58 !== auth.ss58) {
+      return writeJson({ error: "no such trigger" }, 404);
+    }
+    const rows = await sql`
+      SELECT * FROM chain_alert_deliveries
+      WHERE trigger_id = ${id}
+      ORDER BY delivered_at DESC
+      LIMIT ${ALERT_TRIGGER_DELIVERY_LOG_RETAIN}`;
+    return writeJson({ deliveries: rows.map(deliveryRecordView) });
+  });
+}
+
+async function handleWatchTriggersRoute(request: Request, env: Env, url: URL) {
+  const segments = url.pathname.split("/").filter(Boolean);
+  // ["api", "v1", "watch", "triggers", <id?>, <"deliveries"?>]
+  const id = segments[4];
+  const sub = segments[5];
+  if (!id && request.method === "GET") {
+    return handleWatchTriggersList(request, env);
+  }
+  if (id && sub === "deliveries" && request.method === "GET") {
+    return handleWatchTriggerDeliveries(request, env, id);
+  }
+  if (id && !sub && request.method === "PATCH") {
+    return handleWatchTriggerUpdate(request, env, id);
+  }
+  if (id && !sub && request.method === "DELETE") {
+    return handleWatchTriggerDelete(request, env, id);
+  }
+  return writeJson(
+    {
+      error:
+        "Use GET /api/v1/watch/triggers, PATCH/DELETE /api/v1/watch/triggers/{id}, or GET /api/v1/watch/triggers/{id}/deliveries.",
     },
     405,
   );
@@ -4953,6 +5209,13 @@ async function dispatchDataApiRequest(
     if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
       return handleAlertTriggersRoute(request, env, url);
     }
+    // #8375: the Alert Center's address-scoped counterpart -- GET (list),
+    // PATCH/DELETE (single trigger), GET .../deliveries (history), all
+    // watch-token authorized. Same "multi-method, can't join the exact-match
+    // checks" shape as handleAlertTriggersRoute just above.
+    if (url.pathname.startsWith("/api/v1/watch/triggers")) {
+      return handleWatchTriggersRoute(request, env, url);
+    }
     // Wallet login + account-gated fullnode API keys (ADR 0021, #6835) --
     // same multi-method-can't-join-the-exact-match-checks shape as the
     // alert-triggers route just above.
@@ -5001,6 +5264,14 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/alert-triggers/matched"
     ) {
       return handleAlertTriggersMatchedWriteback(request, env);
+    }
+    // #8375: the evaluator's own delivery-history write-back -- see
+    // handleAlertTriggersDeliveryLogWrite's own header comment.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/alert-triggers/deliveries"
+    ) {
+      return handleAlertTriggersDeliveryLogWrite(request, env);
     }
     // #6747: the predicate-condition evaluator's own metric-snapshot refresh
     // -- see handleDeregRiskSnapshot's own header comment.

@@ -266,6 +266,169 @@ test("maps each upstream status to a distinct, condition-specific error code", a
   assert.equal(await codeFor(418), "alert_trigger_request_failed");
 });
 
+// --- /api/v1/watch/triggers* (#8375 Alert Center) -- shares the SAME proxy
+// function as /api/v1/alerts/triggers* above (handleAlertTriggersProxy is a
+// generic pass-through; all real auth/routing lives in
+// workers/data-api.mjs's handleWatchTriggersRoute), so these tests only
+// need to cover the dispatch wiring (does /api/v1/watch/triggers* actually
+// reach the proxy, for every method it needs), not re-derive the full
+// error-code/rate-limit-header matrix already covered above.
+
+test("forwards GET /api/v1/watch/triggers to DATA_API", async () => {
+  let receivedPath;
+  let receivedMethod;
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers", {
+      method: "GET",
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {
+      DATA_API: {
+        fetch(request: Request) {
+          receivedPath = new URL(request.url).pathname;
+          receivedMethod = request.method;
+          return new Response(JSON.stringify({ triggers: [] }), {
+            status: 200,
+          });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(receivedPath, "/api/v1/watch/triggers");
+  assert.equal(receivedMethod, "GET");
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).data, { triggers: [] });
+});
+
+test("forwards PATCH /api/v1/watch/triggers/{id} to DATA_API", async () => {
+  let receivedMethod;
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers/1", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": "tok" },
+      body: { active: false },
+    }),
+    {
+      DATA_API: {
+        fetch(request: Request) {
+          receivedMethod = request.method;
+          return new Response(JSON.stringify({ id: "1", active: false }), {
+            status: 200,
+          });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(receivedMethod, "PATCH");
+  assert.equal(res.status, 200);
+});
+
+test("forwards DELETE /api/v1/watch/triggers/{id} to DATA_API", async () => {
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers/1", {
+      method: "DELETE",
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {
+      DATA_API: {
+        fetch() {
+          return new Response(JSON.stringify({ id: "1", deleted: true }), {
+            status: 200,
+          });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).data, { id: "1", deleted: true });
+});
+
+test("forwards GET /api/v1/watch/triggers/{id}/deliveries to DATA_API", async () => {
+  let receivedPath;
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers/1/deliveries", {
+      method: "GET",
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {
+      DATA_API: {
+        fetch(request: Request) {
+          receivedPath = new URL(request.url).pathname;
+          return new Response(JSON.stringify({ deliveries: [] }), {
+            status: 200,
+          });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(receivedPath, "/api/v1/watch/triggers/1/deliveries");
+  assert.deepEqual((await res.json()).data, { deliveries: [] });
+});
+
+test("returns 503 for /api/v1/watch/triggers when DATA_API is not bound", async () => {
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers"),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 503);
+  assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
+});
+
+test("relays a non-2xx upstream status for /api/v1/watch/triggers with the upstream's error message", async () => {
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers", {
+      headers: { "x-watch-trigger-token": "bad" },
+    }),
+    {
+      DATA_API: {
+        fetch() {
+          return new Response(
+            JSON.stringify({
+              error: "invalid or expired x-watch-trigger-token",
+            }),
+            { status: 401 },
+          );
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 401);
+  assert.equal(
+    (await res.json()).error.message,
+    "invalid or expired x-watch-trigger-token",
+  );
+});
+
+test("OPTIONS /api/v1/watch/triggers advertises GET, PATCH, DELETE, OPTIONS (no POST -- creation stays at /api/v1/alerts/triggers)", async () => {
+  const res = await handleRequest(
+    req("/api/v1/watch/triggers", { method: "OPTIONS" }),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 204);
+  assert.equal(
+    res.headers.get("access-control-allow-methods"),
+    "GET, PATCH, DELETE, OPTIONS",
+  );
+});
+
+test("GET /api/v1/testnet/watch/triggers 404s -- mainnet-only, not partitioned per network", async () => {
+  const res = await handleRequest(
+    req("/api/v1/testnet/watch/triggers", {
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 404);
+});
+
 test("does not attach rate-limit headers when the upstream error carries none", async () => {
   const res = await handleRequest(
     req("/api/v1/alerts/triggers/1", {

@@ -1730,7 +1730,14 @@ export async function handleRequest(
   // above. All auth/routing/validation live in workers/data-api.mjs's
   // handleAlertTriggersRoute -- this is only the DATA_API forwarding
   // boundary.
-  if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+  if (
+    url.pathname.startsWith("/api/v1/alerts/triggers") ||
+    // #8375: the Alert Center's address-scoped counterpart -- same generic
+    // pass-through proxy (all auth/routing/validation live in
+    // workers/data-api.mjs's handleWatchTriggersRoute), same error-code
+    // family as it's still an alert-trigger-family failure.
+    url.pathname.startsWith("/api/v1/watch/triggers")
+  ) {
     return handleAlertTriggersProxy(request, env);
   }
 
@@ -3434,6 +3441,7 @@ function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/auth/wallet/verify" ||
     pathname === "/api/v1/watch/challenges" ||
     pathname === "/api/v1/watch/tokens" ||
+    pathname.startsWith("/api/v1/watch/triggers") ||
     pathname.startsWith("/api/v1/keys") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
@@ -5460,6 +5468,8 @@ function corsPreflight(request: Request) {
     methods = "POST, GET, DELETE, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
     methods = "POST, GET, PATCH, DELETE, OPTIONS";
+  } else if (url.pathname.startsWith("/api/v1/watch/triggers")) {
+    methods = "GET, PATCH, DELETE, OPTIONS";
   } else if (url.pathname === "/api/v1/graphql") {
     // POST executes queries; GET serves the published SDL document.
     methods = "GET, POST, OPTIONS";

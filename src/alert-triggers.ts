@@ -250,6 +250,7 @@ export interface AlertTriggerValidated {
   condition: AlertConditionInput | null;
   channel: string;
   destination: string;
+  active: boolean;
 }
 
 // Validates a create/update request body into the exact shape the Postgres
@@ -370,6 +371,23 @@ export function validateAlertTriggerInput(
   if (!conditionResult.ok) return conditionResult;
   const condition = conditionResult.value;
 
+  // #8375: pause/resume. Defaults to true (matching
+  // chain_alert_triggers.active's own NOT NULL DEFAULT true) so CREATE
+  // callers -- which never send this field -- are unaffected; an UPDATE
+  // caller always has it supplied by the merge base (handleAlertTriggerUpdate
+  // seeds it from the existing row), so it is never left to this default in
+  // practice on that path.
+  let active = true;
+  if (body.active !== undefined) {
+    if (typeof body.active !== "boolean") {
+      return {
+        ok: false,
+        error: "`active`, when provided, must be a boolean.",
+      };
+    }
+    active = body.active;
+  }
+
   if (
     netuid === null &&
     !eventKind &&
@@ -396,6 +414,7 @@ export function validateAlertTriggerInput(
       condition,
       channel: body.channel as string,
       destination: body.destination as string,
+      active,
     },
   };
 }
@@ -588,4 +607,40 @@ export function evaluatorAlertTriggerView(
 // leading zeros beyond "0" itself, no sign, no whitespace).
 export function isValidAlertTriggerId(id: unknown): boolean {
   return /^(0|[1-9]\d*)$/.test(String(id));
+}
+
+// #8375: Alert Center delivery history. A failed delivery's response body is
+// truncated to this many bytes before it is ever written to
+// chain_alert_deliveries.response_snippet -- enough to show why a delivery
+// failed, never the full (potentially large, potentially sensitive-to-the-
+// receiver) body.
+export const ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES = 500;
+
+export interface DeliveryRecordView {
+  id: string;
+  delivered_at: unknown;
+  success: boolean;
+  status_code: number | null;
+  retry_count: number;
+  response_snippet: string | null;
+}
+
+// Public shape for one chain_alert_deliveries row -- every field here is
+// already safe to return to the trigger's own owner (this table carries no
+// credential/secret columns, unlike chain_alert_triggers.owner_token).
+export function deliveryRecordView(
+  record: Record<string, unknown> | null | undefined,
+): DeliveryRecordView | null {
+  if (!record || typeof record !== "object") return null;
+  return {
+    id: String(record.id),
+    delivered_at: record.delivered_at ?? null,
+    success: record.success === true,
+    status_code:
+      record.status_code === undefined || record.status_code === null
+        ? null
+        : Number(record.status_code),
+    retry_count: record.retry_count == null ? 0 : Number(record.retry_count),
+    response_snippet: (record.response_snippet as string | null) ?? null,
+  };
 }

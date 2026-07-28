@@ -1028,6 +1028,32 @@ CREATE INDEX IF NOT EXISTS idx_cat_active ON chain_alert_triggers (active) WHERE
 CREATE INDEX IF NOT EXISTS idx_cat_owner_ss58_active ON chain_alert_triggers (owner_ss58) WHERE owner_ss58 IS NOT NULL AND active;
 
 -- ---------------------------------------------------------------------------
+-- Per-delivery attempt log (#8375, same epic as chain_alert_triggers above) --
+-- the Alert Center's "last 20 deliveries" history. AlerterHub.deliverAlertMatch
+-- (workers/alerter-hub.mjs) writes one row per attempted delivery, best-effort
+-- (a failed write-back here never blocks or fails the delivery itself, same
+-- posture as that file's existing match_count write-back). `retry_count` is
+-- carried for forward-compat with src/alert-delivery.mjs's documented
+-- "retry/dead-letter is a deliberate v1 scope cut" fast-follow -- always 0
+-- today, since delivery is single-attempt only. Pruned to the most recent 20
+-- rows per trigger on every insert (see handleAlertTriggerDeliveryLogWrite in
+-- workers/data-api.mjs) rather than a separate TTL sweep -- a small,
+-- self-bounding table, so no entry in schema-timescaledb.sql.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS chain_alert_deliveries (
+  id                BIGSERIAL PRIMARY KEY,
+  trigger_id        BIGINT NOT NULL REFERENCES chain_alert_triggers(id) ON DELETE CASCADE,
+  delivered_at      BIGINT NOT NULL,
+  success           BOOLEAN NOT NULL,
+  status_code       INTEGER,
+  retry_count       INTEGER NOT NULL DEFAULT 0,
+  -- Truncated at write time (see ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES) --
+  -- never the full response body, only enough to show why a delivery failed.
+  response_snippet  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cad_trigger_delivered_at ON chain_alert_deliveries (trigger_id, delivered_at DESC);
+
+-- ---------------------------------------------------------------------------
 -- Self-serve API keys (ADR 0020, epic #6733/#6735) -- the optional identity
 -- tier a caller can opt into for a higher rate-limit bucket + self-checkable
 -- usage. Keyless-by-default is unchanged; this table is additive.
