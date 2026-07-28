@@ -204,6 +204,12 @@ export {
   type TreemapMiniDatum,
   TreemapMini,
 } from "@/components/metagraphed/charts/treemap-mini";
+export {
+  type SankeyNode,
+  type SankeyLink,
+  layoutSankey,
+  SankeyMini,
+} from "@/components/metagraphed/charts/sankey-mini";
 
 // Relocated from apps/ui/.../primitives (2026-07-23): dependency-free design-
 // system primitives, moved here so ui-kit's own components can use them too

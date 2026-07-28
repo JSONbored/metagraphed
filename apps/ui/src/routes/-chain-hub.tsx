@@ -51,6 +51,12 @@ export const CHAIN_TABS: readonly ChainTab[] = [
       "Root-origin activity: Sudo calls and the AdminUtils config changes that tune subnet hyperparameters.",
   },
   {
+    to: "/chain/analytics",
+    label: "Analytics",
+    blurb:
+      "Stake-flow sankey, concentration & emission trends, and registration economics — computed live from the chain-direct tiers.",
+  },
+  {
     to: "/chain/runtime",
     label: "Runtime",
     blurb:
