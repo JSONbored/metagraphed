@@ -11,6 +11,8 @@ import {
   ErrorPanel,
   Field,
   inputCls,
+  WalletVerifyForToken,
+  WATCH_TRIGGER_TOKEN_HEADER,
   type Channel,
 } from "@/components/metagraphed/watch-alert-form";
 
@@ -29,6 +31,7 @@ const EVENT_KINDS = [
 
 interface CreateVariables {
   token: string;
+  usingWalletToken: boolean;
   eventKind: string;
   channel: Channel;
   destination: string;
@@ -37,6 +40,7 @@ interface CreateVariables {
 /** "Watch this subnet": a netuid-scoped alert trigger over the existing #4984 alerts API. */
 export function WatchSubnetAlert({ netuid }: { netuid: number }) {
   const [token, setToken] = useState("");
+  const [usingWalletToken, setUsingWalletToken] = useState(false);
   const [eventKind, setEventKind] = useState("");
   const [channel, setChannel] = useState<Channel>("webhook");
   const [destination, setDestination] = useState("");
@@ -48,7 +52,7 @@ export function WatchSubnetAlert({ netuid }: { netuid: number }) {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            [CREATE_TOKEN_HEADER]: vars.token,
+            [vars.usingWalletToken ? WATCH_TRIGGER_TOKEN_HEADER : CREATE_TOKEN_HEADER]: vars.token,
           },
           body: JSON.stringify({
             netuid,
@@ -66,6 +70,7 @@ export function WatchSubnetAlert({ netuid }: { netuid: number }) {
     e.preventDefault();
     mutation.mutate({
       token: token.trim(),
+      usingWalletToken,
       eventKind,
       channel,
       destination: destination.trim(),
@@ -78,7 +83,8 @@ export function WatchSubnetAlert({ netuid }: { netuid: number }) {
     <div className="space-y-3">
       <p className="max-w-2xl mg-type-caption-lg text-ink-muted">
         Get a webhook or Discord notification for on-chain activity on SN{netuid}. Creation requires
-        a trigger token issued by a metagraphed operator — this app never bundles one.
+        a trigger token — issued by a metagraphed operator, or self-serve by verifying with your
+        wallet below.
       </p>
       <form onSubmit={onSubmit} className="space-y-3 rounded border border-border bg-card p-4">
         <Field label="Event" hint="Leave as 'any' to watch every indexed event on this subnet.">
@@ -100,17 +106,36 @@ export function WatchSubnetAlert({ netuid }: { netuid: number }) {
           destination={destination}
           onDestinationChange={setDestination}
         />
+        <WalletVerifyForToken
+          onVerified={(walletToken) => {
+            if (walletToken) {
+              setToken(walletToken);
+              setUsingWalletToken(true);
+            } else if (usingWalletToken) {
+              setToken("");
+              setUsingWalletToken(false);
+            }
+          }}
+        />
         <Field
           label="Creation token"
           required
-          hint="Provided out-of-band by a metagraphed operator."
+          hint={
+            usingWalletToken
+              ? "Verified with your connected wallet."
+              : "Provided out-of-band by a metagraphed operator, or verify with your wallet above."
+          }
         >
           <input
             type="password"
             required
             autoComplete="off"
+            readOnly={usingWalletToken}
             value={token}
-            onChange={(e) => setToken(e.target.value)}
+            onChange={(e) => {
+              setToken(e.target.value);
+              setUsingWalletToken(false);
+            }}
             className={inputCls}
           />
         </Field>

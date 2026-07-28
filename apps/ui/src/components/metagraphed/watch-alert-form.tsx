@@ -1,6 +1,11 @@
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { Check, LogOut } from "lucide-react";
 import { CopyableCode } from "@jsonbored/ui-kit";
 import { ApiError } from "@/lib/metagraphed/client";
+import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
+import { useWallet } from "@/hooks/use-wallet";
+import { useWatchToken } from "@/hooks/use-watch-token";
+import { shortHash } from "@/lib/metagraphed/blocks";
 
 // Shared primitives for the "watch this X" alert-trigger forms (#6558). Both
 // WatchValidatorAlert (account-scoped) and WatchSubnetAlert (netuid-scoped) POST
@@ -10,6 +15,9 @@ import { ApiError } from "@/lib/metagraphed/client";
 
 // Must match src/alert-triggers.ts — ALERT_TRIGGER_CREATE_TOKEN_HEADER.
 export const CREATE_TOKEN_HEADER = "x-alert-trigger-create-token";
+// #8374: the self-serve alternative — must match src/alert-triggers.ts's
+// WATCH_TRIGGER_TOKEN_HEADER. A request sends at most one of the two.
+export const WATCH_TRIGGER_TOKEN_HEADER = "x-watch-trigger-token";
 
 export const CHANNELS = ["webhook", "discord"] as const;
 export type Channel = (typeof CHANNELS)[number];
@@ -118,6 +126,90 @@ export function ChannelAndDestinationFields({
         />
       </Field>
     </>
+  );
+}
+
+/**
+ * #8374: the self-serve alternative to pasting an operator-issued creation
+ * token — connect a wallet, sign a challenge, and get a 90-day
+ * trigger-creation token minted for that address, no operator involved.
+ * Calls `onVerified(token)` once a token is active (and `onVerified(null)`
+ * if the wallet disconnects or the token is cleared) so the parent form can
+ * auto-fill its own token field and remember which header to send it under
+ * (WATCH_TRIGGER_TOKEN_HEADER, not CREATE_TOKEN_HEADER — the two are never
+ * interchangeable, see src/alert-triggers.ts's own header comment). The
+ * manual-entry path (a real metagraphed-operator token) always stays
+ * available below this — connecting a wallet is additive, never required.
+ */
+export function WalletVerifyForToken({
+  onVerified,
+}: {
+  onVerified: (token: string | null) => void;
+}) {
+  const { wallet, status: walletStatus } = useWallet();
+  const watchToken = useWatchToken(wallet);
+
+  useEffect(() => {
+    onVerified(watchToken.status === "active" ? watchToken.token : null);
+    // onVerified is a fresh closure each render in the two call sites below;
+    // re-running it every time watchToken.token/status settles (not on
+    // every parent render) is exactly the intended behavior here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchToken.status, watchToken.token]);
+
+  if (walletStatus !== "connected" || !wallet) {
+    return (
+      <div className="rounded border border-border bg-surface/40 p-3">
+        <p className="mb-2 mg-type-caption text-ink-muted">
+          Or connect a wallet to verify yourself — no operator token needed.
+        </p>
+        <WalletConnectPanel />
+      </div>
+    );
+  }
+
+  if (watchToken.status === "active" && watchToken.token) {
+    return (
+      <div className="flex items-center justify-between gap-2 rounded border border-ink-strong/40 bg-surface px-2 py-1.5">
+        <span className="inline-flex items-center gap-1.5 mg-type-caption text-ink-strong">
+          <Check className="size-3.5 text-health-ok shrink-0" aria-hidden="true" />
+          Verified with wallet {shortHash(wallet.address, 4)} — token filled in below.
+        </span>
+        <button
+          type="button"
+          onClick={watchToken.clear}
+          className="inline-flex shrink-0 items-center gap-1 mg-type-caption text-ink-muted hover:text-ink-strong"
+        >
+          <LogOut className="size-3 shrink-0" aria-hidden="true" />
+          Use a different token
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded border border-border bg-surface/40 p-3">
+      <p className="mg-type-caption text-ink-muted">
+        Sign a one-time message with {shortHash(wallet.address, 4)} to verify yourself instead of
+        pasting an operator token. This never constructs or broadcasts a transaction.
+      </p>
+      {watchToken.status === "error" && watchToken.error ? (
+        <div
+          role="alert"
+          className="rounded border border-health-down/30 bg-health-down/5 px-2 py-1.5 mg-type-caption text-health-down"
+        >
+          {watchToken.error}
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={watchToken.issue}
+        disabled={watchToken.status === "issuing"}
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+      >
+        {watchToken.status === "issuing" ? "Verifying…" : "Verify with wallet"}
+      </button>
+    </div>
   );
 }
 

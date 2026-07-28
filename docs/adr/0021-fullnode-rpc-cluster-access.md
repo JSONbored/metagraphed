@@ -194,6 +194,46 @@ No pre-existing key needed a migration path: no one had minted a key
 through this route yet at the time of this rework (confirmed with the
 owner), so this was a clean cutover, not a dual-system transition.
 
+### 4c. Extension: the same challenge/verify primitives issue self-serve alert-trigger tokens too (#8374)
+
+This ADR's `src/wallet-auth.mjs` challenge/verify pair and its stateless
+HMAC-signed-token pattern (section "Resolved during implementation" below)
+turned out to be exactly what Explorer Program theme T6 ("self-serve
+engagement") needed for a second, unrelated purpose: letting a wallet holder
+mint their own `chain_alert_triggers` creation token, replacing the
+operator-out-of-band-secret-only flow `#4984` shipped with. Rather than
+duplicate the challenge/sign/verify machinery, `issueWalletChallenge`/
+`verifyWalletChallenge` grew a `purpose: "login" | "watch"` parameter
+(defaulting to `"login"`, so this ADR's own RPC-login message/KV-key shape
+is byte-for-byte unchanged) that domain-separates both the signed message
+text and the KV nonce's key per purpose — **load-bearing, not cosmetic**: a
+signature is proof of "this ss58 signed this exact message," nothing more,
+so without domain separation a signature captured for one flow would verify
+identically against the other flow's challenge for the same address.
+
+The minted artifact differs from this ADR's session token in three ways,
+each a deliberate, narrower scope than the key-management session:
+
+- **A distinct signing secret** (`WATCH_TRIGGER_TOKEN_SECRET`, not
+  `WALLET_SESSION_SECRET`) — a leaked watch token must not double as a
+  key-management session and vice versa, even though both are the "same
+  shape" HMAC-signed token.
+- **90-day TTL**, not 1 hour — a watch token authorizes trigger creation
+  over months (renewal is "sign again," not "every visit"), unlike a
+  session scoped to one key-management dashboard visit.
+- **No Postgres write at mint time** — unlike `handleWalletVerify`'s
+  `rpc_accounts` upsert, minting a watch token is a pure crypto operation;
+  the only write happens later, when the token is actually spent to create
+  a trigger (`chain_alert_triggers.owner_ss58`, enforced against a 5-active-
+  triggers-per-address cap at that point, not at mint time — an address
+  could otherwise mint tokens indefinitely without ever hitting a limit).
+
+New routes `POST /api/v1/watch/challenges` / `POST /api/v1/watch/tokens`
+mirror `/api/v1/auth/wallet/challenge` / `/verify`'s own exclusion from the
+OpenAPI contract pipeline (same reasoning: stateful POST actions with no
+backing artifact, not a resource this repo's schema-first contract exists
+to describe) — see `tests/api-coverage.test.ts`'s `NON_CONTRACT_PATHS`.
+
 ### 5. Tiering: one free tier at launch, matching taostats' own current reality
 
 Even taostats' own RBAC/billing is "coming soon" per their docs — there is no

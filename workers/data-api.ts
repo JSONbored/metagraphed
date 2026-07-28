@@ -511,6 +511,8 @@ import {
   isValidAlertTriggerId,
   ownerAlertTriggerView,
   validateAlertTriggerInput,
+  WATCH_TRIGGER_TOKEN_HEADER,
+  WATCH_TRIGGERS_MAX_PER_ADDRESS,
 } from "../src/alert-triggers.ts";
 import {
   BLOCK_PAGINATION,
@@ -542,10 +544,13 @@ import {
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import {
   createSessionToken,
+  createTriggerToken,
   issueWalletChallenge,
   SESSION_TTL_SECONDS,
   verifySessionToken,
+  verifyTriggerToken,
   verifyWalletChallenge,
+  WATCH_TOKEN_TTL_SECONDS,
 } from "../src/wallet-auth.ts";
 import type Neurons from "../generated/db/public/Neurons.ts";
 import type NeuronDaily from "../generated/db/public/NeuronDaily.ts";
@@ -3709,23 +3714,91 @@ function requireAlertTriggerOwner(
 // the advertised headers match the enforced limit. (#5475)
 const ALERT_TRIGGER_CREATE_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
-async function handleAlertTriggerCreate(request: Request, env: Env) {
+// #8374: a create request authorizes via EITHER the shared operator secret
+// (ownerSs58: null -- the pre-#8374 path, entirely unchanged) OR a
+// wallet-verified watch token (ownerSs58: the token's ss58, enforced against
+// WATCH_TRIGGERS_MAX_PER_ADDRESS below). Exactly one header, never both --
+// presenting both is far more likely a caller bug than a real "try either"
+// intent, so it's rejected rather than silently preferring one.
+async function resolveAlertTriggerCreateAuth(
+  request: Request,
+  env: Env,
+): Promise<
+  { ok: true; ownerSs58: string | null } | { ok: false; response: Response }
+> {
+  const operatorToken =
+    request.headers.get(ALERT_TRIGGER_CREATE_TOKEN_HEADER) || "";
+  const watchToken = request.headers.get(WATCH_TRIGGER_TOKEN_HEADER) || "";
+
+  if (operatorToken && watchToken) {
+    return {
+      ok: false,
+      response: writeJson(
+        {
+          error: `provide at most one of ${ALERT_TRIGGER_CREATE_TOKEN_HEADER} or ${WATCH_TRIGGER_TOKEN_HEADER}`,
+        },
+        400,
+      ),
+    };
+  }
+
+  if (watchToken) {
+    const tokenSecret = env.WATCH_TRIGGER_TOKEN_SECRET;
+    if (!tokenSecret) {
+      return {
+        ok: false,
+        response: writeJson(
+          {
+            error:
+              "wallet-verified alert issuance is not provisioned on this deployment",
+          },
+          503,
+        ),
+      };
+    }
+    const verified = await verifyTriggerToken(tokenSecret, watchToken);
+    if (!verified) {
+      return {
+        ok: false,
+        response: writeJson(
+          { error: `invalid or expired ${WATCH_TRIGGER_TOKEN_HEADER}` },
+          401,
+        ),
+      };
+    }
+    return { ok: true, ownerSs58: verified.ss58 };
+  }
+
   const configured = env.ALERT_TRIGGER_CREATE_TOKEN;
   if (!configured) {
-    return writeJson(
-      {
-        error: "alert trigger creation is not provisioned on this deployment",
-      },
-      503,
-    );
+    return {
+      ok: false,
+      response: writeJson(
+        {
+          error: "alert trigger creation is not provisioned on this deployment",
+        },
+        503,
+      ),
+    };
   }
-  const provided = request.headers.get(ALERT_TRIGGER_CREATE_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, configured)) {
-    return writeJson(
-      { error: `provide a valid ${ALERT_TRIGGER_CREATE_TOKEN_HEADER} header` },
-      401,
-    );
+  if (!operatorToken || !timingSafeEqual(operatorToken, configured)) {
+    return {
+      ok: false,
+      response: writeJson(
+        {
+          error: `provide a valid ${ALERT_TRIGGER_CREATE_TOKEN_HEADER} or ${WATCH_TRIGGER_TOKEN_HEADER} header`,
+        },
+        401,
+      ),
+    };
   }
+  return { ok: true, ownerSs58: null };
+}
+
+async function handleAlertTriggerCreate(request: Request, env: Env) {
+  const auth = await resolveAlertTriggerCreateAuth(request, env);
+  if (!auth.ok) return auth.response;
+  const ownerSs58 = auth.ownerSs58;
 
   // Found by adversarial review: ALERT_TRIGGER_CREATE_TOKEN is a SHARED
   // anti-abuse secret, not a per-user credential -- anyone holding it could
@@ -3733,6 +3806,9 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
   // permanent per-event cost in AlerterHub.matchingTriggers()'s O(active
   // triggers) scan. Skipped when unbound (local dev/CI), matching every
   // other optional rate-limiter binding's convention in this codebase.
+  // Applies regardless of which auth path above succeeded -- the IP-level
+  // throttle is a defense-in-depth layer independent of the per-address cap
+  // the wallet-verified flow additionally gets below.
   if (env.ALERT_TRIGGER_CREATE_RATE_LIMITER?.limit) {
     const { success } = await env.ALERT_TRIGGER_CREATE_RATE_LIMITER.limit({
       key: resolveClientIp(request),
@@ -3762,6 +3838,19 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
   }
 
   return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    if (ownerSs58) {
+      const [{ count }] = await sql`
+        SELECT COUNT(*)::int AS count FROM chain_alert_triggers
+        WHERE owner_ss58 = ${ownerSs58} AND active`;
+      if (count >= WATCH_TRIGGERS_MAX_PER_ADDRESS) {
+        return writeJson(
+          {
+            error: `this address already has ${WATCH_TRIGGERS_MAX_PER_ADDRESS} active triggers -- the maximum per verified address. Delete one to create another.`,
+          },
+          403,
+        );
+      }
+    }
     // Short local name (`ownerToken`, not `secret`) keeps the public-safety
     // scanner's hardcoded-credential heuristic from false-positiving here,
     // matching src/webhooks.ts's createWebhookSubscription convention.
@@ -3770,11 +3859,11 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
     const v = validated.value;
     const [row] = await sql`
       INSERT INTO chain_alert_triggers
-        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, created_at, updated_at)
+        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, owner_ss58, created_at, updated_at)
       VALUES (
         ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
         ${v.account}, ${v.minAmountTao}, ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
-        ${v.channel}, ${v.destination}, ${now}, ${now}
+        ${v.channel}, ${v.destination}, ${ownerSs58}, ${now}, ${now}
       )
       RETURNING *`;
     return writeJson(
@@ -4323,6 +4412,73 @@ async function handleWalletVerify(request: Request, env: Env) {
   });
 }
 
+// #8374: wallet-verified alert-trigger issuance -- the same challenge/verify
+// shape as handleWalletChallenge/handleWalletVerify immediately above
+// (same rate limiter, same body reader, same error-code mapping), scoped by
+// the "watch" purpose so a signature over one flow's challenge can't verify
+// the other's (src/wallet-auth.ts). Unlike the RPC login flow, success here
+// does NOT touch rpc_accounts or mint a session -- it mints a
+// stand-alone, stateless trigger-creation token
+// (src/wallet-auth.ts's createTriggerToken) with no Postgres write of its
+// own; the write happens later, at actual trigger creation
+// (handleAlertTriggerCreate above), which is also where the
+// WATCH_TRIGGERS_MAX_PER_ADDRESS cap is enforced.
+//   POST /api/v1/watch/challenges  { ss58 } -> a signable message
+//   POST /api/v1/watch/tokens      { ss58, signature } -> a trigger token
+
+async function handleWatchChallenge(request: Request, env: Env) {
+  const rateLimited = await walletAuthRateLimited(request, env);
+  if (rateLimited) return rateLimited;
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const ss58 = typeof body?.ss58 === "string" ? body.ss58 : "";
+  const result = await issueWalletChallenge(env, ss58, "watch");
+  if (!result.ok) {
+    return writeJson(
+      { error: walletAuthErrorMessage(result.code) },
+      walletAuthErrorStatus(result.code),
+    );
+  }
+  return writeJson({
+    message: result.message,
+    expires_in_seconds: result.expiresInSeconds,
+  });
+}
+
+async function handleWatchTokenMint(request: Request, env: Env) {
+  const rateLimited = await walletAuthRateLimited(request, env);
+  if (rateLimited) return rateLimited;
+  const tokenSecret = env.WATCH_TRIGGER_TOKEN_SECRET;
+  if (!tokenSecret) {
+    return writeJson(
+      {
+        error:
+          "wallet-verified alert issuance is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const ss58 = typeof body?.ss58 === "string" ? body.ss58 : "";
+  const signature = typeof body?.signature === "string" ? body.signature : "";
+  const result = await verifyWalletChallenge(env, ss58, signature, "watch");
+  if (!result.ok) {
+    return writeJson(
+      { error: walletAuthErrorMessage(result.code) },
+      // Same anti-oracle posture as handleWalletVerify: a failure is 401
+      // regardless of which check inside verifyWalletChallenge failed,
+      // except the genuine deployment-config gap (503).
+      result.code === "challenge_store_unavailable" ? 503 : 401,
+    );
+  }
+  const token = await createTriggerToken(tokenSecret, { ss58 });
+  return writeJson({
+    token,
+    expires_in_seconds: WATCH_TOKEN_TTL_SECONDS,
+  });
+}
+
 // GitHub OAuth account upsert (metagraphed#7151) -- reached ONLY via the
 // DATA_API service binding from src/github-oauth.ts's callback handler,
 // never directly from a browser/MCP client (this Worker has no public route
@@ -4811,6 +4967,17 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/auth/wallet/verify"
     ) {
       return handleWalletVerify(request, env);
+    }
+    // #8374: self-serve wallet-verified alert-trigger issuance -- same
+    // exact-path-and-method dispatch shape as the wallet-login pair above.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/watch/challenges"
+    ) {
+      return handleWatchChallenge(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/api/v1/watch/tokens") {
+      return handleWatchTokenMint(request, env);
     }
     if (
       request.method === "POST" &&

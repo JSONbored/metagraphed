@@ -1011,10 +1011,21 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
 -- existing production table, where CREATE TABLE IF NOT EXISTS alone would
 -- not, since the table already exists.
 ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS condition JSONB;
+-- #8374: NULL for an operator-token-created trigger (no wallet involved);
+-- the verified ss58 for one created via a wallet-verified watch token
+-- (src/wallet-auth.mjs's createTriggerToken). Read to enforce
+-- WATCH_TRIGGERS_MAX_PER_ADDRESS at create time and, later, to list "my
+-- triggers" in the alert center (#8375, same epic).
+ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS owner_ss58 TEXT;
 -- Covers AlerterHub's own "give me every active trigger" cache-refresh scan
 -- (#4984 Part 2) -- the only query pattern against this table that isn't
 -- already a fast primary-key lookup by id.
 CREATE INDEX IF NOT EXISTS idx_cat_active ON chain_alert_triggers (active) WHERE active;
+-- #8374: the WATCH_TRIGGERS_MAX_PER_ADDRESS count check's own query pattern
+-- ("how many active triggers does this ss58 already own") -- partial index
+-- since the large majority of rows (operator-created) have owner_ss58 NULL
+-- and are never matched by this predicate.
+CREATE INDEX IF NOT EXISTS idx_cat_owner_ss58_active ON chain_alert_triggers (owner_ss58) WHERE owner_ss58 IS NOT NULL AND active;
 
 -- ---------------------------------------------------------------------------
 -- Self-serve API keys (ADR 0020, epic #6733/#6735) -- the optional identity

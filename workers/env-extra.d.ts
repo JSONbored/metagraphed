@@ -53,4 +53,5 @@ interface Env {
   UNKEY_ROOT_KEY?: string;
   VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET?: string;
   WALLET_SESSION_SECRET?: string;
+  WATCH_TRIGGER_TOKEN_SECRET?: string;
 }
