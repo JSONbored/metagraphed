@@ -22,15 +22,20 @@ export interface FirstPrompt {
 
 export const FIRST_PROMPTS: readonly FirstPrompt[] = [
   {
-    prompt: "Evaluate subnet 7 before I stake into it — health, economics, and stake concentration.",
-    whatYouGet: "A read on whether a subnet is healthy and how concentrated its stake is, before you commit.",
+    prompt:
+      "Evaluate subnet 7 before I stake into it — health, economics, and stake concentration.",
+    whatYouGet:
+      "A read on whether a subnet is healthy and how concentrated its stake is, before you commit.",
   },
   {
-    prompt: "How is validator hotkey 5FHneW... doing? Current standing, 30-day trend, and who's staking to it.",
+    prompt:
+      "How is validator hotkey 5FHneW... doing? Current standing, 30-day trend, and who's staking to it.",
     whatYouGet: "A validator's current standing and trend, plus its nominator breakdown.",
   },
   {
-    prompt: "I need a subnet that does image generation over an HTTP API — find one and show me how to call it.",
-    whatYouGet: "A specific callable service matched to your task, with the actual request to make.",
+    prompt:
+      "I need a subnet that does image generation over an HTTP API — find one and show me how to call it.",
+    whatYouGet:
+      "A specific callable service matched to your task, with the actual request to make.",
   },
 ] as const;
