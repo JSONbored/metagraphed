@@ -105,6 +105,11 @@ import {
   EVENT_KIND_LABELS,
   type EventKindCategory,
 } from "@/lib/metagraphed/event-kinds";
+import {
+  aggregateActivityEvents,
+  activityGroupSpanMinutes,
+  type ActivityGroup,
+} from "@/lib/metagraphed/activity-aggregation";
 import type {
   AccountEvent,
   Candidate,
@@ -1276,13 +1281,20 @@ const EVENT_KIND_CATEGORY_DOT: Record<EventKindCategory, string> = {
 function EventKindCell({
   kind,
   className,
+  /** #8366: the aggregated-row count ("× 7") -- omitted (or 1) renders exactly as before. */
+  count,
+  /** #8366: "· last 12m" -- the issue's own worked-example format, only shown alongside a real count. */
+  spanMinutes,
 }: {
   kind: string | null | undefined;
   className?: string;
+  count?: number;
+  spanMinutes?: number | null;
 }) {
   const category = eventKindCategory(kind);
   const categoryLabel = eventKindCategoryLabel(category);
   const label = eventKindLabel(kind);
+  const grouped = count != null && count > 1;
 
   return (
     <span
@@ -1296,10 +1308,158 @@ function EventKindCell({
         style={{ background: EVENT_KIND_CATEGORY_DOT[category] }}
       />
       <span className="truncate text-[11px] text-ink-strong">{label}</span>
+      {grouped ? (
+        <span className="mg-type-caption-lg text-ink-muted">
+          × {count}
+          {spanMinutes != null ? ` · last ${spanMinutes}m` : ""}
+        </span>
+      ) : null}
       <span className="inline-flex items-center rounded border border-border bg-surface/40 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
         {categoryLabel}
       </span>
     </span>
+  );
+}
+
+/**
+ * One event's row, exactly as it always rendered -- pulled out unchanged so
+ * it can be reused both for an ungrouped event (a group of one -- the
+ * common case, and every one of these renders byte-for-byte identically to
+ * before #8366) and for each individual member row revealed when a
+ * collapsed group is expanded.
+ */
+function ActivityEventRow({ ev, nested }: { ev: AccountEvent; nested?: boolean }) {
+  return (
+    <tr className={classNames("hover:bg-surface/40", nested && "bg-surface/20")}>
+      <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
+        {ev.block_number != null ? (
+          <Link
+            to="/blocks/$ref"
+            params={{ ref: String(ev.block_number) }}
+            className="text-ink hover:underline"
+          >
+            #{formatNumber(ev.block_number)}
+          </Link>
+        ) : (
+          "—"
+        )}
+      </td>
+      <td className={classNames("px-4 py-2.5 whitespace-nowrap", nested && "pl-8")}>
+        <EventKindCell kind={ev.event_kind} />
+      </td>
+      <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
+        {ev.hotkey ? (
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58: ev.hotkey }}
+            className="text-ink-muted hover:text-ink hover:underline"
+          >
+            {shortHash(ev.hotkey) ?? ev.hotkey}
+          </Link>
+        ) : (
+          "—"
+        )}
+      </td>
+      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
+        {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+      </td>
+      <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
+        <TimeAgo at={ev.observed_at} />
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * #8366: one row PER AGGREGATED GROUP instead of one per event -- the fix
+ * for the audit's "five near-identical rows" monotony finding. A group of
+ * one renders through {@link ActivityEventRow} completely unchanged (this
+ * applies equally whether the table got here via a live stream refresh or
+ * the static/poll fallback -- both feed the same `events` array through the
+ * same {@link aggregateActivityEvents} call, so there's exactly one
+ * rendering path either way). A group of more than one collapses to a
+ * single summary row -- kind, "× N · last Mm", the newest member's block/
+ * time, and the shared hotkey if every member has the SAME one ("multiple"
+ * otherwise) -- clickable to reveal the individual rows beneath it.
+ */
+function ActivityGroupRow({
+  group,
+  expanded,
+  onToggle,
+}: {
+  group: ActivityGroup;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (group.events.length === 1) {
+    return <ActivityEventRow ev={group.events[0]!} />;
+  }
+  const latest = group.events[0]!;
+  const span = activityGroupSpanMinutes(group);
+  const sameHotkey = group.events.every((e) => e.hotkey === latest.hotkey);
+
+  return (
+    <>
+      <tr
+        className="cursor-pointer hover:bg-surface/40"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
+          {latest.block_number != null ? (
+            <Link
+              to="/blocks/$ref"
+              params={{ ref: String(latest.block_number) }}
+              className="text-ink hover:underline"
+              // The row itself toggles expand/collapse; this inner link must
+              // navigate instead, not also fire the row's own onClick.
+              onClick={(e) => e.stopPropagation()}
+            >
+              #{formatNumber(latest.block_number)}
+            </Link>
+          ) : (
+            "—"
+          )}
+        </td>
+        <td className="px-4 py-2.5 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5">
+            <ChevronDown
+              className={classNames(
+                "size-3 shrink-0 text-ink-muted transition-transform",
+                !expanded && "-rotate-90",
+              )}
+              aria-hidden
+            />
+            <EventKindCell kind={group.kind} count={group.events.length} spanMinutes={span} />
+          </span>
+        </td>
+        <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
+          {sameHotkey && latest.hotkey ? (
+            <Link
+              to="/accounts/$ss58"
+              params={{ ss58: latest.hotkey }}
+              className="text-ink-muted hover:text-ink hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {shortHash(latest.hotkey) ?? latest.hotkey}
+            </Link>
+          ) : (
+            <span className="text-ink-muted">multiple</span>
+          )}
+        </td>
+        <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted whitespace-nowrap">
+          —
+        </td>
+        <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
+          <TimeAgo at={latest.observed_at} />
+        </td>
+      </tr>
+      {expanded
+        ? group.events.map((ev, i) => (
+            <ActivityEventRow key={`${ev.block_number}-${ev.event_index}-${i}`} ev={ev} nested />
+          ))
+        : null}
+    </>
   );
 }
 
@@ -1309,6 +1469,13 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   const eventsQueryOptions = subnetEventsQuery(netuid, { kind });
   const { data } = useSuspenseQuery(eventsQueryOptions);
   const events = (data.data.events ?? []) as AccountEvent[];
+  // #8366: same array, live-refreshed or static snapshot alike -- see
+  // ActivityGroupRow's own comment for why that means one rendering path
+  // covers both. Recomputed on every render rather than memoized: at most
+  // 100 events (subnetEventsQuery's own limit), cheap enough that memoizing
+  // it would cost more bookkeeping than it saves.
+  const groups = aggregateActivityEvents(events);
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<number>>(new Set());
 
   // #8445: subscribe to the firehose's `account_events` topic (the only one
   // that carries `netuid` on the payload -- `chain_events` doesn't) so a new
@@ -1380,47 +1547,20 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {events.map((ev, i) => (
-                <tr
-                  key={`${ev.block_number}-${ev.event_index}-${i}`}
-                  className="hover:bg-surface/40"
-                >
-                  <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
-                    {ev.block_number != null ? (
-                      <Link
-                        to="/blocks/$ref"
-                        params={{ ref: String(ev.block_number) }}
-                        className="text-ink hover:underline"
-                      >
-                        #{formatNumber(ev.block_number)}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    <EventKindCell kind={ev.event_kind} />
-                  </td>
-                  <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
-                    {ev.hotkey ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: ev.hotkey }}
-                        className="text-ink-muted hover:text-ink hover:underline"
-                      >
-                        {shortHash(ev.hotkey) ?? ev.hotkey}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
-                    {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
-                    <TimeAgo at={ev.observed_at} />
-                  </td>
-                </tr>
+              {groups.map((group, i) => (
+                <ActivityGroupRow
+                  key={`${group.kind}-${group.events[0]!.block_number}-${group.events[0]!.event_index}-${i}`}
+                  group={group}
+                  expanded={expandedGroups.has(i)}
+                  onToggle={() =>
+                    setExpandedGroups((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(i)) next.delete(i);
+                      else next.add(i);
+                      return next;
+                    })
+                  }
+                />
               ))}
             </tbody>
           </table>
