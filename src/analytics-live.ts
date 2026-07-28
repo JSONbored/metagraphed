@@ -394,7 +394,7 @@ export async function loadCompareSubnets({
 // retired and the tables are dropped in production, so a live D1 query would
 // always miss. Serving now goes tryPostgresTier -> buildChainCalls([...]) /
 // buildChainFees([...]) / buildChainActivity([...]) (all still exported from
-// ./chain-analytics.ts), never D1. See workers/request-handlers/analytics.mjs's
+// ./chain-analytics.ts), never D1. See workers/request-handlers/analytics.ts's
 // handleChainCalls / handleChainFees / handleChainActivity and
 // src/mcp-server.ts's get_chain_calls tool for the call sites.
 

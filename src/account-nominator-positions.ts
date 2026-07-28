@@ -1,7 +1,7 @@
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
-// (src/account-portfolio.mjs), which only ever showed near-zero for a pure
+// (src/account-portfolio.ts), which only ever showed near-zero for a pure
 // delegator (its stake lives on someone ELSE's hotkey row, not its own).
 //
 // Sourced from nominator_positions (migration 0044, populated by the same

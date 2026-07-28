@@ -1,6 +1,6 @@
 // Supplemental OpenAPI CSV examples for routes whose handlers live outside
-// analytics-routes.mjs. Kept in a dedicated module so parallel CSV PRs can add
-// examples without contending on the csvExampleForRoute if-chain in contracts.mjs.
+// analytics-routes.ts. Kept in a dedicated module so parallel CSV PRs can add
+// examples without contending on the csvExampleForRoute if-chain in contracts.ts.
 // Shared header/example for the two event-stream feeds (subnet + account), which
 // serialize the same formatAccountEvent row shape.
 const EVENTS_CSV_EXAMPLE = [
@@ -36,7 +36,7 @@ export const ROUTE_CSV_EXAMPLES: Record<string, string> = {
     "8454388,2026-06-27T00:00:00.000Z,Apex,APEX,Sample subnet,https://github.com/example/apex,https://apex.example,https://discord.gg/apex,https://apex.example/logo.png,hash_sample",
   ].join("\r\n"),
   // The formatAccountIdentityHistoryEntry row shape
-  // (src/account-identity-history.mjs): keyed by account, so no block_number and
+  // (src/account-identity-history.ts): keyed by account, so no block_number and
   // the account_identity field names (name/url/github/image/additional).
   "account-identity-history": [
     "observed_at,name,url,github,image,discord,description,additional,identity_hash",
