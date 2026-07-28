@@ -1,6 +1,6 @@
 {
   // Dedicated Postgres-serving Worker (ADR 0013). Deployed separately from the main
-  // api.mjs Worker so the postgres.js driver + growing read surface don't eat the
+  // api.ts Worker so the postgres.js driver + growing read surface don't eat the
   // main Worker's bundle budget. Reached only via the main Worker's DATA_API service
   // binding (no public routes of its own). Deploy: wrangler deploy -c wrangler.data.jsonc
   //
@@ -8,14 +8,14 @@
   // neurons-sync, subnet-hyperparams-sync, account-identity-sync,
   // subnet-identity-sync, health-checks-sync, health-uptime-rollup-sync,
   // subnet-snapshot-sync, rpc-usage-sync, subnet-locks-sync (#6638) -- see
-  // workers/data-api.mjs's handle*Sync functions) -- each requires its own
+  // workers/data-api.ts's handle*Sync functions) -- each requires its own
   // secret, set via:
   //   wrangler secret put <NAME>_SYNC_SECRET -c wrangler.data.jsonc
   // (and, for the ones called from the main Worker's own cron rather than an
   // external GitHub Actions workflow, the SAME secret value on the main
   // Worker too -- see wrangler.jsonc.)
   //
-  // #4984 Part 1's chain_alert_triggers CRUD (workers/data-api.mjs's
+  // #4984 Part 1's chain_alert_triggers CRUD (workers/data-api.ts's
   // handleAlertTrigger* functions) needs three MORE secrets, none yet
   // provisioned on any deployment:
   //   wrangler secret put ALERT_TRIGGER_CREATE_TOKEN -c wrangler.data.jsonc
@@ -30,10 +30,10 @@
   // is applied.
   //
   // Wallet-signature login + self-serve fullnode/freemium API keys
-  // (src/wallet-auth.mjs + workers/data-api.mjs's handleWallet*/
+  // (src/wallet-auth.ts + workers/data-api.ts's handleWallet*/
   // handleAccountKeys*/handleApiKeyVerify/handleAccountTierPromote
   // functions; Unkey is the actual key store since the 2026-07-19 rework --
-  // src/unkey-client.mjs) need secrets + one plain var:
+  // src/unkey-client.ts) need secrets + one plain var:
   //   wrangler secret put WALLET_SESSION_SECRET -c wrangler.data.jsonc
   //   wrangler secret put UNKEY_ROOT_KEY -c wrangler.data.jsonc
   //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN -c wrangler.data.jsonc
@@ -85,7 +85,7 @@
   "upload_source_maps": true,
   // Public identifier for this deployment's one Unkey API/keyspace -- not a
   // secret (see UNKEY_ROOT_KEY above for the actual credential), just an
-  // opaque id every src/unkey-client.mjs call needs to scope its request to.
+  // opaque id every src/unkey-client.ts call needs to scope its request to.
   "vars": {
     "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
   },
@@ -114,7 +114,7 @@
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
     },
   ],
-  // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.mjs) --
+  // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.ts) --
   // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
   // (wrangler.jsonc), bound under the same name here so both Workers read/
   // write the identical KV namespace (Cloudflare namespaces can be bound to
