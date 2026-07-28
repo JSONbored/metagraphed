@@ -1,11 +1,12 @@
 name: Sync MCP server version
 
 # Auto-opens a chore/sync-mcp-version PR whenever the MCP tool registry
-# (src/mcp-server.ts) changes on main without a matching MCP_SERVER_VERSION
-# bump. This decouples the version bump from the contributor PR, the same
-# way sync-client-version.yml already does for the published SDK --
-# eliminating both the manual toil (every "add an MCP tool" PR previously
-# had to hand-edit src/mcp-server.ts's MCP_SERVER_VERSION constant AND
+# (src/mcp-server.ts) or a tool's schema (schemas-src/mcp-tools/) changes on
+# main without a matching MCP_SERVER_VERSION bump. This decouples the
+# version bump from the contributor PR, the same way sync-client-version.yml
+# already does for the published SDK -- eliminating both the manual toil
+# (every "add an MCP tool" PR previously had to hand-edit
+# src/mcp-server.ts's MCP_SERVER_VERSION constant AND
 # server.json's "version" field to match) and the merge conflicts that
 # come from many concurrent tool-adding PRs all touching the same
 # version-bump line (this repo gets hundreds of contributor PRs; MCP tool
@@ -61,27 +62,57 @@ jobs:
 
       # Real change-detection: every MCP tool addition necessarily imports
       # and registers the new tool in src/mcp-server.ts's MCP_TOOLS array,
-      # so that file changing since the last bump is a reliable, sufficient
-      # signal -- the same pragmatic "watch the one file everything routes
-      # through" approach sync-client-version.yml uses for its own three
-      # contract paths, not a precise "did the tool count specifically
-      # change" AST diff. No prior bump commit found (first run ever) or a
-      # non-empty diff since the last one ⇒ proceed; an empty diff ⇒ skip
-      # every subsequent step via its `if:` so the job still exits cleanly.
+      # and a schema-only change to an *existing* tool (e.g. an additive
+      # output field -- see this file's own "add a tool / additive field ->
+      # minor" bump policy, documented in src/mcp-server.ts's header) lands
+      # in schemas-src/mcp-tools/ without necessarily touching
+      # mcp-server.ts's own text at all, so both paths together are a
+      # reliable, sufficient signal -- the same pragmatic "watch the files
+      # everything routes through" approach sync-client-version.yml uses
+      # for its own three contract paths, not a precise "did the tool
+      # count/shape specifically change" AST diff. Deliberately narrower
+      # than the whole schemas-src/ tree: schemas-src/routes/, shared.ts,
+      # envelope.ts, and openapi-registry.ts back the REST/OpenAPI contract
+      # (sync-client-version.yml's job, not this one) and are imported by
+      # REST route schemas too, so watching them here would bump the MCP
+      # server version on changes that never touched the MCP tool surface.
+      # No prior bump commit found (first run ever) or a non-empty diff
+      # since the last one ⇒ proceed; an empty diff ⇒ skip every subsequent
+      # step via its `if:` so the job still exits cleanly.
+      #
+      # Existence guard: this exact job silently broke once already
+      # (metagraphed#8473) because src/mcp-server.mjs was renamed to
+      # src/mcp-server.ts and nothing here noticed -- `git diff --quiet
+      # <ref> HEAD -- <path>` reports "no difference" (exit 0) for a path
+      # that doesn't exist at either ref, so a stale watched path makes
+      # `changed` permanently false with no error anywhere: CI stays green
+      # and the version bump silently stops running. Assert every watched
+      # path exists in HEAD before trusting the diff's silence, and fail
+      # the job loudly (not just log) if one doesn't, so this class of rot
+      # can't recur unnoticed the same way twice.
       - name: Check for MCP tool changes since the last version bump
         id: mcp-diff
         run: |
+          watched_paths=(src/mcp-server.ts schemas-src/mcp-tools)
+
+          for path in "${watched_paths[@]}"; do
+            if [ ! -e "$path" ]; then
+              echo "::error::Watched path '$path' does not exist in HEAD -- sync-mcp-version.yml is out of date (likely a rename/move) and must be fixed before this workflow can detect MCP tool changes again."
+              exit 1
+            fi
+          done
+
           last_bump="$(git log --grep '^chore(mcp): bump server version' --format=%H -n 1 main)"
           if [ -z "$last_bump" ]; then
             echo "no prior 'chore(mcp): bump server version' commit found; treating as first run"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "last MCP version bump commit: ${last_bump}"
-            if git diff --quiet "${last_bump}" HEAD -- src/mcp-server.ts; then
-              echo "no MCP tool registry changes since ${last_bump}; skipping version bump"
+            if git diff --quiet "${last_bump}" HEAD -- "${watched_paths[@]}"; then
+              echo "no MCP tool registry or schema changes since ${last_bump}; skipping version bump"
               echo "changed=false" >> "$GITHUB_OUTPUT"
             else
-              echo "MCP tool registry changes found since ${last_bump}"
+              echo "MCP tool registry or schema changes found since ${last_bump}"
               echo "changed=true" >> "$GITHUB_OUTPUT"
             fi
           fi
