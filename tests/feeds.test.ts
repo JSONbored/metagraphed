@@ -312,7 +312,9 @@ describe("feeds — watchFeedItems (#8376)", () => {
       .map((i) => i.id);
     assert.ok(registryIds.some((id) => id.includes("subnet:7:added")));
     assert.ok(registryIds.some((id) => id.includes("subnet:12:renamed")));
-    const incidentIds = result.items.filter((i) => i.id.startsWith("incident:"));
+    const incidentIds = result.items.filter((i) =>
+      i.id.startsWith("incident:"),
+    );
     // Both subnet 7 (resolved) and 12 (ongoing) carry an incident in the fixture.
     assert.equal(incidentIds.length, 2);
   });
