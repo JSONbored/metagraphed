@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Database,
   ExternalLink as ExternalLinkIcon,
+  WifiOff,
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
@@ -37,6 +38,24 @@ function DataTierUnavailableNotice({ context }: { context?: string }) {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * #8384: shown instead of a red error card when a request fails because the
+ * visitor is genuinely offline (apiFetch's own catch turns a rejected fetch
+ * into `ApiError` with `status: 0` -- the same signal router.tsx's retry
+ * policy also keys off, so this and "stop burning retries" always agree).
+ */
+function OfflineNotice({ context }: { context?: string }) {
+  return (
+    <div role="status" className="rounded border border-border bg-surface p-4 text-center">
+      <WifiOff className="mx-auto size-4 text-ink-muted" />
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        Couldn't load {context ?? "this data"} — you're offline. It'll refresh automatically once
+        you're back online.
+      </p>
     </div>
   );
 }
@@ -91,6 +110,12 @@ export function ErrorState({
   // red error card for every call site that reads /chain-events*.
   if (isApi && error.code === "data_tier_unavailable") {
     return <DataTierUnavailableNotice context={context} />;
+  }
+  // #8384: `status: 0` is apiFetch's own signal for "the fetch itself never
+  // reached a server" (network error / genuinely offline) -- see that
+  // function's catch block in client.ts.
+  if (isApi && error.status === 0) {
+    return <OfflineNotice context={context} />;
   }
   const message = (error as Error)?.message ?? "Unknown error";
   const url = isApi ? error.url : undefined;

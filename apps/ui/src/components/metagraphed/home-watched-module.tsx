@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Star } from "lucide-react";
+import { Star, Clock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Panel, HealthPill } from "@jsonbored/ui-kit";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
+import { useSwCacheAge } from "@/hooks/use-sw-cache-age";
 import {
   economicsQuery,
   subnetHealthMapQuery,
@@ -99,6 +100,13 @@ export function HomeWatchedModule() {
   const watchedSubnets = [...subnetWatch.ids];
   const watchedValidators = [...validatorWatch.ids];
   const nothingWatched = watchedSubnets.length === 0 && watchedValidators.length === 0;
+  // #8384 requirement (c): a proxy for "how fresh is the data behind this
+  // whole module" -- /api/v1/subnets is one of several SWR-cached endpoints
+  // it reads (see public/sw.js's SWR_API_PATTERN), used here as a single
+  // representative signal rather than tracking each query's own cache entry
+  // separately, which would be more precise but also considerably noisier
+  // to show as one line of UI.
+  const cachedAgeMs = useSwCacheAge("/api/v1/subnets");
 
   if (nothingWatched) {
     return (
@@ -118,9 +126,17 @@ export function HomeWatchedModule() {
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {watchedSubnets.length > 0 ? <WatchedSubnets netuids={watchedSubnets} /> : null}
-      {watchedValidators.length > 0 ? <WatchedValidators hotkeys={watchedValidators} /> : null}
+    <div className="space-y-2">
+      {cachedAgeMs != null ? (
+        <p className="inline-flex items-center gap-1.5 mg-type-caption-sm text-ink-muted">
+          <Clock className="size-3 shrink-0" aria-hidden />
+          cached · {Math.round(cachedAgeMs / 60_000)}m old
+        </p>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        {watchedSubnets.length > 0 ? <WatchedSubnets netuids={watchedSubnets} /> : null}
+        {watchedValidators.length > 0 ? <WatchedValidators hotkeys={watchedValidators} /> : null}
+      </div>
     </div>
   );
 }

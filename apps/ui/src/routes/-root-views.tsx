@@ -27,6 +27,8 @@ import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
 import { GlobalErrorBoundary } from "@/components/metagraphed/global-error-boundary";
 import { Panel } from "@/components/metagraphed/primitives";
+import { OfflineBanner } from "@/components/metagraphed/offline-banner";
+import { useServiceWorker } from "@/hooks/use-service-worker";
 import {
   mountBlankScreenWatchdog,
   PRE_HYDRATION_RECOVERY_SCRIPT,
@@ -289,6 +291,11 @@ export function RootComponent() {
   const { queryClient } = useRouteContext({ from: "__root__" });
   const router = useRouter();
 
+  // #8384: registers public/sw.js and drives the consent-based update toast.
+  // A no-op (and safe to call) in any environment without service-worker
+  // support -- see the hook's own early return.
+  useServiceWorker();
+
   // metagraphed#7760: PostHog web analytics. Separate effect from the
   // hydration-watchdog one below -- unrelated concerns, and this one only
   // needs `router` (stable for the app's lifetime), not `queryClient`.
@@ -342,6 +349,7 @@ export function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <GlobalErrorBoundary>
+        <OfflineBanner />
         <RouteTransitionBar />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />

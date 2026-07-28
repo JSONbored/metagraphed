@@ -28,6 +28,13 @@ const ALLOWLIST = new Set<string>([
   "packages/client/dist/index.js",
   "packages/ui-kit/dist/index.cjs",
   "packages/ui-kit/dist/index.js",
+  // #8384: a browser-native service worker, served as-is from apps/ui/public/
+  // via the Cloudflare Assets binding (no build/transpile step touches
+  // public/ — see that file's own header comment). Service workers run
+  // directly in the browser with no module resolution for a bundler-free,
+  // hand-rolled implementation to lean on, so this one file is physically
+  // required to be plain JS, not TypeScript.
+  "apps/ui/public/sw.js",
 ]);
 
 const tracked = execFileSync("git", ["ls-files", "-z"], {
