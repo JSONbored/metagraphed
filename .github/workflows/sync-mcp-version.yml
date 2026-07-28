@@ -81,7 +81,7 @@ jobs:
       # step via its `if:` so the job still exits cleanly.
       #
       # Existence guard: this exact job silently broke once already
-      # (metagraphed#8473) because src/mcp-server.mjs was renamed to
+      # (metagraphed#8473) because src/mcp-server.ts was renamed to
       # src/mcp-server.ts and nothing here noticed -- `git diff --quiet
       # <ref> HEAD -- <path>` reports "no difference" (exit 0) for a path
       # that doesn't exist at either ref, so a stale watched path makes
