@@ -2566,7 +2566,7 @@ export type Query = {
   profiles: ProfileList;
   /** One provider with its subnets. */
   provider?: Maybe<Provider>;
-  /** One provider's endpoint rows with full REST filter parity: filter by kind/layer/publication_state/status, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints. */
+  /** One provider's endpoint rows with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/publication_state/status/pool_eligible, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints. */
   provider_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). */
   providers: ProviderList;
@@ -3330,7 +3330,9 @@ export type QueryProvider_EndpointsArgs = {
   max_score?: InputMaybe<Scalars['Float']['input']>;
   min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
   min_score?: InputMaybe<Scalars['Float']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
+  pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
   publication_state?: InputMaybe<Scalars['String']['input']>;
   slug: Scalars['String']['input'];
   sort?: InputMaybe<Scalars['String']['input']>;

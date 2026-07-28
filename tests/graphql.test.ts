@@ -9221,8 +9221,20 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
     fixtureEnv({
       "/metagraph/providers/acme/endpoints.json": {
         endpoints: [
-          { id: "acme-e1", kind: "subtensor-rpc", status: "ok", netuid: 1 },
-          { id: "acme-e2", kind: "subnet-api", status: "degraded", netuid: 2 },
+          {
+            id: "acme-e1",
+            kind: "subtensor-rpc",
+            status: "ok",
+            netuid: 1,
+            pool_eligible: true,
+          },
+          {
+            id: "acme-e2",
+            kind: "subnet-api",
+            status: "degraded",
+            netuid: 2,
+            pool_eligible: false,
+          },
         ],
       },
     });
@@ -9258,6 +9270,42 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
       ENV(),
     );
     assert.ok(body.errors, "expected a GraphQL error");
+  });
+
+  test("applies a netuid filter via the shared loader (#8546)", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme", netuid: 1) }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
+    assert.equal(body.data.provider_endpoints.endpoints[0].netuid, 1);
+  });
+
+  test("applies a pool_eligible filter via the shared loader (#8546)", async () => {
+    const { status, body } = await gql(
+      "{ provider_endpoints(slug: \"acme\", pool_eligible: true) }",
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
+    assert.equal(
+      body.data.provider_endpoints.endpoints[0].pool_eligible,
+      true,
+    );
+  });
+
+  test("an invalid netuid is a GraphQL error, not a silent default (#8546)", async () => {
+    const { body } = await gql(
+      '{ provider_endpoints(slug: "acme", netuid: -1) }',
+      ENV(),
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
   });
 
   test("provider_endpoints is weighted as a fan-out field", () => {

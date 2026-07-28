@@ -343,13 +343,15 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: String
     ): EndpointList!
-    "One provider's endpoint rows with full REST filter parity: filter by kind/layer/publication_state/status, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints."
+    "One provider's endpoint rows with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/publication_state/status/pool_eligible, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints."
     provider_endpoints(
       slug: String!
+      netuid: Int
       kind: String
       layer: String
       publication_state: String
       status: String
+      pool_eligible: Boolean
       min_latency_ms: Int
       max_latency_ms: Int
       min_score: Float
