@@ -21,23 +21,64 @@ function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-export function apiSnippet(lang: ApiSnippetLang, url: string): string {
+// #8381: Python's dict/bool/None literal syntax differs from JSON's just
+// enough (True/False/None vs true/false/null) that a raw JSON.stringify()
+// isn't valid Python source -- close enough for a copy-paste snippet's small,
+// flat request bodies (there is no bare "true"/"false"/"null" substring risk
+// inside a JSON string VALUE here in practice, since Ask mode's own body is
+// just `{ question: <text> }`), without pulling in a real Python-repr library
+// for what is, and is expected to stay, a single-field request.
+function pythonLiteral(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/\btrue\b/g, "True")
+    .replace(/\bfalse\b/g, "False")
+    .replace(/\bnull\b/g, "None");
+}
+
+/**
+ * `options.body` (when present) implies a JSON POST -- every existing GET-only
+ * call site simply never passes it, so this stays additive/back-compatible.
+ */
+export function apiSnippet(
+  lang: ApiSnippetLang,
+  url: string,
+  options: { body?: unknown } = {},
+): string {
+  const { body } = options;
+  if (body === undefined) {
+    switch (lang) {
+      case "curl":
+        return `curl -sS ${shellSingleQuote(url)}`;
+      case "js":
+        return `fetch(${JSON.stringify(url)}).then((r) => r.json())`;
+      case "python":
+        return `requests.get(${JSON.stringify(url)}).json()`;
+      case "url":
+      default:
+        return url;
+    }
+  }
   switch (lang) {
     case "curl":
-      return `curl -sS ${shellSingleQuote(url)}`;
+      return `curl -sS -X POST -H 'content-type: application/json' -d ${shellSingleQuote(JSON.stringify(body))} ${shellSingleQuote(url)}`;
     case "js":
-      return `fetch(${JSON.stringify(url)}).then((r) => r.json())`;
+      return `fetch(${JSON.stringify(url)}, {\n  method: "POST",\n  headers: { "content-type": "application/json" },\n  body: JSON.stringify(${JSON.stringify(body)}),\n}).then((r) => r.json())`;
     case "python":
-      return `requests.get(${JSON.stringify(url)}).json()`;
+      return `requests.post(${JSON.stringify(url)}, json=${pythonLiteral(body)}).json()`;
     case "url":
     default:
-      return url;
+      // A bare URL alone would read as "GET this" (the existing convention
+      // for every no-body row) -- misleading for a POST, so the method is
+      // spelled out instead of silently omitting the body this URL needs.
+      return `POST ${url}`;
   }
 }
 
 export interface EndpointSnippetRow {
   label: string;
   path: string;
+  /** JSON POST body; omit for the default GET form. */
+  body?: unknown;
 }
 
 /**
@@ -76,7 +117,7 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
           <CopyableCode
             key={r.label}
             label={r.label}
-            value={apiSnippet(lang, `${API_BASE}${r.path}`)}
+            value={apiSnippet(lang, `${API_BASE}${r.path}`, { body: r.body })}
             truncate={false}
             className="w-full"
           />
