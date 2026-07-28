@@ -1,7 +1,7 @@
 // Handler tests for GET /api/v1/accounts/{ss58}/entities (#6740) -- kept in a
 // dedicated file so this PR does not contend with open entity-handler PRs on
-// the shared request-handlers-entities.test.mjs harness (mirrors
-// chain-performance-handler.test.mjs's own precedent).
+// the shared request-handlers-entities.test.ts harness (mirrors
+// chain-performance-handler.test.ts's own precedent).
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
@@ -155,7 +155,7 @@ describe("handleAccount labels join", () => {
   });
 });
 
-describe("workers/api.mjs dispatch", () => {
+describe("workers/api.ts dispatch", () => {
   const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
 
   test("GET /api/v1/accounts/{ss58}/entities reaches handleAccountEntities via ACCOUNT_ENTITIES_PATH_PATTERN", async () => {

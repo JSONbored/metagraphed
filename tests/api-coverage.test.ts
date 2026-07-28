@@ -2119,7 +2119,7 @@ describe("coverage-depth CSV export", () => {
 
 // --- RFC 8288 pagination Link header (#1686) ----------------------------------
 // /api/v1/subnets is the only end-to-end list fixture; the header is built once
-// for every cursor-paginated collection in workers/list-query.mjs, so proving it
+// for every cursor-paginated collection in workers/list-query.ts, so proving it
 // here proves the wiring for all of them. The fixture sorts to a stable netuid
 // run, so limit=50 yields exactly three pages at cursors 0 / 50 / 100.
 describe("pagination Link header", () => {
@@ -2783,13 +2783,13 @@ describe("health trends D1 error handling", () => {
   // The "[d1All] dark-serve contract (#2076)" regression test that used to live
   // here drove a D1-throwing scenario through handleHealthTrends and asserted
   // the swallowed error was logged via d1All's own "[d1All]" prefix. D1 is now
-  // fully eliminated from this route (workers/request-handlers/analytics.mjs's
+  // fully eliminated from this route (workers/request-handlers/analytics.ts's
   // handleHealthTrends goes tryPostgresTier -> loadSubnetHealthTrends with no
   // rows on any miss, never a live D1 read), so d1All is never reached from
   // this route anymore -- the assertion tested dead wiring. d1All itself
   // (still present, unchanged, and still exercised via other D1-mock tests in
   // this describe block) is not exported from workers/request-handlers/
-  // analytics.mjs, so there is no direct-unit-test alternative to keep; the
+  // analytics.ts, so there is no direct-unit-test alternative to keep; the
   // test was deleted rather than converted.
 
   test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
@@ -3040,7 +3040,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
 
 // --- Internal sync write-path HTTP dispatch -----------------------------------
 //
-// Regression coverage for a real gap found live (2026-07-19): data-api.mjs's
+// Regression coverage for a real gap found live (2026-07-19): data-api.ts's
 // own handleAccountBalancesSync existed and was fully tested at that layer,
 // but nothing in this public-facing Worker's handleRequest ever forwarded
 // POST /api/v1/internal/account-balances-sync to it -- every real
@@ -3054,7 +3054,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
 // Scoped to ONLY the routes with a real EXTERNAL caller (a box-side
 // data-refresh-cron script hitting the public domain, since it has no
 // service-binding access) -- deliberately excludes the many other
-// /api/v1/internal/* routes in data-api.mjs (health-checks-sync,
+// /api/v1/internal/* routes in data-api.ts (health-checks-sync,
 // subnet-identity-sync, subnet-snapshot-sync, rpc-usage-sync/-prune,
 // compare-health, health-status-live, latest-block-number, ...): those are
 // each documented at their own definition as "own hourly cron, direct
@@ -3233,8 +3233,8 @@ describe("Access-Control-Expose-Headers", () => {
 // --- inverse contract coverage ------------------------------------------------
 // The FORWARD direction (every contract route is reachable + serves a 200) is
 // covered by validate-api.ts + smoke-route-substitution. This is the INVERSE: a
-// /api/v1 path dispatched by workers/api.mjs that has NO matching API_ROUTES entry
-// in contracts.mjs is invisible to OpenAPI/types/SDK. That gap let the chain-events
+// /api/v1 path dispatched by workers/api.ts that has NO matching API_ROUTES entry
+// in contracts.ts is invisible to OpenAPI/types/SDK. That gap let the chain-events
 // routes ship dispatched-but-uncontracted; this guard fails CI on any new one.
 //
 // Two complementary checks: (A) every literal `=== "/api/v1/…"` dispatch in the
@@ -3248,7 +3248,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
     "utf8",
   );
 
-  // Paths workers/api.mjs dispatches that are intentionally NOT contract routes:
+  // Paths workers/api.ts dispatches that are intentionally NOT contract routes:
   // POST/internal/special-protocol surfaces (no GET artifact envelope), the
   // network-prefix rewrite, and the SSE/icon/feeds operational endpoints. Each is
   // listed with the reason it is excluded from the OpenAPI contract.
@@ -3319,7 +3319,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
       }
       assert.ok(
         pathIsContracted(dispatched),
-        `workers/api.mjs dispatches ${dispatched} but no API_ROUTES entry in src/contracts.mjs matches it — add a route() so it is visible to OpenAPI/types/SDK (or add it to NON_CONTRACT_PATHS with a reason if it is intentionally uncontracted).`,
+        `workers/api.ts dispatches ${dispatched} but no API_ROUTES entry in src/contracts.ts matches it — add a route() so it is visible to OpenAPI/types/SDK (or add it to NON_CONTRACT_PATHS with a reason if it is intentionally uncontracted).`,
       );
     });
   }
@@ -3343,7 +3343,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
     test(`config ${name} backs a contract route`, () => {
       assert.ok(
         contractSamplePaths.some((sample) => (pattern as RegExp).test(sample)),
-        `workers/config.mjs ${name} dispatches a /api/v1 path that no API_ROUTES entry covers — add the matching route() in src/contracts.mjs.`,
+        `workers/config.ts ${name} dispatches a /api/v1 path that no API_ROUTES entry covers — add the matching route() in src/contracts.ts.`,
       );
     });
   }

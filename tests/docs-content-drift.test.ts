@@ -98,7 +98,7 @@ describe("content/docs/graphql.mdx matches src/graphql.ts", () => {
 
   test("relationship-field complexity cost", () => {
     // FIELD_COMPLEXITY.subnets is one of several relationship roots that all
-    // share the same weight -- see src/graphql.mjs's RELATIONSHIP_FIELD_COMPLEXITY.
+    // share the same weight -- see src/graphql.ts's RELATIONSHIP_FIELD_COMPLEXITY.
     assert.match(
       graphqlDocs,
       new RegExp(`relationship roots cost ${FIELD_COMPLEXITY.subnets}`),
@@ -106,7 +106,7 @@ describe("content/docs/graphql.mdx matches src/graphql.ts", () => {
   });
 });
 
-describe("content/docs/rpc.mdx matches workers/config.mjs + rpc-proxy.mjs", () => {
+describe("content/docs/rpc.mdx matches workers/config.ts + rpc-proxy.ts", () => {
   test("limits table", () => {
     assert.equal(
       tableValue(rpcDocs, "Rate limit"),
@@ -173,7 +173,7 @@ describe("content/docs/rpc.mdx matches workers/config.mjs + rpc-proxy.mjs", () =
 
 describe("content/docs/chain-events.mdx matches its rate-limit binding", () => {
   test("rate limit mirrors wrangler.jsonc's DATA_RATE_LIMITER", () => {
-    // handleChainEventsProxy (workers/api.mjs) has no local mirror constant --
+    // handleChainEventsProxy (workers/api.ts) has no local mirror constant --
     // env.DATA_RATE_LIMITER is read directly, so the binding config itself is
     // the only source of truth to check the docs against.
     const { limit, period } = wranglerRateLimit("DATA_RATE_LIMITER");

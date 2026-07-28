@@ -347,7 +347,7 @@ test("buildChainCalls drops empty call_module and call_function buckets", () => 
 // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
 // handleChainCalls no longer runs a live D1 aggregation -- a Postgres-tier
 // miss now falls straight through to buildChainCalls({total: 0, rows: []})
-// (see workers/request-handlers/analytics.mjs's own #4772 comment on
+// (see workers/request-handlers/analytics.ts's own #4772 comment on
 // handleChainCalls). This mocks the Postgres tier (DATA_API) instead of D1 to
 // exercise the real grouped/shared response; the junk-param 400 is unrelated
 // to data-sourcing and is exercised on the same env.
@@ -402,7 +402,7 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
 });
 
 // #4772 D1 retirement: the call_module scoping this used to verify across 3
-// separate D1 queries now happens server-side in Postgres (workers/data-api.mjs's
+// separate D1 queries now happens server-side in Postgres (workers/data-api.ts's
 // own dedicated coverage, not re-tested here) -- the handler's own contract is
 // just to forward call_module + group_by on the request it hands to
 // tryPostgresTier, and to pass the Postgres-tier body through untouched
@@ -1481,7 +1481,7 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
 
 // D1 fully eliminated (2026-07-16): the COALESCE/median SQL-shape assertions
 // this used to verify against D1 now apply to Postgres's own equivalent
-// query in workers/data-api.mjs's chain-fees route (its own dedicated
+// query in workers/data-api.ts's chain-fees route (its own dedicated
 // coverage, not re-tested here) -- this just proves the REST envelope
 // passes the Postgres-tier body through untouched.
 test("GET /api/v1/chain/fees returns daily series + top payers from the Postgres tier", async () => {

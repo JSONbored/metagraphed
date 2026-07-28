@@ -223,8 +223,8 @@ describe("data-api-mcp", () => {
     assert.equal(out.events[0].pallet, "Balances");
   });
 
-  // Exact JSON contract from workers/data-api.mjs GET /blocks/:n/chain-events
-  // (mirrors tests/data-api.test.mjs).
+  // Exact JSON contract from workers/data-api.ts GET /blocks/:n/chain-events
+  // (mirrors tests/data-api.test.ts).
   test("loadBlockChainEvents round-trips the DATA_API block chain-events contract", async () => {
     const dataApiPayload = {
       block_number: 123,
@@ -326,7 +326,7 @@ describe("data-api-mcp", () => {
     assert.deepEqual(out.events, []);
   });
 
-  // Exact JSON contract from workers/data-api.mjs GET /chain-events?block=&extrinsic=
+  // Exact JSON contract from workers/data-api.ts GET /chain-events?block=&extrinsic=
   test("loadExtrinsicChainEvents round-trips the DATA_API chain-events feed contract", async () => {
     const dataApiPayload = {
       count: 1,

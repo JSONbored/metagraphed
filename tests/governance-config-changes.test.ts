@@ -8,7 +8,7 @@ function req(path: string) {
 }
 
 // A D1 mock that records the bound SQL/params and returns the given feed rows
-// for the paginated SELECT — mirrors dbWith in tests/sudo.test.mjs.
+// for the paginated SELECT — mirrors dbWith in tests/sudo.test.ts.
 function dbWith(feed: Row[], captured: Row = {}) {
   return {
     METAGRAPH_HEALTH_DB: {

@@ -7,7 +7,7 @@
 // Sentry fully removed once PostHog parity was proven), and that the
 // x-metagraph-error-code response header is set correctly across every
 // transport- and execution-level error path. A separate small file rather
-// than folded into tests/graphql.test.mjs (20k lines, ~900 tests): that
+// than folded into tests/graphql.test.ts (20k lines, ~900 tests): that
 // file's own tests already exercise these same paths, and this one needs a
 // mocked resolveLiveEconomics that risks disturbing tests this issue
 // doesn't own.
@@ -18,7 +18,7 @@ import type { Row } from "./row-type.ts";
 
 const resolveLiveEconomics = vi.hoisted(() => vi.fn());
 
-// loadEconomics (src/graphql.mjs) awaits resolveLiveEconomics with no
+// loadEconomics (src/graphql.ts) awaits resolveLiveEconomics with no
 // try/catch, and Query.economics awaits loadEconomics the same way -- a
 // rejection here propagates uncaught all the way to execute(), the exact
 // genuine-fault shape this file needs to trigger on demand. Every other

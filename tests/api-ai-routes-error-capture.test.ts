@@ -4,7 +4,7 @@
 // caller-fixable input rejection (the `aiInput` branch). metagraphed#7766:
 // the equivalent Sentry.captureException assertions this file used to also
 // make are gone -- Sentry fully removed once PostHog parity was proven. A
-// separate small file rather than folded into tests/ai-search.test.mjs: that
+// separate small file rather than folded into tests/ai-search.test.ts: that
 // file's other ~80 tests already exercise these same routes.
 import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";

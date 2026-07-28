@@ -290,7 +290,7 @@ test("buildAccountSummary coerces string-typed first/last seen timestamps", () =
 test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", () => {
   // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
   // `?? null` pass-through this replaced would have leaked strings into the API
-  // payload. Mirrors the coercion in blocks.mjs (#2435) and extrinsics.ts
+  // payload. Mirrors the coercion in blocks.ts (#2435) and extrinsics.ts
   // (#2439) — and the block_number / event_index / extrinsic_index coercion
   // already applied in this same function.
   const out = formatAccountEvent({ netuid: "7", uid: "42", block_number: 1 })!;
@@ -309,7 +309,7 @@ test("formatAccountEvent rejects non-integer or negative netuid/uid cells to nul
 });
 
 test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block 0 / subnet 0 / uid 0)", () => {
-  // Mirrors the blank-cell guard in blocks.mjs (#2879): Number("") and
+  // Mirrors the blank-cell guard in blocks.ts (#2879): Number("") and
   // Number("   ") are 0, which would fabricate genesis height / subnet / uid 0.
   for (const blank of ["", "   "]) {
     const out = formatAccountEvent({
@@ -342,7 +342,7 @@ test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block
 test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells to Numbers", () => {
   // D1 can return a REAL column as a numeric string; the bare `?? null`
   // pass-through this replaced would have leaked strings into the JSON payload.
-  // Mirrors the coercion in blocks.mjs (#2435), extrinsics.ts (#2439), and
+  // Mirrors the coercion in blocks.ts (#2435), extrinsics.ts (#2439), and
   // metagraph-neurons.ts (#2503). Rounded to rao precision (9 dp) so the
   // IEEE-754 float noise from SUM() never carries into the payload.
   const out = formatAccountEvent({
@@ -759,7 +759,7 @@ test("buildAccountTransfers explicit side never flips a normal row (#2362)", () 
 });
 
 // loadAccountTransfers (the D1-querying account_events reader) was deleted
-// (2026-07-17, D1 fully eliminated) -- see src/account-events.mjs's own
+// (2026-07-17, D1 fully eliminated) -- see src/account-events.ts's own
 // comment. Coverage for buildAccountTransfers direction-labeling / cursor
 // shaping lives in the tests above this block (calling buildAccountTransfers
 // directly with hand-built rows).

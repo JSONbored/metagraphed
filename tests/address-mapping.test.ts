@@ -14,7 +14,7 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// Mirrors withFetchStub in tests/sudo-key.test.mjs / tests/account-balance.test.mjs.
+// Mirrors withFetchStub in tests/sudo-key.test.ts / tests/account-balance.test.ts.
 function withFetchStub(stub: AnyFn, fn: AnyFn) {
   const orig = globalThis.fetch;
   globalThis.fetch = stub;
@@ -25,7 +25,7 @@ function withFetchStub(stub: AnyFn, fn: AnyFn) {
 
 const H160 = "0x0000000000000000000000000000000000000001";
 // The AccountId32 <-> SS58 encoding math is verified independently in
-// tests/ss58.test.mjs and tests/sudo-key.test.mjs (same golden pair, a
+// tests/ss58.test.ts and tests/sudo-key.test.ts (same golden pair, a
 // different RPC method entirely) -- reused here to check THIS module's own
 // eth_call-result parsing + encoding, not a claim about what this specific
 // H160 maps to on the real chain.

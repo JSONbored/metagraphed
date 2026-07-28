@@ -47,7 +47,7 @@ function historyRow(overrides: Row = {}) {
 // Postgres tier only, via tryPostgresTier(env, request, ...) -> DATA_API. On a
 // hit, DATA_API's JSON body is used directly as `data` (no reshaping), so the
 // mock returns the already-built builder output, mirroring what
-// workers/data-api.mjs actually serves for these two routes.
+// workers/data-api.ts actually serves for these two routes.
 function postgresIdentityEnv({
   identity,
   identityHistory,
