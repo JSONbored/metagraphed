@@ -16,7 +16,7 @@ import { r2StagingRoot, repoRoot } from "../scripts/lib.ts";
 // compute the count/size fields, so there's no isolated-fixture equivalent),
 // which raced other tests concurrently reading/writing that same tree under
 // vitest's default parallel file execution -- pinned to serial execution in
-// package.json's test:ci exclude list (see public-safety.test.mjs's header
+// package.json's test:ci exclude list (see public-safety.test.ts's header
 // comment for the original incident writeup this pattern follows).
 test("refresh-build-summary excludes build-summary.json from its own inventory", () => {
   const summaryPath = path.join(r2StagingRoot, "build-summary.json");

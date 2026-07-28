@@ -1,12 +1,12 @@
 // Unit tests for the chain_alert_triggers CRUD write path (#4984 Part 1,
-// workers/data-api.mjs's handleAlertTrigger*/handleAlertTriggersRoute
+// workers/data-api.ts's handleAlertTrigger*/handleAlertTriggersRoute
 // functions). A dedicated test file (not folded into the already 5000+-line
-// tests/data-api.test.mjs) with its OWN postgres mock scoped to just this
+// tests/data-api.test.ts) with its OWN postgres mock scoped to just this
 // table's shape -- vi.mock is per-test-file, so this doesn't touch that
 // file's shared mock or vice versa.
 //
 // The mock is a simple per-test QUEUE (not a full SQL-semantics emulator,
-// matching data-api.test.mjs's own established convention): each test
+// matching data-api.test.ts's own established convention): each test
 // pushes exactly the rows each of ITS query calls (in order) should
 // resolve to, and asserts on the recorded call text/values for anything it
 // needs to verify was actually sent.
@@ -45,7 +45,7 @@ vi.mock("postgres", () => ({
     sql.json = (value: unknown) => value;
     // sql.unsafe(text, params) -- the #5022 match write-back's batched
     // UPDATE builds its own placeholder text (plain scalar positional
-    // binds) rather than a bound JS array, matching workers/data-api.mjs's
+    // binds) rather than a bound JS array, matching workers/data-api.ts's
     // established neurons-sync-prune/compare-health convention (see that
     // route's own comment for why: this Worker's Hyperdrive
     // fetch_types:false setting breaks postgres.js's automatic
@@ -328,7 +328,7 @@ test("create: 429 when ALERT_TRIGGER_CREATE_RATE_LIMITER rejects the request, wi
   assert.equal(sqlCalls.length, 0);
   assert.equal(limiter.limit.mock.calls.length, 1);
   // #5475: the 429 now carries the standard rate-limit header family so the
-  // api.mjs proxy (and clients) can honour the back-off.
+  // api.ts proxy (and clients) can honour the back-off.
   assert.equal(res.headers.get("retry-after"), "60");
   assert.equal(res.headers.get("x-ratelimit-limit"), "10");
   assert.equal(res.headers.get("x-ratelimit-policy"), "10;w=60");

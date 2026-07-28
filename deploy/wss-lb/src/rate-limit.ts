@@ -12,7 +12,7 @@
 //     stays open (a client that opens-and-immediately-closes in a tight
 //     loop never trips the concurrent cap).
 // In-memory only — wss-lb is a single Railway container with no shared
-// store, unlike workers/request-handlers/rpc-proxy.mjs's Cloudflare-side
+// store, unlike workers/request-handlers/rpc-proxy.ts's Cloudflare-side
 // RPC_RATE_LIMITER (a Workers Rate Limiting binding). Same spirit
 // (per-client-IP budget, reject with retry-after), different mechanism —
 // that binding doesn't exist outside Cloudflare. Pure + clock-injectable
@@ -21,7 +21,7 @@
 // Cloudflare terminates TLS in front of this service (README.md: "point
 // Cloudflare DNS at it for TLS + DDoS", i.e. proxied/orange-cloud, not
 // DNS-only) and sets cf-connecting-ip on every request it forwards —
-// matches workers/config.mjs's own resolveClientIp exactly, for the same
+// matches workers/config.ts's own resolveClientIp exactly, for the same
 // reason: it's the one header a client can't spoof past Cloudflare's edge.
 // x-forwarded-for (Railway's own edge hop) is a fallback for local/direct
 // access that bypasses Cloudflare (dev, health probes); the raw socket

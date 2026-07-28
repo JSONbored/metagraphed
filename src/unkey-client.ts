@@ -1,9 +1,9 @@
 // Thin fetch wrapper for Unkey's v2 keys.* API (freemium-API rework,
 // 2026-07-19) -- replaces src/api-keys.mjs's local mg_... generation/hashing
 // and the Postgres-backed secret_hash comparison previously done in
-// src/api-key-validation.mjs. Unkey is now the actual key store: it mints,
+// src/api-key-validation.ts. Unkey is now the actual key store: it mints,
 // hashes, verifies, and revokes every key; this codebase only keeps a thin
-// (account_id, unkey_key_id) mapping row (workers/data-api.mjs) for listing/
+// (account_id, unkey_key_id) mapping row (workers/data-api.ts) for listing/
 // ownership checks.
 //
 // Deliberately does NOT use Unkey's own per-key `ratelimits` as the request-

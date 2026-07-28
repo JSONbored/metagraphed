@@ -2,7 +2,7 @@
   // Dedicated registry-sync Worker — the sole write path into the registry
   // Postgres instance (a separate database from the chain-indexer's, see
   // deploy/postgres/registry-schema.sql). Deployed separately from the main
-  // api.mjs Worker for the same bundle-budget reason wrangler.data.jsonc
+  // api.ts Worker for the same bundle-budget reason wrangler.data.jsonc
   // already is: the postgres.js driver shouldn't grow every Worker that
   // merely proxies to it. Reached only via the main Worker's
   // REGISTRY_SYNC_API service binding (no public routes of its own).
@@ -63,10 +63,10 @@
   // shared-secret check above authenticates the CALLER, not the REQUEST
   // VOLUME, so anyone holding REGISTRY_SYNC_SECRET could otherwise script
   // unbounded write/delete cycles (including full-table DELETEs, see
-  // MAX_ROWS_PER_KIND in workers/registry-sync-api.mjs) against the live
+  // MAX_ROWS_PER_KIND in workers/registry-sync-api.ts) against the live
   // registry. Mirrors ALERT_TRIGGER_CREATE_RATE_LIMITER's posture
   // (wrangler.data.jsonc) for the same shared-secret-write shape, but looser
-  // than its 10/60s to tolerate scripts/backfill-registry-postgres.mjs's
+  // than its 10/60s to tolerate scripts/backfill-registry-postgres.ts's
   // legitimate chunked full-resync POSTs. Namespace id is local to THIS
   // Worker's own bindings -- reusing an id already used elsewhere doesn't
   // collide (ratelimit namespaces are scoped per Worker script). Skipped

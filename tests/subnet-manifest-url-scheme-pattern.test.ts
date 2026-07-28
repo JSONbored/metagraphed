@@ -4,7 +4,7 @@
 // which ajv-formats accepts for ANY scheme (javascript:, mailto:, ftp:, data:).
 // #5618 added the http/ws scheme pattern to the sibling Surface + candidate
 // schemas but never this one, so `npm run validate:surface` passed a subnet file
-// carrying a javascript: URL. Mirrors tests/surface-url-scheme-pattern.test.mjs.
+// carrying a javascript: URL. Mirrors tests/surface-url-scheme-pattern.test.ts.
 import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, test } from "vitest";

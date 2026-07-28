@@ -100,8 +100,8 @@ export function buildSubnetIdleStake(
 
 // Network-wide rollup: every subnet's own idle-stake scorecard, ranked by
 // idle_stake_tao descending, plus the network total -- mirrors src/chain-
-// alpha-volume.mjs's own per-subnet-groupby-then-rollup shape over src/
-// alpha-volume.mjs's per-subnet scorecard.
+// alpha-volume.ts's own per-subnet-groupby-then-rollup shape over src/
+// alpha-volume.ts's per-subnet scorecard.
 export function buildChainIdleStake(rows: Row[] | null | undefined): Row {
   const list = Array.isArray(rows) ? rows : [];
   const bySubnet = new Map<

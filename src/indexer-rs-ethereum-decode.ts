@@ -76,7 +76,7 @@ function toLimbBigInt(limb: unknown): bigint | null {
 
 // Peels indexer-rs's one newtype-wrap layer around a U256's 4-limb
 // little-endian u64 array ([[limb0,limb1,limb2,limb3]]). Limbs are u64
-// values (up to 2^64-1), so this can't reuse bytes.mjs's unwrapByteArray --
+// values (up to 2^64-1), so this can't reuse bytes.ts's unwrapByteArray --
 // that caps individual elements at 0-255 for a genuine byte blob.
 function unwrapU256Limbs(value: unknown): bigint[] | null {
   if (!Array.isArray(value) || value.length !== 1 || !Array.isArray(value[0])) {
@@ -100,7 +100,7 @@ export function decodeU256Limbs(value: unknown): unknown {
 }
 
 /** 20-byte array (H160), newtype-wrapped or flat -- lowercase 0x-prefixed
- * hex, matching D1's address string form. Reuses bytes.mjs's depth-agnostic
+ * hex, matching D1's address string form. Reuses bytes.ts's depth-agnostic
  * unwrapByteArray (already length-agnostic; H160 is just a 20-byte case of
  * the same generic byte-blob shape #4689 already handles). Returns `value`
  * unchanged when the shape doesn't match. */
@@ -156,7 +156,7 @@ const U256_FIELDS = [
 // `odd_y_parity`/`access_list`/Legacy's `signature.v` need no decode
 // (already plain scalars/empty arrays either tier). `input` itself is
 // deliberately left untouched -- its own mojibake bug is D1's, out of scope
-// here (bytes.mjs's own header) -- `precompile_call` below is an ADDITIVE
+// here (bytes.ts's own header) -- `precompile_call` below is an ADDITIVE
 // field decoded from it, not a rewrite of it.
 function decodeEthereumTransactionPayload(payload: unknown): unknown {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {

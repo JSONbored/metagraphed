@@ -64,7 +64,7 @@ test("GET /subnets/{netuid}/identity-history is schema-stable when cold (no Post
 });
 
 // D1 fully eliminated (2026-07-16): loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids
-// (the D1-querying loaders workers/api.mjs's overlay wrappers used to fall back
+// (the D1-querying loaders workers/api.ts's overlay wrappers used to fall back
 // to) are gone -- these overlays only ever populate previously_known_as when
 // the Postgres tier flag is on now (see the "flag=postgres" tests below);
 // without it, the overlay is simply absent (schema-stable), never sourced
@@ -172,7 +172,7 @@ test("GET /agent-catalog/{netuid} overlays previously_known_as on the detail ent
 
 // #4832 gap-closure: loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are
 // D1-fetch helpers embedded in these overlay call sites (no standalone route),
-// so tryPostgresTier can't forward the caller's own request -- api.mjs
+// so tryPostgresTier can't forward the caller's own request -- api.ts
 // synthesizes an internal request instead. These tests prove that wiring,
 // reusing METAGRAPH_SUBNET_IDENTITY_SOURCE (already flipped in production).
 // Only the alias query itself must be skipped when Postgres serves it -- the

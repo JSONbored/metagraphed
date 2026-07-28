@@ -126,7 +126,7 @@ function analyticsEnv(
 
 // A minimal stand-in for the Workers `caches.default`: a Map keyed on the
 // Request URL, recording every put key and every match call (mirrors the
-// existing edge-cache test stub in worker-runtime.test.mjs).
+// existing edge-cache test stub in worker-runtime.test.ts).
 function mockCaches() {
   const store = new Map<string, Response>();
   const putKeys: string[] = [];
@@ -1684,7 +1684,7 @@ describe("analytics edge cache", () => {
 // #5358: the neurons/neuron_daily-backed cache-stamp functions
 // (readSubnetNeuronsCacheStamp, readNeuronsCacheStamp, readNeuronDailyCacheStamp,
 // withNeuronsEdgeCache) have been removed from
-// workers/request-handlers/analytics.mjs. Every one of them read a D1 table
+// workers/request-handlers/analytics.ts. Every one of them read a D1 table
 // (neurons / neuron_daily) that was fully dropped by #4772 ("retire D1
 // chain-data write path"), so they had been reading a permanently-empty/
 // nonexistent source and returning a frozen stamp ever since -- these routes'

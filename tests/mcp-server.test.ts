@@ -4633,7 +4633,7 @@ describe("MCP get_chain_fees", () => {
   // goes tryPostgresTier -> buildChainFees({...}) on any miss/outage, never a
   // live D1 read. The COALESCE/median SQL-shape assertions this used to
   // verify against D1 now apply to Postgres's own equivalent query in
-  // workers/data-api.mjs's chain-fees route (its own dedicated coverage).
+  // workers/data-api.ts's chain-fees route (its own dedicated coverage).
   test("returns daily series and top payers from the Postgres tier", async () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
@@ -5006,8 +5006,8 @@ describe("MCP decode_evm_call (#6725/#6729)", () => {
 
 describe("MCP get_evm_address_mapping (#6725/#6728)", () => {
   const H160 = "0x0000000000000000000000000000000000000001";
-  // Same golden AccountId32 <-> SS58 pair as tests/sudo-key.test.mjs /
-  // tests/address-mapping.test.mjs -- verifies this tool's own eth_call
+  // Same golden AccountId32 <-> SS58 pair as tests/sudo-key.test.ts /
+  // tests/address-mapping.test.ts -- verifies this tool's own eth_call
   // parsing, not a claim about what this H160 maps to on the real chain.
   const GOLDEN_ETH_CALL_RESULT =
     "0x4471816662ea3cfadc9868e5f083e26a3be6706b8d8dad7fbef565983afb3556";
@@ -6540,7 +6540,7 @@ describe("MCP get_rpc_usage", () => {
   // schema-stable empty shape), so get_rpc_usage now goes tryPostgresTier ->
   // formatRpcUsage(...) on any miss/outage, never a live D1 read. This mocks
   // the Postgres tier directly with a REST-shaped response, mirroring
-  // workers/data-api.mjs's own rpc/usage route.
+  // workers/data-api.ts's own rpc/usage route.
   test("returns usage analytics from the Postgres tier", async () => {
     const env = {
       METAGRAPH_RPC_USAGE_SOURCE: "postgres",
@@ -6628,7 +6628,7 @@ describe("MCP get_rpc_usage", () => {
 });
 
 describe("MCP call_rpc", () => {
-  // Mirrors rpcEnv() in tests/request-handlers-rpc-proxy.test.mjs: rpc/pools.json
+  // Mirrors rpcEnv() in tests/request-handlers-rpc-proxy.test.ts: rpc/pools.json
   // is R2-only, so both ASSETS and METAGRAPH_ARCHIVE are stubbed the same way
   // readArtifact's tier resolution expects.
   const RPC_POOL = {
@@ -7031,7 +7031,7 @@ describe("MCP get_account_counterparties", () => {
   });
 });
 
-// keyword-search.test.mjs covers the scoring matrix; here we only prove both
+// keyword-search.test.ts covers the scoring matrix; here we only prove both
 // tools are wired to it — substring noise is gone and the precise target wins.
 describe("MCP keyword discovery relevance", () => {
   const deps = makeDeps({
@@ -8927,7 +8927,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   // Realistic reserves (SN64 from the live economics.json artifact), matching
-  // the fixture in tests/subnet-stake-quote-api.test.mjs.
+  // the fixture in tests/subnet-stake-quote-api.test.ts.
   const STAKE_QUOTE_POOL_ROW = {
     netuid: 64,
     tao_in_pool_tao: 201959.938748425,
@@ -9768,7 +9768,7 @@ describe("MCP economics + metagraph data tools", () => {
   // empty base list (buildGlobalValidators([], {sort, limit})) -- a D1 mock,
   // if bound, is never queried. Row-shaping/sorting across a real leaderboard
   // is still covered directly against the pure builder in
-  // tests/metagraph-neurons.test.mjs; this only proves each REST-supported
+  // tests/metagraph-neurons.test.ts; this only proves each REST-supported
   // sort key is still accepted and echoed back with an empty leaderboard.
   test("list_global_validators accepts each REST-supported sort key with an empty leaderboard", async () => {
     for (const sort of [
@@ -9865,7 +9865,7 @@ describe("MCP economics + metagraph data tools", () => {
   // null-block card (buildConcentration([], netuid)) -- covered by "returns
   // schema-stable null blocks on cold D1" above; entity-collapsing row-shaping
   // is still covered directly against the pure builder in
-  // tests/concentration.test.mjs.
+  // tests/concentration.test.ts.
 
   test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_concentration", {});
@@ -9881,7 +9881,7 @@ describe("MCP economics + metagraph data tools", () => {
   // null-block card (buildChainConcentration([])) -- covered by "returns
   // schema-stable null blocks on cold D1" above; entity-collapsing row-shaping
   // is still covered directly against the pure builder in
-  // tests/chain-concentration.test.mjs.
+  // tests/chain-concentration.test.ts.
 
   test("get_chain_performance returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_performance", {});
@@ -9898,7 +9898,7 @@ describe("MCP economics + metagraph data tools", () => {
   // null-block card (buildChainPerformance([])) -- covered by "returns
   // schema-stable null blocks on cold D1" above; reward/score row-shaping is
   // still covered directly against the pure builder in
-  // tests/chain-performance.test.mjs.
+  // tests/chain-performance.test.ts.
 
   test("get_subnet_idle_stake returns a schema-stable zero scorecard on cold D1", async () => {
     const res = await callTool("get_subnet_idle_stake", { netuid: 7 });
@@ -9973,7 +9973,7 @@ describe("MCP economics + metagraph data tools", () => {
   // handleChainIdentityHistory tier-selection exactly (same
   // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier contract) --
   // see the equivalent "flag=postgres" tests for handleSubnetIdentityHistory
-  // in tests/request-handlers-entities.test.mjs. D1 fully eliminated
+  // in tests/request-handlers-entities.test.ts. D1 fully eliminated
   // (2026-07-16): a Postgres miss/outage now degrades straight to the
   // schema-stable empty feed, never a live D1 read.
   describe("get_chain_identity_history Postgres tier", () => {
@@ -10094,7 +10094,7 @@ describe("MCP economics + metagraph data tools", () => {
   // production, so get_chain_yield always returns the schema-stable
   // null-block card (buildChainYield([])) -- covered by "returns schema-stable
   // null blocks on cold D1" above; return/distribution row-shaping is still
-  // covered directly against the pure builder in tests/chain-yield.test.mjs.
+  // covered directly against the pure builder in tests/chain-yield.test.ts.
 
   test("get_blocks_summary returns a schema-stable zeroed card on cold D1", async () => {
     const res = await callTool("get_blocks_summary", {});
@@ -10110,7 +10110,7 @@ describe("MCP economics + metagraph data tools", () => {
   // zeroed card (buildBlocksSummary([])) -- covered by "returns a
   // schema-stable zeroed card on cold D1" above; block-production row-shaping
   // is still covered directly against the pure builder in
-  // tests/blocks-summary.test.mjs.
+  // tests/blocks-summary.test.ts.
 
   // A validator-permit neuron_daily row for one boundary snapshot; keeps the
   // turnover fixtures compact so the churn arithmetic under test stays legible.
@@ -10540,7 +10540,7 @@ describe("MCP economics + metagraph data tools", () => {
   // D1-querying loaders are gone -- they now go tryPostgresTier ->
   // buildX([], ...) on any miss/outage. This mocks the Postgres tier by
   // running the SAME pure builder the real Postgres route
-  // (workers/data-api.mjs) would, over the caller's own window/limit query
+  // (workers/data-api.ts) would, over the caller's own window/limit query
   // params, so the mocked response is byte-identical to what production
   // would actually serve.
   function chainAccountEventsPostgresEnv(
@@ -11478,7 +11478,7 @@ describe("MCP economics + metagraph data tools", () => {
   // in production, so get_subnet_concentration_history always returns the
   // schema-stable empty series (buildConcentrationHistory([], netuid,
   // {window, capped:false})) -- per-day row-shaping is still covered directly
-  // against the pure builder in tests/concentration.test.mjs; this only
+  // against the pure builder in tests/concentration.test.ts; this only
   // proves the default window is still echoed with an empty series.
   test("get_subnet_concentration_history defaults to 30d with an empty series", async () => {
     const res = await callTool("get_subnet_concentration_history", {
@@ -11515,7 +11515,7 @@ describe("MCP economics + metagraph data tools", () => {
   // comparable:false scorecard (buildTurnover([], netuid, {window,
   // startDate:null, endDate:null})) -- covered by "returns schema-stable
   // empty on cold D1" above; validator-churn row-shaping is still covered
-  // directly against the pure builder in tests/turnover.test.mjs.
+  // directly against the pure builder in tests/turnover.test.ts.
 
   test("get_subnet_turnover rejects an invalid window", async () => {
     const res = await callTool("get_subnet_turnover", {
@@ -11560,7 +11560,7 @@ describe("MCP economics + metagraph data tools", () => {
   // account_events/neuron_daily row-shaping for the changes=true detail
   // (entered/exited validators, UID reassignments) is covered directly
   // against the pure builders (buildTurnoverChanges/turnoverChangeDetail) in
-  // tests/turnover.test.mjs -- see "with changes=true returns schema-stable
+  // tests/turnover.test.ts -- see "with changes=true returns schema-stable
   // empty detail on cold D1" above for this tool's now-only-reachable path.
 
   test("get_subnet_turnover rejects a non-boolean changes flag", async () => {
@@ -11585,7 +11585,7 @@ describe("MCP economics + metagraph data tools", () => {
   // production, so get_subnet_yield always returns the schema-stable empty
   // card (buildSubnetYield([], netuid)) -- covered by "returns schema-stable
   // empty on cold D1" above; per-UID yield row-shaping is still covered
-  // directly against the pure builder in tests/subnet-yield.test.mjs.
+  // directly against the pure builder in tests/subnet-yield.test.ts.
 
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
     const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
@@ -13128,7 +13128,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
   // in production, so get_account_events always returns the schema-stable
   // empty feed (buildAccountEvents([], ss58, {limit, offset, nextCursor:
   // null})) -- kind/netuid filtering row-shaping is still covered directly
-  // against the pure builder in tests/account-events.test.mjs; this only
+  // against the pure builder in tests/account-events.test.ts; this only
   // proves kind/netuid/limit are still accepted (or validated) with an empty
   // feed.
   test("get_account_events accepts kind and echoes the limit with an empty feed", async () => {
@@ -13183,13 +13183,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
   // empty footprint (buildAccountSubnets([], ss58)) -- covered by "the
   // account tools degrade to schema-stable empty payloads when D1 is cold"
   // below; cross-subnet row-shaping is still covered directly against the
-  // pure builder in tests/account-events.test.mjs.
+  // pure builder in tests/account-events.test.ts.
 
   // neurons' D1 write path is retired (#4772) and the table is dropped in
   // production, so get_account_portfolio always returns the schema-stable
   // empty portfolio (buildAccountPortfolio([], ss58)) -- position row-shaping
   // is still covered directly against the pure builder in
-  // tests/account-portfolio.test.mjs.
+  // tests/account-portfolio.test.ts.
   test("get_account_portfolio returns an empty portfolio on cold D1", async () => {
     const res = await callTool("get_account_portfolio", { ss58: SS58 });
     const out = res.body.result.structuredContent;
@@ -13745,7 +13745,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   // (buildBlockFeed([], {limit, offset, nextCursor: null})) -- covered by
   // "degrades to empty payload on cold D1" below; row-shaping/pagination
   // (including keyset cursor emission) is still covered directly against the
-  // pure builder in tests/blocks.test.mjs. A D1 mock, if bound, is never
+  // pure builder in tests/blocks.test.ts. A D1 mock, if bound, is never
   // queried -- cursor is still accepted (validated) with an empty feed.
   test("list_blocks accepts a cursor with an empty feed (D1 never queried)", async () => {
     const res = await callTool("list_blocks", {
@@ -13794,7 +13794,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   // production, so get_block always returns the schema-stable block:null
   // detail (buildBlock(undefined, ref)) -- no D1 lookup (numeric or hash ref,
   // or prev/next neighbor query) happens at all. Row-shaping is still
-  // covered directly against the pure builder in tests/blocks.test.mjs.
+  // covered directly against the pure builder in tests/blocks.test.ts.
   test("get_block accepts a 0x hash ref with block:null (D1 never queried)", async () => {
     const hash = "0x" + "a".repeat(64);
     const res = await callTool("get_block", { ref: hash });
@@ -13855,7 +13855,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   // on cold D1" / "returns extrinsic:null for an unknown ref" below; feed and
   // detail row-shaping (including success coercion, composite-ref parsing) is
   // still covered directly against the pure builders in
-  // tests/extrinsics.test.mjs.
+  // tests/extrinsics.test.ts.
   test("list_extrinsics accepts every REST filter parity param with an empty feed (D1 never queried)", async () => {
     const toMs = Date.now();
     const fromMs = toMs - 60_000;
@@ -13922,7 +13922,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   // handleExtrinsic tier-selection exactly (same METAGRAPH_EXTRINSICS_SOURCE
   // flag, same tryPostgresTier fallback contract) -- see the equivalent
   // "flag=postgres" tests for handleExtrinsics/handleExtrinsic in
-  // tests/request-handlers-entities.test.mjs, which this block mirrors.
+  // tests/request-handlers-entities.test.ts, which this block mirrors.
   describe("D1 -> Postgres serving cutover (#4694)", () => {
     function dataApi(response: Row) {
       return { fetch: async (request: Request) => response ?? { request } };
@@ -14193,7 +14193,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
 });
 
 describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain_events)", () => {
-  // Exact upstream JSON from workers/data-api.mjs (see tests/data-api.test.mjs).
+  // Exact upstream JSON from workers/data-api.ts (see tests/data-api.test.ts).
   const DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD = {
     block_number: 123,
     count: 1,
@@ -14498,7 +14498,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // D1 read. Real Postgres-tier plumbing is covered by the marker test in
   // "MCP chain-*/subnet-* analytics tools — Postgres tier wiring"; row-shaping
   // is still covered directly against the pure builder in
-  // tests/neuron-history.test.mjs.
+  // tests/neuron-history.test.ts.
   test("get_subnet_history returns a schema-stable empty series (D1 never queried)", async () => {
     const res = await callTool("get_subnet_history", {
       netuid: 1,
@@ -14554,7 +14554,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // handleSubnetIdentityHistory tier-selection exactly (same
   // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier fallback
   // contract) -- see the equivalent "flag=postgres" tests for
-  // handleSubnetIdentityHistory in tests/request-handlers-entities.test.mjs,
+  // handleSubnetIdentityHistory in tests/request-handlers-entities.test.ts,
   // which this block mirrors. Also mirrors list_extrinsics/get_extrinsic's own
   // "D1 -> Postgres serving cutover (#4694)" block in the block-explorer
   // describe above.
@@ -14685,7 +14685,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // in production, so get_neuron_history always returns the schema-stable
   // empty series (buildNeuronHistory([], netuid, uid, {window})) -- no D1
   // query happens at all. Per-day row-shaping is still covered directly
-  // against the pure builder in tests/neuron-history.test.mjs.
+  // against the pure builder in tests/neuron-history.test.ts.
   test("get_neuron_history returns a schema-stable empty series (D1 never queried)", async () => {
     const res = await callTool("get_neuron_history", {
       netuid: 1,
@@ -14711,7 +14711,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // {window, capped:false})) -- covered by the equivalent empty-series
   // assertion in the "MCP economics + metagraph data tools" describe block
   // above; per-day row-shaping is still covered directly against the pure
-  // builder in tests/concentration.test.mjs.
+  // builder in tests/concentration.test.ts.
 
   test("get_subnet_concentration_history rejects the 1y window (smaller set)", async () => {
     const res = await callTool("get_subnet_concentration_history", {
@@ -14728,7 +14728,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // nextCursor: null})) -- covered by "the parity history/events tools
   // degrade to empty payloads on cold D1" below. buildSubnetEvents shares
   // formatAccountEvent's row-mapping with buildAccountEvents, which is
-  // covered with real rows in tests/account-events.test.mjs; kind is still
+  // covered with real rows in tests/account-events.test.ts; kind is still
   // validated (and other args accepted) with an empty feed and a null
   // next_cursor.
   test("get_subnet_events accepts kind and echoes the limit with an empty feed", async () => {
@@ -15742,7 +15742,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   // #6244: min_/max_latency_ms and min_/max_score mirror REST's rangeFilters
-  // on the endpoints collection (contracts.mjs). A row missing the bounded
+  // on the endpoints collection (contracts.ts). A row missing the bounded
   // field must be excluded, not silently pass, once a bound is set.
   function endpointsRangeDeps() {
     return makeDeps({
@@ -16951,8 +16951,8 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
   // production, so all three tools always rank over a schema-stable empty
   // base (buildValidatorDetail/buildValidatorNominators/buildValidatorHistory
   // called with []) -- row-shaping over real rows is covered directly against
-  // the pure builders in tests/validator-nominators.test.mjs and
-  // tests/validator-history.test.mjs; this only proves the MCP wiring.
+  // the pure builders in tests/validator-nominators.test.ts and
+  // tests/validator-history.test.ts; this only proves the MCP wiring.
   test("get_validator_detail returns a schema-stable zeroed aggregate", async () => {
     const res = await callTool("get_validator_detail", { hotkey: HOTKEY });
     const out = res.body.result.structuredContent;
@@ -17193,7 +17193,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
   });
 
   test("get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level", async () => {
-    // workers/data-api.mjs's own nominators route wraps its response as
+    // workers/data-api.ts's own nominators route wraps its response as
     // { data: buildValidatorNominators(...), generatedAt } -- unlike the
     // flat-shaped neurons-tier routes. Assert hotkey/nominator_count/
     // nominators land at the TOP of structuredContent (matching this tool's
@@ -18551,7 +18551,7 @@ describe("MCP endpoint tools — live overlay staleness fix (#5225)", () => {
 // All twelve of these tools previously called their builder with []
 // unconditionally -- #4909's D1 retirement left no D1 path to route to
 // (neurons/neuron_daily are dropped), so they always served zeroed/empty
-// data in production while their REST siblings (entities.mjs's
+// data in production while their REST siblings (entities.ts's
 // handleSubnetConcentration et al.) served real Postgres data via
 // tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE"). This block
 // confirms the same wiring now reaches DATA_API at REST's exact path +
@@ -19651,9 +19651,9 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
 // get_subnet_stake_flow and get_subnet_volume are also gated on
 // METAGRAPH_ACCOUNT_EVENTS_SOURCE, but unlike the flat-data-shaped tools in
 // the CASES loop above (whose DATA_API response IS the builder payload),
-// entities.mjs's handleSubnetStakeFlow/handleSubnetAlphaVolume destructure
+// entities.ts's handleSubnetStakeFlow/handleSubnetAlphaVolume destructure
 // `{ data, generatedAt }` from tryPostgresTier's result (mirroring
-// workers/data-api.mjs's `/subnets/:netuid/stake-flow` and `/volume` routes,
+// workers/data-api.ts's `/subnets/:netuid/stake-flow` and `/volume` routes,
 // which return `json({ data: buildX(...), generatedAt })`, not a flat
 // buildX(...) body) -- so these two tools unwrap `.data` before falling back,
 // and the DATA_API mock here must nest the marker under `data` to exercise
@@ -19784,7 +19784,7 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
 });
 
 // get_subnet_ohlc is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE and, like
-// get_subnet_stake_flow/get_subnet_volume above, entities.mjs's
+// get_subnet_stake_flow/get_subnet_volume above, entities.ts's
 // handleSubnetOhlc destructures `{ data, generatedAt }` from
 // tryPostgresTier's result -- so the DATA_API mock here nests the marker
 // under `data` to exercise that unwrap.
@@ -19847,7 +19847,7 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
 // get_account_stake_flow / get_account_stake_moves / get_account_registrations /
 // get_account_weight_setters are also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE,
 // and like get_subnet_stake_flow/get_subnet_volume above (not like the
-// flat-shaped CASES tools), entities.mjs's handleAccountStakeFlow et al.
+// flat-shaped CASES tools), entities.ts's handleAccountStakeFlow et al.
 // destructure `{ data, generatedAt }` from tryPostgresTier's result, so these
 // four tools unwrap `.data` before falling back -- the DATA_API mock here
 // nests the marker under `data` to exercise that unwrap.
@@ -20339,8 +20339,8 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
 
 // get_block_events is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE, but
 // unlike the flat-data-shaped tools in the account_events-tier CASES loop
-// above, entities.mjs's handleBlockEvents destructures `{ data }` from
-// tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/events
+// above, entities.ts's handleBlockEvents destructures `{ data }` from
+// tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/events
 // route returns `json({ data: buildBlockEvents(...) })`, not a flat
 // buildBlockEvents(...) body -- so this tool unwraps `.data` before falling
 // back, and the DATA_API mock here must nest the marker under `data`.
@@ -20424,7 +20424,7 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
 // REST's handleAccountExtrinsics, which uses tryPostgresTier's result directly
 // (a flat buildAccountExtrinsics(...) body, same shape as get_account_events);
 // list_block_extrinsics mirrors handleBlockExtrinsics, which destructures
-// `{ data }` from tryPostgresTier's result (workers/data-api.mjs's
+// `{ data }` from tryPostgresTier's result (workers/data-api.ts's
 // /blocks/:ref/extrinsics route returns `json({ data: buildBlockExtrinsics(...) })`),
 // same shape as the get_block_events tool above.
 describe("MCP get_account_extrinsics — Postgres tier wiring", () => {

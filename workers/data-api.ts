@@ -1,6 +1,6 @@
 // metagraphed data Worker — Postgres-backed serving via Cloudflare Hyperdrive.
 //
-// Kept SEPARATE from the main api.mjs Worker (which is near its bundle budget): the
+// Kept SEPARATE from the main api.ts Worker (which is near its bundle budget): the
 // postgres.js driver + the growing Postgres-backed read surface live here, and the
 // main Worker routes the relevant paths in via a service binding (DATA_API). This is
 // the serving half of ADR 0013 — the indexer + Rust backfill write the rich Postgres
@@ -10,7 +10,7 @@
 // sql.begin(DATA_API_READ_TRANSACTION, ...) transaction (#4686 connection-affinity). The ONE
 // exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
 // this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
-// own dedicated Worker the way registry-sync-api.mjs does -- that split is
+// own dedicated Worker the way registry-sync-api.ts does -- that split is
 // justified by registry-sync-api targeting a genuinely SEPARATE Postgres instance,
 // deliberately isolated so a bug in one can't take the other down. Here, splitting
 // read and write for the IDENTICAL database would buy nothing (both need the same
@@ -419,7 +419,7 @@ const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
 // `Date.now() - days*DAY_MS` exactly. An unrecognized label falls back to the
-// map's default rather than erroring -- entities.mjs's own validation already
+// map's default rather than erroring -- entities.ts's own validation already
 // rejected genuinely bad values before tryPostgresTier ever forwards the
 // request here, so this only needs to mirror the happy path.
 function windowCutoff(
@@ -486,7 +486,7 @@ function windowCutoffDate(
 // null for an empty/cold result) -- matches the `{ data, generatedAt }` contract
 // the surviving account-level D1 loaders (and the former loadAccountStakeFlow /
 // loadSubnetStakeFlow pair removed in #6016) all compute identically.
-// entities.mjs destructures `generatedAt` straight off the tryPostgresTier body,
+// entities.ts destructures `generatedAt` straight off the tryPostgresTier body,
 // so this route MUST nest under `data` too, not return buildX(...)'s object flat
 // the way the subnet-level (single-object) routes do.
 function latestObservedIso(rows: Row[], field: string = "last_observed") {
@@ -637,7 +637,7 @@ function validEventFilter(value: unknown) {
 // --- POST /api/v1/internal/neurons-sync (#4771) -----------------------------
 // The write path into this Worker's own Postgres for neurons/neuron_daily.
 // Reached only via the main Worker's DATA_API service binding (no public
-// routes of its own) -- see workers/api.mjs's handleNeuronsSyncProxy, which
+// routes of its own) -- see workers/api.ts's handleNeuronsSyncProxy, which
 // forwards the request here unchanged. The shared-secret check below is the
 // only auth gate in the whole path, mirroring workers/registry-sync-api.ts's
 // shape (shared-secret POST, no R2/HMAC envelope needed since the secret
@@ -913,7 +913,7 @@ async function handleNeuronsSync(request: Request, env: Env) {
 
         // Per-account daily position rollup (#4832 gap-closure; #4839 gave this
         // its own Postgres write path in this same transaction, replacing D1's
-        // now-retired rollupAccountPositionDaily / src/account-position-history.mjs):
+        // now-retired rollupAccountPositionDaily / src/account-position-history.ts):
         // the SAME snapshot as neuron_daily above, re-keyed by (account, netuid,
         // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors that
         // retired D1 rollup's own filter -- account is NOT NULL and part of the
@@ -1219,8 +1219,8 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
 // same Postgres instance (not through any Worker route), so unlike
 // neurons-sync above there is no existing write request to piggyback the
 // rollup onto -- a Worker-native cron (ACCOUNT_EVENTS_ROLLUP_CRON,
-// workers/config.mjs) dispatches this instead, proxied through the main
-// Worker the same way (workers/api.mjs's handleRollupAccountEventsDailyProxy,
+// workers/config.ts) dispatches this instead, proxied through the main
+// Worker the same way (workers/api.ts's handleRollupAccountEventsDailyProxy,
 // called from handleScheduled). Also rolls up wallet_flow_daily (#6886/#6887)
 // in the same run -- the account-keyed, per-day net/gross StakeAdded vs
 // StakeRemoved rollup GET /api/v1/accounts/top-holders' ?sort=net_flow_*
@@ -1231,7 +1231,7 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
 // retired) made the same POST over
 // the public internet; the cron dispatch constructs the identical request
 // internally instead. Mirrors D1's rollupAccountEventsDaily
-// (src/account-events.mjs) exactly: re-roll the two active UTC days each
+// (src/account-events.ts) exactly: re-roll the two active UTC days each
 // run (past days are already finalized), upsert idempotently. No request
 // body -- this is a trigger-only POST, not a data-carrying sync.
 
@@ -1335,7 +1335,7 @@ async function handleRollupAccountEventsDaily(request: Request, env: Env) {
 // --- POST /api/v1/internal/subnet-hyperparams-sync (#4832 gap-closure) -----
 //
 // The write path into subnet_hyperparams + subnet_hyperparams_history,
-// reached only via workers/api.mjs's handleSubnetHyperparamsSyncProxy (the
+// reached only via workers/api.ts's handleSubnetHyperparamsSyncProxy (the
 // same proxyToDataApi shape as neurons-sync/rollup-account-events-daily
 // above) -- now this workflow's SOLE write path, D1's own R2-stage-to-D1
 // loader (loadStagedSubnetHyperparams) having been retired alongside D1's
@@ -2401,7 +2401,7 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
 // WITHIN the main Worker's own hourly cron (writeSubnetSnapshot,
 // src/health-prober.ts), not an external GitHub Actions workflow, so it's
 // called via a direct env.DATA_API.fetch() service-binding call rather than
-// crossing the public internet through workers/api.mjs's proxy layer (see
+// crossing the public internet through workers/api.ts's proxy layer (see
 // that function's own comment). No latest-only sibling table exists here
 // (mirrors D1's own shape -- the current identity lives in the profiles.json
 // artifact itself): only diff-and-append against the last recorded hash per
@@ -3093,7 +3093,7 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
 // --- POST /api/v1/internal/rpc-usage-sync (#4832 gap-closure) ------------
 //
 // Best-effort Postgres mirror of recordRpcUsage's D1 insert
-// (workers/request-handlers/rpc-proxy.mjs's syncRpcUsageEventToPostgres) --
+// (workers/request-handlers/rpc-proxy.ts's syncRpcUsageEventToPostgres) --
 // Pattern C, unlike every sync route above: one fire-and-forget POST per
 // live proxied RPC request under the caller's own ctx.waitUntil, not a
 // cron/workflow batch. Justified only after confirming live production
@@ -3550,7 +3550,7 @@ function numberOrNull(v: unknown) {
   if (v == null) return null;
   // Blank Hyperdrive/Postgres cells coerce via Number("") → 0; trim rejects "" /
   // whitespace-only so absent indices/timestamps stay null (mirrors toBlockNumber
-  // in src/account-events.mjs and src/blocks.ts).
+  // in src/account-events.ts and src/blocks.ts).
   if (typeof v === "string" && v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -3569,7 +3569,7 @@ function clampBlockLimit(raw: string | number | null | undefined) {
 }
 
 // The account/block/subnet events feeds document a <=1000 / default-100 profile
-// (FEED_PAGINATION) at their entities.mjs handlers; use the shared profile here
+// (FEED_PAGINATION) at their entities.ts handlers; use the shared profile here
 // too so the Postgres-tier path (which always wins in production, #4772/#4909)
 // doesn't silently re-cap them at the local clampLimit's 200 (#5474). The local
 // clampLimit still governs the non-events routes (extrinsics/transfers/chain-events).
@@ -3644,7 +3644,7 @@ function coerceEvent(row: Row) {
 // --- /api/v1/alerts/triggers (#4984 Part 1) ---------------------------------
 //
 // Public CRUD for user-defined chain alert triggers, reached only via
-// workers/api.mjs's DATA_API service binding (no public routes of its own,
+// workers/api.ts's DATA_API service binding (no public routes of its own,
 // same invariant as every route in this file). Creation is gated by a
 // shared anti-abuse token (mirrors src/webhooks.ts's own subscription-
 // creation gate, ALERT_TRIGGER_CREATE_TOKEN_HEADER/env.ALERT_TRIGGER_CREATE_TOKEN
@@ -3654,7 +3654,7 @@ function coerceEvent(row: Row) {
 // OWN owner_token instead (returned once, at creation) -- there is no public
 // view, unlike webhook subscriptions, because `destination` can itself be a
 // bearer credential (a Discord incoming-webhook URL). All shared, no-I/O
-// validation lives in src/alert-triggers.mjs; everything here is Postgres
+// validation lives in src/alert-triggers.ts; everything here is Postgres
 // plumbing + auth gates.
 
 async function withAlertTriggersSql(
@@ -3818,7 +3818,7 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
       key: resolveClientIp(request),
     });
     if (!success) {
-      // Carry the standard rate-limit header family so callers (and the api.mjs
+      // Carry the standard rate-limit header family so callers (and the api.ts
       // proxy that forwards this response) can detect throttling and honour the
       // back-off -- matching handleAccountBalance/handleSubnetRecycled (#5475).
       return writeJson(
@@ -4054,7 +4054,7 @@ async function handleAlertTriggersActiveList(request: Request, env: Env) {
 }
 
 // Internal-only: the #5022 evaluator write-back. AlerterHub.evaluate()
-// (workers/alerter-hub.mjs) POSTs the FULL matched-trigger id list for a
+// (workers/alerter-hub.ts) POSTs the FULL matched-trigger id list for a
 // chain event here -- every id whose conditions were satisfied, regardless
 // of whether the burst rate-limiter actually let it deliver -- so
 // chain_alert_triggers.match_count/last_matched_at reflect "this trigger's
@@ -4125,7 +4125,7 @@ async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
 const ALERT_TRIGGER_DELIVERY_LOG_RETAIN = 20;
 
 // Internal-only: the #8375 evaluator write-back for the Alert Center's
-// delivery history. AlerterHub.evaluate() (workers/alerter-hub.mjs) POSTs one
+// delivery history. AlerterHub.evaluate() (workers/alerter-hub.ts) POSTs one
 // record per delivery ATTEMPT (not per match -- a rate-limited match never
 // reaches here, matching handleAlertTriggersMatchedWriteback's own
 // "matched" vs "delivered" distinction). Gated the SAME way as the
@@ -4739,7 +4739,7 @@ async function handleWatchPushSubscriptionsRoute(
 // --- Wallet-signature login + self-serve fullnode/freemium API keys
 // (originally ADR 0021/#6835, reworked onto Unkey 2026-07-19) --------------
 //
-// Reached only via workers/api.mjs's DATA_API service binding, same as every
+// Reached only via workers/api.ts's DATA_API service binding, same as every
 // route in this file. Route groups:
 //   POST /api/v1/auth/wallet/challenge  { ss58 } -> a signable message
 //   POST /api/v1/auth/wallet/verify     { ss58, signature } -> a session
@@ -5194,7 +5194,7 @@ async function handleAccountKeyRevoke(
 }
 
 // Internal-only: verifies ONE raw key against Unkey, for
-// src/api-key-validation.mjs's KV-cache-fronted validator (reached via the
+// src/api-key-validation.ts's KV-cache-fronted validator (reached via the
 // RPC-gate Worker's own DATA_API service binding -- that Worker never holds
 // UNKEY_ROOT_KEY itself). Gated by its OWN shared secret -- a DIFFERENT
 // capability from the session-based /api/v1/keys routes above (this one
@@ -5539,7 +5539,7 @@ async function dispatchDataApiRequest(
       return handleRpcUsageEventPrune(request, env);
     }
     // Internal-only key verification for the isolated fullnode RPC gate's
-    // KV-cache-fronted validator (src/api-key-validation.mjs). See
+    // KV-cache-fronted validator (src/api-key-validation.ts). See
     // handleApiKeyVerify's own header comment for why this is POST-with-body
     // rather than the old GET-with-path-param shape.
     if (
@@ -5567,7 +5567,7 @@ async function dispatchDataApiRequest(
     }
     // #4984 Part 1: multi-method (POST/GET/PATCH/DELETE), so it can't join
     // the exact-path-and-method checks above -- handleAlertTriggersRoute
-    // does its own method dispatch, same shape as workers/api.mjs's
+    // does its own method dispatch, same shape as workers/api.ts's
     // handleWebhookRequest.
     if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
       return handleAlertTriggersRoute(request, env, url);
@@ -5776,7 +5776,7 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/blocks/summary — block-production health over the most
-        // recent BLOCKS_SUMMARY_SCAN_CAP blocks, mirroring src/blocks-summary.mjs's
+        // recent BLOCKS_SUMMARY_SCAN_CAP blocks, mirroring src/blocks-summary.ts's
         // loadBlocksSummary. Checked BEFORE the /blocks/:ref match below --
         // "summary" would otherwise parse as a (invalid) ref. ORDER BY leads
         // with observed_at (the hypertable's partition column) for the same
@@ -5972,7 +5972,7 @@ async function dispatchDataApiRequest(
         // shape: the same extrinsics feed as /extrinsics above, with call_module
         // fixed rather than caller-supplied (mirroring src/extrinsics.ts's
         // loadExtrinsics({callModule: "Sudo"|"AdminUtils", ...}) call sites in
-        // entities.mjs) -- so neither accepts ?signer=/?call_module=/?call_hash=.
+        // entities.ts) -- so neither accepts ?signer=/?call_module=/?call_hash=.
         // Ordered by observed_at for the same chunk-exclusion reason as
         // /api/v1/extrinsics above (identical hypertable, identical cursor shape).
         const SUDO_GOVERNANCE_ROUTES: Record<string, string> = {
@@ -6108,7 +6108,7 @@ async function dispatchDataApiRequest(
         // versa) still appears -- neither source alone is a complete account
         // list. Checked here, before the generic /api/v1/accounts/:ss58
         // pattern below, so "top-holders" is never matched as an address --
-        // same ordering rationale as workers/api.mjs's own dispatch.
+        // same ordering rationale as workers/api.ts's own dispatch.
         //
         // net_flow_7d/30d/90d (#6886/#6887) LEFT JOIN wallet_flow_daily --
         // one grouped pass over the last 90 days (the widest window), with
@@ -6166,7 +6166,7 @@ async function dispatchDataApiRequest(
         // GET /api/v1/accounts/:ss58 (#4832 Tier 1c): cross-subnet account
         // summary -- event aggregates, per-kind counts, 10 newest events,
         // current registrations, and bounded signing activity from the
-        // extrinsics tier, mirroring the former src/account-events.mjs
+        // extrinsics tier, mirroring the former src/account-events.ts
         // account-summary D1 loader (removed in #4772). Postgres has no
         // INDEXED BY equivalent, and a single (hotkey = $1 OR coldkey = $1)
         // WHERE forces one combined plan the planner can't always satisfy
@@ -6302,7 +6302,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/accounts/:ss58/subnets (#4832 Tier 1c): the subnets where
         // this account's hotkey is currently registered, mirroring the former
-        // src/account-events.mjs account-subnets D1 loader (removed in #4772) --
+        // src/account-events.ts account-subnets D1 loader (removed in #4772) --
         // neurons-derived (the live registration snapshot), not account_events.
         const acctSubnets = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/subnets$/,
@@ -6321,7 +6321,7 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/accounts/:ss58/events — the per-account signed-event feed
-        // (#4696), mirroring the former src/account-events.mjs account event-feed
+        // (#4696), mirroring the former src/account-events.ts account event-feed
         // D1 loader's filter set (removed in #4772: kind, netuid,
         // block_start/block_end, cursor). account_events has
         // no shape-parity risk (11 scalar columns, its own dedicated writer,
@@ -6439,7 +6439,7 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/subnets/:netuid/events (#4832 Tier 1b): the per-subnet
-        // signed-event feed, mirroring the former src/account-events.mjs subnet
+        // signed-event feed, mirroring the former src/account-events.ts subnet
         // event-feed D1 loader's filter set (removed in #4772: kind,
         // block_start/block_end, cursor). Same account_events
         // table/columns as the account feed above, filtered by netuid instead of
@@ -6489,7 +6489,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/subnets/:netuid/event-summary (#4832 Tier 1b): windowed
         // account_events aggregates by kind/category plus a recent evidence
-        // slice, mirroring the former src/account-events.mjs subnet event-summary
+        // slice, mirroring the former src/account-events.ts subnet event-summary
         // D1 loader (removed in #4772). The
         // distinct-actor count uses the same hotkey-or-(netuid,uid) identity as
         // the weight-setters routes (WeightsSet ingestion can omit hotkey).
@@ -6578,7 +6578,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/accounts/:ss58/extrinsics — extrinsics SIGNED by this account
         // (the `signer` column only, not a hotkey/coldkey union -- `extrinsics` has
-        // no hotkey/coldkey columns), mirroring the former src/account-events.mjs
+        // no hotkey/coldkey columns), mirroring the former src/account-events.ts
         // account-extrinsics D1 loader (removed in #4772).
         const acctExtrinsics = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/extrinsics$/,
@@ -6787,11 +6787,11 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/subnets/:netuid/volume (#4832 Tier 1b): rolling 24h buy/sell
-        // alpha volume, mirroring src/alpha-volume.mjs's loadSubnetAlphaVolume.
+        // alpha volume, mirroring src/alpha-volume.ts's loadSubnetAlphaVolume.
         // marketCapTao is deliberately null here (not the D1 path's degradation --
         // vol_mcap_ratio's own "externally-loaded marketCapTao" null semantics,
         // documented on buildAlphaVolume): this Worker has no KV/R2 binding to
-        // resolve the live economics artifact the way entities.mjs's
+        // resolve the live economics artifact the way entities.ts's
         // resolveSubnetMarketCapTao does, only the Hyperdrive Postgres connection.
         const subnetVolume = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/volume$/,
@@ -6831,7 +6831,7 @@ async function dispatchDataApiRequest(
         // lookback (default DEFAULT_OHLC_WINDOW_DAYS, clamped to
         // MAX_OHLC_WINDOW_DAYS); a malformed value falls back to the default
         // rather than erroring, matching this Worker's own no-query-
-        // validation convention (handleSubnetOhlc, the entities.mjs REST
+        // validation convention (handleSubnetOhlc, the entities.ts REST
         // layer this route is reached through via tryPostgresTier, already
         // validates both params with a 400 before forwarding).
         const subnetOhlc = url.pathname.match(
@@ -7038,7 +7038,7 @@ async function dispatchDataApiRequest(
         // GET /api/v1/chain/weights (#4832 Tier 2): network-wide WeightsSet
         // leaderboard + rollup, mirroring src/chain-weights.ts's
         // loadChainWeights. window/limit are resolved from the shared
-        // ANALYTICS_WINDOWS/DEFAULT_ANALYTICS_WINDOW (workers/config.mjs) --
+        // ANALYTICS_WINDOWS/DEFAULT_ANALYTICS_WINDOW (workers/config.ts) --
         // the same set every chain-* module's own WINDOWS constant
         // duplicates -- and chainLimit (below) replicates parseLimitParam's
         // success path since the D1-side handler has already validated a
@@ -7740,7 +7740,7 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/chain/calls (#4832 gap-closure): extrinsic call-mix
-        // breakdown, mirroring src/analytics-live.mjs's loadChainCalls. The
+        // breakdown, mirroring src/analytics-live.ts's loadChainCalls. The
         // share denominator (total) is read separately so the LIMIT-truncated
         // grouped rows never skew shares, exactly like the D1 loader.
         const chainCalls = url.pathname.match(/^\/api\/v1\/chain\/calls$/);
@@ -7804,7 +7804,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/chain/activity (#4832 gap-closure): per-UTC-day
         // extrinsic/event/block counts, success rate, and unique signers,
-        // mirroring src/analytics-live.mjs's loadNetworkActivity. The base
+        // mirroring src/analytics-live.ts's loadNetworkActivity. The base
         // extrinsics aggregate + blocks aggregate are cheap (confirmed live
         // via psql: well under 500ms each at current volume), but
         // COUNT(DISTINCT signer) per day forces a per-group sort that
@@ -7873,7 +7873,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/chain/fees (#4832 gap-closure): per-UTC-day fee/tip
         // series plus a windowed top-fee-payer leaderboard, mirroring
-        // src/analytics-live.mjs's loadChainFees. Postgres has no equivalent
+        // src/analytics-live.ts's loadChainFees. Postgres has no equivalent
         // of the D1 loader's sample-capped rank+partition median CTEs --
         // PERCENTILE_CONT computes exact per-day medians directly, but
         // (confirmed live via psql) costs the same ~2.5s per-group-sort as
@@ -7996,7 +7996,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/subnets/:netuid/health/trends (#4832 gap-closure):
         // per-subnet 7d/30d uptime + latency trends from the raw
-        // surface_checks window, mirroring src/analytics-live.mjs's
+        // surface_checks window, mirroring src/analytics-live.ts's
         // loadSubnetHealthTrends. `ok` is BOOLEAN here (D1's `ok = 1`
         // becomes a bare `ok`); the SQLite rank-based p50/p95/p99 pick
         // (src/health-sql.ts's latencyStatColumns) becomes PERCENTILE_CONT
@@ -8054,7 +8054,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/subnets/:netuid/health/percentiles?window= (#4832
         // gap-closure): p50/p95/p99 + avg/min/max latency per surface,
-        // mirroring src/analytics-live.mjs's loadSubnetPercentiles.
+        // mirroring src/analytics-live.ts's loadSubnetPercentiles.
         const subnetHealthPercentiles = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/health\/percentiles$/,
         );
@@ -8107,7 +8107,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/subnets/:netuid/health/incidents?window= (#4832
         // gap-closure): per-surface SLA + reconstructed downtime incidents,
-        // mirroring src/analytics-live.mjs's loadSubnetIncidents. The
+        // mirroring src/analytics-live.ts's loadSubnetIncidents. The
         // gap-island grouping (LAG/window functions) is syntactically
         // near-identical between SQLite and Postgres -- live-verified via
         // psql (2026-07-11) -- the only real adaptation is `ok` being
@@ -8200,7 +8200,7 @@ async function dispatchDataApiRequest(
         // the per-subnet route above but with no netuid filter, grouped by
         // (netuid, surface_key) and capped to the newest
         // MAX_GLOBAL_INCIDENT_SOURCE_ROWS checks, mirroring
-        // GLOBAL_INCIDENTS_SQL in workers/request-handlers/analytics.mjs.
+        // GLOBAL_INCIDENTS_SQL in workers/request-handlers/analytics.ts.
         const globalIncidents = url.pathname.match(/^\/api\/v1\/incidents$/);
         if (globalIncidents) {
           const since = windowCutoff(
@@ -8264,7 +8264,7 @@ async function dispatchDataApiRequest(
         // GET /api/v1/subnets/:netuid/uptime?window=&min_samples= (#4832
         // gap-closure follow-up): durable 90d/1y availability history from
         // the daily rollup, mirroring workers/request-handlers/
-        // analytics-routes.mjs's handleUptime. Reuses METAGRAPH_HEALTH_SOURCE
+        // analytics-routes.ts's handleUptime. Reuses METAGRAPH_HEALTH_SOURCE
         // (same table already covered by the bulk-trends route above), a
         // simple GROUP BY + optional HAVING with no window functions.
         const subnetUptime = url.pathname.match(
@@ -8342,7 +8342,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/internal/compare-health?netuids=1,7,19 (#4832 gap-closure
         // follow-up): the health-dimension slice handleCompare embeds inline
-        // (workers/request-handlers/analytics-routes.mjs) rather than a
+        // (workers/request-handlers/analytics-routes.ts) rather than a
         // standalone D1 route, so there's no client request to forward
         // unchanged -- handleCompare synthesizes this request itself once its
         // own netuids/dimensions validation has already run, same "internal"
@@ -8488,10 +8488,10 @@ async function dispatchDataApiRequest(
         // GET /api/v1/internal/subnet-identity-aliases?netuids=1,7,19 (#4832
         // gap-closure follow-up): src/subnet-identity-history.ts's
         // loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are D1-fetch
-        // helpers embedded in 3 workers/api.mjs call sites (overlay logic,
+        // helpers embedded in 3 workers/api.ts call sites (overlay logic,
         // not standalone routes), so -- same rationale as
         // /api/v1/internal/compare-health -- there is no single client
-        // request to forward; api.mjs synthesizes this request itself.
+        // request to forward; api.ts synthesizes this request itself.
         // Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE (same table already
         // covered by /identity-history, and already flipped to postgres).
         // Returns raw grouped rows; derivePreviouslyKnownAs/
@@ -8523,7 +8523,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/subnets/:netuid/trajectory (#4832 gap-closure): weekly
         // structural + economics trajectory from the daily snapshot, mirroring
-        // workers/request-handlers/analytics-routes.mjs's handleTrajectory.
+        // workers/request-handlers/analytics-routes.ts's handleTrajectory.
         // format=csv is handled entirely D1-side (csvResponse never reaches
         // tryPostgresTier's own request-forward for this route -- see that
         // handler); this route only ever needs to return JSON.
@@ -8562,7 +8562,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/economics/trends?window= (#4832 gap-closure):
         // network-wide daily economics time series, mirroring
-        // workers/request-handlers/analytics-routes.mjs's handleEconomicsTrends
+        // workers/request-handlers/analytics-routes.ts's handleEconomicsTrends
         // via src/economics-trends.ts's loadEconomicsTrends. A malformed
         // window degrades to "all" (no cutoff) rather than erroring -- the
         // D1-side handler already rejects it before ever reaching this route
@@ -9466,7 +9466,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/validators?sort=&limit= (#4771): network-wide validator
         // leaderboard, mirroring loadGlobalValidators. Trusts already-validated
-        // sort/limit params (the caller, workers/request-handlers/entities.mjs's
+        // sort/limit params (the caller, workers/request-handlers/entities.ts's
         // handleGlobalValidators, validates them before forwarding here).
         if (url.pathname === "/api/v1/validators") {
           const sortParam = url.searchParams.get("sort");
@@ -9878,7 +9878,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/accounts/:ss58/portfolio (#4832 Tier 2): one wallet's
         // cross-subnet neuron portfolio, mirroring
-        // src/account-portfolio.mjs's loadAccountPortfolio.
+        // src/account-portfolio.ts's loadAccountPortfolio.
         const acctPortfolio = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/portfolio$/,
         );
@@ -9910,7 +9910,7 @@ async function dispatchDataApiRequest(
         // every hotkey/subnet it delegates to, reconstructed from
         // nominator_positions (a share_fraction ledger) joined against the
         // live neurons stake_tao for each referenced (hotkey, netuid). See
-        // src/account-nominator-positions.mjs's header comment for the
+        // src/account-nominator-positions.ts's header comment for the
         // root-stake (netuid 0) scope limitation.
         const acctPositions = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/positions$/,
@@ -9929,7 +9929,7 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/accounts/:ss58/identity (#4832 gap-closure, Phase B):
-        // latest-only, mirroring src/account-identity.mjs's
+        // latest-only, mirroring src/account-identity.ts's
         // loadAccountIdentity. Column list matches that file's own SELECT.
         const acctIdentity = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/identity$/,
@@ -9944,7 +9944,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/accounts/:ss58/identity-history?limit=&offset=&cursor=
         // (#4832 gap-closure, Phase B): append-only change timeline,
-        // mirroring src/account-identity-history.mjs's
+        // mirroring src/account-identity-history.ts's
         // loadAccountIdentityHistory. observed_at/id are plain BIGINT
         // columns, no ::text cast needed.
         const acctIdentityHistory = url.pathname.match(
@@ -9983,13 +9983,13 @@ async function dispatchDataApiRequest(
         }
 
         // GET /api/v1/accounts?sort=&limit= (#4832 Tier 2): the global accounts
-        // leaderboard, mirroring src/accounts-list.mjs's loadAccountsList.
+        // leaderboard, mirroring src/accounts-list.ts's loadAccountsList.
         if (url.pathname === "/api/v1/accounts") {
           const sortParam = url.searchParams.get("sort") || undefined;
           // Number(null) is 0 (finite), not NaN -- an absent ?limit= must not
           // silently clamp to a zero-row page. Only a genuinely PRESENT value
           // reaches Number(); an absent/blank one falls back to the default,
-          // matching parseBoundedIntParam's contract (entities.mjs's D1 path).
+          // matching parseBoundedIntParam's contract (entities.ts's D1 path).
           const limitRaw = url.searchParams.get("limit");
           const limit =
             limitRaw == null || limitRaw === ""
@@ -10417,7 +10417,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/accounts/:ss58/subnets/:netuid/history?window= (#4832
         // gap-closure): one wallet's position on one subnet over time,
-        // mirroring src/account-position-history.mjs's buildAccountPositionHistory.
+        // mirroring src/account-position-history.ts's buildAccountPositionHistory.
         const positionHistoryMatch = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/subnets\/(\d+)\/history$/,
         );
@@ -10453,7 +10453,7 @@ async function dispatchDataApiRequest(
 
         // GET /api/v1/accounts/:ss58/history?netuid=&from=&to=&limit=&offset=&cursor=
         // (#4832 gap-closure): the durable per-day activity series for an
-        // account, mirroring src/account-events.mjs's buildAccountHistory /
+        // account, mirroring src/account-events.ts's buildAccountHistory /
         // ACCOUNT_DAY_COLUMNS. day is cast to ::text for the same reason
         // snapshot_date is elsewhere in this file (postgres.js parses DATE
         // columns to JS Date objects by default, which would break the

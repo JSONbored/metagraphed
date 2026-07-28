@@ -142,11 +142,11 @@ case "$STEP" in
   registry-sync)
     : "${REGISTRY_SYNC_SECRET:?REGISTRY_SYNC_SECRET env var required for the registry-sync step}"
     echo "entrypoint: full registry resync to Postgres"
-    exec node scripts/backfill-registry-postgres.mjs
+    exec node scripts/backfill-registry-postgres.ts
     ;;
   testnet-discovery)
     echo "entrypoint: probing testnet subnet surfaces"
-    node scripts/discover-testnet-surfaces.mjs --out /tmp/testnet-discovery.json
+    node scripts/discover-testnet-surfaces.ts --out /tmp/testnet-discovery.json
     callable_count="$(node -e "process.stdout.write(String(require('/tmp/testnet-discovery.json').summary.callable_count))")"
     if [ "$callable_count" != "0" ]; then
       echo "entrypoint: $callable_count testnet subnet(s) now expose a callable API -- promote them to curated testnet surfaces"

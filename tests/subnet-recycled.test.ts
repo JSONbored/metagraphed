@@ -14,7 +14,7 @@ function req(path: string) {
 }
 
 // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
-// in tests/sudo-key.test.mjs / tests/account-balance.test.mjs.
+// in tests/sudo-key.test.ts / tests/account-balance.test.ts.
 function withFetchStub(stub: typeof fetch, fn: () => unknown) {
   const orig = globalThis.fetch;
   globalThis.fetch = stub;

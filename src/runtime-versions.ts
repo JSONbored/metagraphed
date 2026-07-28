@@ -7,7 +7,7 @@
 // Coverage caveat — be honest, not just "partial": spec_version was added to
 // `blocks` via a nullable ALTER on 2026-06-25 (migration 0017), and the row
 // load contract is INSERT OR IGNORE on the block_number primary key
-// (src/blocks.mjs) — a block row written before that date, or on any RPC
+// (src/blocks.ts) — a block row written before that date, or on any RPC
 // failure, has a permanently-null spec_version that can never be back-filled
 // by a later poller pass. `coverage_from_block`/`coverage_from_at` report the
 // earliest block that DOES carry a reading, so a caller can tell "a version
@@ -29,7 +29,7 @@ function toIso(ms: unknown): string | null {
 // non-finite, or negative. D1 can return an INTEGER column as a numeric
 // string, so a bare `row.spec_version ?? null` would silently leak the string
 // into the API payload. Mirrors the `toBlockNumber` helper duplicated per
-// module across src/blocks.mjs, src/subnet-identity-history.ts, etc.
+// module across src/blocks.ts, src/subnet-identity-history.ts, etc.
 function toNonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
@@ -106,7 +106,7 @@ const RUNTIME_TRANSITIONS_SQL =
 // separate query from RUNTIME_TRANSITIONS_SQL's GROUP BY, which can't answer
 // this (see buildRuntimeVersionHistory's docstring). Mirrors
 // blocks-summary's `latest_spec_version: blocks[blockCount - 1].spec_version`
-// (src/blocks-summary.mjs), computed here via SQL instead of an in-memory
+// (src/blocks-summary.ts), computed here via SQL instead of an in-memory
 // window since this route has no window of rows already in hand.
 const RUNTIME_LATEST_SQL =
   "SELECT spec_version FROM blocks WHERE spec_version IS NOT NULL ORDER BY block_number DESC LIMIT 1";

@@ -1,6 +1,6 @@
 // Nominator list for one validator hotkey (#4334/7.2): who has staked to this
 // validator (across every subnet it operates in), derived from the same
-// StakeAdded/StakeRemoved account_events flow src/account-stake-flow.mjs
+// StakeAdded/StakeRemoved account_events flow src/account-stake-flow.ts
 // already aggregates per-account — grouped by coldkey (the nominator) instead
 // of by netuid, since here the hotkey is fixed and the question is WHO is
 // behind it. No new capture: StakeAdded/StakeRemoved carry both hotkey
@@ -13,7 +13,7 @@ type Row = Record<string, unknown>;
 export const STAKE_ADDED_KIND = "StakeAdded";
 export const STAKE_REMOVED_KIND = "StakeRemoved";
 
-// Same window set as account-stake-flow.mjs / the per-subnet stake-flow route.
+// Same window set as account-stake-flow.ts / the per-subnet stake-flow route.
 export const NOMINATOR_WINDOWS: Record<string, number> = {
   "7d": 7,
   "30d": 30,

@@ -1,7 +1,7 @@
 // List-query transform helpers for the API Worker — filtering, search, sort,
 // and cursor pagination over in-memory artifact collections. Extracted from
-// workers/api.mjs (issue #510, de-monolith) as a leaf module: it imports only
-// the query-collection contract and nothing from api.mjs, so there is no cycle.
+// workers/api.ts (issue #510, de-monolith) as a leaf module: it imports only
+// the query-collection contract and nothing from api.ts, so there is no cycle.
 // `applyQueryFilters` is the main public entry; route preflight uses the same
 // validator before artifact/cache reads.
 import {

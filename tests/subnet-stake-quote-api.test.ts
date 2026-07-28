@@ -1,7 +1,7 @@
 // Route-dispatch coverage for GET /api/v1/subnets/{netuid}/stake-quote (#5235):
-// drives the real api.mjs router end-to-end so the path-pattern match + handler
+// drives the real api.ts router end-to-end so the path-pattern match + handler
 // call are exercised. Handler/resolver branch detail lives in
-// subnet-stake-quote-handler.test.mjs; the pure math in stake-quote.test.mjs.
+// subnet-stake-quote-handler.test.ts; the pure math in stake-quote.test.ts.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";

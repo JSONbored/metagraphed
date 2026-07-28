@@ -481,7 +481,7 @@ describe("loadSubnetAlphaVolume", () => {
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
 // Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the
-// SQL — mirrors runtimeEnv in tests/runtime-versions.test.mjs. METAGRAPH_ARCHIVE
+// SQL — mirrors runtimeEnv in tests/runtime-versions.test.ts. METAGRAPH_ARCHIVE
 // is deliberately unset (unlike createLocalArtifactEnv's default) so
 // resolveSubnetMarketCapTao's R2 fallback is genuinely cold, regardless of
 // whether a local `npm run build` happens to have staged a real

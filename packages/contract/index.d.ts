@@ -3169,6 +3169,8 @@ export interface components {
             hotkey?: string | null;
             netuid?: number | null;
             observed_at?: string | null;
+            price_at_tx?: number | null;
+            price_basis?: ("trade_exact" | "root_no_pool") | null;
             uid?: number | null;
         };
         AccountEventsArtifact: {

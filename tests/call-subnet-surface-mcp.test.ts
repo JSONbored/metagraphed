@@ -1,9 +1,9 @@
 // MCP-level tests for the call_subnet_surface tool (metagraphed#7014, MCP
-// execute Phase 1). Mirrors tests/surface-verify.test.mjs's
+// execute Phase 1). Mirrors tests/surface-verify.test.ts's
 // verify_integration MCP-tool describe block: same catalog fixture shape,
 // same fetch-mock-with-try/finally-restore pattern, same DNS-rebinding-mock
 // approach for the SSRF guard. src/call-subnet-surface.ts's own unit tests
-// (tests/call-subnet-surface.test.mjs) exhaustively cover the fetch/
+// (tests/call-subnet-surface.test.ts) exhaustively cover the fetch/
 // redirect/body-capping logic in isolation; this file only proves the tool
 // wiring (surface resolution, auth_required/probe.enabled gating, arg
 // validation, error-code mapping) end-to-end through the real JSON-RPC path.
@@ -1031,7 +1031,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
 
   // #7701 (MCP execute Phase 4): scheme:signature multi-value credential
   // bundle -- eligibility validation and placement across every supported
-  // location. src/call-subnet-surface.mjs's own unit tests already cover
+  // location. src/call-subnet-surface.ts's own unit tests already cover
   // placement/redaction exhaustively; this block proves the tool-layer
   // eligibility gate (name-set matching, value typing, body's path/method
   // requirement) end-to-end.
@@ -1396,7 +1396,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
   });
 
   // #7687 (MCP execute Phase 3b): a credential must never appear in usage
-  // telemetry. usageEventProperties (src/usage-telemetry.mjs) is already a
+  // telemetry. usageEventProperties (src/usage-telemetry.ts) is already a
   // strict allowlist that never receives raw tool args -- this proves that
   // holds for a real credentialed call, not just by reading the allowlist.
   describe("credential never reaches usage telemetry (#7687)", () => {

@@ -15,7 +15,7 @@
 // network-parameters.ts's own precedent of precomputing fixed pallet/item
 // prefixes rather than hashing on every request (the pallet/item name never
 // changes). Cross-checked against that module's already-verified
-// twox-storage-key.mjs output at write time -- see tests/randomness.test.mjs.
+// twox-storage-key.ts output at write time -- see tests/randomness.test.ts.
 
 export const RANDOMNESS_KV_TTL = 30; // seconds -- pulses land ~3s apart, but this is a snapshot, not a feed
 export const RANDOMNESS_NEGATIVE_KV_TTL = 10; // seconds

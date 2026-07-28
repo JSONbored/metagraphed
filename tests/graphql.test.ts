@@ -7623,7 +7623,7 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,
-// the graphql-ws WS transport) is covered in tests/chain-firehose-hub.test.mjs.
+// the graphql-ws WS transport) is covered in tests/chain-firehose-hub.test.ts.
 // These tests exercise the OTHER half: that the schema's chainEvents field is
 // wired to a real subscribe() resolver that correctly bridges
 // context.chainFirehose's repeater into graphql-js's own subscribe() engine
@@ -9221,8 +9221,20 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
     fixtureEnv({
       "/metagraph/providers/acme/endpoints.json": {
         endpoints: [
-          { id: "acme-e1", kind: "subtensor-rpc", status: "ok", netuid: 1 },
-          { id: "acme-e2", kind: "subnet-api", status: "degraded", netuid: 2 },
+          {
+            id: "acme-e1",
+            kind: "subtensor-rpc",
+            status: "ok",
+            netuid: 1,
+            pool_eligible: true,
+          },
+          {
+            id: "acme-e2",
+            kind: "subnet-api",
+            status: "degraded",
+            netuid: 2,
+            pool_eligible: false,
+          },
         ],
       },
     });
@@ -9250,6 +9262,28 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
       body.data.provider_endpoints.endpoints[0].kind,
       "subtensor-rpc",
     );
+  });
+
+  test("applies a netuid filter via the shared loader (#8546)", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme", netuid: 1) }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
+  });
+
+  test("applies a pool_eligible filter via the shared loader (#8546)", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme", pool_eligible: true) }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
   });
 
   test("an unsupported sort is a GraphQL error, not a silent default", async () => {
@@ -15275,7 +15309,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     ]);
   });
 
-  // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.mjs)
+  // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.ts)
   // now ignores its d1 argument entirely and always returns the empty shape --
   // even a "warm" D1 mock (real rows) must not change the response.
   test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {
@@ -15978,7 +16012,7 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
 
   // The network aggregate (COUNT/COUNT DISTINCT/MAX(observed_at)) has no GROUP
   // BY; the per-subnet leaderboard is GROUP BY netuid -- same two-query shape
-  // loadChainWeights always issues (mirrors the mcp-server.test.mjs fixture).
+  // loadChainWeights always issues (mirrors the mcp-server.test.ts fixture).
   function chainWeightsD1({ network, subnets = [] }: Row = {}) {
     return {
       prepare(sql: string) {
@@ -18207,7 +18241,7 @@ describe("Subscription.chainEvents", () => {
   });
 
   test("passes context.clientIp through to subscribeChainEvents as the second argument (#5004 item 2)", async () => {
-    // context.clientIp is populated by workers/chain-firehose-hub.mjs's
+    // context.clientIp is populated by workers/chain-firehose-hub.ts's
     // graphqlWsServer context() callback (from ctx.extra.ip, itself set by
     // handleSubscribe's opened(adapterSocket, { ip: clientIp }) call) -- not
     // Node-testable end-to-end, so this proves the resolver's half of that
@@ -18884,7 +18918,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
 
 describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
-  // in tests/sudo-key.test.mjs.
+  // in tests/sudo-key.test.ts.
   function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
@@ -18952,7 +18986,7 @@ describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.ts)", () => {
 
 describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
-  // in tests/network-parameters.test.mjs.
+  // in tests/network-parameters.test.ts.
   function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
@@ -19160,7 +19194,7 @@ describe("graphql — randomness_status (#7649, get_randomness_status-aligned al
   });
 });
 
-describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs)", () => {
+describe("graphql — evm_address (#6990, live chain RPC via address-mapping.ts)", () => {
   function kvEnv(payload: Row) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }
@@ -19297,7 +19331,7 @@ describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name p
 
 describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
-  // in tests/subnet-recycled.test.mjs.
+  // in tests/subnet-recycled.test.ts.
   function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
@@ -19388,7 +19422,7 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
 
 describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
-  // in tests/subnet-burn.test.mjs.
+  // in tests/subnet-burn.test.ts.
   function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
@@ -19475,11 +19509,11 @@ describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", (
   });
 });
 
-describe("graphql — account_balance (#5700, live chain RPC via account-balance.mjs)", () => {
+describe("graphql — account_balance (#5700, live chain RPC via account-balance.ts)", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
-  // in tests/account-balance.test.mjs.
+  // in tests/account-balance.test.ts.
   function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;

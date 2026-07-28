@@ -3,7 +3,7 @@ name: Sync operational surfaces
 # operational-surfaces.json (the health-prober's cold-start input list) is the
 # one deliberate DUAL artifact kept committed to git -- purely so the
 # prober's ASSETS read never depends on a live fetch succeeding (see
-# src/artifact-storage.mjs's DUAL_PATTERNS comment). It's excluded from the
+# src/artifact-storage.ts's DUAL_PATTERNS comment). It's excluded from the
 # "Verify committed derived artifacts are fresh" CI gate on purpose, because a
 # one-file community surface PR has no reason to regenerate it -- there's no
 # authority/review gate on that list. That's correct, but it also means
@@ -98,6 +98,6 @@ jobs:
           body: |
             Auto-regenerates the health-prober's committed cold-start surface list from the current `registry/subnets/*.json` sources. Surface count: `${{ steps.summary.outputs.before }}` -> `${{ steps.summary.outputs.after }}`.
 
-            This file is excluded from the "Verify committed derived artifacts are fresh" CI gate by design (see `src/artifact-storage.mjs`) since a one-file community surface PR has no reason to regenerate it. This workflow is what keeps it from silently drifting instead.
+            This file is excluded from the "Verify committed derived artifacts are fresh" CI gate by design (see `src/artifact-storage.ts`) since a one-file community surface PR has no reason to regenerate it. This workflow is what keeps it from silently drifting instead.
           labels: |
             automation

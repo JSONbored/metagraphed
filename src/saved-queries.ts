@@ -88,7 +88,7 @@ export const SAVED_QUERY_TEMPLATES: SavedQueryTemplate[] = [
       },
     ],
     notes:
-      "Wraps composeLeaderboardsData (workers/request-handlers/analytics-routes.mjs), " +
+      "Wraps composeLeaderboardsData (workers/request-handlers/analytics-routes.ts), " +
       "the same composer GET /api/v1/registry/leaderboards, " +
       "get_registry_leaderboards, and the GraphQL registry_leaderboards " +
       "resolver all share.",
@@ -127,7 +127,7 @@ export const SAVED_QUERY_TEMPLATES: SavedQueryTemplate[] = [
   },
 ];
 
-// Same trick postgresTierRequest (src/graphql.mjs) uses: tryPostgresTier only
+// Same trick postgresTierRequest (src/graphql.ts) uses: tryPostgresTier only
 // inspects pathname + search (it forwards the Request as-is to the DATA_API
 // service binding, which routes on pathname), so a fixed internal origin is
 // fine here -- there is no real incoming request to borrow one from when this

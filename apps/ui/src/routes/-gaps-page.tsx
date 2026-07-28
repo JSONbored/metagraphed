@@ -369,7 +369,7 @@ function MissingKindsAtAGlance() {
               >
                 <span
                   className={classNames(
-                    "mg-type-caption text-[10px]",
+                    "mg-type-caption",
                     isActive ? "text-accent" : "text-ink-strong",
                   )}
                 >
@@ -390,7 +390,7 @@ function MissingKindsAtAGlance() {
         })}
       </ul>
       {activeMissing.size > 0 ? (
-        <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-2 text-[10px] text-ink-muted">
+        <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-2 text-ink-muted">
           <span>filtered by:</span>
           {Array.from(activeMissing).map((k) => (
             <span
@@ -565,7 +565,7 @@ function OpenGapsSection() {
                 setSearch({ missing: Array.from(next).join(",") });
               }}
               className={classNames(
-                "mg-type-micro inline-flex h-6 items-center rounded-full border px-2.5 text-[10px] transition-colors",
+                "mg-type-micro inline-flex h-6 items-center rounded-full border px-2.5 transition-colors",
                 active
                   ? "border-accent bg-primary-soft text-ink-strong"
                   : "border-border bg-paper text-ink-muted hover:border-accent/50 hover:text-ink",
@@ -734,13 +734,13 @@ function GapRow({
           {visibleKinds.map((k) => (
             <span
               key={k}
-              className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-[10px] text-ink-muted"
+              className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-ink-muted"
             >
               {k}
             </span>
           ))}
           {overflowKindCount > 0 ? (
-            <span className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-[10px] text-ink-muted">
+            <span className="mg-type-micro inline-flex h-4 items-center rounded-full border border-border bg-paper px-1.5 text-ink-muted">
               +{overflowKindCount}
             </span>
           ) : null}
@@ -781,7 +781,7 @@ function GapRow({
                 {gap.category ? (
                   <span
                     className={classNames(
-                      "mg-type-micro inline-flex h-5 items-center rounded-full border px-2 text-[10px]",
+                      "mg-type-micro inline-flex h-5 items-center rounded-full border px-2",
                       matchedKind
                         ? "border-accent/50 bg-primary-soft text-accent"
                         : "border-transparent text-ink-muted",
@@ -823,7 +823,7 @@ function GapRow({
                 <p className="mt-1.5 mg-type-caption text-ink">↳ {gap.suggested_action}</p>
               ) : null}
               {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
-                <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
+                <div className="mg-type-caption mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-ink-muted">
                   <span>relevant sources:</span>
                   {rawSources.map((s) => (
                     <ExternalLink
@@ -883,7 +883,7 @@ function SeverityChip({ severity }: { severity?: string }) {
   return (
     <span
       className={classNames(
-        "mg-type-micro inline-flex h-5 items-center rounded-full border bg-transparent px-2 text-[10px]",
+        "mg-type-micro inline-flex h-5 items-center rounded-full border bg-transparent px-2",
         "before:content-[''] before:size-1.5 before:rounded-full before:mr-1.5",
         tone,
       )}
@@ -906,7 +906,7 @@ function FilterSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 text-[11px] text-ink-muted">
-      <span className="mg-type-caption text-[10px]">{label}</span>
+      <span className="mg-type-caption">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -1031,7 +1031,7 @@ function EnrichmentQueue() {
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
+          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">ID</th>
               <th className="px-4 py-2.5 text-left">Netuid</th>
@@ -1087,7 +1087,7 @@ function EnrichmentTargets() {
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
+          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Subnet</th>
@@ -1148,7 +1148,7 @@ function EnrichmentEvidence() {
     <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
+          <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Lane</th>

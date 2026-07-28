@@ -30,7 +30,7 @@ export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
 // Deploy/publish-pipeline-owned artifacts: their committed copies on `main`
 // reflect the last real publish, not a local/CI build, so they are EXPECTED
 // to drift on every `npm run build` for reasons unrelated to any given PR.
-// Single source of truth, consumed by build.mjs (post-build local warning)
+// Single source of truth, consumed by build.ts (post-build local warning)
 // and ci-verify-submitted-artifacts.ts (submitted-artifact mismatch
 // messaging) so both stay in sync.
 export const DEPLOY_OWNED_ARTIFACTS = [
@@ -124,7 +124,7 @@ export function revertDeployOwnedArtifactsIfDirty(
 // canonical repo, with `origin` as the contributor's own fork -- possibly
 // stale relative to it. A direct clone of the canonical repo has no
 // `upstream` remote at all, so `origin` there IS canonical. Prefer `upstream`
-// when present. Single source of truth for build.mjs's local warning and
+// when present. Single source of truth for build.ts's local warning and
 // ci-verify-submitted-artifacts.ts's remediation message, so both always
 // recommend the same, correct remote.
 export function resolveBaseRemote(cwd: string = process.cwd()): string {
@@ -1052,7 +1052,7 @@ export const REGISTRY_SYNC_MAX_ROWS_PER_KIND = 2_000;
 // triggered) and scripts/backfill-registry-postgres.ts (scheduled full
 // resync) -- both send {providers, subnets, surfaces} row arrays to the
 // registry-sync Worker over HTTPS instead of touching Postgres directly (see
-// workers/registry-sync-api.mjs). Returns null when REGISTRY_SYNC_SECRET
+// workers/registry-sync-api.ts). Returns null when REGISTRY_SYNC_SECRET
 // isn't set, so callers can no-op gracefully before the secret is
 // provisioned; throws on any transport/auth/validation failure so a real
 // misconfiguration fails the run loudly instead of silently doing nothing.

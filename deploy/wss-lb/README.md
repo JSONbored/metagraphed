@@ -3,7 +3,7 @@
 A health-aware **WebSocket** reverse proxy that fans client connections out
 across the registry's healthy `subtensor-wss` endpoints — the cosmos.directory-
 style shared endpoint for the protocol the Cloudflare HTTP proxy can't serve
-(`workers/request-handlers/rpc-proxy.mjs` explicitly returns _"WebSocket
+(`workers/request-handlers/rpc-proxy.ts` explicitly returns _"WebSocket
 JSON-RPC is not available through this HTTP proxy"_).
 
 ```

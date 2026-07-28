@@ -1,4 +1,4 @@
-// Unit tests for workers/chain-firehose-hub.mjs (#4982, ADR 0015).
+// Unit tests for workers/chain-firehose-hub.ts (#4982, ADR 0015).
 //
 // Every DECISION this module makes (topic parsing/matching, ingest payload
 // validation, SSE framing) is a pure function, tested directly below. The
@@ -121,7 +121,7 @@ test("validateChainEventsSubscribePayload: runs full schema validation (specifie
 });
 
 // maxDepthRule/maxComplexityRule are ALSO passed to this validate() call
-// (imported from the same src/graphql.mjs as the POST endpoint's
+// (imported from the same src/graphql.ts as the POST endpoint's
 // handleGraphQLRequest, same GRAPHQL_MAX_DEPTH/GRAPHQL_MAX_COMPLEXITY
 // thresholds) -- not separately exercised here because ChainEvent is a
 // flat, scalar-only type with no relationship fields to nest into, and a
@@ -129,7 +129,7 @@ test("validateChainEventsSubscribePayload: runs full schema validation (specifie
 // (graphql-js's own SingleFieldSubscriptionsRule, part of specifiedRules),
 // so neither rule is organically triggerable against this specific schema
 // today. Both rules' own behavior is covered directly in
-// tests/graphql.test.mjs; what matters here is that they're wired into the
+// tests/graphql.test.ts; what matters here is that they're wired into the
 // SAME validate() call as the field-existence check above, which the
 // "rejects a query/mutation operation" tests above already prove runs.
 
@@ -1092,7 +1092,7 @@ test("ChainFirehoseHub /subscribe (SSE): force-closes and releases the connectio
 // the per-IP sub-quota checked alongside it, so one IP can't consume the
 // entire global budget in a loop. subscribeRequest below builds a real
 // Request the same way every other test in this file does, just with a
-// cf-connecting-ip header attached (mirroring tests/config.test.mjs's own
+// cf-connecting-ip header attached (mirroring tests/config.test.ts's own
 // fakeRequest pattern for resolveClientIp, but as a real Request since
 // handleSubscribe is exercised through hub.fetch here, not called directly).
 function subscribeRequest(ip: string | null, query = "") {
@@ -1669,7 +1669,7 @@ test("ChainFirehoseHub.subscribeChainEvents: returns null (not a repeater) once 
 // IP using just one of its (already capped) sockets could still multiplex its
 // way up to the ENTIRE global CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS budget.
 // clientIp is threaded from handleSubscribe's WS-upgrade branch through
-// graphql-ws's opened()/context() chain into src/graphql.mjs's
+// graphql-ws's opened()/context() chain into src/graphql.ts's
 // chainEventsSubscribe resolver as context.clientIp, which passes it here as
 // subscribeChainEvents's second argument -- see that resolver and
 // graphqlWsServer's context callback in the source for the other half of the

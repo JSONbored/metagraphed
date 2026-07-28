@@ -25,9 +25,7 @@ export function NetworkParametersCard() {
 
   return (
     <div className="mb-6">
-      <div className="mg-type-caption mb-2 text-[10px] text-ink-muted">
-        Current network parameters
-      </div>
+      <div className="mg-type-caption mb-2 text-ink-muted">Current network parameters</div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatTile
           icon={Scale}

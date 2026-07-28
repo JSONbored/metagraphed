@@ -1,6 +1,6 @@
 // SN120 (Affine) end-to-end verification for the call_subnet_surface MCP tool
 // (metagraphed#7129, MCP execute Phase 1 follow-up #7014/#7215).
-// Unlike tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring
+// Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN120's real registry surfaces
 // (registry/subnets/affine.json) to the tool's contract, so a future edit that
 // regresses their callability (flipping to HEAD, marking them auth_required,

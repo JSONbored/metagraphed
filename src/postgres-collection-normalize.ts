@@ -17,7 +17,7 @@
 // Deliberately scoped to named (callModule, callFunction, fieldName)
 // triples, NOT a generic "strip any outer array wrapping another array"
 // rule. That shape is structurally IDENTICAL to an AccountId32/MultiAddress/
-// H160/Hash newtype wrap (src/ss58.mjs, src/bytes.mjs,
+// H160/Hash newtype wrap (src/ss58.ts, src/bytes.ts,
 // src/indexer-rs-ethereum-decode.ts's territory) -- unwrapping it
 // unconditionally here would silently corrupt those fields wherever this
 // module's dispatch and theirs might overlap. A BTreeSet's element count is
@@ -27,7 +27,7 @@
 // an opt-in allowlist of fields independently confirmed to be BTreeSet-typed,
 // the same discipline #4692's Ethereum/EVM decoders already established.
 //
-// Chained AFTER scale-normalize.mjs's normalizePostgresValue (#4690) in
+// Chained AFTER scale-normalize.ts's normalizePostgresValue (#4690) in
 // formatExtrinsic, not before -- ordering doesn't matter for correctness
 // here (verified: normalizePostgresValue's generic newtype-scalar rule
 // already happens to partially collapse a SINGLE-element BTreeSet as a side

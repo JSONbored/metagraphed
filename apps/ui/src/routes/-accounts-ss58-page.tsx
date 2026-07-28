@@ -27,6 +27,7 @@ import {
   Users,
 } from "lucide-react";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { PriceAtTx } from "@/components/metagraphed/price-at-tx";
 import { AddressLabelEditor } from "@/components/metagraphed/address-label-editor";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -2933,11 +2934,11 @@ function AccountFootprintSection({
               )}
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
-              <dt className="mg-type-caption text-[10px] text-ink-muted">UID</dt>
+              <dt className="mg-type-caption text-ink-muted">UID</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {r.uid != null ? formatNumber(r.uid) : "—"}
               </dd>
-              <dt className="mg-type-caption text-[10px] text-ink-muted">Stake</dt>
+              <dt className="mg-type-caption text-ink-muted">Stake</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {fmtStake(r.stake_tao)}
               </dd>
@@ -3128,6 +3129,13 @@ function AccountEventsSection({
                   </td>
                   <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
                     {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                    {/* #8369: what it was worth at the time, as secondary
+                        text. Renders nothing for events that have no price. */}
+                    <PriceAtTx
+                      price={ev.price_at_tx}
+                      basis={ev.price_basis}
+                      blockNumber={ev.block_number}
+                    />
                   </td>
                   <td className="px-4 py-4 text-right mg-type-data text-ink-muted">
                     <TimeAgo at={ev.observed_at} />

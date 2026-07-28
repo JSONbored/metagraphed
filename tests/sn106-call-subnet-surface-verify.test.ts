@@ -1,6 +1,6 @@
 // SN106 (Nodexo) end-to-end verification for the call_subnet_surface MCP
 // tool (metagraphed#7117, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring with
+// tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN106's *real* registry surface configs
 // (registry/subnets/nodexo.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.

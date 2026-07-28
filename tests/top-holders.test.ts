@@ -342,7 +342,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 2);
     // net_flow_7d (-50) gets a leading `'` -- the formula-injection guard for
-    // CSV cells starting with -/+/=/@ (workers/csv.mjs), same as any other
+    // CSV cells starting with -/+/=/@ (workers/csv.ts), same as any other
     // negative-leading cell in this codebase's CSV exports.
     assert.match(lines[1], /^5Whale1,1000\.5,250\.25,1250\.75,'-50,200,900,/);
   });

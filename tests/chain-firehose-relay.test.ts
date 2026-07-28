@@ -76,7 +76,7 @@ import {
 import { CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE } from "../workers/chain-firehose-hub.ts";
 
 // #6672: this script deploys standalone (see CHAIN_FIREHOSE_INGEST_BATCH_SIZE's
-// own comment) and can't import workers/chain-firehose-hub.mjs at runtime, so
+// own comment) and can't import workers/chain-firehose-hub.ts at runtime, so
 // nothing at the source level stops these two constants drifting apart --
 // this cross-file test is the only thing that does. A batch this relay sends
 // larger than the Worker accepts would 400 on every request.

@@ -5,7 +5,7 @@
 // writeSubnetSnapshot, fired every hour): 47k+ rows back to 2025-06-23.
 // Postgres only started receiving rows via syncSubnetSnapshotToPostgres's
 // best-effort dual-write mirror once #4832 landed
-// (workers/data-api.mjs's handleSubnetSnapshotSync), so it was missing over a
+// (workers/data-api.ts's handleSubnetSnapshotSync), so it was missing over a
 // year of history D1 already had -- exactly why METAGRAPH_SUBNET_SNAPSHOTS_SOURCE
 // stayed unflipped in wrangler.jsonc until this backfill ran: flipping
 // serving to Postgres before it would have truncated every trajectory/

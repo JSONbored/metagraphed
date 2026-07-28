@@ -4,7 +4,7 @@
 // A tiny always-on process: polls/claims pending rows from the indexer box's
 // own Postgres chain_firehose_outbox table (deploy/postgres/schema.sql's
 // enqueue_chain_firehose() trigger, #4980/#5027), and forwards each to the
-// Cloudflare Durable Object's ingest endpoint (workers/chain-firehose-hub.mjs,
+// Cloudflare Durable Object's ingest endpoint (workers/chain-firehose-hub.ts,
 // #4982) over HTTPS. Does NOT use LISTEN/NOTIFY -- #5027 replaced that
 // entirely because Postgres checks NOTIFY-queue capacity at transaction
 // commit, outside any trigger-local EXCEPTION block, so a stuck listener
@@ -239,7 +239,7 @@ export const CHAIN_FIREHOSE_POLL_BATCH_SIZE = 200;
 export const CHAIN_FIREHOSE_POLL_INTERVAL_MS = 250;
 
 // Server-side cap this relay must stay under (CHAIN_FIREHOSE_INGEST_RATE_LIMIT
-// in workers/api.mjs: 1200 req/60s, per-IP). Targets 80% of it, not the full
+// in workers/api.ts: 1200 req/60s, per-IP). Targets 80% of it, not the full
 // 1200, so ordinary jitter (network latency variance, GC pauses, the
 // window's own boundary behavior) doesn't tip a batch over the edge even
 // when this pacing is working correctly.
@@ -266,7 +266,7 @@ export const CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S = 960;
 // #6672: `requestCount` is the number of ingest POSTS (chunks), NOT the raw
 // row count -- CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S is 80% of the
 // server's REQUEST-count rate limit (CHAIN_FIREHOSE_INGEST_RATE_LIMIT in
-// workers/api.mjs), and stayed a request-rate target even after batching
+// workers/api.ts), and stayed a request-rate target even after batching
 // changed the relationship between rows and requests. Before batching, one
 // row was one request, so passing the raw claimed-row count here was
 // correct by coincidence; pollOnce() below now passes the chunk count
@@ -328,14 +328,14 @@ export const CHAIN_FIREHOSE_FORWARD_CONCURRENCY = 16;
 
 // #6672: how many outbox rows go into ONE ingest POST body (a JSON array),
 // instead of one row per request. The ingest rate limit
-// (workers/api.mjs's CHAIN_FIREHOSE_INGEST_RATE_LIMIT, enforced via a
+// (workers/api.ts's CHAIN_FIREHOSE_INGEST_RATE_LIMIT, enforced via a
 // Cloudflare Workers Rate Limiting binding) costs by REQUEST, not payload
 // size, so batching multiplies effective row throughput by this factor
 // without touching that limit or CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S's
 // own pacing at all -- the actual lever #6451's two incident rounds
 // established as dangerous to touch carelessly. MUST match (or stay ≤)
-// workers/chain-firehose-hub.mjs's CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE --
-// tests/chain-firehose-relay.test.mjs asserts the two stay in sync, since
+// workers/chain-firehose-hub.ts's CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE --
+// tests/chain-firehose-relay.test.ts asserts the two stay in sync, since
 // this script deploys standalone (no runtime import of workers/) and can't
 // enforce that via a shared import.
 export const CHAIN_FIREHOSE_INGEST_BATCH_SIZE = 10;
@@ -457,7 +457,7 @@ export async function runQueryWithRetry<T>(
 export const CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS = 5 * 60 * 1000;
 // Used when a 429 response has no (or an unparseable) retry-after header --
 // generous over the ingest endpoint's own 60s rate-limit window
-// (CHAIN_FIREHOSE_INGEST_RATE_LIMIT in workers/api.mjs) so a fallback pause
+// (CHAIN_FIREHOSE_INGEST_RATE_LIMIT in workers/api.ts) so a fallback pause
 // still clears the window rather than immediately re-triggering it.
 export const CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS = 65 * 1000;
 
@@ -689,7 +689,7 @@ export async function forwardBatch(
    Postgres connection and process lifecycle (SIGTERM/SIGINT); every decision
    it makes (config validation, backoff timing, retry count, batch
    forwarding) is delegated to the pure functions above and unit-tested
-   directly (see tests/chain-firehose-relay.test.mjs). This file is
+   directly (see tests/chain-firehose-relay.test.ts). This file is
    intentionally outside vitest.config.ts's coverage.include, matching every
    other standalone deploy/-tier process in this repo (e.g. deploy/wss-lb,
    tested via `node --test` instead) -- see that config's own comment for the

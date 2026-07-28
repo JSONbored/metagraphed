@@ -81,7 +81,7 @@ describe("decodeU256Limbs", () => {
     assert.deepEqual(decodeU256Limbs([[1, null, 0, 0]]), [[1, null, 0, 0]]);
   });
 
-  describe("string-limb support (src/big-int-safe-json.mjs quotes a limb large enough to lose precision under plain JSON.parse)", () => {
+  describe("string-limb support (src/big-int-safe-json.ts quotes a limb large enough to lose precision under plain JSON.parse)", () => {
     test("accepts a numeric-string limb the same as a number limb", () => {
       assert.equal(decodeU256Limbs([["69392", 0, 0, 0]]), "69392");
     });

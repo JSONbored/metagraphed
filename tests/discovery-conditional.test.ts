@@ -125,7 +125,7 @@ describe("discovery conditional requests", () => {
   });
 
   function badgeArchiveEnv(netuid: number, data: unknown) {
-    // health/badges/*.json is R2-only (src/artifact-storage.mjs's
+    // health/badges/*.json is R2-only (src/artifact-storage.ts's
     // R2_ONLY_PATTERNS), so readArtifact resolves it via METAGRAPH_ARCHIVE,
     // not ASSETS. No METAGRAPH_CONTROL binding -> latestR2Key falls back to
     // the bare "latest/" prefix (workers/storage.ts's latestPointer).

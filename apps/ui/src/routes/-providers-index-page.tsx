@@ -471,7 +471,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
             minWidth={960}
           >
             <table className="w-full text-left text-sm">
-              <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
+              <thead className="mg-type-micro bg-surface/50 text-ink-muted">
                 <tr>
                   <th className="px-3 py-2">Provider</th>
                   <th className="px-3 py-2">Kind</th>

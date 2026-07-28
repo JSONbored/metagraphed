@@ -13,7 +13,7 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// Mirrors withFetchStub in tests/subnet-recycled.test.mjs / tests/sudo-key.test.mjs.
+// Mirrors withFetchStub in tests/subnet-recycled.test.ts / tests/sudo-key.test.ts.
 function withFetchStub(stub: typeof fetch, fn: () => unknown) {
   const orig = globalThis.fetch;
   globalThis.fetch = stub;

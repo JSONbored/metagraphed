@@ -164,7 +164,7 @@ describe("buildChainIdentityHistory", () => {
 describe("GET /api/v1/chain/identity-history", () => {
   // D1 fully eliminated (2026-07-16): subnet_identity_history's D1 write path
   // is retired, so without a Postgres hit this route always serves the
-  // schema-stable empty feed -- mirrors chain-performance.test.mjs's own
+  // schema-stable empty feed -- mirrors chain-performance.test.ts's own
   // post-#4772 "GET" describe block (its neurons-tier D1 mock is likewise
   // vestigial, kept only for the validation-error assertions below).
   const req = (q = "") =>
@@ -270,7 +270,7 @@ describe("chain/identity-history edge cache", () => {
   // (D1 MAX(observed_at)) is retired alongside the D1 read it existed to bust
   // on -- this route now busts on the same shared health-cron `last_run_at`
   // KV value every sibling Postgres-tier analytics route already uses,
-  // mirroring chain-performance.test.mjs's own post-#4772 edge-cache tests.
+  // mirroring chain-performance.test.ts's own post-#4772 edge-cache tests.
   function controlEnv(lastRunAt: string | null) {
     return {
       ...createLocalArtifactEnv(),

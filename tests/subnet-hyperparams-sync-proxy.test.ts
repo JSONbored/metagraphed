@@ -1,11 +1,11 @@
 // Unit tests for the /api/v1/internal/subnet-hyperparams-sync proxy
-// (workers/api.mjs's handleSubnetHyperparamsSyncProxy, #4832 gap-closure),
-// which forwards to workers/data-api.mjs's handleSubnetHyperparamsSync via
+// (workers/api.ts's handleSubnetHyperparamsSyncProxy, #4832 gap-closure),
+// which forwards to workers/data-api.ts's handleSubnetHyperparamsSync via
 // the EXISTING DATA_API service binding (shares proxyToDataApi with
 // handleNeuronsSyncProxy/handleRollupAccountEventsDailyProxy -- see
-// tests/neurons-sync-proxy.test.mjs for that sibling route's equivalent
+// tests/neurons-sync-proxy.test.ts for that sibling route's equivalent
 // coverage). The downstream sync logic itself is covered by
-// tests/data-api.test.mjs.
+// tests/data-api.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";

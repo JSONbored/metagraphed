@@ -342,7 +342,7 @@ function AutoRefreshControl({
       >
         {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}
         {pauseLabel ? (
-          <span className="mg-type-caption text-[10px] text-ink-muted">{pauseLabel}</span>
+          <span className="mg-type-caption text-ink-muted">{pauseLabel}</span>
         ) : (
           <span aria-hidden="true" className="font-mono text-ink-muted">
             in <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s
@@ -353,7 +353,7 @@ function AutoRefreshControl({
       <button
         type="button"
         onClick={() => qc.invalidateQueries({ queryKey: ["metagraphed"] })}
-        className="mg-type-caption inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-ink-muted hover:text-ink-strong hover:bg-surface/60 transition-colors"
+        className="mg-type-caption inline-flex items-center gap-1.5 px-3 py-1.5 text-ink-muted hover:text-ink-strong hover:bg-surface/60 transition-colors"
         title={fetching ? "Refreshing…" : "Refresh now"}
         aria-label="Refresh now"
       >
@@ -484,7 +484,7 @@ function Cell({
 }) {
   return (
     <div className="rounded-md border border-border/60 bg-paper/40 px-3 py-2.5">
-      <div className="mg-type-caption text-[10px] text-ink-muted">{label}</div>
+      <div className="mg-type-caption text-ink-muted">{label}</div>
       <div
         className={`mt-1 font-display text-lg font-semibold tabular-nums leading-none ${accent ?? "text-ink-strong"}`}
       >
@@ -511,7 +511,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
   return (
     <Panel as="div" flush className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
+        <thead className="mg-type-micro bg-surface-2/60 text-ink-muted">
           <tr>
             <th className="px-4 py-3 text-left">Source</th>
             <th className="px-4 py-3">Status</th>
@@ -735,7 +735,7 @@ function Incidents({ interval }: { interval: number | false }) {
                     <span className="font-mono mg-type-caption text-ink-strong truncate">
                       {g.host}
                     </span>
-                    <span className="mg-type-caption ml-auto inline-flex items-center gap-2 text-[10px] text-ink-muted shrink-0">
+                    <span className="mg-type-caption ml-auto inline-flex items-center gap-2 text-ink-muted shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>
                       ) : null}

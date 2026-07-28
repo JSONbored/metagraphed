@@ -8,7 +8,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
 // Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the
-// SQL — mirrors historyEnv in tests/neuron-history.test.mjs.
+// SQL — mirrors historyEnv in tests/neuron-history.test.ts.
 function historyEnv(rows: Row[], captured: Row = {}) {
   return {
     ...createLocalArtifactEnv(),

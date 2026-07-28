@@ -463,7 +463,7 @@ function ExcludeToggle({
       aria-pressed={hidden}
       title={title}
       className={classNames(
-        "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 text-[10px] transition-colors",
+        "mg-type-caption inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 transition-colors",
         hidden
           ? "border-accent/40 bg-accent/10 text-accent"
           : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -1361,7 +1361,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                         className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
                         title={`Alpha price change over the selected trend window (${trendWindow})`}
                       >
-                        <span className="mg-type-caption text-[10px] font-normal text-ink-muted">
+                        <span className="mg-type-caption font-normal text-ink-muted">
                           {trendWindow} %
                         </span>
                       </th>
@@ -1415,7 +1415,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       <th
                         className={classNames(
                           cellPad,
-                          "mg-subnets-sticky-head mg-type-micro text-[10px] text-ink-muted font-normal text-left",
+                          "mg-subnets-sticky-head mg-type-micro text-ink-muted font-normal text-left",
                         )}
                       >
                         Health
@@ -1733,7 +1733,7 @@ function SubnetGrid({
                 size={36}
               />
               <div className="min-w-0">
-                <div className="mg-type-caption text-[10px] text-ink-muted">
+                <div className="mg-type-caption text-ink-muted">
                   #{String(s.netuid).padStart(3, "0")}
                   {s.symbol ? ` · ${s.symbol}` : ""}
                 </div>
@@ -1845,9 +1845,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
   return (
     <Panel as="div" dense>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="mg-type-caption text-[10px] text-ink-muted">
-          Health matrix · {rows.length} subnets
-        </div>
+        <div className="mg-type-caption text-ink-muted">Health matrix · {rows.length} subnets</div>
         <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
           <Legend color="bg-health-ok" label="ok" />
           <Legend color="bg-health-warn" label="warn" />

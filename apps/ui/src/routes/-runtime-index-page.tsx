@@ -71,13 +71,11 @@ function RuntimeContent() {
           <Panel as="div" flush className="hidden md:block overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
+                <thead className="mg-type-micro bg-surface/50 text-ink-muted">
                   <tr>
-                    <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">
-                      Spec Version
-                    </th>
-                    <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">Block</th>
-                    <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">Observed</th>
+                    <th className="mg-type-micro px-3 py-2.5 text-left">Spec Version</th>
+                    <th className="mg-type-micro px-3 py-2.5 text-left">Block</th>
+                    <th className="mg-type-micro px-3 py-2.5 text-left">Observed</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,7 +146,7 @@ function KpiTile({ label, value, hint }: { label: string; value: ReactNode; hint
   return (
     <Panel as="div" flush>
       <div className="px-4 py-3">
-        <div className="mg-type-caption text-[10px] text-ink-muted">{label}</div>
+        <div className="mg-type-caption text-ink-muted">{label}</div>
         <div className="mt-1 font-mono text-lg text-ink-strong tabular-nums">{value}</div>
         {hint ? <div className="mt-0.5 text-xs text-ink-muted">{hint}</div> : null}
       </div>

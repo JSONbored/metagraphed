@@ -7,14 +7,14 @@
 // the MAP KEY itself (netuid, lease_id), which varies per request and so
 // can't be precomputed the same way. XXH64 implemented directly rather than
 // adding a new npm dependency, matching this codebase's existing "implement
-// the small crypto primitive by hand for Workers" convention (ss58.mjs's own
+// the small crypto primitive by hand for Workers" convention (ss58.ts's own
 // header comment on why @noble/hashes' blake2b is required over Node's
 // built-in createHash: same reasoning, different primitive).
 //
 // Verified against BOTH the official xxHash reference test vectors AND this
 // codebase's own already-proven-correct sudo-key.ts storage key (twox128("Sudo")
 // ++ twox128("Key") = 0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b) --
-// see tests/twox-storage-key.test.mjs.
+// see tests/twox-storage-key.test.ts.
 
 const PRIME64_1 = 0x9e3779b185ebca87n;
 const PRIME64_2 = 0xc2b2ae3d27d4eb4fn;

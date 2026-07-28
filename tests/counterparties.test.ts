@@ -369,7 +369,7 @@ describe("buildCounterpartyRelationship", () => {
   });
 
   test("blank amount_tao cells stay null on relationship transfers (not 0 TAO)", () => {
-    // Mirrors the blank-cell guard in account-events.mjs (#3031): Number("") is 0.
+    // Mirrors the blank-cell guard in account-events.ts (#3031): Number("") is 0.
     for (const blank of ["", "   "]) {
       const data = buildCounterpartyRelationship(
         [
@@ -747,7 +747,7 @@ describe("buildCounterparties — regressions", () => {
   });
 
   test("blank block_number cells leave last_block null (not block 0)", () => {
-    // Mirrors the blank-cell guard in blocks.mjs (#2947): Number("") is 0.
+    // Mirrors the blank-cell guard in blocks.ts (#2947): Number("") is 0.
     for (const blank of ["", "   "]) {
       const data = buildCounterparties(
         [{ hotkey: "ME", coldkey: "A", amount_tao: 5, block_number: blank }],

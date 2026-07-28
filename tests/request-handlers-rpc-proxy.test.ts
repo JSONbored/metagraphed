@@ -1,6 +1,6 @@
-// Direct unit tests for workers/request-handlers/rpc-proxy.mjs (#1977).
+// Direct unit tests for workers/request-handlers/rpc-proxy.ts (#1977).
 // Exercises RPC usage analytics, surface verify, GraphQL rate limiting, and
-// proxy guard rails without routing through workers/api.mjs.
+// proxy guard rails without routing through workers/api.ts.
 
 import assert from "node:assert/strict";
 import { describe, test, beforeEach } from "vitest";

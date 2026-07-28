@@ -48,7 +48,7 @@ describe("loadEconomicsTrends", () => {
 });
 
 // ECONOMICS_TRENDS_ROW_CAP stays exported for buildEconomicsTrends's own
-// capping tests (see neuron-history.test.mjs); referenced here to keep the
+// capping tests (see neuron-history.test.ts); referenced here to keep the
 // import (and the constant's row-cap contract) exercised.
 describe("ECONOMICS_TRENDS_ROW_CAP", () => {
   test("is a finite positive row cap", () => {

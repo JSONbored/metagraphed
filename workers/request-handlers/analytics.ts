@@ -16,12 +16,12 @@
 // object, or a degraded payload could poison the edge cache (the #1760 bug
 // class).
 //
-// The handlers depend on one api.mjs-local helper (`readHealthMetaKv`, an
-// in-isolate memoized KV read that stays in api.mjs because the deferred clusters
+// The handlers depend on one api.ts-local helper (`readHealthMetaKv`, an
+// in-isolate memoized KV read that stays in api.ts because the deferred clusters
 // and a test import it from there). Rather than import it back — which would make
-// this module and api.mjs mutually import each other — it is injected once via
-// `configureAnalytics({ readHealthMetaKv })` at api.mjs load time. Everything else
-// is imported directly from leaf modules, so this file never imports api.mjs.
+// this module and api.ts mutually import each other — it is injected once via
+// `configureAnalytics({ readHealthMetaKv })` at api.ts load time. Everything else
+// is imported directly from leaf modules, so this file never imports api.ts.
 
 import {
   ANALYTICS_WINDOW_PARAM,
@@ -126,15 +126,15 @@ import {
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "../../src/chain-alpha-volume.ts";
 
-// The shape of the api.mjs-local in-isolate memoized KV read (see
+// The shape of the api.ts-local in-isolate memoized KV read (see
 // configureAnalytics below) -- loose on the return value beyond `last_run_at`
 // since that field is the only one any handler in this file reads.
 type HealthMetaKvReader = (
   env: Env,
 ) => Promise<{ last_run_at?: string | null } | null>;
 
-// Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
-// snapshot-meta read lives in api.mjs because the deferred handler clusters and a
+// Injected once from api.ts (see configureAnalytics). The in-isolate memoized
+// snapshot-meta read lives in api.ts because the deferred handler clusters and a
 // test still import it from there; injecting the stable function reference here
 // keeps the import acyclic. This is a one-time wiring of a stable function — not
 // the mutable fallback state, which is genuinely owned by this module below.
@@ -144,7 +144,7 @@ let readHealthMetaKv: HealthMetaKvReader = () => {
 };
 /* v8 ignore stop */
 
-// Called once at api.mjs module-init to wire the api.mjs-local KV reader.
+// Called once at api.ts module-init to wire the api.ts-local KV reader.
 export function configureAnalytics(deps: {
   readHealthMetaKv: HealthMetaKvReader;
 }) {
@@ -243,7 +243,7 @@ function analyticsWindow(url: URL, extraParams: string[] = []): WindowResult {
 
 // Normalizes per-subnet health analytics URLs so a bare ?-free request and an
 // explicit ?window=7d request both resolve to the same edge-cache entry — mirrors
-// canonicalEconomicsTrendsCachePath in analytics-routes.mjs.
+// canonicalEconomicsTrendsCachePath in analytics-routes.ts.
 export function canonicalHealthWindowCachePath(url: URL): string {
   const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
   if (validationError) return `${url.pathname}${url.search}`;
@@ -531,7 +531,7 @@ export async function handleBulkHealthTrends(
 // surfaces (D1 fully eliminated 2026-07-17 -- see this file's own header).
 // Returns a schema-stable empty payload on a Postgres-tier miss so it never
 // errors (mirrors the live-overlay fall-back philosophy). The query +
-// formatting live in loadSubnetHealthTrends (src/analytics-live.mjs) so the
+// formatting live in loadSubnetHealthTrends (src/analytics-live.ts) so the
 // get_subnet_health_trends MCP tool shares this exact read path (#2335).
 export async function handleHealthTrends(
   request: Request,
@@ -587,7 +587,7 @@ export async function handleHealthTrends(
 
 // p50/p95/p99 latency percentiles per surface, computed in Postgres (D1 fully
 // eliminated 2026-07-17 -- see this file's own header). The query +
-// formatting live in loadSubnetPercentiles (src/analytics-live.mjs) so the
+// formatting live in loadSubnetPercentiles (src/analytics-live.ts) so the
 // get_subnet_health_percentiles MCP tool shares this exact read path.
 export async function handleHealthPercentiles(
   request: Request,
@@ -2424,7 +2424,7 @@ export async function handleChainFees(
 
 // Shared analytics helpers also used by the deferred handler clusters (trajectory,
 // metagraph, validators, uptime, history, leaderboards, compare, rpc-usage) that
-// still live in api.mjs — re-exported so api.mjs can import them from one place
+// still live in api.ts — re-exported so api.ts can import them from one place
 // until those clusters are extracted too.
 export {
   analyticsMeta,

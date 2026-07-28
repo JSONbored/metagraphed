@@ -1,6 +1,6 @@
 // SN17 (404-GEN) end-to-end verification for the call_subnet_surface MCP tool
 // (metagraphed#7033, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring with
+// tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN17's *real* registry surface config
 // (registry/subnets/404-gen.json) to the tool's contract, so a future edit that
 // regresses its callability (flipping to HEAD, marking it auth_required,

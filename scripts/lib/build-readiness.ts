@@ -3,7 +3,7 @@
 // side-effect free: every function takes plain objects and returns plain objects,
 // with no module state and no I/O, so the output is byte-identical to the in-
 // build-artifacts.ts originals. Imported directly by scripts/build-artifacts.ts
-// and unit-tested in tests/build-readiness.test.mjs.
+// and unit-tested in tests/build-readiness.test.ts.
 import { OPERATIONAL_SURFACE_KINDS } from "../../src/health-probe-core.ts";
 
 // Subnets, surfaces, services, and derived readiness rows are untrusted dynamic

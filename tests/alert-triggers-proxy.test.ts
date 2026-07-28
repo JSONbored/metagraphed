@@ -1,10 +1,10 @@
-// Unit tests for the /api/v1/alerts/triggers* proxy (workers/api.mjs's
+// Unit tests for the /api/v1/alerts/triggers* proxy (workers/api.ts's
 // handleAlertTriggersProxy, #4984 Part 1), which forwards POST/GET/PATCH/
-// DELETE to workers/data-api.mjs's handleAlertTriggersRoute via the EXISTING
+// DELETE to workers/data-api.ts's handleAlertTriggersRoute via the EXISTING
 // DATA_API service binding. Unlike neurons-sync's proxyToDataApi (a raw
 // pass-through), this one envelope-wraps the response via dataResponse/
 // errorResponse -- see handleAlertTriggersProxy's own comment. The
-// downstream CRUD logic itself is covered by tests/alert-triggers-route.test.mjs.
+// downstream CRUD logic itself is covered by tests/alert-triggers-route.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -269,7 +269,7 @@ test("maps each upstream status to a distinct, condition-specific error code", a
 // --- /api/v1/watch/triggers* (#8375 Alert Center) -- shares the SAME proxy
 // function as /api/v1/alerts/triggers* above (handleAlertTriggersProxy is a
 // generic pass-through; all real auth/routing lives in
-// workers/data-api.mjs's handleWatchTriggersRoute), so these tests only
+// workers/data-api.ts's handleWatchTriggersRoute), so these tests only
 // need to cover the dispatch wiring (does /api/v1/watch/triggers* actually
 // reach the proxy, for every method it needs), not re-derive the full
 // error-code/rate-limit-header matrix already covered above.

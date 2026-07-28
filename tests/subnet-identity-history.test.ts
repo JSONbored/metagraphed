@@ -827,7 +827,7 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
 });
 
 // #4832 gap-closure: deriveNetuidGroupedAliases is the row-grouping half
-// extracted out of loadPreviouslyKnownAsForNetuids so workers/api.mjs's
+// extracted out of loadPreviouslyKnownAsForNetuids so workers/api.ts's
 // Postgres-tier wrapper can reuse it directly on rows it fetched itself.
 describe("deriveNetuidGroupedAliases", () => {
   test("returns an empty map when entries are null", () => {
@@ -857,7 +857,7 @@ describe("deriveNetuidGroupedAliases", () => {
 
 // #4832 gap-closure: syncSubnetIdentityToPostgres is called directly from
 // writeSubnetSnapshot (src/health-prober.ts) via the DATA_API service
-// binding, not through workers/api.mjs's public proxy layer -- see that
+// binding, not through workers/api.ts's public proxy layer -- see that
 // function's own header comment for why.
 describe("syncSubnetIdentityToPostgres", () => {
   const profiles = [{ netuid: 8, native_identity: { subnet_name: "MIAO" } }];

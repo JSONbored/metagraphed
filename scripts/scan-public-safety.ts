@@ -482,7 +482,7 @@ async function* walk(target: string): AsyncGenerator<string> {
 }
 
 // Guarded behind the CLI-entrypoint check below so importing this module (as
-// tests/public-safety.test.mjs does, to exercise it in-process) never
+// tests/public-safety.test.ts does, to exercise it in-process) never
 // side-effects a live repo-wide scan + process.exit -- that previously made
 // the import's outcome depend on whatever transient state happened to be on
 // disk the first time any test in the run imported this module.

@@ -82,7 +82,7 @@ jobs:
   # Every other `checks` validator was evaluated for the same treatment and
   # rejected: the contract/schema/route validators
   # (validate:schemas/api/mcp/ai/openapi/types) all transitively import most of
-  # `src/` + `workers/**` via `workers/api.mjs`, so no path glob short of
+  # `src/` + `workers/**` via `workers/api.ts`, so no path glob short of
   # "almost the whole repo" would safely exclude them — see
   # `.claude/skills/metagraphed/reference.md`'s "new artifact/route checklist"
   # for why a route/handler change can trip a contract gate with no lexical
@@ -487,7 +487,7 @@ jobs:
         run: npm run validate:artifact-budgets
 
       # Always runs, docs fast lane or not: cheap (reads README.md +
-      # docs/backend-artifact-contracts.md + src/contracts.mjs, no build, no
+      # docs/backend-artifact-contracts.md + src/contracts.ts, no build, no
       # network) and this is exactly the gate a docs-only PR is most likely to
       # need — the repo's own docs-only.md PR template lists it first.
       - name: Validate documentation contracts
@@ -579,13 +579,13 @@ jobs:
       # under parallel execution — concurrently WITH coverage;
       # `test:ci:artifacts` (the last step below) then runs those five
       # serially, after coverage is already captured + uploaded. Two
-      # (artifacts.test.mjs, discovery-artifacts.test.mjs) are
-      # filesystem-mutating artifact writers; two more (public-safety.test.mjs,
-      # validate-error-messages.test.mjs) each transiently write/mutate a real
+      # (artifacts.test.ts, discovery-artifacts.test.ts) are
+      # filesystem-mutating artifact writers; two more (public-safety.test.ts,
+      # validate-error-messages.test.ts) each transiently write/mutate a real
       # file validate-schemas.ts's own full-registry scan reads, which raced
       # a concurrent registry scan in another test file (see
-      # public-safety.test.mjs's header comment for the original incident
-      # writeup); refresh-build-summary.test.mjs rewrites the real
+      # public-safety.test.ts's header comment for the original incident
+      # writeup); refresh-build-summary.test.ts rewrites the real
       # build-summary.json at the R2 staging root in place, racing the same
       # staging tree the artifact writers above touch. All five drive their
       # work via execFileSync child processes and add zero in-process

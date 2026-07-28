@@ -1,7 +1,7 @@
 // Shared server-side SS58 codec for AccountId32-typed chain data (Workers
 // runtime). @noble/hashes' blake2b is required here, not node:crypto's
 // createHash("blake2b512") -- that throws "Digest method not supported" in
-// workerd (confirmed live: account-balance.mjs's GET
+// workerd (confirmed live: account-balance.ts's GET
 // /api/v1/accounts/{ss58}/balance 500'd on every request for exactly this
 // reason before the switch to @noble/hashes). Extracted from src/sudo-key.ts
 // (#4310) so #4669/#4685/#4688's Postgres AccountId32 decoding reuses the one
@@ -36,7 +36,7 @@ function encodeBase58(bytes: Uint8Array): string {
  * AccountId32 -> SS58: payload = prefix_byte + 32 account bytes, checksum =
  * blake2b512("SS58PRE" + payload)[0:2], address = base58(payload + checksum).
  * Returns null when `accountIdBytes` isn't exactly 32 bytes. Golden-value
- * tested in tests/ss58.test.mjs against real production data.
+ * tested in tests/ss58.test.ts against real production data.
  */
 export function encodeAccountId32(
   accountIdBytes: Uint8Array | number[],
@@ -96,7 +96,7 @@ function decodeBase58(str: string, byteLength: number): Uint8Array | null {
  * encodeAccountId32 writes -- returns null on any malformed input or checksum
  * mismatch (never throws on attacker-controlled strings, since this is the
  * entry point for a caller-supplied address in the wallet-auth verify route).
- * Round-trip tested against tests/ss58.test.mjs's existing encode golden
+ * Round-trip tested against tests/ss58.test.ts's existing encode golden
  * values.
  */
 export function decodeSs58(

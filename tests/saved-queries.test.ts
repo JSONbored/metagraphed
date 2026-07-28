@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
-// Side-effect only: workers/api.mjs calls configureAnalyticsRoutes() at load
+// Side-effect only: workers/api.ts calls configureAnalyticsRoutes() at load
 // time, which composeLeaderboardsData (used by the subnet-leaderboard
 // template) requires before it can run.
 import "../workers/api.ts";

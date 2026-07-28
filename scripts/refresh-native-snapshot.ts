@@ -10,7 +10,7 @@
 // (the only consequence is the existing 7-day completeness soft-demotion if the
 // snapshot is very stale — never a broken publish).
 //
-// Runs in build.mjs productionSteps before build-artifacts; local/PR builds keep
+// Runs in build.ts productionSteps before build-artifacts; local/PR builds keep
 // using the committed snapshot (this step is production-only).
 import { spawnSync } from "node:child_process";
 import { stableStringify } from "./lib.ts";

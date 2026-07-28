@@ -11,7 +11,7 @@
 // a day-by-day loop like the forward rollup, which only ever re-rolls the
 // active UTC day(s) and has no reason to batch) -- Postgres groups by
 // (coldkey, day) itself. ON CONFLICT keeps this safe to re-run over a range
-// that overlaps what the forward rollup (workers/data-api.mjs's
+// that overlaps what the forward rollup (workers/data-api.ts's
 // handleRollupAccountEventsDaily) has already covered.
 //
 // Usage:

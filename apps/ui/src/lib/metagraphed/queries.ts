@@ -2446,6 +2446,13 @@ export function normalizeAccountEvent(raw: unknown): AccountEvent | null {
     alpha_amount: coerceFiniteNumber(raw.alpha_amount) ?? null,
     extrinsic_index: coerceFiniteNumber(raw.extrinsic_index) ?? null,
     observed_at: accountEventString(raw.observed_at),
+    // #8369: coerced explicitly rather than riding the `...raw` spread, so a
+    // numeric string from the wire can't reach the formatter as a string.
+    price_at_tx: coerceFiniteNumber(raw.price_at_tx) ?? null,
+    price_basis:
+      raw.price_basis === "trade_exact" || raw.price_basis === "root_no_pool"
+        ? raw.price_basis
+        : null,
   };
 }
 

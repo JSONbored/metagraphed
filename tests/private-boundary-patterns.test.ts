@@ -125,7 +125,7 @@ describe("pathPatterns — private submission-gate implementation path", () => {
 
   test("matches a private-implementation path segment", () => {
     for (const p of [
-      "private-reviewer/index.mjs",
+      "private-reviewer/index.ts",
       "src/review-corpus/data.json",
       "metagraphed-submission-gate-private/x",
       "a/accepted-rejected-examples/b",
@@ -136,7 +136,7 @@ describe("pathPatterns — private submission-gate implementation path", () => {
 
   test("does NOT match an ordinary repo path", () => {
     for (const p of [
-      "src/graphql.mjs",
+      "src/graphql.ts",
       "scripts/lib.ts",
       "docs/review-process.md", // "review" alone, not a private segment
     ]) {
@@ -215,7 +215,7 @@ describe("isBinaryOrGenerated", () => {
 
   test("does not skip ordinary source/text files", () => {
     for (const f of [
-      "src/graphql.mjs",
+      "src/graphql.ts",
       "README.md",
       "public/other/thing.json", // not under public/metagraph/
       "notes.png.txt", // .png not at the end

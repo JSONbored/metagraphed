@@ -255,7 +255,7 @@ describe("MCP tool-dispatch usage telemetry", () => {
 
   // #7737: proves the redaction end-to-end through the real dispatch path
   // (callTool -> scheduleMcpToolCallEvent -> recordMcpToolCallEvent -> fetch),
-  // not just against the unit-level function in usage-telemetry.test.mjs.
+  // not just against the unit-level function in usage-telemetry.test.ts.
   test("$mcp_tool_call never leaks call_subnet_surface's credential argument", async () => {
     const original = globalThis.fetch;
     const posted: Row[] = [];
@@ -580,7 +580,7 @@ describe("MCP telemetry distinct_id resolution (#7153)", () => {
 // metagraphed#7758: dispatchTool's PostHog $exception capture, parallel-run
 // alongside the existing Sentry.captureException at the same site. Uses the
 // same real internal-error trigger as
-// tests/mcp-server-branch-coverage.test.mjs's "semantic_search wraps a
+// tests/mcp-server-branch-coverage.test.ts's "semantic_search wraps a
 // Vectorize rejection as an internal error" -- a genuine unexpected fault,
 // not a toolError, so it's the one path that reaches dispatchTool's catch.
 describe("MCP dispatchTool exception capture ($exception)", () => {
@@ -628,7 +628,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
         "internal_error",
       );
       // The PUBLIC tool response stays sanitized (no internal message) --
-      // already covered by tests/mcp-server-branch-coverage.test.mjs. The
+      // already covered by tests/mcp-server-branch-coverage.test.ts. The
       // PRIVATE $exception payload sent to PostHog is a different channel:
       // it's SUPPOSED to carry the real error, that's the point of error
       // tracking.

@@ -1,7 +1,7 @@
-// Direct unit tests for workers/request-handlers/entities.mjs (#1900).
+// Direct unit tests for workers/request-handlers/entities.ts (#1900).
 // Imports every exported handler and exercises the null-safe D1 read path,
 // query-param guards, and schema-stable cold-store contracts without routing
-// through workers/api.mjs.
+// through workers/api.ts.
 
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
@@ -882,7 +882,7 @@ describe("handleSubnetValidators", () => {
 });
 
 describe("handleGlobalValidators", () => {
-  // workers/api.mjs always resolves canonicalGlobalValidatorsCachePath(url)
+  // workers/api.ts always resolves canonicalGlobalValidatorsCachePath(url)
   // first and short-circuits on its { response } before handleGlobalValidators
   // ever runs, so the router never reaches this guard with an invalid query.
   // It stays as defense in depth for any direct/non-cached caller, so cover it
@@ -1252,7 +1252,7 @@ describe("handleSubnetHyperparams", () => {
   });
 
   // D1 retirement: subnet_hyperparams's D1 write/read path is retired
-  // (workers/request-handlers/entities.mjs's handleSubnetHyperparams no
+  // (workers/request-handlers/entities.ts's handleSubnetHyperparams no
   // longer queries D1 at all), so this is now "Postgres unconfigured" rather
   // than "D1 queried but cold" -- same schema-stable null contract either way.
   test("returns schema-stable hyperparameters:null when Postgres is unconfigured", async () => {
@@ -5777,7 +5777,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  // Called directly (bypassing workers/api.mjs's canonicalTopHoldersCachePath,
+  // Called directly (bypassing workers/api.ts's canonicalTopHoldersCachePath,
   // which already validates and short-circuits on a bad query before ever
   // reaching this handler) so handleTopHoldersList's own defensive
   // parsed.error guard -- the same defense-in-depth shape as every other
@@ -6574,5 +6574,5 @@ describe("canonicalSubnetHistoryCachePath", () => {
 });
 
 // Fixture documentation: each factory above mirrors the D1 column contracts used
-// by workers/request-handlers/entities.mjs. When adding a new handler test,
+// by workers/request-handlers/entities.ts. When adding a new handler test,
 // prefer reusing these rows so formatters stay aligned with production schemas.

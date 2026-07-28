@@ -730,7 +730,7 @@ export const GRAPHQL_MAX_QUERY_BYTES = 16 * 1024;
 // so every existing `import { SDL } from "./graphql.ts"` keeps working.
 export { SDL };
 
-// Exported so workers/chain-firehose-hub.mjs's graphql-ws server (#4983) can
+// Exported so workers/chain-firehose-hub.ts's graphql-ws server (#4983) can
 // execute against the SAME schema -- not a copy, so the two transports never
 // drift.
 export const schema = buildSchema(SDL);
@@ -741,7 +741,7 @@ export const schema = buildSchema(SDL);
 // AsyncIterable source), which SDL has no syntax for. Attached here, once, at
 // module load, the same graphql-js technique used by every SDL-first server
 // that also needs subscriptions. context.chainFirehose is supplied by
-// whichever Durable Object drives the graphql-ws server (workers/chain-firehose-hub.mjs)
+// whichever Durable Object drives the graphql-ws server (workers/chain-firehose-hub.ts)
 // -- see GRAPHQL_SUBSCRIPTION_CONTEXT_KEY below.
 // #7885: the nested Subnet.surfaces field takes the same filter/sort/page
 // arguments as GET /api/v1/subnets/{netuid}/surfaces. A nested field needs an
@@ -871,7 +871,7 @@ schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
     // "everything"). Previously both cases collapsed to null.
     const topics = args.tables === undefined ? null : new Set(args.tables);
     // context.clientIp/context.graphqlWsConnection are set by
-    // workers/chain-firehose-hub.mjs's graphqlWsServer context() callback
+    // workers/chain-firehose-hub.ts's graphqlWsServer context() callback
     // from ctx.extra.ip/ctx.extra.graphqlWsConnection (populated by
     // handleSubscribe's opened(adapterSocket, { ip, graphqlWsConnection })
     // call) -- threaded through so subscribeChainEvents can enforce its
@@ -1293,7 +1293,7 @@ export function maxComplexityRule(max: number) {
 
 // --- Pagination ---
 
-// Exported so tests/docs-content-drift.test.mjs can assert
+// Exported so tests/docs-content-drift.test.ts can assert
 // content/docs/graphql.mdx documents the real values.
 export const DEFAULT_PAGE_LIMIT = 20;
 export const MAX_PAGE_LIMIT = 100;
@@ -1434,7 +1434,7 @@ async function loadEconomicsRows(context: GqlContext) {
 // no REST-shaped request of its own to forward, unlike every REST handler
 // that already owns one matching its own route). Same technique
 // handleCompare's health dimension uses for its own internal compare-health
-// forward (workers/request-handlers/analytics-routes.mjs) rather than
+// forward (workers/request-handlers/analytics-routes.ts) rather than
 // forwarding the caller's request unchanged.
 function postgresTierRequest(
   context: GqlContext,
@@ -1450,7 +1450,7 @@ function postgresTierRequest(
 // #6978: the ownership-history/conviction/lease-history routes are
 // Postgres-only all-events tier -- unlike every tryPostgresTier(flagName)
 // call above, there is no D1 predecessor and so no per-table flag to gate on
-// (workers/api.mjs forwards these three paths to DATA_API unconditionally).
+// (workers/api.ts forwards these three paths to DATA_API unconditionally).
 // Mirrors MCP's own loadSubnetOwnershipHistory/loadSubnetConviction/
 // loadSubnetLeaseHistory proxies (src/mcp-server.ts) byte-for-byte;
 // reimplemented here rather than imported since mcp-server.ts already
@@ -4531,7 +4531,7 @@ const rootValue = {
     if (to != null) params.set("to", String(to));
     // Same DATA_API extrinsics tier as Query.extrinsics, hitting the
     // /governance/config-changes path so the worker fixes call_module=AdminUtils
-    // itself (see SUDO_GOVERNANCE_ROUTES in workers/data-api.mjs) -- no filter
+    // itself (see SUDO_GOVERNANCE_ROUTES in workers/data-api.ts) -- no filter
     // logic duplicated here; the REST route and MCP tool share this exact path.
     const data =
       ((await tryPostgresTier(
@@ -5567,7 +5567,7 @@ const rootValue = {
       });
     }
     // Same R2 entities.json + Postgres-tier ownership join handleAccountEntities
-    // uses (workers/request-handlers/entities.mjs): the entity-label artifact
+    // uses (workers/request-handlers/entities.ts): the entity-label artifact
     // read and the SubnetOwnerChanged ownership-tie lookup are independent
     // sources, fetched in parallel. A cold/absent Postgres tier degrades to
     // buildAccountEntities' own zeroed card; a cold/absent R2 artifact degrades
@@ -7246,7 +7246,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same live composition REST's subnet-health route (workers/api.mjs's
+    // Same live composition REST's subnet-health route (workers/api.ts's
     // subnet-health overlay) and the get_subnet_health MCP tool share: the
     // latest ~15-minute cron snapshot (resolveLiveHealth) overlaid per subnet
     // (overlaySubnetHealth), plus the cross-window reliability summary

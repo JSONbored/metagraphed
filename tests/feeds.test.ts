@@ -1494,8 +1494,8 @@ describe("feeds — Worker dispatch integration", () => {
   });
 
   // D1 fully eliminated (2026-07-17): the feed route wires loadLiveIncidents to
-  // loadGlobalIncidentsLedger (workers/api.mjs), which always returns
-  // incidentRows: [] now (workers/request-handlers/analytics.mjs's own
+  // loadGlobalIncidentsLedger (workers/api.ts), which always returns
+  // incidentRows: [] now (workers/request-handlers/analytics.ts's own
   // #4772/D1-retirement comment) -- the incidents feed is schema-stable empty
   // forever, never live D1 content, regardless of any METAGRAPH_HEALTH_DB
   // mock. What this test still exercises: the feed route's edge-cache

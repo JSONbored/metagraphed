@@ -5,7 +5,7 @@
 // call_subnet_surface's Phase 3 `credential` argument, but the property
 // being verified is generic to every MCP tool, not specific to that one. A
 // separate small file rather than folded into
-// tests/call-subnet-surface-mcp.test.mjs: vi.mock is file-scoped and
+// tests/call-subnet-surface-mcp.test.ts: vi.mock is file-scoped and
 // hoisted, and that file's other ~48 tests already exercise the real
 // (unmocked) trace-span call through every other tool call -- mocking it
 // there risks disturbing tests this issue doesn't own.

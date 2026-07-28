@@ -1,10 +1,10 @@
 // Unit tests for the /api/v1/internal/rollup-account-events-daily proxy
-// (workers/api.mjs's handleRollupAccountEventsDailyProxy, #4832), which
-// forwards to workers/data-api.mjs's handleRollupAccountEventsDaily via the
+// (workers/api.ts's handleRollupAccountEventsDailyProxy, #4832), which
+// forwards to workers/data-api.ts's handleRollupAccountEventsDaily via the
 // EXISTING DATA_API service binding (shares proxyToDataApi with
-// handleNeuronsSyncProxy -- see tests/neurons-sync-proxy.test.mjs for that
+// handleNeuronsSyncProxy -- see tests/neurons-sync-proxy.test.ts for that
 // sibling route's equivalent coverage). The downstream rollup logic itself
-// is covered by tests/data-api.test.mjs.
+// is covered by tests/data-api.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";

@@ -268,7 +268,11 @@ export function AppShell({
                   <Search className="size-4" aria-hidden="true" />
                 </button>
               </div>
-              <div className="flex items-center gap-1">
+              {/* min-w-0 matches the omnibox wrapper above (#8531): without
+                  it this cluster's min-width is its content width, so any
+                  future growth in the trailing actions would push it past
+                  the right viewport edge instead of letting flex shrink it. */}
+              <div className="flex items-center gap-1 min-w-0">
                 <ApiDrawerTrigger />
 
                 <NetworkSwitcher />

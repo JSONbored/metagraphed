@@ -25,7 +25,7 @@
 //
 // There is no Tailscale, SSH, or direct network path from CI to the database
 // at all: this script POSTs to the registry-sync Worker over HTTPS in
-// row-count-bounded chunks (see workers/registry-sync-api.mjs), never opens
+// row-count-bounded chunks (see workers/registry-sync-api.ts), never opens
 // a DB connection itself.
 //
 // Usage: REGISTRY_SYNC_SECRET=... node scripts/backfill-registry-postgres.ts [--dry-run]

@@ -1,5 +1,5 @@
 // Invariant + regression coverage for the public contract registry
-// (src/contracts.mjs). These lock in the structural guarantees the rest of the
+// (src/contracts.ts). These lock in the structural guarantees the rest of the
 // API relies on: every advertised route maps to a real artifact contract, every
 // path-template token type compiles to an ANCHORED regex that matches valid refs
 // and rejects malformed ones, and the public id namespaces stay unique. A break

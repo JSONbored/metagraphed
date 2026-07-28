@@ -4,10 +4,10 @@
 // storage key is the fixed twox128("Sudo") ++ twox128("Key") prefix with no
 // further hashing — confirmed live against finney (bittensor 10.5.0,
 // substrate.create_storage_key("Sudo", "Key")), so it's hardcoded rather than
-// computed at runtime. Mirrors src/account-balance.mjs's live-RPC + KV-cache
+// computed at runtime. Mirrors src/account-balance.ts's live-RPC + KV-cache
 // shape for GET /api/v1/accounts/{ss58}/balance.
 
-// Server-side SS58 encoding lives in src/ss58.mjs (extracted #4688) -- see
+// Server-side SS58 encoding lives in src/ss58.ts (extracted #4688) -- see
 // that module's header for why @noble/hashes' blake2b is required over
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
 import { encodeAccountId32 } from "./ss58.ts";

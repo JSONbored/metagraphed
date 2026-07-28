@@ -3,7 +3,7 @@
 // scope (see vitest.config.ts's own comment on why only a named subset of
 // scripts/ is instrumented) -- these tests exist for correctness confidence
 // before running the script against production, the same convention
-// tests/backfill-subnet-snapshots-postgres.test.mjs already follows for its
+// tests/backfill-subnet-snapshots-postgres.test.ts already follows for its
 // sibling script.
 import assert from "node:assert/strict";
 import { test } from "vitest";

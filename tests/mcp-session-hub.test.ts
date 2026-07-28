@@ -1,6 +1,6 @@
-// Unit tests for workers/mcp-session-hub.mjs (#4983 MCP half, ADR 0015).
+// Unit tests for workers/mcp-session-hub.ts (#4983 MCP half, ADR 0015).
 //
-// Unlike chain-firehose-hub.mjs, almost the ENTIRE class here is plain-Node-
+// Unlike chain-firehose-hub.ts, almost the ENTIRE class here is plain-Node-
 // testable: state.storage is a simple async get/put/setAlarm KV API (easy to
 // stub with a real Map), and ReadableStream/TextEncoder are real Web Streams
 // APIs under Node/vitest -- nothing in this file needs WebSocketPair, so
@@ -350,7 +350,7 @@ test("handleStream: opens an SSE stream, flushing any pending notification immed
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("content-type"), "text/event-stream");
   // #5545: every text/event-stream response must carry nosniff, matching the
-  // workers/api.mjs SSE precedent and every other response-header builder.
+  // workers/api.ts SSE precedent and every other response-header builder.
   assert.equal(res.headers.get("x-content-type-options"), "nosniff");
   const reader = res.body!.getReader();
   const { value } = await reader.read();

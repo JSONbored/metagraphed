@@ -21,7 +21,7 @@
 // RAORecycledForRegistrationSet event carries. A single state_getStorage
 // query returns it directly — the same live-RPC + KV-cache shape this
 // codebase already uses for /accounts/{ss58}/balance and /sudo/key
-// (src/account-balance.mjs, src/sudo-key.ts), not a new capture pipeline.
+// (src/account-balance.ts, src/sudo-key.ts), not a new capture pipeline.
 //
 // Storage key = twox128("SubtensorModule") ++ twox128(
 // "RAORecycledForRegistration") ++ <netuid as u16, little-endian, Identity
@@ -80,7 +80,7 @@ function decodeLeU64(hex: unknown): bigint | null {
 }
 
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss on large cumulative totals (mirrors account-balance.mjs's
+// precision loss on large cumulative totals (mirrors account-balance.ts's
 // same-shaped conversion).
 function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
