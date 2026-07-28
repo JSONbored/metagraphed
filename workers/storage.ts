@@ -1,8 +1,8 @@
 // Storage + IO layer for the API Worker — artifact reads (R2 + static-asset
 // tiers with fallback), the latest-pointer / health-KV reads, request logging,
-// and the timeout guard that bounds R2 access. Extracted from workers/api.mjs
+// and the timeout guard that bounds R2 access. Extracted from workers/api.ts
 // (issue #510, de-monolith) as a leaf module: it imports only the artifact-tier
-// contract and a config key, and calls nothing back into api.mjs, so handlers
+// contract and a config key, and calls nothing back into api.ts, so handlers
 // and the response builders can share it without an import cycle.
 import {
   artifactStorageTierForPath,

@@ -45,7 +45,7 @@
 // (with Last-Event-ID for replay) rather than holding a DO resident/billable
 // indefinitely for a long-lived agent session.
 //
-// Split in two for testability, matching chain-firehose-hub.mjs's own
+// Split in two for testability, matching chain-firehose-hub.ts's own
 // convention: the functions below are pure/unit-tested. The McpSessionHub
 // class is almost ENTIRELY Node-testable too (state.storage is a plain async
 // get/put KV API, ReadableStream is a real Web Streams API in Node) --

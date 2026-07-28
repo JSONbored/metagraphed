@@ -15,7 +15,7 @@
 // matching; a deleted one keeps matching for the same window) rather than
 // adding a synchronous Postgres round-trip to every single chain event.
 //
-// Delivery (#4984 Part 3) is deliberately factored into src/alert-delivery.mjs
+// Delivery (#4984 Part 3) is deliberately factored into src/alert-delivery.ts
 // (pure request-building, no I/O) + deliverAlertMatch below (the thin I/O
 // shell that actually calls fetch) -- this class only decides WHICH
 // triggers matched AND whether a match should actually be delivered right
@@ -98,7 +98,7 @@ const ALERT_DELIVERY_TIMEOUT_MS = 8000;
 // #5022: the internal write-back that reports EVERY matched trigger id (not
 // just the ones that clear the burst rate-limit -- match_count means "this
 // trigger's conditions were satisfied", independent of delivery) so
-// workers/data-api.mjs can persist chain_alert_triggers.match_count/
+// workers/data-api.ts can persist chain_alert_triggers.match_count/
 // last_matched_at. Deliberately much tighter than ALERT_DELIVERY_TIMEOUT_MS:
 // this is a same-Cloudflare-network Worker-to-Worker call (like
 // ALERT_TRIGGER_REFRESH_TIMEOUT_MS above), not a fetch to an arbitrary
@@ -107,7 +107,7 @@ const ALERT_DELIVERY_TIMEOUT_MS = 8000;
 // generous bound here would only cost something on the failure path.
 export const ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS = 3000;
 
-// The I/O shell around src/alert-delivery.mjs's pure request builders --
+// The I/O shell around src/alert-delivery.ts's pure request builders --
 // constructor-injectable (see AlerterHub below) rather than a hardcoded
 // call inside evaluate(), so tests can substitute a spy/failing stub
 // without needing a real network, and so a future channel doesn't require
@@ -231,7 +231,7 @@ export async function deliverAlertMatch(
   }
 
   // The timeout signal is applied HERE, not baked into the pure builders in
-  // src/alert-delivery.mjs -- AbortSignal.timeout() starts a real wall-clock
+  // src/alert-delivery.ts -- AbortSignal.timeout() starts a real wall-clock
   // timer the moment it's constructed, which that module's own header
   // comment promises never happens (no I/O, no timers, fully deterministic
   // for tests).
@@ -423,7 +423,7 @@ export class AlerterHub implements DurableObject {
   }
 
   // Pure decision given the CURRENT cache -- exported behavior is really
-  // triggerMatchesEvent (src/alert-triggers.mjs, already unit-tested);
+  // triggerMatchesEvent (src/alert-triggers.ts, already unit-tested);
   // this just applies it across every cached trigger.
   matchingTriggers(payload: unknown): Trigger[] {
     return this.triggers.filter((trigger) =>
@@ -441,7 +441,7 @@ export class AlerterHub implements DurableObject {
 
   // #5022: best-effort write-back reporting EVERY matched trigger id (the
   // FULL matched list, not just the ones that clear the burst rate-limit)
-  // to workers/data-api.mjs's internal match-count route, so
+  // to workers/data-api.ts's internal match-count route, so
   // chain_alert_triggers.match_count/last_matched_at reflect real values.
   // No-op when DATA_API/ALERT_TRIGGERS_INTERNAL_TOKEN isn't provisioned,
   // matching refreshTriggers()'s own optional-integration convention.

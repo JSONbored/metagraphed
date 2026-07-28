@@ -4,9 +4,9 @@
 // One global instance (idFromName("global")) receives #4980's NOTIFY
 // payloads from the #4981 box-side relay on an authenticated internal
 // endpoint and fans each one out to connected clients over SSE and
-// WebSocket. Reached only through workers/api.mjs's CHAIN_FIREHOSE_HUB
+// WebSocket. Reached only through workers/api.ts's CHAIN_FIREHOSE_HUB
 // binding -- a Durable Object is never internet-addressable on its own, so
-// every auth check lives in workers/api.mjs (handleChainFirehoseIngest),
+// every auth check lives in workers/api.ts (handleChainFirehoseIngest),
 // not here.
 //
 // This module is split in two for testability: the functions below make
@@ -25,7 +25,7 @@
 // /subscribe path the plain firehose WS uses, not a separate DO or a second
 // event pipeline (matches #4983's own issue body: "a thin protocol adapter
 // on top of the existing hub"). See handleSubscribe/webSocketMessage/
-// webSocketClose's graphql-ws branches, and src/graphql.mjs's
+// webSocketClose's graphql-ws branches, and src/graphql.ts's
 // GRAPHQL_SUBSCRIPTION_CONTEXT_KEY for the other half of the wiring.
 
 import {
@@ -74,7 +74,7 @@ export const CHAIN_FIREHOSE_TABLES = new Set([
 // payload is already far smaller than this -- see the trigger's comment).
 export const CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES = 16_000;
 
-// #6672: the ingest rate limit (workers/api.mjs's CHAIN_FIREHOSE_INGEST_RATE_LIMIT)
+// #6672: the ingest rate limit (workers/api.ts's CHAIN_FIREHOSE_INGEST_RATE_LIMIT)
 // costs by REQUEST, not payload size -- one POST always consumes exactly one
 // unit of the Workers Rate Limiting binding, regardless of body size. Batching
 // N rows into a single request's array body therefore multiplies effective
@@ -144,8 +144,8 @@ export const CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS = 10 * 60 * 1000;
 // #5004 item 1: the two caps above are GLOBAL -- one IP looping connection
 // attempts can legitimately consume the entire budget and lock out every
 // other client of that transport. This is a per-IP sub-quota (resolved via
-// resolveClientIp, workers/config.mjs -- the SAME cf-connecting-ip-only
-// resolution workers/data-api.mjs's rate limiters already use, not a
+// resolveClientIp, workers/config.ts -- the SAME cf-connecting-ip-only
+// resolution workers/data-api.ts's rate limiters already use, not a
 // separate IP-extraction scheme) checked in ADDITION to, not instead of, the
 // global caps above. Deliberately well under them (20 vs. 1000): generous
 // enough for any real client (a browser tab or two, a reconnect race) while
@@ -484,9 +484,9 @@ function safeGetWebSockets(
 // carrying a query/mutation document just as easily). Left unchecked, that
 // would let a client execute the full read API over this WS transport,
 // bypassing BOTH /api/v1/graphql POST's rate limiter (graphqlRateLimited,
-// workers/api.mjs -- never consulted for an upgraded connection) and its
+// workers/api.ts -- never consulted for an upgraded connection) and its
 // complexity/depth guards (this function reuses the SAME maxDepthRule/
-// maxComplexityRule graphql.mjs's POST handler applies, rather than
+// maxComplexityRule graphql.ts's POST handler applies, rather than
 // defaulting to graphql-ws's bare specifiedRules). Restricting this
 // transport to subscription operations only is the actual fix for both --
 // wired into makeServer's onSubscribe below. Pure and unit-tested directly
@@ -536,7 +536,7 @@ export interface AsyncRepeater<T> {
 // A minimal push-based async iterator: push() delivers a value to whichever
 // `next()` call is currently pending (or buffers it if none is), end()
 // terminates the sequence. Backs the GraphQL `chainEvents` subscription field
-// (#4983, src/graphql.mjs's chainEventsSubscribe) -- graphql-js's subscribe()
+// (#4983, src/graphql.ts's chainEventsSubscribe) -- graphql-js's subscribe()
 // consumes this the same way it would any other AsyncIterable subscription
 // source. No dependency on graphql/graphql-ws/the DO runtime, so it's fully
 // unit-tested on its own.
@@ -772,7 +772,7 @@ export class ChainFirehoseHub implements DurableObject {
       // handleSubscribe's isGraphqlWs branch below passes { ip: clientIp,
       // graphqlWsConnection }. Threading both into context makes them
       // reachable as context.clientIp/context.graphqlWsConnection in
-      // src/graphql.mjs's chainEventsSubscribe resolver, which passes them on
+      // src/graphql.ts's chainEventsSubscribe resolver, which passes them on
       // to subscribeChainEvents for the per-IP and per-socket caps.
       context: (ctx) => ({
         [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this,
@@ -784,7 +784,7 @@ export class ChainFirehoseHub implements DurableObject {
   }
 
   // Registered as context.chainFirehose by graphqlWsServer above; called from
-  // src/graphql.mjs's chainEventsSubscribe field resolver. Mirrors the SSE/WS
+  // src/graphql.ts's chainEventsSubscribe field resolver. Mirrors the SSE/WS
   // firehose's own topic-filter semantics (chainFirehoseMatchesTopics).
   // Returns null (not a repeater) at the global cap
   // (CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS), the per-IP cap
@@ -794,12 +794,12 @@ export class ChainFirehoseHub implements DurableObject {
   // filter"/an empty stream.
   //
   // #5004 item 2: `clientIp` is threaded from the WS upgrade through
-  // graphql-ws's opened()/context() chain into src/graphql.mjs's
+  // graphql-ws's opened()/context() chain into src/graphql.ts's
   // chainEventsSubscribe resolver, which passes it here as context.clientIp
   // -- see graphqlWsServer's context callback above for how ctx.extra.ip gets
   // there. `clientIp` may be undefined for callers that don't go through the
   // real WS/graphql-ws path -- in production, context.clientIp is always
-  // populated (resolveClientIp, workers/config.mjs, falls back to a fixed
+  // populated (resolveClientIp, workers/config.ts, falls back to a fixed
   // "anonymous" bucket rather than ever returning undefined), so the only
   // real source of a falsy clientIp here is a direct programmatic call with
   // fewer arguments (e.g. existing unit tests) -- treated the same
@@ -1479,7 +1479,7 @@ export class ChainFirehoseHub implements DurableObject {
     }
 
     // #4983: GraphQL `chainEvents` subscriptions -- push into every matching
-    // repeater; src/graphql.mjs's chainEventsSubscribe is consuming these via
+    // repeater; src/graphql.ts's chainEventsSubscribe is consuming these via
     // `for await`, and graphql-js's subscribe() takes it from there (executes
     // the rest of the selection set, frames the result, and calls the
     // graphql-ws adapter socket's send()).
