@@ -9221,8 +9221,20 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
     fixtureEnv({
       "/metagraph/providers/acme/endpoints.json": {
         endpoints: [
-          { id: "acme-e1", kind: "subtensor-rpc", status: "ok", netuid: 1 },
-          { id: "acme-e2", kind: "subnet-api", status: "degraded", netuid: 2 },
+          {
+            id: "acme-e1",
+            kind: "subtensor-rpc",
+            status: "ok",
+            netuid: 1,
+            pool_eligible: true,
+          },
+          {
+            id: "acme-e2",
+            kind: "subnet-api",
+            status: "degraded",
+            netuid: 2,
+            pool_eligible: false,
+          },
         ],
       },
     });
@@ -9250,6 +9262,28 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
       body.data.provider_endpoints.endpoints[0].kind,
       "subtensor-rpc",
     );
+  });
+
+  test("applies a netuid filter via the shared loader (#8546)", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme", netuid: 1) }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
+  });
+
+  test("applies a pool_eligible filter via the shared loader (#8546)", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme", pool_eligible: true) }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
   });
 
   test("an unsupported sort is a GraphQL error, not a silent default", async () => {
