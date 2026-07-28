@@ -159,7 +159,12 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
             />
           </div>
         </div>
-        <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
+        {/* mg-table-scroll (#8533): this was the one table on /endpoints
+            still scrolling silently — every other table on the route sits in
+            ResponsiveTable/ScrollShadow. The edge-fade + thin-scrollbar
+            affordance matches the /validators table (#8433) and /subnets
+            (#8314), so the horizontal scroll is discoverable. */}
+        <div className="mg-table-scroll w-full overflow-x-auto [scrollbar-gutter:stable]">
           <table
             className="w-full min-w-[480px] mg-type-data"
             role="table"
