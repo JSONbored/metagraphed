@@ -805,7 +805,7 @@ export async function handleFeedRequest(
   deps: FeedRequestDeps = {},
 ): Promise<Response> {
   const readArtifact = deps.readArtifact;
-  // Feed errors go through the shared canonical envelope (workers/http.mjs
+  // Feed errors go through the shared canonical envelope (workers/http.ts
   // errorResponse), injected by the Worker so they match every other API
   // error — schema_version, data: null, meta.contract_version, and the
   // standard headers. feedError is the bare fallback when none is injected.

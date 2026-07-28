@@ -47,13 +47,13 @@ function roundUnit(value: number): number {
 }
 
 // |net| / gross at or above this share reads as a directional lean rather than
-// balanced two-way volume. Mirrors account-stake-flow.mjs's DIRECTIONAL_RATIO —
+// balanced two-way volume. Mirrors account-stake-flow.ts's DIRECTIONAL_RATIO —
 // same "how decisive is this ratio" cutoff, reused rather than re-derived.
 const SENTIMENT_NEUTRAL_BAND = 0.2;
 
 // net / gross alpha volume, bounded to [-1, 1] and rounded to 4dp; null when
 // gross is 0 (no volume in the window, ratio undefined). Mirrors
-// account-stake-flow.mjs's flowRatio, including its anti-overstatement clamp:
+// account-stake-flow.ts's flowRatio, including its anti-overstatement clamp:
 // a sub-perfect ratio (real counter-volume exists) must never round to an
 // exact +/-1, which this card's own contract would misread as "no sell/buy
 // volume at all" (#2997's clamp, extended to this sibling ratio). Exported so
@@ -74,7 +74,7 @@ export function sentimentRatio(
 export type AlphaVolumeSentiment = "bullish" | "bearish" | "neutral";
 
 // Buy/sell sentiment indicator (#4339/8.2): a coarse label from the same
-// net/gross lean account-stake-flow.mjs classifies for one account's capital
+// net/gross lean account-stake-flow.ts classifies for one account's capital
 // flow, relabeled for a subnet-wide volume reading — "bullish"/"bearish" past
 // the neutral band, "neutral" both for balanced two-way volume AND a
 // zero-volume window (no data is no signal either way). Exported for
@@ -224,7 +224,7 @@ export function buildAlphaVolume(
 // Returns { data, generatedAt } where generatedAt is the newest event's
 // observed_at as an ISO string (string|null), matching stake-flow's contract.
 // Cold/absent D1 -> zeroed totals + generatedAt null. The 3-day account_events
-// retention (EVENT_RETENTION_MS, src/account-events.mjs) comfortably covers a
+// retention (EVENT_RETENTION_MS, src/account-events.ts) comfortably covers a
 // 24h window.
 export async function loadSubnetAlphaVolume(
   d1: (

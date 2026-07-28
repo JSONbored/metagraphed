@@ -308,7 +308,7 @@ function decodeTextualField(bytes: number[]): string {
     );
   } catch {
     // Malformed UTF-8 for a field expected to be textual -- fall back to
-    // hex rather than producing mojibake, mirroring bytes.mjs's identical
+    // hex rather than producing mojibake, mirroring bytes.ts's identical
     // decodeBytesField fallback.
     return toHex(bytes);
   }

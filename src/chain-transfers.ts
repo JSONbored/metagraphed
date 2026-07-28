@@ -5,12 +5,12 @@
 // the REST envelope. The network-level companion of the per-account
 // /accounts/{ss58}/transfers + /counterparties routes. #4772 D1 retirement: the D1
 // loader (loadChainTransfers) that queried the now-dropped `account_events` D1 table
-// was removed -- Postgres is the sole live tier (workers/data-api.mjs); a cold/absent
+// was removed -- Postgres is the sole live tier (workers/data-api.ts); a cold/absent
 // tier falls back to buildChainTransfers({}) directly. See src/mcp-server.ts's
 // get_chain_transfers tool for the call site.
 
 // Supported windows (label -> days), the same set + default the sibling /chain/* analytics
-// use (config.mjs ANALYTICS_WINDOWS / DEFAULT_ANALYTICS_WINDOW).
+// use (config.ts ANALYTICS_WINDOWS / DEFAULT_ANALYTICS_WINDOW).
 export const CHAIN_TRANSFER_WINDOWS = { "7d": 7, "30d": 30 };
 export const DEFAULT_CHAIN_TRANSFER_WINDOW = "7d";
 export const CHAIN_TRANSFER_LIMIT_DEFAULT = 25;
