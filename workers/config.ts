@@ -1,8 +1,8 @@
 // Module-scope configuration constants for the API Worker — pure literals,
 // regexes, and lookup sets with no runtime dependencies. Extracted from
-// workers/api.mjs (issue #510, de-monolith) so handlers can share them without
+// workers/api.ts (issue #510, de-monolith) so handlers can share them without
 // the entry file owning every constant. Import-free by design: this module must
-// stay a leaf so api.mjs and any future request-handler module can depend on it
+// stay a leaf so api.ts and any future request-handler module can depend on it
 // without cycles.
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
@@ -95,9 +95,9 @@ export const SUBNET_BURN_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/burn$/;
 // LeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request
 // time — not a D1/account_events tier, no static file. The companion
 // /lease/history route (lease-lifecycle events, Postgres-tier via the
-// DATA_API service binding) is dispatched separately in api.mjs's
+// DATA_API service binding) is dispatched separately in api.ts's
 // handleRequest, matching ownership-history/conviction's own inline-regex
-// convention rather than a config.mjs pattern constant.
+// convention rather than a config.ts pattern constant.
 export const SUBNET_LEASE_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/lease$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
@@ -481,7 +481,7 @@ export const MAX_ASK_BODY_BYTES = 4096;
 export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
   "x-metagraph-webhook-subscription-token";
 // account_events_daily rollup trigger (#4832 gap-closure). Shared by
-// data-api.mjs's handler (validates it) and api.mjs's Worker-native cron
+// data-api.ts's handler (validates it) and api.ts's Worker-native cron
 // dispatch (sets it on the synthetic internal request — the former
 // rollup-account-events-daily.yml GitHub Actions workflow used to set it on
 // its public curl call instead).

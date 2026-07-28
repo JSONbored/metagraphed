@@ -1,8 +1,8 @@
 // Response envelope builders for the API Worker — the canonical success/data
 // envelopes, the contract-version resolver, and the published-at lookup.
-// Extracted from workers/api.mjs (issue #510, de-monolith). Depends only on the
+// Extracted from workers/api.ts (issue #510, de-monolith). Depends only on the
 // http + storage leaf modules and the contract version; it calls nothing back
-// into api.mjs, so there is no import cycle.
+// into api.ts, so there is no import cycle.
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
 import type { CacheProfile } from "./http.ts";

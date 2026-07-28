@@ -1,7 +1,7 @@
 // Shared HTTP response primitives for the API Worker — header construction,
-// weak ETags, and the canonical error envelope. Extracted from workers/api.mjs
+// weak ETags, and the canonical error envelope. Extracted from workers/api.ts
 // (issue #510, de-monolith) as a leaf module: it imports only contract/config
-// constants and nothing from api.mjs, so every request-handler module can share
+// constants and nothing from api.ts, so every request-handler module can share
 // these without an import cycle.
 import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contracts.ts";
 import { JSON_CONTENT_TYPE } from "./config.ts";

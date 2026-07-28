@@ -1,13 +1,13 @@
 // metagraphed registry-sync Worker — the ONLY write path into the registry
 // Postgres instance (a dedicated, separate database from the chain-indexer's
 // -- see deploy/postgres/registry-schema.sql). Kept SEPARATE from the main
-// api.mjs Worker and from workers/data-api.mjs (which is READ-ONLY by design
+// api.ts Worker and from workers/data-api.ts (which is READ-ONLY by design
 // for chain data) for the same bundle-budget reason ADR 0013 already split
-// data-api.mjs out: the postgres.js driver shouldn't grow every Worker that
+// data-api.ts out: the postgres.js driver shouldn't grow every Worker that
 // merely proxies to it.
 //
 // Reached only via the main Worker's REGISTRY_SYNC_API service binding (no
-// public routes of its own) -- see workers/api.mjs's handleRegistrySyncProxy,
+// public routes of its own) -- see workers/api.ts's handleRegistrySyncProxy,
 // which forwards the request here unchanged. This Worker's shared-secret
 // check below is the only auth gate in the whole path.
 //
@@ -302,7 +302,7 @@ async function dispatchRegistrySyncRequest(
             // Plain scalar positional binds via sql.unsafe, NOT a bound JS
             // array -- Hyperdrive's fetch_types:false breaks postgres.js's
             // ANY($1)/array serialization (confirmed live 2026-07-10, #4771's
-            // identical fix to data-api.mjs's neurons-sync prune; this query
+            // identical fix to data-api.ts's neurons-sync prune; this query
             // shipped the same broken ANY(${keepKeys}) pattern in #3892 three
             // days earlier and was never ported). A bound array here sends a
             // malformed literal with no braces, 502'ing every write that
