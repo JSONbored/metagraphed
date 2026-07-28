@@ -1,0 +1,73 @@
+---
+title: Monitor my validator
+description: Three MCP tool calls to check a validator's current standing, its 30-day trend, and who's actually staking to it — with a real, executed transcript.
+---
+
+**Goal:** answer "is my validator (or one I'm considering delegating to) doing what it should" —
+current stake and trust, whether it's trending up or down, and who's actually behind the numbers.
+
+## The sequence
+
+```
+1. get_validator_detail { hotkey }                — current stake, trust, APY, nominator count
+2. get_validator_history { hotkey, window: "30d" } — daily stake/emission series
+3. get_validator_nominators { hotkey, limit }      — who's staking to it, ranked by net flow
+```
+
+All three take the same `hotkey` and can run in parallel — none depends on another's output.
+
+## What each output means
+
+- **`get_validator_detail`** — `avg_validator_trust` close to `1.0` means the network consistently
+  validates this hotkey's weights; `apy_estimate` is the current realized return; `nominator_count`
+  is a rough popularity signal on its own, more useful alongside step 3's actual flow.
+- **`get_validator_history`** — read `total_stake_tao` across the `points` array for the trend, not
+  just the latest value. A validator can look fine on `get_validator_detail` alone while quietly
+  bleeding stake day over day.
+- **`get_validator_nominators`** — `net_staked_tao` per nominator (staked minus unstaked) is the
+  honest signal; `gross_staked_tao` alone can look active on a nominator who's actually cycling
+  stake in and out without net conviction.
+
+## Failure branch
+
+A hotkey with `nominator_count: 0` and an all-zero `subnets` array isn't necessarily wrong input —
+`get_validator_detail`'s own contract returns a zeroed aggregate for a cold or never-registered
+hotkey rather than an error, so double-check the ss58 itself (a coldkey passed where a hotkey was
+expected is the most common mistake) before assuming the tool is broken.
+
+## Executed transcript (a subnet-1 validator, 2026-07-28)
+
+<Callout title="Real output, condensed" type="info">
+  Run live against the production API for this doc. Full JSON trimmed to the fields the steps above
+  actually use; the hotkey is a real, publicly-registered validator.
+</Callout>
+
+```json
+// 1. get_validator_detail { hotkey: "5HbNZ77c...fqGe" }
+{ "coldkey_identity": { "name": "Macrocosmos" }, "nominator_count": 45,
+  "total_stake_tao": 1534314.77, "avg_validator_trust": 0.999985,
+  "apy_estimate": 0.454058959, "subnets": [{ "netuid": 1, "validator_permit": true }] }
+
+// 2. get_validator_history { hotkey: "5HbNZ77c...fqGe", window: "30d" }
+// 19 daily points; the two ends of the series:
+{ "snapshot_date": "2026-07-10", "total_stake_tao": 1526929.28 }
+{ "snapshot_date": "2026-07-28", "total_stake_tao": 1534314.77 }
+
+// 3. get_validator_nominators { hotkey: "5HbNZ77c...fqGe", limit: 5 }
+{ "nominators": [
+  { "coldkey": "5HCFWv...DHh", "net_staked_tao": 131.17, "event_count": 4 },
+  { "coldkey": "5D2tFA...FcL", "net_staked_tao": 0.29,  "event_count": 1 },
+  { "coldkey": "5CUYgS...ECR", "net_staked_tao": 0.03,  "event_count": 26 }
+] }
+```
+
+**Reading this one:** stake grew ~0.5% over the window (1,526,929 → 1,534,315 TAO) with validator
+trust essentially at the ceiling — a stable, well-run validator. The nominator list is the more
+interesting read: the top-net-flow nominator staked once and stayed, while a smaller one made 26
+events for a net position of 0.03 TAO — someone actively cycling stake in and out rather than
+holding a conviction position. Neither is wrong, but they're different signals `get_validator_detail`
+alone wouldn't have shown.
+
+## Tools used
+
+[`get_validator_detail`](/docs/api-reference/validators/validator-detail), [`get_validator_history`](/docs/api-reference/validators/validator-history), [`get_validator_nominators`](/docs/api-reference/validators/validator-nominators) — same tools, callable directly over MCP (`prompts/get name="monitor_my_validator"`) or as the REST routes each links to.

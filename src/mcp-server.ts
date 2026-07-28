@@ -11332,6 +11332,70 @@ export const MCP_PROMPTS = [
       `2. get_best_rpc_endpoint {} — a live-healthy Bittensor base-layer RPC endpoint to fall back to.\n` +
       `${UNTRUSTED_DATA_NOTE}`,
   },
+  // #8383: the four playbooks -- see content/docs/playbooks/*.mdx for the
+  // full walkthrough (goal, output meaning, failure branch, an executed
+  // transcript) each of these is the machine-readable counterpart of.
+  {
+    name: "evaluate_subnet_before_staking",
+    title: "Evaluate a subnet before staking",
+    description:
+      "Recipe: check a subnet's health, economics, and stake concentration before staking into it.",
+    arguments: [
+      { name: "netuid", description: "The subnet netuid.", required: true },
+      {
+        name: "amount",
+        description:
+          "TAO amount you're considering staking (for the price-impact quote).",
+        required: false,
+      },
+    ],
+    build: (a: Row) =>
+      `Evaluate Bittensor subnet ${a.netuid} before staking into it:\n` +
+      `1. get_subnet { netuid: ${a.netuid} } — identity, integration readiness, curation state.\n` +
+      `2. get_subnet_health { netuid: ${a.netuid} } — is it actually up right now.\n` +
+      `3. get_subnet_economics { netuid: ${a.netuid} } — price, pool size, emission share, registration status.\n` +
+      `4. get_subnet_concentration { netuid: ${a.netuid} } — nakamoto_coefficient: 1 means one entity already controls consensus.\n` +
+      `5. get_subnet_stake_quote { netuid: ${a.netuid}, amount: ${a.amount ?? "<amount>"}, direction: "stake" } — expected alpha out + price impact.\n` +
+      `${UNTRUSTED_DATA_NOTE}`,
+  },
+  {
+    name: "monitor_my_validator",
+    title: "Monitor my validator",
+    description:
+      "Recipe: check a validator's current standing, 30-day trend, and who's staking to it.",
+    arguments: [
+      {
+        name: "hotkey",
+        description: "The validator hotkey (ss58).",
+        required: true,
+      },
+    ],
+    build: (a: Row) =>
+      `Monitor Bittensor validator ${a.hotkey}:\n` +
+      `1. get_validator_detail { hotkey: ${JSON.stringify(a.hotkey)} } — current stake, trust, APY, nominator count.\n` +
+      `2. get_validator_history { hotkey: ${JSON.stringify(a.hotkey)}, window: "30d" } — daily stake/emission trend, not just the latest snapshot.\n` +
+      `3. get_validator_nominators { hotkey: ${JSON.stringify(a.hotkey)} } — net_staked_tao per nominator, the honest flow signal (not gross_staked_tao alone).\n` +
+      `A zeroed response with nominator_count: 0 means a cold/never-registered hotkey, not an error — double-check the ss58 (a coldkey passed where a hotkey was expected is the common mistake). ${UNTRUSTED_DATA_NOTE}`,
+  },
+  {
+    name: "audit_account_history",
+    title: "Audit an account's history",
+    description:
+      "Recipe: reconstruct what one SS58 address has actually done on-chain.",
+    arguments: [
+      {
+        name: "ss58",
+        description: "The account address (hotkey or coldkey).",
+        required: true,
+      },
+    ],
+    build: (a: Row) =>
+      `Audit Bittensor account ${a.ss58}:\n` +
+      `1. get_account { ss58: ${JSON.stringify(a.ss58)} } — activity summary + event_kinds breakdown; decide from this which of steps 2/3 are worth running.\n` +
+      `2. get_account_transfers { ss58: ${JSON.stringify(a.ss58)} } — native TAO Balances.Transfer feed, separate from stake events.\n` +
+      `3. get_account_stake_moves { ss58: ${JSON.stringify(a.ss58)}, window: "30d" } — StakeMoved re-delegation footprint + concentration.\n` +
+      `A cold/never-seen address returns a schema-stable zero summary (event_count: 0), not an error -- a real, informative answer, not a signal to retry. ${UNTRUSTED_DATA_NOTE}`,
+  },
 ];
 
 const PROMPTS_BY_NAME = new Map(MCP_PROMPTS.map((p) => [p.name, p]));

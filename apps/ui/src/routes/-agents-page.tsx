@@ -7,6 +7,7 @@ import { AgentContextCard } from "@/components/metagraphed/agent-context-card";
 import { AgentConnectCard } from "@/components/metagraphed/agent-connect-card";
 import { AgentLiveCard } from "@/components/metagraphed/agent-live-card";
 import { AgentResourceGrid } from "@/components/metagraphed/agent-resource-grid";
+import { AgentPlaybookGrid } from "@/components/metagraphed/agent-playbook-grid";
 import { Skeleton } from "@/components/metagraphed/states";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
 import type { AgentResource, AgentResources } from "@/lib/metagraphed/types";
@@ -102,6 +103,15 @@ function AgentsBody() {
           intro="Context files, the OpenAPI contract, GraphQL, bulk data, and everything else the registry exposes directly."
         />
         <AgentResourceGrid resources={res.resources} />
+      </section>
+
+      <section id="playbooks">
+        <SectionHeading
+          step={5}
+          title="Task-oriented playbooks"
+          intro="Executed, tested tool-call sequences for the tasks people actually bring — also registered as MCP prompts for harnesses that surface them natively."
+        />
+        <AgentPlaybookGrid />
       </section>
     </div>
   );
