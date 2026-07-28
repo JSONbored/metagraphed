@@ -38,6 +38,7 @@ import { Route as ApisSchemasRouteImport } from './routes/apis.schemas'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ChainIndexRouteImport } from './routes/chain.index'
+import { Route as ChainAnalyticsRouteImport } from './routes/chain.analytics'
 import { Route as ChainBlocksRouteImport } from './routes/chain.blocks'
 import { Route as ChainEventsRouteImport } from './routes/chain.events'
 import { Route as ChainExtrinsicsRouteImport } from './routes/chain.extrinsics'
@@ -206,6 +207,11 @@ const ChainIndexRoute = ChainIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChainRoute,
 } as any)
+const ChainAnalyticsRoute = ChainAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => ChainRoute,
+} as any)
 const ChainBlocksRoute = ChainBlocksRouteImport.update({
   id: '/blocks',
   path: '/blocks',
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/apis/providers': typeof ApisProvidersRoute
   '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/chain/analytics': typeof ChainAnalyticsRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
@@ -393,6 +400,7 @@ export interface FileRoutesByTo {
   '/apis/providers': typeof ApisProvidersRoute
   '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/chain/analytics': typeof ChainAnalyticsRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
@@ -447,6 +455,7 @@ export interface FileRoutesById {
   '/apis/providers': typeof ApisProvidersRoute
   '/apis/schemas': typeof ApisSchemasRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/chain/analytics': typeof ChainAnalyticsRoute
   '/chain/blocks': typeof ChainBlocksRoute
   '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
@@ -502,6 +511,7 @@ export interface FileRouteTypes {
     | '/apis/providers'
     | '/apis/schemas'
     | '/blocks/$ref'
+    | '/chain/analytics'
     | '/chain/blocks'
     | '/chain/events'
     | '/chain/extrinsics'
@@ -553,6 +563,7 @@ export interface FileRouteTypes {
     | '/apis/providers'
     | '/apis/schemas'
     | '/blocks/$ref'
+    | '/chain/analytics'
     | '/chain/blocks'
     | '/chain/events'
     | '/chain/extrinsics'
@@ -606,6 +617,7 @@ export interface FileRouteTypes {
     | '/apis/providers'
     | '/apis/schemas'
     | '/blocks/$ref'
+    | '/chain/analytics'
     | '/chain/blocks'
     | '/chain/events'
     | '/chain/extrinsics'
@@ -884,6 +896,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChainIndexRouteImport
       parentRoute: typeof ChainRoute
     }
+    '/chain/analytics': {
+      id: '/chain/analytics'
+      path: '/analytics'
+      fullPath: '/chain/analytics'
+      preLoaderRoute: typeof ChainAnalyticsRouteImport
+      parentRoute: typeof ChainRoute
+    }
     '/chain/blocks': {
       id: '/chain/blocks'
       path: '/blocks'
@@ -1058,6 +1077,7 @@ const ApisRouteChildren: ApisRouteChildren = {
 const ApisRouteWithChildren = ApisRoute._addFileChildren(ApisRouteChildren)
 
 interface ChainRouteChildren {
+  ChainAnalyticsRoute: typeof ChainAnalyticsRoute
   ChainBlocksRoute: typeof ChainBlocksRoute
   ChainEventsRoute: typeof ChainEventsRoute
   ChainExtrinsicsRoute: typeof ChainExtrinsicsRoute
@@ -1067,6 +1087,7 @@ interface ChainRouteChildren {
 }
 
 const ChainRouteChildren: ChainRouteChildren = {
+  ChainAnalyticsRoute: ChainAnalyticsRoute,
   ChainBlocksRoute: ChainBlocksRoute,
   ChainEventsRoute: ChainEventsRoute,
   ChainExtrinsicsRoute: ChainExtrinsicsRoute,
