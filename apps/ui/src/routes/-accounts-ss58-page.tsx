@@ -26,6 +26,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -41,6 +42,7 @@ import {
   SectionAnchor,
   StatTile,
   BarMini,
+  Chip,
   DownloadCsvButton,
   ExternalLink,
   BackToTop,
@@ -71,6 +73,7 @@ import {
   accountServingQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
+  nametagIndexQuery,
   validatorDetailQuery,
   validatorHistoryQuery,
 } from "@/lib/metagraphed/queries";
@@ -81,7 +84,7 @@ import {
 } from "@/lib/metagraphed/validator-apy";
 import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { ss58PathSegment } from "@/lib/metagraphed/accounts";
@@ -177,6 +180,20 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const balance = balanceResult.data?.data;
   const identityResult = useQuery(accountIdentityQuery(ss58));
   const identity = identityResult.data?.data;
+  // #8372: the masthead title is the single most prominent "detail context"
+  // on the site (requirement 3's own example of where a category chip
+  // belongs) -- resolve through the same private-label -> identity ->
+  // nametag -> truncated ladder AddressDisplay uses elsewhere on this page,
+  // rather than leaving this one title as the last hand-rolled identity-only
+  // ternary. A plain resolveAddress() call, not <AddressDisplay>: this is a
+  // page title, not a table cell -- no copy button or self-link belongs in
+  // an H1 for the page the reader is already on.
+  const { data: nametags } = useQuery(nametagIndexQuery());
+  const resolvedTitle = resolveAddress(ss58, {
+    identityName: identity?.has_identity ? identity.name : undefined,
+    nametag: nametags?.get(ss58) ?? null,
+    keep: 8,
+  });
   // #8358 KPI band: the same portfolio/stake-flow/validator/prometheus queries
   // the Positions and Activity tab sections already fetch below, called once
   // more here (React Query dedupes by key -- this is a shared cache read, not
@@ -252,11 +269,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <PageMasthead
         eyebrow="Explorer · account"
         live
-        title={
-          identity?.has_identity && identity.name
-            ? identity.name
-            : (shortHash(ss58, 8) ?? "Account")
-        }
+        title={resolvedTitle.display}
         description={
           <div className="space-y-4">
             <p className="max-w-2xl">
@@ -269,6 +282,11 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 <CopyableCode value={ss58} truncate={false} className="max-w-full" />
               </div>
               <RoleChip role={detectedRole} dual={dualRole} />
+              {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
+                <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
+                  {resolvedTitle.category}
+                </Chip>
+              ) : null}
             </div>
           </div>
         }
@@ -1092,17 +1110,11 @@ function AccountTransfersSection({
                     className="px-4 py-4 mg-type-data text-ink-muted"
                     title={counterparty ?? undefined}
                   >
-                    {counterparty && counterparty !== ss58 ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: counterparty }}
-                        className="hover:text-accent hover:underline"
-                      >
-                        {shortHash(counterparty)}
-                      </Link>
-                    ) : (
-                      (shortHash(counterparty) ?? "—")
-                    )}
+                    <AddressDisplay
+                      ss58={counterparty}
+                      fallback={<>{counterparty ?? "—"}</>}
+                      linkToAccount={counterparty !== ss58}
+                    />
                   </td>
                   <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
                     {t.amount_tao != null ? `${formatNumber(t.amount_tao)} τ` : "—"}
@@ -1363,17 +1375,11 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
             {rows.map((p, i) => (
               <tr key={`${p.address}-${i}`} className="hover:bg-surface/30">
                 <td className="px-4 py-4 mg-type-data text-ink-muted" title={p.address}>
-                  {p.address !== ss58 ? (
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: p.address }}
-                      className="hover:text-accent hover:underline"
-                    >
-                      {shortHash(p.address)}
-                    </Link>
-                  ) : (
-                    (shortHash(p.address) ?? "—")
-                  )}
+                  <AddressDisplay
+                    ss58={p.address}
+                    fallback={<>{p.address}</>}
+                    linkToAccount={p.address !== ss58}
+                  />
                 </td>
                 <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
                   {p.sent_tao != null ? `${formatNumber(p.sent_tao)} τ` : "—"}
@@ -1514,17 +1520,13 @@ function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[
               className="min-w-0 flex-1 truncate mg-type-data text-ink-muted"
               title={r.counterpart}
             >
-              {r.counterpart !== ss58 ? (
-                <Link
-                  to="/accounts/$ss58"
-                  params={{ ss58: r.counterpart }}
-                  className="hover:text-accent hover:underline"
-                >
-                  {shortHash(r.counterpart)}
-                </Link>
-              ) : (
-                (shortHash(r.counterpart) ?? "—")
-              )}
+              <AddressDisplay
+                ss58={r.counterpart}
+                fallback={<>{r.counterpart}</>}
+                linkToAccount={r.counterpart !== ss58}
+                compact
+                valueClassName="truncate min-w-0"
+              />
             </div>
             <div className="flex w-28 shrink-0 items-center gap-2">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">

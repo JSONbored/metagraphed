@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { Percent, Activity, Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { subnetYieldQuery, subnetYieldHistoryQuery } from "@/lib/metagraphed/queries";
 import {
@@ -10,13 +9,12 @@ import {
   StatTile,
   BarMini,
   Sparkline,
-  CopyButton,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { classNames } from "@/lib/metagraphed/format";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
 
@@ -144,21 +142,12 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                     #{n.uid}
                   </span>
-                  {n.hotkey ? (
-                    <>
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: n.hotkey }}
-                        className="truncate font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
-                        title={n.hotkey}
-                      >
-                        {shortHash(n.hotkey) ?? n.hotkey}
-                      </Link>
-                      <CopyButton value={n.hotkey} label="hotkey" compact />
-                    </>
-                  ) : (
-                    <span className="font-mono mg-type-caption text-ink-muted">—</span>
-                  )}
+                  <AddressDisplay
+                    ss58={n.hotkey}
+                    fallback={<span className="font-mono mg-type-caption text-ink-muted">—</span>}
+                    compact
+                    valueClassName="truncate font-mono mg-type-caption text-ink-strong hover:text-accent"
+                  />
                 </div>
                 {n.role === "validator" ? (
                   <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-caption text-accent-text">
@@ -199,21 +188,12 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                     {n.uid}
                   </td>
                   <td className="px-3 py-2.5 mg-type-data">
-                    {n.hotkey ? (
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: n.hotkey }}
-                          className="text-ink-muted hover:text-ink hover:underline"
-                          title={n.hotkey}
-                        >
-                          {shortHash(n.hotkey) ?? n.hotkey}
-                        </Link>
-                        <CopyButton value={n.hotkey} label="hotkey" compact />
-                      </div>
-                    ) : (
-                      "—"
-                    )}
+                    <AddressDisplay
+                      ss58={n.hotkey}
+                      fallback={<>—</>}
+                      compact
+                      valueClassName="text-ink-muted hover:text-ink"
+                    />
                   </td>
                   <td className="px-3 py-2.5">
                     {n.role === "validator" ? (

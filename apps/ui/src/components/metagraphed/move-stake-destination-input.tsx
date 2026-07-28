@@ -1,7 +1,7 @@
 import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { formatQuoteHint } from "@/components/metagraphed/stake-amount-input";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import type { SubnetStakeQuote, Subnet } from "@/lib/metagraphed/types";
 import type { MoveStakeAxis } from "@/hooks/use-move-stake-flow";
 
@@ -65,9 +65,13 @@ export function MoveStakeDestinationInput({
     <div className="space-y-4">
       <div className="rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
         Moving from{" "}
-        <span className="font-medium text-ink-strong">
-          {originValidatorName ?? shortHash(originHotkey, 6)}
-        </span>{" "}
+        <AddressDisplay
+          ss58={originHotkey}
+          fallback={<>{originHotkey}</>}
+          identityName={originValidatorName}
+          keep={6}
+          valueClassName="font-medium text-ink-strong"
+        />{" "}
         on{" "}
         <span className="font-medium text-ink-strong">
           {originSubnetName ? `${originSubnetName} (SN${originNetuid})` : `SN${originNetuid}`}

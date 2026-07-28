@@ -5,7 +5,7 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore, LiveTickerProvider } from "@jsonbored/ui-kit";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { StreamStatusChip } from "@/components/metagraphed/stream-status-chip";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -78,11 +78,11 @@ export function ChainEventCard({ event }: { event: ChainEvent }) {
       </div>
       {s.from || s.to ? (
         <div className="mt-1 flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
-          <AccountAddress ss58={s.from} compact fallback="—" />
+          <AddressDisplay ss58={s.from} compact fallback="—" />
           {s.to ? (
             <>
               <span aria-hidden>→</span>
-              <AccountAddress ss58={s.to} compact fallback="—" />
+              <AddressDisplay ss58={s.to} compact fallback="—" />
             </>
           ) : null}
         </div>
@@ -289,10 +289,10 @@ export function ChainEventsFeed({ pallet, method, cursor, showNoise = false, onF
                 {s.amountTao != null ? formatTao(s.amountTao) : "—"}
               </td>
               <td className="px-4 py-2.5 mg-type-data">
-                <AccountAddress ss58={s.from} compact fallback="—" />
+                <AddressDisplay ss58={s.from} compact fallback="—" />
               </td>
               <td className="px-4 py-2.5 mg-type-data">
-                <AccountAddress ss58={s.to} compact fallback="—" />
+                <AddressDisplay ss58={s.to} compact fallback="—" />
               </td>
               <td className="px-4 py-2.5 mg-type-data">
                 {s.netuid != null ? <SubnetChip netuid={s.netuid} /> : "—"}

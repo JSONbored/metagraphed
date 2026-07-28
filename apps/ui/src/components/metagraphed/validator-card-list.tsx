@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { ValidatorCompareToggle } from "@/components/metagraphed/validators-compare-drawer";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
 import { Panel } from "@/components/metagraphed/primitives";
@@ -49,8 +49,8 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
                 back into the row so it does not add vertical spacing. */}
             <div className="flex min-w-0 items-center gap-1.5 mg-type-data text-ink-muted">
               <span className="mg-type-caption">coldkey</span>
-              {/* Same AccountAddress hover-card treatment as the desktop column (#6338). */}
-              <AccountAddress ss58={v.coldkey} compact fallback="—" />
+              {/* Same AddressDisplay hover-card treatment as the desktop column (#6338). */}
+              <AddressDisplay ss58={v.coldkey} compact fallback="—" />
             </div>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mg-type-caption">
               <Stat label="Active subnets" value={f.subnetsLabel} />

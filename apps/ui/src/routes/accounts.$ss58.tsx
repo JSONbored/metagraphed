@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 import { AccountDetailPage } from "./-accounts-ss58-page";
@@ -52,7 +52,7 @@ export const Route = createFileRoute("/accounts/$ss58")({
         "This account identifier is not a valid Bittensor ss58 address.",
       );
     }
-    const label = shortHash(params.ss58) ?? params.ss58;
+    const label = resolveAddress(params.ss58).display;
     const title = `Account ${label} — Metagraphed`;
     const description = `Bittensor account ${label}: cross-subnet activity, registrations, and first-party chain-event history on Metagraphed.`;
     return {

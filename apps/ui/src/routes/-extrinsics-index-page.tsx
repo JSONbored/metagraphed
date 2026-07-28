@@ -12,7 +12,7 @@ import {
   SearchInput,
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
   TimeAgo,
   ListShell,
@@ -316,7 +316,7 @@ function ExtrinsicsTable() {
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
                 <td className="px-4 py-2.5 mg-type-data text-ink-muted">
-                  <AccountAddress
+                  <AddressDisplay
                     ss58={x.signer}
                     compact
                     fallback={

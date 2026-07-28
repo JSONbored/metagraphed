@@ -43,6 +43,7 @@ import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isCompositeExtrinsicRef } from "@/lib/metagraphed/extrinsics";
 import { isCopySelectedKey } from "@/lib/metagraphed/command-palette-keys";
 import { getDocsNav } from "@/lib/docs-nav.functions";
@@ -433,7 +434,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     }> = [];
     if (isValidSs58(q)) {
       targets.push({
-        label: `Account ${shortHash(q, 8) ?? q}`,
+        label: `Account ${resolveAddress(q, { keep: 8 }).display}`,
         hint: q,
         target: { to: "/accounts/$ss58", params: { ss58: q } },
         searchValue: q,

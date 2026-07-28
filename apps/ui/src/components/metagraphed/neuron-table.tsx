@@ -4,8 +4,9 @@ import { Coins, Download } from "lucide-react";
 import { CopyButton, ExternalLink } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { classNames } from "@/lib/metagraphed/format";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { buildUrl } from "@/lib/metagraphed/client";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact, scoreStr, SponsoredBadge } from "@/components/metagraphed/neuron-format";
@@ -209,28 +210,32 @@ export function NeuronTable({
                     <div className="flex items-center gap-1.5">
                       {n.featured ? <SponsoredBadge /> : null}
                       {n.hotkey ? (
-                        <>
-                          {isValidator ? (
+                        isValidator ? (
+                          <>
+                            {/* Validator rows link to the dedicated /validators/$hotkey
+                                page, not the generic /accounts/$ss58 lookup that
+                                AddressDisplay's own link targets, so this stays a
+                                manually-composed Link + CopyButton pair rather than
+                                AddressDisplay -- the text is still upgraded through
+                                the shared resolveAddress ladder. */}
                             <Link
                               to="/validators/$hotkey"
                               params={{ hotkey: n.hotkey }}
                               className="text-ink-muted hover:text-ink hover:underline"
                               title={n.hotkey}
                             >
-                              {shortHash(n.hotkey) ?? n.hotkey}
+                              {resolveAddress(n.hotkey).display}
                             </Link>
-                          ) : (
-                            <Link
-                              to="/accounts/$ss58"
-                              params={{ ss58: n.hotkey }}
-                              className="text-ink-muted hover:text-ink hover:underline"
-                              title={n.hotkey}
-                            >
-                              {shortHash(n.hotkey) ?? n.hotkey}
-                            </Link>
-                          )}
-                          <CopyButton value={n.hotkey} label="hotkey" compact />
-                        </>
+                            <CopyButton value={n.hotkey} label="hotkey" compact />
+                          </>
+                        ) : (
+                          <AddressDisplay
+                            ss58={n.hotkey}
+                            fallback={<>{n.hotkey}</>}
+                            compact
+                            valueClassName="text-ink-muted hover:text-ink"
+                          />
+                        )
                       ) : (
                         "—"
                       )}
@@ -371,28 +376,28 @@ function NeuronCard({
       <div className="flex min-w-0 items-center gap-1.5 mg-type-data text-ink-muted">
         {n.featured ? <SponsoredBadge /> : null}
         {n.hotkey ? (
-          <>
-            {isValidator ? (
+          isValidator ? (
+            <>
+              {/* See the desktop table's matching branch for why validator rows
+                  keep a manual Link + CopyButton instead of AddressDisplay. */}
               <Link
                 to="/validators/$hotkey"
                 params={{ hotkey: n.hotkey }}
                 title={n.hotkey}
                 className="truncate hover:text-ink hover:underline"
               >
-                {shortHash(n.hotkey) ?? n.hotkey}
+                {resolveAddress(n.hotkey).display}
               </Link>
-            ) : (
-              <Link
-                to="/accounts/$ss58"
-                params={{ ss58: n.hotkey }}
-                title={n.hotkey}
-                className="truncate hover:text-ink hover:underline"
-              >
-                {shortHash(n.hotkey) ?? n.hotkey}
-              </Link>
-            )}
-            <CopyButton value={n.hotkey} label="hotkey" compact />
-          </>
+              <CopyButton value={n.hotkey} label="hotkey" compact />
+            </>
+          ) : (
+            <AddressDisplay
+              ss58={n.hotkey}
+              fallback={<>{n.hotkey}</>}
+              compact
+              valueClassName="truncate hover:text-ink"
+            />
+          )
         ) : (
           "—"
         )}

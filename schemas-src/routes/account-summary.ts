@@ -83,11 +83,24 @@ const AccountActivitySchema = z
 const EntityLabelSchema = z
   .object({
     name: z.string().nullable().optional(),
+    // #8372: widened to match schemas/entity.schema.json's category enum
+    // (bridge/pool/infra/project added; exchange/foundation/operator/other
+    // retained so an existing entry stays valid). Keep both in sync.
     category: z
-      .enum(["exchange", "foundation", "operator", "other"])
+      .enum([
+        "exchange",
+        "bridge",
+        "foundation",
+        "pool",
+        "infra",
+        "project",
+        "operator",
+        "other",
+      ])
       .nullable()
       .optional(),
     notes: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),
   })
   .passthrough();

@@ -16,7 +16,7 @@ import { NeighborCompare } from "@/components/metagraphed/blocks/neighbor-compar
 import { BlockMetadataPanel } from "@/components/metagraphed/blocks/block-metadata-panel";
 import { PalletMethodBreakdown } from "@/components/metagraphed/blocks/pallet-method-breakdown";
 import { ShortcutsDialog } from "@/components/metagraphed/blocks/shortcuts-dialog";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -359,7 +359,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   shortened form so it fits without wrapping ugly on 393px. */}
               <div className="min-w-0">
                 <div className="md:hidden">
-                  <AccountAddress
+                  <AddressDisplay
                     ss58={block.author}
                     keep={8}
                     compact
@@ -367,7 +367,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   />
                 </div>
                 <div className="hidden md:block">
-                  <AccountAddress
+                  <AddressDisplay
                     ss58={block.author}
                     truncate={false}
                     fallback={<span className="text-ink-muted">—</span>}
@@ -869,7 +869,7 @@ function GroupedEvents({
                           </td>
                           {showHotkeyCol ? (
                             <td className="px-2 py-1.5 mg-type-data text-ink">
-                              <AccountAddress
+                              <AddressDisplay
                                 ss58={event.hotkey}
                                 keep={10}
                                 compact

@@ -9,6 +9,7 @@ import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-format";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
 import type { CompareValidator } from "@/lib/metagraphed/types";
 
@@ -49,10 +50,9 @@ export function ValidatorsCompareDrawer() {
                 return (
                   <span
                     key={hotkey}
-                    title={hotkey}
                     className="inline-flex h-6 items-center gap-1 rounded-full border border-border bg-paper pl-2.5 pr-1 mg-type-data-sm text-ink-strong"
                   >
-                    {short}
+                    <AddressDisplay ss58={hotkey} fallback={<>{short}</>} compact />
                     <button
                       type="button"
                       onClick={() => remove(hotkey)}
@@ -229,10 +229,9 @@ function CompareValidatorsGrid({ hotkeys }: { hotkeys: string[] }) {
             {hotkeys.map((hotkey) => (
               <th
                 key={hotkey}
-                title={hotkey}
                 className="min-w-[8rem] whitespace-nowrap px-3 py-2 text-left mg-type-micro text-ink-strong"
               >
-                {shortHash(hotkey) ?? hotkey}
+                <AddressDisplay ss58={hotkey} fallback={<>{hotkey}</>} compact />
               </th>
             ))}
           </tr>

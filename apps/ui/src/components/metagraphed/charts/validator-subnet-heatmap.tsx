@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 
 // #3495: validator (row) × subnet (column) participation matrix from the global
 // validators payload, cells shaded by relative stake. Pure consumer of
@@ -88,20 +88,18 @@ export function ValidatorSubnetHeatmap() {
                 return (
                   <tr key={v.hotkey} className="border-b border-border last:border-b-0">
                     <td className="sticky left-0 z-[var(--mg-z-sticky)] border-r border-border bg-card px-3 py-1.5 text-ink-strong">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: v.hotkey }}
-                        className="block max-w-[12ch] truncate hover:text-accent"
-                        title={v.hotkey}
-                      >
-                        {shortHash(v.hotkey) ?? v.hotkey}
-                      </Link>
+                      <AddressDisplay
+                        ss58={v.hotkey}
+                        fallback={<>{v.hotkey}</>}
+                        compact
+                        valueClassName="block max-w-[12ch] truncate hover:text-accent"
+                      />
                     </td>
                     {netuids.map((n) => {
                       const s = byNet.get(n);
                       const ratio = s && maxStake > 0 ? s.stake_tao / maxStake : null;
                       const summary = s
-                        ? `${shortHash(v.hotkey)} · SN${n} · stake ${taoCompact(s.stake_tao)} τ · emission ${taoCompact(s.emission_tao)} τ · trust ${s.validator_trust ?? "—"}`
+                        ? `${resolveAddress(v.hotkey).display} · SN${n} · stake ${taoCompact(s.stake_tao)} τ · emission ${taoCompact(s.emission_tao)} τ · trust ${s.validator_trust ?? "—"}`
                         : `SN${n} · not in this validator's top-10 subnets`;
                       return (
                         <td key={n} className="p-0.5">

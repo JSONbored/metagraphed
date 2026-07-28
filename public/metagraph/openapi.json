@@ -658,7 +658,11 @@
                     {
                       "enum": [
                         "exchange",
+                        "bridge",
                         "foundation",
+                        "pool",
+                        "infra",
+                        "project",
                         "operator",
                         "other"
                       ],
@@ -694,6 +698,16 @@
                     "type": "string"
                   },
                   "type": "array"
+                },
+                "url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "type": "object"
@@ -3202,7 +3216,11 @@
                     {
                       "enum": [
                         "exchange",
+                        "bridge",
                         "foundation",
+                        "pool",
+                        "infra",
+                        "project",
                         "operator",
                         "other"
                       ],
@@ -3238,6 +3256,16 @@
                     "type": "string"
                   },
                   "type": "array"
+                },
+                "url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "type": "object"

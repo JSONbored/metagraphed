@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Chip } from "@/components/metagraphed/primitives";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { truncateSs58 } from "@/lib/metagraphed/resolve-address";
 import type { ReactNode } from "react";
 
 /**
@@ -128,5 +128,5 @@ export function BlockNeighborNav({
 }
 
 export function shortSs58Chip(ss58: string): string {
-  return shortHash(ss58, 6) ?? ss58;
+  return truncateSs58(ss58, 6);
 }

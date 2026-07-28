@@ -4,6 +4,8 @@ import {
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
+  resolveAddress,
+  truncateSs58,
 } from "../src/entity-labels.ts";
 
 // Same real-shaped fixture bytes as tests/subnet-ownership-history.test.mjs.
@@ -63,6 +65,7 @@ describe("entityLabelsIndex / labelsForSs58", () => {
       name: "Example Foundation",
       category: "foundation",
       notes: null,
+      url: null,
       source_urls: ["https://example.org/proof"],
     });
     assert.equal("review" in labels[0], false);
@@ -276,5 +279,156 @@ describe("buildAccountEntities", () => {
       ownershipRows: [ownershipRow({ args: { netuid: 7 } })],
     });
     assert.equal(data.ownership_tie_count, 0);
+  });
+});
+
+describe("truncateSs58 (#8372)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  test("keeps `keep` chars at each end around an ellipsis", () => {
+    assert.equal(truncateSs58(SS58), "5Grwva…GKutQY");
+    assert.equal(truncateSs58(SS58, 4), "5Grw…utQY");
+  });
+
+  test("returns a short value unchanged rather than producing a longer string", () => {
+    assert.equal(truncateSs58("5Grw", 6), "5Grw");
+    // Exactly at the boundary (keep*2 + 1) -- truncating would not shorten it.
+    assert.equal(truncateSs58("1234567890123", 6), "1234567890123");
+  });
+});
+
+describe("resolveAddress (#8372)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  test("falls back to the truncated address when nothing is known", () => {
+    assert.deepEqual(resolveAddress(SS58), {
+      display: "5Grwva…GKutQY",
+      source: "truncated",
+      category: null,
+      ss58: SS58,
+    });
+  });
+
+  test("prefers an on-chain identity over everything else -- a self-attestation outranks a third party's label", () => {
+    const resolved = resolveAddress(SS58, {
+      identityName: "tao.bot",
+      nametag: { name: "Some Exchange", category: "exchange" },
+    });
+    assert.equal(resolved.display, "tao.bot");
+    assert.equal(resolved.source, "identity");
+    // No category chip for an identity -- the category belongs to the curated
+    // layer, and claiming one here would attribute it to the wrong source.
+    assert.equal(resolved.category, null);
+  });
+
+  test("uses the curated nametag (with its category) when there is no identity", () => {
+    const resolved = resolveAddress(SS58, {
+      nametag: { name: "Binance", category: "exchange" },
+    });
+    assert.deepEqual(resolved, {
+      display: "Binance",
+      source: "nametag",
+      category: "exchange",
+      ss58: SS58,
+    });
+  });
+
+  test("a nametag with no category still resolves, just without a chip", () => {
+    const resolved = resolveAddress(SS58, { nametag: { name: "Some Bridge" } });
+    assert.equal(resolved.display, "Some Bridge");
+    assert.equal(resolved.source, "nametag");
+    assert.equal(resolved.category, null);
+  });
+
+  test("whitespace-only or non-string names are ignored, not rendered blank", () => {
+    // A blank identity must fall THROUGH to the nametag, not win with "".
+    assert.equal(
+      resolveAddress(SS58, {
+        identityName: "   ",
+        nametag: { name: "Binance", category: "exchange" },
+      }).display,
+      "Binance",
+    );
+    // A blank nametag name falls through to the truncated address.
+    assert.equal(
+      resolveAddress(SS58, { nametag: { name: "  " } }).source,
+      "truncated",
+    );
+    // Non-string values from an untrusted artifact never reach `display`.
+    assert.equal(
+      resolveAddress(SS58, { identityName: 42 as unknown as string }).source,
+      "truncated",
+    );
+    assert.equal(
+      resolveAddress(SS58, { nametag: { name: 42, category: 7 } }).source,
+      "truncated",
+    );
+  });
+
+  test("a non-string category is dropped rather than rendered", () => {
+    const resolved = resolveAddress(SS58, {
+      nametag: { name: "Binance", category: 42 },
+    });
+    assert.equal(resolved.source, "nametag");
+    assert.equal(resolved.category, null);
+  });
+
+  test("always carries the full ss58 through, whatever the source", () => {
+    for (const opts of [
+      {},
+      { identityName: "tao.bot" },
+      { nametag: { name: "Binance", category: "exchange" } },
+    ]) {
+      assert.equal(resolveAddress(SS58, opts).ss58, SS58);
+    }
+  });
+
+  test("honours a custom `keep` on the truncated fallback", () => {
+    assert.equal(resolveAddress(SS58, { keep: 4 }).display, "5Grw…utQY");
+  });
+});
+
+describe("resolveAddress -- the reserved private-label layer (#8484)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  test("a private label outranks BOTH an on-chain identity and a curated nametag", () => {
+    const resolved = resolveAddress(SS58, {
+      localLabel: "Ledger cold",
+      identityName: "tao.bot",
+      nametag: { name: "Binance", category: "exchange" },
+    });
+    assert.deepEqual(resolved, {
+      display: "Ledger cold",
+      source: "private",
+      category: null,
+      ss58: SS58,
+    });
+  });
+
+  test("a blank/whitespace/non-string private label falls through rather than blanking the display", () => {
+    assert.equal(
+      resolveAddress(SS58, { localLabel: "  ", identityName: "tao.bot" })
+        .display,
+      "tao.bot",
+    );
+    assert.equal(
+      resolveAddress(SS58, { localLabel: null, identityName: "tao.bot" })
+        .source,
+      "identity",
+    );
+    assert.equal(
+      resolveAddress(SS58, {
+        localLabel: 42 as unknown as string,
+        nametag: { name: "Binance" },
+      }).source,
+      "nametag",
+    );
+  });
+
+  test("a private label alone (nothing else known) still resolves", () => {
+    const resolved = resolveAddress(SS58, { localLabel: "Main coldkey" });
+    assert.equal(resolved.display, "Main coldkey");
+    assert.equal(resolved.source, "private");
+    assert.equal(resolved.ss58, SS58);
   });
 });

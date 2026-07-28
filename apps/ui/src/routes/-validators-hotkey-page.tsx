@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { Boxes, Coins, Gauge, Percent, TriangleAlert, Users, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
@@ -13,12 +13,13 @@ import {
   StatTile,
   ActionBar,
   SegmentedToggle,
+  Chip,
 } from "@jsonbored/ui-kit";
 import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { TakeManagementModal } from "@/components/metagraphed/take-management-modal";
@@ -29,13 +30,14 @@ import {
 } from "@/components/metagraphed/validator-nominators-table";
 import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-format";
 import {
+  nametagIndexQuery,
   validatorDetailQuery,
   validatorHistoryQuery,
   validatorNominatorsQuery,
   metagraphedQueryKey,
 } from "@/lib/metagraphed/queries";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { hasValidatorIdentity } from "@/lib/metagraphed/validator-identity";
@@ -334,8 +336,17 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
   const generatedAt = detailRes.meta?.generated_at ?? null;
   const identity = detail.coldkey_identity;
   const hasIdentity = hasValidatorIdentity(identity);
-  const displayName =
-    hasIdentity && identity?.name ? identity.name : (shortHash(hotkey, 8) ?? "Validator");
+  // #8372: same resolution ladder as the account page's masthead title.
+  // displayName feeds string-only props (validatorName, watch label) as well
+  // as the JSX page title, so it stays a plain string via resolveAddress
+  // rather than the JSX AddressDisplay component.
+  const { data: nametags } = useQuery(nametagIndexQuery());
+  const resolvedTitle = resolveAddress(hotkey, {
+    identityName: hasIdentity ? identity?.name : undefined,
+    nametag: nametags?.get(hotkey) ?? null,
+    keep: 8,
+  });
+  const displayName = resolvedTitle.display;
   const snapshotApy = annualizedDelegatorApyPct(
     detail.total_emission_tao,
     detail.total_stake_tao,
@@ -368,23 +379,28 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
               Cross-subnet performance, nominators, and staking history for one Bittensor validator
               hotkey.
             </span>
-            {/* Hotkey + coldkey (#6427) get identical, symmetric AccountAddress
+            {resolvedTitle.source === "nametag" && resolvedTitle.category ? (
+              <Chip tone="muted" title={`Curated nametag · ${resolvedTitle.category}`}>
+                {resolvedTitle.category}
+              </Chip>
+            ) : null}
+            {/* Hotkey + coldkey (#6427) get identical, symmetric AddressDisplay
                 rows -- the operator name is already the page title, so it
                 isn't repeated here. */}
             <dl className="max-w-2xl divide-y divide-border/80 rounded-2xl border border-border/80 bg-card/80 mg-card-glow-accent">
               <FieldRow label="Hotkey">
                 <span className="flex w-full min-w-0 items-center">
-                  <AccountAddress
+                  <AddressDisplay
                     ss58={hotkey}
                     truncate={false}
                     valueClassName="truncate min-w-0"
-                    fallback="—"
+                    fallback={<>—</>}
                   />
                 </span>
               </FieldRow>
               <FieldRow label="Coldkey">
                 <span className="flex w-full min-w-0 items-center">
-                  <AccountAddress
+                  <AddressDisplay
                     ss58={detail.coldkey}
                     truncate={false}
                     valueClassName="truncate min-w-0"
