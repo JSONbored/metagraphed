@@ -1,14 +1,14 @@
-// Analytics handlers extracted from workers/api.mjs (#1763, continuation).
+// Analytics handlers extracted from workers/api.ts (#1763, continuation).
 // Trajectory, uptime, leaderboards, and compare share the registry-projection
 // + schema-stable-empty-payload pattern. D1 fully eliminated (2026-07-17):
 // every D1 read here is gone -- a Postgres-tier miss (or, for leaderboards,
 // which never had tier plumbing) always falls through to the empty shape,
-// marked via the D1-fallback WeakSet contract owned by analytics.mjs so it's
+// marked via the D1-fallback WeakSet contract owned by analytics.ts so it's
 // never edge-cached as fresh.
 //
 // Dependency wiring mirrors configureAnalytics: the in-isolate memoized KV reads
-// (`readHealthMetaKv`, `readEconomicsCurrentKv`) stay in api.mjs and are
-// injected once at module-init so this file never imports api.mjs back.
+// (`readHealthMetaKv`, `readEconomicsCurrentKv`) stay in api.ts and are
+// injected once at module-init so this file never imports api.ts back.
 
 import { UPTIME_WINDOWS } from "../config.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
@@ -60,7 +60,7 @@ type HealthMetaKvReader = (
   env: Env,
 ) => Promise<{ last_run_at?: string | null } | null>;
 // Loose: readEconomicsCurrentKv's real return flows straight into
-// resolveLiveEconomics (still untyped .mjs) without this file ever reading
+// resolveLiveEconomics (still untyped .ts) without this file ever reading
 // a field off it directly.
 type EconomicsCurrentKvReader = (env: Env) => Promise<unknown>;
 
@@ -212,7 +212,7 @@ interface LeaderboardProfilesProjection {
 }
 
 // Keyed on env (not just TTL) so tests / multi-binding callers never
-// cross-read -- same pattern as readEconomicsCurrentKv (workers/api.mjs).
+// cross-read -- same pattern as readEconomicsCurrentKv (workers/api.ts).
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache: LeaderboardProfilesProjection | null = null;
 let leaderboardProfilesCacheEnv: Env | null = null;
@@ -353,7 +353,7 @@ export async function handleUptime(
   if ("error" in minSamplesResult)
     return analyticsQueryError(minSamplesResult.error);
   // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
-  // as the bulk-trends/trends/percentiles/incidents routes in analytics.mjs,
+  // as the bulk-trends/trends/percentiles/incidents routes in analytics.ts,
   // flipped to "postgres" in wrangler.jsonc -- see that flag's own header
   // comment there). D1 fully eliminated (2026-07-17): a tier miss now always
   // falls through to the schema-stable empty payload (never a live D1 query).
@@ -401,7 +401,7 @@ export async function handleUptime(
 
 // Normalises the uptime URL so that a bare ?-free request and an explicit
 // ?window=90d request both resolve to the same edge-cache entry — mirrors
-// canonicalSubnetConcentrationHistoryCachePath in entities.mjs.
+// canonicalSubnetConcentrationHistoryCachePath in entities.ts.
 export function canonicalUptimeCachePath(
   url: URL,
   request: Request | null = null,
@@ -438,7 +438,7 @@ export function canonicalUptimeCachePath(
 
 // Normalises the economics-trends URL so that a bare ?-free request and an explicit
 // ?window=30d request both resolve to the same edge-cache entry — mirrors
-// canonicalSubnetHistoryCachePath in entities.mjs.
+// canonicalSubnetHistoryCachePath in entities.ts.
 export function canonicalEconomicsTrendsCachePath(
   url: URL,
   request: Request | null = null,
@@ -934,7 +934,7 @@ export async function handleDomains(
 // rollup -- subnet_count, total_stake_tao, total_emission_share, and
 // emission_concentration across just that tag's member subnets. `tag` is a
 // path segment against the SAME fixed 14-tag enum ?domain= already validates
-// (src/contracts.mjs's `enumSchema(DOMAIN_TAGS)`), so an unknown tag is a
+// (src/contracts.ts's `enumSchema(DOMAIN_TAGS)`), so an unknown tag is a
 // 400, not a 404 -- it's a malformed identifier against a known enum, not a
 // resource lookup miss.
 export async function handleDomainSummary(
@@ -992,7 +992,7 @@ function validatorDetailRequest(request: Request, hotkey: string): Request {
 // validators side by side for a stake/delegate decision, mirroring the
 // compare_validators MCP tool one-for-one -- same hotkey-list contract
 // (parseCompareHotkeys/COMPARE_VALIDATORS_MAX, shared with the MCP tool's own
-// parseCompareHotkeyList in src/analytics-live.mjs), same per-hotkey
+// parseCompareHotkeyList in src/analytics-live.ts), same per-hotkey
 // tryPostgresTier(METAGRAPH_NEURONS_SOURCE) ?? buildValidatorDetail([], hotkey)
 // fallback contract handleValidatorDetail uses, and the identical
 // composeValidatorComparison projection so REST and MCP never drift. netuid is
