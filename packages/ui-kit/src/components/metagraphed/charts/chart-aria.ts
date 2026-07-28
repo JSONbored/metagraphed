@@ -35,3 +35,4 @@ export function synthesizeDonutAriaLabel(segments: ChartAriaDatum[]): string {
 export const SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
 export const CANDLESTICK_MINI_EMPTY_ARIA_LABEL =
   "Candlestick chart with no data";
+export const STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";

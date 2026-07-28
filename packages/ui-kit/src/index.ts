@@ -210,6 +210,11 @@ export {
   layoutSankey,
   SankeyMini,
 } from "@/components/metagraphed/charts/sankey-mini";
+export {
+  type StackedAreaSeries,
+  layoutStackedArea,
+  StackedAreaMini,
+} from "@/components/metagraphed/charts/stacked-area-mini";
 
 // Relocated from apps/ui/.../primitives (2026-07-23): dependency-free design-
 // system primitives, moved here so ui-kit's own components can use them too
