@@ -17,12 +17,23 @@ export function WatchStarButton({
   kind,
   id,
   label,
+  iconOnly,
 }: {
   kind: WatchlistKind;
   /** The same id the index page stars by — netuid for subnets, hotkey/ss58 otherwise. */
   id: string | number;
   /** Entity noun for the accessible name, e.g. "SN64" or a validator name. */
   label: string;
+  /**
+   * Drop the "Watch"/"Watched" text and render just the star, matching
+   * `ShareButton bare iconOnly` exactly (same padding, min-height, icon size,
+   * and hover treatment) so the two sit in an ActionBar as one uniform pair
+   * of icon segments instead of a labelled pill beside an icon. A star is a
+   * universally-recognized affordance; the label still reaches assistive tech
+   * via `aria-label`/`title`, and the watched state stays legible through the
+   * filled/accent icon.
+   */
+  iconOnly?: boolean;
 }) {
   const watchlist = useWatchlist(kind);
   const watched = watchlist.isWatched(id);
@@ -35,14 +46,22 @@ export function WatchStarButton({
       aria-label={watched ? `Remove ${label} from watchlist` : `Add ${label} to watchlist`}
       title={watched ? "Watched — click to unstar" : "Star to pin this to your homepage"}
       className={classNames(
-        "inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
+        iconOnly
+          ? "inline-flex items-center justify-center rounded p-1 min-h-8 transition-colors mg-focus-ring"
+          : "inline-flex min-h-11 items-center gap-1.5 rounded px-2 py-1 mg-type-caption font-medium transition-colors mg-focus-ring",
         watched
           ? "text-accent-text hover:bg-surface"
           : "text-ink-muted hover:bg-surface hover:text-ink-strong",
       )}
     >
-      <Star className={classNames("size-3.5", watched && "fill-accent text-accent")} aria-hidden />
-      {watched ? "Watched" : "Watch"}
+      <Star
+        className={classNames(
+          iconOnly ? "size-3" : "size-3.5",
+          watched && "fill-accent text-accent",
+        )}
+        aria-hidden
+      />
+      {iconOnly ? null : watched ? "Watched" : "Watch"}
     </button>
   );
 }

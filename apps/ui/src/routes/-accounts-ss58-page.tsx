@@ -299,8 +299,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         actions={
           <>
             <ActionBar>
-              <WatchStarButton kind="account" id={ss58} label="this account" />
-              <ShareButton bare />
+              <WatchStarButton kind="account" id={ss58} label="this account" iconOnly />
+              <ShareButton bare iconOnly />
             </ActionBar>
             {/* #8484: outside the ActionBar (its children need their own
                 `bare` variant for the segmented look) but still in `actions`
