@@ -27,6 +27,7 @@ import {
   Users,
 } from "lucide-react";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { AddressLabelEditor } from "@/components/metagraphed/address-label-editor";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -85,6 +86,7 @@ import {
 import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
+import { useAddressLabels } from "@/lib/metagraphed/address-labels";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { ss58PathSegment } from "@/lib/metagraphed/accounts";
@@ -189,7 +191,11 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   // page title, not a table cell -- no copy button or self-link belongs in
   // an H1 for the page the reader is already on.
   const { data: nametags } = useQuery(nametagIndexQuery());
+  // #8484: the masthead title is also the primary detail-context entry point
+  // for the private-label editor (below, next to the ss58/role chip row).
+  const { getLabel } = useAddressLabels();
   const resolvedTitle = resolveAddress(ss58, {
+    localLabel: getLabel(ss58)?.name,
     identityName: identity?.has_identity ? identity.name : undefined,
     nametag: nametags?.get(ss58) ?? null,
     keep: 8,
@@ -296,6 +302,12 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
               <WatchStarButton kind="account" id={ss58} label="this account" />
               <ShareButton bare />
             </ActionBar>
+            {/* #8484: outside the ActionBar (its children need their own
+                `bare` variant for the segmented look) but still in `actions`
+                -- unlike `description`, this row isn't `line-clamp`-collapsed,
+                so the entry point stays reachable regardless of how long the
+                description text runs. */}
+            <AddressLabelEditor ss58={ss58} />
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
                 compact

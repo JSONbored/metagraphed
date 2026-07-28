@@ -395,6 +395,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                     truncate={false}
                     valueClassName="truncate min-w-0"
                     fallback={<>—</>}
+                    editable
                   />
                 </span>
               </FieldRow>
@@ -405,6 +406,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                     truncate={false}
                     valueClassName="truncate min-w-0"
                     fallback={<span className="text-ink-muted">Not reported</span>}
+                    editable
                   />
                 </span>
               </FieldRow>
