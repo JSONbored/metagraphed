@@ -3280,20 +3280,45 @@ function BarMini({
     }
   );
 }
+
+// src/components/metagraphed/charts/candlestick-geometry.ts
+var VOLUME_BAND_RATIO = 0.22;
+var VOLUME_BAND_GAP_RATIO = 0.04;
+function candlestickVolumeLayout(height, candles) {
+  let maxVolume = 0;
+  for (const c of candles) {
+    const v = c.volume;
+    if (typeof v === "number" && Number.isFinite(v) && v > maxVolume)
+      maxVolume = v;
+  }
+  const hasVolume = maxVolume > 0;
+  const volumeHeight = hasVolume ? height * VOLUME_BAND_RATIO : 0;
+  const priceHeight = hasVolume ? height - volumeHeight - height * VOLUME_BAND_GAP_RATIO : height;
+  return { hasVolume, maxVolume, volumeHeight, priceHeight };
+}
+function candlestickVolumeBarHeight(volume, maxVolume, volumeHeight) {
+  if (typeof volume !== "number" || !Number.isFinite(volume) || volume <= 0)
+    return 0;
+  if (maxVolume <= 0 || volumeHeight <= 0) return 0;
+  return Math.max(1, volume / maxVolume * volumeHeight);
+}
 var BODY_WIDTH_RATIO = 0.6;
 function CandlestickMini({
   data,
   width = 480,
+  maxWidth,
   height = 160,
   upColor = "var(--health-ok)",
   downColor = "var(--health-down)",
   className,
   ariaLabel,
   formatValue,
+  formatVolume,
   interactive = true
 }) {
   const wrapRef = React3.useRef(null);
   const [hover, setHover] = React3.useState(null);
+  const cssMaxWidth = maxWidth === "none" ? void 0 : maxWidth ?? width;
   const candles = data.slice(-500).filter(
     (c) => Number.isFinite(c.open) && Number.isFinite(c.high) && Number.isFinite(c.low) && Number.isFinite(c.close)
   );
@@ -3306,7 +3331,7 @@ function CandlestickMini({
         viewBox: `0 0 ${width} ${height}`,
         preserveAspectRatio: "none",
         className: `block max-w-full ${className ?? ""}`,
-        style: { maxWidth: width },
+        style: { maxWidth: cssMaxWidth },
         role: "img",
         "aria-label": ariaLabel ?? CANDLESTICK_MINI_EMPTY_ARIA_LABEL,
         children: /* @__PURE__ */ jsxRuntime.jsx(
@@ -3330,8 +3355,9 @@ function CandlestickMini({
     if (c.high > max) max = c.high;
   }
   const span = max - min || 1;
-  const padY = height * 0.06;
-  const plotHeight = height - padY * 2;
+  const { hasVolume, maxVolume, volumeHeight, priceHeight } = candlestickVolumeLayout(height, candles);
+  const padY = priceHeight * 0.06;
+  const plotHeight = priceHeight - padY * 2;
   const y = (v) => padY + plotHeight - (v - min) / span * plotHeight;
   const slotWidth = width / candles.length;
   const bodyWidth = Math.max(1, slotWidth * BODY_WIDTH_RATIO);
@@ -3342,6 +3368,11 @@ function CandlestickMini({
     const bodyTop = y(Math.max(c.open, c.close));
     const bodyBottom = y(Math.min(c.open, c.close));
     const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+    const volHeight = candlestickVolumeBarHeight(
+      c.volume,
+      maxVolume,
+      volumeHeight
+    );
     return {
       cx,
       up,
@@ -3349,7 +3380,9 @@ function CandlestickMini({
       wickTop: y(c.high),
       wickBottom: y(c.low),
       bodyTop,
-      bodyHeight
+      bodyHeight,
+      volHeight,
+      volTop: height - volHeight
     };
   });
   const canTooltip = interactive && candles.length > 0;
@@ -3381,13 +3414,16 @@ function CandlestickMini({
   const hoverCandle = hover != null ? candles[hover] : null;
   const hoverBar = hover != null ? bars[hover] : null;
   const fmt = formatValue ?? ((v) => v.toString());
-  const tooltipText = hoverCandle ? `${hoverCandle.label} \xB7 O ${fmt(hoverCandle.open)} H ${fmt(hoverCandle.high)} L ${fmt(hoverCandle.low)} C ${fmt(hoverCandle.close)}` : "";
+  const fmtVol = formatVolume ?? ((v) => v.toString());
+  const hoverVolume = hoverCandle?.volume;
+  const volumeText = hasVolume && typeof hoverVolume === "number" && Number.isFinite(hoverVolume) ? ` V ${fmtVol(hoverVolume)}` : "";
+  const tooltipText = hoverCandle ? `${hoverCandle.label} \xB7 O ${fmt(hoverCandle.open)} H ${fmt(hoverCandle.high)} L ${fmt(hoverCandle.low)} C ${fmt(hoverCandle.close)}${volumeText}` : "";
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
     {
       ref: wrapRef,
       className: `relative block w-full ${className ?? ""}`,
-      style: { width: "100%", maxWidth: width, height },
+      style: { width: "100%", maxWidth: cssMaxWidth, height },
       onPointerMove: onMove,
       onPointerLeave: () => setHover(null),
       onKeyDown,
@@ -3416,7 +3452,8 @@ function CandlestickMini({
                     y1: b.wickTop,
                     y2: b.wickBottom,
                     stroke: b.color,
-                    strokeWidth: 1
+                    strokeWidth: 1,
+                    vectorEffect: "non-scaling-stroke"
                   }
                 ),
                 /* @__PURE__ */ jsxRuntime.jsx(
@@ -3429,7 +3466,23 @@ function CandlestickMini({
                     fill: b.color,
                     opacity: b.up ? 0.85 : 0.7
                   }
-                )
+                ),
+                b.volHeight > 0 ? (
+                  // Same up/down color as the candle it sits under, at a lower
+                  // opacity than either body -- the band is context for the price
+                  // series, so it must never out-weigh the candles visually.
+                  /* @__PURE__ */ jsxRuntime.jsx(
+                    "rect",
+                    {
+                      x: b.cx - bodyWidth / 2,
+                      y: b.volTop,
+                      width: bodyWidth,
+                      height: b.volHeight,
+                      fill: b.color,
+                      opacity: 0.4
+                    }
+                  )
+                ) : null
               ] }, i)),
               hoverBar ? /* @__PURE__ */ jsxRuntime.jsx(
                 "line",
@@ -3440,7 +3493,8 @@ function CandlestickMini({
                   y2: height,
                   stroke: "var(--ink-muted)",
                   strokeOpacity: 0.35,
-                  strokeWidth: 1
+                  strokeWidth: 1,
+                  vectorEffect: "non-scaling-stroke"
                 }
               ) : null
             ]
@@ -3451,7 +3505,13 @@ function CandlestickMini({
           {
             className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
             style: {
-              left: Math.max(60, Math.min(width - 60, hoverBar.cx)),
+              // `cx` is a viewBox coordinate, but `left` is CSS pixels -- the two
+              // only coincided while the rendered width happened to equal
+              // `width`. Expressing it as a percentage of the coordinate space
+              // makes it correct at any rendered width (notably `maxWidth:
+              // "none"`), and the CSS clamp keeps the 60px edge inset in real
+              // pixels rather than viewBox units.
+              left: `clamp(60px, ${hoverBar.cx / width * 100}%, calc(100% - 60px))`,
               top: Math.max(0, hoverBar.wickTop - 4)
             },
             role: "tooltip",

@@ -5,6 +5,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { CANDLESTICK_MINI_EMPTY_ARIA_LABEL } from "./chart-aria";
+import {
+  candlestickVolumeBarHeight,
+  candlestickVolumeLayout,
+} from "./candlestick-geometry";
 
 export interface CandlestickDatum {
   /** Timestamp label, e.g. an ISO string or a formatted "12:00 UTC". */
@@ -13,6 +17,14 @@ export interface CandlestickDatum {
   high: number;
   low: number;
   close: number;
+  /**
+   * Traded volume for the bucket. Optional: omit it (or leave every candle at
+   * zero) and the volume band isn't reserved at all, so existing callers keep
+   * the full height for price. Units are the caller's -- pair it with
+   * `formatVolume`, which is separate from `formatValue` precisely because
+   * volume rarely shares the price series' unit.
+   */
+  volume?: number;
 }
 
 const MAX_CANDLES = 500;
@@ -22,7 +34,21 @@ const BODY_WIDTH_RATIO = 0.6;
 
 interface Props {
   data: CandlestickDatum[];
+  /**
+   * viewBox coordinate width. This is a coordinate space, NOT a rendered size
+   * -- the SVG itself is always `width="100%"`. It also supplies the default
+   * `maxWidth` cap, which is why a chart meant to fill a wide container must
+   * set `maxWidth="none"` rather than simply raising this.
+   */
   width?: number;
+  /**
+   * CSS max-width for the rendered chart. Defaults to `width`, keeping a
+   * small inline chart at its natural size instead of stretching across a
+   * wide parent. Pass `"none"` for a full-bleed chart that should fill its
+   * container -- a lead price chart in a page-width panel, say, where the
+   * 640-unit default would otherwise strand it mid-panel.
+   */
+  maxWidth?: number | "none";
   height?: number;
   /** Body/wick color for a close >= open candle. */
   upColor?: string;
@@ -32,6 +58,12 @@ interface Props {
   ariaLabel?: string;
   /** Format a price for the tooltip (e.g. (v) => `${v.toFixed(4)} TAO`). */
   formatValue?: (v: number) => string;
+  /**
+   * Format a `volume` for the tooltip. Volume is typically denominated
+   * differently from price (TAO traded vs. a TAO/alpha rate), so it gets its
+   * own formatter rather than reusing `formatValue`.
+   */
+  formatVolume?: (v: number) => string;
   /** Disable interactive tooltip when false. */
   interactive?: boolean;
 }
@@ -47,16 +79,21 @@ interface Props {
 export function CandlestickMini({
   data,
   width = 480,
+  maxWidth,
   height = 160,
   upColor = "var(--health-ok)",
   downColor = "var(--health-down)",
   className,
   ariaLabel,
   formatValue,
+  formatVolume,
   interactive = true,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null);
+  // `undefined` leaves the CSS property unset, which is what lets the chart
+  // grow to its container; anything else caps it exactly as before.
+  const cssMaxWidth = maxWidth === "none" ? undefined : (maxWidth ?? width);
 
   const candles = data
     .slice(-MAX_CANDLES)
@@ -76,7 +113,7 @@ export function CandlestickMini({
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
         className={`block max-w-full ${className ?? ""}`}
-        style={{ maxWidth: width }}
+        style={{ maxWidth: cssMaxWidth }}
         // #6375: same gap as Sparkline's empty branch -- no role, and no name
         // at all when ariaLabel is omitted.
         role="img"
@@ -101,8 +138,15 @@ export function CandlestickMini({
     if (c.high > max) max = c.high;
   }
   const span = max - min || 1;
-  const padY = height * 0.06;
-  const plotHeight = height - padY * 2;
+
+  // A series of all-zero (or absent) volumes reserves nothing: a subnet with
+  // candles but no recorded volume gets the full height for price rather than
+  // an empty band, and every pre-existing caller renders byte-identically.
+  const { hasVolume, maxVolume, volumeHeight, priceHeight } =
+    candlestickVolumeLayout(height, candles);
+
+  const padY = priceHeight * 0.06;
+  const plotHeight = priceHeight - padY * 2;
   const y = (v: number) => padY + plotHeight - ((v - min) / span) * plotHeight;
 
   const slotWidth = width / candles.length;
@@ -117,6 +161,11 @@ export function CandlestickMini({
     // give it a hairline so it's still visible, matching how a real
     // candlestick chart renders a doji.
     const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+    const volHeight = candlestickVolumeBarHeight(
+      c.volume,
+      maxVolume,
+      volumeHeight,
+    );
     return {
       cx,
       up,
@@ -125,6 +174,8 @@ export function CandlestickMini({
       wickBottom: y(c.low),
       bodyTop,
       bodyHeight,
+      volHeight,
+      volTop: height - volHeight,
     };
   });
 
@@ -161,15 +212,23 @@ export function CandlestickMini({
   const hoverCandle = hover != null ? candles[hover] : null;
   const hoverBar = hover != null ? bars[hover] : null;
   const fmt = formatValue ?? ((v: number) => v.toString());
+  const fmtVol = formatVolume ?? ((v: number) => v.toString());
+  const hoverVolume = hoverCandle?.volume;
+  // Only appended when the band is actually drawn, so the readout never
+  // claims a volume figure the chart isn't showing.
+  const volumeText =
+    hasVolume && typeof hoverVolume === "number" && Number.isFinite(hoverVolume)
+      ? ` V ${fmtVol(hoverVolume)}`
+      : "";
   const tooltipText = hoverCandle
-    ? `${hoverCandle.label} · O ${fmt(hoverCandle.open)} H ${fmt(hoverCandle.high)} L ${fmt(hoverCandle.low)} C ${fmt(hoverCandle.close)}`
+    ? `${hoverCandle.label} · O ${fmt(hoverCandle.open)} H ${fmt(hoverCandle.high)} L ${fmt(hoverCandle.low)} C ${fmt(hoverCandle.close)}${volumeText}`
     : "";
 
   return (
     <div
       ref={wrapRef}
       className={`relative block w-full ${className ?? ""}`}
-      style={{ width: "100%", maxWidth: width, height }}
+      style={{ width: "100%", maxWidth: cssMaxWidth, height }}
       onPointerMove={onMove}
       onPointerLeave={() => setHover(null)}
       onKeyDown={onKeyDown}
@@ -200,6 +259,12 @@ export function CandlestickMini({
               y2={b.wickBottom}
               stroke={b.color}
               strokeWidth={1}
+              // `preserveAspectRatio="none"` scales the viewBox non-uniformly,
+              // which would scale this hairline with it -- a 1px wick renders
+              // ~1.9px once the chart fills a 1200px panel against a 640-unit
+              // coordinate space. This pins every wick to a true 1px at any
+              // rendered width.
+              vectorEffect="non-scaling-stroke"
             />
             <rect
               x={b.cx - bodyWidth / 2}
@@ -209,6 +274,19 @@ export function CandlestickMini({
               fill={b.color}
               opacity={b.up ? 0.85 : 0.7}
             />
+            {b.volHeight > 0 ? (
+              // Same up/down color as the candle it sits under, at a lower
+              // opacity than either body -- the band is context for the price
+              // series, so it must never out-weigh the candles visually.
+              <rect
+                x={b.cx - bodyWidth / 2}
+                y={b.volTop}
+                width={bodyWidth}
+                height={b.volHeight}
+                fill={b.color}
+                opacity={0.4}
+              />
+            ) : null}
           </g>
         ))}
         {hoverBar ? (
@@ -220,6 +298,7 @@ export function CandlestickMini({
             stroke="var(--ink-muted)"
             strokeOpacity={0.35}
             strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
           />
         ) : null}
       </svg>
@@ -227,7 +306,13 @@ export function CandlestickMini({
         <div
           className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap"
           style={{
-            left: Math.max(60, Math.min(width - 60, hoverBar.cx)),
+            // `cx` is a viewBox coordinate, but `left` is CSS pixels -- the two
+            // only coincided while the rendered width happened to equal
+            // `width`. Expressing it as a percentage of the coordinate space
+            // makes it correct at any rendered width (notably `maxWidth:
+            // "none"`), and the CSS clamp keeps the 60px edge inset in real
+            // pixels rather than viewBox units.
+            left: `clamp(60px, ${(hoverBar.cx / width) * 100}%, calc(100% - 60px))`,
             top: Math.max(0, hoverBar.wickTop - 4),
           }}
           role="tooltip"

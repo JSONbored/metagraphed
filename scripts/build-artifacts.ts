@@ -2049,7 +2049,15 @@ await writeJson(
 // drift from what POST /mcp advertises.
 const agentResourcesContent = {
   summary: {
-    subnet_count: mergedSubnets.length,
+    // Root (netuid 0, subnet_type "root") is base-layer chain infrastructure,
+    // not an application subnet -- same distinction coverage.json's own
+    // root_subnet_count/application_subnet_count already draw above. An
+    // agent-facing "N subnets" count that includes it is off by one for the
+    // same reason the README's catalog count was (#8340): root inflates the
+    // total while not itself being something an agent would call.
+    subnet_count: mergedSubnets.filter(
+      (subnet) => subnet.subnet_type !== "root",
+    ).length,
     callable_service_count: callableServiceCount,
   },
   copyable_agent: {

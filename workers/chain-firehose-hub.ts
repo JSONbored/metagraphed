@@ -115,6 +115,32 @@ export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
 
+// #8364: a periodic SSE comment (`: heartbeat\n\n`) so a client -- and any
+// intermediary proxy that times out an idle connection -- sees traffic even
+// during a chain-quiet stretch. A comment, never a named event: EventSource
+// never surfaces comment lines to onmessage, so this can't be mistaken for
+// real data the same way the pre-existing `: connected\n\n` frame can't.
+export const CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+
+// #8364: forces a reconnect every hour rather than letting a connection run
+// indefinitely, so a rolling deploy or DO migration drains predictably
+// instead of waiting on however long clients happen to stay open.
+// EventSource reconnects automatically on a server-initiated close; the
+// Last-Event-ID resume path below (recordSseEvent/handleSubscribe) is what
+// keeps that reconnect gap-free instead of forcing a full snapshot refetch.
+export const CHAIN_FIREHOSE_SSE_MAX_CONNECTION_LIFETIME_MS = 60 * 60 * 1000;
+
+// #8364: the retained-event ring buffer's two independent bounds -- "the
+// most recent 500 events or 10 minutes, whichever is smaller" per the
+// issue's own spec. Both are enforced on every recordSseEvent call
+// (whichever bound is currently tighter prunes first), so the buffer can
+// never grow past either limit regardless of traffic shape: a quiet period
+// can't let it balloon past the age bound just because volume never hit the
+// count bound, and a burst can't let it balloon past the count bound just
+// because it happened too fast to hit the age bound.
+export const CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS = 500;
+export const CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS = 10 * 60 * 1000;
+
 // #5004 item 1: the two caps above are GLOBAL -- one IP looping connection
 // attempts can legitimately consume the entire budget and lock out every
 // other client of that transport. This is a per-IP sub-quota (resolved via
@@ -224,6 +250,51 @@ export function chainFirehoseMatchesTopics(
   return topics.has(payload?.table as string);
 }
 
+// #8364: server-side netuid filter, the counterpart to the client's own
+// (necessarily client-side, pre-this-change) accountEventMatchesNetuid in
+// apps/ui/src/hooks/use-chain-stream.ts -- sending only a subnet's own rows
+// over the wire instead of every subnet's and filtering after delivery.
+// null => no filter. A missing/blank/non-integer/negative `netuid` param
+// also degrades to "no filter" rather than a 400: unlike `topics`, which
+// validates against a fixed known vocabulary a typo should visibly narrow to
+// empty, netuid is open-ended numeric input with no vocabulary to check a
+// typo against, so failing open (matching parseChainFirehoseTopics's OWN
+// documented exception to itself) is the safer read of "malformed input".
+export function parseChainFirehoseNetuidFilter(
+  searchParams: URLSearchParams,
+): number | null {
+  const raw = searchParams.get("netuid");
+  if (raw === null || raw.trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) return null;
+  return n;
+}
+
+// Only `account_events` rows carry a `netuid` field at all (see
+// CHAIN_FIREHOSE_TABLES's own comment: it's one of four columns that table
+// carries directly, unlike the other three) -- every other table's rows have
+// no netuid to filter on, so they pass through UNFILTERED rather than being
+// silently dropped. A client combining `topics=blocks&netuid=1` therefore
+// still gets every block: the netuid param simply doesn't apply to a table
+// that isn't netuid-scoped, the same way an irrelevant query param is
+// ordinarily ignored rather than treated as an implicit zero-result filter.
+export function chainFirehoseMatchesNetuid(
+  // `ChainFirehoseIngestPayload`'s `netuid` is only reachable via its
+  // string-index signature (no table's row type declares it as a named
+  // field -- see CHAIN_FIREHOSE_TABLES's own comment on why account_events
+  // is looser-typed than the other three), which is too permissive for
+  // `chainFirehoseMatchesTopics`'s `{ table?: unknown }` pattern here: TS's
+  // no-overlap check rejects a literal `{ netuid?: unknown }` parameter type
+  // against that interface. `Record<string, unknown>` matches its actual
+  // shape instead.
+  payload: Record<string, unknown> | null | undefined,
+  netuid: number | null,
+): boolean {
+  if (netuid === null) return true;
+  if (payload == null || payload.netuid === undefined) return true;
+  return Number(payload.netuid) === netuid;
+}
+
 // Validates ONE already-parsed payload object against the shape
 // notify_chain_firehose() actually emits. Deliberately loose on which
 // optional fields are present (the three tables carry different columns) but
@@ -328,8 +399,61 @@ export function validateChainFirehoseIngestPayload(
   return validateSingleChainFirehoseIngestPayload(parsed);
 }
 
-export function formatChainFirehoseSseFrame(payload: unknown): string {
-  return `event: chain\ndata: ${JSON.stringify(payload)}\n\n`;
+// #8364 added the `id:` line (Last-Event-ID resume); `event: chain` itself is
+// UNCHANGED, deliberately -- the shipped, already-tested client contract
+// (apps/ui/src/hooks/use-chain-stream.ts's buildChainStreamUrl/onEvent, and
+// every consumer built on it since #8444) reads the row's own `table` field
+// out of the JSON `data:` payload rather than branching on the SSE `event:`
+// name, so renaming it per-kind (as #8364's issue text -- written before this
+// endpoint existed -- originally described) would be a breaking change to
+// production consumers for no behavioral gain. See the issue for the full
+// rationale.
+export function formatChainFirehoseSseFrame(
+  id: number,
+  payload: unknown,
+): string {
+  return `id: ${id}\nevent: chain\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+// #8364: the resume-vs-reset decision, extracted as its own pure function so
+// the boundary condition has exactly one implementation and can be unit
+// tested directly rather than only indirectly through a full SSE round trip.
+//
+// `oldestRetainedId` is "the smallest id this hub can still prove is
+// intact" -- ChainFirehoseHub.oldestRetainedSseEventId() folds the
+// log-is-currently-empty case into that SAME reading rather than treating it
+// as a special case: when nothing has ever been retained, that method
+// returns 1 (nextSseEventId's initial value), so `hasGap` below is false for
+// any non-negative lastEventId -- exactly right, since an empty buffer with
+// nothing EVER broadcast has nothing to have aged out of. When the buffer
+// HAS held events but has since drained (by age, during a quiet stretch),
+// nextSseEventId is the correct stand-in for "one past the last id we can
+// prove is still intact".
+//
+// A gap exists when `lastEventId` sits strictly below `oldestRetainedId - 1`
+// -- i.e. there is at least one id between what the client last saw and what
+// this hub still retains that has since been pruned. `lastEventId ===
+// oldestRetainedId - 1` is the exact boundary: the client is asking to
+// resume from precisely where the retained log begins, so replaying
+// everything with `id > lastEventId` is complete, not a gap. A non-finite
+// `lastEventId` (a malformed or missing header value parsed with `Number()`)
+// is always treated as a gap -- there's no id to reason about at all.
+export function chainFirehoseSseResumeHasGap(
+  lastEventId: number,
+  oldestRetainedId: number,
+): boolean {
+  return !Number.isFinite(lastEventId) || lastEventId < oldestRetainedId - 1;
+}
+
+// #8364: sent instead of a replay when a reconnecting client's Last-Event-ID
+// has aged out of the retained buffer (or wasn't parseable at all) -- tells
+// the client its incremental resume can't be trusted, so it must snapshot-
+// refetch before trusting further stream frames. No `id:` of its own: a
+// reset isn't a numbered event in the stream's sequence, and giving it one
+// would let a SECOND aged-out reconnect resume "from" the reset itself
+// instead of refetching again.
+export function formatChainFirehoseSseResetFrame(): string {
+  return `event: reset\ndata: {}\n\n`;
 }
 
 // Sentry METAGRAPHED-3: state.getWebSockets() itself -- not a per-socket
@@ -498,6 +622,29 @@ interface SseClientEntry {
   controller: ReadableStreamDefaultController;
   topics: Set<string> | null;
   ip: string;
+  // #8364. `netuid` mirrors `topics`' null-means-unfiltered contract.
+  // heartbeat/lifetime are the two setInterval/setTimeout handles
+  // handleSubscribe's SSE branch starts for this connection -- stored on the
+  // entry (rather than only closed over by the stream's own start/cancel
+  // callbacks) so BOTH cancel() and the lifetime timeout's own forced-close
+  // path can clear the other's timer; without that, a server-initiated close
+  // at the lifetime cap would leak the heartbeat interval, since
+  // controller.close() does not itself invoke the ReadableStream's cancel().
+  netuid: number | null;
+  heartbeatTimer?: ReturnType<typeof setInterval>;
+  lifetimeTimer?: ReturnType<typeof setTimeout>;
+}
+
+// #8364: one retained broadcast, keyed by the monotonically increasing id
+// ChainFirehoseHub.recordSseEvent assigns. `ts` is wall-clock ingest time,
+// used only to enforce CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS -- id order
+// (not ts order) is what recordSseEvent/handleSubscribe's replay logic
+// actually relies on for ordering, since ids are assigned in broadcast order
+// by construction.
+interface SseRetainedEvent {
+  id: number;
+  ts: number;
+  payload: ChainFirehoseIngestPayload;
 }
 
 interface GraphqlWsConnectionInfo {
@@ -579,6 +726,17 @@ export class ChainFirehoseHub implements DurableObject {
   latestPayload: ChainFirehoseIngestPayload | null;
   mcpSubscribedSessions: Set<string>;
   graphqlWsServer: GraphqlWsServer<ChainEventsGraphqlWsExtra>;
+  // #8364: the SSE Last-Event-ID resume buffer. nextSseEventId is the id the
+  // NEXT recorded event will receive (so it also doubles as "one past the
+  // highest id ever assigned" when the log is currently empty -- see
+  // handleSubscribe's resume-vs-reset decision, which relies on exactly that
+  // reading). Resets to empty/1 on a fresh DO reconstruction, same
+  // not-meant-to-survive-hibernation convention as every other in-memory Map/
+  // Set on this class -- a reconnect after a DO restart simply finds nothing
+  // to replay and gets a plain fresh stream, not a reset frame (there is
+  // nothing to have aged out of an empty buffer).
+  sseEventLog: SseRetainedEvent[];
+  nextSseEventId: number;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -591,6 +749,8 @@ export class ChainFirehoseHub implements DurableObject {
     this.graphqlWsSockets = new WeakMap();
     this.latestPayload = null;
     this.mcpSubscribedSessions = new Set();
+    this.sseEventLog = [];
+    this.nextSseEventId = 1;
     this.graphqlWsServer = makeServer<
       ConnectionInitMessage["payload"],
       ChainEventsGraphqlWsExtra
@@ -804,6 +964,10 @@ export class ChainFirehoseHub implements DurableObject {
 
   handleSubscribe(request: Request, url: URL): Response {
     const topics = parseChainFirehoseTopics(url.searchParams);
+    // #8364: only meaningful for the SSE branch below (WS/graphql-ws have no
+    // Last-Event-ID/netuid concept in this class) -- parsed up here anyway so
+    // both branches see the same URL-parsing shape as `topics` above.
+    const netuid = parseChainFirehoseNetuidFilter(url.searchParams);
 
     /* v8 ignore start -- WebSocketPair/state.acceptWebSocket have no Node
        equivalent; see this class's header comment. */
@@ -927,13 +1091,81 @@ export class ChainFirehoseHub implements DurableObject {
     // this.sseClientsByIp, so the two can never drift out of sync --
     // broadcast()'s own two cleanup paths below route through
     // removeSseClient too, not a direct sseClients.delete().
+    // #8364: EventSource sets this HEADER automatically on every reconnect
+    // once it has seen at least one `id:`-bearing frame -- no client code
+    // required. Read once, up front, rather than inside start() below: it's
+    // a property of the REQUEST, not of anything the stream constructs.
+    const lastEventIdHeader = request.headers.get("Last-Event-ID");
+
     let entry: SseClientEntry;
     const stream = new ReadableStream(
       {
         start: (controller) => {
-          entry = { controller, topics, ip: clientIp };
+          entry = { controller, topics, ip: clientIp, netuid };
           this.addSseClient(entry);
           controller.enqueue(encoder.encode(": connected\n\n"));
+
+          // #8364: Last-Event-ID resume.
+          if (lastEventIdHeader !== null) {
+            const lastEventId = Number(lastEventIdHeader);
+            const hasGap = chainFirehoseSseResumeHasGap(
+              lastEventId,
+              this.oldestRetainedSseEventId(),
+            );
+            if (hasGap) {
+              controller.enqueue(
+                encoder.encode(formatChainFirehoseSseResetFrame()),
+              );
+            } else {
+              for (const recorded of this.sseEventLog) {
+                if (recorded.id <= lastEventId) continue;
+                if (!chainFirehoseMatchesTopics(recorded.payload, topics)) {
+                  continue;
+                }
+                if (!chainFirehoseMatchesNetuid(recorded.payload, netuid)) {
+                  continue;
+                }
+                controller.enqueue(
+                  encoder.encode(
+                    formatChainFirehoseSseFrame(recorded.id, recorded.payload),
+                  ),
+                );
+              }
+            }
+          }
+
+          // #8364: heartbeat. A `try` around the enqueue because a client
+          // that disconnected without the runtime having called cancel() yet
+          // (a real possibility -- cancel() timing is UA-dependent) would
+          // otherwise throw here and leave the interval itself still
+          // running; the catch is a no-op because cancel()/the lifetime
+          // timeout below are what actually clear this interval; this just
+          // keeps one late tick from crashing the DO.
+          entry.heartbeatTimer = setInterval(() => {
+            try {
+              controller.enqueue(encoder.encode(": heartbeat\n\n"));
+            } catch {
+              // see comment above
+            }
+          }, CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS);
+
+          // #8364: max connection lifetime. removeSseClient (not a bare
+          // cleanup here) because a server-initiated controller.close()
+          // does NOT itself invoke this ReadableStream's cancel() -- that
+          // callback only fires on CONSUMER-side cancellation, so the
+          // producer side has to release its own bookkeeping (including
+          // clearing the heartbeat interval, which removeSseClient now
+          // does) rather than relying on cancel() to do it. removeSseClient
+          // is idempotent, so this can never double-release if cancel()
+          // also runs, whichever order the two land in.
+          entry.lifetimeTimer = setTimeout(() => {
+            try {
+              controller.close();
+            } catch {
+              // already closed
+            }
+            this.removeSseClient(entry);
+          }, CHAIN_FIREHOSE_SSE_MAX_CONNECTION_LIFETIME_MS);
         },
         cancel: () => {
           this.removeSseClient(entry);
@@ -967,14 +1199,56 @@ export class ChainFirehoseHub implements DurableObject {
     );
   }
 
+  // #8364: assigns the next monotonic id to a broadcast payload and appends
+  // it to the retained-event log, pruning by BOTH bounds
+  // (CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS / _MAX_AGE_MS) on every call -- see
+  // those constants' own comment for why both run unconditionally rather
+  // than picking one bound based on current traffic shape. Called once per
+  // broadcast() (not once per matching client), so retained ids stay dense
+  // and gap-free regardless of how many -- or how few -- clients happen to be
+  // connected when a given payload arrives.
+  recordSseEvent(payload: ChainFirehoseIngestPayload): number {
+    const id = this.nextSseEventId;
+    this.nextSseEventId += 1;
+    const now = Date.now();
+    this.sseEventLog.push({ id, ts: now, payload });
+    while (this.sseEventLog.length > CHAIN_FIREHOSE_SSE_RETAIN_MAX_EVENTS) {
+      this.sseEventLog.shift();
+    }
+    const cutoff = now - CHAIN_FIREHOSE_SSE_RETAIN_MAX_AGE_MS;
+    while (this.sseEventLog.length > 0 && this.sseEventLog[0]!.ts < cutoff) {
+      this.sseEventLog.shift();
+    }
+    return id;
+  }
+
+  // See chainFirehoseSseResumeHasGap's own comment for what this value means
+  // and why the empty-log case needs no special handling here.
+  oldestRetainedSseEventId(): number {
+    return this.sseEventLog.length > 0
+      ? this.sseEventLog[0]!.id
+      : this.nextSseEventId;
+  }
+
   // The single removal path for an SSE client -- used by the stream's own
-  // cancel() callback AND both of broadcast()'s cleanup paths (a stalled
-  // client past the high-water mark, and a client whose enqueue() throws),
-  // replacing what used to be three separate `sseClients.delete(entry)`
-  // call sites. Keeping this as one shared method is what guarantees
-  // sseClients and sseClientsByIp stay paired -- see addSseClient above.
+  // cancel() callback, handleSubscribe's own max-lifetime timeout (#8364),
+  // AND both of broadcast()'s cleanup paths (a stalled client past the
+  // high-water mark, and a client whose enqueue() throws), replacing what
+  // used to be three separate `sseClients.delete(entry)` call sites. Keeping
+  // this as one shared method is what guarantees sseClients/sseClientsByIp
+  // stay paired -- see addSseClient above -- and, as of #8364, that
+  // heartbeatTimer/lifetimeTimer are cleared on EVERY path a client can
+  // leave by, not just the two handleSubscribe itself knows about: a stalled
+  // or erroring client cleaned up from inside broadcast() needs its timers
+  // cleared exactly as much as one that cancelled normally, and before this
+  // both leaked a running setInterval until the DO instance itself was torn
+  // down. clearInterval/clearTimeout on an already-cleared or undefined
+  // handle is a documented no-op, so calling both unconditionally here is
+  // safe regardless of which cleanup path got there first.
   // A no-op if `entry` was never actually a member (nothing to release).
   removeSseClient(entry: SseClientEntry) {
+    clearInterval(entry.heartbeatTimer);
+    clearTimeout(entry.lifetimeTimer);
     if (!this.sseClients.delete(entry)) return;
     const count = this.sseClientsByIp.get(entry.ip);
     if (!count) return;
@@ -1126,9 +1400,17 @@ export class ChainFirehoseHub implements DurableObject {
 
   async broadcast(payload: ChainFirehoseIngestPayload) {
     this.latestPayload = payload;
+    // #8364: recorded once per broadcast, before the per-client fanout loop,
+    // so every matching client this cycle -- and every future resuming
+    // client -- sees the SAME id for this payload, and so a broadcast with
+    // zero currently-connected SSE clients still advances the retained log
+    // (a client that connects moments later and resumes from an id before
+    // this one must still find it).
+    const eventId = this.recordSseEvent(payload);
     const encoder = new TextEncoder();
     for (const entry of this.sseClients) {
       if (!chainFirehoseMatchesTopics(payload, entry.topics)) continue;
+      if (!chainFirehoseMatchesNetuid(payload, entry.netuid)) continue;
       if (
         entry.controller.desiredSize !== null &&
         entry.controller.desiredSize < 0
@@ -1148,7 +1430,7 @@ export class ChainFirehoseHub implements DurableObject {
       }
       try {
         entry.controller.enqueue(
-          encoder.encode(formatChainFirehoseSseFrame(payload)),
+          encoder.encode(formatChainFirehoseSseFrame(eventId, payload)),
         );
       } catch {
         this.removeSseClient(entry);

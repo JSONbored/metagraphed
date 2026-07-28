@@ -16,7 +16,6 @@ export function AgentsPage() {
     <AppShell>
       <PageMasthead
         eyebrow="For AI agents"
-        live
         title="Use AI to explore Bittensor"
         description="Point any agent at metagraphed — over MCP, a typed SDK, or plain HTTP — and it can find, explain, and call the right Bittensor subnet for a task. No key, no account."
         actions={
