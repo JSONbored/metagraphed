@@ -56,19 +56,39 @@ jobs:
       # proceed; an empty diff ⇒ skip every subsequent step via its `if:` so the
       # job still exits cleanly (not a mid-script `exit 0`, which would skip
       # cleanup/reporting steps a later change might add here).
+      #
+      # Existence guard: sync-mcp-version.yml's identical diff step silently
+      # broke once already (metagraphed#8473) because its own watched path was
+      # renamed and nothing noticed -- `git diff --quiet <ref> HEAD -- <path>`
+      # reports "no difference" (exit 0) for a path that doesn't exist at either
+      # ref, so a stale watched path makes `changed` permanently false with no
+      # error anywhere: CI stays green and the version bump silently stops
+      # running. metagraphed#8478 hardened that workflow with an explicit
+      # existence assertion; this mirrors the same guard here before this
+      # workflow's own three watched paths ever go stale the same way.
       - name: Check for contract changes since the last SDK bump
         id: contract-diff
         run: |
+          watched_paths=(
+            public/metagraph/openapi.json
+            packages/contract/index.d.ts
+            generated/metagraphed-client.ts
+          )
+
+          for path in "${watched_paths[@]}"; do
+            if [ ! -e "$path" ]; then
+              echo "::error::Watched path '$path' does not exist in HEAD -- sync-client-version.yml is out of date (likely a rename/move) and must be fixed before this workflow can detect contract changes again."
+              exit 1
+            fi
+          done
+
           last_bump="$(git log --grep '^chore(client): bump SDK' --format=%H -n 1 main)"
           if [ -z "$last_bump" ]; then
             echo "no prior 'chore(client): bump SDK' commit found; treating as first run"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "last SDK bump commit: ${last_bump}"
-            if git diff --quiet "${last_bump}" HEAD -- \
-              public/metagraph/openapi.json \
-              packages/contract/index.d.ts \
-              generated/metagraphed-client.ts; then
+            if git diff --quiet "${last_bump}" HEAD -- "${watched_paths[@]}"; then
               echo "no contract changes since ${last_bump}; skipping version bump"
               echo "changed=false" >> "$GITHUB_OUTPUT"
             else
