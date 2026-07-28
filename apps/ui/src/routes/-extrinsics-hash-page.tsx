@@ -20,6 +20,7 @@ import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primit
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import {
@@ -222,11 +223,19 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           <UserCog className="size-4 shrink-0 text-accent" aria-hidden="true" />
           <span className="text-sm text-ink">
             Executed on behalf of{" "}
-            <AddressDisplay
-              ss58={realAccount}
-              fallback={<>{realAccount}</>}
-              valueClassName="font-mono text-ink-strong"
-            />{" "}
+            {/* #8372: inline prose, not a table cell/field row -- stays a plain
+                Link (resolveAddress, not AddressDisplay) so it doesn't grow a
+                CopyButton + hover-card here. That combination pushed this
+                banner past the 375px viewport (caught by
+                tests/e2e/responsive-overflow.spec.ts); the full address is
+                still one tap away via the account page this links to. */}
+            <Link
+              to="/accounts/$ss58"
+              params={{ ss58: realAccount }}
+              className="font-mono text-ink-strong hover:underline"
+            >
+              {resolveAddress(realAccount).display}
+            </Link>{" "}
             — the account below only relayed this <code className="font-mono">Proxy.proxy</code>{" "}
             call, it isn't the account the inner call actually acts as.
           </span>

@@ -1,7 +1,7 @@
 import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { formatQuoteHint } from "@/components/metagraphed/stake-amount-input";
-import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import type { SubnetStakeQuote, Subnet } from "@/lib/metagraphed/types";
 import type { MoveStakeAxis } from "@/hooks/use-move-stake-flow";
 
@@ -64,14 +64,15 @@ export function MoveStakeDestinationInput({
   return (
     <div className="space-y-4">
       <div className="rounded border border-border bg-surface/40 px-2.5 py-2 mg-type-caption text-ink-muted">
+        {/* #8372: inline prose in a narrow modal panel -- plain resolveAddress
+            text, not AddressDisplay, so a CopyButton + hover-card don't push
+            this sentence past the panel width at mobile sizes (same overflow
+            class the extrinsics-hash-page "Executed on behalf of" banner hit,
+            see that file's own comment). */}
         Moving from{" "}
-        <AddressDisplay
-          ss58={originHotkey}
-          fallback={<>{originHotkey}</>}
-          identityName={originValidatorName}
-          keep={6}
-          valueClassName="font-medium text-ink-strong"
-        />{" "}
+        <span className="font-medium text-ink-strong">
+          {resolveAddress(originHotkey, { identityName: originValidatorName, keep: 6 }).display}
+        </span>{" "}
         on{" "}
         <span className="font-medium text-ink-strong">
           {originSubnetName ? `${originSubnetName} (SN${originNetuid})` : `SN${originNetuid}`}
