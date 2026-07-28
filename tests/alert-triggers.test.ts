@@ -6,10 +6,12 @@ import {
   ALERT_CHANNELS,
   ALERT_CONDITION_METRICS,
   ALERT_CONDITION_OPERATORS,
+  ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_MAX_BODY_BYTES,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
   ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER,
+  deliveryRecordView,
   evaluatorAlertTriggerView,
   generateAlertTriggerOwnerToken,
   isValidAlertDestination,
@@ -446,6 +448,51 @@ test("validateAlertTriggerInput: table_filter alone (no other condition) is stil
     table_filter: ["blocks"],
   });
   assert.equal(result.ok, false);
+});
+
+// --- validateAlertTriggerInput: active (#8375 pause/resume) ------------------
+
+test("validateAlertTriggerInput: active defaults to true when omitted", () => {
+  const result = validateAlertTriggerInput({
+    channel: "email",
+    destination: "a@b.com",
+    netuid: 7,
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.value.active, true);
+});
+
+test("validateAlertTriggerInput: active:false is accepted and echoed", () => {
+  const result = validateAlertTriggerInput({
+    channel: "email",
+    destination: "a@b.com",
+    netuid: 7,
+    active: false,
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.value.active, false);
+});
+
+test("validateAlertTriggerInput: active:true is accepted", () => {
+  const result = validateAlertTriggerInput({
+    channel: "email",
+    destination: "a@b.com",
+    netuid: 7,
+    active: true,
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.value.active, true);
+});
+
+test("validateAlertTriggerInput: rejects a non-boolean active", () => {
+  const result = validateAlertTriggerInput({
+    channel: "email",
+    destination: "a@b.com",
+    netuid: 7,
+    active: "false",
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.error, /active/);
 });
 
 // --- triggerMatchesEvent -----------------------------------------------------
@@ -993,4 +1040,74 @@ test("isValidAlertTriggerId: rejects leading zeros, signs, and non-numeric input
     isValidAlertTriggerId("1; DROP TABLE chain_alert_triggers"),
     false,
   );
+});
+
+// --- deliveryRecordView (#8375 Alert Center delivery history) ----------------
+
+test("ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES is the documented value", () => {
+  assert.equal(ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES, 500);
+});
+
+test("deliveryRecordView: normalizes a successful delivery row", () => {
+  const view = deliveryRecordView({
+    id: "9",
+    trigger_id: "1",
+    delivered_at: 1700000000000,
+    success: true,
+    status_code: 200,
+    retry_count: 0,
+    response_snippet: null,
+  });
+  assert.deepEqual(view, {
+    id: "9",
+    delivered_at: 1700000000000,
+    success: true,
+    status_code: 200,
+    retry_count: 0,
+    response_snippet: null,
+  });
+});
+
+test("deliveryRecordView: normalizes a failed delivery row with a response snippet", () => {
+  const view = deliveryRecordView({
+    id: "10",
+    delivered_at: 1700000001000,
+    success: false,
+    status_code: 500,
+    retry_count: 0,
+    response_snippet: "internal server error",
+  });
+  assert.equal(view?.success, false);
+  assert.equal(view?.status_code, 500);
+  assert.equal(view?.response_snippet, "internal server error");
+});
+
+test("deliveryRecordView: a missing status_code/retry_count/response_snippet degrades to null/0/null, not undefined", () => {
+  const view = deliveryRecordView({
+    id: "11",
+    delivered_at: 1,
+    success: false,
+  });
+  assert.equal(view?.status_code, null);
+  assert.equal(view?.retry_count, 0);
+  assert.equal(view?.response_snippet, null);
+});
+
+test("deliveryRecordView: a missing delivered_at degrades to null", () => {
+  const view = deliveryRecordView({ id: "13", success: false });
+  assert.equal(view?.delivered_at, null);
+});
+
+test("deliveryRecordView: success is only ever true for a literal true value", () => {
+  const view = deliveryRecordView({
+    id: "12",
+    delivered_at: 1,
+    success: "true",
+  });
+  assert.equal(view?.success, false);
+});
+
+test("deliveryRecordView: returns null for a non-object record", () => {
+  assert.equal(deliveryRecordView(null), null);
+  assert.equal(deliveryRecordView(undefined), null);
 });

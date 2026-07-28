@@ -21,6 +21,7 @@
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
 import {
+  ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
   triggerMatchesEvent,
   type EvaluatorAlertTrigger,
 } from "../src/alert-triggers.ts";
@@ -115,6 +116,19 @@ export const ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS = 3000;
 // integration's convention in this codebase (never throw for a
 // deployment-config gap the caller can't do anything about).
 //
+// #8375: the Alert Center's per-delivery history record -- what
+// writeBackDeliveryLog persists to chain_alert_deliveries. `statusCode` is
+// null for every path that never reached a real HTTP response (an
+// unrecognized channel, a builder refusing the request, a failed SSRF
+// re-check, an unconfigured telegram/email secret); `responseSnippet` is
+// only ever populated on a non-2xx response, truncated to
+// ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES.
+export interface AlertDeliveryOutcome {
+  success: boolean;
+  statusCode: number | null;
+  responseSnippet: string | null;
+}
+
 // #5023 contract: resolves `true` on a CONFIRMED 2xx delivery, `false` in
 // every other resolved case (non-2xx response, a builder returning null,
 // an unrecognized channel, or a telegram/email no-op from an unset
@@ -124,6 +138,15 @@ export const ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS = 3000;
 // succeed" (this function's `false`) from "delivery attempt itself
 // failed" (a rejection), though both are treated identically for the
 // rate-limit rollback decision.
+//
+// `onOutcome` (#8375) is an ADDITIVE, optional side channel -- the return
+// type stays a plain boolean so every pre-existing caller/test (the #5023
+// contract above, evaluate()'s `=== true` rollback check) is byte-for-byte
+// unaffected; only evaluate()'s new delivery-log write-back passes it, to
+// capture the richer AlertDeliveryOutcome without a second fetch. Never
+// called on the rejected-fetch path -- that path never resolves this
+// function at all, so evaluate()'s own catch block records that outcome
+// instead (see below).
 export async function deliverAlertMatch(
   trigger: Trigger,
   payload: unknown,
@@ -131,7 +154,11 @@ export async function deliverAlertMatch(
   fetchFn: typeof fetch = fetch,
   {
     resolveHostnames,
-  }: { resolveHostnames?: (host: string) => Promise<string[]> } = {},
+    onOutcome,
+  }: {
+    resolveHostnames?: (host: string) => Promise<string[]>;
+    onOutcome?: (outcome: AlertDeliveryOutcome) => void;
+  } = {},
 ): Promise<boolean> {
   let request: { url: string; init?: RequestInit } | null | undefined;
   // Trigger's `destination` lives behind its index signature (the shape
@@ -151,7 +178,14 @@ export async function deliverAlertMatch(
       request = buildDiscordDeliveryRequest(alertTrigger, alertPayload);
       break;
     case "telegram":
-      if (!env.TELEGRAM_BOT_TOKEN) return false;
+      if (!env.TELEGRAM_BOT_TOKEN) {
+        onOutcome?.({
+          success: false,
+          statusCode: null,
+          responseSnippet: null,
+        });
+        return false;
+      }
       request = buildTelegramDeliveryRequest(
         alertTrigger,
         alertPayload,
@@ -159,19 +193,30 @@ export async function deliverAlertMatch(
       );
       break;
     case "email":
-      if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) return false;
+      if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) {
+        onOutcome?.({
+          success: false,
+          statusCode: null,
+          responseSnippet: null,
+        });
+        return false;
+      }
       request = buildEmailDeliveryRequest(alertTrigger, alertPayload, {
         resendKey: env.RESEND_API_KEY,
         fromAddress: env.RESEND_FROM_ADDRESS,
       });
       break;
     default:
+      onOutcome?.({ success: false, statusCode: null, responseSnippet: null });
       return false;
   }
   // A null request means the builder itself refused (e.g.
   // buildWebhookDeliveryRequest's defense-in-depth URL re-check) --
   // nothing to send.
-  if (!request) return false;
+  if (!request) {
+    onOutcome?.({ success: false, statusCode: null, responseSnippet: null });
+    return false;
+  }
   if (trigger.channel === "webhook") {
     const urlStatus = await resolvedWebhookUrlStatus(
       request.url,
@@ -179,7 +224,10 @@ export async function deliverAlertMatch(
         ((host: string) =>
           resolveWebhookHostnamesWithDoh(host, { fetchImpl: fetchFn })),
     );
-    if (urlStatus !== "ok") return false;
+    if (urlStatus !== "ok") {
+      onOutcome?.({ success: false, statusCode: null, responseSnippet: null });
+      return false;
+    }
   }
 
   // The timeout signal is applied HERE, not baked into the pure builders in
@@ -201,8 +249,28 @@ export async function deliverAlertMatch(
     console.error(
       `alert delivery failed (channel=${trigger.channel}, trigger=${trigger.id}): HTTP ${response.status}`,
     );
+    let responseSnippet: string | null = null;
+    try {
+      responseSnippet = (await response.text()).slice(
+        0,
+        ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
+      );
+    } catch {
+      // Best-effort -- an unreadable body (already consumed, a stream
+      // error) just means no snippet, never a thrown deliverAlertMatch.
+    }
+    onOutcome?.({
+      success: false,
+      statusCode: response.status,
+      responseSnippet,
+    });
     return false;
   }
+  onOutcome?.({
+    success: true,
+    statusCode: response.status,
+    responseSnippet: null,
+  });
   return true;
 }
 
@@ -415,6 +483,60 @@ export class AlerterHub implements DurableObject {
     }
   }
 
+  // #8375: one write-back call per delivery ATTEMPT (not per match) --
+  // records for triggers that never cleared the burst rate-limit are never
+  // pushed, matching writeBackMatchCounts' distinction between "matched" and
+  // "delivered" above. Same best-effort/never-throws posture as
+  // writeBackMatchCounts: delivery history is an observability aid for the
+  // Alert Center, not something delivery or rate-limiting logic depends on.
+  async writeBackDeliveryLog(
+    records: Array<{
+      triggerId: string;
+      deliveredAt: number;
+      success: boolean;
+      statusCode: number | null;
+      responseSnippet: string | null;
+    }>,
+  ): Promise<void> {
+    if (
+      !this.env.DATA_API ||
+      !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN ||
+      records.length === 0
+    ) {
+      return;
+    }
+    try {
+      const response = await this.env.DATA_API.fetch(
+        "https://data-api.internal/api/v1/internal/alert-triggers/deliveries",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-alert-triggers-internal-token":
+              this.env.ALERT_TRIGGERS_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify({
+            records: records.map((r) => ({
+              trigger_id: r.triggerId,
+              delivered_at: r.deliveredAt,
+              success: r.success,
+              status_code: r.statusCode,
+              response_snippet: r.responseSnippet,
+            })),
+          }),
+          signal: AbortSignal.timeout(ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) {
+        console.error(
+          `alert delivery-log write-back failed: HTTP ${response.status}`,
+        );
+      }
+    } catch {
+      // Best-effort -- see header comment above.
+    }
+  }
+
   async evaluate(payload: unknown): Promise<{
     matched: number;
     trigger_ids?: string[];
@@ -454,6 +576,19 @@ export class AlerterHub implements DurableObject {
       toDeliver.push(trigger);
     }
 
+    // #8375: one record per delivery ATTEMPT, appended by the onOutcome
+    // callback deliverAlertMatch invokes just before it resolves -- pushed
+    // here rather than derived from `succeeded` below so a non-2xx response's
+    // status code/snippet survive into the Alert Center's delivery history,
+    // not just the boolean rollback decision.
+    const deliveryRecords: Array<{
+      triggerId: string;
+      deliveredAt: number;
+      success: boolean;
+      statusCode: number | null;
+      responseSnippet: string | null;
+    }> = [];
+
     // #5022: the delivery fan-out and the match-count write-back run
     // CONCURRENTLY (Promise.allSettled), never sequentially -- sequencing
     // them would ADD the two latencies together, pushing evaluate()'s own
@@ -474,9 +609,31 @@ export class AlerterHub implements DurableObject {
         // ChainFirehoseHub's broadcast() awaits.
         let succeeded;
         try {
-          succeeded = (await this.deliver(trigger, payload, this.env)) === true;
+          succeeded =
+            (await this.deliver(trigger, payload, this.env, undefined, {
+              onOutcome: (outcome) => {
+                deliveryRecords.push({
+                  triggerId: trigger.id,
+                  deliveredAt: now,
+                  success: outcome.success,
+                  statusCode: outcome.statusCode,
+                  responseSnippet: outcome.responseSnippet,
+                });
+              },
+            })) === true;
         } catch {
           succeeded = false;
+          // A rejected deliver() (network error, timeout) never reaches
+          // deliverAlertMatch's own onOutcome call -- record the same
+          // "attempted, no HTTP response" shape here instead, so a
+          // hard-failing endpoint still shows up in delivery history.
+          deliveryRecords.push({
+            triggerId: trigger.id,
+            deliveredAt: now,
+            success: false,
+            statusCode: null,
+            responseSnippet: null,
+          });
         }
         if (succeeded) return;
         // Roll back the optimistic set above: a delivery that did NOT
@@ -494,7 +651,17 @@ export class AlerterHub implements DurableObject {
     const writebackPromise = this.writeBackMatchCounts(
       matched.map((t) => t.id),
     );
-    await Promise.allSettled([deliveryPromise, writebackPromise]);
+    // Chained onto deliveryPromise (not started concurrently with it, unlike
+    // writebackPromise above) -- deliveryRecords is only fully populated
+    // once every delivery attempt in the mapBounded fan-out has resolved.
+    const deliveryLogPromise = deliveryPromise.then(() =>
+      this.writeBackDeliveryLog(deliveryRecords),
+    );
+    await Promise.allSettled([
+      deliveryPromise,
+      writebackPromise,
+      deliveryLogPromise,
+    ]);
 
     return {
       matched: matched.length,

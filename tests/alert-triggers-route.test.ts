@@ -819,6 +819,320 @@ test("delete: 200 with {id, deleted:true} on success, and actually issues the DE
   assert.match(sqlCalls[1].text, /DELETE FROM chain_alert_triggers WHERE id/);
 });
 
+// --- /api/v1/watch/triggers (#8375 Alert Center, address-scoped) -------------
+
+test("watch list: 503 when WATCH_TRIGGER_TOKEN_SECRET is not provisioned", async () => {
+  const res = await fetch(req("/api/v1/watch/triggers"), {
+    ...env,
+    WATCH_TRIGGER_TOKEN_SECRET: undefined,
+  });
+  assert.equal(res.status, 503);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch list: 401 when the watch token header is entirely absent", async () => {
+  const res = await fetch(req("/api/v1/watch/triggers"));
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch list: 401 when the watch token is invalid, expired, or signed with a different secret", async () => {
+  const res = await fetch(
+    req("/api/v1/watch/triggers", {
+      headers: { "x-watch-trigger-token": "garbage.garbage" },
+    }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch list: 200 with only the verified address' own triggers, newest first", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([
+    row({ id: "2", owner_ss58: TEST_SS58 }),
+    row({ id: "1", owner_ss58: TEST_SS58 }),
+  ]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers", {
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.triggers.length, 2);
+  assert.equal(body.triggers[0].id, "2");
+  assert.equal("owner_token" in body.triggers[0], false);
+  assert.equal(sqlCalls.length, 1);
+  assert.match(
+    sqlCalls[0].text,
+    /SELECT \* FROM chain_alert_triggers\s*WHERE owner_ss58/,
+  );
+  assert.ok(sqlCalls[0].values.includes(TEST_SS58));
+});
+
+test("watch update: 400 on a malformed id", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const res = await fetch(
+    req("/api/v1/watch/triggers/xx", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: {},
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch update: 401 before ever touching Postgres when the watch token is missing", async () => {
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", { method: "PATCH", body: {} }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch update: 400 on malformed JSON, before ever querying Postgres", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const request = new Request("https://d/api/v1/watch/triggers/1", {
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json",
+      "x-watch-trigger-token": token,
+    },
+    body: "{not json",
+  });
+  const res = await fetch(request);
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch update: 400 when the body parses to a JSON array", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: [1, 2],
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch update: 404 when no such trigger exists", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: { channel: "email", destination: "a@b.com", netuid: 1 },
+    }),
+  );
+  assert.equal(res.status, 404);
+});
+
+test("watch update: 404 (not 403) when the trigger belongs to a DIFFERENT address -- same anti-existence-oracle posture as the owner-token routes", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([row({ owner_ss58: "5-some-other-address" })]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: { channel: "email", destination: "a@b.com", netuid: 1 },
+    }),
+  );
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: "no such trigger" });
+});
+
+test("watch update: 200 on success -- can pause (active:false) and edit the destination without resending every field", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([
+    row({
+      owner_ss58: TEST_SS58,
+      netuid: 7,
+      channel: "email",
+      destination: "old@b.com",
+    }),
+  ]);
+  mockQueue.current.push([
+    row({
+      owner_ss58: TEST_SS58,
+      netuid: 7,
+      destination: "new@b.com",
+      active: false,
+    }),
+  ]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: { destination: "new@b.com", active: false },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.destination, "new@b.com");
+  assert.equal(body.active, false);
+  assert.equal(sqlCalls.length, 2);
+  assert.match(sqlCalls[1].text, /UPDATE chain_alert_triggers SET/);
+  assert.ok(sqlCalls[1].values.includes("new@b.com"));
+  assert.ok(sqlCalls[1].values.includes(false));
+});
+
+test("watch update: 400 on a validation failure (e.g. a destination that doesn't fit the existing channel)", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([
+    row({ owner_ss58: TEST_SS58, netuid: 7, channel: "email" }),
+  ]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: { destination: "not-an-email" },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 1);
+});
+
+test("watch delete: 401 before ever touching Postgres when the watch token is missing", async () => {
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", { method: "DELETE" }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("watch delete: 400 on a malformed id", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const res = await fetch(
+    req("/api/v1/watch/triggers/xx", {
+      method: "DELETE",
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 400);
+});
+
+test("watch delete: 404 when no such trigger exists", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "DELETE",
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 404);
+});
+
+test("watch delete: 404 (not 403) when the trigger belongs to a different address", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([{ owner_ss58: "5-some-other-address" }]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "DELETE",
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 404);
+});
+
+test("watch delete: 200 with {id, deleted:true} on success", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([{ owner_ss58: TEST_SS58 }]);
+  mockQueue.current.push([]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1", {
+      method: "DELETE",
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { id: "1", deleted: true });
+  assert.match(sqlCalls[1].text, /DELETE FROM chain_alert_triggers WHERE id/);
+});
+
+test("watch deliveries: 400 on a malformed id", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const res = await fetch(
+    req("/api/v1/watch/triggers/xx/deliveries", {
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 400);
+});
+
+test("watch deliveries: 401 when the watch token is missing", async () => {
+  const res = await fetch(req("/api/v1/watch/triggers/1/deliveries"));
+  assert.equal(res.status, 401);
+});
+
+test("watch deliveries: 404 when the trigger belongs to a different address", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([{ owner_ss58: "5-some-other-address" }]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1/deliveries", {
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 404);
+});
+
+test("watch deliveries: 200 with the last 20 delivery records, newest first, owner-safe shape", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([{ owner_ss58: TEST_SS58 }]);
+  mockQueue.current.push([
+    {
+      id: "2",
+      trigger_id: "1",
+      delivered_at: 1700000002000,
+      success: false,
+      status_code: 500,
+      retry_count: 0,
+      response_snippet: "boom",
+    },
+    {
+      id: "1",
+      trigger_id: "1",
+      delivered_at: 1700000001000,
+      success: true,
+      status_code: 200,
+      retry_count: 0,
+      response_snippet: null,
+    },
+  ]);
+  const res = await fetch(
+    req("/api/v1/watch/triggers/1/deliveries", {
+      headers: { "x-watch-trigger-token": token },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.deliveries.length, 2);
+  assert.equal(body.deliveries[0].success, false);
+  assert.equal(body.deliveries[0].status_code, 500);
+  assert.equal(body.deliveries[0].response_snippet, "boom");
+  assert.equal("trigger_id" in body.deliveries[0], false);
+  assert.equal(sqlCalls.length, 2);
+  assert.match(sqlCalls[1].text, /SELECT \* FROM chain_alert_deliveries/);
+  assert.match(sqlCalls[1].text, /ORDER BY delivered_at DESC/);
+});
+
+test("watch route: an id-less PATCH/DELETE and an unrecognized sub-path are rejected with 405", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const res = await fetch(
+    req("/api/v1/watch/triggers", {
+      method: "PATCH",
+      headers: { "x-watch-trigger-token": token },
+      body: {},
+    }),
+  );
+  assert.equal(res.status, 405);
+});
+
 // --- GET /api/v1/internal/alert-triggers-active (evaluator scan) -------------
 
 test("active list: 503 when ALERT_TRIGGERS_INTERNAL_TOKEN is not configured", async () => {
@@ -998,6 +1312,204 @@ test("matched writeback: 502 when the UPDATE itself fails", async () => {
       method: "POST",
       headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
       body: { trigger_ids: ["1"] },
+    }),
+  );
+  assert.equal(res.status, 502);
+});
+
+// --- POST /api/v1/internal/alert-triggers/deliveries (#8375 write-back) -----
+
+test("delivery-log write: 503 when ALERT_TRIGGERS_INTERNAL_TOKEN is not configured", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      body: { records: [{ trigger_id: "1", delivered_at: 1, success: true }] },
+    }),
+    { ...env, ALERT_TRIGGERS_INTERNAL_TOKEN: undefined },
+  );
+  assert.equal(res.status, 503);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("delivery-log write: 401 when the internal token header is entirely absent", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      body: { records: [{ trigger_id: "1", delivered_at: 1, success: true }] },
+    }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("delivery-log write: 401 when the internal token is present but wrong", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": "wrong" },
+      body: { records: [{ trigger_id: "1", delivered_at: 1, success: true }] },
+    }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("delivery-log write: 400 on malformed JSON body", async () => {
+  const request = new Request(
+    "https://d/api/v1/internal/alert-triggers/deliveries",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-alert-triggers-internal-token": INTERNAL_TOKEN,
+      },
+      body: "{not json",
+    },
+  );
+  const res = await fetch(request);
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("delivery-log write: 400 when records is missing", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {},
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("delivery-log write: 400 when every record is malformed (filters to empty)", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {
+        records: [
+          { trigger_id: "not-an-id", delivered_at: 1, success: true },
+          { trigger_id: "1", delivered_at: "not-a-number", success: true },
+          null,
+          "garbage",
+        ],
+      },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("delivery-log write: 200, inserts each valid record and prunes each distinct trigger to the retention cap", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {
+        records: [
+          {
+            trigger_id: "1",
+            delivered_at: 1700000000000,
+            success: true,
+            status_code: 200,
+          },
+          {
+            trigger_id: "1",
+            delivered_at: 1700000001000,
+            success: false,
+            status_code: 500,
+            response_snippet: "boom",
+          },
+          {
+            trigger_id: "2",
+            delivered_at: 1700000002000,
+            success: true,
+            status_code: 204,
+          },
+          // malformed entries are silently dropped, not rejected, once at
+          // least one valid record makes the batch non-empty
+          { trigger_id: "not-an-id", delivered_at: 1, success: true },
+        ],
+      },
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { inserted: 3 });
+  // 3 valid records inserted + one DELETE prune per distinct trigger_id (2)
+  assert.equal(sqlCalls.length, 5);
+  const inserts = sqlCalls.filter((c) =>
+    /INSERT INTO chain_alert_deliveries/.test(c.text),
+  );
+  assert.equal(inserts.length, 3);
+  assert.ok(inserts[1].values.includes(500));
+  assert.ok(inserts[1].values.includes("boom"));
+  const deletes = sqlCalls.filter((c) =>
+    /DELETE FROM chain_alert_deliveries/.test(c.text),
+  );
+  assert.equal(deletes.length, 2);
+  assert.match(deletes[0].text, /ORDER BY delivered_at DESC/);
+  assert.ok(deletes[0].values.includes(20));
+});
+
+test("delivery-log write: a response_snippet is truncated to ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES before being inserted", async () => {
+  const longSnippet = "x".repeat(1000);
+  await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {
+        records: [
+          {
+            trigger_id: "1",
+            delivered_at: 1,
+            success: false,
+            status_code: 500,
+            response_snippet: longSnippet,
+          },
+        ],
+      },
+    }),
+  );
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO chain_alert_deliveries/.test(c.text),
+  );
+  assert.ok(insert!.values.includes("x".repeat(500)));
+});
+
+test("delivery-log write: a non-string/missing response_snippet inserts null, and a non-integer status_code inserts null", async () => {
+  await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {
+        records: [
+          {
+            trigger_id: "1",
+            delivered_at: 1,
+            success: true,
+            status_code: "200",
+          },
+        ],
+      },
+    }),
+  );
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO chain_alert_deliveries/.test(c.text),
+  );
+  assert.ok(insert!.values.includes(null));
+});
+
+test("delivery-log write: 502 when the INSERT fails", async () => {
+  failNextQuery.error = new Error("boom");
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/deliveries", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {
+        records: [{ trigger_id: "1", delivered_at: 1, success: true }],
+      },
     }),
   );
   assert.equal(res.status, 502);

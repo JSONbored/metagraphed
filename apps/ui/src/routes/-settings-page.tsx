@@ -3,6 +3,7 @@ import { PageMasthead } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-subscription-manager";
 import { ApiKeysManager } from "@/components/metagraphed/api-keys-manager";
+import { AlertsManager } from "@/components/metagraphed/alerts-manager";
 import { WatchlistPortability } from "@/components/metagraphed/watchlist-portability";
 import { buildSettingsHeroKpis } from "@/lib/metagraphed/settings-summary";
 
@@ -14,7 +15,7 @@ export function SettingsPage() {
         eyebrow="Developer"
         live
         title="Developer settings"
-        description="Your watchlist's export/import, self-service webhook subscription management against the public subscription API (no account model), and wallet-connected API key management for gated fullnode access."
+        description="Your watchlist's export/import, self-service webhook subscription management against the public subscription API (no account model), wallet-connected API key management for gated fullnode access, and your own verified chain alert triggers."
         caption={<>webhooks / v1</>}
         kpis={kpis}
       />
@@ -22,8 +23,11 @@ export function SettingsPage() {
           file is the whole portability story -- no server, no sync. */}
       <WatchlistPortability />
       <ApiKeysManager />
+      <AlertsManager />
       <WebhookSubscriptionManager />
-      <ApiSourceFooter paths={["/api/v1/webhooks/subscriptions", "/api/v1/keys"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/webhooks/subscriptions", "/api/v1/keys", "/api/v1/watch/triggers"]}
+      />
     </AppShell>
   );
 }

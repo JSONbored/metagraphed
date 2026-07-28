@@ -276,6 +276,114 @@ test("deliverAlertMatch: a non-ok HTTP response is logged, not thrown, and resol
   errorSpy.mockRestore();
 });
 
+// --- deliverAlertMatch: onOutcome (#8375 delivery history) -------------------
+
+test("deliverAlertMatch: onOutcome reports success + status code on a confirmed 2xx", async () => {
+  const fetchFn = vi.fn(async () => new Response(null, { status: 204 }));
+  let outcome;
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "discord",
+      destination: "https://discord.com/api/webhooks/1/t",
+    }),
+    {},
+    mockEnv(),
+    fetchFn,
+    { onOutcome: (o) => (outcome = o) },
+  );
+  assert.deepEqual(outcome, {
+    success: true,
+    statusCode: 204,
+    responseSnippet: null,
+  });
+});
+
+test("deliverAlertMatch: onOutcome reports the status code and a truncated response snippet on a non-2xx", async () => {
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const longBody = "x".repeat(1000);
+  const fetchFn = vi.fn(async () => new Response(longBody, { status: 500 }));
+  let outcome;
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "discord",
+      destination: "https://discord.com/api/webhooks/1/t",
+    }),
+    {},
+    mockEnv(),
+    fetchFn,
+    { onOutcome: (o) => (outcome = o) },
+  );
+  assert.equal(outcome!.success, false);
+  assert.equal(outcome!.statusCode, 500);
+  assert.equal(outcome!.responseSnippet, "x".repeat(500));
+  errorSpy.mockRestore();
+});
+
+test("deliverAlertMatch: onOutcome reports a null status code for an unrecognized channel", async () => {
+  let outcome;
+  await deliverAlertMatch(
+    triggerRow({ channel: "carrier-pigeon" }),
+    {},
+    mockEnv(),
+    vi.fn(),
+    { onOutcome: (o) => (outcome = o) },
+  );
+  assert.deepEqual(outcome, {
+    success: false,
+    statusCode: null,
+    responseSnippet: null,
+  });
+});
+
+test("deliverAlertMatch: onOutcome reports a null status code when telegram/email is unconfigured", async () => {
+  let outcome;
+  await deliverAlertMatch(
+    triggerRow({ channel: "telegram", destination: "@chan" }),
+    {},
+    mockEnv(),
+    vi.fn(),
+    { onOutcome: (o) => (outcome = o) },
+  );
+  assert.equal(outcome!.success, false);
+  assert.equal(outcome!.statusCode, null);
+});
+
+test("deliverAlertMatch: onOutcome reports a null status code when the webhook URL resolves private (never reached a real response)", async () => {
+  let outcome;
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+    }),
+    {},
+    mockEnv(),
+    vi.fn(),
+    {
+      resolveHostnames: async () => ["10.0.0.1"],
+      onOutcome: (o) => (outcome = o),
+    },
+  );
+  assert.deepEqual(outcome, {
+    success: false,
+    statusCode: null,
+    responseSnippet: null,
+  });
+});
+
+test("deliverAlertMatch: onOutcome is optional -- omitting it changes nothing about the return value", async () => {
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const result = await deliverAlertMatch(
+    triggerRow({
+      channel: "discord",
+      destination: "https://discord.com/api/webhooks/1/t",
+    }),
+    {},
+    mockEnv(),
+    fetchFn,
+  );
+  assert.equal(result, true);
+});
+
 test("deliverAlertMatch: a rejected fetch (network error) propagates as a rejection rather than being swallowed here", async () => {
   const fetchFn = vi.fn(async () => {
     throw new Error("network down");
@@ -1156,6 +1264,240 @@ test("writeBackMatchCounts: never throws when the fetch itself rejects (network 
     }),
   );
   await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
+});
+
+// --- writeBackDeliveryLog (#8375) ----------------------------------------------
+
+function deliveryRecord(overrides: Row = {}) {
+  return {
+    triggerId: "1",
+    deliveredAt: 1700000000000,
+    success: true,
+    statusCode: 200,
+    responseSnippet: null,
+    ...overrides,
+  };
+}
+
+test("writeBackDeliveryLog: no-op when DATA_API is unbound", async () => {
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({ ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN }),
+  );
+  await assert.doesNotReject(() =>
+    hub.writeBackDeliveryLog([deliveryRecord()]),
+  );
+});
+
+test("writeBackDeliveryLog: no-op when ALERT_TRIGGERS_INTERNAL_TOKEN is unset", async () => {
+  let called = false;
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async () => {
+        called = true;
+        return new Response(null, { status: 200 });
+      }),
+    }),
+  );
+  await hub.writeBackDeliveryLog([deliveryRecord()]);
+  assert.equal(called, false);
+});
+
+test("writeBackDeliveryLog: no-op when records is empty", async () => {
+  let called = false;
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async () => {
+        called = true;
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await hub.writeBackDeliveryLog([]);
+  assert.equal(called, false);
+});
+
+test("writeBackDeliveryLog: POSTs the records with the correct URL/header/body/timeout", async () => {
+  let received: Row | undefined;
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async (url, init) => {
+        received = { url: String(url), init };
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await hub.writeBackDeliveryLog([
+    deliveryRecord(),
+    deliveryRecord({
+      triggerId: "2",
+      success: false,
+      statusCode: 500,
+      responseSnippet: "err",
+    }),
+  ]);
+  assert.equal(
+    received!.url,
+    "https://data-api.internal/api/v1/internal/alert-triggers/deliveries",
+  );
+  assert.equal(received!.init.method, "POST");
+  assert.equal(
+    received!.init.headers["x-alert-triggers-internal-token"],
+    INTERNAL_TOKEN,
+  );
+  assert.deepEqual(JSON.parse(received!.init.body), {
+    records: [
+      {
+        trigger_id: "1",
+        delivered_at: 1700000000000,
+        success: true,
+        status_code: 200,
+        response_snippet: null,
+      },
+      {
+        trigger_id: "2",
+        delivered_at: 1700000000000,
+        success: false,
+        status_code: 500,
+        response_snippet: "err",
+      },
+    ],
+  });
+  assert.ok(received!.init.signal instanceof AbortSignal);
+});
+
+test("writeBackDeliveryLog: logs but never throws on a non-ok response", async () => {
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async () => new Response(null, { status: 500 })),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await assert.doesNotReject(() =>
+    hub.writeBackDeliveryLog([deliveryRecord()]),
+  );
+  assert.equal(errorSpy.mock.calls.length, 1);
+  assert.match(errorSpy.mock.calls[0][0], /HTTP 500/);
+  errorSpy.mockRestore();
+});
+
+test("writeBackDeliveryLog: never throws when the fetch itself rejects (network error / AbortSignal timeout)", async () => {
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async () => {
+        throw new Error("timeout");
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+  );
+  await assert.doesNotReject(() =>
+    hub.writeBackDeliveryLog([deliveryRecord()]),
+  );
+});
+
+// --- evaluate: delivery-log integration (#8375) --------------------------------
+
+test("evaluate: writes back a delivery record for every DELIVERED trigger (not a rate-limited match)", async () => {
+  // A real deliverAlertMatch invokes the injected onOutcome just before
+  // resolving -- this stub mirrors that contract rather than just resolving
+  // a bare boolean, since evaluate()'s own delivery-log write-back is driven
+  // entirely by that callback, not by the boolean return value.
+  const deliver = vi.fn(
+    async (
+      _trigger: unknown,
+      _payload: unknown,
+      _env: unknown,
+      _fetchFn: unknown,
+      opts?: { onOutcome?: AnyFn },
+    ) => {
+      opts?.onOutcome?.({
+        success: true,
+        statusCode: 200,
+        responseSnippet: null,
+      });
+      return true;
+    },
+  );
+  let received: Row | undefined;
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async (url, init) => {
+        if (String(url).includes("/deliveries")) {
+          received = { url: String(url), init };
+        }
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+    { deliver },
+  );
+  hub.triggers = [triggerRow({ id: "1" })];
+  hub.triggersLoadedAt = Date.now();
+  await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.ok(received, "the delivery-log write-back was called");
+  const body = JSON.parse(received!.init.body);
+  assert.equal(body.records.length, 1);
+  assert.equal(body.records[0].trigger_id, "1");
+});
+
+test("evaluate: never writes back a delivery record for a match that was rate-limited", async () => {
+  const deliver = vi.fn().mockResolvedValue(true);
+  let deliveryLogCalled = false;
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async (url) => {
+        if (String(url).includes("/deliveries")) deliveryLogCalled = true;
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+    { deliver },
+  );
+  hub.triggers = [triggerRow({ id: "1" })];
+  hub.triggersLoadedAt = Date.now();
+  hub.lastDeliveredAt.set("1", Date.now());
+  await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.equal(deliver.mock.calls.length, 0);
+  assert.equal(deliveryLogCalled, false);
+});
+
+test("evaluate: a rejected deliver() still writes back a delivery record (attempted, no HTTP response)", async () => {
+  const deliver = vi.fn().mockRejectedValue(new Error("delivery exploded"));
+  let received: Row | undefined;
+  const hub = new AlerterHub(
+    STATE,
+    mockEnv({
+      DATA_API: fakeDataApi(async (url, init) => {
+        if (String(url).includes("/deliveries")) {
+          received = { url: String(url), init };
+        }
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    }),
+    { deliver },
+  );
+  hub.triggers = [triggerRow({ id: "1" })];
+  hub.triggersLoadedAt = Date.now();
+  await hub.evaluate({ table: "account_events", netuid: 7 });
+  const body = JSON.parse(received!.init.body);
+  assert.deepEqual(body.records[0], {
+    trigger_id: "1",
+    delivered_at: body.records[0].delivered_at,
+    success: false,
+    status_code: null,
+    response_snippet: null,
+  });
 });
 
 // --- evaluate: write-back integration (#5022) ----------------------------------
