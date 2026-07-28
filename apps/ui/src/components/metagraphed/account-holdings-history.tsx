@@ -18,9 +18,22 @@ const WINDOWS = [
 ] as const;
 type Win = (typeof WINDOWS)[number]["id"];
 
-/** Stacked-area band cap — matches the small-multiples "top 6" and the
- * design system's 6-color categorical chart ramp exactly. */
+/** Stacked-area band cap — matches the design system's 6-color categorical
+ * chart ramp exactly, and the first page of small multiples below. */
 const TOP_POSITIONS = 6;
+
+/**
+ * How many MORE small multiples each "+N more" click reveals.
+ *
+ * This is a hard cap on query fan-out, not just a display choice: every
+ * revealed position costs one `/accounts/{ss58}/subnets/{netuid}/history`
+ * request via `useQueries`, so revealing an entire portfolio at once would
+ * fire one request per position (a real validator coldkey here holds 119).
+ * Paging in fixed batches keeps concurrency bounded and only ever grows by
+ * explicit user action — the same incremental `visibleCount` treatment the
+ * Positions tab's own table uses for its long tail.
+ */
+const POSITIONS_PAGE_SIZE = 6;
 
 const CHART_COLORS = [
   "var(--chart-1)",
@@ -81,7 +94,7 @@ export function alignHoldingsSeries(
  */
 export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
   const [win, setWin] = useState<Win>("90d");
-  const [showAll, setShowAll] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(TOP_POSITIONS);
 
   const portfolioResult = useQuery(accountPortfolioQuery(ss58));
   const positions = useMemo<PortfolioPosition[]>(() => {
@@ -89,10 +102,12 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
     return [...all].sort((a, b) => (b.stake_tao ?? 0) - (a.stake_tao ?? 0));
   }, [portfolioResult.data?.data?.positions]);
 
-  const topPositions = positions.slice(0, TOP_POSITIONS);
-  const visiblePositions = showAll ? positions : topPositions;
+  // Never the whole portfolio: `visibleCount` starts at one page and only
+  // grows a page at a time, so the query count below stays bounded (see
+  // POSITIONS_PAGE_SIZE).
+  const visiblePositions = positions.slice(0, visibleCount);
 
-  // One bounded query per visible position (6 until expanded). React Query
+  // One query per visible position, bounded by visibleCount. React Query
   // dedupes with the Positions tab's per-row expander, which reads the same
   // (ss58, netuid, window) keys.
   const historyResults = useQueries({
@@ -262,15 +277,31 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
               );
             })}
           </div>
-          {positions.length > TOP_POSITIONS ? (
-            <div className="mt-3 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setShowAll((s) => !s)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-              >
-                {showAll ? "Show fewer" : `+${formatNumber(positions.length - TOP_POSITIONS)} more`}
-              </button>
+          {positions.length > visibleCount || visibleCount > TOP_POSITIONS ? (
+            <div className="mt-3 flex justify-center gap-2">
+              {positions.length > visibleCount ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                >
+                  Show{" "}
+                  {formatNumber(Math.min(POSITIONS_PAGE_SIZE, positions.length - visibleCount))}{" "}
+                  more
+                  <span className="text-ink-subtle-text">
+                    ({formatNumber(positions.length - visibleCount)} left)
+                  </span>
+                </button>
+              ) : null}
+              {visibleCount > TOP_POSITIONS ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount(TOP_POSITIONS)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                >
+                  Show fewer
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
