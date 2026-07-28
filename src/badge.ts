@@ -23,6 +23,7 @@
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
 // entities or missing data render an "n/a" badge (200) so an <img> never breaks.
 import { loadReliabilityAggregate } from "./health-serving.ts";
+import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 
 const BADGE_CACHE_SECONDS = 3600;
@@ -520,10 +521,19 @@ async function apisContent({
   };
 }
 
-function badgeHeaders(): Record<string, string> {
+function badgeHeaders(etag: string): Record<string, string> {
   return {
     "content-type": "image/svg+xml; charset=utf-8",
-    "cache-control": `public, max-age=${BADGE_CACHE_SECONDS}`,
+    // #8387: stale-while-revalidate=3600 on top of the existing (#8329)
+    // max-age -- a client past the max-age window (a README's <img>,
+    // GitHub's camo proxy re-fetching) gets the last-known SVG immediately
+    // while a fresh one is fetched in the background, rather than blocking
+    // on origin latency for what is, for a status badge, a cosmetic delay.
+    // max-age itself is untouched from its shipped value; the issue's own
+    // suggested 900s is a fresh, unevidenced number against a duration
+    // that's already live and working.
+    "cache-control": `public, max-age=${BADGE_CACHE_SECONDS}, stale-while-revalidate=3600`,
+    etag,
     "x-content-type-options": "nosniff",
     // Public read-only SVG: fetchable cross-origin like every apiHeaders() response.
     "access-control-allow-origin": "*",
@@ -568,8 +578,18 @@ export async function handleBadgeRequest(
   }
 
   const svg = renderBadge(content.message, content.color, { label, style });
+  // #8387: the etag hashes the RENDERED bytes, not the underlying score --
+  // an unchanged message+color (the common case between probe cycles)
+  // produces an identical SVG and therefore an identical etag, so a
+  // conditional re-fetch (camo, a browser's own revalidation) gets a cheap
+  // 304 with no body, same headers otherwise.
+  const etag = await weakEtag(svg);
+  const headers = badgeHeaders(etag);
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   return new Response(request.method === "HEAD" ? null : svg, {
     status: 200,
-    headers: badgeHeaders(),
+    headers,
   });
 }

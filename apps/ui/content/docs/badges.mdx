@@ -1,0 +1,63 @@
+---
+title: Badges
+description: Embeddable SVG status badges for a subnet's or provider's README — probe-derived only, never a self-reported number.
+---
+
+Drop a live status badge in a README. The value comes from the same probes this site's own pages render — there is no way to supply your own number, so the badge is honest in a way a self-reported one can't be.
+
+```
+GET https://api.metagraph.sh/api/v1/subnets/{netuid}/badge.svg
+```
+
+## Targets
+
+| Path                                 | Value                                             |
+| ------------------------------------ | ------------------------------------------------- |
+| `/api/v1/subnets/{netuid}/badge.svg` | that subnet's own score                           |
+| `/api/v1/providers/{slug}/badge.svg` | the mean across every subnet that provider builds |
+
+An unknown netuid/slug, or a target with no resolvable score yet, renders a neutral "n/a" badge at **200**, never a 404 — an `<img>` embed should never visibly break, and GitHub's camo proxy caches 404s badly.
+
+## Metrics
+
+| `?metric=`                        | Message                                       | Color                             |
+| --------------------------------- | --------------------------------------------- | --------------------------------- |
+| `readiness` (default)             | integration readiness, e.g. `92/100`          | green ≥80, amber 50–79, red `<50` |
+| `uptime` (alias `reliability`)    | window uptime %, e.g. `99.83%`                | by A–F reliability grade band     |
+| `grade`                           | the A–F reliability letter alone, e.g. `A`    | same grade band as `uptime`       |
+| `completeness` (alias `coverage`) | registry-profile completeness, e.g. `78/100`  | green ≥80, amber 50–79, red `<50` |
+| `apis`                            | count of callable API surfaces, e.g. `3 apis` | blue for >0, gray for 0           |
+
+A provider badge averages `readiness`/`completeness` across its subnets, sums `apis`, and aggregates `uptime`/`grade` from the same underlying reliability data as every subnet it builds.
+
+## Styles
+
+| `?style=`        | Look                                                                         |
+| ---------------- | ---------------------------------------------------------------------------- |
+| `flat` (default) | rounded corners, subtle top-highlight gradient — the shields.io default look |
+| `flat-square`    | same layout, square corners, no gradient                                     |
+| `for-the-badge`  | 28px tall, uppercase, bold, letter-spaced, matte                             |
+
+`?label=` overrides the left "metagraphed" segment (max 40 characters; control characters are stripped).
+
+## Embedding
+
+```md tab="Markdown"
+[![SN1 uptime](https://api.metagraph.sh/api/v1/subnets/1/badge.svg?metric=uptime)](https://metagraph.sh/subnets/1)
+```
+
+```html tab="HTML"
+<a href="https://metagraph.sh/subnets/1">
+  <img src="https://api.metagraph.sh/api/v1/subnets/1/badge.svg?metric=uptime" alt="SN1 uptime" />
+</a>
+```
+
+Every subnet detail page has a live preview + copyable snippet under its **Embeddable badge** section (metric and format pickers included) — the fastest way to get the exact URL right without hand-assembling query params.
+
+<Callout title="Cache-friendly by design">
+  Responses are cached for 3600s at the edge with `stale-while-revalidate=3600` and a weak `ETag` —
+  a README embed, or GitHub's own camo proxy re-fetching it, costs close to nothing once warm.
+  Conditional requests (`If-None-Match`) get a bodyless `304` with the same validators.
+</Callout>
+
+Not part of the typed SDKs — plain HTTP, cacheable, no auth. Related: [Feeds](/docs/feeds) for a subnet's change history; [For agents](/agents) for the machine-readable index.
