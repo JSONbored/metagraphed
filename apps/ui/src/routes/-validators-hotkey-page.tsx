@@ -452,8 +452,9 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                 kind="validator"
                 id={hotkey}
                 label={hasIdentity ? displayName : "this validator"}
+                iconOnly
               />
-              <ShareButton bare />
+              <ShareButton bare iconOnly />
             </ActionBar>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner

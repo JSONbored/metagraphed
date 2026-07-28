@@ -293,8 +293,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         actions={
           <>
             <ActionBar>
-              <WatchStarButton kind="account" id={ss58} label="this account" />
-              <ShareButton bare />
+              <WatchStarButton kind="account" id={ss58} label="this account" iconOnly />
+              <ShareButton bare iconOnly />
             </ActionBar>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner

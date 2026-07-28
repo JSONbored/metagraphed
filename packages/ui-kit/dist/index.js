@@ -3862,7 +3862,7 @@ function StatTile({
       tintBorderOnly: true,
       tone,
       className,
-      bodyClassName: "flex items-center gap-4",
+      bodyClassName: "flex flex-wrap items-center gap-x-3 gap-y-2",
       children: [
         Icon ? /* @__PURE__ */ jsx(
           Icon,
@@ -3874,33 +3874,16 @@ function StatTile({
             )
           }
         ) : null,
-        /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
+        /* @__PURE__ */ jsxs("div", { className: "min-w-[6rem] flex-1", children: [
           /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 mg-type-micro text-ink-muted", children: [
-            /* @__PURE__ */ jsx("span", { className: truncate ? "truncate" : "leading-tight", children: eyebrow }),
+            /* @__PURE__ */ jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
             tooltip ? /* @__PURE__ */ jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
           ] }),
-          /* @__PURE__ */ jsxs(
-            "div",
-            {
-              className: classNames(
-                "mt-1 flex min-w-0 gap-1.5",
-                truncate ? "items-baseline" : "flex-wrap items-baseline"
-              ),
-              children: [
-                /* @__PURE__ */ jsx("span", { className: "shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
-                hint ? /* @__PURE__ */ jsx(
-                  "span",
-                  {
-                    className: classNames(
-                      "min-w-0 mg-type-data-sm text-ink-muted",
-                      truncate ? "truncate" : ""
-                    ),
-                    children: hint
-                  }
-                ) : null
-              ]
-            }
-          )
+          /* @__PURE__ */ jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
+            /* @__PURE__ */ jsx("span", { className: "shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
+            hint && truncate ? /* @__PURE__ */ jsx("span", { className: "min-w-0 truncate mg-type-data-sm text-ink-muted", children: hint }) : null
+          ] }),
+          hint && !truncate ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 mg-type-data-sm leading-tight text-ink-muted", children: hint }) : null
         ] }),
         chart ? /* @__PURE__ */ jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
       ]
