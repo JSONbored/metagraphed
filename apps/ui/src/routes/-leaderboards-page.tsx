@@ -29,7 +29,7 @@ import type { leaderboardsSearchSchema } from "./leaderboards";
 
 type LeaderboardWindow = z.infer<typeof leaderboardsSearchSchema>["window"];
 
-const TH = "px-4 py-2.5 mg-type-caption text-[10px] text-ink-muted";
+const TH = "px-4 py-2.5 mg-type-caption text-ink-muted";
 const WINDOW_BTN_ACTIVE =
   "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 mg-type-label uppercase text-accent-text";
 const WINDOW_BTN =

@@ -227,7 +227,7 @@ function MobileField({ label, value }: { label: string; value: string }) {
   );
 }
 
-const TH = "mg-type-caption px-3 py-2 text-[10px] text-ink-muted";
+const TH = "mg-type-caption px-3 py-2 text-ink-muted";
 
 function nominatorsQueryParams(search: ValidatorNominatorsSearch): Record<string, string | number> {
   const params: Record<string, string | number> = {
@@ -630,7 +630,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="mg-type-caption text-[10px] text-ink-muted sm:w-20 sm:shrink-0">{label}</dt>
+      <dt className="mg-type-caption text-ink-muted sm:w-20 sm:shrink-0">{label}</dt>
       <dd className="min-w-0 w-full sm:flex-1">{children}</dd>
     </div>
   );

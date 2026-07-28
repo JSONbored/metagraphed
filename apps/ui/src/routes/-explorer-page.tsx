@@ -455,8 +455,8 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
                       <span
                         className={
                           active
-                            ? "mg-type-caption truncate text-[10px] text-accent"
-                            : "mg-type-caption truncate text-[10px] text-ink-muted"
+                            ? "mg-type-caption truncate text-accent"
+                            : "mg-type-caption truncate text-ink-muted"
                         }
                       >
                         {c.call_module}
@@ -522,7 +522,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
             const label = r.method ? `${r.pallet}.${r.method}` : r.pallet;
             return (
               <li key={label} className="grid grid-cols-[10rem_1fr_auto] items-center gap-2">
-                <span className="mg-type-caption truncate text-[10px] text-ink-muted" title={label}>
+                <span className="mg-type-caption truncate text-ink-muted" title={label}>
                   {label}
                 </span>
                 <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -603,7 +603,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
             <StakeFlowMetric label="Staked" value={formatTao(net.total_staked_tao)} />
             <StakeFlowMetric label="Unstaked" value={formatTao(net.total_unstaked_tao)} />
           </div>
-          <div className="mg-type-caption flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
+          <div className="mg-type-caption flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="text-health-ok">{formatNumber(net.gaining)} gaining</span>
             <span className="text-health-down">{formatNumber(net.losing)} losing</span>
             <span className="text-ink-muted">{formatNumber(net.flat)} flat</span>
@@ -628,9 +628,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="mg-type-caption truncate text-[10px] text-ink-muted">
-                      SN{s.netuid}
-                    </span>
+                    <span className="mg-type-caption truncate text-ink-muted">SN{s.netuid}</span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
                         className="absolute inset-y-0 left-0 rounded-full"
@@ -710,9 +708,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="mg-type-caption truncate text-[10px] text-ink-muted">
-                      SN{s.netuid}
-                    </span>
+                    <span className="mg-type-caption truncate text-ink-muted">SN{s.netuid}</span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
                         className="absolute inset-y-0 left-0 rounded-full"
@@ -1221,9 +1217,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="mg-type-caption truncate text-[10px] text-ink-muted">
-                      SN{s.netuid}
-                    </span>
+                    <span className="mg-type-caption truncate text-ink-muted">SN{s.netuid}</span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
                         className="absolute inset-y-0 left-0 rounded-full"
