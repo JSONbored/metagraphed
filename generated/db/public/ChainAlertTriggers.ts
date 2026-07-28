@@ -37,6 +37,8 @@ export default interface ChainAlertTriggers {
   last_matched_at: string | null;
 
   match_count: string;
+
+  owner_ss58: string | null;
 }
 
 /** Represents the initializer for the table public.chain_alert_triggers */
@@ -75,6 +77,8 @@ export interface ChainAlertTriggersInitializer {
 
   /** Default value: 0 */
   match_count?: string;
+
+  owner_ss58?: string | null;
 }
 
 /** Represents the mutator for the table public.chain_alert_triggers */
@@ -110,4 +114,6 @@ export interface ChainAlertTriggersMutator {
   last_matched_at?: string | null;
 
   match_count?: string;
+
+  owner_ss58?: string | null;
 }

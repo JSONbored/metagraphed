@@ -1,9 +1,13 @@
-// Wallet-signature login for the account-gated fullnode RPC cluster (ADR
-// 0021, #6835): challenge issuance/consumption, sr25519 signature
-// verification, and key-management session tokens. This is the identity
-// layer only -- the rpc_accounts upsert and the actual mg_... API key
-// (src/api-keys.mjs, reused unchanged) live in workers/data-api.mjs, the one
-// place with a Postgres binding.
+// Wallet-signature identity primitives, shared by two independent flows:
+// the account-gated fullnode RPC cluster's login (ADR 0021, #6835) and
+// self-serve alert-trigger issuance (#8374). Both need the same shape --
+// challenge issuance/consumption, sr25519 signature verification, and a
+// stateless signed token -- domain-separated by `purpose` so a signature
+// proving one can't be replayed as proof of the other (see the
+// WalletChallengePurpose comment below). This is the identity layer only --
+// the rpc_accounts upsert and the actual mg_... API key (src/api-keys.mjs,
+// reused unchanged) live in workers/data-api.mjs, the one place with a
+// Postgres binding.
 //
 // sr25519 verification is @scure/sr25519's `verify` -- a pure-JS, audited
 // implementation (@noble/curves + @noble/hashes only, no WASM), confirmed
@@ -23,6 +27,21 @@ export const WALLET_CHALLENGE_TTL_SECONDS = 300;
 // Key-management session lifetime (ADR 0021 section 3's "signed token,
 // simplest correct thing" decision -- see createSessionToken below).
 export const SESSION_TTL_SECONDS = 3600;
+// #8374: a signature is proof of "this ss58 signed THIS message", nothing
+// more -- without a purpose in the message text, a signature captured for
+// one flow (e.g. the RPC key-management login below) would verify just as
+// well against a different flow's challenge for the same ss58, since both
+// would otherwise sign an identical string. `purpose` domain-separates the
+// message (and the KV nonce's own key, so two purposes issued concurrently
+// for the same address don't clobber each other) per call site. The default
+// (`"login"`) reproduces the original pre-#8374 message/key byte-for-byte --
+// existing sessions and in-flight challenges for the RPC login flow are
+// unaffected by this change.
+export type WalletChallengePurpose = "login" | "watch";
+// 90 days -- long enough that a subscriber doesn't re-verify every visit,
+// short enough that a compromised token has a bounded blast radius; renewal
+// is just re-running the challenge/verify flow, not a distinct code path.
+export const WATCH_TOKEN_TTL_SECONDS = 90 * 24 * 3600;
 
 type FailureResult = { ok: false; code: string };
 
@@ -43,9 +62,27 @@ function hexToBytes(hex: string): Uint8Array {
 /** The exact bytes a wallet extension signs (e.g. @polkadot/extension-dapp's
  * signRaw({ type: "bytes" })) -- deterministic from ss58 + nonce, so the
  * server reconstructs it for verification instead of storing the message
- * itself (only the nonce is persisted). */
-export function walletChallengeMessage(ss58: string, nonce: string): string {
-  return `metagraphed wallet login\nss58: ${ss58}\nnonce: ${nonce}`;
+ * itself (only the nonce is persisted). Each purpose gets its own fixed,
+ * human-readable preamble so a signature is legibly scoped to what it's
+ * actually authorizing (see the module-level purpose comment above). */
+export function walletChallengeMessage(
+  ss58: string,
+  nonce: string,
+  purpose: WalletChallengePurpose = "login",
+): string {
+  const preamble =
+    purpose === "watch"
+      ? "metagraph.sh watch verification"
+      : "metagraphed wallet login";
+  return `${preamble}\nss58: ${ss58}\nnonce: ${nonce}`;
+}
+
+function challengeKvKey(ss58: string, purpose: WalletChallengePurpose): string {
+  // "login" keeps the original, unprefixed key exactly -- byte-for-byte
+  // compatible with any challenge already in flight when this shipped.
+  return purpose === "login"
+    ? `${CHALLENGE_KV_PREFIX}${ss58}`
+    : `${CHALLENGE_KV_PREFIX}${purpose}:${ss58}`;
 }
 
 /** Issues a fresh single-use nonce for `ss58` in KV. Returns a discriminated
@@ -55,6 +92,7 @@ export function walletChallengeMessage(ss58: string, nonce: string): string {
 export async function issueWalletChallenge(
   env: Env,
   ss58: string,
+  purpose: WalletChallengePurpose = "login",
 ): Promise<
   FailureResult | { ok: true; message: string; expiresInSeconds: number }
 > {
@@ -67,12 +105,12 @@ export async function issueWalletChallenge(
     return { ok: false, code: "challenge_store_unavailable" };
   }
   const nonce = randomHex(16);
-  await kv.put(`${CHALLENGE_KV_PREFIX}${ss58}`, nonce, {
+  await kv.put(challengeKvKey(ss58, purpose), nonce, {
     expirationTtl: WALLET_CHALLENGE_TTL_SECONDS,
   });
   return {
     ok: true,
-    message: walletChallengeMessage(ss58, nonce),
+    message: walletChallengeMessage(ss58, nonce, purpose),
     expiresInSeconds: WALLET_CHALLENGE_TTL_SECONDS,
   };
 }
@@ -88,6 +126,7 @@ export async function verifyWalletChallenge(
   env: Env,
   ss58: string,
   signatureHex: unknown,
+  purpose: WalletChallengePurpose = "login",
 ): Promise<FailureResult | { ok: true }> {
   const decoded = decodeSs58(ss58);
   if (!decoded || decoded.prefix !== DEFAULT_SS58_PREFIX) {
@@ -97,7 +136,7 @@ export async function verifyWalletChallenge(
   if (!kv?.get) {
     return { ok: false, code: "challenge_store_unavailable" };
   }
-  const key = `${CHALLENGE_KV_PREFIX}${ss58}`;
+  const key = challengeKvKey(ss58, purpose);
   const nonce = await kv.get(key);
   if (!nonce) {
     return { ok: false, code: "challenge_expired_or_missing" };
@@ -110,7 +149,9 @@ export async function verifyWalletChallenge(
   ) {
     return { ok: false, code: "invalid_signature" };
   }
-  const message = new TextEncoder().encode(walletChallengeMessage(ss58, nonce));
+  const message = new TextEncoder().encode(
+    walletChallengeMessage(ss58, nonce, purpose),
+  );
   let verified: boolean;
   try {
     verified = sr25519Verify(
@@ -205,4 +246,69 @@ export async function verifySessionToken(
   }
   if (payload.exp < Math.floor(Date.now() / 1000)) return null;
   return { accountId: payload.account_id, ss58: payload.ss58 };
+}
+
+// --- watch trigger-creation tokens (#8374) --------------------------------
+// Same stateless HMAC-signed shape as createSessionToken/verifySessionToken
+// above (no store, nothing to look up or revoke early -- a leaked token's
+// damage is bounded to its TTL and to minting alert triggers for the one
+// ss58 it names), but a DISTINCT secret from WALLET_SESSION_SECRET and a
+// 90-day TTL instead of 1h: this token authorizes trigger creation over
+// months, not a single key-management dashboard visit, so it must not be
+// forgeable from (or accepted by) the session-token verifier and vice versa.
+
+export async function createTriggerToken(
+  secret: string,
+  { ss58 }: { ss58: string },
+): Promise<string> {
+  const payload = {
+    ss58,
+    purpose: "trigger" as const,
+    exp: Math.floor(Date.now() / 1000) + WATCH_TOKEN_TTL_SECONDS,
+  };
+  const encoded = base64UrlEncodeBytes(
+    new TextEncoder().encode(JSON.stringify(payload)),
+  );
+  const signature = await signPayload(secret, encoded);
+  return `${encoded}.${signature}`;
+}
+
+/** Verifies a trigger-creation token's signature, expiry, purpose tag, and
+ * shape. Returns `{ ss58 }` on success, null on anything else. The
+ * `purpose === "trigger"` check (not just a shape check) means a
+ * session-shaped token signed with a DIFFERENT secret would already fail the
+ * signature compare, but it also stops a same-secret confusion if this
+ * module ever grows a third stateless token kind sharing a signing key. */
+export async function verifyTriggerToken(
+  secret: string,
+  token: unknown,
+): Promise<{ ss58: string } | null> {
+  if (typeof token !== "string") return null;
+  const dot = token.lastIndexOf(".");
+  if (dot === -1) return null;
+  const encoded = token.slice(0, dot);
+  const signature = token.slice(dot + 1);
+  if (!encoded || !signature) return null;
+
+  const expected = await signPayload(secret, encoded);
+  if (!timingSafeEqual(signature, expected)) return null;
+
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(
+      new TextDecoder().decode(base64UrlDecodeToBytes(encoded)),
+    );
+  } catch {
+    return null;
+  }
+  if (
+    !payload ||
+    typeof payload.ss58 !== "string" ||
+    payload.purpose !== "trigger" ||
+    typeof payload.exp !== "number"
+  ) {
+    return null;
+  }
+  if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+  return { ss58: payload.ss58 };
 }

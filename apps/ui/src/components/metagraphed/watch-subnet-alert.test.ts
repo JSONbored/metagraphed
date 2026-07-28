@@ -25,9 +25,24 @@ describe("WatchSubnetAlert posts a netuid-scoped trigger", () => {
     expect(body).toContain("...(vars.eventKind ? { event_kind: vars.eventKind } : {})");
   });
 
-  it("POSTs to the shared alert-triggers endpoint with the create-token header", () => {
+  it("POSTs to the shared alert-triggers endpoint, choosing the operator or wallet-verified header by source", () => {
     expect(subnetForm).toContain('"/api/v1/alerts/triggers"');
-    expect(subnetForm).toContain("[CREATE_TOKEN_HEADER]: vars.token");
+    // #8374: the header is now picked at request time -- CREATE_TOKEN_HEADER
+    // for an operator-issued token, WATCH_TRIGGER_TOKEN_HEADER for a
+    // wallet-verified one -- rather than always the operator header.
+    expect(subnetForm).toContain(
+      "[vars.usingWalletToken ? WATCH_TRIGGER_TOKEN_HEADER : CREATE_TOKEN_HEADER]: vars.token",
+    );
+  });
+});
+
+describe("WatchSubnetAlert #8374 wallet-verified token wiring", () => {
+  it("wires WalletVerifyForToken's callback to auto-fill the token field and track its source", () => {
+    expect(subnetForm).toContain("<WalletVerifyForToken");
+    expect(subnetForm).toContain("setUsingWalletToken(true)");
+    // Editing the token field manually falls back off the wallet-verified
+    // path -- the header choice above must follow the field's real source.
+    expect(subnetForm).toContain("setUsingWalletToken(false)");
   });
 });
 

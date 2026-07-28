@@ -3256,6 +3256,8 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
     "/api/v1/ask", // grounded-RAG POST, degrades to 503; not a GET artifact
     "/api/v1/auth/wallet/challenge", // ADR 0021 wallet login: stateful POST action (KV nonce), no backing artifact
     "/api/v1/auth/wallet/verify", // ADR 0021 wallet login: stateful POST action (Postgres upsert + session mint), no backing artifact
+    "/api/v1/watch/challenges", // #8374 wallet-verified watch-token issuance: stateful POST action (KV nonce), no backing artifact
+    "/api/v1/watch/tokens", // #8374 wallet-verified watch-token issuance: stateful POST action (stateless token mint), no backing artifact
     "/api/v1/chain/stream", // realtime firehose (#4982): SSE or WS, not a JSON artifact
     "/api/v1/events", // SSE change feed (text/event-stream)
     "/api/v1/feeds/", // SSE/webhook feed prefix

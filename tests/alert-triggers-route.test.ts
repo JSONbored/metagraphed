@@ -12,6 +12,7 @@
 // needs to verify was actually sent.
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
+import { createTriggerToken } from "../src/wallet-auth.ts";
 import type { Row } from "./row-type.ts";
 
 const mockQueue = vi.hoisted(() => ({ current: [] as Row[][] }));
@@ -69,10 +70,12 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 const CREATE_TOKEN = "test-alert-trigger-create-token";
 const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
+const WATCH_SECRET = "test-watch-trigger-token-secret";
 const env: Env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+  WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
 } as unknown as Env;
 
 beforeEach(() => {
@@ -357,6 +360,102 @@ test("create: skips rate limiting entirely when ALERT_TRIGGER_CREATE_RATE_LIMITE
     }),
   );
   assert.equal(res.status, 201);
+});
+
+// --- POST /api/v1/alerts/triggers (create) -- wallet-verified path (#8374) --
+
+const TEST_SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+test("create: 400 when both the operator create-token and the watch-trigger-token headers are present", async () => {
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: {
+        "x-alert-trigger-create-token": CREATE_TOKEN,
+        "x-watch-trigger-token": "irrelevant",
+      },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("create: 503 when a watch token is presented but WATCH_TRIGGER_TOKEN_SECRET is not provisioned", async () => {
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": "irrelevant" },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+    { ...env, WATCH_TRIGGER_TOKEN_SECRET: undefined } as unknown as Env,
+  );
+  assert.equal(res.status, 503);
+});
+
+test("create: 401 when the watch token is invalid, expired, or signed with a different secret", async () => {
+  const wrongSecretToken = await createTriggerToken("different-secret", {
+    ss58: TEST_SS58,
+  });
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": wrongSecretToken },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("create: 201 with a valid watch token -- counts active triggers for the address first, then inserts with owner_ss58 bound", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([{ count: 0 }]); // the WATCH_TRIGGERS_MAX_PER_ADDRESS count query
+  mockQueue.current.push([row({ owner_ss58: TEST_SS58 })]); // the INSERT
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": token },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+  );
+  assert.equal(res.status, 201);
+  const body = (await res.json()) as Row;
+  assert.equal(body.owner_ss58, TEST_SS58);
+  assert.equal(sqlCalls.length, 2);
+  assert.match(sqlCalls[0].text, /SELECT COUNT/);
+  assert.ok(sqlCalls[0].values.includes(TEST_SS58));
+  assert.match(sqlCalls[1].text, /INSERT INTO chain_alert_triggers/);
+  assert.ok(sqlCalls[1].values.includes(TEST_SS58));
+});
+
+test("create: 403 when the address already has WATCH_TRIGGERS_MAX_PER_ADDRESS active triggers -- never reaches the INSERT", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([{ count: 5 }]);
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": token },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+  );
+  assert.equal(res.status, 403);
+  assert.equal(sqlCalls.length, 1); // only the COUNT query, no INSERT
+});
+
+test("create: the IP rate limiter still applies on the watch-token path", async () => {
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  const limiter = { limit: vi.fn(async () => ({ success: false })) };
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": token },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+    { ...env, ALERT_TRIGGER_CREATE_RATE_LIMITER: limiter },
+  );
+  assert.equal(res.status, 429);
+  assert.equal(sqlCalls.length, 0);
 });
 
 // --- GET /api/v1/alerts/triggers/{id} -----------------------------------------

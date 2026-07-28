@@ -1129,6 +1129,72 @@ async function handleWalletAuthProxy(request: Request, env: Env) {
   return dataResponse(env, body, upstream.status);
 }
 
+// #8374: distinct error-code family from walletAuthErrorCode above, same
+// reasoning -- a distinct surface's failures get their own code namespace
+// even though the status-to-shape mapping happens to be identical.
+function watchAuthErrorCode(status: number) {
+  switch (status) {
+    case 400:
+      return "watch_auth_invalid";
+    case 401:
+      return "watch_auth_unauthorized";
+    case 403:
+      return "watch_auth_limit_reached";
+    case 413:
+      return "watch_auth_payload_too_large";
+    case 429:
+      return "watch_auth_rate_limited";
+    case 502:
+    case 503:
+      return "watch_auth_unavailable";
+    default:
+      return "watch_auth_request_failed";
+  }
+}
+
+// Proxies POST /api/v1/watch/challenges and /tokens (#8374) to the DATA_API
+// service binding -- same forwarding + envelope-translation boundary as
+// handleWalletAuthProxy above, kept as its own function (rather than a
+// shared helper) matching this file's existing per-surface-proxy
+// convention (see handleAlertTriggersProxy / handleWalletAuthProxy).
+async function handleWatchAuthProxy(request: Request, env: Env) {
+  if (!env.DATA_API) {
+    return errorResponse(
+      "watch_auth_unavailable",
+      "The watch-alert-issuance tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body: Row;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "watch_auth_unavailable",
+      "The watch-alert-issuance tier returned an unreadable response.",
+      502,
+    );
+  }
+  if (!upstream.ok) {
+    const extraHeaders: Record<string, string> = {};
+    for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
+      const value = upstream.headers.get(name);
+      if (value != null) extraHeaders[name] = value;
+    }
+    return errorResponse(
+      watchAuthErrorCode(upstream.status),
+      typeof body?.error === "string"
+        ? body.error
+        : "The watch-alert-issuance tier returned an error.",
+      upstream.status,
+      {},
+      extraHeaders,
+    );
+  }
+  return dataResponse(env, body, upstream.status);
+}
+
 function accountKeysErrorCode(status: number) {
   switch (status) {
     case 400:
@@ -1677,6 +1743,15 @@ export async function handleRequest(
     url.pathname === "/api/v1/auth/wallet/verify"
   ) {
     return handleWalletAuthProxy(request, env);
+  }
+  // #8374: self-serve wallet-verified alert-trigger issuance -- POST-only,
+  // same "must run before the read-only method gate" reasoning as the
+  // wallet-login pair immediately above.
+  if (
+    url.pathname === "/api/v1/watch/challenges" ||
+    url.pathname === "/api/v1/watch/tokens"
+  ) {
+    return handleWatchAuthProxy(request, env);
   }
   if (url.pathname.startsWith("/api/v1/keys")) {
     return handleAccountKeysProxy(request, env);
@@ -3357,6 +3432,8 @@ function isMainnetOnlyApiPath(pathname: string) {
     pathname.startsWith("/api/v1/alerts/triggers") ||
     pathname === "/api/v1/auth/wallet/challenge" ||
     pathname === "/api/v1/auth/wallet/verify" ||
+    pathname === "/api/v1/watch/challenges" ||
+    pathname === "/api/v1/watch/tokens" ||
     pathname.startsWith("/api/v1/keys") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||

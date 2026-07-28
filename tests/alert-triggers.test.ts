@@ -18,6 +18,8 @@ import {
   ownerAlertTriggerView,
   triggerMatchesEvent,
   validateAlertTriggerInput,
+  WATCH_TRIGGER_TOKEN_HEADER,
+  WATCH_TRIGGERS_MAX_PER_ADDRESS,
 } from "../src/alert-triggers.ts";
 import type { EvaluatorAlertTrigger } from "../src/alert-triggers.ts";
 import type { Row } from "./row-type.ts";
@@ -33,6 +35,8 @@ test("header/limit constants are the documented values", () => {
     "x-alert-triggers-internal-token",
   );
   assert.equal(ALERT_TRIGGER_MAX_BODY_BYTES, 8192);
+  assert.equal(WATCH_TRIGGER_TOKEN_HEADER, "x-watch-trigger-token");
+  assert.equal(WATCH_TRIGGERS_MAX_PER_ADDRESS, 5);
 });
 
 // --- isValidAlertDestination ------------------------------------------------
@@ -827,6 +831,20 @@ test("ownerAlertTriggerView: strips owner_token and normalizes nullable fields",
   assert.equal("owner_token" in view, false);
   assert.equal(view.min_amount_tao, 100.5);
   assert.equal(view.netuid, 7);
+  assert.equal(view.owner_ss58, null);
+});
+
+test("ownerAlertTriggerView: #8374 echoes owner_ss58 when the row was wallet-created", () => {
+  const view = ownerAlertTriggerView({
+    id: 1,
+    channel: "email",
+    destination: "a@b.com",
+    owner_ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+  })!;
+  assert.equal(
+    view.owner_ss58,
+    "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+  );
 });
 
 test("ownerAlertTriggerView: a minimal record (every optional field absent) falls back to null/0 defaults", () => {

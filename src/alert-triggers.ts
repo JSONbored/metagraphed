@@ -35,6 +35,15 @@ export const ALERT_TRIGGER_OWNER_TOKEN_HEADER = "x-alert-trigger-owner-token";
 // wholly different capability (read every trigger regardless of owner).
 export const ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER =
   "x-alert-triggers-internal-token";
+// #8374: self-serve alternative to ALERT_TRIGGER_CREATE_TOKEN_HEADER's
+// shared operator secret -- a wallet-verified token (src/wallet-auth.ts's
+// createTriggerToken) presented here binds the created row's owner_ss58 and
+// counts against WATCH_TRIGGERS_MAX_PER_ADDRESS instead of the flat
+// ALERT_TRIGGER_CREATE_RATE_LIMIT. Either header authorizes creation; a
+// request may present at most one (see resolveAlertTriggerCreateAuth).
+export const WATCH_TRIGGER_TOKEN_HEADER = "x-watch-trigger-token";
+// Epic T6's decided cap: "5 active triggers per verified address."
+export const WATCH_TRIGGERS_MAX_PER_ADDRESS = 5;
 
 // Matches MAX_WEBHOOK_BODY_BYTES (workers/config.mjs) -- generous over this
 // shape's actual size (a handful of short scalar fields) without inviting a
@@ -512,6 +521,9 @@ export interface OwnerAlertTriggerView {
   updated_at: unknown;
   last_matched_at: unknown;
   match_count: unknown;
+  // #8374: null for an operator-token-created trigger (no wallet involved);
+  // the verified ss58 for one created via a WATCH_TRIGGER_TOKEN_HEADER.
+  owner_ss58: unknown;
 }
 
 // Strips owner_token before a record is returned to its owner. Every other
@@ -539,6 +551,7 @@ export function ownerAlertTriggerView(
     updated_at: record.updated_at ?? null,
     last_matched_at: record.last_matched_at ?? null,
     match_count: record.match_count ?? 0,
+    owner_ss58: record.owner_ss58 ?? null,
   };
 }
 

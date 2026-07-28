@@ -9,12 +9,15 @@ import { encodeAccountId32 } from "../src/ss58.ts";
 import { signPayload } from "../src/webhooks.ts";
 import {
   createSessionToken,
+  createTriggerToken,
   issueWalletChallenge,
   SESSION_TTL_SECONDS,
   verifySessionToken,
+  verifyTriggerToken,
   verifyWalletChallenge,
   WALLET_CHALLENGE_TTL_SECONDS,
   walletChallengeMessage,
+  WATCH_TOKEN_TTL_SECONDS,
 } from "../src/wallet-auth.ts";
 import type { Row } from "./row-type.ts";
 
@@ -62,6 +65,26 @@ describe("walletChallengeMessage", () => {
     assert.notEqual(walletChallengeMessage("5Xyz", "nonce1"), base);
     assert.notEqual(walletChallengeMessage("5Abc", "nonce2"), base);
   });
+
+  test("defaults to the original login preamble, unchanged", () => {
+    assert.equal(
+      walletChallengeMessage("5Abc", "nonce1"),
+      walletChallengeMessage("5Abc", "nonce1", "login"),
+    );
+    assert.match(
+      walletChallengeMessage("5Abc", "nonce1"),
+      /^metagraphed wallet login\n/,
+    );
+  });
+
+  test("#8374: the watch purpose gets a distinct preamble, so a login signature can't double as a watch-token signature", () => {
+    const login = walletChallengeMessage("5Abc", "nonce1", "login");
+    const watch = walletChallengeMessage("5Abc", "nonce1", "watch");
+    assert.notEqual(login, watch);
+    assert.match(watch, /^metagraph\.sh watch verification\n/);
+    assert.match(watch, /5Abc/);
+    assert.match(watch, /nonce1/);
+  });
 });
 
 describe("issueWalletChallenge", () => {
@@ -100,6 +123,41 @@ describe("issueWalletChallenge", () => {
     const first = (await issueWalletChallenge(env, wallet.ss58)) as Row;
     const second = (await issueWalletChallenge(env, wallet.ss58)) as Row;
     assert.notEqual(first.message, second.message);
+  });
+
+  test("#8374: a login challenge and a watch challenge for the same ss58 don't clobber each other's KV nonce", async () => {
+    const wallet = makeTestWallet(12);
+    const kv = createFakeKv();
+    const env = { METAGRAPH_CONTROL: kv } as unknown as Env;
+    const login = (await issueWalletChallenge(
+      env,
+      wallet.ss58,
+      "login",
+    )) as Row;
+    const watch = (await issueWalletChallenge(
+      env,
+      wallet.ss58,
+      "watch",
+    )) as Row;
+    // Two distinct KV keys, both still present -- issuing "watch" did not
+    // evict "login"'s pending challenge.
+    assert.equal(kv._store.size, 2);
+    assert.notEqual(login.message, watch.message);
+    // Both are still independently verifiable.
+    const loginSig = bytesToHex(
+      sr25519Sign(wallet.secretKey, new TextEncoder().encode(login.message)),
+    );
+    assert.deepEqual(
+      await verifyWalletChallenge(env, wallet.ss58, loginSig, "login"),
+      { ok: true },
+    );
+    const watchSig = bytesToHex(
+      sr25519Sign(wallet.secretKey, new TextEncoder().encode(watch.message)),
+    );
+    assert.deepEqual(
+      await verifyWalletChallenge(env, wallet.ss58, watchSig, "watch"),
+      { ok: true },
+    );
   });
 });
 
@@ -174,6 +232,29 @@ describe("verifyWalletChallenge", () => {
       bytesToHex(signature),
     )) as Row;
     assert.deepEqual(result, { ok: true });
+  });
+
+  test("#8374: a signature over a watch-purpose challenge does not verify against a login-purpose challenge sharing the same nonce text, and vice versa", async () => {
+    const wallet = makeTestWallet(13);
+    const env = { METAGRAPH_CONTROL: createFakeKv() } as unknown as Env;
+    const watchChallenge = (await issueWalletChallenge(
+      env,
+      wallet.ss58,
+      "watch",
+    )) as Row;
+    const watchSignature = bytesToHex(
+      sr25519Sign(
+        wallet.secretKey,
+        new TextEncoder().encode(watchChallenge.message),
+      ),
+    );
+    // Verifying that signature against the "login" purpose fails outright --
+    // there's no pending login challenge for this ss58 at all, since only a
+    // "watch" one was ever issued (the KV keys are namespaced separately).
+    assert.deepEqual(
+      await verifyWalletChallenge(env, wallet.ss58, watchSignature, "login"),
+      { ok: false, code: "challenge_expired_or_missing" },
+    );
   });
 
   test("the nonce is single-use -- a second verify with the same signature fails", async () => {
@@ -353,5 +434,101 @@ describe("createSessionToken / verifySessionToken", () => {
 
   test("SESSION_TTL_SECONDS is a sane positive duration", () => {
     assert.ok(SESSION_TTL_SECONDS > 0);
+  });
+});
+
+describe("createTriggerToken / verifyTriggerToken (#8374)", () => {
+  const SECRET = "test-trigger-secret";
+
+  test("round-trips ss58", async () => {
+    const token = await createTriggerToken(SECRET, { ss58: "5Abc" });
+    const verified = await verifyTriggerToken(SECRET, token);
+    assert.deepEqual(verified, { ss58: "5Abc" });
+  });
+
+  test("is not a plain concatenation -- has exactly one signature suffix", async () => {
+    const token = await createTriggerToken(SECRET, { ss58: "5X" });
+    assert.equal(token.split(".").length, 2);
+  });
+
+  test("rejects a token signed with a different secret", async () => {
+    const token = await createTriggerToken(SECRET, { ss58: "5X" });
+    assert.equal(await verifyTriggerToken("wrong-secret", token), null);
+  });
+
+  test("rejects a tampered payload segment", async () => {
+    const token = await createTriggerToken(SECRET, { ss58: "5X" });
+    const [encoded, signature] = token.split(".");
+    const tampered = `${encoded}x.${signature}`;
+    assert.equal(await verifyTriggerToken(SECRET, tampered), null);
+  });
+
+  test("rejects a tampered signature segment", async () => {
+    const token = await createTriggerToken(SECRET, { ss58: "5X" });
+    const [encoded, signature] = token.split(".");
+    const flipped =
+      signature[0] === "a"
+        ? "b" + signature.slice(1)
+        : "a" + signature.slice(1);
+    assert.equal(
+      await verifyTriggerToken(SECRET, `${encoded}.${flipped}`),
+      null,
+    );
+  });
+
+  test("rejects malformed tokens", async () => {
+    assert.equal(await verifyTriggerToken(SECRET, ""), null);
+    assert.equal(await verifyTriggerToken(SECRET, null), null);
+    assert.equal(await verifyTriggerToken(SECRET, undefined), null);
+    assert.equal(await verifyTriggerToken(SECRET, "no-dot-here"), null);
+    assert.equal(await verifyTriggerToken(SECRET, "."), null);
+  });
+
+  test("rejects an expired token", async () => {
+    const payload = { ss58: "5Expired", purpose: "trigger", exp: 0 };
+    const encoded = btoa(JSON.stringify(payload))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    const signature = await signPayload(SECRET, encoded);
+    const token = `${encoded}.${signature}`;
+    assert.equal(await verifyTriggerToken(SECRET, token), null);
+  });
+
+  test("rejects a well-signed token whose payload segment isn't valid base64/JSON", async () => {
+    const encoded = "!!!not-base64-or-json!!!";
+    const signature = await signPayload(SECRET, encoded);
+    assert.equal(
+      await verifyTriggerToken(SECRET, `${encoded}.${signature}`),
+      null,
+    );
+  });
+
+  test("rejects a well-signed but shape-invalid payload", async () => {
+    const encoded = btoa(JSON.stringify({ nope: true }))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    const signature = await signPayload(SECRET, encoded);
+    assert.equal(
+      await verifyTriggerToken(SECRET, `${encoded}.${signature}`),
+      null,
+    );
+  });
+
+  test("rejects a well-signed session token presented as a trigger token (purpose confusion)", async () => {
+    // A session token has no `purpose` field at all -- shares this module's
+    // signing primitive, so a token minted for one kind must not verify as
+    // the other even under the SAME secret (defense in depth on top of the
+    // fact that these ship with distinct secrets in production).
+    const sessionToken = await createSessionToken(SECRET, {
+      accountId: 1,
+      ss58: "5X",
+    });
+    assert.equal(await verifyTriggerToken(SECRET, sessionToken), null);
+  });
+
+  test("WATCH_TOKEN_TTL_SECONDS is 90 days", () => {
+    assert.equal(WATCH_TOKEN_TTL_SECONDS, 90 * 24 * 3600);
   });
 });
