@@ -1,9 +1,9 @@
 // Unit tests for wallet-signature login + self-serve fullnode/freemium API
-// keys (workers/data-api.mjs's handleWallet*/handleAccountKeys*/
+// keys (workers/data-api.ts's handleWallet*/handleAccountKeys*/
 // handleApiKeyVerify/handleAccountTierPromote functions, reworked onto Unkey
 // 2026-07-19). A dedicated test file (not folded into the already
-// 7500+-line tests/data-api.test.mjs), mirroring
-// tests/alert-triggers-route.test.mjs's shape: its OWN postgres mock (a
+// 7500+-line tests/data-api.test.ts), mirroring
+// tests/alert-triggers-route.test.ts's shape: its OWN postgres mock (a
 // simple per-test queue), scoped only to this file (vi.mock is
 // per-test-file). Unkey's own HTTP calls (src/unkey-client.ts) are stubbed
 // via global fetch, same per-test-queue shape as the postgres mock.

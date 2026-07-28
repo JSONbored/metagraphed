@@ -20,14 +20,14 @@ import type { Row } from "./row-type.ts";
 // lists real artifact JSON to schema-validate, which is why this file is
 // pinned to serial execution (see package.json's test:ci exclude list): under
 // vitest's default parallel file execution, this test's transient fixture
-// write/cleanup raced validate-error-messages.test.mjs's own (concurrent)
+// write/cleanup raced validate-error-messages.test.ts's own (concurrent)
 // validate-schemas.ts invocation scanning the same directory, an
 // intermittent ENOENT once this test's afterEach deleted the fixture before
-// the other process finished reading it. validate-error-messages.test.mjs
+// the other process finished reading it. validate-error-messages.test.ts
 // itself is now ALSO pinned to serial execution (2026-07-17) -- it mutates a
 // real registry/subnets/*.json file in place for its validate-schemas.ts
 // enum-error-message test, which was still racing OTHER parallel full-
-// registry scans (e.g. validate-surface-duplicate-url.test.mjs) even after
+// registry scans (e.g. validate-surface-duplicate-url.test.ts) even after
 // this fix landed for the public-safety-vs-validate-error-messages pair
 // specifically.
 const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");

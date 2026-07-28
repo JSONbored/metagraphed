@@ -1,4 +1,4 @@
-// Branch-coverage tests for workers/request-handlers/rpc-proxy.mjs: drives the
+// Branch-coverage tests for workers/request-handlers/rpc-proxy.ts: drives the
 // malformed-input fallbacks, error envelopes, cache-policy arms, the failover
 // edge branches (truncated/no-tee bodies, empty endpoint list), and the
 // usage-telemetry `?? null` arms that the primary suite leaves uncovered.

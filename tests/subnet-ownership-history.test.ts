@@ -8,14 +8,14 @@ import type { Row } from "./row-type.ts";
 
 // Real-shaped 32-byte AccountId32 raw args (double-wrapped array, matching
 // indexer-rs's dynamic-value dump for a tuple-struct-with-one-field --
-// mirrors tests/chain-event-args.test.mjs's own fixture convention).
+// mirrors tests/chain-event-args.test.ts's own fixture convention).
 const OLD_COLDKEY_BYTES = [
   [
     230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117, 251,
     19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175, 143, 88,
   ],
 ];
-// Same fixture bytes/expected SS58 as tests/chain-event-args.test.mjs's own
+// Same fixture bytes/expected SS58 as tests/chain-event-args.test.ts's own
 // "Balances.Transfer" `to` field (real block 8587754/119).
 const NEW_COLDKEY_BYTES = [
   [

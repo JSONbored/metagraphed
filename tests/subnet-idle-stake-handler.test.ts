@@ -1,7 +1,7 @@
 // Handler tests for GET /api/v1/subnets/{netuid}/idle-stake and
 // GET /api/v1/chain/idle-stake (#6789) — kept in a dedicated file so this PR
 // does not contend with open entity-handler PRs on the shared
-// request-handlers-entities.test.mjs harness (mirrors chain-performance-
+// request-handlers-entities.test.ts harness (mirrors chain-performance-
 // handler.test.mjs's own precedent).
 
 import assert from "node:assert/strict";
@@ -122,7 +122,7 @@ describe("handleChainIdleStake", () => {
   });
 });
 
-describe("workers/api.mjs dispatch", () => {
+describe("workers/api.ts dispatch", () => {
   test("GET /api/v1/subnets/{netuid}/idle-stake reaches handleSubnetIdleStake via SUBNET_IDLE_STAKE_PATH_PATTERN", async () => {
     const res = await handleRequest(
       req(`/api/v1/subnets/${NETUID}/idle-stake`),

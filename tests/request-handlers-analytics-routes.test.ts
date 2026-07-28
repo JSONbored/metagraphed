@@ -1,6 +1,6 @@
-// Direct unit tests for workers/request-handlers/analytics-routes.mjs (#1917).
+// Direct unit tests for workers/request-handlers/analytics-routes.ts (#1917).
 // Exercises trajectory, uptime, leaderboards, and compare without routing
-// through workers/api.mjs.
+// through workers/api.ts.
 
 import assert from "node:assert/strict";
 import { describe, test, beforeEach } from "vitest";
@@ -126,8 +126,8 @@ describe("handleTrajectory", () => {
   });
 
   // formatTrajectory's own row-formatting/sorting logic (ascending by date,
-  // numeric coercion, deltas) is covered directly in tests/analytics.test.mjs
-  // and tests/economics-history.test.mjs -- these handler tests only need to
+  // numeric coercion, deltas) is covered directly in tests/analytics.test.ts
+  // and tests/economics-history.test.ts -- these handler tests only need to
   // prove the Postgres-tier response is served/CSV-formatted as-is.
   test("returns CSV response when ?format=csv is present", async () => {
     const env = postgresTrajectoryEnv([
@@ -362,7 +362,7 @@ describe("handleEconomicsTrends", () => {
 
   // buildEconomicsTrends' own per-day aggregation logic (sums, weighted/median
   // price, null-safety for a day with no reporting subnet) is covered directly
-  // in tests/neuron-history.test.mjs -- these handler tests only need to prove
+  // in tests/neuron-history.test.ts -- these handler tests only need to prove
   // the Postgres-tier response is served/CSV-formatted as-is.
   test("returns CSV response when ?format=csv is requested", async () => {
     const env = postgresEconomicsTrendsEnv(
@@ -558,13 +558,13 @@ describe("handleUptime", () => {
   });
 
   // formatUptime's own row-grouping/rollup logic (per-surface aggregation,
-  // uptime_ratio math) is covered directly in tests/health-serving.test.mjs --
+  // uptime_ratio math) is covered directly in tests/health-serving.test.ts --
   // these handler tests only need to prove the Postgres-tier response is
   // served/CSV-formatted as-is.
   //
   // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag, deliberately
   // left unset in wrangler.jsonc (see handleBulkHealthTrends' own header
-  // comment in analytics.mjs) -- these tests only prove the wiring, not a
+  // comment in analytics.ts) -- these tests only prove the wiring, not a
   // live flip.
   test("flag=postgres serves the DATA_API response", async () => {
     const env = postgresUptimeEnv([]);
@@ -884,7 +884,7 @@ describe("handleCompare", () => {
   // forces every dimension to null when the subnet isn't found in subnetMeta
   // (`entry.health = meta ? ... : null`), that miss silently nulled out a
   // dimension that should have been populated. This is the exact bug behind
-  // metagraphed#7784's intermittent tests/compare.test.mjs CI failure.
+  // metagraphed#7784's intermittent tests/compare.test.ts CI failure.
   test("never reuses another env's cached profiles projection for a different env", async () => {
     const poisonEnv = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {

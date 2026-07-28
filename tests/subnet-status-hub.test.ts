@@ -1,4 +1,4 @@
-// Unit tests for workers/subnet-status-hub.mjs (#6034).
+// Unit tests for workers/subnet-status-hub.ts (#6034).
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {

@@ -1,4 +1,4 @@
-// Unit tests for workers/request-params.mjs — the shared query-parameter parser
+// Unit tests for workers/request-params.ts — the shared query-parameter parser
 // the entity/feed handlers and their D1 loaders now route every `limit`/`offset`/
 // `cursor` read through. Covers the page-size bounds + profiles, the clamp
 // primitives (missing / non-numeric / negative / over-cap / fractional inputs),

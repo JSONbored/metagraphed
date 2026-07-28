@@ -1,6 +1,6 @@
 // Handler tests for GET /api/v1/subnets/{netuid}/stake-transfers — kept in a
 // dedicated file so this PR does not contend with open entity-handler PRs on the
-// shared request-handlers-entities.test.mjs harness.
+// shared request-handlers-entities.test.ts harness.
 //
 // #4909 D1 retirement: the "happy path" describe block that used to live here
 // exercised the D1-served account_events query directly (a capturing D1 stub +

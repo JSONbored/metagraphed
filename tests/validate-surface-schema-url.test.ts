@@ -1,7 +1,7 @@
 // Regression coverage for #6331: validate-surface.ts now fails when a
 // surface declares schema_status: "machine-readable" with no schema_url —
 // the claim ("a schema is fetchable") needs the URL that backs it up.
-// Mirrors validate-surface-duplicate-url.test.mjs's subprocess-fixture pattern.
+// Mirrors validate-surface-duplicate-url.test.ts's subprocess-fixture pattern.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

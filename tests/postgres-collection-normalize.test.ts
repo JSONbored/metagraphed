@@ -89,7 +89,7 @@ describe("decodeBTreeSetFields", () => {
     // level down from Utility.batch's own `calls` typed descriptor. This
     // test starts from the shape AFTER decodePostgresCallArgs has already
     // reconstructed that into {call_module,call_function,call_args} --
-    // src/postgres-call-args.test.mjs and tests/extrinsics.test.mjs cover
+    // tests/postgres-call-args.test.ts and tests/extrinsics.test.ts cover
     // the reconstruction step (and its own BTREESET_FIELDS exclusion fix)
     // itself; this test is scoped to decodeBTreeSetFields' own recursive
     // unwrap.

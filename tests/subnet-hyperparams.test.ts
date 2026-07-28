@@ -199,8 +199,8 @@ const ctx = { waitUntil: (p: Promise<unknown>) => p };
 // route never queries D1 -- with no METAGRAPH_SUBNET_HYPERPARAMS_SOURCE=
 // postgres flag configured, it always returns the schema-stable null shape
 // (buildSubnetHyperparams(null, netuid) in workers/request-handlers/
-// entities.mjs's handleSubnetHyperparams). Postgres-hit/-failure coverage for
-// this route lives in tests/request-handlers-entities.test.mjs alongside the
+// entities.ts's handleSubnetHyperparams). Postgres-hit/-failure coverage for
+// this route lives in tests/request-handlers-entities.test.ts alongside the
 // other flag=postgres tiers.
 describe("GET /api/v1/subnets/{netuid}/hyperparameters via the Worker", () => {
   test("is schema-stable when Postgres is unconfigured (never 404)", async () => {

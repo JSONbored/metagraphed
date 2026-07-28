@@ -1,7 +1,7 @@
 // Regression coverage for #5737: validate-surface.ts now fails when two
 // surfaces[] entries in the same subnet file register the identical URL
 // under different ids/kinds (the mistake #5736 found 3 live instances of).
-// Mirrors validate-error-messages.test.mjs's subprocess-fixture pattern.
+// Mirrors validate-error-messages.test.ts's subprocess-fixture pattern.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

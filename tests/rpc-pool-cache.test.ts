@@ -8,7 +8,7 @@ import type { Row } from "./row-type.ts";
 
 type EnvArg = Parameters<typeof readRpcPoolArtifact>[0];
 
-// rpc/pools.json is R2-only (see src/artifact-storage.mjs R2_ONLY_PATTERNS), so a
+// rpc/pools.json is R2-only (see src/artifact-storage.ts R2_ONLY_PATTERNS), so a
 // successful read resolves through env.METAGRAPH_ARCHIVE.get. Counting those gets
 // proves the per-isolate memo collapses the per-request fetch (#1309).
 function mkR2Env(poolsData = { pools: [{ id: "finney-rpc", endpoints: [] }] }) {
