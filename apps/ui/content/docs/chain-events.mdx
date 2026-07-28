@@ -49,7 +49,7 @@ There are two distinct failure modes, with two distinct error codes — don't co
 
 All three routes only accept `GET` (and `HEAD`, normalized to a `GET` internally). The proxy doesn't gate the method itself — a `POST` is forwarded straight through and comes back as the data Worker's own 405, wrapped as `data_query_failed` rather than a dedicated method-not-allowed code.
 
-Every request to any of the three routes is also capped by a shared, per-client-IP rate limiter (60 requests / 60s), checked before the tier-availability check above — exceeding it returns `429 data_rate_limited` with a `retry-after: 60` header.
+Every request to any of the three routes is also capped by a shared rate limiter, checked before the tier-availability check above — 60 requests / 60s per client IP with no key, or 300 requests / 60s (5×) keyed by account when a valid `Authorization: Bearer mg_...` [API key](/settings) is presented instead of an IP. Exceeding it returns `429 data_rate_limited` with `retry-after`, `x-ratelimit-limit`, `x-ratelimit-remaining` (always `0` on a 429), and `x-ratelimit-reset` (an upper-bound estimate, not an exact window boundary) headers.
 
 ```json title="503 · data_tier_unavailable"
 {

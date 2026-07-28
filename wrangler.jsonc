@@ -629,6 +629,24 @@
         "period": 60,
       },
     },
+    // #8386: the keyed-free tier's ceiling for the same data-API routes above
+    // -- 5x DATA_RATE_LIMITER's anonymous limit, keyed by account id instead
+    // of client IP (workers/tiered-rate-limit.ts), for a caller presenting a
+    // valid self-serve mg_... API key. A SEPARATE named binding, not a
+    // parameter on DATA_RATE_LIMITER -- one binding is always one fixed
+    // limit/period pair. Deploy prerequisite: this binding must be
+    // provisioned (`wrangler deploy`) before the keyed tier takes effect;
+    // until then applyTieredRateLimit fails OPEN for the keyed tier (same
+    // "skipped when the binding is absent" posture every limiter in this
+    // file already has), never blocking a legitimately-keyed caller.
+    {
+      "name": "DATA_RATE_LIMITER_KEYED",
+      "namespace_id": "1013",
+      "simple": {
+        "limit": 300,
+        "period": 60,
+      },
+    },
     // Per-client abuse control for the two state-query RPC methods
     // (state_getStorage, state_getKeysPaged, #4344/9.2) — a fifth of the
     // general RPC proxy's 100/60s, kept as its OWN binding rather than a lower

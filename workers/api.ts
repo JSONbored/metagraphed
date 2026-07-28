@@ -418,6 +418,49 @@ import {
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
   WEBHOOK_TTL_SECONDS,
 } from "./config.ts";
+import {
+  applyTieredRateLimit,
+  tieredRateLimitHeaders,
+  type TieredRateLimitConfig,
+} from "./tiered-rate-limit.ts";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
+
+// #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
+// policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
+// SEPARATE Cloudflare Rate Limiting binding (DATA_RATE_LIMITER_KEYED,
+// wrangler.jsonc), never the same binding with a different number -- one
+// named binding is always one fixed limit/period pair.
+const DATA_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: { envVar: "DATA_RATE_LIMITER", limit: 60, windowSeconds: 60 },
+  keyed: { envVar: "DATA_RATE_LIMITER_KEYED", limit: 300, windowSeconds: 60 },
+  keyPrefix: "data",
+};
+
+// Fire-and-forget usage-counter increment for the self-serve dashboard
+// (#8386) -- via ctx.waitUntil so it never adds latency to the response that
+// triggered it, and swallows its own failure (a usage-counter miss must
+// never surface as an error on the actual API call).
+function recordApiKeyUsage(
+  env: Env,
+  ctx: Ctx | undefined,
+  accountId: string,
+  route: string,
+): void {
+  if (!env.DATA_API?.fetch || !env.API_KEY_LOOKUP_INTERNAL_TOKEN) return;
+  const pending = env.DATA_API.fetch(
+    new Request("https://api.metagraph.sh/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: {
+        [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ account_id: Number(accountId), route }),
+    }),
+  ).catch(() => {});
+  if (typeof ctx?.waitUntil === "function") {
+    ctx.waitUntil(pending);
+  }
+}
 
 const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
   entry.path.endsWith(".json"),
@@ -1689,6 +1732,13 @@ export async function handleRequest(
   // service binding) serves chain_events + deep history via Hyperdrive, keeping the
   // postgres.js driver out of this Worker's bundle. 503 if the binding is absent
   // (e.g. a preview deploy without the data Worker).
+  //
+  // #8386: tiered via applyTieredRateLimit -- a caller with a valid mg_...
+  // API key gets the `keyed` policy (DATA_RATE_LIMITER_KEYED, 5x the
+  // anonymous ceiling, keyed by accountId), everyone else gets the
+  // unchanged anonymous DATA_RATE_LIMITER policy (60/60s, keyed by IP,
+  // regression-tested in tests/tiered-rate-limit.test.ts +
+  // tests/api-anonymous-limits.test.ts to prove this PR doesn't reduce it).
   if (
     url.pathname === "/api/v1/chain-events" ||
     url.pathname === "/api/v1/chain-events/stats" ||
@@ -1697,24 +1747,22 @@ export async function handleRequest(
     /^\/api\/v1\/subnets\/\d+\/conviction$/.test(url.pathname) ||
     /^\/api\/v1\/subnets\/\d+\/lease\/history$/.test(url.pathname)
   ) {
-    if (env.DATA_RATE_LIMITER?.limit) {
-      const { success } = await env.DATA_RATE_LIMITER.limit({
-        key: `data:${resolveClientIp(request)}`,
-      });
-      if (!success) {
-        return errorResponse(
-          "data_rate_limited",
-          "Too many data API requests from this client; slow down.",
-          429,
-          {},
-          {
-            "retry-after": "60",
-            "x-ratelimit-limit": "60",
-            "x-ratelimit-policy": "60;w=60",
-            "x-ratelimit-remaining": "0",
-          },
-        );
-      }
+    const rateLimit = await applyTieredRateLimit(
+      request,
+      env,
+      DATA_TIERED_RATE_LIMIT,
+    );
+    if (!rateLimit.allowed) {
+      return errorResponse(
+        "data_rate_limited",
+        "Too many data API requests from this client; slow down.",
+        429,
+        {},
+        tieredRateLimitHeaders(rateLimit.policy),
+      );
+    }
+    if (rateLimit.accountId) {
+      recordApiKeyUsage(env, ctx, rateLimit.accountId, "chain-events");
     }
     return handleChainEventsProxy(request, env, url, ctx);
   }

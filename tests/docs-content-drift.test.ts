@@ -179,4 +179,11 @@ describe("content/docs/chain-events.mdx matches its rate-limit binding", () => {
     const { limit, period } = wranglerRateLimit("DATA_RATE_LIMITER");
     assert.match(chainEventsDocs, new RegExp(`${limit} requests / ${period}s`));
   });
+
+  // #8386: the keyed-free tier's own binding -- same "binding config is the
+  // only source of truth" reasoning as the anonymous tier's own check above.
+  test("keyed-tier rate limit mirrors wrangler.jsonc's DATA_RATE_LIMITER_KEYED", () => {
+    const { limit, period } = wranglerRateLimit("DATA_RATE_LIMITER_KEYED");
+    assert.match(chainEventsDocs, new RegExp(`${limit} requests / ${period}s`));
+  });
 });

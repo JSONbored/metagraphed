@@ -1,7 +1,7 @@
 import {} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
-import { SectionHeading, CopyableCode } from "@jsonbored/ui-kit";
+import { SectionHeading, CopyableCode, BarMini } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
@@ -20,6 +20,12 @@ interface ApiKeyMinted {
   key_id: string;
   tier: string;
   created_at: number;
+}
+
+interface ApiKeyUsage {
+  window_days: number;
+  days: { day: string; count: number }[];
+  top_routes: { route: string; count: number }[];
 }
 
 function authHeaders(token: string): HeadersInit {
@@ -57,7 +63,7 @@ export function ApiKeysManager() {
       <SectionHeading
         id="api-keys-heading"
         title="API keys"
-        intro="Real fullnode RPC access -- not just the keyless read-only proxy. Requires a wallet-signed login; no invite code."
+        intro="Real fullnode RPC access, plus a higher rate-limit tier on the general API (currently: the chain-events/deep-history routes, more to follow). The keyless API keeps working exactly as-is -- a key buys headroom, it never gates the base. Requires a wallet-signed login; no invite code."
       />
       <Panel as="div" dense>
         {walletStatus !== "connected" || !wallet ? (
@@ -162,6 +168,17 @@ function ApiKeysPanel({
   const keys = listQuery.data ?? [];
   const activeKeys = keys.filter((k) => !k.revoked_at);
 
+  const usageQuery = useQuery({
+    queryKey: ["api-keys-usage", token],
+    queryFn: async (): Promise<ApiKeyUsage> => {
+      const res = await apiFetch<ApiKeyUsage>("/api/v1/keys/usage", {
+        init: { headers: authHeaders(token) },
+      });
+      return res.data;
+    },
+    enabled: activeKeys.length > 0,
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -250,6 +267,52 @@ function ApiKeysPanel({
           </div>
         ))}
       </div>
+
+      {activeKeys.length > 0 ? <UsageDashboard usage={usageQuery.data} /> : null}
+    </div>
+  );
+}
+
+/**
+ * Last 7d of this account's tiered-API usage (#8386) -- combined across every
+ * active key on the account (api_key_usage_daily is recorded per-account, not
+ * per-key; see workers/data-api.ts's handleAccountKeyUsage). Renders nothing
+ * while loading or on a genuinely empty window (a brand-new key with no
+ * requests yet) -- there's nothing meaningful to show either way, and an
+ * empty-chart placeholder would just be noise under the key list above it.
+ */
+function UsageDashboard({ usage }: { usage: ApiKeyUsage | undefined }) {
+  if (!usage || usage.days.length === 0) return null;
+  const chronological = [...usage.days].reverse();
+
+  return (
+    <div className="space-y-3 border-t border-border pt-4">
+      <p className="mg-type-caption font-medium text-ink-strong">
+        Usage, last {usage.window_days}d
+      </p>
+      <BarMini
+        data={chronological.map((d) => ({
+          label: new Date(d.day).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          value: d.count,
+        }))}
+        ariaLabel={`Daily request count, last ${usage.window_days} days`}
+      />
+      {usage.top_routes.length > 0 ? (
+        <div>
+          <p className="mg-type-caption text-ink-muted">Top routes</p>
+          <ul className="mt-1 space-y-1">
+            {usage.top_routes.map((r) => (
+              <li
+                key={r.route}
+                className="flex items-center justify-between gap-2 mg-type-caption text-ink-muted"
+              >
+                <span className="font-mono text-ink-strong">{r.route}</span>
+                <span>{r.count.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

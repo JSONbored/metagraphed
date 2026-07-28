@@ -73,6 +73,63 @@ describe("Worker runtime", () => {
     assert.equal(dataCalls, 0);
   });
 
+  test("#8386: a valid API key uses the keyed tier's limiter, keyed by accountId not IP", async () => {
+    let keyedLimiterCalls = 0;
+    let anonymousLimiterCalls = 0;
+    let usageIncrementCalls = 0;
+    const waited: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events", {
+        headers: {
+          "cf-connecting-ip": "203.0.113.9",
+          authorization: "Bearer mg_aValidOpaqueUnkeyGeneratedSuffix",
+        },
+      }),
+      {
+        ...env,
+        API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+        DATA_RATE_LIMITER: {
+          limit() {
+            anonymousLimiterCalls += 1;
+            return Promise.resolve({ success: false });
+          },
+        },
+        DATA_RATE_LIMITER_KEYED: {
+          limit({ key }: { key: string }) {
+            keyedLimiterCalls += 1;
+            assert.equal(key, "data:99");
+            return Promise.resolve({ success: true });
+          },
+        },
+        DATA_API: {
+          async fetch(request: Request) {
+            const path = new URL(request.url).pathname;
+            if (path === "/api/v1/internal/keys/verify") {
+              return new Response(
+                JSON.stringify({ valid: true, tier: "free", accountId: "99" }),
+                { status: 200 },
+              );
+            }
+            if (path === "/api/v1/internal/keys/usage") {
+              usageIncrementCalls += 1;
+              return new Response(JSON.stringify({ ok: true }), {
+                status: 200,
+              });
+            }
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+      } as unknown as Env,
+      ctx,
+    );
+    assert.equal(response.status, 200);
+    assert.equal(keyedLimiterCalls, 1);
+    assert.equal(anonymousLimiterCalls, 0);
+    await Promise.all(waited);
+    assert.equal(usageIncrementCalls, 1);
+  });
+
   test("rewraps the DATA_API chain-events body in the canonical envelope", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/chain-events/stats?blocks=500"),
