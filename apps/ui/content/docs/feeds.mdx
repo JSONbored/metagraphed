@@ -3,7 +3,7 @@ title: Feeds
 description: Subscribe to registry changes, incidents, and coverage gaps as RSS 2.0, Atom 1.0, or JSON Feed — computed at request time from artifacts already served. Read-only, no API key.
 ---
 
-Four GET feeds, all content-negotiated. Point any reader, crawler, or agent at a URL below.
+Five GET feeds, all content-negotiated. Point any reader, crawler, or agent at a URL below.
 
 ```
 GET https://api.metagraph.sh/api/v1/feeds/registry
@@ -17,6 +17,31 @@ GET https://api.metagraph.sh/api/v1/feeds/registry
 | `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.      | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
 | `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.            | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
 | `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                    | the same tags as the feed each item came from                                                                 |
+| `/api/v1/feeds/watch?ids=`       | Registry changes + incidents for a set of watched entities, named in the URL.     | the same tags as the feed each item came from                                                                 |
+
+## Watchlist feed
+
+Watchlists are local-first — starring something writes to your browser's own storage, never to an account we hold. The watch feed keeps that posture: the entity set travels **in the URL**, not in anything stored server-side.
+
+```
+GET https://api.metagraph.sh/api/v1/feeds/watch.json?ids=s1,s7,s74
+```
+
+`?ids=` is a comma-separated list of kind-prefixed entities, up to 50 per URL:
+
+| Prefix | Kind      | Example    |
+| ------ | --------- | ---------- |
+| `s`    | subnet    | `s7`       |
+| `v`    | validator | `v5FHneW…` |
+| `a`    | account   | `a5Grwva…` |
+
+<Callout title="This URL is the credential" type="warn">
+  Anyone with this URL sees which entities it tracks. There's no account behind it and nothing to
+  revoke — treat it like you would a private RSS link, and generate a new one (drop entities,
+  rebuild the URL) if it leaks somewhere you didn't intend.
+</Callout>
+
+Only `subnet` ids currently resolve to items — registry changes and incidents, exactly like `/api/v1/feeds/subnets/{netuid}`, merged across every watched subnet. `validator`/`account` ids are accepted and counted toward the 50-id cap (so a URL built from a mixed watchlist never silently exceeds it), but there is no change-tracking data source for either yet; the feed's own `description` field says plainly how many of the requested ids produced nothing, rather than staying silent about the gap. More than 50 ids in one URL is a `413`.
 
 ## Formats
 

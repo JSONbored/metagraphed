@@ -3,10 +3,13 @@ import { afterEach, beforeEach, describe, test } from "vitest";
 import {
   handleFeedRequest,
   parseFeedPath,
+  parseWatchIds,
+  watchFeedItems,
   resolveFeedFormat,
   feedLinkHeader,
   __test,
   type FeedItem,
+  type WatchId,
 } from "../src/feeds.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -202,7 +205,7 @@ async function feed(
 }
 
 describe("feeds — path + format parsing", () => {
-  test("parseFeedPath resolves the four feed kinds + rejects unknown", () => {
+  test("parseFeedPath resolves the five feed kinds + rejects unknown", () => {
     assert.deepEqual(parseFeedPath("/api/v1/feeds/registry"), {
       kind: "registry",
     });
@@ -215,6 +218,9 @@ describe("feeds — path + format parsing", () => {
     assert.deepEqual(parseFeedPath("/api/v1/feeds/subnets/7.atom"), {
       kind: "subnet",
       netuid: 7,
+    });
+    assert.deepEqual(parseFeedPath("/api/v1/feeds/watch.json"), {
+      kind: "watch",
     });
     assert.equal(parseFeedPath("/api/v1/feeds/bogus"), null);
     assert.equal(parseFeedPath("/api/v1/feeds/subnets/abc"), null);
@@ -236,6 +242,111 @@ describe("feeds — path + format parsing", () => {
     assert.match(global, /feeds\/registry\.atom>.*application\/atom\+xml/);
     const subnet = feedLinkHeader("https://api.metagraph.sh", 7);
     assert.match(subnet, /feeds\/subnets\/7\.rss>/);
+  });
+});
+
+describe("feeds — parseWatchIds (#8376)", () => {
+  test("parses kind-prefixed tokens: s=subnet, v=validator, a=account", () => {
+    const parsed = parseWatchIds("s7,s74,v5FHneW,a5Grwva");
+    assert.deepEqual(parsed, {
+      overflow: false,
+      ids: [
+        { kind: "subnet", id: "7" },
+        { kind: "subnet", id: "74" },
+        { kind: "validator", id: "5FHneW" },
+        { kind: "account", id: "5Grwva" },
+      ],
+    });
+  });
+
+  test("trims whitespace around tokens and ignores empty ones", () => {
+    const parsed = parseWatchIds(" s7 , , s12 ");
+    assert.deepEqual(parsed?.ids, [
+      { kind: "subnet", id: "7" },
+      { kind: "subnet", id: "12" },
+    ]);
+  });
+
+  test("null/empty/absent input is an empty, non-overflowing set", () => {
+    assert.deepEqual(parseWatchIds(null), { ids: [], overflow: false });
+    assert.deepEqual(parseWatchIds(""), { ids: [], overflow: false });
+    assert.deepEqual(parseWatchIds("   "), { ids: [], overflow: false });
+  });
+
+  test("an unknown kind prefix is malformed -> null (the caller 400s)", () => {
+    assert.equal(parseWatchIds("s7,x99"), null);
+  });
+
+  test("a non-numeric subnet id is malformed -> null", () => {
+    assert.equal(parseWatchIds("sabc"), null);
+    assert.equal(parseWatchIds("s7.5"), null);
+  });
+
+  test("a bare kind letter with no id after it is malformed -> null", () => {
+    assert.equal(parseWatchIds("s"), null);
+  });
+
+  test("more than 50 tokens overflows (the caller 413s), ids empty", () => {
+    const tokens = Array.from({ length: 51 }, (_, i) => `s${i}`).join(",");
+    assert.deepEqual(parseWatchIds(tokens), { ids: [], overflow: true });
+  });
+
+  test("exactly 50 tokens does not overflow", () => {
+    const tokens = Array.from({ length: 50 }, (_, i) => `s${i}`).join(",");
+    const parsed = parseWatchIds(tokens);
+    assert.equal(parsed?.overflow, false);
+    assert.equal(parsed?.ids.length, 50);
+  });
+});
+
+describe("feeds — watchFeedItems (#8376)", () => {
+  test("aggregates registry + incident items across multiple subnet ids", () => {
+    const ids: WatchId[] = [
+      { kind: "subnet", id: "7" },
+      { kind: "subnet", id: "12" },
+    ];
+    const result = watchFeedItems(CHANGELOG, INCIDENTS, ids);
+    assert.equal(result.unsupportedCount, 0);
+    const registryIds = result.items
+      .filter((i) => i.id.startsWith("registry:"))
+      .map((i) => i.id);
+    assert.ok(registryIds.some((id) => id.includes("subnet:7:added")));
+    assert.ok(registryIds.some((id) => id.includes("subnet:12:renamed")));
+    const incidentIds = result.items.filter((i) =>
+      i.id.startsWith("incident:"),
+    );
+    // Both subnet 7 (resolved) and 12 (ongoing) carry an incident in the fixture.
+    assert.equal(incidentIds.length, 2);
+  });
+
+  test("a duplicated subnet id is deduplicated, not double-counted or double-emitted", () => {
+    const ids: WatchId[] = [
+      { kind: "subnet", id: "7" },
+      { kind: "subnet", id: "7" },
+    ];
+    const result = watchFeedItems(CHANGELOG, INCIDENTS, ids);
+    const addedFor7 = result.items.filter((i) =>
+      i.id.includes("subnet:7:added"),
+    );
+    assert.equal(addedFor7.length, 1);
+  });
+
+  test("validator/account ids produce no items but are counted, not dropped silently", () => {
+    const ids: WatchId[] = [
+      { kind: "subnet", id: "7" },
+      { kind: "validator", id: "5FHneW" },
+      { kind: "account", id: "5Grwva" },
+    ];
+    const result = watchFeedItems(CHANGELOG, INCIDENTS, ids);
+    assert.equal(result.unsupportedCount, 2);
+    // Still get subnet 7's own items -- one unsupported kind doesn't poison
+    // the rest of the request.
+    assert.ok(result.items.some((i) => i.id.includes("subnet:7:added")));
+  });
+
+  test("an empty id set yields an empty result, not an error", () => {
+    const result = watchFeedItems(CHANGELOG, INCIDENTS, []);
+    assert.deepEqual(result, { items: [], unsupportedCount: 0 });
   });
 });
 
@@ -1025,6 +1136,69 @@ describe("feeds — handleFeedRequest", () => {
     assert.equal(parsed.home_page_url, "https://metagraph.sh/subnets/7");
   });
 
+  test("watch feed aggregates registry + incident items across ?ids= subnets", async () => {
+    const { res, text } = await feed("/api/v1/feeds/watch.json?ids=s7,s12");
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.ok(
+      parsed.items.some((i: FeedItem) => i.id.includes("subnet:7:added")),
+    );
+    assert.ok(
+      parsed.items.some((i: FeedItem) => i.id.includes("subnet:12:renamed")),
+    );
+    assert.match(parsed.description, /2 watched subnet\(s\)/);
+    // The privacy line (issue requirement #5) must always be present.
+    assert.match(
+      parsed.description,
+      /anyone with this url sees which entities it tracks/i,
+    );
+  });
+
+  test("watch feed notes unsupported validator/account ids without dropping them silently", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/watch.json?ids=s7,v5FHneW,a5Grwva",
+    );
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.match(
+      parsed.description,
+      /2 watched validator\/account id\(s\).*no items/,
+    );
+  });
+
+  test("watch feed with no ?ids= is an empty, valid feed (not an error)", async () => {
+    const { res, text } = await feed("/api/v1/feeds/watch.json");
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.deepEqual(parsed.items, []);
+  });
+
+  test("watch feed rejects a malformed ?ids= with 400", async () => {
+    const { res } = await feed("/api/v1/feeds/watch.json?ids=x99");
+    assert.equal(res.status, 400);
+  });
+
+  test("watch feed rejects more than 50 ids with 413", async () => {
+    const ids = Array.from({ length: 51 }, (_, i) => `s${i}`).join(",");
+    const { res } = await feed(`/api/v1/feeds/watch.json?ids=${ids}`);
+    assert.equal(res.status, 413);
+  });
+
+  test("watch feed respects ?since=/?limit= like every other feed", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/watch.json?ids=s7,s12&limit=1",
+    );
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.items.length, 1);
+  });
+
+  test("watch feed carries the standard cache-control + etag headers", async () => {
+    const { res } = await feed("/api/v1/feeds/watch.json?ids=s7");
+    assert.match(res.headers.get("cache-control")!, /max-age=600/);
+    assert.ok(res.headers.get("etag"));
+  });
+
   test("unknown feed → 404, missing readArtifact → 404", async () => {
     const { res } = await feed("/api/v1/feeds/nope");
     assert.equal(res.status, 404);
@@ -1392,6 +1566,60 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(conditionalHead.status, 304);
     assert.equal(await conditionalHead.text(), "");
+  });
+
+  // #8376: `?ids=` must be part of the edge-cache key (workers/api.ts's own
+  // feedCacheParams composition), or two DIFFERENT watchlists would share one
+  // cached response -- the exact bug an unrelated-param test above already
+  // covers for `?cachebust=`, but that test's whole point is that an
+  // IRRELEVANT param does NOT bust the cache; `ids` needs the opposite proof.
+  test("handleRequest treats different ?ids= watch feeds as different cache entries", async () => {
+    const cache = installMockCache();
+    // withEdgeCache only activates once it can read a freshness stamp
+    // (readHealthMetaKv -> METAGRAPH_CONTROL's "health:meta" key) -- without
+    // it, `stamp` stays null and every request short-circuits past the cache
+    // entirely, matching the sibling "caches the incidents feed" test above.
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
+
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/watch.json?ids=s7"),
+      env as unknown as Env,
+      ctx,
+    );
+    assert.equal(first.status, 200);
+    assert.equal(cache.putCount, 1);
+
+    const second = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/watch.json?ids=s12"),
+      env as unknown as Env,
+      ctx,
+    );
+    assert.equal(second.status, 200);
+    assert.equal(
+      cache.putCount,
+      2,
+      "a different ?ids= must populate a SECOND cache entry, not reuse the first",
+    );
+
+    // Same ids again -> the second request's own entry is reused, not a third.
+    const secondAgain = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/watch.json?ids=s12"),
+      env as unknown as Env,
+      ctx,
+    );
+    assert.equal(secondAgain.status, 200);
+    assert.equal(cache.putCount, 2, "an identical ?ids= reuses its own entry");
   });
 
   // D1 fully eliminated (2026-07-17): the incidents feed is schema-stable

@@ -382,6 +382,105 @@ export function incidentItems(
   return items;
 }
 
+// ── watch feed (#8376) ──────────────────────────────────────────────────────
+//
+// Stateless-by-construction: a watchlist is local-first (no accounts), so the
+// feed carries the id set IN the URL rather than looking one up server-side --
+// `?ids=<compact set>`, one token per entity, comma-joined, single-letter kind
+// prefix + the id itself: `s7` (subnet 7), `v5FHn...` (validator hotkey),
+// `a5Grw...` (account ss58). Mirrors WatchlistExport's own three kinds
+// (apps/ui/src/lib/metagraphed/watchlist.ts) so the URL is a direct
+// re-encoding of the local store, not a new vocabulary to keep in sync.
+
+export type WatchEntityKind = "subnet" | "validator" | "account";
+
+export interface WatchId {
+  kind: WatchEntityKind;
+  /** The netuid as a numeric string for "subnet"; the raw ss58/hotkey otherwise. */
+  id: string;
+}
+
+const WATCH_ID_PREFIX: Record<string, WatchEntityKind> = {
+  s: "subnet",
+  v: "validator",
+  a: "account",
+};
+
+// Same hard cap the issue specifies -- reusing FEED_MAX_ITEMS would conflate
+// "how many entities a URL may name" with "how many items a feed page may
+// return," two independently-tuned numbers that only happen to both be 50
+// today.
+export const WATCH_MAX_IDS = 50;
+
+export interface ParsedWatchIds {
+  ids: WatchId[];
+  /** True when the raw token count exceeded WATCH_MAX_IDS (the caller 413s). */
+  overflow: boolean;
+}
+
+/**
+ * Parses `?ids=` into a capped, validated id list. A single malformed token
+ * (unknown kind prefix, or a non-numeric "subnet" id) invalidates the whole
+ * request rather than being silently dropped -- matching this module's
+ * existing `?since=`/`?until=`/`?limit=` posture (a client sending a
+ * malformed *shaped* param gets a 400, not a silently-narrowed feed), unlike
+ * `?tag=`, which has no fixed shape to violate.
+ */
+export function parseWatchIds(raw: string | null): ParsedWatchIds | null {
+  if (!raw || !raw.trim()) return { ids: [], overflow: false };
+  const tokens = raw
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (tokens.length > WATCH_MAX_IDS) return { ids: [], overflow: true };
+  const ids: WatchId[] = [];
+  for (const token of tokens) {
+    const kind = WATCH_ID_PREFIX[token[0].toLowerCase()];
+    const id = token.slice(1);
+    if (!kind || !id) return null; // malformed token -> the caller 400s
+    if (kind === "subnet" && !/^\d+$/.test(id)) return null;
+    ids.push({ kind, id });
+  }
+  return { ids, overflow: false };
+}
+
+export interface WatchFeedResult {
+  items: FeedItem[];
+  /** validator/account ids present in the request -- counted, never dropped silently, but produce no items (see the module header). */
+  unsupportedCount: number;
+}
+
+/**
+ * Registry changes + incidents for a watch-feed id set. Only "subnet" ids
+ * resolve to anything -- there is no change-class or incident data source
+ * keyed by validator/account anywhere in this codebase yet (registryItems'
+ * source is the subnet/artifact/coverage changelog; incidentItems' source is
+ * per-surface, i.e. per-subnet, probe history). validator/account ids still
+ * count toward the request's own bookkeeping (`unsupportedCount`) so a
+ * caller can render an honest "N ids produced no items" note instead of a
+ * silent gap between what was asked for and what came back.
+ */
+export function watchFeedItems(
+  changelog: unknown,
+  incidents: unknown,
+  ids: readonly WatchId[],
+): WatchFeedResult {
+  const netuids = new Set(
+    ids.filter((w) => w.kind === "subnet").map((w) => Number(w.id)),
+  );
+  // Counted directly, not derived from ids.length - netuids.size -- that
+  // subtraction would undercount whenever the same subnet id is repeated
+  // (the Set collapses duplicates, but each repeat is still a real token in
+  // the request).
+  const unsupportedCount = ids.filter((w) => w.kind !== "subnet").length;
+  const items: FeedItem[] = [];
+  for (const netuid of netuids) {
+    items.push(...registryItems(changelog, netuid));
+    items.push(...incidentItems(incidents, netuid));
+  }
+  return { items, unsupportedCount };
+}
+
 // ── serializers ─────────────────────────────────────────────────────────────
 
 export function sortAndCap(
@@ -567,7 +666,10 @@ export type FeedTarget =
   | { kind: "registry" }
   | { kind: "incidents" }
   | { kind: "gaps" }
-  | { kind: "subnet"; netuid: number };
+  | { kind: "subnet"; netuid: number }
+  // #8376: no netuid/ids here -- ids live in the query string, not the path,
+  // parsed alongside since/until/limit in handleFeedRequest.
+  | { kind: "watch" };
 
 // Parse `/api/v1/feeds/...` into { kind, netuid } or null for an unknown feed.
 export function parseFeedPath(pathname: string): FeedTarget | null {
@@ -578,6 +680,7 @@ export function parseFeedPath(pathname: string): FeedTarget | null {
   if (rest === "registry") return { kind: "registry" };
   if (rest === "incidents") return { kind: "incidents" };
   if (rest === "gaps") return { kind: "gaps" };
+  if (rest === "watch") return { kind: "watch" };
   const subnet = /^subnets\/(\d+)$/.exec(rest);
   if (subnet) return { kind: "subnet", netuid: Number(subnet[1]) };
   return null;
@@ -711,7 +814,7 @@ export async function handleFeedRequest(
   if (!target || typeof readArtifact !== "function") {
     return fail(
       "feed_not_found",
-      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/subnets/{netuid} (each as .rss/.atom/.json or via Accept).",
+      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/subnets/{netuid}, /api/v1/feeds/watch (each as .rss/.atom/.json or via Accept).",
       404,
     );
   }
@@ -764,6 +867,31 @@ export async function handleFeedRequest(
     }
   }
 
+  // #8376: `?ids=` for the watch feed, parsed up front like every other
+  // param -- only relevant when target.kind === "watch", but validated here
+  // regardless of target so a malformed/oversized `ids` on an unrelated feed
+  // path still 400s/413s instead of being silently ignored.
+  let watchIds: WatchId[] = [];
+  const idsParam = url.searchParams.get("ids");
+  if (target.kind === "watch") {
+    const parsed = parseWatchIds(idsParam);
+    if (parsed === null) {
+      return fail(
+        "invalid_ids",
+        "`ids` must be a comma-separated list of kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), or `a<ss58>` (account) -- e.g. `?ids=s1,s7,v5FHneW...`.",
+        400,
+      );
+    }
+    if (parsed.overflow) {
+      return fail(
+        "too_many_ids",
+        `\`ids\` accepts at most ${WATCH_MAX_IDS} entities per feed URL.`,
+        413,
+      );
+    }
+    watchIds = parsed.ids;
+  }
+
   let items: FeedItem[];
   let title: string;
   let description: string;
@@ -801,6 +929,28 @@ export async function handleFeedRequest(
     homeUrl = `${SITE_URL}/gaps`;
     updatedSource = (enrichmentQueue as Record<string, unknown> | null)
       ?.generated_at;
+  } else if (target.kind === "watch") {
+    const [changelog, incidents] = await Promise.all([
+      readData(readArtifact, env, "/metagraph/changelog.json"),
+      loadIncidentsData(deps, env),
+    ]);
+    const result = watchFeedItems(changelog, incidents, watchIds);
+    items = result.items;
+    const subnetCount = watchIds.length - result.unsupportedCount;
+    title = "metagraphed — watchlist feed";
+    description =
+      watchIds.length === 0
+        ? "No entities in this URL yet -- add ?ids= to build a watchlist feed. Anyone with this URL sees which entities it tracks."
+        : `Registry changes and incidents for ${subnetCount} watched subnet(s).` +
+          // #8376: honest degradation -- validator/account ids are counted,
+          // never silently dropped, but there is no change-tracking data
+          // source for them yet (see watchFeedItems' own doc comment).
+          (result.unsupportedCount > 0
+            ? ` ${result.unsupportedCount} watched validator/account id(s) in this URL produced no items -- no change-tracking source exists for them yet.`
+            : "") +
+          " Anyone with this URL sees which entities it tracks.";
+    homeUrl = SITE_URL;
+    updatedSource = (changelog as Record<string, unknown> | null)?.generated_at;
   } else {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),
