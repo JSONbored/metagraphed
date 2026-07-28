@@ -659,10 +659,10 @@ export async function withUsageTelemetry(
     ok = response.status < 500;
     errorCode = response.headers.get("x-metagraph-error-code") ?? undefined;
     // metagraphed#7734: GraphQL execution errors are a spec-mandated 200
-    // with a populated `errors` array (src/graphql.mjs) -- status alone
+    // with a populated `errors` array (src/graphql.ts) -- status alone
     // can't distinguish that from a real success, so this one code (set
     // only when execute() surfaced a genuine resolver fault, never a
-    // deliberate/expected GraphQLError -- see graphql.mjs's own
+    // deliberate/expected GraphQLError -- see graphql.ts's own
     // genuineFaults comment) is a narrow, explicit exception to the
     // status-based rule above. Every other route/code keeps the existing
     // status<500 semantics untouched.
@@ -757,8 +757,8 @@ export default {
 };
 
 // Durable Object classes must be named exports of this Worker's main entry
-// module (wrangler.jsonc's "main": "workers/api.mjs") -- re-exporting the
-// classes defined in chain-firehose-hub.mjs/mcp-session-hub.mjs is what
+// module (wrangler.jsonc's "main": "workers/api.entry.ts") -- re-exporting the
+// classes defined in chain-firehose-hub.ts/mcp-session-hub.ts is what
 // makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
 // resolvable.
 export { ChainFirehoseHub, McpSessionHub, AlerterHub, SubnetStatusHub };
@@ -772,11 +772,11 @@ export { ChainFirehoseHub, McpSessionHub, AlerterHub, SubnetStatusHub };
 // indexer-box cron pipeline. workers/request-handlers/staging.mjs itself is
 // deleted — nothing left to re-export.
 
-// The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.mjs (#1763).
+// The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.ts (#1763).
 // The router dispatches the handlers directly via the imports above; these
 // helpers + constants are re-exported only so the rpc-cache / rpc-failover /
 // rpc-endpoint-selection / rpc-pool-cache tests keep importing them from this
-// module (their public test surface is api.mjs, not the new file).
+// module (their public test surface is api.ts, not the new file).
 export {
   classifyUpstreamAttempt,
   isPrivateOrLocalHostname,
@@ -917,9 +917,9 @@ const CHAIN_EVENTS_CSV_COLUMNS = [
 // the CSV-vs-JSON format branch below both stay per-request and cheap
 // (no Postgres/Hyperdrive round trip either way), while the one expensive
 // part -- the DATA_API fetch -- gets skipped on a hit. Mirrors the
-// caches.default pattern already proven in request-handlers/rpc-proxy.mjs
-// and request-handlers/analytics.mjs (metagraphed#6767); short, fixed TTL
-// (no freshness-stamp invalidation, unlike analytics.mjs's D1-fallback-aware
+// caches.default pattern already proven in request-handlers/rpc-proxy.ts
+// and request-handlers/analytics.ts (metagraphed#6767); short, fixed TTL
+// (no freshness-stamp invalidation, unlike analytics.ts's D1-fallback-aware
 // version) since this tier has no publish-time snapshot to key off of.
 const CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS = 60;
 
@@ -1032,7 +1032,7 @@ async function handleChainEventsProxy(
 // Proxies /api/v1/alerts/triggers* (#4984 Part 1) to the DATA_API service
 // binding. Unlike proxyToDataApi below (POST-only), this forwards every
 // method as-is: POST/GET/PATCH/DELETE all reach
-// workers/data-api.mjs's handleAlertTriggersRoute, which owns all
+// workers/data-api.ts's handleAlertTriggersRoute, which owns all
 // auth (creation token / per-trigger owner token) and routing itself --
 // mirrors handleChainEventsProxy's envelope-translation shape above, just
 // generalized past GET.
@@ -1109,7 +1109,7 @@ async function handleAlertTriggersProxy(request: Request, env: Env) {
 }
 
 // Distinct error code per upstream failure condition, same reasoning as
-// alertTriggerErrorCode above -- workers/data-api.mjs's handleWallet* return
+// alertTriggerErrorCode above -- workers/data-api.ts's handleWallet* return
 // a plain `{ error: "message" }` with no code of its own.
 function walletAuthErrorCode(status: number) {
   switch (status) {
@@ -1131,7 +1131,7 @@ function walletAuthErrorCode(status: number) {
 
 // Proxies POST /api/v1/auth/wallet/challenge and /verify (ADR 0021, #6835) to
 // the DATA_API service binding -- all challenge issuance, sr25519
-// verification, and session issuance live in workers/data-api.mjs (via
+// verification, and session issuance live in workers/data-api.ts (via
 // src/wallet-auth.ts); this is only the forwarding + envelope-translation
 // boundary, same shape as handleAlertTriggersProxy above.
 async function handleWalletAuthProxy(request: Request, env: Env) {
@@ -1262,7 +1262,7 @@ function accountKeysErrorCode(status: number) {
 
 // Proxies POST/GET /api/v1/keys and DELETE /api/v1/keys/{prefix} (ADR 0021,
 // #6835) to the DATA_API service binding -- session validation, the invite-
-// code gate, and all Postgres plumbing live in workers/data-api.mjs; this is
+// code gate, and all Postgres plumbing live in workers/data-api.ts; this is
 // only the forwarding + envelope-translation boundary.
 async function handleAccountKeysProxy(request: Request, env: Env) {
   if (!env.DATA_API) {
@@ -1306,7 +1306,7 @@ async function handleAccountKeysProxy(request: Request, env: Env) {
 // Worker (REGISTRY_SYNC_API service binding), the sole write path into the
 // registry Postgres instance. This function forwards the request as-is
 // (including the x-registry-sync-token header) -- the shared-secret check
-// happens once, downstream in workers/registry-sync-api.mjs, which is the
+// happens once, downstream in workers/registry-sync-api.ts, which is the
 // only place the secret needs to be provisioned. There is no bypass path
 // here to defend against: REGISTRY_SYNC_API has no public routes of its own,
 // so this route is the only way to reach it.
@@ -1342,7 +1342,7 @@ async function handleRegistrySyncProxy(request: Request, env: Env) {
 // proxyToDataApi below (neurons-sync, backfill-neuron-daily, rollup-account-
 // events-daily, subnet-hyperparams-sync, account-identity-sync, validator-
 // nominator-counts-sync, nominator-positions-sync, #5549). Each authenticates
-// with its OWN shared static secret downstream in data-api.mjs -- this proxy
+// with its OWN shared static secret downstream in data-api.ts -- this proxy
 // has no auth of its own, so a leaked secret could otherwise script unbounded
 // write volume against the chain-indexer Postgres, the same shape
 // handleAlertTriggerCreate guards against. Looser than that route's 10/60s
@@ -1353,7 +1353,7 @@ async function handleRegistrySyncProxy(request: Request, env: Env) {
 // all six routes (one leaked secret can't just switch routes to dodge the
 // limit). Bound here in wrangler.jsonc (not wrangler.data.jsonc) because
 // ratelimit namespaces are scoped to the Worker script that checks them, and
-// this check runs in api.mjs, not data-api.mjs. Optional-chained so it's a
+// this check runs in api.ts, not data-api.ts. Optional-chained so it's a
 // no-op when the binding is absent (local dev/CI).
 const INTERNAL_SYNC_RATE_LIMIT = { limit: 30, windowSeconds: 60 };
 
@@ -1427,14 +1427,14 @@ async function chainFirehoseIngestRateLimited(request: Request, env: Env) {
 }
 
 // Generic forwarder to the DATA_API service binding for the internal
-// write/rollup routes that live inside workers/data-api.mjs itself rather
+// write/rollup routes that live inside workers/data-api.ts itself rather
 // than a dedicated Worker (#4771's neurons-sync pattern) -- splitting read
 // and write into two Workers for the IDENTICAL Postgres instance/Hyperdrive
-// origin data-api.mjs already reads from (the way registry-sync-api.mjs is
+// origin data-api.ts already reads from (the way registry-sync-api.ts is
 // split, for a genuinely SEPARATE database) would only add a redundant
 // deploy pipeline for zero bundle-budget benefit. Forwards the request as-is
 // (including any shared-secret header) -- the auth check happens once,
-// downstream in data-api.mjs.
+// downstream in data-api.ts.
 async function proxyToDataApi(
   request: Request,
   env: Env,
@@ -1576,7 +1576,7 @@ async function handleNominatorPositionsSyncProxy(request: Request, env: Env) {
 
 // Proxies POST /api/v1/internal/account-balances-sync -- the write path into
 // account_balances (#6742). Same DATA_API service binding as the other
-// internal sync routes above. This proxy was missing entirely (data-api.mjs's
+// internal sync routes above. This proxy was missing entirely (data-api.ts's
 // own handleAccountBalancesSync existed, but nothing in this public-facing
 // Worker ever forwarded to it) -- confirmed live 2026-07-19: every real
 // data-refresh-cron run since #6742 shipped 405'd on this exact route,
@@ -1619,7 +1619,7 @@ async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
 // internet-addressable on its own (only reachable through this Worker's
 // binding), so this is the one place a forged request could be rejected --
 // mirrors every other /api/v1/internal/*-sync route's shared-secret
-// convention (see handleNeuronsSync in workers/data-api.mjs).
+// convention (see handleNeuronsSync in workers/data-api.ts).
 async function handleChainFirehoseIngest(request: Request, env: Env) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported.", 405);
@@ -1775,14 +1775,14 @@ export async function handleRequest(
 
   // Chain alert triggers (#4984 Part 1): CRUD accepts POST/GET/PATCH/DELETE,
   // so it must run before the read-only method gate below, same as webhooks
-  // above. All auth/routing/validation live in workers/data-api.mjs's
+  // above. All auth/routing/validation live in workers/data-api.ts's
   // handleAlertTriggersRoute -- this is only the DATA_API forwarding
   // boundary.
   if (
     url.pathname.startsWith("/api/v1/alerts/triggers") ||
     // #8375: the Alert Center's address-scoped counterpart -- same generic
     // pass-through proxy (all auth/routing/validation live in
-    // workers/data-api.mjs's handleWatchTriggersRoute), same error-code
+    // workers/data-api.ts's handleWatchTriggersRoute), same error-code
     // family as it's still an alert-trigger-family failure.
     url.pathname.startsWith("/api/v1/watch/triggers")
   ) {
@@ -1859,7 +1859,7 @@ export async function handleRequest(
   // The write path into the chain-indexer Postgres's neurons/neuron_daily
   // tables (#4771) -- refresh-metagraph.yml's sign-and-stage job calls this
   // over HTTPS alongside its existing R2-stage-to-D1 step. Proxies to
-  // workers/data-api.mjs's handleNeuronsSync via the SAME DATA_API service
+  // workers/data-api.ts's handleNeuronsSync via the SAME DATA_API service
   // binding the chain_events proxy above uses (not a separate Worker -- see
   // handleNeuronsSyncProxy's comment for why).
   if (url.pathname === "/api/v1/internal/neurons-sync") {
@@ -2033,7 +2033,7 @@ export async function handleRequest(
   // runs one maintainer-curated saved-query template (src/saved-queries.ts),
   // the REST mirror of the run_saved_query MCP tool. Live per-request result
   // with no fixed response shape across templates -- same reason /api/v1/graphql
-  // above sits outside the API_ROUTES/contracts.mjs registry rather than a
+  // above sits outside the API_ROUTES/contracts.ts registry rather than a
   // route()+artifact() pair.
   if (url.pathname.startsWith(SAVED_QUERIES_PATH_PREFIX)) {
     return handleSavedQueryRequest(request, env, url);
@@ -3941,7 +3941,7 @@ const SUBNET_SLUG_INDEX_TTL_MS = 300_000;
 // chains — testnet SN-N is unrelated to mainnet SN-N).
 const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 
-// Leaderboards/compare profiles projection cache lives in analytics-routes.mjs.
+// Leaderboards/compare profiles projection cache lives in analytics-routes.ts.
 
 // KV_HEALTH_META is written by the health cron (~15 min cadence) and read by
 // every analytics handler (percentiles, incidents, trends, uptime, trajectory,
@@ -3970,19 +3970,19 @@ export async function readHealthMetaKv(
   return value as Row | null;
 }
 
-// Wire the api.mjs-local snapshot-meta reader into the extracted analytics module
-// (workers/request-handlers/analytics.mjs, #1763). The analytics handlers + their
+// Wire the api.ts-local snapshot-meta reader into the extracted analytics module
+// (workers/request-handlers/analytics.ts, #1763). The analytics handlers + their
 // edge-cache guard own the D1-fallback state; they only need this one in-isolate
 // memoized KV read, which stays here because the deferred handler clusters and a
-// test import it from api.mjs. Injecting the stable reference (rather than having
-// analytics.mjs import it back) keeps the two modules from importing each other.
+// test import it from api.ts. Injecting the stable reference (rather than having
+// analytics.ts import it back) keeps the two modules from importing each other.
 configureAnalytics({ readHealthMetaKv });
 
 // Same wiring for the extracted RPC-proxy module (workers/request-handlers/
-// rpc-proxy.mjs, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
-// for its observed_at stamp. Injecting the stable reference keeps rpc-proxy.mjs
-// from importing api.mjs back (it owns the RPC_HEALTH breaker + pool-artifact memo
-// itself; this is the only api.mjs-local helper it depends on).
+// rpc-proxy.ts, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
+// for its observed_at stamp. Injecting the stable reference keeps rpc-proxy.ts
+// from importing api.ts back (it owns the RPC_HEALTH breaker + pool-artifact memo
+// itself; this is the only api.ts-local helper it depends on).
 configureRpcProxy({ readHealthMetaKv });
 
 // economics:current is a large blob (one row per subnet) that resolveLiveEconomics
@@ -4735,7 +4735,7 @@ async function handleHealthRequest(request: Request, env: Env) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
     // Blank/zero observed_at cells coerce via Number("") → 0; treat as absent
-    // (mirrors toIso in src/blocks.mjs and captured_at guards elsewhere).
+    // (mirrors toIso in src/blocks.ts and captured_at guards elsewhere).
     const chainEventsFresh =
       Number.isFinite(chainEventsAtMs) && chainEventsAtMs > 0;
     chainEvents = {
@@ -4777,7 +4777,7 @@ async function handleHealthRequest(request: Request, env: Env) {
     // The degraded branch is a transient 503; a 503 carrying explicit freshness
     // (public, max-age=60, stale-while-revalidate=300) is cacheable per RFC 7234,
     // so a shared/edge cache could keep serving "degraded" for up to ~6 min after
-    // the data recovers. Never cache it — mirror errorResponse in workers/http.mjs.
+    // the data recovers. Never cache it — mirror errorResponse in workers/http.ts.
     headers.set("cache-control", "no-store");
     headers.set("x-metagraph-cache-profile", "no-store");
   }
@@ -5142,7 +5142,7 @@ async function handleEventsRequest(request: Request, env: Env) {
 
 // --- AI search / ask (semantic + RAG) --------------------------------------
 
-// metagraphed#7731: this Worker's own equivalent of data-api.mjs's
+// metagraphed#7731: this Worker's own equivalent of data-api.ts's
 // captureDataApiError (#6769) -- a caught error converted to a clean
 // errorResponse() here never reaches PostHog's own top-level catch, since
 // that only ever sees a genuinely UNCAUGHT exception. The AI routes below
