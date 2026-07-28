@@ -1,11 +1,16 @@
 {
-  "name": "Metagraphed",
+  "id": "/",
+  "name": "Metagraphed — Bittensor subnet integration registry",
   "short_name": "Metagraphed",
+  "description": "What every Bittensor subnet exposes, whether it's healthy, and how to call it — with your watchlist available offline.",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
   "icons": [
     { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
   ],
   "theme_color": "#0B1F1A",
   "background_color": "#0B1F1A",
-  "display": "standalone"
+  "display": "standalone",
+  "categories": ["finance", "utilities", "developer tools"]
 }
