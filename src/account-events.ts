@@ -8,6 +8,7 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.ts";
+import { resolvePriceAtTx, type PriceBasis } from "./price-at-tx.ts";
 
 // The SubtensorModule events the poller indexes — entity-relevant only, which
 // keeps volume ~1 MB/day (not ~100 MB/day). Kept in sync with fetch-events.py
@@ -221,6 +222,10 @@ export interface AccountEvent {
   alpha_amount: number | null;
   observed_at: string | null;
   extrinsic_index: number | null;
+  /** #8369: TAO per alpha for this specific trade, null when not derivable
+   * (non-swap events, root, malformed legs). See src/price-at-tx.ts. */
+  price_at_tx: number | null;
+  price_basis: PriceBasis | null;
 }
 
 // One D1 account_events row → a clean API event object (#1347 consumes this).
@@ -249,6 +254,12 @@ export function formatAccountEvent(
     alpha_amount: toTaoOrNull(row.alpha_amount),
     observed_at: toIso(row.observed_at),
     extrinsic_index: toBlockNumber(row.extrinsic_index),
+    // #8369: derived from the two legs already on this row -- no join, no
+    // extra query, so every endpoint that formats events gains the field at
+    // zero read cost. Resolved from the RAW row (not the coerced values
+    // above) so the guards in price-at-tx.ts see exactly what the database
+    // returned.
+    ...resolvePriceAtTx(row),
   };
 }
 

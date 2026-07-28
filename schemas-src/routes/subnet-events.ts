@@ -24,6 +24,22 @@ export const AccountEventSchema = z
     alpha_amount: z.number().nullable().optional(),
     observed_at: z.iso.datetime().nullable().optional(),
     extrinsic_index: z.int().nullable().optional(),
+    // #8369: what this trade was worth, at this trade. Additive + optional,
+    // so every existing consumer is unaffected.
+    //
+    // TAO per alpha, computed from the two legs already on the row
+    // (amount_tao / alpha_amount) -- the SAME per-trade price the OHLC
+    // endpoint aggregates into candles, so this is the exact execution
+    // price, not a bucket average. Null whenever it isn't derivable: a
+    // non-swap event (transfer, registration), the root subnet, or a
+    // malformed leg. Deliberately TAO-denominated only -- see
+    // src/price-at-tx.ts on why there is no USD companion field.
+    price_at_tx: z.number().nullable().optional(),
+    // How the price was arrived at, so precision is never guessed at:
+    // "trade_exact" = this trade's own two legs; "root_no_pool" = root
+    // (netuid 0) has no AMM, so no price exists rather than one being
+    // unknown.
+    price_basis: z.enum(["trade_exact", "root_no_pool"]).nullable().optional(),
   })
   .strict();
 export type AccountEvent = z.infer<typeof AccountEventSchema>;

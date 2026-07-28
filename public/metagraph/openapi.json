@@ -904,6 +904,30 @@
               }
             ]
           },
+          "price_at_tx": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "trade_exact",
+                  "root_no_pool"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "uid": {
             "anyOf": [
               {
