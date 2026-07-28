@@ -81,25 +81,35 @@ export function AddressDisplay({
   // resolved -- a caller wanting the full address still wants "Binance" over
   // 48 characters of base58 when we know that's what it is.
   const text = resolved.source === "truncated" && !truncate ? ss58 : resolved.display;
-
-  const body = (
-    <span
-      className={valueClassName ? `hover:underline ${valueClassName}` : "hover:underline"}
-      title={ss58}
-    >
-      {text}
-    </span>
-  );
+  // On the `<a>` itself (not a nested span) -- matches AccountAddress's
+  // original structure. Found by adversarial review against a real CI
+  // failure: a wrapping-span version put `valueClassName` (e.g.
+  // "truncate min-w-0") one DOM level below the actual flex item, so an
+  // untruncated `<a>` forced the row wider than its flex parent at narrow
+  // viewports instead of ellipsizing -- caught by
+  // tests/e2e/responsive-overflow.spec.ts on the extrinsic detail page's
+  // Signer field.
+  const textClassName = valueClassName
+    ? `hover:underline ${valueClassName}`
+    : "hover:underline";
 
   return (
     <span className="inline-flex items-center gap-1 min-w-0">
       <EntityHoverCard kind="account" ss58={ss58}>
         {linkToAccount ? (
-          <Link to="/accounts/$ss58" params={{ ss58 }} title={ss58} preload={preload}>
-            {body}
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58 }}
+            title={ss58}
+            preload={preload}
+            className={textClassName}
+          >
+            {text}
           </Link>
         ) : (
-          body
+          <span className={textClassName} title={ss58}>
+            {text}
+          </span>
         )}
       </EntityHoverCard>
       {showCategory && resolved.category ? (
