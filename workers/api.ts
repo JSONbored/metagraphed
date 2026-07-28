@@ -1861,6 +1861,12 @@ export async function handleRequest(
     if (limit != null) {
       feedCacheParams.push(`limit=${encodeURIComponent(limit)}`);
     }
+    // #8376: the watch feed's entire identity is its `ids` set -- omitting
+    // this would let two different watchlists share one cached response
+    // (the edge cache key is this composed query string, not the raw request
+    // URL), silently serving one visitor's watched entities to another.
+    const ids = url.searchParams.get("ids");
+    if (ids != null) feedCacheParams.push(`ids=${encodeURIComponent(ids)}`);
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
       request.method === "HEAD"
