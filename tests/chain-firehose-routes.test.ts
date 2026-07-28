@@ -1,9 +1,9 @@
-// Unit tests for workers/api.mjs's two chain-firehose routes (#4982, ADR
+// Unit tests for workers/api.ts's two chain-firehose routes (#4982, ADR
 // 0015): the public GET /api/v1/chain/stream forwarder and the internal
 // POST /api/v1/internal/chain-firehose-ingest auth+forward. The Durable
-// Object's own decision logic is covered by tests/chain-firehose-hub.test.mjs;
-// these tests only cover the routing/auth boundary in workers/api.mjs,
-// mirroring tests/neurons-sync-proxy.test.mjs's shape for the equivalent
+// Object's own decision logic is covered by tests/chain-firehose-hub.test.ts;
+// these tests only cover the routing/auth boundary in workers/api.ts,
+// mirroring tests/neurons-sync-proxy.test.ts's shape for the equivalent
 // DATA_API-proxied internal routes.
 import assert from "node:assert/strict";
 import { test } from "vitest";

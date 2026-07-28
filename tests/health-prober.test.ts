@@ -1279,7 +1279,7 @@ describe("runHealthProber edge paths", () => {
 
 // #4832 gap-closure: syncHealthChecksToPostgres is a private helper (unlike
 // syncSubnetIdentityToPostgres, which lives in its own module and is tested
-// directly in tests/subnet-identity-history.test.mjs) -- exercised the same
+// directly in tests/subnet-identity-history.test.ts) -- exercised the same
 // way persistToKv above is, indirectly through runHealthProber. It is the
 // sole writer for surface_checks/surface_status now (D1 fully eliminated,
 // 2026-07-16); these tests prove a sync failure never affects
@@ -2037,7 +2037,7 @@ describe("syncRpcProxyEventsPruneToPostgres via pruneHealthHistory", () => {
 // that used to live here (ranked CTE, ON CONFLICT targets, the #1799
 // uptime_ratio clamp) moved to Postgres's own handleHealthUptimeRollupSync,
 // which computes the equivalent rollup server-side (see that handler's own
-// tests in tests/data-api.test.mjs).
+// tests in tests/data-api.test.ts).
 describe("rollupDailyUptime (durable daily history)", () => {
   function postgresEnv(fetchImpl: AnyFn) {
     return mockEnv({

@@ -25,7 +25,7 @@ const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 describe("artifact lifecycle status (#6358)", () => {
   // The catalog advertised health-latest/health-summary/health-subnet as
-  // ordinary entries, but workers/api.mjs answers those exact paths with 410
+  // ordinary entries, but workers/api.ts answers those exact paths with 410
   // retired_artifact before any read is attempted -- so /api/v1/contracts told
   // consumers 3 artifacts were fetchable when they never are.
 

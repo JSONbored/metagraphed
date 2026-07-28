@@ -61,7 +61,7 @@ describe("PUBLIC_ARTIFACTS storage tiering is explicit", () => {
       0,
       `These PUBLIC_ARTIFACTS paths match NO explicit R2_ONLY_PATTERNS or ` +
         `DUAL_PATTERNS entry and only resolve to the default-git fallback in ` +
-        `src/artifact-storage.mjs — add an explicit pattern (the #998 ` +
+        `src/artifact-storage.ts — add an explicit pattern (the #998 ` +
         `mis-tiering landmine):\n  ${fellThroughToGit.join("\n  ")}`,
     );
   });

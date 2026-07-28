@@ -1,4 +1,4 @@
-// Unit tests for the Postgres-serving data Worker (workers/data-api.mjs). postgres.js
+// Unit tests for the Postgres-serving data Worker (workers/data-api.ts). postgres.js
 // is mocked so the routing + response shaping are tested with no real DB — the live
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
@@ -201,7 +201,7 @@ const accountHistoryQueryFailure = vi.hoisted(() => ({
 // counts DOWN so a test can simulate "fails once, then the retry with a fresh client succeeds"
 // (remainingFailures: 1) vs. "fails on both the original attempt and the retry" (2+). `code`
 // controls whether the rejection looks like postgres.js's own retryable connection error
-// (RETRYABLE_CONNECTION_ERROR_CODES in workers/data-api.mjs) or an unrelated error.
+// (RETRYABLE_CONNECTION_ERROR_CODES in workers/data-api.ts) or an unrelated error.
 const blockDetailConnectionFailure = vi.hoisted(() => ({
   remainingFailures: 0,
   code: "CONNECTION_CLOSED",
@@ -723,7 +723,7 @@ test("chain-events decodes a positional SubtensorModule.TimelockedWeightsReveale
   // decodeChainEventArgs only used ctx for the TEXTUAL/HEX_BLOB/ENUM_PAYLOAD
   // allowlists, never to recover a positional tuple's field names. Fixed by
   // POSITIONAL_FIELD_NAMES (src/chain-event-args.ts) -- see
-  // tests/chain-event-args.test.mjs for the exhaustive per-event-kind unit
+  // tests/chain-event-args.test.ts for the exhaustive per-event-kind unit
   // coverage; this is the one route-level regression test proving the fix
   // reaches a real REST response, not just the decoder in isolation.
   mockRows.current = [
@@ -1687,7 +1687,7 @@ test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-s
 });
 
 // #5474: the three events feeds document a <=1000 / default-100 profile at their
-// entities.mjs handlers, but the Postgres tier (which always wins in production
+// entities.ts handlers, but the Postgres tier (which always wins in production
 // after the D1 retirement) used to silently re-cap them at the local 200/50 via
 // clampLimit. clampEventsLimit now applies the shared FEED_PAGINATION so the
 // effective, production-serving cap matches the documentation.
@@ -2015,14 +2015,14 @@ test("GET /api/v1/subnets/:netuid/validators ranks validator_permit rows by stak
 
 test("GET /api/v1/subnets/:netuid/validators sets featured=true for a hotkey in featured_validators", async () => {
   // mockQueue is consumed in call order: the transaction's leading `SET
-  // statement_timeout` (sql.begin, see workers/data-api.mjs) shifts first,
+  // statement_timeout` (sql.begin, see workers/data-api.ts) shifts first,
   // then the neurons query, then loadFeaturedHotkeys's own query.
   mockQueue.current = [[], [NEURON_ROW], [{ hotkey: "5Hot" }]];
   const res = await req("/api/v1/subnets/7/validators");
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/FROM featured_validators/);
-  // The reorder overlay (workers/request-handlers/entities.mjs) has already
+  // The reorder overlay (workers/request-handlers/entities.ts) has already
   // run by the time this route responds -- a single-row list just confirms
   // the flag itself made it through the read path.
   expect(body.validators[0].featured).toBe(true);
@@ -2112,7 +2112,7 @@ test("GET /api/v1/validators returns the network-wide validator leaderboard with
 test("GET /api/v1/validators sets featured per hotkey, matched against featured_validators", async () => {
   // This route only sets the flag (via buildGlobalValidators) -- the "move to
   // front" reorder is a separate overlay applied downstream in
-  // workers/request-handlers/entities.mjs (see request-handlers-entities.test.mjs),
+  // workers/request-handlers/entities.ts (see request-handlers-entities.test.ts),
   // so this test asserts the flag only, not row order.
   mockQueue.current = [
     [], // sql.begin's leading `SET statement_timeout`
@@ -2468,7 +2468,7 @@ test("GET /api/v1/validators computes apy_estimate from a subnet_hyperparams tem
   expect(queryText()).toMatch(/FROM subnet_hyperparams/);
   // epochsPerYear = 31,536,000/(360*12) = 7,300; annualized = 0.85*7,300 =
   // 6,205; apy = 6,205/1,000 = 6.205 -- same worked example as the builder
-  // unit tests (tests/metagraph-neurons.test.mjs).
+  // unit tests (tests/metagraph-neurons.test.ts).
   expect(body.validators[0].apy_estimate).toBe(6.205);
   expect(body.validators[0].apy_estimate_eligible_subnet_count).toBe(1);
 });
@@ -3212,7 +3212,7 @@ test("GET /api/v1/accounts/:ss58/subnets/:netuid/history?window=all skips the sn
 });
 
 // #4771: POST /api/v1/internal/neurons-sync -- the one write route in this
-// otherwise-read-only Worker (see workers/data-api.mjs's handleNeuronsSync).
+// otherwise-read-only Worker (see workers/data-api.ts's handleNeuronsSync).
 function neuronSyncRow(overrides = {}) {
   return {
     netuid: 8,
@@ -3769,7 +3769,7 @@ test("a body stream that errors mid-read still records ok:false on the trace spa
 
 // POST /api/v1/internal/backfill-neuron-daily -- deep-history ingest for
 // scripts/backfill-neuron-history.py and scripts/backfill-stake-monthly.py
-// (workers/data-api.mjs's handleNeuronDailyBackfill). Same row shape as
+// (workers/data-api.ts's handleNeuronDailyBackfill). Same row shape as
 // neurons-sync (reuses neuronSyncRow), different route/secret, and critically
 // must NEVER touch the latest-only `neurons` table.
 function postNeuronDailyBackfill(
@@ -3886,7 +3886,7 @@ test("backfill-neuron-daily ignores client snapshot_date and derives it from cap
 });
 
 // stripClientSnapshotDate's own null/non-object/array guard (mirrors
-// validNeuronSyncRow's identical guard, workers/data-api.mjs) -- each malformed
+// validNeuronSyncRow's identical guard, workers/data-api.ts) -- each malformed
 // row still fails validation with the same 400, never a crash on destructuring.
 test.each([
   ["null", null],
@@ -4349,7 +4349,7 @@ test("GET /api/v1/subnets/:netuid/lease/history with no rows returns an empty li
 // conviction (#6638) combines a subnet_locks Postgres read (mocked via
 // mockRows, same as every other route in this file) with a live
 // UnlockRate/MaturityRate/chain-tip RPC lookup -- stub globalThis.fetch for
-// just that part, mirroring tests/subnet-burn.test.mjs's own save/restore
+// just that part, mirroring tests/subnet-burn.test.ts's own save/restore
 // pattern.
 function stubConvictionRpc({ unlockRateHex, maturityRateHex, blockHex }: Row) {
   const orig = globalThis.fetch;
@@ -5154,7 +5154,7 @@ test("GET /api/v1/accounts/:ss58/history maps a DB failure to a clean 502 via th
 
 // #4832 gap-closure: POST /api/v1/internal/subnet-hyperparams-sync -- the
 // write path into subnet_hyperparams/subnet_hyperparams_history (see
-// workers/data-api.mjs's handleSubnetHyperparamsSync), plus its read paths,
+// workers/data-api.ts's handleSubnetHyperparamsSync), plus its read paths,
 // GET /api/v1/subnets/:netuid/hyperparameters[/history].
 function hyperparamsSyncRow(overrides = {}) {
   return {
@@ -5617,7 +5617,7 @@ test("GET /api/v1/subnets/:netuid/hyperparameters/history?limit=1 emits a next_c
 
 // #4832 gap-closure: POST /api/v1/internal/account-identity-sync -- the
 // write path into account_identity/account_identity_history (see
-// workers/data-api.mjs's handleAccountIdentitySync), plus its read paths,
+// workers/data-api.ts's handleAccountIdentitySync), plus its read paths,
 // GET /api/v1/accounts/:ss58/identity[-history]. Unlike subnet-hyperparams-
 // sync, this route has NO prune step (see that handler's own comment).
 const IDENTITY_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -5891,7 +5891,7 @@ test("account-identity-sync maps a DB failure to a clean 502 instead of throwing
 });
 
 // #2549: POST /api/v1/internal/validator-nominator-counts-sync -- the write
-// path into validator_nominator_counts (see workers/data-api.mjs's
+// path into validator_nominator_counts (see workers/data-api.ts's
 // handleValidatorNominatorCountsSync). Simpler than account-identity-sync
 // above: latest-only upsert, no history/hash-diff table.
 function validatorNominatorCountRow(overrides = {}) {
@@ -6096,13 +6096,13 @@ test("validator-nominator-counts-sync maps a DB failure to a clean 502 instead o
 // output) hit Postgres' hard 65535-bound-parameters-per-statement ceiling
 // (112,550 rows x 3 columns = 337,650 params) inside a single INSERT,
 // failing every real-world sync at production scale even though every
-// smaller test above passed. batchedUpsert (workers/data-api.mjs) splits
+// smaller test above passed. batchedUpsert (workers/data-api.ts) splits
 // into VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH-sized statements inside
 // one sql.begin() transaction -- this proves more than one INSERT actually
 // gets issued for a payload over that threshold, not just that the response
 // still reports the right total.
 test("validator-nominator-counts-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
-  const MAX_ROWS_PER_BATCH = 20_000; // must match workers/data-api.mjs's own constant
+  const MAX_ROWS_PER_BATCH = 20_000; // must match workers/data-api.ts's own constant
   const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
     validatorNominatorCountRow({ hotkey: `5Hk${i}`, nominator_count: i }),
   );
@@ -6135,7 +6135,7 @@ test("validator-nominator-counts-sync issues a single INSERT for a payload at or
 });
 
 // #5233: POST /api/v1/internal/nominator-positions-sync -- the write path
-// into nominator_positions (see workers/data-api.mjs's
+// into nominator_positions (see workers/data-api.ts's
 // handleNominatorPositionsSync). Same latest-only-upsert shape as
 // validator-nominator-counts-sync above, just a wider composite key.
 function nominatorPositionRow(overrides = {}) {
@@ -6277,7 +6277,7 @@ test("nominator-positions-sync maps a DB failure to a clean 502 instead of throw
 // proves nominator-positions-sync actually issues multiple INSERT
 // statements for a payload over its own (smaller, 5-column) batch size.
 test("nominator-positions-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
-  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.mjs's own constant
+  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.ts's own constant
   const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
     nominatorPositionRow({ hotkey: `5Hk${i}`, netuid: i % 128 }),
   );
@@ -6310,7 +6310,7 @@ test("nominator-positions-sync issues a single INSERT for a payload at or under 
 });
 
 // #6742: POST /api/v1/internal/account-balances-sync -- the write path into
-// account_balances (see workers/data-api.mjs's handleAccountBalancesSync).
+// account_balances (see workers/data-api.ts's handleAccountBalancesSync).
 // Same latest-only-upsert shape as nominator-positions-sync above, a
 // single-column key instead of a composite one.
 function accountBalanceRow(overrides = {}) {
@@ -6492,7 +6492,7 @@ test("account-balances-sync maps a DB failure to a clean 502 instead of throwing
 });
 
 test("account-balances-sync splits a payload over the per-statement param cap into multiple INSERT statements", async () => {
-  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.mjs's own constant
+  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.ts's own constant
   const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
     accountBalanceRow({ ss58: `5Whale${i}` }),
   );
@@ -6599,7 +6599,7 @@ test("GET /api/v1/accounts/:ss58/positions still serves a card (with zeroed stak
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   // buildAccountPositions drops any position it can't resolve a stake_tao
-  // for (src/account-nominator-positions.mjs: `if (hotkeyStake == null)
+  // for (src/account-nominator-positions.ts: `if (hotkeyStake == null)
   // continue;`) rather than fabricating a zero -- the join failing for
   // every hotkey degrades to the same empty card the "no positions" and
   // "nominator_positions read fails" tests above assert, just reached via
@@ -7444,10 +7444,10 @@ test("GET /api/v1/subnets/:netuid/identity-history?limit=1 emits a next_cursor w
 
 // #4832 Tier 2: the 12 chain-wide account_events analytics routes
 // (mirroring src/chain-*.mjs's D1 loaders). These reuse the ALREADY-flipped
-// METAGRAPH_ACCOUNT_EVENTS_SOURCE flag (no new table/secret), so entities.mjs
-// -- err, analytics.mjs's -- own tryPostgresTier wiring is tested at the
+// METAGRAPH_ACCOUNT_EVENTS_SOURCE flag (no new table/secret), so entities.ts
+// -- err, analytics.ts's -- own tryPostgresTier wiring is tested at the
 // handler layer (tests/chain-*.test.mjs); these exercise the actual SQL/
-// shaping in workers/data-api.mjs itself, including the cold-store guard
+// shaping in workers/data-api.ts itself, including the cold-store guard
 // branch each "network + subnet" route shares.
 
 test("GET /api/v1/chain/weights: warm store runs both the network + subnet queries", async () => {
@@ -8155,7 +8155,7 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
 // / health-uptime-rollup-sync write routes -- and are gated behind the
 // deliberately-unflipped METAGRAPH_HEALTH_SOURCE flag (see
 // handleBulkHealthTrends' own header comment in
-// workers/request-handlers/analytics.mjs), so these tests only prove the
+// workers/request-handlers/analytics.ts), so these tests only prove the
 // SQL/routing wiring, matching every other route's test style regardless.
 
 test("GET /api/v1/health/trends: aggregates surface_uptime_daily into 7d/30d windows", async () => {

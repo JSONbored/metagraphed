@@ -566,7 +566,7 @@ describe("loadAccountParents", () => {
   test("decodes a parent entry using the 'parent' field name", async () => {
     // Discover the real ParentKeys prefix from a live call rather than
     // hardcoding a second golden value (storageMapPrefix is already
-    // independently verified via twox-storage-key.test.mjs).
+    // independently verified via twox-storage-key.test.ts).
     let seenPrefix;
     const restore1 = stubFetch(async (_url, init) => {
       const body = JSON.parse(init!.body as string);

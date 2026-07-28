@@ -1,8 +1,8 @@
 // Unit tests for the /api/v1/internal/backfill-neuron-daily proxy
-// (workers/api.mjs's handleNeuronDailyBackfillProxy), which forwards to
-// workers/data-api.mjs's handleNeuronDailyBackfill via the EXISTING DATA_API
-// service binding, same shape as neurons-sync-proxy.test.mjs. The downstream
-// write logic itself is covered by tests/data-api.test.mjs.
+// (workers/api.ts's handleNeuronDailyBackfillProxy), which forwards to
+// workers/data-api.ts's handleNeuronDailyBackfill via the EXISTING DATA_API
+// service binding, same shape as neurons-sync-proxy.test.ts. The downstream
+// write logic itself is covered by tests/data-api.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";

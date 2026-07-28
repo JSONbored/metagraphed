@@ -11,7 +11,7 @@ import type { Row } from "./row-type.ts";
 const OBS = 1_700_000_000_000;
 
 // One GROUP BY netuid, event_kind aggregate row from account_events, the shape
-// loadChainAlphaVolume's SUM/COUNT/MAX query returns (mirrors alpha-volume.mjs's
+// loadChainAlphaVolume's SUM/COUNT/MAX query returns (mirrors alpha-volume.ts's
 // own per-subnet loader row shape, just without the `netuid = ?` filter).
 function ev(
   netuid: number,

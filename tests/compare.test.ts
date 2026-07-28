@@ -506,7 +506,7 @@ describe("GET /api/v1/compare", () => {
   });
 });
 
-// #6325: exercises the actual workers/api.mjs dispatch (uncached, unlike
+// #6325: exercises the actual workers/api.ts dispatch (uncached, unlike
 // /api/v1/compare above) rather than calling handleCompareValidators
 // directly, so the route-matching branch itself is covered too.
 describe("GET /api/v1/compare/validators", () => {

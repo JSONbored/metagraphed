@@ -1,4 +1,4 @@
-// Unit tests for src/alert-delivery.mjs (#4984 Part 3). Pure/no-I/O, so
+// Unit tests for src/alert-delivery.ts (#4984 Part 3). Pure/no-I/O, so
 // every branch is directly testable without a network dependency.
 import assert from "node:assert/strict";
 import { test } from "vitest";

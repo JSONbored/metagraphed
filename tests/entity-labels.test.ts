@@ -8,7 +8,7 @@ import {
   truncateSs58,
 } from "../src/entity-labels.ts";
 
-// Same real-shaped fixture bytes as tests/subnet-ownership-history.test.mjs.
+// Same real-shaped fixture bytes as tests/subnet-ownership-history.test.ts.
 const OLD_COLDKEY_BYTES = [
   [
     230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117, 251,

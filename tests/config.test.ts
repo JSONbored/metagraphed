@@ -1,4 +1,4 @@
-// Unit tests for the shared helpers in workers/config.mjs (#2568):
+// Unit tests for the shared helpers in workers/config.ts (#2568):
 //   - clampInt(raw, def, min, max)        — bounded page/limit/offset coercion
 //   - resolveClientIp(request)            — Cloudflare-only client IP, never XFF
 // Both are imported by every paginated route and tool, so the tests pin the

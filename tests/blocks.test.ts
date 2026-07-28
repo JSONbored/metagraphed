@@ -186,7 +186,7 @@ test("formatBlock rejects a negative or non-integer block_number cell to null", 
 });
 
 test("formatBlock rejects blank integer cells that coerce to 0 (not block 0)", () => {
-  // Mirrors the blank-cell guard in account-events.mjs (#2897): Number("") and
+  // Mirrors the blank-cell guard in account-events.ts (#2897): Number("") and
   // Number("   ") are 0, which would fabricate genesis height / counts.
   for (const blank of ["", "   "]) {
     const out = formatBlock({

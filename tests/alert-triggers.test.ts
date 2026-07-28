@@ -1,4 +1,4 @@
-// Unit tests for src/alert-triggers.mjs (#4984 Part 1). Pure/no-I/O, so every
+// Unit tests for src/alert-triggers.ts (#4984 Part 1). Pure/no-I/O, so every
 // branch is directly testable without a Postgres or network dependency.
 import assert from "node:assert/strict";
 import { test } from "vitest";

@@ -494,7 +494,7 @@ describe("GET /api/v1/chain/turnover", () => {
 // unit-tested the neuron_daily-backed stamp resolver directly. That function
 // (and its siblings readSubnetNeuronsCacheStamp / readNeuronsCacheStamp /
 // withNeuronsEdgeCache) has been deleted from
-// workers/request-handlers/analytics.mjs: it read the same dropped D1
+// workers/request-handlers/analytics.ts: it read the same dropped D1
 // neuron_daily table described above, so its stamp had been permanently frozen
 // since #4772 and could never bust the edge cache on new data. GET
 // /api/v1/chain/turnover now busts on the shared health-cron `last_run_at` KV

@@ -892,7 +892,7 @@ describe("formatTrajectory", () => {
     // loadSubnetTrajectory no longer takes a D1 runner -- subnet_snapshots is
     // Postgres-only now (the REST route tries the Postgres tier first), so
     // this loader is only reached on a tier miss and always returns an empty
-    // trajectory. See tests/request-handlers-analytics-routes.test.mjs for the
+    // trajectory. See tests/request-handlers-analytics-routes.test.ts for the
     // Postgres-tier-hit coverage of handleTrajectory itself.
     const out = (await loadSubnetTrajectory(11)) as Row;
     assert.equal(out.netuid, 11);
@@ -925,7 +925,7 @@ describe("formatTrajectory", () => {
 // identity-history mirror (syncSubnetIdentityToPostgres, an unrelated table)
 // stays independent/best-effort exactly as before. The COALESCE-backfill SQL
 // text assertion that used to live here moved to
-// tests/data-api.test.mjs's handleSubnetSnapshotSync coverage, since that's
+// tests/data-api.test.ts's handleSubnetSnapshotSync coverage, since that's
 // where the ON CONFLICT ... COALESCE upsert actually runs now.
 describe("writeSubnetSnapshot", () => {
   const profiles = {
@@ -1698,4 +1698,4 @@ describe("hourly cron writes a daily snapshot", () => {
 // tries the Postgres tier first and a miss falls through to a pure
 // empty-shape builder directly, never a live D1 query, so the D1 read path
 // + its fallback-row bookkeeping had zero remaining callers. See
-// workers/request-handlers/analytics.mjs's own header comment.
+// workers/request-handlers/analytics.ts's own header comment.

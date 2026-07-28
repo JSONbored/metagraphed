@@ -1,15 +1,15 @@
 // Unit tests for the isolated, account-gated fullnode RPC proxy
-// (workers/request-handlers/fullnode-rpc-proxy.mjs). Real
-// orderSafeRpcEndpoints/proxyWithFailover (rpc-proxy.mjs) run unmocked --
+// (workers/request-handlers/fullnode-rpc-proxy.ts). Real
+// orderSafeRpcEndpoints/proxyWithFailover (rpc-proxy.ts) run unmocked --
 // only the upstream `fetch` is monkey-patched, matching this codebase's
-// established convention (e.g. tests/address-mapping.test.mjs) rather than
+// established convention (e.g. tests/address-mapping.test.ts) rather than
 // injecting a fetchFn the handler doesn't expose.
 //
-// Key validation goes through src/api-key-validation.mjs's real KV-cache-
+// Key validation goes through src/api-key-validation.ts's real KV-cache-
 // fronted lookup, which on a miss calls the DATA_API service binding's
 // internal verify route -- mocked here to return whatever
 // {valid, code, tier, accountId} shape each test needs, exactly the
-// contract workers/data-api.mjs's handleApiKeyVerify actually returns.
+// contract workers/data-api.ts's handleApiKeyVerify actually returns.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "vitest";
 import { handleFullnodeRpcProxyRequest } from "../workers/request-handlers/fullnode-rpc-proxy.ts";
@@ -522,7 +522,7 @@ test("fails over to a second configured origin when one is unreachable", async (
   // which of the two is tried first is not deterministic from here -- assert
   // on the end-to-end outcome (a working pair of origins always yields a
   // 200), not attempt count/order. The failover walk itself is exhaustively
-  // unit-tested in tests/request-handlers-rpc-proxy.test.mjs; this only
+  // unit-tested in tests/request-handlers-rpc-proxy.test.ts; this only
   // confirms this handler's own multi-origin wiring doesn't break it.
   const { env, key } = makeValidatedKeyEnv({
     FULLNODE_RPC_ORIGINS:

@@ -2011,7 +2011,7 @@ test("public artifacts are internally consistent", () => {
   // subnet:27 is indexed with a title + non-empty tokens. The specific token
   // WORDS derive from the live chain description (which changes over time), so
   // assert structure here, not volatile content — semantic/meaningful-word
-  // tokenization is covered by tests/search-quality.test.mjs.
+  // tokenization is covered by tests/search-quality.test.ts.
   assert.equal(typeof nodexoSearchDocument?.title, "string");
   assert.equal(
     Array.isArray(nodexoSearchDocument?.tokens) &&

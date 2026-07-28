@@ -1,4 +1,4 @@
-// Unit tests for workers/alerter-hub.mjs (#4984 Parts 2+3). No Durable
+// Unit tests for workers/alerter-hub.ts (#4984 Parts 2+3). No Durable
 // Object runtime needed -- state.storage is never touched by this class
 // (the trigger cache is plain in-memory instance state, refreshed from
 // env.DATA_API), so it's fully Node-testable like McpSessionHub.

@@ -525,7 +525,7 @@ test("formatExtrinsic rejects negative or non-integer chain-position cells to nu
 });
 
 test("formatExtrinsic rejects blank chain-position cells that coerce to 0", () => {
-  // Mirrors the blank-cell guard in blocks.mjs (#2947): Number("") and
+  // Mirrors the blank-cell guard in blocks.ts (#2947): Number("") and
   // Number("   ") are 0, which would fabricate genesis block / index 0.
   for (const blank of ["", "   "]) {
     const out = formatExtrinsic({

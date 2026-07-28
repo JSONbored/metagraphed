@@ -2,8 +2,8 @@
 // GET /api/v1/subnets/{netuid}/identity-history and
 // GET /api/v1/accounts/{ss58}/identity-history. Kept in a dedicated file so this
 // PR does not contend with open entity-handler PRs on the shared
-// request-handlers-entities.test.mjs harness, mirroring
-// subnet-hyperparams-history-csv.test.mjs.
+// request-handlers-entities.test.ts harness, mirroring
+// subnet-hyperparams-history-csv.test.ts.
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
