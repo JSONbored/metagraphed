@@ -879,6 +879,126 @@ test("internal key verify: fails closed as NOT_FOUND when Unkey itself is unreac
   assert.deepEqual(body, { valid: false, code: "NOT_FOUND" });
 });
 
+// --- POST /api/v1/internal/keys/usage (#8386) -------------------------------
+
+test("internal key usage: 503 when not provisioned", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: undefined });
+  const res = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      body: { account_id: 1, route: "chain-events" },
+    }),
+    env,
+  );
+  assert.equal(res.status, 503);
+});
+
+test("internal key usage: 401 when the token is missing or wrong", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      body: { account_id: 1, route: "chain-events" },
+    }),
+    env,
+  );
+  assert.equal(res.status, 401);
+});
+
+test("internal key usage: 400 when account_id or route is missing", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const noRoute = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { account_id: 1 },
+    }),
+    env,
+  );
+  assert.equal(noRoute.status, 400);
+});
+
+test("internal key usage: 200 and upserts the daily counter", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { account_id: 7, route: "chain-events" },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.ok(
+    sqlCalls.some((c) => /INSERT INTO api_key_usage_daily/.test(c.text)),
+  );
+  assert.ok(sqlCalls.some((c) => /ON CONFLICT/.test(c.text)));
+});
+
+test("internal key usage: still returns 200 when the write itself fails (best-effort counter)", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  failNextQuery.error = new Error("db down");
+  const res = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { account_id: 7, route: "chain-events" },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+});
+
+// --- GET /api/v1/keys/usage (#8386) -----------------------------------------
+
+test("keys usage: 401 when the session is missing", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(req("/api/v1/keys/usage"), env);
+  assert.equal(res.status, 401);
+});
+
+test("keys usage: 200 aggregates by day and top routes, scoped to the session's account", async () => {
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current.push([
+    { day: "2026-07-20", route: "chain-events", request_count: 5 },
+    { day: "2026-07-20", route: "chain-events/stats", request_count: 2 },
+    { day: "2026-07-19", route: "chain-events", request_count: 3 },
+  ]);
+  const res = await fetchRoute(
+    req("/api/v1/keys/usage", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.window_days, 7);
+  assert.deepEqual(body.days, [
+    { day: "2026-07-20", count: 7 },
+    { day: "2026-07-19", count: 3 },
+  ]);
+  assert.equal(body.top_routes[0].route, "chain-events");
+  assert.equal(body.top_routes[0].count, 8);
+  assert.ok(sqlCalls.some((c) => /account_id = /.test(c.text)));
+});
+
+test("keys usage: 200 with empty arrays when there's no usage yet", async () => {
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current.push([]);
+  const res = await fetchRoute(
+    req("/api/v1/keys/usage", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.deepEqual(body.days, []);
+  assert.deepEqual(body.top_routes, []);
+});
+
 // --- POST /api/v1/internal/accounts/tier ------------------------------------
 
 const PROMOTE_TOKEN = "test-tier-promote-token";

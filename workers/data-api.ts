@@ -5000,6 +5000,59 @@ async function handleApiKeyVerify(request: Request, env: Env) {
   });
 }
 
+// Internal-only: increments ONE account's daily usage counter for the
+// self-serve usage dashboard (#8386). Reuses the SAME shared secret as
+// handleApiKeyVerify above (API_KEY_LOOKUP_INTERNAL_TOKEN) rather than
+// minting a new one: recording usage for a request whose key this Worker
+// already validated is a strictly SMALLER capability than verifying an
+// arbitrary caller-supplied key in the first place, so it sits inside the
+// same trust boundary, not a new one (unlike ACCOUNT_TIER_PROMOTE_TOKEN_HEADER
+// above, which grants a materially different, higher-privilege capability
+// and correctly gets its own secret). Fire-and-forget from the caller's side
+// (workers/api.ts's recordApiKeyUsage, via ctx.waitUntil) -- a failure here
+// must never affect the request that triggered it, so this always returns
+// 200 even on a swallowed write error; there is nothing for the caller to
+// react to either way.
+async function handleApiKeyUsageIncrement(request: Request, env: Env) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error: "api-key usage recording is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided = request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const accountId = Number(body?.account_id);
+  const route = typeof body?.route === "string" ? body.route.slice(0, 128) : "";
+  if (!Number.isFinite(accountId) || !route) {
+    return writeJson({ error: "provide account_id and route" }, 400);
+  }
+  try {
+    await withAccountsSql(env, async (sql: postgres.Sql) => {
+      const day = new Date().toISOString().slice(0, 10);
+      await sql`
+        INSERT INTO api_key_usage_daily (account_id, day, route, request_count)
+        VALUES (${accountId}, ${day}, ${route}, 1)
+        ON CONFLICT (account_id, day, route)
+        DO UPDATE SET request_count = api_key_usage_daily.request_count + 1`;
+    });
+  } catch {
+    // Best-effort counter -- never surfaces a failure to the caller (see
+    // header comment above).
+  }
+  return writeJson({ ok: true });
+}
+
 const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 
 // Internal-only: bumps ONE account's tier. An ops action, run manually after
@@ -5060,9 +5113,58 @@ async function handleAccountTierPromote(request: Request, env: Env) {
   });
 }
 
+// Session-gated usage dashboard (#8386): the calling account's own last 7
+// days of request counts by day, plus the top routes across that window --
+// scoped to account_id, never key_id, since api_key_usage_daily is recorded
+// per-account (a key's identity resolves to its account before the counter
+// write, same as the tiered rate limiter's own accountId-keying) rather than
+// per-individual-key. An account with several active keys sees combined
+// usage across all of them, which matches "how much of my headroom am I
+// using" better than a per-key split would.
+const USAGE_DASHBOARD_WINDOW_DAYS = 7;
+
+async function handleAccountKeyUsage(request: Request, env: Env) {
+  const { session, error: sessionError } = await requireAccountSession(
+    request,
+    env,
+  );
+  if (sessionError) return sessionError;
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
+    const since = new Date(
+      Date.now() - USAGE_DASHBOARD_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    const rows = await sql`
+      SELECT day, route, request_count
+      FROM api_key_usage_daily
+      WHERE account_id = ${session.accountId} AND day >= ${since}
+      ORDER BY day DESC`;
+    const byDay = new Map<string, number>();
+    const byRoute = new Map<string, number>();
+    for (const row of rows) {
+      byDay.set(row.day, (byDay.get(row.day) ?? 0) + Number(row.request_count));
+      byRoute.set(
+        row.route,
+        (byRoute.get(row.route) ?? 0) + Number(row.request_count),
+      );
+    }
+    return writeJson({
+      window_days: USAGE_DASHBOARD_WINDOW_DAYS,
+      days: [...byDay.entries()]
+        .map(([day, count]) => ({ day, count }))
+        .sort((a, b) => b.day.localeCompare(a.day)),
+      top_routes: [...byRoute.entries()]
+        .map(([route, count]) => ({ route, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+    });
+  });
+}
+
 async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
   const segments = url.pathname.split("/").filter(Boolean);
-  // ["api", "v1", "keys", <key_id?>]
+  // ["api", "v1", "keys", <key_id?>, <"usage"?>]
   const keyId = segments[3];
   if (!keyId && request.method === "POST") {
     return handleAccountKeyCreate(request, env);
@@ -5070,12 +5172,16 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
   if (!keyId && request.method === "GET") {
     return handleAccountKeysList(request, env);
   }
+  if (keyId === "usage" && request.method === "GET") {
+    return handleAccountKeyUsage(request, env);
+  }
   if (keyId && request.method === "DELETE") {
     return handleAccountKeyRevoke(request, env, keyId);
   }
   return writeJson(
     {
-      error: "Use POST/GET /api/v1/keys, or DELETE /api/v1/keys/{key_id}.",
+      error:
+        "Use POST/GET /api/v1/keys, GET /api/v1/keys/usage, or DELETE /api/v1/keys/{key_id}.",
     },
     405,
   );
@@ -5193,6 +5299,15 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/keys/verify"
     ) {
       return handleApiKeyVerify(request, env);
+    }
+    // Internal-only usage-counter increment for the self-serve usage
+    // dashboard (#8386) -- see handleApiKeyUsageIncrement's own header
+    // comment for why it reuses the verify route's shared secret.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/keys/usage"
+    ) {
+      return handleApiKeyUsageIncrement(request, env);
     }
     // Internal-only, ops-triggered account tier promotion -- see
     // handleAccountTierPromote's own header comment.

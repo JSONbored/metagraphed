@@ -1150,6 +1150,29 @@ ALTER TABLE api_keys ALTER COLUMN secret_hash DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_unkey_key_id
   ON api_keys (unkey_key_id) WHERE unkey_key_id IS NOT NULL;
 
+-- ---------------------------------------------------------------------------
+-- Self-serve API key usage dashboard (#8386) -- a minimal daily counter, not
+-- an analytics system: src/usage-telemetry.ts is write-only to PostHog with
+-- no query path back, so "last 7d by day + top endpoints" for one account's
+-- key needs somewhere this codebase can actually read from. One row per
+-- (account, day, route); incremented via UPSERT on every tiered-rate-limited
+-- request an authenticated key made (workers/tiered-rate-limit.ts's
+-- accountId, recorded fire-and-forget via workers/api.ts's
+-- recordApiKeyUsage -- never on the request's hot path).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS api_key_usage_daily (
+  account_id     BIGINT NOT NULL REFERENCES rpc_accounts (id),
+  day            DATE NOT NULL,
+  route          TEXT NOT NULL,
+  request_count  BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (account_id, day, route)
+);
+-- The dashboard's own query: one account's last 7 days, newest first.
+-- Already covered by the primary key's implicit index; explicit only for
+-- readability/documentation (matches this file's own convention).
+CREATE INDEX IF NOT EXISTS idx_api_key_usage_daily_account_day
+  ON api_key_usage_daily (account_id, day DESC);
+
 -- metagraphed's OWN uptime (metagraphed#8317). Every other health table here
 -- is about someone else -- surface_checks probes subnet APIs -- so /status
 -- could only ever answer "are the things we watch up", never "are WE up".
