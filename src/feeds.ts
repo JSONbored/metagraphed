@@ -435,7 +435,7 @@ export function parseWatchIds(raw: string | null): ParsedWatchIds | null {
   if (tokens.length > WATCH_MAX_IDS) return { ids: [], overflow: true };
   const ids: WatchId[] = [];
   for (const token of tokens) {
-    const kind = WATCH_ID_PREFIX[token[0]?.toLowerCase() ?? ""];
+    const kind = WATCH_ID_PREFIX[token[0].toLowerCase()];
     const id = token.slice(1);
     if (!kind || !id) return null; // malformed token -> the caller 400s
     if (kind === "subnet" && !/^\d+$/.test(id)) return null;
