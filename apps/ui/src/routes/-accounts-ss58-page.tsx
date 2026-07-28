@@ -50,6 +50,7 @@ import {
 import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
+import { AccountHoldingsHistory } from "@/components/metagraphed/account-holdings-history";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
@@ -120,6 +121,10 @@ import { DEFAULT_EVENTS_LIMIT } from "./accounts.$ss58";
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "positions", label: "Positions" },
+  // #8370: holdings over time — the story of the address, not just its
+  // snapshot. Named "holdings" internally because the "history" SECTION id
+  // below is already taken by the Activity tab's daily-activity anchor.
+  { id: "holdings", label: "History" },
   { id: "transfers", label: "Transfers" },
   { id: "activity", label: "Activity" },
   { id: "extrinsics", label: "Extrinsics" },
@@ -129,6 +134,7 @@ const TABS = [
 const SECTION_TO_TAB: Record<string, string> = {
   identity: "overview",
   entities: "overview",
+  "holdings-history": "holdings",
   portfolio: "positions",
   "stake-flow": "positions",
   "stake-moves": "positions",
@@ -364,6 +370,18 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           {/* #6723: live child/parent-hotkey stake-weight delegation graph. */}
           <AccountDelegationSection ss58={ss58} />
         </>
+      )}
+
+      {tab === "holdings" && (
+        <SectionAnchor
+          id="holdings-history"
+          title="Holdings over time"
+          subtitle="Staked τ by subnet from daily position snapshots — free balance stays a live read in the band above."
+          tone="accent"
+          info="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
+        >
+          <AccountHoldingsHistory ss58={ss58} />
+        </SectionAnchor>
       )}
 
       {tab === "transfers" && (

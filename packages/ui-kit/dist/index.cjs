@@ -3251,6 +3251,7 @@ function synthesizeDonutAriaLabel(segments) {
 }
 var SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
 var CANDLESTICK_MINI_EMPTY_ARIA_LABEL = "Candlestick chart with no data";
+var STACKED_AREA_EMPTY_ARIA_LABEL = "Stacked area chart with no data";
 function BarMini({
   data,
   max,
@@ -4441,6 +4442,172 @@ function SankeyMini({
             node.id
           );
         })
+      ]
+    }
+  );
+}
+var MAX_SLOTS = 500;
+function layoutStackedArea(series) {
+  const slots = Math.min(
+    MAX_SLOTS,
+    series.reduce((n, s) => Math.max(n, s.values.length), 0)
+  );
+  const running = new Array(slots).fill(0);
+  const bands = [];
+  for (const s of series) {
+    const lower = [...running];
+    for (let i = 0; i < slots; i++) {
+      const idx = s.values.length - slots + i;
+      const raw = idx >= 0 && idx < s.values.length ? s.values[idx] : 0;
+      const v = typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 0;
+      running[i] = running[i] + v;
+    }
+    bands.push({ id: s.id, lower, upper: [...running] });
+  }
+  let max = 0;
+  for (const t of running) if (t > max) max = t;
+  return { bands, totals: running, max, slots };
+}
+function StackedAreaMini({
+  series,
+  labels,
+  width = 560,
+  height = 160,
+  className,
+  ariaLabel,
+  formatValue,
+  interactive = true
+}) {
+  const wrapRef = React3.useRef(null);
+  const [hover, setHover] = React3.useState(null);
+  const drawable = series.filter(
+    (s) => s.values.some((v) => Number.isFinite(v) && v > 0)
+  );
+  const { bands, totals, max, slots } = layoutStackedArea(drawable);
+  if (drawable.length === 0 || slots === 0 || max <= 0) {
+    return /* @__PURE__ */ jsxRuntime.jsx(
+      "svg",
+      {
+        width: "100%",
+        height,
+        viewBox: `0 0 ${width} ${height}`,
+        preserveAspectRatio: "none",
+        className: `block w-full ${className ?? ""}`,
+        role: "img",
+        "aria-label": ariaLabel ?? STACKED_AREA_EMPTY_ARIA_LABEL,
+        children: /* @__PURE__ */ jsxRuntime.jsx(
+          "line",
+          {
+            x1: 0,
+            y1: height / 2,
+            x2: width,
+            y2: height / 2,
+            stroke: "var(--border)",
+            strokeDasharray: "2 3"
+          }
+        )
+      }
+    );
+  }
+  const padTop = 4;
+  const padBottom = 2;
+  const innerHeight = height - padTop - padBottom;
+  const step = slots > 1 ? width / (slots - 1) : 0;
+  const xAt = (i) => slots === 1 ? width / 2 : i * step;
+  const yAt = (v) => padTop + innerHeight - v / max * innerHeight;
+  const paths = bands.map((band) => {
+    const upper = band.upper.map((v, i) => [xAt(i), yAt(v)]);
+    const lower = band.lower.map((v, i) => [xAt(i), yAt(v)]).reverse();
+    const d = upper.map(
+      ([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`
+    ).join(" ") + " " + lower.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(" ") + " Z";
+    return { id: band.id, d };
+  });
+  const canTooltip = interactive && slots > 1;
+  function onMove(e) {
+    if (!canTooltip) return;
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    setHover(Math.round(x / rect.width * (slots - 1)));
+  }
+  function onKeyDown(e) {
+    if (!canTooltip) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setHover((prev) => Math.min(slots - 1, (prev ?? -1) + 1));
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setHover((prev) => Math.max(0, (prev ?? slots) - 1));
+    }
+  }
+  const fmt = formatValue ?? ((v) => String(v));
+  const hoverX = hover != null ? xAt(hover) : null;
+  const hoverLines = hover != null ? [
+    ...labels?.[hover] ? [labels[hover]] : [],
+    ...drawable.map((s, bi) => {
+      const size = bands[bi].upper[hover] - bands[bi].lower[hover];
+      return size > 0 ? `${s.label}: ${fmt(size)}` : null;
+    }).filter((line) => line != null),
+    `Total: ${fmt(totals[hover])}`
+  ] : [];
+  const resolvedAriaLabel = ariaLabel ?? `Stacked area chart: ${drawable.map((s) => s.label).join(", ")} over ${slots} points`;
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      ref: wrapRef,
+      className: `relative block w-full ${className ?? ""}`,
+      style: { width: "100%", height },
+      onPointerMove: onMove,
+      onPointerLeave: () => setHover(null),
+      onKeyDown,
+      onFocus: () => {
+        if (canTooltip) setHover((prev) => prev ?? 0);
+      },
+      onBlur: () => setHover(null),
+      tabIndex: canTooltip ? 0 : void 0,
+      "aria-label": canTooltip ? `${resolvedAriaLabel}, use arrow keys to step through values` : void 0,
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsxs(
+          "svg",
+          {
+            width: "100%",
+            height,
+            viewBox: `0 0 ${width} ${height}`,
+            preserveAspectRatio: "none",
+            role: "img",
+            "aria-label": resolvedAriaLabel,
+            className: "block w-full",
+            children: [
+              paths.map((p, i) => /* @__PURE__ */ jsxRuntime.jsx("path", { d: p.d, fill: drawable[i].color, opacity: 0.75, children: /* @__PURE__ */ jsxRuntime.jsx("title", { children: drawable[i].label }) }, p.id)),
+              hoverX != null ? /* @__PURE__ */ jsxRuntime.jsx(
+                "line",
+                {
+                  x1: hoverX,
+                  x2: hoverX,
+                  y1: 0,
+                  y2: height,
+                  stroke: "var(--ink-muted)",
+                  strokeOpacity: 0.35,
+                  strokeWidth: 1
+                }
+              ) : null
+            ]
+          }
+        ),
+        hoverX != null && hoverLines.length > 0 ? /* @__PURE__ */ jsxRuntime.jsx(
+          "div",
+          {
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-1 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            style: {
+              left: `${Math.max(8, Math.min(92, hoverX / width * 100))}%`,
+              top: height * 0.35
+            },
+            role: "tooltip",
+            children: hoverLines.map((line) => /* @__PURE__ */ jsxRuntime.jsx("div", { children: line }, line))
+          }
+        ) : null,
+        /* @__PURE__ */ jsxRuntime.jsx("span", { "aria-live": "polite", className: "sr-only", children: hoverLines.join(", ") })
       ]
     }
   );
@@ -6544,6 +6711,7 @@ exports.SheetTrigger = SheetTrigger;
 exports.Skeleton = Skeleton;
 exports.SparkLegend = SparkLegend;
 exports.Sparkline = Sparkline;
+exports.StackedAreaMini = StackedAreaMini;
 exports.StatTile = StatTile;
 exports.StatWithSpark = StatWithSpark;
 exports.StatusBadge = StatusBadge;
@@ -6568,6 +6736,7 @@ exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
 exports.isScrolledPast = isScrolledPast;
 exports.layoutSankey = layoutSankey;
+exports.layoutStackedArea = layoutStackedArea;
 exports.nextTabIndex = nextTabIndex;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.rovingTabIndex = rovingTabIndex;
