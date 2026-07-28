@@ -35,6 +35,11 @@ export function AgentLiveCard() {
           Grounded answers and vector search over all 129 subnets — the same data the MCP's 204
           tools and 2,292 callable services are built on. Run a real query below.
         </p>
+        <p className="mt-1 mg-type-caption text-ink-subtle-text">
+          This calls the live HTTP API directly, over the network from your browser — it proves the
+          registry is reachable and answering, not that a specific MCP client's handshake works. The
+          response time shown is round-trip from here, not from an MCP session.
+        </p>
         <TabStrip
           className="mt-4 -mb-px"
           ariaLabel="Live query mode"

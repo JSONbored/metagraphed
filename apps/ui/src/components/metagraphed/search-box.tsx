@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/lib/metagraphed/client";
 import { semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
+import { captureEvent } from "@/lib/analytics";
 import type { SemanticSearchResult } from "@/lib/metagraphed/types";
 
 const RESULT_LIMIT = 8;
@@ -96,15 +97,27 @@ function SearchResults({ results }: { results: SemanticSearchResult[] }) {
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const startedAtRef = useRef<number | null>(null);
   const { data, isFetching, isError, error } = useQuery({
     ...semanticSearchQuery(submitted, RESULT_LIMIT),
     retry: 0,
   });
 
+  useEffect(() => {
+    if (!isFetching && startedAtRef.current != null) {
+      setLatencyMs(Date.now() - startedAtRef.current);
+      startedAtRef.current = null;
+    }
+  }, [isFetching]);
+
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
+    captureEvent("agent_live_test_run", { mode: "search" });
+    startedAtRef.current = Date.now();
+    setLatencyMs(null);
     setSubmitted(trimmed);
   }
 
@@ -140,7 +153,14 @@ export function SearchBox() {
         </p>
       ) : null}
 
-      {!isError && submitted && data ? <SearchResults results={data.data.results} /> : null}
+      {!isError && submitted && data ? (
+        <>
+          <SearchResults results={data.data.results} />
+          {latencyMs != null ? (
+            <p className="mt-2 mg-type-data-sm text-ink-muted">{latencyMs}ms</p>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }
