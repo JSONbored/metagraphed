@@ -1,0 +1,78 @@
+---
+title: Evaluate a subnet before staking
+description: Four MCP tool calls to check a subnet's health, economics, and stake concentration before putting TAO into it — with a real, executed transcript.
+---
+
+**Goal:** decide whether staking into a subnet right now is a reasonable idea — not just "is it
+healthy," but "who already controls it, and what would my stake actually buy."
+
+## The sequence
+
+```
+1. get_subnet { netuid }              — identity, integration readiness, curation state
+2. get_subnet_health { netuid }       — is it actually up right now
+3. get_subnet_economics { netuid }    — price, pool size, emission share, registration status
+4. get_subnet_concentration { netuid } — who already holds the stake (Nakamoto coefficient)
+5. get_subnet_stake_quote { netuid, amount, direction: "stake" } — what your amount actually buys
+```
+
+Steps 1–4 are read-only lookups; run them in any order once you have a netuid. Step 5 needs a
+real amount, so run it last.
+
+## What each output means
+
+- **`get_subnet`** — `profile.readiness.score` (0–100) and `curation.review_state` are the fastest
+  signal for "is this a real, maintained subnet" before you look at anything financial.
+- **`get_subnet_health`** — `summary.status` should be `ok`. A subnet that's `degraded` or `failed`
+  right now doesn't disqualify it from staking (health tracks the subnet's API surfaces, not its
+  chain economics), but it's worth knowing before you go looking for its dashboard.
+- **`get_subnet_economics`** — `registration_allowed` + `open_slots` tell you if new miners/validators
+  can even join; `alpha_price_tao` and `emission_share` are the subnet's current market size.
+- **`get_subnet_concentration`** — the number that actually answers "how risky is this stake."
+  `stake.nakamoto_coefficient` is how many entities you'd need to collude to control the subnet.
+  **1 means one entity already can.**
+- **`get_subnet_stake_quote`** — `price_impact_pct` tells you whether your own stake would move the
+  price meaningfully; `expected_out` is the alpha you'd actually receive.
+
+## Failure branch
+
+`get_subnet_health` returning `unknown` for every surface (not `ok`/`degraded`/`failed`) means the
+prober hasn't reached this subnet's endpoints yet — check `get_subnet`'s `curation.review_state`
+instead; a `maintainer-reviewed` subnet with no recent probe data is usually just new to the
+registry, not actually down.
+
+## Executed transcript (subnet 1, "Apex", 2026-07-28)
+
+<Callout title="Real output, condensed" type="info">
+  Run live against the production API for this doc — not aspirational. Full JSON trimmed to the
+  fields the steps above actually use.
+</Callout>
+
+```json
+// 1. get_subnet { netuid: 1 }
+{ "name": "Apex", "status": "active",
+  "profile": { "readiness": { "score": 96, "readiness_tier": "buildable" },
+               "curation_level": "maintainer-reviewed" } }
+
+// 2. get_subnet_health { netuid: 1 }
+{ "summary": { "status": "ok", "ok_count": 3, "failed_count": 0, "avg_latency_ms": 218 } }
+
+// 3. get_subnet_economics { netuid: 1 }
+{ "alpha_price_tao": 0.008532047, "registration_allowed": true, "open_slots": 0,
+  "validator_count": 10, "miner_count": 246, "emission_share": 0.006692 }
+
+// 4. get_subnet_concentration { netuid: 1 }
+{ "stake": { "nakamoto_coefficient": 1, "gini": 0.833289, "top_1pct_share": 0.585467 } }
+
+// 5. get_subnet_stake_quote { netuid: 1, amount: 100, direction: "stake" }
+{ "expected_out": 11725.4, "expected_out_unit": "alpha", "price_impact_pct": 0.384 }
+```
+
+**Reading this one:** readiness (96) and health (ok) both look good, and 100 TAO would only move
+the price 0.38% — but `nakamoto_coefficient: 1` means a single entity already holds enough stake to
+control consensus on this subnet. That's not disqualifying (many active subnets look like this
+today), but it's the one number this sequence surfaces that a glance at the price chart wouldn't.
+
+## Tools used
+
+[`get_subnet`](/docs/api-reference/subnets/subnet-detail), [`get_subnet_health`](/docs/api-reference/health/subnet-health), [`get_subnet_economics`](/docs/economics), [`get_subnet_concentration`](/docs/api-reference/subnets/subnet-concentration), [`get_subnet_stake_quote`](/docs/api-reference/subnets/subnet-stake-quote) — same tools, callable directly over MCP (`prompts/get name="evaluate_subnet_before_staking"`) or as the REST routes each links to.

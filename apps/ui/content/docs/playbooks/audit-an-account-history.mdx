@@ -1,0 +1,84 @@
+---
+title: Audit an account's history
+description: Three MCP tool calls to reconstruct what one SS58 address has actually done on-chain — activity summary, native transfers, and stake re-delegation — with a real, executed transcript.
+---
+
+**Goal:** given one SS58 address (hotkey or coldkey), reconstruct what it's actually done — not just
+its current balance, but its transaction pattern over time.
+
+## The sequence
+
+```
+1. get_account { ss58 }                        — cross-subnet activity summary, first/last seen
+2. get_account_transfers { ss58, limit }        — native TAO Balances.Transfer feed
+3. get_account_stake_moves { ss58, window: "30d" } — StakeMoved re-delegation footprint
+```
+
+Start with step 1 always — its `event_kinds` breakdown tells you which of steps 2/3 (or neither)
+are worth running for this specific address before you spend the calls.
+
+## What each output means
+
+- **`get_account`** — `event_count` and `first_seen_at`/`last_seen_at` establish the account's
+  overall lifespan and activity level. `event_kinds` (an array of `{kind, count}`) is the fastest way
+  to see WHAT it does — an account that's 95% `Deposit` events behaves very differently from one
+  that's mostly `StakeAdded`/`StakeRemoved`. `registrations` shows where it currently holds a
+  neuron slot, if any.
+- **`get_account_transfers`** — the plain TAO-movement ledger, `direction: sent | received` per row.
+  This is deliberately separate from stake events — a transfer moving TAO between two addresses is a
+  different thing from staking TAO into a subnet's pool.
+- **`get_account_stake_moves`** — `StakeMoved` specifically (re-delegation between hotkeys/subnets
+  without unstaking), not net capital flow. `concentration` (an HHI-style score) and
+  `dominant_netuid` show whether the account's re-delegation churn is spread out or focused on one
+  subnet.
+
+## Failure branch
+
+`get_account` never errors on an unfamiliar address — a cold or never-seen SS58 returns a
+schema-stable zero summary (`event_count: 0`, empty arrays throughout), not a 404. Treat that as a
+real, informative answer ("this address has no on-chain footprint we've indexed"), not a signal to
+retry or that something went wrong — and don't bother calling steps 2/3 for it.
+
+## Executed transcript (a subnet-1 owner/validator coldkey, 2026-07-28)
+
+<Callout title="Real output, condensed — including one dead end" type="info">
+  The first address tried for this doc (a randomly-picked account) returned the cold, zero-event
+  response the failure branch above describes — included here because it's the realistic first
+  outcome, not a hand-picked success case. The second address, tried after switching to a known
+  active coldkey, is what the rest of the transcript shows.
+</Callout>
+
+```json
+// 1a. get_account { ss58: "5F1FyEQn...C1U" }  (a plain random address)
+{ "event_count": 0, "subnet_count": 0, "first_seen_at": null, "recent_events": [] }
+// -> the failure branch: real, informative, not an error. Stop here for this address.
+
+// 1b. get_account { ss58: "5HCFWv...DHh" }  (switched to a known-active coldkey)
+{ "event_count": 3212, "first_seen_at": "2024-08-03T07:11:00Z",
+  "event_kinds": [
+    { "kind": "Deposit", "count": 3104 }, { "kind": "StakeAdded", "count": 45 },
+    { "kind": "StakeRemoved", "count": 35 }, { "kind": "RootClaimed", "count": 12 },
+    { "kind": "StakeTransferred", "count": 2 }, { "kind": "Transfer", "count": 2 }
+  ],
+  "registrations": [{ "netuid": 1, "validator_permit": true }] }
+
+// 2. get_account_transfers { ss58: "5HCFWv...DHh", limit: 5 }
+{ "transfer_count": 2, "transfers": [
+  { "amount_tao": 0.05, "direction": "sent", "observed_at": "2026-07-23T14:33:36Z" },
+  { "amount_tao": 0.05, "direction": "sent", "observed_at": "2026-07-16T10:45:00Z" }
+] }
+
+// 3. get_account_stake_moves { ss58: "5HCFWv...DHh", window: "30d" }
+{ "total_movements": 2, "concentration": 1, "dominant_netuid": 1 }
+```
+
+**Reading this one:** `event_kinds` immediately shows the real story — 3,104 of 3,212 events are
+`Deposit` (near-automatic, likely reward/dividend accrual from the account's own `validator_permit`
+registration), with a modest, deliberate-looking `StakeAdded`/`StakeRemoved` churn on top. Only two
+actual TAO transfers in the entire history, both small and outbound. `concentration: 1` on stake
+moves confirms all of it is happening on the one subnet this account is registered on — this is a
+validator managing its own position, not an address moving capital around the network.
+
+## Tools used
+
+[`get_account`](/docs/api-reference/accounts/account-summary), [`get_account_transfers`](/docs/api-reference/accounts/account-transfers), [`get_account_stake_moves`](/docs/api-reference/accounts/account-stake-moves) — same tools, callable directly over MCP (`prompts/get name="audit_account_history"`) or as the REST routes each links to.

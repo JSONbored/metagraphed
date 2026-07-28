@@ -1,0 +1,9 @@
+{
+  "title": "Playbooks",
+  "pages": [
+    "evaluate-a-subnet-before-staking",
+    "monitor-my-validator",
+    "find-a-subnet-for-my-app",
+    "audit-an-account-history"
+  ]
+}

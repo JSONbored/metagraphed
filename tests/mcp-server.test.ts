@@ -990,6 +990,99 @@ describe("MCP resources/prompts — branch coverage", () => {
       /get_subnet_health/,
     );
   });
+
+  // #8383: the three new playbook prompts (evaluate/monitor/audit) --
+  // find_subnet_for_task already existed and is covered above.
+  test("prompts/get builds the evaluate_subnet_before_staking recipe", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: {
+        name: "evaluate_subnet_before_staking",
+        arguments: { netuid: 1, amount: 100 },
+      },
+    });
+    const text = res.body.result.messages[0].content.text;
+    assert.match(text, /get_subnet_health/);
+    assert.match(text, /get_subnet_concentration/);
+    assert.match(text, /get_subnet_stake_quote/);
+    assert.match(text, /netuid: 1/);
+    assert.match(text, /amount: 100/);
+  });
+
+  test("prompts/get's amount is optional for evaluate_subnet_before_staking", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: {
+        name: "evaluate_subnet_before_staking",
+        arguments: { netuid: 1 },
+      },
+    });
+    assert.match(res.body.result.messages[0].content.text, /amount: <amount>/);
+  });
+
+  test("prompts/get rejects evaluate_subnet_before_staking with no netuid", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "evaluate_subnet_before_staking", arguments: {} },
+    });
+    assert.equal(res.body.error.code, -32602);
+  });
+
+  test("prompts/get builds the monitor_my_validator recipe", async () => {
+    const hotkey = "5HbNZ77cXQXbUjXG3YLVBGk6N4WbtKtGQYAWLXd2aWa8fqGe";
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "monitor_my_validator", arguments: { hotkey } },
+    });
+    const text = res.body.result.messages[0].content.text;
+    assert.match(text, /get_validator_detail/);
+    assert.match(text, /get_validator_history/);
+    assert.match(text, /get_validator_nominators/);
+    assert.ok(text.includes(hotkey));
+  });
+
+  test("prompts/get rejects monitor_my_validator with no hotkey", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "monitor_my_validator", arguments: {} },
+    });
+    assert.equal(res.body.error.code, -32602);
+  });
+
+  test("prompts/get builds the audit_account_history recipe", async () => {
+    const ss58 = "5HCFWvRqzSHWRPecN7q8J6c7aKQnrCZTMHstPv39xL1wgDHh";
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "audit_account_history", arguments: { ss58 } },
+    });
+    const text = res.body.result.messages[0].content.text;
+    assert.match(text, /get_account /);
+    assert.match(text, /get_account_transfers/);
+    assert.match(text, /get_account_stake_moves/);
+    assert.ok(text.includes(ss58));
+  });
+
+  test("prompts/get rejects audit_account_history with no ss58", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "prompts/get",
+      params: { name: "audit_account_history", arguments: {} },
+    });
+    assert.equal(res.body.error.code, -32602);
+  });
 });
 
 describe("MCP transport handling", () => {

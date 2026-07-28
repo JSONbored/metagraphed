@@ -1,0 +1,97 @@
+---
+title: Find a subnet for my app
+description: One MCP call to turn a plain-language task into candidate Bittensor subnets, with the follow-up call that gets you calling code — and a real, executed transcript showing why you should verify, not trust, the ranking.
+---
+
+**Goal:** go from "I need something that can do X" to a specific subnet's base URL and auth
+requirements, without reading through 129 subnet profiles by hand.
+
+## The sequence
+
+```
+1. find_subnet_for_task { task }        — goal-matched, callable-only subnets, ranked by intent
+2. how_do_i_call { netuid }             — concrete call instructions for the one you pick
+```
+
+`find_subnet_for_task` only returns subnets that already expose a callable API (`subnet-api` /
+`openapi` / `sse` / `data-artifact`) — a subnet with no such surface can't appear in these results
+at all, so every hit is something you can actually call today, not just a subnet that's thematically
+related.
+
+## What each output means
+
+- **`find_subnet_for_task`** — `relevance` (0–1) is a similarity score, not a guarantee of fit; read
+  the `name`/`categories` yourself before committing. `integration_readiness` and `health` are the
+  two fields worth weighing against relevance — a lower-relevance hit with `readiness: 100` and
+  `health: "ok"` can be a better bet than a higher-relevance hit that's flaky.
+- **`how_do_i_call`** — returns the base URL, auth requirement, and a concrete example for the netuid
+  you picked. Always prefer its `base_url` over anything a subnet's own docs claim, per every
+  surface's own curated-vs-upstream precedence.
+
+## Failure branch
+
+Semantic ranking is meaning-based, not keyword-based — it can rank an _adjacent_ capability above an
+_exact_ one when the exact one is thin on public description text (see the transcript below). If the
+top hits don't look right, don't assume there's no match: try `search_subnets` (plain keyword match,
+no AI layer needed) with a narrower term, or widen `find_subnet_for_task`'s own `limit` past the
+default to see further down the ranking.
+
+## Executed transcript ("generate an image from a text prompt", 2026-07-28)
+
+<Callout title="Real output, condensed — and a real lesson" type="warn">
+  This is the actual top-3 result for an image-generation task, run live. None of the three are an
+  obvious image-generation subnet by name — worth reading as a caution about trusting relevance
+  scores at face value, not as a broken example.
+</Callout>
+
+```json
+// 1. find_subnet_for_task { task: "generate an image from a text prompt" }
+{
+  "discovery": "semantic",
+  "count": 3,
+  "results": [
+    {
+      "netuid": 28,
+      "name": "gm",
+      "relevance": 0.6593,
+      "integration_readiness": 93,
+      "categories": ["llm-inference", "marketplace", "tee"],
+      "health": "ok"
+    },
+    {
+      "netuid": 108,
+      "name": "TalkHead",
+      "relevance": 0.6521,
+      "integration_readiness": 83,
+      "health": "ok"
+    },
+    {
+      "netuid": 118,
+      "name": "Ditto",
+      "relevance": 0.6392,
+      "integration_readiness": 100,
+      "categories": ["agent-memory"],
+      "health": "ok"
+    }
+  ]
+}
+
+// 2. how_do_i_call { netuid: 118 }  (picking the highest-readiness hit to inspect)
+// -> base_url, auth_required, and a worked example for Ditto's own API
+```
+
+**Reading this one:** relevance scores cluster tightly (0.64–0.66) across three subnets whose
+category tags — LLM inference, agent memory — don't obviously scream "image generation." That's the
+real lesson: a task description without a strong keyword match against any one subnet's own
+description text can still return _something_, ranked by loose semantic proximity rather than a
+confident match. Before integrating, read `how_do_i_call`'s actual example payload for whichever
+netuid you pick — don't assume the top relevance score is a functional guarantee.
+
+## Tools used
+
+`find_subnet_for_task` and `how_do_i_call` are MCP-native (discovery/recipe tools, no dedicated REST
+mirror) — see [MCP tools](/agents) for the full list, or `semantic_search` /
+[`search_subnets`](/docs/api-reference/subnets/subnets) for the underlying search primitives
+directly. This exact sequence is also registered as the `find_subnet_for_task` MCP prompt
+(`prompts/get name="find_subnet_for_task" arguments={ task }`) — an agent whose harness surfaces
+prompts natively gets this playbook without reading this page at all.
