@@ -40,7 +40,11 @@ describe("TakeManagementModal returns focus to its trigger", () => {
     // wires focus-return when it sits inside <Sheet>, so the component now
     // returns <Sheet> directly with the trigger within it.
     expect(componentReturn.trimStart()).toMatch(/^return \(\s*<Sheet open=\{open\}/);
-    expect(componentReturn).not.toContain("<>");
+    // The old broken shape wrapped the trigger and <Sheet> as fragment
+    // siblings: <>{trigger(...)}<Sheet>…. That specific pattern is what must
+    // stay gone — not "<>" in general, which now also appears legitimately
+    // in AddressDisplay's `fallback={<>{hotkey}</>}` prop inside the title.
+    expect(componentReturn).not.toContain("<>{trigger(");
   });
 
   it("keeps the trigger ahead of the content, both inside <Sheet>", () => {

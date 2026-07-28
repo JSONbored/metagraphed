@@ -20,8 +20,10 @@ import {
 import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { Panel } from "@/components/metagraphed/primitives";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { broadcastStatusLabel } from "@/components/metagraphed/stake-unstake-modal";
 import type { BroadcastStatus } from "@/lib/metagraphed/broadcast";
 import type { DecodedTxError } from "@/lib/metagraphed/tx-errors";
@@ -98,7 +100,13 @@ export function TakeManagementModal({
       <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="font-display text-lg">
-            Manage take · {validatorName ?? shortHash(hotkey, 6)}
+            Manage take ·{" "}
+            <AddressDisplay
+              ss58={hotkey}
+              fallback={<>{hotkey}</>}
+              identityName={validatorName}
+              keep={6}
+            />
           </SheetTitle>
           <SheetDescription>
             {!flow.canClose
@@ -319,7 +327,7 @@ function TakeConfirmationStep({
         </div>
       </div>
 
-      <SummaryRow label="Validator hotkey" value={shortHash(hotkey, 6) ?? hotkey} />
+      <SummaryRow label="Validator hotkey" value={resolveAddress(hotkey).display} />
       <SummaryRow
         label="Current take"
         value={flow.currentTakePct != null ? `${flow.currentTakePct.toFixed(2)}%` : "—"}

@@ -15,7 +15,7 @@ import {
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState } from "@/components/metagraphed/states";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
   TimeAgo,
   ListShell,
@@ -533,7 +533,7 @@ function BlocksTable() {
                       title={b.author ?? undefined}
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <AccountAddress
+                        <AddressDisplay
                           ss58={b.author}
                           compact
                           fallback={

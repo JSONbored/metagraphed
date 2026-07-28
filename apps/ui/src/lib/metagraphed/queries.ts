@@ -8803,3 +8803,37 @@ export const adapterQuery = (slug: string) =>
       }),
     staleTime: STALE_MED,
   });
+
+/**
+ * #8372: the whole curated-nametag registry in ONE request, indexed by ss58.
+ *
+ * Deliberately not per-address (accountEntitiesQuery above is the per-address
+ * shape, for the account-detail Entity section): inline resolution runs on
+ * every address in a table, so a per-address query would mean 50 requests to
+ * render one page of transfers. The artifact is a small curated set, changes
+ * only when a registry PR merges, and is served from the same artifact tier
+ * everything else reads -- so one long-cached fetch backs every
+ * AddressDisplay on the page.
+ */
+export const nametagIndexQuery = () =>
+  queryOptions({
+    queryKey: k("nametag-index"),
+    queryFn: async ({ signal }): Promise<Map<string, AccountEntityLabel>> => {
+      const res = await apiFetch<unknown>("/metagraph/entities.json", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const rows = Array.isArray(d.entities) ? d.entities : [];
+      const index = new Map<string, AccountEntityLabel>();
+      for (const row of rows) {
+        if (!isRecord(row)) continue;
+        const ss58 = firstString(row.ss58);
+        const label = normalizeEntityLabel(row);
+        // A row with no address, or with no name to show, can't resolve
+        // anything -- skip rather than seeding an entry that would always
+        // fall through to the truncated form anyway.
+        if (!ss58 || !label?.name) continue;
+        index.set(ss58, label);
+      }
+      return index;
+    },
+    staleTime: STALE_LONG,
+  });

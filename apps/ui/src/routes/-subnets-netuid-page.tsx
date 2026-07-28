@@ -26,6 +26,7 @@ import {
   Panel,
   ResponsiveTable,
 } from "@/components/metagraphed/primitives";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, Skeleton, RECOVERY } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -97,7 +98,6 @@ import {
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
-import { shortHash } from "@/lib/metagraphed/blocks";
 import {
   eventKindCategory,
   eventKindCategoryLabel,
@@ -1348,17 +1348,12 @@ function ActivityEventRow({ ev, nested }: { ev: AccountEvent; nested?: boolean }
         <EventKindCell kind={ev.event_kind} />
       </td>
       <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
-        {ev.hotkey ? (
-          <Link
-            to="/accounts/$ss58"
-            params={{ ss58: ev.hotkey }}
-            className="text-ink-muted hover:text-ink hover:underline"
-          >
-            {shortHash(ev.hotkey) ?? ev.hotkey}
-          </Link>
-        ) : (
-          "—"
-        )}
+        <AddressDisplay
+          ss58={ev.hotkey}
+          fallback="—"
+          compact
+          valueClassName="text-ink-muted hover:text-ink"
+        />
       </td>
       <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
         {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
@@ -1435,14 +1430,16 @@ function ActivityGroupRow({
         </td>
         <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
           {sameHotkey && latest.hotkey ? (
-            <Link
-              to="/accounts/$ss58"
-              params={{ ss58: latest.hotkey }}
-              className="text-ink-muted hover:text-ink hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {shortHash(latest.hotkey) ?? latest.hotkey}
-            </Link>
+            // The row itself toggles expand/collapse; the address link/copy
+            // button must navigate/copy instead, not also fire onToggle.
+            <span onClick={(e) => e.stopPropagation()}>
+              <AddressDisplay
+                ss58={latest.hotkey}
+                fallback="—"
+                compact
+                valueClassName="text-ink-muted hover:text-ink"
+              />
+            </span>
           ) : (
             <span className="text-ink-muted">multiple</span>
           )}

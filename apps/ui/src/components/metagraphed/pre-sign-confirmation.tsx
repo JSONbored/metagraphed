@@ -1,6 +1,6 @@
 import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
-import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
+import { resolveAddress, truncateSs58 } from "@/lib/metagraphed/resolve-address";
 
 // The primary blind-signing mitigation (#5239, native-staking epic #5229).
 // Subtensor isn't a top-tier chain in wallet metadata registries, so a user
@@ -76,8 +76,8 @@ export function PreSignConfirmation({
 
       <SummaryRow
         label="Validator"
-        value={validatorName ?? shortHash(hotkey, 6) ?? hotkey}
-        detail={validatorName ? shortHash(hotkey, 6) : undefined}
+        value={resolveAddress(hotkey, { identityName: validatorName, keep: 6 }).display}
+        detail={validatorName ? truncateSs58(hotkey, 6) : undefined}
       />
       <SummaryRow
         label="Subnet"

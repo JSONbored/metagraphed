@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Wallet, Check, Copy, LogOut, Loader2, ShieldCheck } from "lucide-react";
+import { Wallet, Check, LogOut, Loader2, ShieldCheck } from "lucide-react";
 import { Popover, PopoverTrigger, ExternalLink } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
 import { EmptyState } from "./states";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { useWallet } from "@/hooks/use-wallet";
-import { useCopy } from "@/hooks/use-copy";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
 import type { InjectedAccountWithMeta } from "@/lib/metagraphed/wallet-injected";
@@ -212,34 +212,22 @@ function ConnectedView({
   wallet: { address: string; source: string };
   onDisconnect: () => void;
 }) {
-  const { copied, copy } = useCopy({ label: "address" });
-
   return (
     <div className="space-y-3">
       <div className="rounded border border-ink-strong/40 bg-surface px-2 py-2">
         <div className="flex items-center gap-2">
           <Check className="size-3.5 text-health-ok shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            <span className="block mg-type-caption font-medium text-ink-strong font-mono truncate">
-              {shortHash(wallet.address, 6)}
-            </span>
+            <AddressDisplay
+              ss58={wallet.address}
+              fallback={<>{wallet.address}</>}
+              keep={6}
+              valueClassName="block mg-type-caption font-medium text-ink-strong font-mono truncate"
+            />
             <span className="block mg-type-caption text-ink-muted">
               Connected via {wallet.source}
             </span>
           </span>
-          <button
-            type="button"
-            onClick={() => copy(wallet.address)}
-            aria-label="Copy address"
-            title="Copy address"
-            className="shrink-0 rounded p-1 text-ink-muted hover:text-ink-strong"
-          >
-            {copied ? (
-              <Check className="size-3.5 text-health-ok" aria-hidden="true" />
-            ) : (
-              <Copy className="size-3.5" aria-hidden="true" />
-            )}
-          </button>
         </div>
       </div>
       {/* #5243: the connected wallet's read-side entry point into its

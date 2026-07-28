@@ -2,7 +2,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, type ReactNode } from "react";
 import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -20,6 +20,7 @@ import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primit
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import {
@@ -222,12 +223,18 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           <UserCog className="size-4 shrink-0 text-accent" aria-hidden="true" />
           <span className="text-sm text-ink">
             Executed on behalf of{" "}
+            {/* #8372: inline prose, not a table cell/field row -- stays a plain
+                Link (resolveAddress, not AddressDisplay) so it doesn't grow a
+                CopyButton + hover-card here. That combination pushed this
+                banner past the 375px viewport (caught by
+                tests/e2e/responsive-overflow.spec.ts); the full address is
+                still one tap away via the account page this links to. */}
             <Link
               to="/accounts/$ss58"
               params={{ ss58: realAccount }}
               className="font-mono text-ink-strong hover:underline"
             >
-              {shortHash(realAccount) ?? realAccount}
+              {resolveAddress(realAccount).display}
             </Link>{" "}
             — the account below only relayed this <code className="font-mono">Proxy.proxy</code>{" "}
             call, it isn't the account the inner call actually acts as.
@@ -296,7 +303,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                 the full address stays available via the copy button and the
                 link's title. */}
             <span className="flex w-full min-w-0 items-center">
-              <AccountAddress
+              <AddressDisplay
                 ss58={extrinsic.signer}
                 truncate={false}
                 valueClassName="truncate min-w-0"
@@ -425,7 +432,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                       {eventKindLabel(ev.event_kind)}
                     </td>
                     <td className="px-4 py-2.5 mg-type-data text-ink-muted">
-                      <AccountAddress ss58={ev.hotkey} compact fallback="—" />
+                      <AddressDisplay ss58={ev.hotkey} compact fallback="—" />
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <TaoValue amount={ev.amount_tao} precision={4} />

@@ -17,6 +17,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
+import { DEFAULT_SS58_PREFIX, decodeSs58 } from "../src/ss58.ts";
 import { createComponentValidatorCompiler } from "./lib/component-validator.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
@@ -279,6 +280,21 @@ for (const filePath of await listJsonFiles(
   if (path.basename(filePath) !== expectedName) {
     errors.push(
       `registry/entities/${path.basename(filePath)}: filename must match its own ss58 field (expected ${expectedName})`,
+    );
+  }
+  // #8372: the schema's `ss58` pattern only checks the base58 CHARSET and
+  // length -- a typo'd or truncated address passes it while decoding to a
+  // different (or no) public key. A nametag points at one specific address
+  // by definition, so mislabeling a real, valid-but-wrong address is the
+  // exact failure this registry must not ship; decode it for real.
+  const decoded = decodeSs58(entity?.ss58);
+  if (!decoded) {
+    errors.push(
+      `registry/entities/${path.basename(filePath)}: ss58 "${entity?.ss58}" failed checksum validation (not a decodable ss58 address)`,
+    );
+  } else if (decoded.prefix !== DEFAULT_SS58_PREFIX) {
+    errors.push(
+      `registry/entities/${path.basename(filePath)}: ss58 "${entity?.ss58}" has network prefix ${decoded.prefix}, expected ${DEFAULT_SS58_PREFIX} (Bittensor)`,
     );
   }
 }

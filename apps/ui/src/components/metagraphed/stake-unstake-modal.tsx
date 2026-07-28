@@ -13,6 +13,7 @@ import {
 import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
 import { StakeAmountInput } from "@/components/metagraphed/stake-amount-input";
 import { PreSignConfirmation } from "@/components/metagraphed/pre-sign-confirmation";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { rawAlphaToAlpha } from "@/lib/metagraphed/units";
 import type { BroadcastStatus } from "@/lib/metagraphed/broadcast";
@@ -128,7 +129,13 @@ export function StakeUnstakeModal({
       <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="font-display text-lg">
-            {ACTION_VERB[flow.action]} · {validatorName ?? shortHash(hotkey, 6)}
+            {ACTION_VERB[flow.action]} ·{" "}
+            <AddressDisplay
+              ss58={hotkey}
+              fallback={<>{hotkey}</>}
+              identityName={validatorName}
+              keep={6}
+            />
           </SheetTitle>
           <SheetDescription>
             {subnetName ? `${subnetName} (SN${netuid})` : `Subnet ${netuid}`}

@@ -1,7 +1,7 @@
 import { Coins } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import {
@@ -52,13 +52,17 @@ export function SponsoredValidatorCallout({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-1.5">
+          {/* Links to /validators/$hotkey, not AddressDisplay's own /accounts/$ss58
+              target, so this stays a manually-composed Link + CopyButton pair
+              (#8372) -- the text is still upgraded through the shared
+              resolveAddress ladder. */}
           <Link
             to="/validators/$hotkey"
             params={{ hotkey: validator.hotkey }}
             className="truncate font-mono mg-type-caption-lg text-ink-strong hover:text-accent hover:underline"
             title={validator.hotkey}
           >
-            {shortHash(validator.hotkey, 6) ?? validator.hotkey}
+            {resolveAddress(validator.hotkey).display}
           </Link>
           <CopyButton value={validator.hotkey} label="hotkey" />
         </div>

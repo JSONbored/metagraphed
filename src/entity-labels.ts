@@ -36,6 +36,11 @@ export interface EntityLabel {
   name: unknown;
   category: unknown;
   notes: unknown;
+  // #8372: the entity's own canonical homepage (schemas/entity.schema.json's
+  // `url`), distinct from source_urls (which prove address ownership, not
+  // the entity's identity) -- optional so a pre-#8372 entry without one
+  // still resolves cleanly.
+  url: unknown;
   source_urls: unknown[];
 }
 
@@ -54,9 +59,100 @@ export function labelsForSs58(
       name: entity.name ?? null,
       category: entity.category ?? null,
       notes: entity.notes ?? null,
+      url: entity.url ?? null,
       source_urls: Array.isArray(entity.source_urls) ? entity.source_urls : [],
     },
   ];
+}
+
+// --- nametag resolution (#8372) -------------------------------------------
+// The display-name question ("what do I call this address?") answered in one
+// place, isomorphic so the Worker and the frontend can't drift on it.
+//
+// Order: private label -> on-chain identity -> curated nametag -> truncated
+// ss58.
+//
+// Identity outranks the curated nametag deliberately: an on-chain identity is
+// the address's OWN signed claim about itself, while a nametag is a third
+// party's claim about it -- when both exist, the self-attestation wins.
+//
+// The private label outranks BOTH, and that ordering is the point: a user's
+// own name for their own key is the most specific, most intentional claim
+// available, and overriding it with a global label would be actively worse
+// (someone who labels a key "Ledger cold" does not want to see "Binance"
+// there instead). #8372 shipped this parameter unused, with its precedence
+// fixed and tested, so that #8484 (the private-label store + UI) is purely
+// additive at the call sites and needs no change to this function.
+
+export type ResolvedAddressSource =
+  "private" | "identity" | "nametag" | "truncated";
+
+export interface ResolvedAddress {
+  /** What to render. Never empty -- falls back to the truncated address. */
+  display: string;
+  /** Which layer produced `display`, so callers can style/affix accordingly. */
+  source: ResolvedAddressSource;
+  /** Present only when `source === "nametag"`; drives the category chip. */
+  category: string | null;
+  /** Always the full, untruncated address -- kept one copy-click away. */
+  ss58: string;
+}
+
+/** `5Grwva…KutQY` -- the same shape apps/ui's own shortHash produces, kept
+ * here so the fallback is part of the resolver's contract rather than each
+ * call site's own choice. `keep` chars at each end. */
+export function truncateSs58(ss58: string, keep = 6): string {
+  if (ss58.length <= keep * 2 + 1) return ss58;
+  return `${ss58.slice(0, keep)}…${ss58.slice(-keep)}`;
+}
+
+export function resolveAddress(
+  ss58: string,
+  {
+    localLabel,
+    identityName,
+    nametag,
+    keep,
+  }: {
+    /**
+     * The viewer's OWN private name for this address (#8484). Browser-local,
+     * never transmitted -- this module only ever receives an already-read
+     * string, it does not know where that string is stored.
+     */
+    localLabel?: string | null;
+    /** The account's own on-chain identity name, when it has set one. */
+    identityName?: string | null;
+    /** The curated label for this address, when one exists. */
+    nametag?: { name?: unknown; category?: unknown } | null;
+    keep?: number;
+  } = {},
+): ResolvedAddress {
+  const priv = typeof localLabel === "string" ? localLabel.trim() : "";
+  if (priv) {
+    return { display: priv, source: "private", category: null, ss58 };
+  }
+  const identity = typeof identityName === "string" ? identityName.trim() : "";
+  if (identity) {
+    return { display: identity, source: "identity", category: null, ss58 };
+  }
+  const tagName = typeof nametag?.name === "string" ? nametag.name.trim() : "";
+  if (tagName) {
+    return {
+      display: tagName,
+      source: "nametag",
+      category:
+        typeof nametag?.category === "string" && nametag.category
+          ? nametag.category
+          : null,
+      ss58,
+    };
+  }
+  return {
+    display: truncateSs58(ss58, keep),
+    source: "truncated",
+    category: null,
+    ss58,
+  };
 }
 
 function numberOrNull(value: unknown): number | null {

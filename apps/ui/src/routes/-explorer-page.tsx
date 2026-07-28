@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Activity, Boxes, ChevronDown, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
   SectionHeading,
   ShareButton,
@@ -13,7 +14,6 @@ import {
   Sparkline,
   BarMini,
   Donut,
-  CopyButton,
 } from "@jsonbored/ui-kit";
 import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
@@ -56,7 +56,6 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
-import { shortHash } from "@/lib/metagraphed/blocks";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ChainTabActions } from "./-chain-hub";
 import { BlockCard } from "./-blocks-index-page";
@@ -1375,17 +1374,12 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                   {transfers.top_senders.map((s) => (
                     <tr key={s.address} className="hover:bg-surface/40">
                       <td className="px-4 py-2 mg-type-data">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: s.address }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                            title={s.address}
-                          >
-                            {shortHash(s.address) ?? s.address}
-                          </Link>
-                          <CopyButton value={s.address} label="address" compact />
-                        </div>
+                        <AddressDisplay
+                          ss58={s.address}
+                          fallback={<>{s.address}</>}
+                          compact
+                          valueClassName="text-ink-strong hover:text-accent"
+                        />
                       </td>
                       <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                         {formatTao(s.volume_tao)}
@@ -1421,17 +1415,12 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                   {transfers.top_receivers.map((r) => (
                     <tr key={r.address} className="hover:bg-surface/40">
                       <td className="px-4 py-2 mg-type-data">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: r.address }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                            title={r.address}
-                          >
-                            {shortHash(r.address) ?? r.address}
-                          </Link>
-                          <CopyButton value={r.address} label="address" compact />
-                        </div>
+                        <AddressDisplay
+                          ss58={r.address}
+                          fallback={<>{r.address}</>}
+                          compact
+                          valueClassName="text-ink-strong hover:text-accent"
+                        />
                       </td>
                       <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                         {formatTao(r.volume_tao)}
@@ -1758,17 +1747,12 @@ function ExplorerDashboard({
                         {signers.signers.slice(0, 12).map((s) => (
                           <tr key={s.signer} className="hover:bg-surface/40">
                             <td className="px-4 py-2 mg-type-data">
-                              <div className="flex items-center gap-1.5">
-                                <Link
-                                  to="/accounts/$ss58"
-                                  params={{ ss58: s.signer }}
-                                  className="text-ink-strong hover:text-accent hover:underline"
-                                  title={s.signer}
-                                >
-                                  {shortHash(s.signer) ?? s.signer}
-                                </Link>
-                                <CopyButton value={s.signer} label="signer" compact />
-                              </div>
+                              <AddressDisplay
+                                ss58={s.signer}
+                                fallback={<>{s.signer}</>}
+                                compact
+                                valueClassName="text-ink-strong hover:text-accent"
+                              />
                             </td>
                             <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                               {formatNumber(s.tx_count)}
@@ -1879,17 +1863,12 @@ function ExplorerDashboard({
                       {fees.top_fee_payers.map((p) => (
                         <tr key={p.signer} className="hover:bg-surface/40">
                           <td className="px-4 py-2 mg-type-data">
-                            <div className="flex items-center gap-1.5">
-                              <Link
-                                to="/accounts/$ss58"
-                                params={{ ss58: p.signer }}
-                                className="text-ink-strong hover:text-accent hover:underline"
-                                title={p.signer}
-                              >
-                                {shortHash(p.signer) ?? p.signer}
-                              </Link>
-                              <CopyButton value={p.signer} label="signer" compact />
-                            </div>
+                            <AddressDisplay
+                              ss58={p.signer}
+                              fallback={<>{p.signer}</>}
+                              compact
+                              valueClassName="text-ink-strong hover:text-accent"
+                            />
                           </td>
                           <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                             {formatTao(p.total_fee_tao)}
@@ -2039,26 +2018,19 @@ function ExplorerDashboard({
                         {weightSetters.setters.map((setter) => (
                           <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
                             <td className="px-4 py-2 mg-type-data">
-                              {setter.hotkey ? (
-                                <div className="flex items-center gap-1.5">
-                                  <Link
-                                    to="/accounts/$ss58"
-                                    params={{ ss58: setter.hotkey }}
-                                    className="text-ink-strong hover:text-accent hover:underline"
-                                    title={setter.hotkey}
+                              <AddressDisplay
+                                ss58={setter.hotkey}
+                                fallback={
+                                  <span
+                                    className="text-ink-muted"
+                                    title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
                                   >
-                                    {shortHash(setter.hotkey) ?? setter.hotkey}
-                                  </Link>
-                                  <CopyButton value={setter.hotkey} label="hotkey" compact />
-                                </div>
-                              ) : (
-                                <span
-                                  className="text-ink-muted"
-                                  title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
-                                >
-                                  {weightSetterLabel(setter)}
-                                </span>
-                              )}
+                                    {weightSetterLabel(setter)}
+                                  </span>
+                                }
+                                compact
+                                valueClassName="text-ink-strong hover:text-accent"
+                              />
                             </td>
                             <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                               {formatNumber(setter.weight_sets)}
@@ -2156,30 +2128,20 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                     {i + 1}
                   </td>
                   <td className="px-4 py-2 mg-type-data">
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: p.from }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={p.from}
-                      >
-                        {shortHash(p.from) ?? p.from}
-                      </Link>
-                      <CopyButton value={p.from} label="address" compact />
-                    </div>
+                    <AddressDisplay
+                      ss58={p.from}
+                      fallback={<>{p.from}</>}
+                      compact
+                      valueClassName="text-ink-strong hover:text-accent"
+                    />
                   </td>
                   <td className="px-4 py-2 mg-type-data">
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: p.to }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={p.to}
-                      >
-                        {shortHash(p.to) ?? p.to}
-                      </Link>
-                      <CopyButton value={p.to} label="address" compact />
-                    </div>
+                    <AddressDisplay
+                      ss58={p.to}
+                      fallback={<>{p.to}</>}
+                      compact
+                      valueClassName="text-ink-strong hover:text-accent"
+                    />
                   </td>
                   <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatTao(p.volume_tao)}

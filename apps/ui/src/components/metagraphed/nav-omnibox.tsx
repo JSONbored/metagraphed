@@ -22,6 +22,7 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isCompositeExtrinsicRef } from "@/lib/metagraphed/extrinsics";
 import { pickPromotedSubnetHit, hitKind } from "@/lib/metagraphed/search-hit-score";
 
@@ -190,7 +191,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     if (isValidSs58(q)) {
       targets.push({
         kind: "nav",
-        label: `Account ${shortHash(q, 8) ?? q}`,
+        label: `Account ${resolveAddress(q, { keep: 8 }).display}`,
         hint: q,
         to: "/accounts/$ss58",
         params: { ss58: q },

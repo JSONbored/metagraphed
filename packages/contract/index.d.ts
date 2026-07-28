@@ -3135,10 +3135,11 @@ export interface components {
         };
         AccountEntitiesArtifact: {
             labels: ({
-                category?: ("exchange" | "foundation" | "operator" | "other") | null;
+                category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other") | null;
                 name?: string | null;
                 notes?: string | null;
                 source_urls?: string[];
+                url?: string | null;
             } & {
                 [key: string]: unknown;
             })[];
@@ -3518,10 +3519,11 @@ export interface components {
             first_block?: number | null;
             first_seen_at?: string | null;
             labels?: ({
-                category?: ("exchange" | "foundation" | "operator" | "other") | null;
+                category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other") | null;
                 name?: string | null;
                 notes?: string | null;
                 source_urls?: string[];
+                url?: string | null;
             } & {
                 [key: string]: unknown;
             })[];

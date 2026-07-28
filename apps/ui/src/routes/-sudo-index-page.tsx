@@ -1,11 +1,11 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CopyButton, TimeAgo } from "@jsonbored/ui-kit";
+import { TimeAgo } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { sudoCallsQuery, sudoKeyQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { shortHash } from "@/lib/metagraphed/blocks";
 import type { GovernanceSearch } from "./chain.governance";
 
 export function sudoQueryParams(search: GovernanceSearch): Record<string, string | number> {
@@ -42,10 +42,7 @@ export function SudoKeyCard() {
           {keyResult.isPending ? (
             <span className="text-ink-muted">…</span>
           ) : hotkey ? (
-            <span className="inline-flex items-center gap-1.5">
-              {shortHash(hotkey, 8)}
-              <CopyButton value={hotkey} label="sudo key" />
-            </span>
+            <AddressDisplay ss58={hotkey} fallback={<>{hotkey}</>} keep={8} linkToAccount={false} />
           ) : (
             <span>Unset</span>
           )}

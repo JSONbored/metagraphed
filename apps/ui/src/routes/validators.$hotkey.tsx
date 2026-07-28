@@ -4,7 +4,7 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/validators/$hotkey")({
         "This validator identifier is not a valid Bittensor ss58 hotkey.",
       );
     }
-    const label = shortHash(params.hotkey) ?? params.hotkey;
+    const label = resolveAddress(params.hotkey).display;
     return {
       meta: [
         { title: `Validator ${label} — Metagraphed` },

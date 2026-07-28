@@ -13,7 +13,7 @@ import { Ss58Inspector } from "@/components/metagraphed/ss58-inspector";
 import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
 import { WalletConnectButton } from "@/components/metagraphed/wallet-connect";
 import { useWallet } from "@/hooks/use-wallet";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -211,7 +211,7 @@ function AccountsLeaderboard({
           <li key={a.hotkey} className="flex items-center gap-3 py-2 mg-type-data">
             <span className="w-4 shrink-0 text-right tabular-nums text-ink-muted">{i + 1}</span>
             <span className="min-w-0 flex-1">
-              <AccountAddress ss58={a.hotkey} compact fallback="—" />
+              <AddressDisplay ss58={a.hotkey} compact fallback="—" />
             </span>
             <span className="shrink-0 tabular-nums text-ink-muted">
               {formatNumber(a.subnet_count)} SN

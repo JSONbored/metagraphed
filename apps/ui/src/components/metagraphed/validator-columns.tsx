@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CopyButton } from "@jsonbored/ui-kit";
 import { useInView } from "@/hooks/use-in-view";
-import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber, classNames } from "@/lib/metagraphed/format";
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { validatorHistoryQuery } from "@/lib/metagraphed/queries";
 import {
   formatApyPct,
@@ -105,11 +104,18 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
           title={v.hotkey}
         >
           <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} size={20} />
-          <span className="shrink-0 font-mono mg-type-data-sm text-ink-muted">
-            {shortHash(v.hotkey)}
-          </span>
         </Link>
-        <CopyButton value={v.hotkey} label="hotkey" compact />
+        {/* Own AddressDisplay outside the operator Link (not inside it) --
+            AddressDisplay's CopyButton doesn't stop click propagation, so
+            nesting it inside the /validators/$hotkey Link above would make a
+            copy click also navigate away. */}
+        <AddressDisplay
+          ss58={v.hotkey}
+          fallback={<>{v.hotkey}</>}
+          compact
+          linkToAccount={false}
+          valueClassName="shrink-0 font-mono mg-type-data-sm text-ink-muted"
+        />
       </div>
     ),
   },

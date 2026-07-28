@@ -5,7 +5,7 @@ import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
 import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { Panel } from "@/components/metagraphed/primitives";
 
@@ -139,7 +139,7 @@ function KeyRow({ label, value }: { label: string; value?: string }) {
       <span className="mg-type-caption text-ink-muted">{label}</span>
       {value ? (
         <span className="font-mono mg-type-caption text-ink">
-          <AccountAddress
+          <AddressDisplay
             ss58={value}
             compact
             fallback={<span className="text-ink-muted">{value}</span>}

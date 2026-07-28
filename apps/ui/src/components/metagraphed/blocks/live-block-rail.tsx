@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Sparkline, TimeAgo } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
@@ -76,7 +76,7 @@ export function LiveBlockRail() {
       role="status"
       aria-live="polite"
     >
-      {/* LATEST BLOCK. Not a single wrapping <Link>: AccountAddress below
+      {/* LATEST BLOCK. Not a single wrapping <Link>: AddressDisplay below
           renders its own <a>/<button> (account link + copy button), and an
           anchor/button can't contain another without invalid HTML nesting
           (breaks hydration). The block number is its own link instead. */}
@@ -139,7 +139,7 @@ export function LiveBlockRail() {
             </span>
             <span aria-hidden>·</span>
             <span className="truncate">
-              <AccountAddress ss58={latest.author} compact fallback="no author" />
+              <AddressDisplay ss58={latest.author} compact fallback="no author" />
             </span>
           </div>
           <div className="mt-0.5 mg-type-data-sm text-ink-muted">

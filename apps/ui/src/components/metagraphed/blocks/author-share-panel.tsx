@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Panel } from "@/components/metagraphed/primitives";
-import { AccountAddress } from "@/components/metagraphed/account-address";
+import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { Block } from "@/lib/metagraphed/types";
@@ -54,13 +54,13 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
             });
           return (
             <li key={author}>
-              {/* AccountAddress renders its own <a>/<button> (account link + copy
+              {/* AddressDisplay renders its own <a>/<button> (account link + copy
                   button), so it can't sit inside a "filter by author" button/link
                   without invalid HTML nesting (button-in-button breaks hydration).
                   It's its own row; the bar + count below are the filter trigger. */}
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 -mx-2 px-2 rounded">
                 <div className="min-w-0">
-                  <AccountAddress
+                  <AddressDisplay
                     ss58={author}
                     compact
                     keep={6}

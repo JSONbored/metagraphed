@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://metagraph.sh/schemas/entity.schema.json",
   "title": "Metagraphed Entity Label",
-  "description": "Community-contributable label for a known ss58 address (exchange/foundation/operator/other) -- one file per address, same single-file-per-entity shape as registry/providers/<slug>.json. Every claim needs an independent source_urls proof, matching subnet surfaces' own convention; the public-safety scan applies identically.",
+  "description": "Community-contributable label (\"nametag\") for a known ss58 address -- one file per address, same single-file-per-entity shape as registry/providers/<slug>.json. Every claim needs an independent source_urls proof, matching subnet surfaces' own convention; the public-safety scan applies identically. See docs/nametag-evidence-bar.md for what counts as proof.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -28,10 +28,26 @@
       "description": "Human-readable entity name, e.g. \"Binance\" or \"Rayon Labs\"."
     },
     "category": {
-      "enum": ["exchange", "foundation", "operator", "other"]
+      "enum": [
+        "exchange",
+        "bridge",
+        "foundation",
+        "pool",
+        "infra",
+        "project",
+        "operator",
+        "other"
+      ],
+      "description": "What kind of entity this address belongs to. `operator` and `other` predate #8372's widening and are retained so existing labels stay valid; prefer the more specific categories (`infra` over `operator`, or the exact fit over `other`) for new entries."
     },
     "notes": {
       "type": "string"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+      "description": "The entity's own canonical homepage, for linking the rendered nametag. Distinct from source_urls, which prove the ADDRESS belongs to the entity -- a homepage alone is not proof of address ownership."
     },
     "source_urls": {
       "type": "array",
