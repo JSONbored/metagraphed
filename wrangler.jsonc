@@ -79,14 +79,14 @@
     // blocks: RE-FLIPPED to "postgres" 2026-07-10. Root cause of the
     // 2026-07-09 revert (DATA_API subrequest reporting outcome "canceled" on
     // a real fraction of requests, #4686) found and fixed the same day:
-    // neither data-api.mjs nor registry-sync-api.mjs wrapped their per-request
+    // neither data-api.ts nor registry-sync-api.ts wrapped their per-request
     // queries in a transaction, so a standalone SET statement_timeout had no
     // guarantee of landing on the same physical connection as the query that
     // followed it (Hyperdrive resets session state between pooled
     // connections); both also called sql.end() on every request, which
     // Cloudflare's Hyperdrive docs say is unsupported, unnecessary extra work.
     // Both are fixed: every request's queries now run inside sql.begin()
-    // ("read only" for data-api.mjs), and the manual teardown is removed.
+    // ("read only" for data-api.ts), and the manual teardown is removed.
     // See ADR 0014 for the full writeup.
     //
     // #4687's empty-author gap is resolved at the data layer too (Postgres
@@ -119,8 +119,8 @@
     // harness remains valuable follow-up work to quantify what's left, not a
     // precondition for this flip.
     //
-    // Progress on that roadmap (src/scale-normalize.mjs, src/ss58.mjs,
-    // src/bytes.mjs, src/postgres-call-args.mjs -- all chained inside
+    // Progress on that roadmap (src/scale-normalize.ts, src/ss58.ts,
+    // src/bytes.ts, src/postgres-call-args.ts -- all chained inside
     // formatExtrinsic, #4690/#4691): Option<T>/C-enum/newtype-scalar shapes,
     // and indexer-rs's nested-RuntimeCall enum-tree encoding (Proxy.proxy,
     // Utility.batch/batch_all, Multisig.as_multi wrapping Sudo/AdminUtils --
@@ -131,7 +131,7 @@
     // call_args and within each reconstructed nested call's args (fixed
     // 2026-07-12, #4915/#4916 -- the top-level case was previously left
     // undecoded, e.g. SubtensorModule.add_stake's top-level `hotkey` served as
-    // a raw byte array instead of an SS58 string; see src/postgres-call-args.mjs's
+    // a raw byte array instead of an SS58 string; see src/postgres-call-args.ts's
     // formatCallArgs docstring for the full writeup. Live-verified 2026-07-14:
     // GET /api/v1/extrinsics?call_module=SubtensorModule&call_function=add_stake
     // serves hotkey as a decoded SS58 string). Multisig.as_multi's nested
@@ -139,7 +139,7 @@
     // fetch-events.py's Python-side re-encode-and-hash step) -- accepted, not
     // a bug.
     //
-    // #4692 (src/indexer-rs-ethereum-decode.mjs, chained last in
+    // #4692 (src/indexer-rs-ethereum-decode.ts, chained last in
     // formatExtrinsic): Ethereum.transact's U256 fields (nonce/value/
     // gas_limit/max_fee_per_gas/max_priority_fee_per_gas), its `action`/
     // `transaction` tuple-variant-enum shorthand, EVM.withdraw's H160
@@ -158,7 +158,7 @@
     // real data already has `value` (wei) past Number.MAX_SAFE_INTEGER for
     // any transfer above ~0.009 ETH, the normal case, not a 2^256 edge case.
     //
-    // #4693 (src/postgres-collection-normalize.mjs): BTreeSet<T> fields
+    // #4693 (src/postgres-collection-normalize.ts): BTreeSet<T> fields
     // (confirmed: SubtensorModule.claim_root's `subnets`) now unwrap
     // indexer-rs's extra array-nesting layer the same way D1 serves them.
     // The generic scalar-newtype unwrap (#4690) already generalized beyond
@@ -174,7 +174,7 @@
     // set_root_weights.version_key, faucet's nonce, and a nested
     // Utility.force_batch -> remove_stake.amount_unstaked reached through
     // Proxy.proxy. Fixed exactly the way this comment originally predicted:
-    // src/extrinsics.mjs now routes EVERY extrinsic's call_args through
+    // src/extrinsics.ts now routes EVERY extrinsic's call_args through
     // parseJsonPreservingBigInts (#4692's big-int-safe parse), not just the
     // narrow Ethereum/EVM dispatch table -- safe because that parse is a
     // documented no-op on any JSON text with no integer literal past
@@ -182,7 +182,7 @@
     // radius" concern is real but intentional: a field large enough to have
     // been silently losing precision now arrives as an exact decimal STRING
     // instead of a rounded number, matching how U256 fields already work.
-    // tests/extrinsics.test.mjs's old precision-pinning tests were inverted
+    // tests/extrinsics.test.ts's old precision-pinning tests were inverted
     // to assert the correct value instead of the accepted-lossy one.
     //
     // MCP's extrinsics tools (list_extrinsics/get_extrinsic) are wired
@@ -228,7 +228,7 @@
     // which compared a row present in BOTH stores and couldn't distinguish
     // genuine Postgres serving from a silently masked D1 fallback (#4686).
     // Here Postgres had no prior data at all, so a correct sampled row is
-    // unambiguous proof the new pipeline (workers/data-api.mjs's
+    // unambiguous proof the new pipeline (workers/data-api.ts's
     // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
     "METAGRAPH_NEURONS_SOURCE": "postgres",
@@ -250,7 +250,7 @@
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started
-    // completely empty) into workers/data-api.mjs's
+    // completely empty) into workers/data-api.ts's
     // handleSubnetHyperparamsSync; a sampled row (netuid=8) matched the D1-
     // served API response field-for-field (kappa_ratio, tempo,
     // weights_rate_limit, registration_allowed, captured_at) captured moments
@@ -263,7 +263,7 @@
     // account_identity (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-account-identity.yml's real
     // workflow_dispatch run synced all 455 accounts (Postgres started
-    // completely empty) into workers/data-api.mjs's
+    // completely empty) into workers/data-api.ts's
     // handleAccountIdentitySync. Also caught and fixed a real bug during
     // this pass: one real account's discord/additional fields carried a
     // literal U+0000 placeholder -- Postgres' TEXT type rejects an embedded
@@ -294,7 +294,7 @@
     // 2026-07-12, after a one-time historical backfill closed the only gap --
     // D1 had 70 rows (wrangler d1 execute, confirmed the same day), Postgres
     // had 1 (the newest, already mirrored live by
-    // workers/request-handlers/rpc-proxy.mjs's syncRpcUsageEventToPostgres,
+    // workers/request-handlers/rpc-proxy.ts's syncRpcUsageEventToPostgres,
     // matched via an exact observed_at tie); the other 69 were inserted
     // directly into Postgres and verified row-for-row against D1 afterward
     // (count, min/max observed_at, and a 5-row spot-check including the
@@ -308,7 +308,7 @@
     "METAGRAPH_RPC_USAGE_SOURCE": "postgres",
     // subnet_snapshots (D1 retirement, 2026-07-16): FLIPPED to "postgres".
     // Both handleTrajectory and handleEconomicsTrends
-    // (workers/request-handlers/analytics-routes.mjs) already wired
+    // (workers/request-handlers/analytics-routes.ts) already wired
     // tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) months ago but this
     // flag was deliberately left OUT of wrangler.jsonc -- subnet_snapshots had
     // no historical backfill at the time, only accumulating from
@@ -324,7 +324,7 @@
     // above; the self-hosted archive node's own backfill will not extend this
     // series further since subnet_snapshots is a daily rollup, not chain-
     // derived. writeSubnetSnapshot's own D1 write is being retired in the same
-    // change that adds this flag (src/health-prober.mjs) --
+    // change that adds this flag (src/health-prober.ts) --
     // syncSubnetSnapshotToPostgres is now the sole writer. tryPostgresTier
     // still falls back to D1 on any failure, so this remains a single-flag
     // revert (D1's copy is frozen from this point on, not actively wrong).
@@ -333,7 +333,7 @@
     // (D1 retirement, 2026-07-16): FLIPPED to "postgres". This flag already
     // gates handleBulkHealthTrends, handleHealthTrends, handleHealthPercentiles,
     // handleHealthIncidents, handleGlobalIncidents, handleUptime
-    // (workers/request-handlers/analytics.mjs + analytics-routes.mjs), and the
+    // (workers/request-handlers/analytics.ts + analytics-routes.ts), and the
     // surface_status slice of handleCompare -- all deliberately left unset
     // pending Postgres accumulating a real 30-day history window, since an
     // empty/short Postgres window is still a valid 200 response that
@@ -342,7 +342,7 @@
     // confirms surface_checks holds 111,088 rows and surface_uptime_daily
     // holds 1,182 rows spanning 2026-07-11 through 2026-07-16 (a full rolling
     // window), and surface_status holds 564 current rows (verified
-    // 2026-07-16). src/health-prober.mjs's own D1 writes for surface_checks
+    // 2026-07-16). src/health-prober.ts's own D1 writes for surface_checks
     // and surface_uptime_daily's D1-derived rollup are retired in the same
     // change that adds this flag -- syncHealthChecksToPostgres and
     // syncHealthUptimeRollupToPostgres (already unconditional) are the sole
@@ -351,17 +351,17 @@
     // on, not actively wrong).
     "METAGRAPH_HEALTH_SOURCE": "postgres",
     // subnet-ownership ties (#6740/#6737): GET /api/v1/accounts/{coldkey}/entities
-    // reads chain_events' SubnetOwnerChanged stream via workers/data-api.mjs
+    // reads chain_events' SubnetOwnerChanged stream via workers/data-api.ts
     // (which has carried a complete Postgres implementation since Phase 3's
     // #7592 landed #6740) -- but this flag itself was never added, so
     // tryPostgresTier's `env[flagName] !== "postgres"` check has always been
     // true and the route has been silently stuck on the empty
     // buildAccountEntities(coldkey, { entities: [] }) fallback (ownership_ties
     // always []) since the route shipped. Found via the Phase 3
-    // workers/request-handlers/entities.mjs->.ts conversion (metagraphed#7510),
+    // workers/request-handlers/entities.ts->.ts conversion (metagraphed#7510),
     // which forces every tryPostgresTier flag name to be a real Env key.
     // Unlike this file's other _SOURCE flags, this one has NOT had a live
-    // parity pass against sampled production rows -- data-api.mjs's query
+    // parity pass against sampled production rows -- data-api.ts's query
     // reads real columns (block_number, pallet, method, args, observed_at)
     // that the general chain_events poller already populates, so it should
     // behave the same as the already-live /subnets/{netuid}/ownership-history
@@ -449,7 +449,7 @@
   "services": [
     // #4771: the write path into the chain-indexer Postgres's neurons/
     // neuron_daily tables (POST /api/v1/internal/neurons-sync) also lives
-    // behind THIS binding -- workers/data-api.mjs owns both read and write
+    // behind THIS binding -- workers/data-api.ts owns both read and write
     // for this one Postgres instance, so there's no separate binding for it.
     { "binding": "DATA_API", "service": "metagraphed-data-api" },
     {
@@ -459,7 +459,7 @@
   ],
   // Realtime chain-event firehose (#4982, ADR 0015): the first Durable Object
   // in this codebase. One global instance (idFromName("global"), see
-  // workers/chain-firehose-hub.mjs) fans out #4980's Postgres NOTIFY payloads
+  // workers/chain-firehose-hub.ts) fans out #4980's Postgres NOTIFY payloads
   // -- forwarded here by the #4981 box-side relay -- over SSE and WebSocket.
   // Co-located with this Worker (not a dedicated Worker like DATA_API/
   // REGISTRY_SYNC_API above) because it serves this Worker's own public
@@ -477,7 +477,7 @@
   // no delivery, matching every other optional binding's degrade-gracefully
   // convention in this codebase).
   //
-  // #4984 Part 3 (workers/alerter-hub.mjs's deliverAlertMatch) needs three
+  // #4984 Part 3 (workers/alerter-hub.ts's deliverAlertMatch) needs three
   // MORE secrets, one per non-webhook/-discord channel (those two need
   // nothing beyond the trigger's own `destination` -- a URL, not a shared
   // credential):
@@ -496,18 +496,18 @@
   // Cloudflare Tunnel prerequisite itself is now provisioned and verified
   // live (fullnode-rpc.metagraph.sh -> the box's RPC port, 2026-07-19) --
   // this secret is deliberately left UNSET on every deployment until the
-  // Unkey-backed key rework (workers/data-api.mjs's handleAccountKeyCreate/
-  // src/unkey-client.mjs) ships: setting it any earlier would let the
+  // Unkey-backed key rework (workers/data-api.ts's handleAccountKeyCreate/
+  // src/unkey-client.ts) ships: setting it any earlier would let the
   // still-deployed old invite-code system actually start serving real RPC
   // traffic, and a key minted under it before the rework merges recreates
   // exactly the "live legacy keys" migration problem the rework is timed to
   // avoid. Set it right after that cutover, not before. Starts with exactly
   // one entry; growing the cluster later is purely appending to this value,
-  // no code change (workers/request-handlers/fullnode-rpc-proxy.mjs reuses
-  // rpc-proxy.mjs's pool/failover machinery against whatever this list
+  // no code change (workers/request-handlers/fullnode-rpc-proxy.ts reuses
+  // rpc-proxy.ts's pool/failover machinery against whatever this list
   // contains). Until set, the route 503s (no endpoint configured).
   //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN
-  // src/api-key-validation.mjs's KV-cache-fronted validator (called from the
+  // src/api-key-validation.ts's KV-cache-fronted validator (called from the
   // fullnode gate above) sends this as a header to the DATA_API service
   // binding's internal key-lookup route -- SAME value must also be set on
   // wrangler.data.jsonc (see that file's own comment), same two-deployment
@@ -525,14 +525,14 @@
       // #4984 Part 2: the alerter evaluator, a SINGLETON (idFromName("global"),
       // like ChainFirehoseHub itself) -- pinged unconditionally on every
       // broadcast(), unlike McpSessionHub's per-session Set, since there is
-      // exactly one evaluator. See workers/alerter-hub.mjs's own header
+      // exactly one evaluator. See workers/alerter-hub.ts's own header
       // comment for why it stays a separate DO rather than in-memory state
       // on ChainFirehoseHub.
       { "name": "ALERTER_HUB", "class_name": "AlerterHub" },
       // #6034: inverted netuid → MCP-session index for
       // metagraph://subnet/{netuid}/status subscriptions. Singleton
       // (idFromName("global")), pinged from the health prober write path —
-      // not from ChainFirehoseHub.broadcast(). See workers/subnet-status-hub.mjs.
+      // not from ChainFirehoseHub.broadcast(). See workers/subnet-status-hub.ts.
       { "name": "SUBNET_STATUS_HUB", "class_name": "SubnetStatusHub" },
     ],
   },
@@ -575,7 +575,7 @@
     // path onto a direct-to-Postgres sync (indexer-box cron migration). The
     // former 47 5 daily neuron-history rollup (#1345) is retired too: #4772's
     // D1 chain-data write-path retirement dropped its target table, leaving
-    // it a permanent no-op (workers/api.mjs's NEURON_HISTORY_ROLLUP_CRON
+    // it a permanent no-op (workers/api.ts's NEURON_HISTORY_ROLLUP_CRON
     // branch was left wired-but-inert for a while) -- this entry and that
     // dead branch are removed together rather than left firing daily for
     // nothing.
@@ -682,11 +682,11 @@
     // events-daily, subnet-hyperparams-sync, account-identity-sync,
     // validator-nominator-counts-sync, nominator-positions-sync). Each
     // authenticates with its OWN shared static secret downstream in
-    // data-api.mjs -- this proxy has no auth of its own, so a leaked secret
+    // data-api.ts -- this proxy has no auth of its own, so a leaked secret
     // could otherwise script unbounded write volume. 30 requests / 60s per
     // client IP -- looser than the 10/60s webhook/alert-trigger posture to
     // tolerate legitimate chunked historical-backfill scripts (see
-    // proxyToDataApi's own comment in workers/api.mjs). Skipped when the
+    // proxyToDataApi's own comment in workers/api.ts). Skipped when the
     // binding is absent (local dev/CI).
     {
       "name": "INTERNAL_SYNC_RATE_LIMITER",
@@ -698,8 +698,8 @@
     },
     {
       // Raised from 120 -- see CHAIN_FIREHOSE_INGEST_RATE_LIMIT's own comment
-      // in workers/api.mjs for the full real-incident rationale (must match
-      // this binding exactly, or the header values workers/api.mjs reports
+      // in workers/api.ts for the full real-incident rationale (must match
+      // this binding exactly, or the header values workers/api.ts reports
       // lie about what's actually enforced).
       "name": "CHAIN_FIREHOSE_INGEST_RATE_LIMITER",
       "namespace_id": "1008",
@@ -710,7 +710,7 @@
     },
     // Isolated fullnode RPC gate (ADR 0021, #6835): bounds the cost of an
     // unauthenticated caller guessing random API keys (each miss forces a
-    // real KV-then-Postgres lookup via src/api-key-validation.mjs) -- checked
+    // real KV-then-Postgres lookup via src/api-key-validation.ts) -- checked
     // BEFORE key validation, by client IP. Same figure as the public proxy's
     // own RPC_RATE_LIMITER. Skipped when the binding is absent (local dev/CI).
     {
@@ -738,7 +738,7 @@
     // free tier) -- an owner-designated partner cohort (the Gittensor SN74
     // team's own users) with real internal infra needs, not casual dev
     // exploration. No invite code stamps this anymore -- an account reaches
-    // this tier only via workers/data-api.mjs's handleAccountTierPromote
+    // this tier only via workers/data-api.ts's handleAccountTierPromote
     // (ops-triggered, manual). Skipped when the binding is absent (local
     // dev/CI) -- falls back to the free-tier policy in that case, same as an
     // unrecognized tier.
