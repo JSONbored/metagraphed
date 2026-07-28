@@ -2934,11 +2934,11 @@ function AccountFootprintSection({
               )}
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
-              <dt className="mg-type-caption text-[10px] text-ink-muted">UID</dt>
+              <dt className="mg-type-caption text-ink-muted">UID</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {r.uid != null ? formatNumber(r.uid) : "—"}
               </dd>
-              <dt className="mg-type-caption text-[10px] text-ink-muted">Stake</dt>
+              <dt className="mg-type-caption text-ink-muted">Stake</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {fmtStake(r.stake_tao)}
               </dd>

@@ -93,18 +93,18 @@ export function Ss58Inspector() {
           }
         >
           <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2.5 text-sm">
-            <dt className="mg-type-caption text-[10px] text-ink-muted">Network prefix</dt>
+            <dt className="mg-type-caption text-ink-muted">Network prefix</dt>
             <dd className="font-mono text-ink-strong">
               {decoded.format}
               {KNOWN_FORMATS[decoded.format] ? (
                 <span className="ml-2 text-ink-muted">({KNOWN_FORMATS[decoded.format]})</span>
               ) : null}
             </dd>
-            <dt className="mg-type-caption text-[10px] text-ink-muted">Public key</dt>
+            <dt className="mg-type-caption text-ink-muted">Public key</dt>
             <dd className="min-w-0">
               <CopyableCode value={toHex(decoded.pubkey)} className="w-full" />
             </dd>
-            <dt className="mg-type-caption text-[10px] text-ink-muted">Checksum</dt>
+            <dt className="mg-type-caption text-ink-muted">Checksum</dt>
             <dd className="text-health-ok">Valid</dd>
           </dl>
           {decoded.format !== DEFAULT_SS58_FORMAT ? (

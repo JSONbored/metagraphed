@@ -770,7 +770,7 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
           not subnet-page furniture; that same gap already renders on
           /contribute (#8363). */}
       {overview.status ? (
-        <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-[10px] text-ink-muted">
+        <span className="mg-type-caption inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-ink-muted">
           {overview.status}
         </span>
       ) : null}
@@ -1003,7 +1003,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           {/* SearchInput sets its own aria-label from `placeholder` -- this is a
               visual label only, not `<label htmlFor>`, since SearchInput has no
               `id` prop to associate with. */}
-          <span aria-hidden="true" className="mg-type-caption text-[10px] text-ink-muted">
+          <span aria-hidden="true" className="mg-type-caption text-ink-muted">
             Amount ({inputUnit})
           </span>
           <SearchInput
@@ -1015,7 +1015,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="mg-type-caption text-[10px] text-ink-muted">Direction</span>
+          <span className="mg-type-caption text-ink-muted">Direction</span>
           <div
             role="tablist"
             aria-label="Stake or unstake"
@@ -1674,7 +1674,7 @@ function AgentReadinessCard({
         {tier ? (
           <span
             className={classNames(
-              "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
+              "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5",
               tone,
             )}
           >
@@ -1705,7 +1705,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
   return (
     <li className="rounded-md border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mg-type-caption inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-[10px] text-accent-text">
+        <span className="mg-type-caption inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-accent-text">
           {service.kind ?? "service"}
         </span>
         <span className="font-medium text-ink-strong truncate">
@@ -1970,10 +1970,10 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
           <table className="w-full text-sm">
             <thead className="bg-surface/50 text-ink-muted">
               <tr>
-                <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">#</th>
-                <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">Validator</th>
-                <th className="mg-type-micro px-3 py-2.5 text-right text-[10px]">Weight sets</th>
-                <th className="mg-type-micro px-3 py-2.5 text-right text-[10px]">Share</th>
+                <th className="mg-type-micro px-3 py-2.5 text-left">#</th>
+                <th className="mg-type-micro px-3 py-2.5 text-left">Validator</th>
+                <th className="mg-type-micro px-3 py-2.5 text-right">Weight sets</th>
+                <th className="mg-type-micro px-3 py-2.5 text-right">Share</th>
               </tr>
             </thead>
             <tbody>
@@ -2365,7 +2365,7 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
           <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
             {group.fields.map((field) => (
               <div key={field.key} className="px-4 py-2.5">
-                <div className="mg-type-caption text-[10px] text-ink-muted">{field.label}</div>
+                <div className="mg-type-caption text-ink-muted">{field.label}</div>
                 <div className="mt-1 font-mono mg-type-caption-lg text-ink-strong">
                   {field.format(h)}
                 </div>

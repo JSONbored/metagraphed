@@ -393,7 +393,7 @@ function SchemaExplorer() {
                   type="button"
                   onClick={() => setSearch({ drift: v })}
                   className={classNames(
-                    "mg-type-micro flex-1 rounded-full border px-2 py-1 text-[10px] transition-all duration-150",
+                    "mg-type-micro flex-1 rounded-full border px-2 py-1 transition-all duration-150",
                     search.drift === v
                       ? "border-ink/40 bg-ink-strong text-paper"
                       : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-accent/40",
@@ -404,7 +404,7 @@ function SchemaExplorer() {
               ))}
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="mg-type-caption text-[10px] text-ink-muted">
+              <div className="mg-type-caption text-ink-muted">
                 {filtered.length} of {all.length}
               </div>
               {/* One-click way back to the unfiltered view for a shared
@@ -518,7 +518,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                   replace: true,
                 })
               }
-              className="mg-type-caption lg:hidden inline-flex items-center gap-1 text-[10px] text-ink-muted hover:text-ink-strong mb-2"
+              className="mg-type-caption lg:hidden inline-flex items-center gap-1 text-ink-muted hover:text-ink-strong mb-2"
             >
               <ChevronLeft className="size-3" /> back
             </button>
@@ -527,11 +527,11 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                 {schema.name ?? schema.id}
               </h3>
               {schema.drift ? (
-                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 text-[10px] text-health-warn">
+                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 text-health-warn">
                   drift
                 </span>
               ) : (
-                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 text-[10px] text-health-ok">
+                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 text-health-ok">
                   stable
                 </span>
               )}

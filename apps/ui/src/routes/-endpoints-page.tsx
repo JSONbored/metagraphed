@@ -335,7 +335,7 @@ function PoolsTable() {
       ) : null}
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
+          <thead className="mg-type-micro bg-surface/50 text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Region</th>
@@ -366,7 +366,7 @@ function PoolsTable() {
                   <td className="px-3 py-2 text-center">
                     <span
                       className={classNames(
-                        "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
+                        "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5",
                         ELIGIBILITY_TONE[eligibility],
                       )}
                     >
@@ -412,7 +412,7 @@ function EndpointPoolsTable() {
       ) : null}
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
+          <thead className="mg-type-micro bg-surface/50 text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Kind</th>
@@ -496,7 +496,7 @@ function RpcEndpointsTable() {
       ) : null}
       <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-sm">
-          <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
+          <thead className="mg-type-micro bg-surface/50 text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Provider</th>
               <th className="px-3 py-2 text-left">Kind</th>
@@ -514,7 +514,7 @@ function RpcEndpointsTable() {
                 <td className="px-3 py-2">
                   <span
                     className={classNames(
-                      "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
+                      "mg-type-caption inline-flex items-center rounded border px-1.5 py-0.5",
                       CLASSIFICATION_TONE[e.classification ?? "unknown"] ??
                         CLASSIFICATION_TONE.unknown,
                     )}
