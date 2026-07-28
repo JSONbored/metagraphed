@@ -196,7 +196,7 @@ owner), so this was a clean cutover, not a dual-system transition.
 
 ### 4c. Extension: the same challenge/verify primitives issue self-serve alert-trigger tokens too (#8374)
 
-This ADR's `src/wallet-auth.mjs` challenge/verify pair and its stateless
+This ADR's `src/wallet-auth.ts` challenge/verify pair and its stateless
 HMAC-signed-token pattern (section "Resolved during implementation" below)
 turned out to be exactly what Explorer Program theme T6 ("self-serve
 engagement") needed for a second, unrelated purpose: letting a wallet holder

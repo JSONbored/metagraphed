@@ -97,7 +97,7 @@ netuid, old_coldkey, new_coldkey }` events — is an ordinary `pallet.method`/ev
   from each `LockState`'s `last_update` using the _current_ `UnlockRate`/`MaturityRate` values
   at query time. That requires either (a) a `state_call` against the relevant storage items at
   query time, or (b) replicating `roll_forward_lock`'s exponential-decay math in
-  `chain-alpha-volume.mjs`-style offline shaping code, fed by the raw `LockState` rows via
+  `chain-alpha-volume.ts`-style offline shaping code, fed by the raw `LockState` rows via
   periodic state polling. The math is deterministic and self-contained (no other pallet state
   needed beyond the two rate constants), so (b) is buildable without new RPC surface once the
   raw `Lock`/`HotkeyLock`/`OwnerLock` maps are being polled at all.

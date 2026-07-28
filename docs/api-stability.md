@@ -6,7 +6,7 @@ This is the consumer-facing stability contract for the Worker API served from
 contract is `public/metagraph/openapi.json` plus the generated
 `packages/contract/index.d.ts` and `generated/metagraphed-client.ts`; this doc
 describes the guarantees around them. Behavior here is implemented in
-`workers/api.mjs` and `src/contracts.mjs`.
+`workers/api.ts` and `src/contracts.ts`.
 
 ## Response Envelope
 
