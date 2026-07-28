@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
+import { PushDevicesManager } from "@/components/metagraphed/push-devices-manager";
 import { classNames } from "@/lib/metagraphed/format";
 import { SectionHeading, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
@@ -201,6 +202,9 @@ function AlertsPanel({ token, onSignOut }: { token: string; onSignOut: () => voi
 
   return (
     <div className="space-y-4">
+      {/* #8385: device management for the webpush channel, inside the
+          already-verified panel so the T6 token is reused, not re-issued. */}
+      <PushDevicesManager token={token} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="mg-type-caption text-ink-muted">
           {triggers.length} alert{triggers.length === 1 ? "" : "s"}

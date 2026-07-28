@@ -51,6 +51,14 @@ interface Env {
   SUBNET_SNAPSHOT_SYNC_SECRET?: string;
   TELEGRAM_BOT_TOKEN?: string;
   UNKEY_ROOT_KEY?: string;
+  // #8385 web-push (VAPID, RFC 8292). Ops-managed Worker secrets — the KEY
+  // VALUES never live in this repo. All three are required together; the
+  // webpush channel degrades to a recorded delivery failure when any is
+  // absent, exactly like TELEGRAM_BOT_TOKEN/RESEND_API_KEY above.
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  /** RFC 8292 §2.1 contact: `mailto:` or `https:`. */
+  VAPID_SUBJECT?: string;
   VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET?: string;
   WALLET_SESSION_SECRET?: string;
   WATCH_TRIGGER_TOKEN_SECRET?: string;

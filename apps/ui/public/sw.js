@@ -185,3 +185,65 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
 });
+
+// (7) Web-push alerts (#8385). The payload arrives already decrypted by the
+// browser (RFC 8291 aes128gcm; sender side is src/web-push.ts) and is the
+// PushNotificationPayload shape from src/web-push-payload.ts:
+// { title, body, url, tag }.
+//
+// SILENT PUSH IS PROHIBITED. Every push MUST show a notification: browsers
+// permit a handler that shows nothing only briefly, then either revoke the
+// permission or post a generic "site updated in the background" notification
+// on our behalf. So this handler shows a notification on EVERY path,
+// including when the payload is missing or unparseable -- there is
+// deliberately no early return that would leave a push silent.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    // Malformed/non-JSON payload: fall through to the generic notification
+    // below rather than throwing, which would count as a silent push.
+  }
+  const title = payload.title || "Chain alert";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: payload.body || "A chain alert you subscribed to matched.",
+      // Same-origin path only -- never navigate somewhere a payload names
+      // off-origin, even though the payload is authenticated by VAPID.
+      data: { url: typeof payload.url === "string" ? payload.url : "/" },
+      tag: payload.tag || "mg-alert",
+      icon: "/android-chrome-192x192.png",
+      badge: "/android-chrome-192x192.png",
+    }),
+  );
+});
+
+// Tap-through: focus an already-open tab and route it, otherwise open one.
+// Reusing a tab avoids stacking duplicates every time an alert is tapped.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const raw = (event.notification.data && event.notification.data.url) || "/";
+  // Resolve against our own origin and keep only the path: a payload can
+  // never send a tap to another site.
+  let path = "/";
+  try {
+    const resolved = new URL(raw, self.location.origin);
+    if (resolved.origin === self.location.origin) {
+      path = resolved.pathname + resolved.search;
+    }
+  } catch {
+    /* keep "/" */
+  }
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          if ("navigate" in client) client.navigate(path).catch(() => {});
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(path);
+    }),
+  );
+});

@@ -55,6 +55,12 @@ export const ALERT_CHANNELS = new Set([
   "email",
   "telegram",
   "discord",
+  // #8385: delivery target is a push-service endpoint the browser issued,
+  // with the crypto material held in watch_push_subscriptions. The endpoint
+  // alone is not a capability the way a Discord webhook URL is -- a push
+  // service will not accept a payload without a VAPID signature from the
+  // key that the subscription was created against.
+  "webpush",
 ]);
 
 const MAX_NAME_LENGTH = 128;
@@ -235,6 +241,15 @@ export function isValidAlertDestination(
       );
     case "telegram":
       return TELEGRAM_CHAT_ID_PATTERN.test(destination);
+    // #8385: the destination is the push-service endpoint. Reuses the same
+    // public-URL guard the webhook channel uses -- a push endpoint is always
+    // a public https:// URL, and routing a VAPID-signed request at a private
+    // address would be the same SSRF shape isPublicWebhookUrl exists to
+    // prevent. Ownership (does this endpoint belong to the caller's verified
+    // address?) is enforced separately at trigger-write time against
+    // watch_push_subscriptions -- a URL shape check can't answer that.
+    case "webpush":
+      return isPublicWebhookUrl(destination);
     default:
       return false;
   }
