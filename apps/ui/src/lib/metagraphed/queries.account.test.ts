@@ -59,6 +59,10 @@ describe("normalizeAccountSummary", () => {
         alpha_amount: null,
         extrinsic_index: null,
         observed_at: undefined,
+        // #8369: a Transfer has no alpha leg, so no execution price exists —
+        // null/null, never a fabricated figure or a wrong "root_no_pool".
+        price_at_tx: null,
+        price_basis: null,
       },
     ]);
   });
