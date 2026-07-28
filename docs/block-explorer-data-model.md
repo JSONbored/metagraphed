@@ -128,7 +128,7 @@ Per-neuron metagraph state is now served from Postgres (`neurons`/`neuron_daily`
 #4771 cutover, flipped 2026-07-10) — the ADR-0013-era `economics_history` table was superseded
 by folding economics columns into D1's/Postgres's `subnet_snapshots` (migration 0008) instead,
 and has been removed from `deploy/postgres/schema.sql` as dead schema. Check D1's route list in
-`workers/config.mjs` before assuming a chain-data tier is missing, the two can diverge.
+`workers/config.ts` before assuming a chain-data tier is missing, the two can diverge.
 
 The one confirmed, unfiled capture gap is **subnet hyperparameters** — no pipeline captures
 these anywhere. Everything else needed for full explorer parity is a derived view or narrow
@@ -239,7 +239,7 @@ premise doesn't hold.** Verified empirically against live finney (bittensor 10.4
   in this sample, not the same field) alongside `SubtensorModule::NeuronRegistered` and
   `SubtensorModule::RAORecycledForRegistrationSet`. **No `Balances`-pallet event of any kind is
   ingested by this codebase's `account_events` pipeline** (`INGESTED_EVENT_KINDS`,
-  `src/account-events.mjs`, is SubtensorModule-only plus a hardcoded `Transfer` — confirmed by
+  `src/account-events.ts`, is SubtensorModule-only plus a hardcoded `Transfer` — confirmed by
   reading the full list) — so even the correct on-chain signal isn't currently captured.
 - `subnet_hyperparams_history` (#4309) captures only `min_burn_tao`/`max_burn_tao` — the
   _bounds_ on the dynamic burn — never the live current cost at any given block.
@@ -252,11 +252,11 @@ that subnet, confirmed to equal exactly the `amount` in the same block's
 `RAORecycledForRegistrationSet` event (154,463,660,642 rao = 154.463660642 TAO for netuid 101 at
 that block). A single `state_getStorage` query returns it directly — the same live-RPC +
 KV-cache shape this repo already uses for `/accounts/{ss58}/balance` and `/sudo/key`
-(`src/account-balance.mjs`, `src/sudo-key.mjs`), not a new capture pipeline. Storage key =
+(`src/account-balance.ts`, `src/sudo-key.ts`), not a new capture pipeline. Storage key =
 `twox128("SubtensorModule") ++ twox128("RAORecycledForRegistration") ++ <netuid as u16,
 little-endian, Identity hasher — no hash on the map key>`, confirmed via
 `substrate.create_storage_key(...)` across netuid 0/1/4/101/65535. Shipped as
-`GET /api/v1/subnets/{netuid}/recycled` (`src/subnet-recycled.mjs`) on this basis instead of the
+`GET /api/v1/subnets/{netuid}/recycled` (`src/subnet-recycled.ts`) on this basis instead of the
 issue's literal log-layer approach.
 
 ## Design spike: rate-limited public state-query endpoint (#4344/9.1, 2026-07-09)
@@ -264,7 +264,7 @@ issue's literal log-layer approach.
 Goal (the issue's own framing): expose `state_getStorage`/`state_getKeysPaged`/`state_getPairs`
 through a scoped, rate-limited public proxy — a differentiator vs. taostats gating the
 equivalent behind a paid key. **Extend the existing RPC proxy allowlist model
-(`workers/config.mjs`/`workers/request-handlers/rpc-proxy.mjs`, live at `POST /rpc/v1/finney`,
+(`workers/config.ts`/`workers/request-handlers/rpc-proxy.ts`, live at `POST /rpc/v1/finney`,
 `docs/operations.md` "RPC Proxy (enabled)"), not a new pipeline.** That proxy already enforces,
 today, for its `SAFE_RPC_METHODS` allowlist: a method allowlist + `DENIED_RPC_PREFIXES`, an
 upstream SSRF guard (`TRUSTED_RPC_UPSTREAM_ORIGINS`, https/wss-only, no private IPs), weighted
@@ -297,7 +297,7 @@ pooled RPC endpoints and Worker subrequest budget.
 
 1. **A separate, stricter method allowlist tier** — do not add these three to `SAFE_RPC_METHODS`
    directly (that set's callers expect the existing 100/60s budget and no extra param
-   validation). Introduce `SAFE_RPC_STATE_QUERY_METHODS` alongside it in `workers/config.mjs`:
+   validation). Introduce `SAFE_RPC_STATE_QUERY_METHODS` alongside it in `workers/config.ts`:
 
    ```js
    export const SAFE_RPC_STATE_QUERY_METHODS = new Set([
@@ -328,7 +328,7 @@ pooled RPC endpoints and Worker subrequest budget.
    - `state_getKeysPaged`: `params[0]` (prefix) same hex validation; `params[1]` (count) hard-capped
      server-side (rewrite the request to `min(caller_count, 250)` rather than reject it — mirrors
      how paginated REST routes in this repo clamp rather than error on an over-large `?limit`,
-     `clampInt` in `workers/config.mjs`).
+     `clampInt` in `workers/config.ts`).
    - Reject a missing/malformed key or prefix with the same `errorResponse("rpc_invalid_request", …,
 400)` shape the existing body-shape check uses — no new error taxonomy needed.
 
@@ -339,7 +339,7 @@ pooled RPC endpoints and Worker subrequest budget.
    state-query traffic from one client can't starve that same client's ordinary `chain_getBlock`/
    `system_health` calls through the same proxy, and vice versa — the two tiers fail independently.
    Reuses the exact `RPC_RATE_LIMITER` wiring shape (`resolveClientIp`, `429 rpc_rate_limited` with
-   `retry-after`/`x-ratelimit-*` headers) already in `rpc-proxy.mjs`, just against the new binding
+   `retry-after`/`x-ratelimit-*` headers) already in `rpc-proxy.ts`, just against the new binding
    and limit constant.
 
 5. **A post-fetch response-size cap.** Even with `state_getKeysPaged`'s count clamped, a pathological
@@ -347,10 +347,10 @@ pooled RPC endpoints and Worker subrequest budget.
    upstream response body (e.g. 256 KB, matching this proxy's existing 64 KB _request_ cap's order
    of magnitude) and surface `502 rpc_response_too_large` rather than relaying it, mirroring the
    `MAX_STAGED_*_BYTES` "parse-safety ceiling" pattern already used for staged ingest bodies
-   elsewhere in this codebase (`workers/config.mjs`).
+   elsewhere in this codebase (`workers/config.ts`).
 
 6. **No new endpoint path.** Route through the same `POST /rpc/v1/finney` proxy (`workers/
-request-handlers/rpc-proxy.mjs`) rather than a dedicated `/rpc/v1/finney/state` — the method
+workers/request-handlers/rpc-proxy.ts`) rather than a dedicated `/rpc/v1/finney/state` — the method
    name in the JSON-RPC body already disambiguates, and a second path would duplicate the SSRF
    guard, pool selection, and upstream-fetch logic for no isolation benefit (the rate-limit and
    param-validation gates above are per-_method_, not per-_path_, so they compose cleanly into the
@@ -365,7 +365,7 @@ request-handlers/rpc-proxy.mjs`) rather than a dedicated `/rpc/v1/finney/state` 
   shape (a finality proof for a given block, not a keyspace query) — no shared design surface with
   this spike beyond both landing on the same allowlist infrastructure.
 - The internal, already-shipped `state_getStorage` calls this repo makes itself for known,
-  hardcoded storage keys (`src/account-balance.mjs`, `src/sudo-key.mjs`, `src/subnet-recycled.mjs`)
+  hardcoded storage keys (`src/account-balance.ts`, `src/sudo-key.ts`, `src/subnet-recycled.ts`)
   are unaffected — those are server-to-upstream calls with no caller-supplied key, not routed
   through the public RPC proxy at all, and need no new gate.
 
@@ -374,7 +374,7 @@ request-handlers/rpc-proxy.mjs`) rather than a dedicated `/rpc/v1/finney/state` 
 Implement `SAFE_RPC_STATE_QUERY_METHODS` (2 methods only) + the param-validation/count-clamp step
 
 - the separate `STATE_QUERY_RATE_LIMITER` binding + the response-size cap in
-  `workers/request-handlers/rpc-proxy.mjs`, following the exact wiring shape `RPC_RATE_LIMITER`
+  `workers/request-handlers/rpc-proxy.ts`, following the exact wiring shape `RPC_RATE_LIMITER`
   already establishes. `docs/operations.md`'s "RPC Proxy (enabled)" section and
   `docs/beta-roadmap.md`'s "Phase 2 — RPC proxy differentiator" bullet should both gain a line once
   shipped, matching how the existing method allowlist is documented there today.
