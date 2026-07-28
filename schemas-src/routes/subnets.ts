@@ -42,6 +42,12 @@ export const SubnetIndexEntrySchema = z
     docs_url: z.url().nullable().optional(),
     first_party: z.boolean().optional(),
     gap_count: z.int().min(0).optional(),
+    // #8379: last 13 weeks (~90d) of commit activity for the resolved
+    // source_repo, from GitHub's stats/commit_activity endpoint.
+    github_commits_weekly: z
+      .array(z.object({ week: z.iso.datetime(), count: z.int().min(0) }))
+      .nullable()
+      .optional(),
     // Byte-count language breakdown from the GitHub /languages API (#6639) —
     // a genuinely open map (language name -> byte count), matching the
     // OpenAPI contract's own additionalProperties schema, not a shortcut.
@@ -52,6 +58,11 @@ export const SubnetIndexEntrySchema = z
     // format:"date-time" in the hand-edited contract -- z.iso.datetime()
     // matches it (same verification as dashboard_url above).
     github_last_push_at: z.iso.datetime().nullable().optional(),
+    github_stars: z.int().min(0).nullable().optional(),
+    // #8379: true when the last capture attempt failed and this is retained
+    // last-good data (dropped from the artifact entirely, not flagged, once
+    // stale beyond 30d) -- see registry/generated/github-signals.json.
+    github_unreachable: z.boolean().optional(),
     integration_readiness: z.int().min(0).max(100).optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
     logo_url: z.url().nullable().optional(),

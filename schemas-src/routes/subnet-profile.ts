@@ -170,6 +170,20 @@ export const SubnetProfileSchema = z
     subnet_type: SubnetTypeSchema,
     status: SubnetStatusSchema,
     symbol: z.string().nullable().optional(),
+    // #8379: carried through from the merged subnet's own github-signals
+    // fields (#6639) so the About-tab dev-activity module needs no separate
+    // query. Same shapes as schemas-src/routes/subnet-detail.ts.
+    github_languages: z
+      .record(z.string(), z.int().min(0))
+      .nullable()
+      .optional(),
+    github_last_push_at: z.iso.datetime().nullable().optional(),
+    github_stars: z.int().min(0).nullable().optional(),
+    github_commits_weekly: z
+      .array(z.object({ week: z.iso.datetime(), count: z.int().min(0) }))
+      .nullable()
+      .optional(),
+    github_unreachable: z.boolean().optional(),
     project_name: z.string(),
     team: z.string().nullable(),
     categories: z.array(z.string()),

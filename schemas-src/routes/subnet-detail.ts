@@ -357,11 +357,22 @@ export const SubnetDetailSchema = z
     docs_url: z.url().nullable().optional(),
     gap_count: z.int().min(0).optional(),
     gaps: GapsSchema,
+    // #8379: last 13 weeks (~90d) of commit activity for the resolved
+    // source_repo, from GitHub's stats/commit_activity endpoint.
+    github_commits_weekly: z
+      .array(z.object({ week: z.iso.datetime(), count: z.int().min(0) }))
+      .nullable()
+      .optional(),
     github_languages: z
       .record(z.string(), z.int().min(0))
       .nullable()
       .optional(),
     github_last_push_at: z.iso.datetime().nullable().optional(),
+    github_stars: z.int().min(0).nullable().optional(),
+    // #8379: true when the last capture attempt failed and this is retained
+    // last-good data (dropped from the artifact entirely, not flagged, once
+    // stale beyond 30d) -- see registry/generated/github-signals.json.
+    github_unreachable: z.boolean().optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
     // Genuinely open shape in the source contract (additionalProperties:
     // true, no fixed properties) -- see this file's header.

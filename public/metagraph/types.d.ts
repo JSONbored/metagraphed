@@ -7350,10 +7350,17 @@ export interface components {
             docs_url?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
+            github_commits_weekly?: {
+                count: number;
+                /** Format: date-time */
+                week: string;
+            }[] | null;
             github_languages?: {
                 [key: string]: number;
             } | null;
             github_last_push_at?: string | null;
+            github_stars?: number | null;
+            github_unreachable?: boolean;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
             links: {
@@ -7739,10 +7746,17 @@ export interface components {
             docs_url?: string | null;
             first_party?: boolean;
             gap_count?: number;
+            github_commits_weekly?: {
+                count: number;
+                /** Format: date-time */
+                week: string;
+            }[] | null;
             github_languages?: {
                 [key: string]: number;
             } | null;
             github_last_push_at?: string | null;
+            github_stars?: number | null;
+            github_unreachable?: boolean;
             integration_readiness?: number;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
@@ -8032,6 +8046,17 @@ export interface components {
             derived_description?: string | null;
             endpoint_count: number;
             gap_reasons: string[];
+            github_commits_weekly?: {
+                count: number;
+                /** Format: date-time */
+                week: string;
+            }[] | null;
+            github_languages?: {
+                [key: string]: number;
+            } | null;
+            github_last_push_at?: string | null;
+            github_stars?: number | null;
+            github_unreachable?: boolean;
             identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
             /** @enum {string} */
             identity_level: "none" | "directory" | "partial" | "complete";
@@ -25024,8 +25049,16 @@ export interface operations {
                      *               "archive"
                      *             ]
                      *           },
+                     *           "github_commits_weekly": [
+                     *             {
+                     *               "count": 1,
+                     *               "week": "2026-06-01T00:00:00.000Z"
+                     *             }
+                     *           ],
                      *           "github_languages": {},
                      *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_stars": 1,
+                     *           "github_unreachable": false,
                      *           "lifecycle": "active",
                      *           "links": [
                      *             {}
@@ -28754,6 +28787,16 @@ export interface operations {
                      *           "gap_reasons": [
                      *             "example"
                      *           ],
+                     *           "github_commits_weekly": [
+                     *             {
+                     *               "count": 1,
+                     *               "week": "2026-06-01T00:00:00.000Z"
+                     *             }
+                     *           ],
+                     *           "github_languages": {},
+                     *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_stars": 1,
+                     *           "github_unreachable": false,
                      *           "identity_evidence": {
                      *             "candidate_identity_count": 1,
                      *             "curated_identity_count": 1,
@@ -29452,6 +29495,16 @@ export interface operations {
                      *           "gap_reasons": [
                      *             "example"
                      *           ],
+                     *           "github_commits_weekly": [
+                     *             {
+                     *               "count": 1,
+                     *               "week": "2026-06-01T00:00:00.000Z"
+                     *             }
+                     *           ],
+                     *           "github_languages": {},
+                     *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_stars": 1,
+                     *           "github_unreachable": false,
                      *           "identity_evidence": {
                      *             "candidate_identity_count": 1,
                      *             "curated_identity_count": 1,
@@ -29591,8 +29644,16 @@ export interface operations {
                      *               "archive"
                      *             ]
                      *           },
+                     *           "github_commits_weekly": [
+                     *             {
+                     *               "count": 1,
+                     *               "week": "2026-06-01T00:00:00.000Z"
+                     *             }
+                     *           ],
                      *           "github_languages": {},
                      *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_stars": 1,
+                     *           "github_unreachable": false,
                      *           "lifecycle": "active",
                      *           "links": [
                      *             {}

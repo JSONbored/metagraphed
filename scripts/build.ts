@@ -143,6 +143,11 @@ function productionSteps(): Step[] {
     // the caller (publish-cloudflare.yml); without a token this carries
     // forward committed adapter data rather than failing.
     nodeStep("adapters-snapshot", "scripts/snapshot-adapters.ts", "--write"),
+    // Refresh per-subnet GitHub dev-activity signals (#8379, extends #6639)
+    // fresh each publish, same token/tolerance posture as adapters-snapshot
+    // above (own try/catch, always exits 0 -- see that script's header).
+    // Before build-artifacts, which reads the file this writes.
+    nodeStep("github-signals", "scripts/github-signals.ts", "--write"),
     // Capture one sanitized live request/response sample per no-auth GET
     // surface (issue #352) before build-artifacts, mirroring schemas-snapshot:
     // build-artifacts grabs the fixtures/{surface_id}.json files before its

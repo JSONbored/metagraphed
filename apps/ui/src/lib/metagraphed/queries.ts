@@ -4769,6 +4769,26 @@ export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProf
     missing_kinds: stringArrayFromUnknown(gaps.missing_kinds ?? profile.missing_operational),
     gap_notes: stringArrayFromUnknown(gaps.gap_notes),
     primary_app_surface: profile.primary_app_surface as PrimaryAppSurface | undefined,
+    // dev activity (#8379) — present on both `profile` and the embedded
+    // `subnet` sub-object (mergeSubnet's own spread, #6639); prefer `profile`,
+    // fall back to `subnet` for older cached payloads mid-rollout.
+    github_languages:
+      (profile.github_languages as Record<string, number> | null | undefined) ??
+      (subnet.github_languages as Record<string, number> | null | undefined) ??
+      null,
+    github_last_push_at:
+      pickStr(profile.github_last_push_at as string, subnet.github_last_push_at as string) ?? null,
+    github_stars:
+      typeof profile.github_stars === "number"
+        ? (profile.github_stars as number)
+        : typeof subnet.github_stars === "number"
+          ? (subnet.github_stars as number)
+          : null,
+    github_commits_weekly:
+      (profile.github_commits_weekly as { week: string; count: number }[] | null | undefined) ??
+      (subnet.github_commits_weekly as { week: string; count: number }[] | null | undefined) ??
+      null,
+    github_unreachable: Boolean(profile.github_unreachable ?? subnet.github_unreachable),
     // embedded
     surfaces: (root.surfaces as Surface[]) ?? [],
     endpoints: (root.endpoints as Endpoint[]) ?? [],
