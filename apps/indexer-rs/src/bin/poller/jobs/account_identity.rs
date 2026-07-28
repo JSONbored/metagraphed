@@ -53,7 +53,7 @@ const SYNC_TOKEN_HEADER: &str = "x-account-identity-sync-token";
 /// operational feature, not a throwaway debug flag.
 const DRY_RUN_ENV: &str = "ACCOUNT_IDENTITY_DRY_RUN";
 /// The sync route accepts up to 20,000 rows/request
-/// (ACCOUNT_IDENTITY_SYNC_MAX_ROWS, workers/data-api.mjs) -- ~460 rows
+/// (ACCOUNT_IDENTITY_SYNC_MAX_ROWS, workers/data-api.ts) -- ~460 rows
 /// live-observed, generous headroom for one un-chunked POST per tick.
 const SYNC_MAX_ROWS: usize = 20_000;
 
@@ -202,7 +202,7 @@ fn blank_to_null(bytes: &[u8]) -> Option<String> {
 }
 
 /// Shapes one row to EXACTLY ACCOUNT_IDENTITY_INSERT_COLUMNS's key set
-/// (src/account-identity.mjs) -- handleAccountIdentitySync's
+/// (src/account-identity.ts) -- handleAccountIdentitySync's
 /// validAccountIdentitySyncRow rejects any row with a key outside that
 /// allowlist. Note `github_repo` -> `github`: the only field whose chain
 /// name differs from its output column (matches fetch-account-identity.py's
@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn identity_row_json_only_has_account_identity_insert_columns_keys() {
-        // Mirrors ACCOUNT_IDENTITY_INSERT_COLUMNS (src/account-identity.mjs)
+        // Mirrors ACCOUNT_IDENTITY_INSERT_COLUMNS (src/account-identity.ts)
         // exactly -- validAccountIdentitySyncRow rejects any other key.
         const ACCOUNT_IDENTITY_INSERT_COLUMNS: &[&str] = &[
             "account",

@@ -22,7 +22,7 @@ export default defineConfig({
     // Run test FILES sequentially (each still in its own isolated fork). Three
     // files mutate shared on-disk state outside their own process and must never
     // run alongside a concurrent reader/scanner of that same state:
-    //   - tests/artifacts.test.mjs and tests/discovery-artifacts.test.mjs
+    //   - tests/artifacts.test.ts and tests/discovery-artifacts.test.ts
     //     execFileSync the real scripts/build-artifacts.ts, which mutates the
     //     shared on-disk artifact trees in place: it rm's + repopulates the R2
     //     staging dir (dist/metagraph-r2/metagraph, where R2-only artifacts such
@@ -35,13 +35,13 @@ export default defineConfig({
     //     of 200). The build output root resolves from the script's own
     //     location, so it can't be redirected to a temp dir without a full
     //     input+output tree copy.
-    //   - tests/public-safety.test.mjs writes a transient fixture into
+    //   - tests/public-safety.test.ts writes a transient fixture into
     //     dist/metagraph-r2/metagraph/fixtures/ (to exercise
     //     scan-public-safety.ts's mirroredFixturePatterns exemption) and
     //     deletes it in afterEach. scripts/validate-schemas.ts treats that same
     //     directory as a templated artifact location and schema-validates every
     //     .json file in it, so a concurrently-running consumer of
-    //     validate-schemas.ts (e.g. tests/validate-error-messages.test.mjs) can
+    //     validate-schemas.ts (e.g. tests/validate-error-messages.test.ts) can
     //     read the fixture mid-write or after cleanup and throw ENOENT.
     // Serializing these files is the clean, low-risk fix. Per-file fork
     // isolation is preserved; only filesystem-race concurrency is removed.

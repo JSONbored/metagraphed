@@ -8,7 +8,7 @@
 // the EXISTING `POST /api/v1/internal/neurons-sync` route instead (same
 // URL/header/secret the retired Python script already posts to, see
 // roles/data-refresh-cron/vars/main.yml). That route's handler
-// (workers/data-api.mjs's handleNeuronsSync) does far more than a plain
+// (workers/data-api.ts's handleNeuronsSync) does far more than a plain
 // upsert in one atomic transaction: it upserts `neurons` (latest-only),
 // rolls the SAME snapshot into `neuron_daily` (dated history) and
 // `account_position_daily` (per-account rollup), AND prunes UIDs that no
@@ -83,7 +83,7 @@ const SYNC_TOKEN_HEADER: &str = "x-neurons-sync-token";
 /// permanent operational feature, not a throwaway debug flag.
 const DRY_RUN_ENV: &str = "NEURONS_DRY_RUN";
 /// The sync route accepts up to 50,000 rows/request (NEURONS_SYNC_MAX_ROWS,
-/// workers/data-api.mjs) -- ~33k rows/tick (129 subnets x <=256 UIDs,
+/// workers/data-api.ts) -- ~33k rows/tick (129 subnets x <=256 UIDs,
 /// live-observed) fits in one POST with real headroom, so this job never
 /// needs to chunk across multiple requests the way it would need to if the
 /// network grew past that ceiling.
@@ -372,7 +372,7 @@ fn format_axon(ip: u128, port: u16) -> String {
 }
 
 /// Shapes one row to EXACTLY NEURON_INSERT_COLUMNS's key set
-/// (src/metagraph-neurons.mjs) -- handleNeuronsSync's validNeuronSyncRow
+/// (src/metagraph-neurons.ts) -- handleNeuronsSync's validNeuronSyncRow
 /// rejects any row with a key outside that allowlist, so this must never
 /// drift from it. Boolean columns are sent as 0/1 (NEURONS_SYNC_BOOLEAN_COLUMNS
 /// coerces via `Boolean(Number(value))`), matching the retired Python
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn neuron_row_json_only_has_neuron_insert_columns_keys() {
-        // Mirrors NEURON_INSERT_COLUMNS (src/metagraph-neurons.mjs) exactly --
+        // Mirrors NEURON_INSERT_COLUMNS (src/metagraph-neurons.ts) exactly --
         // handleNeuronsSync's validNeuronSyncRow rejects any other key.
         const NEURON_INSERT_COLUMNS: &[&str] = &[
             "netuid",

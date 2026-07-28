@@ -40,7 +40,7 @@ Don't treat a mismatch between the two as a sync bug or evidence of ingestion dr
 
 All three routes are a proxy, not a first-party handler in this Worker.
 
-The main API Worker's `handleChainEventsProxy` (`workers/api.mjs`) forwards all three routes as-is to a separate Cloudflare Worker (`workers/data-api.mjs`, the metagraphed-data-api service) over a Worker-to-Worker service binding named `DATA_API`. That split keeps the postgres.js driver and the Hyperdrive-backed Postgres tiers out of the main Worker's bundle, which is already near its size budget.
+The main API Worker's `handleChainEventsProxy` (`workers/api.ts`) forwards all three routes as-is to a separate Cloudflare Worker (`workers/data-api.ts`, the metagraphed-data-api service) over a Worker-to-Worker service binding named `DATA_API`. That split keeps the postgres.js driver and the Hyperdrive-backed Postgres tiers out of the main Worker's bundle, which is already near its size budget.
 
 There are two distinct failure modes, with two distinct error codes — don't conflate them when triaging:
 
