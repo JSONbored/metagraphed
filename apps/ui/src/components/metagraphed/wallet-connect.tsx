@@ -5,6 +5,7 @@ import { Popover, PopoverTrigger, ExternalLink } from "@jsonbored/ui-kit";
 import { ClampedPopoverContent } from "./clamped-popover-content";
 import { EmptyState } from "./states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
+import { AddressLabelEditor } from "@/components/metagraphed/address-label-editor";
 import { useWallet } from "@/hooks/use-wallet";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { classNames } from "@/lib/metagraphed/format";
@@ -78,7 +79,12 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
     useWallet();
 
   if (status === "connected" && wallet) {
-    return <ConnectedView wallet={wallet} onDisconnect={disconnect} />;
+    // #8484: pre-fill "Label this as mine" with the extension's own account
+    // name where present -- only populated this session, after an actual
+    // connect() call (accounts resets to [] on reload), so this is a
+    // best-effort convenience, not something the editor depends on.
+    const accountName = accounts.find((a) => a.address === wallet.address)?.meta.name;
+    return <ConnectedView wallet={wallet} accountName={accountName} onDisconnect={disconnect} />;
   }
 
   if (status === "picking") {
@@ -207,9 +213,11 @@ function AccountPicker({
 
 function ConnectedView({
   wallet,
+  accountName,
   onDisconnect,
 }: {
   wallet: { address: string; source: string };
+  accountName?: string;
   onDisconnect: () => void;
 }) {
   return (
@@ -230,6 +238,9 @@ function ConnectedView({
           </span>
         </div>
       </div>
+      {/* #8484: one-click entry point into the private-label editor, pre-filled
+          from the extension's own account name where available. */}
+      <AddressLabelEditor ss58={wallet.address} defaultName={accountName} trigger="button" />
       {/* #5243: the connected wallet's read-side entry point into its
           portfolio. #8252: that view moved from the retired /portfolio route
           into /accounts' own "Your wallet" panel. */}

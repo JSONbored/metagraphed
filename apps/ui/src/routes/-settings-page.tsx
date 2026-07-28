@@ -5,6 +5,7 @@ import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-sub
 import { ApiKeysManager } from "@/components/metagraphed/api-keys-manager";
 import { AlertsManager } from "@/components/metagraphed/alerts-manager";
 import { WatchlistPortability } from "@/components/metagraphed/watchlist-portability";
+import { AddressLabelPortability } from "@/components/metagraphed/address-label-portability";
 import { InstallAppRow } from "@/components/metagraphed/install-app-row";
 import { buildSettingsHeroKpis } from "@/lib/metagraphed/settings-summary";
 
@@ -26,6 +27,9 @@ export function SettingsPage() {
       {/* #8256: no account model means stars live in one browser. A JSON
           file is the whole portability story -- no server, no sync. */}
       <WatchlistPortability />
+      {/* #8484: private, local-first labels for your own addresses —
+          distinct store from the watchlist, same portability posture. */}
+      <AddressLabelPortability />
       <ApiKeysManager />
       <AlertsManager />
       <WebhookSubscriptionManager />

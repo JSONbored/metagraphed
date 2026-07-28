@@ -308,6 +308,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                 truncate={false}
                 valueClassName="truncate min-w-0"
                 fallback={<span className="text-ink-muted">—</span>}
+                editable
               />
             </span>
           </FieldRow>

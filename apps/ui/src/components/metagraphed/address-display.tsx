@@ -1,11 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { UserRound } from "lucide-react";
 import { CopyButton, Chip } from "@jsonbored/ui-kit";
 import { EntityHoverCard } from "./entity-hover-card";
+import { AddressLabelEditor } from "./address-label-editor";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { nametagIndexQuery } from "@/lib/metagraphed/queries";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
+import { useAddressLabels } from "@/lib/metagraphed/address-labels";
+import { classNames } from "@/lib/metagraphed/format";
 
 /**
  * #8372: the one place an ss58 address turns into something a human can read.
@@ -13,9 +17,15 @@ import { resolveAddress } from "@/lib/metagraphed/resolve-address";
  * Before this, ~55 call sites across ~32 files each called `shortHash(addr)`
  * inline, so an address rendered as `5Grwva…GKutQY` everywhere except the two
  * pages that happened to special-case on-chain identity. This resolves
- * through the shared `resolveAddress` ladder instead -- private label (#8484,
- * not wired yet) -> on-chain identity -> curated nametag -> truncated ss58 --
- * so improving address rendering is one edit, not fifty-five.
+ * through the shared `resolveAddress` ladder instead -- private label (#8484)
+ * -> on-chain identity -> curated nametag -> truncated ss58 -- so improving
+ * address rendering is one edit, not fifty-five.
+ *
+ * #8484: the private label itself is looked up and applied on EVERY render
+ * site (dense tables included) since it takes top precedence -- a user who
+ * named their own key should see that name everywhere it appears, not just
+ * in detail contexts. Only the EDIT affordance (`editable` prop) is reserved
+ * for detail contexts; see that prop's own doc comment.
  *
  * The raw ss58 always stays one copy-click away, whatever the display name
  * resolved to: a readable label is an aid, never a replacement for the value
@@ -36,6 +46,7 @@ export function AddressDisplay({
   valueClassName,
   linkToAccount = true,
   preload,
+  editable = false,
 }: {
   ss58?: string | null;
   fallback: ReactNode;
@@ -66,17 +77,30 @@ export function AddressDisplay({
   valueClassName?: string;
   /** Set false where the surrounding row already links elsewhere. */
   linkToAccount?: boolean;
+  /**
+   * Render the inline private-label edit affordance (#8484 requirement 3b).
+   * Reserve for detail contexts (account masthead, extrinsic signer/target
+   * fields, transfer detail rows) — a dense table row rendering it on every
+   * line would be noise, the same reasoning `showCategory` already applies.
+   */
+  editable?: boolean;
 }) {
   // Shared across every AddressDisplay on the page -- react-query dedupes to
   // one request, and a failure resolves to an empty index rather than
   // breaking the address (a missing nametag is a display downgrade to the
   // truncated form, never an error state).
   const { data: nametags } = useQuery(nametagIndexQuery());
+  // #8484: private labels are a synchronous localStorage read (via
+  // useAddressLabels' own effect-populated state), not a query -- applied
+  // on every render site regardless of `editable`, see this component's own
+  // header comment.
+  const { getLabel } = useAddressLabels();
 
   if (!ss58 || !isValidSs58(ss58)) return <>{fallback}</>;
 
   const nametag = nametags?.get(ss58) ?? null;
-  const resolved = resolveAddress(ss58, { identityName, nametag, keep });
+  const localLabel = getLabel(ss58)?.name ?? null;
+  const resolved = resolveAddress(ss58, { localLabel, identityName, nametag, keep });
   // `truncate={false}` asks for the raw value, but only when nothing better
   // resolved -- a caller wanting the full address still wants "Binance" over
   // 48 characters of base58 when we know that's what it is.
@@ -89,7 +113,17 @@ export function AddressDisplay({
   // viewports instead of ellipsizing -- caught by
   // tests/e2e/responsive-overflow.spec.ts on the extrinsic detail page's
   // Signer field.
-  const textClassName = valueClassName ? `hover:underline ${valueClassName}` : "hover:underline";
+  // #8484: private-label text carries the same `ph-no-capture` marker the
+  // one-time secret-reveal panels use -- see address-label-editor.tsx's own
+  // header comment on why element-level exclusion is needed here (this text
+  // renders on routes analytics.ts's route-level replay blocklist doesn't
+  // cover, e.g. account/transfer pages).
+  const isPrivate = resolved.source === "private";
+  const textClassName = classNames(
+    "hover:underline",
+    isPrivate ? "ph-no-capture" : "",
+    valueClassName,
+  );
 
   return (
     <span className="inline-flex items-center gap-1 min-w-0">
@@ -110,11 +144,23 @@ export function AddressDisplay({
           </span>
         )}
       </EntityHoverCard>
+      {isPrivate ? (
+        // #8484 requirement 4: visibly distinct from the curated-nametag
+        // category chip below, so a private note is never mistaken for a
+        // globally-verified claim.
+        <span
+          className="inline-flex shrink-0 items-center text-accent"
+          title="Your private label — visible only to you"
+        >
+          <UserRound className="size-3" aria-hidden="true" />
+        </span>
+      ) : null}
       {showCategory && resolved.category ? (
         <Chip tone="muted" title={`Curated nametag · ${resolved.category}`}>
           {resolved.category}
         </Chip>
       ) : null}
+      {editable ? <AddressLabelEditor ss58={ss58} /> : null}
       <CopyButton value={ss58} label="account" className={copyButtonClassName} compact={compact} />
     </span>
   );
