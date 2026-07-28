@@ -1,13 +1,13 @@
 // Read-only RPC safety policy for the WSS load balancer — a SELF-CONTAINED copy
-// of the policy in workers/config.mjs (the CF HTTP proxy uses the same allowlist).
+// of the policy in workers/config.ts (the CF HTTP proxy uses the same allowlist).
 //
 // Why a copy and not an import: the wss-lb deploys as a standalone Railway service
 // whose container only contains `deploy/wss-lb` (the Dockerfile COPYs `src` only).
-// Importing `../../../workers/config.mjs` resolves in the repo but NOT in the
+// Importing `../../../workers/config.ts` resolves in the repo but NOT in the
 // image — it crashed every deploy with ERR_MODULE_NOT_FOUND before the server
 // could listen, so the healthcheck failed.
 //
-// KEEP IN SYNC with workers/config.mjs — tests/wss-lb-rpc-policy-sync.test.mjs
+// KEEP IN SYNC with workers/config.ts — tests/wss-lb-rpc-policy-sync.test.ts
 // fails CI if these drift.
 export const SAFE_RPC_METHODS = new Set([
   "chain_getBlock",
@@ -23,7 +23,7 @@ export const SAFE_RPC_METHODS = new Set([
   "system_version",
 ]);
 // Read-only WebSocket subscriptions — WSS-ONLY (no HTTP equivalent). KEEP IN SYNC
-// with workers/config.mjs (tests/wss-lb-rpc-policy-sync.test.mjs guards drift).
+// with workers/config.ts (tests/wss-lb-rpc-policy-sync.test.ts guards drift).
 // Deliberately excludes persistent storage subscriptions, which can create
 // unbounded upstream watcher state for arbitrary keys.
 export const SAFE_RPC_SUBSCRIPTIONS = new Set([
