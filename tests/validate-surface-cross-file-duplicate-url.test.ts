@@ -4,7 +4,7 @@
 // duplicate-URL check, which only ever sees one document at a time and so
 // cannot catch a URL copy-pasted into a second subnet's manifest (the SN48/
 // SN63 qbittensorlabs.com/api/health mistake this issue found). Mirrors
-// validate-surface-duplicate-url.test.mjs's subprocess-fixture pattern.
+// validate-surface-duplicate-url.test.ts's subprocess-fixture pattern.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

@@ -249,7 +249,7 @@ describe("withUsageTelemetry", () => {
   });
 
   // metagraphed#7734: GraphQL execution errors are a spec-mandated 200 with
-  // a populated `errors` array (src/graphql.mjs) -- status alone can't tell
+  // a populated `errors` array (src/graphql.ts) -- status alone can't tell
   // that apart from a real success, so this one code is a narrow, explicit
   // exception to the status<500 rule. Every other error code (including a
   // GraphQL transport-level one like graphql_bad_method) keeps the existing

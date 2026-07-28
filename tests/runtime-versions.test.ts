@@ -163,7 +163,7 @@ const ctx = { waitUntil: (p: Promise<unknown>) => p };
 // Stub METAGRAPH_HEALTH_DB that dispatches on the SQL text — the handler
 // issues two distinct queries (the GROUP BY transitions aggregate and the
 // ORDER BY block_number DESC LIMIT 1 latest-reading read), each needing its
-// own canned rows. Mirrors hyperparamsEnv in tests/subnet-hyperparams.test.mjs,
+// own canned rows. Mirrors hyperparamsEnv in tests/subnet-hyperparams.test.ts,
 // extended for a two-query handler.
 function runtimeEnv(
   transitionRows: Row[],

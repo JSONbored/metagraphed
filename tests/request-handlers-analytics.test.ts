@@ -1,7 +1,7 @@
-// Direct unit tests for workers/request-handlers/analytics.mjs (#1925).
+// Direct unit tests for workers/request-handlers/analytics.ts (#1925).
 // Imports every exported handler/helper and exercises the query-param
 // guards, edge-cache contract, and schema-stable cold-store payloads
-// without routing through workers/api.mjs.
+// without routing through workers/api.ts.
 
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";

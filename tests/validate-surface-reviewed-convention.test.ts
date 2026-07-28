@@ -4,7 +4,7 @@
 // surface's source_urls are surfaced as a NON-BLOCKING advisory, EXCEPT the
 // acknowledged self-referential exemptions (netuid-0 base-layer overlay and
 // partnership.tier "pilot" manifests), which are named instead of flagged.
-// Mirrors validate-surface-duplicate-url.test.mjs's subprocess-fixture pattern.
+// Mirrors validate-surface-duplicate-url.test.ts's subprocess-fixture pattern.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

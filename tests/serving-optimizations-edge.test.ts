@@ -13,7 +13,7 @@ import { mockEnv, type Row } from "./row-type.ts";
 // behaviour beyond what the handlers already guarantee.
 
 // A minimal stand-in for the Workers `caches.default`: a Map keyed on the
-// request URL (mirrors the edge-cache stub in worker-runtime.test.mjs). The
+// request URL (mirrors the edge-cache stub in worker-runtime.test.ts). The
 // static edge cache calls canonicalCacheSearch to build its key, which is where
 // the new range/csv/array filter folding for the `subnets` collection runs.
 function installMockCaches() {
@@ -99,7 +99,7 @@ describe("hourly maintenance cron — pruneHealthHistory isolation", () => {
   // syncRpcProxyEventsPruneToPostgres, which already catches every DATA_API
   // failure internally and never rejects (see that function's own try/catch).
   // So pruneHealthHistory itself can no longer reject at all; the
-  // `.catch(() => ({ pruned: false }))` wrapper around it in workers/api.mjs
+  // `.catch(() => ({ pruned: false }))` wrapper around it in workers/api.ts
   // is now unreachable defensive-only code, kept as a cheap safety net. This
   // test proves the *new* single point of failure (a failing Postgres prune
   // sync) still resolves cleanly and never aborts the cron.

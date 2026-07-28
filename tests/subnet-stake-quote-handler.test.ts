@@ -1,8 +1,8 @@
 // Handler + economics-resolver coverage for GET /api/v1/subnets/{netuid}/
 // stake-quote (#5235), driven directly against the entities handler (api.ts
 // pulls in a graphql-ws dep this env lacks). The pure slippage math is unit
-// tested in stake-quote.test.mjs; the api.ts route dispatch is exercised in
-// api-coverage.test.mjs.
+// tested in stake-quote.test.ts; the api.ts route dispatch is exercised in
+// api-coverage.test.ts.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleSubnetStakeQuote } from "../workers/request-handlers/entities.ts";

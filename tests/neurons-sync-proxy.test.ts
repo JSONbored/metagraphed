@@ -1,8 +1,8 @@
-// Unit tests for the /api/v1/internal/neurons-sync proxy (workers/api.mjs's
-// handleNeuronsSyncProxy, #4771), which forwards to workers/data-api.mjs's
+// Unit tests for the /api/v1/internal/neurons-sync proxy (workers/api.ts's
+// handleNeuronsSyncProxy, #4771), which forwards to workers/data-api.ts's
 // handleNeuronsSync via the EXISTING DATA_API service binding (not a
 // dedicated Worker/binding -- see the handler's own comment for why). The
-// downstream write logic itself is covered by tests/data-api.test.mjs.
+// downstream write logic itself is covered by tests/data-api.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";

@@ -310,7 +310,7 @@ describe("buildValidatorNominators", () => {
 
 // A minimal D1 mock scoped to this route's exact SQL shape (COUNT DISTINCT and
 // GROUP BY coldkey), self-contained rather than extending the broader multi-purpose
-// account-routes.test.mjs dispatcher.
+// account-routes.test.ts dispatcher.
 function accountEventsD1(rows: Row[]) {
   return {
     prepare(sql: string) {

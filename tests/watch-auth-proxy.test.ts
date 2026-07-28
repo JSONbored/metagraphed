@@ -1,6 +1,6 @@
 // Unit tests for the /api/v1/watch/{challenges,tokens} proxy (#8374,
-// workers/api.mjs's handleWatchAuthProxy), which forwards POST to
-// workers/data-api.mjs's handleWatchChallenge/handleWatchTokenMint via the
+// workers/api.ts's handleWatchAuthProxy), which forwards POST to
+// workers/data-api.ts's handleWatchChallenge/handleWatchTokenMint via the
 // existing DATA_API service binding and envelope-wraps the response.
 // Mirrors tests/alert-triggers-proxy.test.ts's shape exactly; the downstream
 // challenge/mint logic itself is covered by tests/watch-auth-route.test.ts.

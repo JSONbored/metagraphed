@@ -1,5 +1,5 @@
 // Unit tests for wallet-verified alert-trigger issuance (#8374,
-// workers/data-api.mjs's handleWatchChallenge/handleWatchTokenMint). A
+// workers/data-api.ts's handleWatchChallenge/handleWatchTokenMint). A
 // dedicated test file mirroring tests/wallet-auth-keys-route.test.ts's own
 // shape (same KV fake, same sr25519 test-wallet helper) -- these routes
 // share src/wallet-auth.ts's primitives with the wallet-login pair but are

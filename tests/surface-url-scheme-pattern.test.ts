@@ -13,7 +13,7 @@ import addFormatsPlugin from "ajv-formats";
 import { readJson, repoRoot } from "../scripts/lib.ts";
 
 // candidate-surface.schema.json is self-contained (no $refs), so it validates
-// standalone with ajv — the same shape as tests/provider-url-http-pattern.test.mjs.
+// standalone with ajv — the same shape as tests/provider-url-http-pattern.test.ts.
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 const ajv = new Ajv2020({
   strict: false,

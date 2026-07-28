@@ -16,7 +16,7 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// Mirrors withFetchStub in tests/subnet-burn.test.mjs.
+// Mirrors withFetchStub in tests/subnet-burn.test.ts.
 function withFetchStub(stub: AnyFn, fn: AnyFn) {
   const orig = globalThis.fetch;
   globalThis.fetch = stub;

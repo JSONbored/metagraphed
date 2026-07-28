@@ -1,6 +1,6 @@
 // CSV export tests for GET /api/v1/subnets/{netuid}/concentration/history — kept in
 // a dedicated file so this PR does not contend with open entity-handler PRs on the
-// shared request-handlers-entities.test.mjs harness.
+// shared request-handlers-entities.test.ts harness.
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";

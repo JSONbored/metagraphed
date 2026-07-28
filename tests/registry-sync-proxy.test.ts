@@ -1,7 +1,7 @@
-// Unit tests for the /api/v1/internal/registry-sync proxy (workers/api.mjs's
+// Unit tests for the /api/v1/internal/registry-sync proxy (workers/api.ts's
 // handleRegistrySyncProxy), which forwards to the dedicated registry-sync
 // Worker via the REGISTRY_SYNC_API service binding. The downstream Worker
-// itself is covered by tests/registry-sync-api.test.mjs.
+// itself is covered by tests/registry-sync-api.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";

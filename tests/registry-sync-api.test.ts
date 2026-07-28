@@ -1,4 +1,4 @@
-// Unit tests for the registry-sync Worker (workers/registry-sync-api.mjs). postgres.js
+// Unit tests for the registry-sync Worker (workers/registry-sync-api.ts). postgres.js
 // is mocked so the auth/validation/upsert routing is tested with no real DB — the live
 // Hyperdrive path is validated separately.
 import { beforeEach, expect, test, vi } from "vitest";

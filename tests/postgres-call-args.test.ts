@@ -373,7 +373,7 @@ describe("decodePostgresCallArgs", () => {
       // Guards the #4693 ambiguity this fix must not reopen: a
       // collection-typed descriptor's value stays an array at ANY element
       // count, even though a single netuid is shape-identical to a 1-byte
-      // blob (isCollectionType's job, mirroring scale-normalize.mjs's
+      // blob (isCollectionType's job, mirroring scale-normalize.ts's
       // COLLECTION_TYPE_RE, applied before any byte-blob decode attempt).
       const out = decode([
         { name: "subnets", type: "BTreeSet<NetUid>", value: [104] },
@@ -1036,7 +1036,7 @@ describe("decodePostgresCallArgs", () => {
       // proportion (tuple[0]) is untouched -- a separately accepted
       // float64-rounding precision invariant (#4693), not this fix's
       // concern (the raw u64::MAX literal itself already rounds on arrival,
-      // matching tests/extrinsics.test.mjs:306's identical assertion).
+      // matching tests/extrinsics.test.ts:306's identical assertion).
       assert.equal(field.value[0][0], 18446744073709552000);
       assert.equal(
         field.value[0][1],

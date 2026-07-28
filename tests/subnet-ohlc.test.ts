@@ -490,7 +490,7 @@ describe("buildSubnetOhlc — output shape", () => {
   });
 });
 
-// --- End-to-end: the Worker route (workers/api.mjs -> entities.mjs) ---------
+// --- End-to-end: the Worker route (workers/api.ts -> entities.ts) ---------
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 

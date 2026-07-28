@@ -2506,11 +2506,11 @@ describe("Agent discovery surfaces", () => {
   });
 });
 
-// GitHub OAuth (metagraphed#7151): confirms api.mjs actually dispatches
+// GitHub OAuth (metagraphed#7151): confirms api.ts actually dispatches
 // these two GET-only paths to src/github-oauth.ts's handlers -- the
 // handlers' own logic (state validation, GitHub token exchange, the
 // DATA_API upsert, error branches) is exhaustively covered directly in
-// tests/github-oauth.test.mjs; this only proves the routing wire-up. The
+// tests/github-oauth.test.ts; this only proves the routing wire-up. The
 // shared `env` above has no OAUTH_KV, so both hit that handler's very
 // first branch -- enough to prove the route reaches the right function
 // without re-testing OAuth logic already covered elsewhere.
