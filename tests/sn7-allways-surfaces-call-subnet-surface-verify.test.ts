@@ -1,7 +1,7 @@
 // SN7 (Allways) end-to-end verification for the call_subnet_surface MCP tool
 // (metagraphed#7023, MCP execute Phase 1 follow-up #7014/#7215), covering the
 // 25 registry surfaces #7023 lists beyond the API health endpoint --
-// tests/allways-call-subnet-surface-verify.test.mjs already pins
+// tests/allways-call-subnet-surface-verify.test.ts already pins
 // allways-api-health and is deliberately not duplicated here. Like that file,
 // this pins SN7's *real* registry surface config
 // (registry/subnets/allways.json) to the tool's contract, so a future edit

@@ -1,6 +1,6 @@
 // SN126 (Poker44) end-to-end verification for the call_subnet_surface MCP
 // tool (metagraphed#7134, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring with
+// tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN126's *real* registry surface config
 // (registry/subnets/poker44.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping method, marking it auth_required,
