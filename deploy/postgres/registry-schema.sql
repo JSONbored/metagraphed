@@ -15,7 +15,7 @@
 -- the human-authored, PR-reviewed content in registry/subnets/*.json +
 -- registry/providers/*.json (the Gittensory Gate's review surface -- nothing
 -- about how a contributor submits or how the gate judges a PR changes) AND
--- the machine-discovered/promoted content that scripts/generated-overlays.mjs
+-- the machine-discovered/promoted content that scripts/generated-overlays.ts
 -- computes from the native chain snapshot + candidate verification (subnets
 -- with no manual file yet, and auto-promoted candidate surfaces layered onto
 -- existing manual subnets). Both write paths upsert into the SAME tables --
@@ -25,9 +25,9 @@
 -- provenance (community vs machine) as a queryable fact ON the row, not as a
 -- reason to route the row somewhere else.
 --
---   - registry/subnets/*.json changes: scripts/sync-registry-to-postgres.mjs,
+--   - registry/subnets/*.json changes: scripts/sync-registry-to-postgres.ts,
 --     merge-triggered (event-driven, matches contributor-PR cadence).
---   - Machine-generated/promoted content: scripts/backfill-registry-postgres.mjs
+--   - Machine-generated/promoted content: scripts/backfill-registry-postgres.ts
 --     run on a schedule (matches native-snapshot/candidate-verification
 --     cadence, not a git commit).
 --
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS subnets (
   name             TEXT NOT NULL,
   -- 'community' (has a registry/subnets/<slug>.json file) or
   -- 'machine-generated' (native-chain-registered, no manual file yet --
-  -- scripts/generated-overlays.mjs's baseline overlay is the only source).
+  -- scripts/generated-overlays.ts's baseline overlay is the only source).
   source           TEXT NOT NULL DEFAULT 'community',
   overlay          JSONB NOT NULL,       -- full overlay content, verbatim (manual file, or the generated baseline)
   source_commit    TEXT NOT NULL,        -- merge commit SHA (community) or the sync run's own commit SHA (generated)
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS surfaces (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   subnet_netuid    INTEGER NOT NULL REFERENCES subnets (netuid) ON DELETE RESTRICT,
   provider_id      TEXT REFERENCES providers (id) ON DELETE RESTRICT,
-  surface_key      TEXT NOT NULL,        -- matches scripts/lib.mjs's subnetSurfaceKey()
+  surface_key      TEXT NOT NULL,        -- matches scripts/lib.ts's subnetSurfaceKey()
   kind             TEXT NOT NULL,
   url              TEXT NOT NULL,
   -- source_urls lives only in `overlay` (JSONB array) -- real registry files

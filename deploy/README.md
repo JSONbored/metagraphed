@@ -184,7 +184,7 @@ sudo docker exec -i <postgres-container> psql -U <postgres-user> -d <postgres-da
 
 ```sql
 -- 1. Zero empty-string authors (the spec_version 419/421/422 backfill-decode
---    gap; src/blocks.mjs's formatBlock() already mitigates this at the
+--    gap; src/blocks.ts's formatBlock() already mitigates this at the
 --    serving layer regardless, but the underlying rows should be repaired).
 SELECT count(*) FROM blocks WHERE author = '';
 

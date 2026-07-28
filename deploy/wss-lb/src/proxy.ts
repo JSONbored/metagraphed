@@ -98,7 +98,7 @@ function validateClientFrame(
 // next on a failed handshake. The client listeners attach ONCE; `up` is the
 // current upstream socket, reassigned per attempt.
 //
-// Failover correctness (regression-tested in test/proxy.test.mjs): on a failed
+// Failover correctness (regression-tested in test/proxy.test.ts): on a failed
 // handshake `ws` emits BOTH 'error' AND 'close'. A per-attempt `settled` flag —
 // plus detaching + terminating the failed socket before advancing — makes each
 // attempt advance EXACTLY once. Without it both handlers dial the next upstream

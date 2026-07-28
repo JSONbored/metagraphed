@@ -1,7 +1,7 @@
 // WSS load balancer (ADR 0013) — a health-aware WebSocket reverse proxy that
 // fans client connections out across the registry's healthy subtensor-wss
 // endpoints. Fills the gap the Cloudflare HTTP JSON-RPC proxy explicitly punts
-// (rpc-proxy.mjs: "WebSocket JSON-RPC is not available through this HTTP proxy").
+// (rpc-proxy.ts: "WebSocket JSON-RPC is not available through this HTTP proxy").
 //
 // Model (cosmos.directory-style): refresh the healthy-endpoint pool from the
 // live /api/v1/rpc/pools, and at CONNECT time route each client to the
@@ -10,7 +10,7 @@
 // upstream) — JSON-RPC subscription state can't be transparently moved.
 //
 // INTEGRATION-PENDING: the live ws-piping is verified on deploy; the pure
-// upstream selection is unit-tested (test/select.test.mjs). Public behind
+// upstream selection is unit-tested (test/select.test.ts). Public behind
 // Cloudflare DNS for TLS/DDoS, with per-IP abuse control (rate-limit.ts).
 // Env: METAGRAPHED_API, PORT, REFRESH_MS, MAX_BLOCK_LAG, NETWORKS,
 // HANDSHAKE_TIMEOUT_MS, MAX_CONNECTIONS_PER_IP, CONNECT_RATE_LIMIT,

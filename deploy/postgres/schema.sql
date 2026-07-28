@@ -10,7 +10,7 @@
 -- to compressed hypertables. This file alone is a complete, working schema.
 --
 -- Key invariants preserved from the D1 era so the Worker serving code
--- (src/blocks.mjs / extrinsics.mjs / account-events.mjs) changes only its
+-- (src/blocks.ts / extrinsics.ts / account-events.ts) changes only its
 -- binding, not its queries:
 --   * idempotent keys: (block_number, observed_at) / (block_number,
 --     extrinsic_index, observed_at) / (block_number, event_index,
@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_ae_coldkey_observed ON account_events (coldkey, o
 -- #2079: covers the /subnets/{netuid}/events ?kind filter (unindexed post-filter today).
 CREATE INDEX IF NOT EXISTS idx_ae_netuid_kind ON account_events (netuid, event_kind, block_number DESC);
 -- #4832 Tier 2: covers the network-wide (no netuid filter) `event_kind = ? AND
--- observed_at >= ?` scans the 12 /chain/* analytics routes in data-api.mjs run
+-- observed_at >= ?` scans the 12 /chain/* analytics routes in data-api.ts run
 -- -- idx_ae_netuid_kind above only helps once a netuid filter is also present.
 -- Applied live via a plain (non-concurrent) CREATE INDEX -- TimescaleDB
 -- hypertables reject CREATE INDEX CONCURRENTLY.
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS neurons (
   PRIMARY KEY (netuid, uid)
 );
 -- Schema-drift fix (found 2026-07-19 while building the neurons poller job):
--- handleNeuronsSync (workers/data-api.mjs) has upserted `take` into `neurons`
+-- handleNeuronsSync (workers/data-api.ts) has upserted `take` into `neurons`
 -- since the metagraph-depth epic shipped, and the live table has carried the
 -- column since then -- CREATE TABLE IF NOT EXISTS above never added it,
 -- since it's a no-op against an already-existing table, so this file's own
@@ -227,7 +227,7 @@ CREATE INDEX IF NOT EXISTS idx_neurons_hotkey        ON neurons (hotkey);
 -- the top of /api/v1/validators and a subnet's validator list, keyed by
 -- hotkey rather than a column on `neurons`. `neurons`' primary key is
 -- (netuid, uid) -- a UID *slot*, not a stable identity -- and handleNeuronsSync
--- (workers/data-api.mjs) hard-DELETEs a row once its UID falls out of the
+-- (workers/data-api.ts) hard-DELETEs a row once its UID falls out of the
 -- latest snapshot (deregistration), with that UID free to be reassigned to a
 -- different hotkey later. A `featured` column on `neurons` would either vanish
 -- silently on prune or, worse, incorrectly "follow" the slot to whatever
@@ -273,7 +273,7 @@ CREATE TABLE IF NOT EXISTS validator_nominator_counts (
 -- per-coldkey counterpart to validator_nominator_counts above, populated
 -- by the SAME Alpha full scan. share_fraction is the normalized share of
 -- that hotkey+netuid's stake pool (NOT a TAO amount), joined against
--- neurons.stake_tao at serve time (src/account-nominator-positions.mjs).
+-- neurons.stake_tao at serve time (src/account-nominator-positions.ts).
 -- Root (netuid 0) is not covered -- see the fetch script's own header.
 CREATE TABLE IF NOT EXISTS nominator_positions (
   coldkey        TEXT NOT NULL,
@@ -339,7 +339,7 @@ CREATE INDEX IF NOT EXISTS idx_nd_hotkey_date ON neuron_daily (hotkey, snapshot_
 -- migrations/0038_account_position_daily.sql). Rolled from the SAME `neurons`
 -- snapshot as neuron_daily, in the SAME handleNeuronsSync write (#4771) --
 -- account = hotkey ss58, matching loadAccountPortfolio's "WHERE hotkey = ?"
--- framing (src/account-portfolio.mjs).
+-- framing (src/account-portfolio.ts).
 CREATE TABLE IF NOT EXISTS account_position_daily (
   account          TEXT NOT NULL,
   netuid           INTEGER NOT NULL,
@@ -367,7 +367,7 @@ CREATE INDEX IF NOT EXISTS idx_account_position_daily_date
 -- mirrors D1 migrations/0002_analytics.sql + 0008_economics_history.sql).
 -- Low-volume (~129 rows/day, one per active subnet) -- plain table, not a
 -- hypertable, matching account_position_daily/subnet_hyperparams above.
--- Written from src/health-prober.mjs's writeSubnetSnapshot, the SAME
+-- Written from src/health-prober.ts's writeSubnetSnapshot, the SAME
 -- function that already calls syncSubnetIdentityToPostgres -- an in-Worker-
 -- cron direct env.DATA_API.fetch() service-binding call, not an external
 -- GitHub Actions workflow (see that function's own header comment for why).
@@ -404,7 +404,7 @@ CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date_netuid
 
 -- Subnet hyperparameters, latest-only (#4832 gap-closure; mirrors D1
 -- migrations/0036_subnet_hyperparams.sql). One row per netuid, upserted by
--- the refresh-subnet-hyperparams workflow's direct POST to data-api.mjs.
+-- the refresh-subnet-hyperparams workflow's direct POST to data-api.ts.
 -- *_ratio columns and TAO-exact fields stay NUMERIC (not REAL) to match the
 -- D1 pure builders' round(value, 9) precision; the nine D1 0/1 flag columns
 -- become BOOLEAN here (see the SUM(boolean) landmine noted elsewhere in this
@@ -540,7 +540,7 @@ CREATE INDEX IF NOT EXISTS idx_subnet_locks_netuid ON subnet_locks (netuid);
 -- SubtensorModule::Owner(hotkey) and written by apps/indexer-rs's poller
 -- binary (src/bin/poller.rs), NOT the JS Worker -- this is the first job in
 -- the consolidated chain-state polling service, not a data-refresh-cron/
--- data-api.mjs sync route like every other table in this file. A netuid
+-- data-api.ts sync route like every other table in this file. A netuid
 -- whose owner hotkey resolves to the zero account (unset/deregistered) is
 -- never written here, matching the bittensor SDK's own "no real owner"
 -- convention -- rows disappear (pruned) rather than being written as
@@ -574,7 +574,7 @@ CREATE INDEX IF NOT EXISTS idx_subnet_ownership_history_netuid ON subnet_ownersh
 -- Personal (coldkey) chain identity, latest-only (#4832 gap-closure Phase B;
 -- mirrors D1 migrations/0039_account_identity.sql). One row per account,
 -- upserted by the refresh-account-identity workflow's direct POST to
--- data-api.mjs. Deliberately NO purge step (unlike subnet_hyperparams above):
+-- data-api.ts. Deliberately NO purge step (unlike subnet_hyperparams above):
 -- an identity is a property of the owning account, not of currently having
 -- an active neuron -- see loadStagedAccountIdentity's own header comment.
 CREATE TABLE IF NOT EXISTS account_identity (
@@ -617,7 +617,7 @@ CREATE INDEX IF NOT EXISTS idx_account_identity_history_account_id
 -- identity_hash on each sync; no latest-only sibling table -- the current
 -- identity lives in the profiles.json artifact itself, not a dedicated
 -- table. Written from the main Worker's own hourly cron (writeSubnetSnapshot,
--- src/health-prober.mjs), not an external GitHub Actions workflow.
+-- src/health-prober.ts), not an external GitHub Actions workflow.
 CREATE TABLE IF NOT EXISTS subnet_identity_history (
   id            BIGSERIAL PRIMARY KEY,
   netuid        INTEGER NOT NULL,
@@ -680,7 +680,7 @@ CREATE INDEX IF NOT EXISTS idx_wallet_flow_daily_day ON wallet_flow_daily (day);
 -- 0003_uptime_history.sql + 0005_surface_key.sql + 0006_surface_key_rekey.sql
 -- + 0012_latency_percentiles.sql, in their final post-migration column shape
 -- rather than replayed incrementally). Written every 15 minutes by the
--- Cloudflare cron prober (src/health-prober.mjs, runHealthProber; wrangler.jsonc
+-- Cloudflare cron prober (src/health-prober.ts, runHealthProber; wrangler.jsonc
 -- "*/15 * * * *" -- 0001_health.sql's own "every 2 minutes" comment is stale,
 -- left over from before the cron interval was widened).
 -- ---------------------------------------------------------------------------
@@ -769,12 +769,12 @@ CREATE INDEX IF NOT EXISTS idx_surface_uptime_daily_day_netuid
 
 -- RPC reverse-proxy usage telemetry (#4832 gap-closure; mirrors D1
 -- migrations/0004_rpc_proxy_usage.sql + 0010_perf_indexes.sql). Written
--- best-effort per proxied request (workers/request-handlers/rpc-proxy.mjs's
+-- best-effort per proxied request (workers/request-handlers/rpc-proxy.ts's
 -- recordRpcUsage), not a cron/workflow batch like every other #4832 table --
 -- confirmed live 2026-07-11 the real volume is trivial (69 rows over ~25
 -- days), so this stays a plain table like subnet_hyperparams/
 -- subnet_snapshots above rather than a hypertable; revisit if traffic grows.
--- Same 30-day pruning window as surface_checks (src/health-prober.mjs's
+-- Same 30-day pruning window as surface_checks (src/health-prober.ts's
 -- pruneHealthHistory).
 CREATE TABLE IF NOT EXISTS rpc_proxy_events (
   id          BIGSERIAL PRIMARY KEY,
@@ -959,7 +959,7 @@ CREATE TRIGGER trg_account_events_firehose
 -- a Durable Object consumer (AlerterHub, #4984 Part 2) rather than a second
 -- Postgres poll loop. No user-account system exists in this codebase, so
 -- ownership is a bearer token (owner_token, returned once at creation) --
--- the SAME model src/webhooks.mjs's per-subscription secret already
+-- the SAME model src/webhooks.ts's per-subscription secret already
 -- establishes for webhook subscriptions. A small, low-cardinality table (one
 -- row per user-created alert, not one per chain event), so it is deliberately
 -- NOT a hypertable -- no entry in schema-timescaledb.sql.
@@ -974,7 +974,7 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
   -- holding it), so there is no safe "public" view of a trigger.
   owner_token       TEXT NOT NULL,
   name              TEXT,
-  -- NULL = any of CHAIN_FIREHOSE_TABLES (workers/chain-firehose-hub.mjs);
+  -- NULL = any of CHAIN_FIREHOSE_TABLES (workers/chain-firehose-hub.ts);
   -- otherwise a subset, validated against that same Set before insert.
   table_filter      TEXT[],
   netuid            INTEGER,
@@ -987,7 +987,7 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
   account           TEXT,
   min_amount_tao    NUMERIC,
   -- #6746: a computed/derived-metric predicate ({metric, operator,
-  -- threshold}, validated by src/alert-triggers.mjs's validateAlertCondition)
+  -- threshold}, validated by src/alert-triggers.ts's validateAlertCondition)
   -- rather than a raw event-field match -- narrows whichever event already
   -- passed the fixed-field checks above, so it carries no separate scope of
   -- its own. NULL for every pre-#6746 trigger (a fixed-field-only match,
@@ -997,7 +997,7 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
   -- Shape depends on channel: a public https:// URL (webhook), an email
   -- address (email), a chat id or @channelusername (telegram), or the exact
   -- Discord incoming-webhook URL shape (discord) -- validated at write time
-  -- by src/alert-triggers.mjs's isValidAlertDestination, not re-validated on
+  -- by src/alert-triggers.ts's isValidAlertDestination, not re-validated on
   -- every delivery.
   destination       TEXT NOT NULL,
   active            BOOLEAN NOT NULL DEFAULT true,
@@ -1013,7 +1013,7 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
 ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS condition JSONB;
 -- #8374: NULL for an operator-token-created trigger (no wallet involved);
 -- the verified ss58 for one created via a wallet-verified watch token
--- (src/wallet-auth.mjs's createTriggerToken). Read to enforce
+-- (src/wallet-auth.ts's createTriggerToken). Read to enforce
 -- WATCH_TRIGGERS_MAX_PER_ADDRESS at create time and, later, to list "my
 -- triggers" in the alert center (#8375, same epic).
 ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS owner_ss58 TEXT;
@@ -1030,14 +1030,14 @@ CREATE INDEX IF NOT EXISTS idx_cat_owner_ss58_active ON chain_alert_triggers (ow
 -- ---------------------------------------------------------------------------
 -- Per-delivery attempt log (#8375, same epic as chain_alert_triggers above) --
 -- the Alert Center's "last 20 deliveries" history. AlerterHub.deliverAlertMatch
--- (workers/alerter-hub.mjs) writes one row per attempted delivery, best-effort
+-- (workers/alerter-hub.ts) writes one row per attempted delivery, best-effort
 -- (a failed write-back here never blocks or fails the delivery itself, same
 -- posture as that file's existing match_count write-back). `retry_count` is
--- carried for forward-compat with src/alert-delivery.mjs's documented
+-- carried for forward-compat with src/alert-delivery.ts's documented
 -- "retry/dead-letter is a deliberate v1 scope cut" fast-follow -- always 0
 -- today, since delivery is single-attempt only. Pruned to the most recent 20
 -- rows per trigger on every insert (see handleAlertTriggerDeliveryLogWrite in
--- workers/data-api.mjs) rather than a separate TTL sweep -- a small,
+-- workers/data-api.ts) rather than a separate TTL sweep -- a small,
 -- self-bounding table, so no entry in schema-timescaledb.sql.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS chain_alert_deliveries (
@@ -1142,7 +1142,7 @@ CREATE INDEX IF NOT EXISTS idx_github_accounts_github_user_id ON github_accounts
 -- nullable, and prefix/secret_hash are relaxed to nullable rather than
 -- dropped: any row minted under the pre-Unkey custom system keeps its
 -- historical prefix/secret_hash for audit purposes, it just stops being
--- validated against (src/api-key-validation.mjs no longer reads either
+-- validated against (src/api-key-validation.ts no longer reads either
 -- column). New rows populate unkey_key_id only.
 ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS unkey_key_id TEXT;
 ALTER TABLE api_keys ALTER COLUMN prefix DROP NOT NULL;

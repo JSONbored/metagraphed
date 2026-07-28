@@ -9,13 +9,13 @@
 #
 # Same least-privilege split as the other box jobs, preserved across TWO
 # separate `docker run` invocations of this one image instead of one:
-#   STEP=snapshot   -- runs scripts/refresh-native-snapshot.mjs, which shells
+#   STEP=snapshot   -- runs scripts/refresh-native-snapshot.ts, which shells
 #                       out to `uvx --from bittensor==X.Y` (unpinned PyPI
 #                       resolution at runtime, matching this exact codepath's
 #                       existing GitHub Actions behavior -- not hash-locked
 #                       yet like the other fetch scripts were, tracked as a
 #                       follow-up). Gets ONLY SUBTENSOR_RPC_URL (non-secret).
-#   STEP=economics  -- runs scripts/refresh-economics.mjs --write (pure JS,
+#   STEP=economics  -- runs scripts/refresh-economics.ts --write (pure JS,
 #                       no PyPI/uvx involved). Gets the real
 #                       CLOUDFLARE_API_TOKEN. Runs AFTER the snapshot step,
 #                       reading the file it wrote from the same shared
