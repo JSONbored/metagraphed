@@ -1,5 +1,5 @@
 // Single-entity chain-data handlers: the cheap per-key D1 lookups behind the
-// metagraph, account, block, and extrinsic routes (extracted from workers/api.mjs
+// metagraph, account, block, and extrinsic routes (extracted from workers/api.ts
 // per #1763).
 //
 // These are the "fetch one entity by its key" reads — a subnet's metagraph, one
@@ -9,12 +9,12 @@
 // payload (never a 404 or a throw), matching the live tiers the analytics module
 // already owns.
 //
-// Dependency wiring (the analytics.mjs pattern): the query-param guards
+// Dependency wiring (the analytics.ts pattern): the query-param guards
 // (`validateQueryParams` / `analyticsQueryError`) live in
-// request-handlers/analytics.mjs, which this module imports directly.
-// analytics.mjs imports nothing from here, so the two are a clean leaf chain
+// request-handlers/analytics.ts, which this module imports directly.
+// analytics.ts imports nothing from here, so the two are a clean leaf chain
 // with no cycle — no injected deps are needed. Everything else is imported
-// straight from the src/* leaf modules + config. api.mjs imports the
+// straight from the src/* leaf modules + config. api.ts imports the
 // handlers back and dispatches them from the router.
 
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
@@ -550,7 +550,7 @@ const SUBNET_IDENTITY_HISTORY_CSV_COLUMNS = [
   "identity_hash",
 ];
 // The formatAccountIdentityHistoryEntry row shape
-// (src/account-identity-history.mjs): keyed by account, so it carries no
+// (src/account-identity-history.ts): keyed by account, so it carries no
 // block_number (account_identity has no chain block height, only captured_at)
 // and uses the account_identity field names rather than the subnet identity
 // fields.
@@ -804,7 +804,7 @@ export async function handleSubnetHyperparams(
 // hyperparameter-change timeline for one subnet, newest first, served from
 // Postgres (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE). Forward-only — rows only
 // exist from when the diff-on-change write started running (see
-// handleSubnetHyperparamsSync's diff-and-append in workers/data-api.mjs).
+// handleSubnetHyperparamsSync's diff-and-append in workers/data-api.ts).
 // Cold/absent store -> schema-stable zero, never 404.
 //
 // D1 retirement: see handleSubnetHyperparams above — the D1 fallback
@@ -1010,7 +1010,7 @@ export async function handleGlobalValidators(
 // from the current neurons snapshot. The collection-level counterpart to
 // /api/v1/validators (which this route follows as its precedent), generalized
 // to every account rather than just validator_permit=1 rows. See
-// src/accounts-list.mjs's header for the "Free"/"Total" balance columns this
+// src/accounts-list.ts's header for the "Free"/"Total" balance columns this
 // deliberately does NOT carry (no balance-tracking tier exists to derive them
 // from). Cold/absent D1 returns a schema-stable empty list.
 function parseAccountsListQuery(
@@ -2951,11 +2951,11 @@ export async function handleSubnetStakeFlow(
 // One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
 // KV tier and falling back to the committed R2 economics.json when the live
 // tier is cold/stale — same fallback shape resolveEconomicsRows uses in
-// request-handlers/analytics-routes.mjs. Unmemoized (unlike api.mjs's
+// request-handlers/analytics-routes.ts. Unmemoized (unlike api.ts's
 // readEconomicsCurrentKv): this route's traffic doesn't warrant the isolate
-// cache analytics-routes.mjs's higher-traffic /economics + /subnets/{netuid}
-// pair share, and entities.mjs deliberately imports leaf modules directly
-// rather than taking injected deps from api.mjs (see this file's header).
+// cache analytics-routes.ts's higher-traffic /economics + /subnets/{netuid}
+// pair share, and entities.ts deliberately imports leaf modules directly
+// rather than taking injected deps from api.ts (see this file's header).
 // Null when neither tier has a row for this subnet.
 async function resolveSubnetMarketCapTao(env: Env, netuid: number) {
   const live = await resolveLiveEconomics({
@@ -3245,7 +3245,7 @@ export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
 }
 
 // ---- Account entity handlers (#1347) ---------------------------------------
-// SQL + pagination live in src/account-events.mjs (loadAccount*), shared with the
+// SQL + pagination live in src/account-events.ts (loadAccount*), shared with the
 // MCP account tools; these handlers add only the REST envelope + meta.
 async function accountMeta(
   env: Env,
@@ -3516,7 +3516,7 @@ export async function handleAccount(request: Request, env: Env, ss58: string) {
 // src/entity-labels.ts's own header for the scope/limitation note (this
 // only tracks AUTOMATIC ownership transfers, not genesis ownership).
 //
-// The DATA_API service binding (workers/data-api.mjs) only carries the
+// The DATA_API service binding (workers/data-api.ts) only carries the
 // Postgres/Hyperdrive connection -- no R2/KV bindings of its own -- so it
 // builds ownership_ties alone (entities: [] on its side); this handler then
 // joins the entities.json artifact's `labels` on top, same join site as
@@ -4146,7 +4146,7 @@ export async function handleAccountPositions(
 // Postgres-only (#4839 shipped its write path + this read route; #4910's "no
 // Postgres read route" premise was stale). No D1 fallback: D1's own
 // account_position_daily rollup (rollupAccountPositionDaily,
-// src/account-position-history.mjs) has been permanently broken since #4908
+// src/account-position-history.ts) has been permanently broken since #4908
 // dropped D1's `neurons` table out from under it, so a D1 branch here could
 // only ever serve data frozen at 2026-07-11 — worse than the schema-stable
 // empty response below. Cold/absent store → 200 with empty points (never
@@ -4187,7 +4187,7 @@ export async function handleAccountPositionHistory(
 
 // GET /api/v1/accounts/{ss58}/identity (epic #4301/5.4): the latest-only
 // personal chain identity for one account, from the same
-// MetagraphInfo.identities capture account-identity.mjs's header documents
+// MetagraphInfo.identities capture account-identity.ts's header documents
 // (metagraph-snapshot sourced, like account position history above — not
 // account_events, so metagraphMeta not accountMeta). has_identity is false
 // for the common case (most accounts never call set_identity) — schema-stable,
@@ -4708,7 +4708,7 @@ export async function handleSubnetBurn(
 // just above (a different set of storage items, same pattern). See
 // src/subnet-lease.ts's header for the on-chain storage-key/struct-layout
 // details. The companion /lease/history route (event log) is a Postgres-
-// tier route in workers/data-api.mjs, not here.
+// tier route in workers/data-api.ts, not here.
 export async function handleSubnetLease(
   request: Request,
   env: Env,

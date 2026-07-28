@@ -105,7 +105,7 @@ subnets and demonstrate the product to the broader ecosystem.
    and `openapi.json` exist but are not packaged
    or documented for the UI team: envelope shape (`ok`/`schema_version`/`data`/
    `meta`/`error`), pagination/sort/filter semantics (already implemented in
-   `workers/api.mjs`), cache profiles, error codes, `x-metagraph-*` headers, and
+   `workers/api.ts`), cache profiles, error codes, `x-metagraph-*` headers, and
    stability guarantees.
 5. **Two-Worker routing is a real config change.** `wrangler.jsonc` uses
    `custom_domain: true`, which binds the entire apex to one Worker (see
@@ -264,7 +264,7 @@ guarantees); and a handful of copy-paste example queries against the live beta.
 - **Recommended follow-up (not yet done):** close the freshness loop — auto-flag
   and demote surfaces not probed healthy within N days, so "complete" can never
   drift to "complete but stale/dead." Touches `probes-smoke.ts` →
-  `curate-baseline.mjs`/`build-artifacts.ts`.
+  `curate-baseline.ts`/`build-artifacts.ts`.
 
 ## Verification
 

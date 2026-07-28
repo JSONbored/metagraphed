@@ -1,5 +1,5 @@
 // Isolated, account-gated fullnode RPC proxy (ADR 0021, #6835):
-// POST /rpc/v1/fullnode. Reuses rpc-proxy.mjs's proven scoring/failover
+// POST /rpc/v1/fullnode. Reuses rpc-proxy.ts's proven scoring/failover
 // machinery (orderSafeRpcEndpoints, proxyWithFailover) against a SEPARATE,
 // dedicated origin list -- never TRUSTED_RPC_UPSTREAM_ORIGINS's public pool,
 // and a SEPARATE in-isolate circuit-breaker map -- so a public-pool
@@ -10,7 +10,7 @@
 // Auth: a caller-supplied mg_... API key travels as a `?authorization=`
 // query param, not a header (matches taostats' own convention so existing
 // WSS-client code needs minimal changes to point here instead -- ADR 0021
-// section 6), validated via src/api-key-validation.mjs's KV-cache-fronted
+// section 6), validated via src/api-key-validation.ts's KV-cache-fronted
 // lookup -- Unkey-backed since the 2026-07-19 rework (src/unkey-client.ts),
 // not the local hash/compare ADR 0020 originally used.
 //
@@ -101,19 +101,19 @@ function isFullnodeSafeRpcMethod(method: string): boolean {
 }
 
 // Isolated in-isolate circuit breaker -- deliberately a SEPARATE Map from
-// rpc-proxy.mjs's own module-default RPC_HEALTH (see that file's own header
+// rpc-proxy.ts's own module-default RPC_HEALTH (see that file's own header
 // on why the breaker co-locates with its readers/writers). An ejected
 // public-pool endpoint must never influence this pool's ordering, or vice
 // versa.
 const FULLNODE_RPC_HEALTH: RpcHealthMap = new Map();
 
 // Bounds the cost of an unauthenticated caller guessing random keys (each
-// miss is a real KV-then-Postgres round trip via src/api-key-validation.mjs)
+// miss is a real KV-then-Postgres round trip via src/api-key-validation.ts)
 // -- checked BEFORE key validation, by client IP, same posture and figure as
 // the public proxy's own RPC_RATE_LIMITER.
 export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 
-// Per-tier rate-limit policy, keyed by rpc_accounts.tier (workers/data-api.mjs's
+// Per-tier rate-limit policy, keyed by rpc_accounts.tier (workers/data-api.ts's
 // handleAccountTierPromote is the only way a tier changes -- no invite code
 // stamps this anymore, 2026-07-19 rework). 'gittensor-partner' is an owner-
 // designated partner cohort with a materially higher ceiling for real
@@ -123,7 +123,7 @@ export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // falls back to 'free' rather than being unbounded. Each entry's own
 // Cloudflare Rate Limiting binding is checked AFTER a key validates, keyed
 // by accountId (stable per account, available even on a KV-cache hit --
-// src/api-key-validation.mjs no longer has a "prefix" concept to key by,
+// src/api-key-validation.ts no longer has a "prefix" concept to key by,
 // since Unkey's key format has no separate public prefix segment) rather
 // than IP, so legitimate traffic from many callers sharing one key isn't
 // starved and one key can't be inflated by rotating source IPs. This is

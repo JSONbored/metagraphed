@@ -84,7 +84,7 @@ documented below.
 ## The hub + SSE/WS transports (#4982, live)
 
 A single Cloudflare Durable Object, `ChainFirehoseHub`
-(`workers/chain-firehose-hub.mjs`) — the first Durable Object this codebase
+(`workers/chain-firehose-hub.ts`) — the first Durable Object this codebase
 has used — co-located with the main `metagraphed` Worker (`wrangler.jsonc`'s
 `durable_objects`/`migrations` blocks) rather than a dedicated Worker, since
 it serves this Worker's own public route directly.
@@ -96,7 +96,7 @@ One global instance (`idFromName("global")`) owns two endpoints:
   `timingSafeEqual` against `CHAIN_FIREHOSE_SYNC_SECRET`, matching every
   other `/api/v1/internal/*-sync` route's convention), 503 if the secret
   isn't provisioned, 401 if the token is missing/wrong. The auth check lives
-  in `workers/api.mjs`, not inside the Durable Object itself — a DO is never
+  in `workers/api.ts`, not inside the Durable Object itself — a DO is never
   internet-addressable on its own, so this Worker's binding is the only path
   in, and the one place a forged request could be rejected. The body is
   either one payload object (broadcast once) or a JSON array of up to
@@ -183,13 +183,13 @@ Testability: this repo has no Durable Object-capable test harness (no
 `@cloudflare/vitest-pool-workers`/Miniflare). Every actual decision the hub
 makes (topic parsing/matching, ingest payload validation, SSE framing) is a
 plain pure function, unit-tested directly
-(`tests/chain-firehose-hub.test.mjs`). Most of the DO class itself is ALSO
+(`tests/chain-firehose-hub.test.ts`). Most of the DO class itself is ALSO
 Node-testable against a stubbed `state` object — `ReadableStream`/
 `CountQueuingStrategy`/`TextEncoder` are real Web Streams APIs under plain
 Node/vitest, and `state.getWebSockets()` is trivially stubbable — so only the
 literal `WebSocketPair`/`state.acceptWebSocket` upgrade branch (no Node
 equivalent) is `/* v8 ignore */`-marked, not the whole class.
-`tests/chain-firehose-routes.test.mjs` covers the `workers/api.mjs`
+`tests/chain-firehose-routes.test.ts` covers the `workers/api.ts`
 routing/auth boundary (mirroring the existing `*-sync-proxy` test shape).
 
 ## GraphQL subscriptions (#4983, live)
@@ -314,8 +314,8 @@ epic):
 
 **Part 1 (live): trigger storage + CRUD.** A new `chain_alert_triggers`
 Postgres table (`deploy/postgres/schema.sql`) and public CRUD routes at
-`/api/v1/alerts/triggers` (`workers/data-api.mjs`, proxied through
-`workers/api.mjs`). Ownership is a bearer `owner_token` (returned once, at
+`/api/v1/alerts/triggers` (`workers/data-api.ts`, proxied through
+`workers/api.ts`). Ownership is a bearer `owner_token` (returned once, at
 creation) -- matching the webhook-subscription secret model, since no
 user-account system exists here -- and unlike webhook subscriptions there is
 NO public GET: a trigger's `destination` can itself be a capability
@@ -326,7 +326,7 @@ prerequisite above -- none of `blocks`/`extrinsics`/`chain_events` carry
 those fields.
 
 **Part 2 (live): the AlerterHub evaluator.** A new singleton Durable Object
-(`workers/alerter-hub.mjs`, `idFromName("global")`) that `ChainFirehoseHub`
+(`workers/alerter-hub.ts`, `idFromName("global")`) that `ChainFirehoseHub`
 pings unconditionally on every `broadcast()` -- mirroring the #4983
 MCP-notify loop's shape, but without a per-session Set, since there is
 exactly one evaluator. Caches active trigger definitions (refreshed from
@@ -335,9 +335,9 @@ Postgres via `DATA_API`'s internal-only active-list route, TTL
 Postgres round-trip, since evaluation shares the same `broadcast()` call
 every other consumer (SSE/WS/GraphQL/MCP) is waiting on.
 
-**Part 3 (live): delivery.** `deliverAlertMatch` (`workers/alerter-hub.mjs`)
+**Part 3 (live): delivery.** `deliverAlertMatch` (`workers/alerter-hub.ts`)
 dispatches to all four channels via pure request builders in the new
-`src/alert-delivery.mjs`: webhook (a `metagraph.alert` JSON envelope POSTed
+`src/alert-delivery.ts`: webhook (a `metagraph.alert` JSON envelope POSTed
 to the trigger's own `destination`, re-validated against
 `isPublicWebhookUrl` at delivery time as defense in depth), Discord (a
 `{content}` POST to the trigger's own incoming-webhook URL, truncated to
@@ -349,7 +349,7 @@ isn't provisioned, matching every other optional integration's convention
 here.
 
 Two deliberate v1 scope cuts, both documented rather than silent: delivery
-is single-attempt (no retry/dead-letter, unlike `src/webhooks.mjs`'s own
+is single-attempt (no retry/dead-letter, unlike `src/webhooks.ts`'s own
 `deliverChangeEvent` -- these are lower-stakes "ping me" notifications, not
 a change feed automated pipelines depend on), and webhook payloads are NOT
 HMAC-signed (signing would need the per-trigger `owner_token` threaded
@@ -357,7 +357,7 @@ through the evaluator's trusted-internal cache, which
 `evaluatorAlertTriggerView` deliberately never exposes past the CRUD layer
 today). Both are easy fast-follows if real-world use surfaces a need.
 
-**Burst rate-limiting** (`AlerterHub.evaluate()`, `src/alert-delivery.mjs`'s
+**Burst rate-limiting** (`AlerterHub.evaluate()`, `src/alert-delivery.ts`'s
 `isDeliveryRateLimited`): at most one delivery per trigger per
 `ALERT_DELIVERY_MIN_INTERVAL_MS` (1 minute), in-memory per DO instance. A
 burst of matching events within the window still counts toward `matched` in
@@ -379,7 +379,7 @@ Part 3's own history:
   _widening_ a trigger's match scope on every partial edit (e.g. renaming a
   netuid-scoped trigger without resending `netuid` dropped the netuid filter
   entirely). Fixed by merging the incoming body onto the existing row before
-  validating (`omitNullValues` + merge in `workers/data-api.mjs`). An
+  validating (`omitNullValues` + merge in `workers/data-api.ts`). An
   explicit `null` in a PATCH body is a no-op (keeps the existing value), not
   a clear -- `validateAlertTriggerInput` rejects a real `null` for most
   fields, so there's currently no supported way to explicitly clear an
@@ -399,13 +399,13 @@ Part 3's own history:
 - **Two missing timeouts**: `AlerterHub.refreshTriggers()`'s Hyperdrive
   fetch (`ALERT_TRIGGER_REFRESH_TIMEOUT_MS`, 4s) and
   `ChainFirehoseHub.broadcast()`'s own ping to the `AlerterHub` singleton
-  (`ALERTER_HUB_EVALUATE_TIMEOUT_MS`, 15s, `workers/chain-firehose-hub.mjs`)
+  (`ALERTER_HUB_EVALUATE_TIMEOUT_MS`, 15s, `workers/chain-firehose-hub.ts`)
   both had no independent ceiling -- a slow Postgres query or a slow
   delivery fan-out could stall `broadcast()` itself, delaying every OTHER
   firehose consumer's (SSE/WS/GraphQL/MCP) response, not just the alerter's.
 - **Unbounded delivery-fan-out concurrency**: a single chain event can match
   many distinct triggers; `evaluate()`'s delivery loop now runs through
-  `mapBounded` (exported from `src/webhooks.mjs`, `ALERT_DELIVERY_CONCURRENCY`
+  `mapBounded` (exported from `src/webhooks.ts`, `ALERT_DELIVERY_CONCURRENCY`
   = 8) instead of an unbounded `Promise.all`.
 
 One finding remains deliberately deferred as its own tracked issue rather
@@ -413,9 +413,9 @@ than rushed in under time pressure:
 
 - [#5021](https://github.com/JSONbored/metagraphed/issues/5021) -- neither
   this alerter's webhook/Discord delivery nor the pre-existing
-  webhook-subscription delivery (`src/webhooks.mjs`) actually re-resolves
+  webhook-subscription delivery (`src/webhooks.ts`) actually re-resolves
   DNS at request time; the codebase's own `resolveHostnames`-based SSRF
-  defense turns out to be Node-only (`scripts/dispatch-webhooks.mjs`'s cron
+  defense turns out to be Node-only (`scripts/dispatch-webhooks.ts`'s cron
   script) and was never reachable from the live Worker in the first place.
   A real fix needs DNS-over-HTTPS via `fetch()`, shared across both paths.
 

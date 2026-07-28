@@ -65,7 +65,7 @@ export async function handleBadgeSvgRequest(
       { allow: "GET, HEAD, OPTIONS" },
     );
   }
-  // Non-null: this handler is only ever reached via api.mjs's own
+  // Non-null: this handler is only ever reached via api.ts's own
   // `BADGE_SVG_PATTERN.test(url.pathname)` dispatch guard, so a match is
   // already guaranteed by the time this .exec() runs.
   const netuid = BADGE_SVG_PATTERN.exec(url.pathname)![1];
@@ -248,7 +248,7 @@ function discoveryHeaders(contentType: string): Headers {
   headers.set("access-control-allow-origin", "*");
   headers.set("content-type", contentType);
   headers.set("x-content-type-options", "nosniff");
-  // CACHE_SECONDS.static (src/contracts.mjs) is a hardcoded literal 600, never
+  // CACHE_SECONDS.static (src/contracts.ts) is a hardcoded literal 600, never
   // falsy, so the `|| 600` fallback is provably unreachable.
   const staticMaxAge = /* v8 ignore next */ CACHE_SECONDS.static || 600;
   headers.set(

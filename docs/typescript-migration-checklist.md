@@ -48,7 +48,7 @@ which writes three committed, generated `.d.ts` files:
   boilerplate per file), generated from `wrangler.data.jsonc` / `wrangler.registry.jsonc`.
 
 All three declare a global ambient `Env` interface; TypeScript's interface merging combines them into
-one superset covering every binding across all three Workers (`workers/http.mjs`-style leaf files are
+one superset covering every binding across all three Workers (`workers/http.ts`-style leaf files are
 imported by more than one Worker, so a single shared `Env` is simpler than threading three distinct
 per-Worker types through shared files). This is a deliberate, known trade-off: a file can reference an
 `env.SOME_OTHER_WORKERS_BINDING` field that doesn't actually exist in its own Worker's real deployment
