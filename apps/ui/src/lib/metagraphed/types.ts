@@ -1137,6 +1137,10 @@ export interface AccountEvent {
   alpha_amount?: number | null;
   extrinsic_index?: number | null;
   observed_at?: string;
+  /** #8369: TAO per alpha for this trade, from its own two legs. Null on
+   * non-swap events, root (no AMM pool), or a malformed leg. */
+  price_at_tx?: number | null;
+  price_basis?: "trade_exact" | "root_no_pool" | null;
   [key: string]: unknown;
 }
 
