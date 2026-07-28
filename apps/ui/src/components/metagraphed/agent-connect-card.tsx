@@ -1,6 +1,7 @@
-import { Terminal, Package, Sparkles, ArrowUpRight } from "lucide-react";
+import { Package, Sparkles, ArrowUpRight, type LucideIcon } from "lucide-react";
 import { CopyButton, ExternalLink, McpToolsList, ClaudeIcon, OpenAIIcon } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
+import { AgentHarnessPicker } from "@/components/metagraphed/agent-harness-picker";
 import { classNames } from "@/lib/metagraphed/format";
 import { CLAUDE_URL, CHATGPT_URL } from "@/lib/metagraphed/agent-prompt";
 import type { AgentResource, AgentResources } from "@/lib/metagraphed/types";
@@ -28,7 +29,7 @@ function InstallRow({
   metaHref,
   copyLabel,
 }: {
-  icon: typeof Terminal;
+  icon: LucideIcon;
   iconTone?: string;
   command: string;
   meta: string;
@@ -74,14 +75,8 @@ export function AgentConnectCard({
   return (
     <Panel flush>
       <div className="border-b border-border/70 p-4 md:p-6">
-        <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent-surface px-4 py-3.5">
-          <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
-          <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono mg-type-caption-lg text-ink-strong">
-            {mcp.install}
-          </code>
-          <CopyButton value={mcp.install} label="MCP install command" />
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 mg-type-data">
+        <AgentHarnessPicker mcp={mcp} />
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 mg-type-data">
           <ExternalLink href={mcp.endpoint} className="text-ink-muted hover:text-ink-strong">
             {mcp.endpoint.replace("https://", "")}
           </ExternalLink>

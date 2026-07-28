@@ -6,6 +6,7 @@ import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { AgentContextCard } from "@/components/metagraphed/agent-context-card";
 import { AgentConnectCard } from "@/components/metagraphed/agent-connect-card";
 import { AgentLiveCard } from "@/components/metagraphed/agent-live-card";
+import { FirstPromptWalkthrough } from "@/components/metagraphed/first-prompt-walkthrough";
 import { AgentResourceGrid } from "@/components/metagraphed/agent-resource-grid";
 import { AgentPlaybookGrid } from "@/components/metagraphed/agent-playbook-grid";
 import { Skeleton } from "@/components/metagraphed/states";
@@ -78,7 +79,7 @@ function AgentsBody() {
         <AgentContextCard agent={res.copyable_agent} />
       </section>
 
-      <section>
+      <section id="connect">
         <SectionHeading
           step={2}
           title="Connect your client"
@@ -96,9 +97,18 @@ function AgentsBody() {
         <AgentLiveCard />
       </section>
 
-      <section>
+      <section id="first-prompt">
         <SectionHeading
           step={4}
+          title="Try your first prompt"
+          intro="Paste one straight into the client you just connected — each one is a real task, not a demo."
+        />
+        <FirstPromptWalkthrough />
+      </section>
+
+      <section>
+        <SectionHeading
+          step={5}
           title="Deeper integrations"
           intro="Context files, the OpenAPI contract, GraphQL, bulk data, and everything else the registry exposes directly."
         />
@@ -107,7 +117,7 @@ function AgentsBody() {
 
       <section id="playbooks">
         <SectionHeading
-          step={5}
+          step={6}
           title="Task-oriented playbooks"
           intro="Executed, tested tool-call sequences for the tasks people actually bring — also registered as MCP prompts for harnesses that surface them natively."
         />

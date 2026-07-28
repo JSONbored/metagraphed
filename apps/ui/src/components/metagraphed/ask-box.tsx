@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ApiError } from "@/lib/metagraphed/client";
 import { askQuestion } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
+import { captureEvent } from "@/lib/analytics";
 import { ExternalLink } from "@jsonbored/ui-kit";
 import type { AskAnswerData, AskCitation } from "@/lib/metagraphed/types";
 
@@ -48,7 +49,7 @@ export function sourceCountLabel(contextCount: number, model: string): string {
   return `${contextCount} source${contextCount === 1 ? "" : "s"} · ${model}`;
 }
 
-function AskResult({ result }: { result: AskAnswerData }) {
+function AskResult({ result, latencyMs }: { result: AskAnswerData; latencyMs: number | null }) {
   return (
     <div className="mt-4 space-y-3 rounded-md border border-accent/30 bg-accent-surface p-4">
       <p className="mg-type-caption-lg leading-relaxed text-ink-strong">{result.answer}</p>
@@ -61,6 +62,7 @@ function AskResult({ result }: { result: AskAnswerData }) {
       ) : null}
       <p className="mg-type-data-sm text-ink-muted">
         {sourceCountLabel(result.context_count, result.model)}
+        {latencyMs != null ? ` · ${latencyMs}ms` : ""}
       </p>
     </div>
   );
@@ -68,6 +70,7 @@ function AskResult({ result }: { result: AskAnswerData }) {
 
 export function AskBox() {
   const [question, setQuestion] = useState("");
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const mutation = useMutation({
     mutationFn: (q: string) => askQuestion(q),
   });
@@ -76,7 +79,10 @@ export function AskBox() {
     e.preventDefault();
     const trimmed = question.trim();
     if (!trimmed) return;
-    mutation.mutate(trimmed);
+    captureEvent("agent_live_test_run", { mode: "ask" });
+    const startedAt = Date.now();
+    setLatencyMs(null);
+    mutation.mutate(trimmed, { onSettled: () => setLatencyMs(Date.now() - startedAt) });
   }
 
   return (
@@ -111,7 +117,7 @@ export function AskBox() {
         </p>
       ) : null}
 
-      {mutation.data ? <AskResult result={mutation.data} /> : null}
+      {mutation.data ? <AskResult result={mutation.data} latencyMs={latencyMs} /> : null}
     </div>
   );
 }
