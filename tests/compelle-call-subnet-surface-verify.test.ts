@@ -16,7 +16,7 @@
 // its default GET (src/call-subnet-surface.ts) and classifies the body by the
 // live content-type (probe.expect is never read by the tool), and the MCP
 // handler only rejects a surface when auth_required is true or probe.enabled is
-// explicitly false (src/mcp-server.mjs). The fixture below mirrors that live
+// explicitly false (src/mcp-server.ts). The fixture below mirrors that live
 // response rather than fetching it, keeping the test hermetic while still
 // exercising the charset-suffixed JSON parse-and-return path.
 import assert from "node:assert/strict";

@@ -143,7 +143,7 @@ describe("usageEventProperties", () => {
     );
     // Present but irrelevant on a successful call -- still recorded verbatim
     // if supplied (this module trusts the caller not to set it on success;
-    // mcp-server.mjs's callTool enforces that contract at the call site).
+    // mcp-server.ts's callTool enforces that contract at the call site).
     assert.deepEqual(
       usageEventProperties({
         ok: true,

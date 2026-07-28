@@ -224,5 +224,5 @@ export function buildChainAlphaVolume(
 // account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
 // path is retired and the `account_events` table is dropped in production, so a live
 // D1 query would always miss. Serving now goes tryPostgresTier -> buildChainAlphaVolume([...]),
-// never D1. See src/graphql.mjs's chain_alpha_volume and src/mcp-server.mjs's
+// never D1. See src/graphql.mjs's chain_alpha_volume and src/mcp-server.ts's
 // get_chain_alpha_volume tool for the call sites.

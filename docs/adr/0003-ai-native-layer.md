@@ -43,7 +43,7 @@ contract. No new authority, no new pipeline.
    (OpenAPI, agent catalog, MCP).
 
 3. **Remote MCP server** (AI-2). `POST /mcp` is a **stateless** Model Context
-   Protocol server (Streamable HTTP, JSON-RPC 2.0) in `src/mcp-server.mjs`. It
+   Protocol server (Streamable HTTP, JSON-RPC 2.0) in `src/mcp-server.ts`. It
    exposes thirteen read-only tools (`search_subnets`,
    `find_subnets_by_capability`, `get_subnet`, `get_subnet_health`,
    `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`,

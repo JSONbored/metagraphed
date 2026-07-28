@@ -4456,7 +4456,7 @@ describe("MCP get_subnet_snapshot", () => {
 
 describe("MCP get_chain_signers", () => {
   // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production,
-  // so loadMcpChainSigners (src/mcp-server.mjs) never issues a live D1 read
+  // so loadMcpChainSigners (src/mcp-server.ts) never issues a live D1 read
   // any more -- it always resolves to the schema-stable empty leaderboard via
   // buildChainSigners({..., rows: []}), regardless of any METAGRAPH_HEALTH_DB
   // mock the caller binds. A batch's shared limiter charge is still exercised
@@ -14534,7 +14534,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   });
 
   // D1 fully eliminated (2026-07-17): loadSubnetIdentityHistoryTool
-  // (src/mcp-server.mjs) tries the Postgres tier first and, on any miss,
+  // (src/mcp-server.ts) tries the Postgres tier first and, on any miss,
   // resolves straight to buildSubnetIdentityHistory([], netuid, {...}) --
   // never a live D1 read. A D1 mock, if bound, is never queried.
   test("get_subnet_identity_history returns a schema-stable empty timeline when the Postgres tier is unconfigured", async () => {
@@ -16831,7 +16831,7 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
     );
   });
 
-  // readMcpWebhookDeliveryStatus (src/mcp-server.mjs) is a best-effort helper --
+  // readMcpWebhookDeliveryStatus (src/mcp-server.ts) is a best-effort helper --
   // the tests above only exercise its happy path (a working `.list` returning no
   // keys). These target its other branches directly: no `.list` method at all, a
   // `.list` that throws, and a `.list` that returns real keys worth `.get`-ing.

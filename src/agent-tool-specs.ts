@@ -1,6 +1,6 @@
 // Agent tool specs for NON-MCP agent runtimes.
 //
-// The canonical MCP server (src/mcp-server.mjs) exposes our tools over the MCP
+// The canonical MCP server (src/mcp-server.ts) exposes our tools over the MCP
 // `tools/list` projection. The two largest agent ecosystems — OpenAI function
 // calling and Anthropic tool use — consume *static* tool JSON instead, so we
 // project the same `listToolDefinitions()` output into their shapes. Building

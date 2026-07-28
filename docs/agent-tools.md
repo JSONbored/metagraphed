@@ -97,7 +97,7 @@ async function runToolUse(block) {
 ## Source of truth
 
 The specs derive from `listToolDefinitions()` in
-[src/mcp-server.mjs](../src/mcp-server.mjs) via
+[src/mcp-server.ts](../src/mcp-server.ts) via
 [src/agent-tool-specs.mjs](../src/agent-tool-specs.mjs); `validate:mcp` asserts
 the served specs cover every MCP tool and match the canonical projection. The
 documents are advertised from the `/.well-known/api-catalog` linkset

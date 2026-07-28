@@ -262,7 +262,7 @@ session DO never blocks ingest).
 **Transport**: MCP's ratified transport (2025-06-18 spec) is Streamable
 HTTP -- POST for JSON-RPC, plus an optional GET for a standalone SSE push
 stream -- not WebSocket (no ratified WS transport exists as of this writing).
-`handleMcpRequest` (`src/mcp-server.mjs`) now branches on method: POST is the
+`handleMcpRequest` (`src/mcp-server.ts`) now branches on method: POST is the
 pre-existing stateless JSON-RPC path (unaffected for every method other than
 `resources/subscribe`/`resources/unsubscribe`); GET forwards to the session's
 `McpSessionHub` `/stream` route; DELETE forwards to `/terminate` for explicit
@@ -286,7 +286,7 @@ of how many events fired in between). A session with no subscribe/stream/
 touch activity for `MCP_SESSION_IDLE_TTL_MS` (30 minutes) self-terminates via
 a Durable Object alarm.
 
-Both `workers/mcp-session-hub.mjs` and the `src/mcp-server.mjs` additions are
+Both `workers/mcp-session-hub.mjs` and the `src/mcp-server.ts` additions are
 unit-tested at effectively 100% (no `WebSocketPair`-shaped code here, unlike
 `ChainFirehoseHub` -- `state.storage` is a plain async KV API and
 `ReadableStream` is a real Web Streams API under Node/vitest), and

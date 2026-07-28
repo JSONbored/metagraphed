@@ -201,4 +201,4 @@ export function buildValidatorNominators(
 // path is retired and the `account_events` table is dropped in production, so a live
 // D1 query would always miss. Serving now goes tryPostgresTier -> buildValidatorNominators([...
 // ], hotkey, {...}), never D1. See src/graphql.mjs's validator_nominators resolver and
-// src/mcp-server.mjs's get_validator_nominators tool for the call sites.
+// src/mcp-server.ts's get_validator_nominators tool for the call sites.

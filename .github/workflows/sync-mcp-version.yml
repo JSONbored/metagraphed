@@ -59,29 +59,47 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # Real change-detection: every MCP tool addition necessarily imports
-      # and registers the new tool in src/mcp-server.ts's MCP_TOOLS array,
-      # so that file changing since the last bump is a reliable, sufficient
-      # signal -- the same pragmatic "watch the one file everything routes
-      # through" approach sync-client-version.yml uses for its own three
-      # contract paths, not a precise "did the tool count specifically
-      # change" AST diff. No prior bump commit found (first run ever) or a
-      # non-empty diff since the last one ⇒ proceed; an empty diff ⇒ skip
-      # every subsequent step via its `if:` so the job still exits cleanly.
+      # Real change-detection over the MCP tool surface: a tool ADDITION always
+      # touches src/mcp-server.ts's MCP_TOOLS array, but a schema-only change to
+      # an existing tool (e.g. an additive output field in
+      # schemas-src/mcp-tools/, which mcp-server.ts imports for nearly every
+      # tool's input/output schema) never touches mcp-server.ts's own text --
+      # so both paths must be watched, the same multi-path approach
+      # sync-client-version.yml uses for its three contract paths. Scoped to
+      # schemas-src/mcp-tools/ specifically: schemas-src/{routes,shared,envelope,
+      # openapi-registry} back the REST/OpenAPI contract too, so watching them
+      # here would bump the MCP server version on changes that never touched the
+      # MCP tool surface.
+      #
+      # Existence guard (#8476): `git diff --quiet <ref> HEAD -- <path>` reports
+      # "no difference" for a path that doesn't exist at either ref, so a watched
+      # path that silently stops existing (e.g. the #7857 .mjs→.ts rename that
+      # broke this workflow) reads as "unchanged" forever with CI staying green.
+      # Fail loudly if any watched path is missing instead of silently skipping
+      # the bump. No prior bump commit found (first run ever) or a non-empty diff
+      # since the last one ⇒ proceed; an empty diff ⇒ skip every subsequent step
+      # via its `if:` so the job still exits cleanly.
       - name: Check for MCP tool changes since the last version bump
         id: mcp-diff
         run: |
+          watched_paths="src/mcp-server.ts schemas-src/mcp-tools"
+          for p in $watched_paths; do
+            if [ ! -e "$p" ]; then
+              echo "::error::watched path '$p' does not exist -- sync-mcp-version's change detection is silently broken (see #8476). Update this workflow's watched_paths."
+              exit 1
+            fi
+          done
           last_bump="$(git log --grep '^chore(mcp): bump server version' --format=%H -n 1 main)"
           if [ -z "$last_bump" ]; then
             echo "no prior 'chore(mcp): bump server version' commit found; treating as first run"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "last MCP version bump commit: ${last_bump}"
-            if git diff --quiet "${last_bump}" HEAD -- src/mcp-server.ts; then
-              echo "no MCP tool registry changes since ${last_bump}; skipping version bump"
+            if git diff --quiet "${last_bump}" HEAD -- $watched_paths; then
+              echo "no MCP tool surface changes since ${last_bump}; skipping version bump"
               echo "changed=false" >> "$GITHUB_OUTPUT"
             else
-              echo "MCP tool registry changes found since ${last_bump}"
+              echo "MCP tool surface changes found since ${last_bump}"
               echo "changed=true" >> "$GITHUB_OUTPUT"
             fi
           fi
