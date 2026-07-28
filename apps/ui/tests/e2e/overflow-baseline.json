@@ -1,11 +1,5 @@
 {
-  "/@375": [
-    "DIV:flex items-center gap-1",
-    "DIV:flex-1 flex justify-end",
-    "DIV:lg:col-span-12",
-    "DIV:lg:col-span-5",
-    "DIV:lg:col-span-7"
-  ],
+  "/@375": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
   "/@768": ["DIV:flex items-center gap-1"],
   "/@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
   "/@1280": ["DIV:flex items-center gap-1"],

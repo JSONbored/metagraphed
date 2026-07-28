@@ -176,7 +176,7 @@ export function OverviewPage() {
                     fallback={<Skeleton className="h-72 lg:col-span-5" />}
                     retryQueryKeys={[coverageQuery().queryKey]}
                   >
-                    <div className="lg:col-span-5">
+                    <div className="min-w-0 lg:col-span-5">
                       <CoverageFunnel />
                     </div>
                   </AsyncPanel>
@@ -184,7 +184,7 @@ export function OverviewPage() {
                     context="network pulse"
                     fallback={<Skeleton className="h-72 lg:col-span-7" />}
                   >
-                    <div className="lg:col-span-7">
+                    <div className="min-w-0 lg:col-span-7">
                       <NetworkPulseBand />
                     </div>
                   </AsyncPanel>
@@ -193,7 +193,7 @@ export function OverviewPage() {
                     fallback={<Skeleton className="h-64 lg:col-span-12" />}
                     retryQueryKeys={[changelogQuery().queryKey, endpointIncidentsQuery().queryKey]}
                   >
-                    <div className="lg:col-span-12">
+                    <div className="min-w-0 lg:col-span-12">
                       <WhatChangedFeed />
                     </div>
                   </AsyncPanel>
@@ -219,7 +219,7 @@ export function OverviewPage() {
                   fallback={<Skeleton className="h-64 lg:col-span-7" />}
                   retryQueryKeys={[registrySummaryQuery().queryKey]}
                 >
-                  <div className="lg:col-span-7">
+                  <div className="min-w-0 lg:col-span-7">
                     <RegistryScoreHistogram className="h-full" />
                   </div>
                 </AsyncPanel>
@@ -228,11 +228,11 @@ export function OverviewPage() {
                   fallback={<Skeleton className="h-64 lg:col-span-5" />}
                   retryQueryKeys={[registrySummaryQuery().queryKey]}
                 >
-                  <div className="lg:col-span-5">
+                  <div className="min-w-0 lg:col-span-5">
                     <DimensionCoverageHeatmap className="h-full" />
                   </div>
                 </AsyncPanel>
-                <div className="lg:col-span-12">
+                <div className="min-w-0 lg:col-span-12">
                   <div className="mb-3 mg-type-caption text-ink-muted">Enrichment queue</div>
                   <AsyncPanel
                     context="enrichment queue"
