@@ -1,4 +1,4 @@
-// The read-only RPC reverse-proxy subsystem (extracted from workers/api.mjs per
+// The read-only RPC reverse-proxy subsystem (extracted from workers/api.ts per
 // #1763): the /rpc/v1/{network} JSON-RPC proxy, its B3 usage analytics, the
 // GraphQL endpoint's shared rate-limit guard, the on-demand surface-verify probe,
 // and everything those handlers depend on — endpoint selection + upstream-safety,
@@ -12,18 +12,18 @@
 // every upstream attempt, and `orderSafeRpcEndpoints` reads it to deprioritise
 // ejected endpoints on the next request. Keeping the map and both call sites in
 // this one file makes the breaker's eject/half-open contract reviewable in a
-// single place — the same reason analytics.mjs co-locates its fallback counter
+// single place — the same reason analytics.ts co-locates its fallback counter
 // with the cache guard. Tests still inject their own map via the `healthMap`
 // option, so the module-default is only the production singleton.
 //
 // Dependency wiring: the query guards (`analyticsWindow`, `analyticsQueryError`,
-// `analyticsMeta`) come from the sibling analytics.mjs (no cycle — analytics
+// `analyticsMeta`) come from the sibling analytics.ts (no cycle — analytics
 // imports nothing from here). The one
-// api.mjs-local helper, `readHealthMetaKv` (the in-isolate snapshot-meta memo that
-// stays in api.mjs because other clusters + a test import it from there), is
-// injected once via `configureRpcProxy({ readHealthMetaKv })` at api.mjs load
-// time — exactly as analytics.mjs is wired — so this file never imports api.mjs.
-// Everything else is a direct leaf import. api.mjs imports the handlers back and
+// api.ts-local helper, `readHealthMetaKv` (the in-isolate snapshot-meta memo that
+// stays in api.ts because other clusters + a test import it from there), is
+// injected once via `configureRpcProxy({ readHealthMetaKv })` at api.ts load
+// time — exactly as analytics.ts is wired — so this file never imports api.ts.
+// Everything else is a direct leaf import. api.ts imports the handlers back and
 // dispatches them, and re-exports the test-facing helpers from itself.
 
 import { apiHeaders, errorResponse } from "../http.ts";
@@ -84,17 +84,17 @@ export interface RpcPool {
   endpoints?: RpcEndpoint[];
 }
 
-// The shape of the api.mjs-local in-isolate memoized KV read (see
+// The shape of the api.ts-local in-isolate memoized KV read (see
 // configureRpcProxy below) -- mirrors analytics.ts's own HealthMetaKvReader
-// (same api.mjs-owned helper, wired independently into each sibling module).
+// (same api.ts-owned helper, wired independently into each sibling module).
 type HealthMetaKvReader = (
   env: Env,
 ) => Promise<{ last_run_at?: string | null } | null>;
 
-// Injected once from api.mjs (see configureRpcProxy). The in-isolate
-// snapshot-meta read lives in api.mjs because the other handler clusters and a
+// Injected once from api.ts (see configureRpcProxy). The in-isolate
+// snapshot-meta read lives in api.ts because the other handler clusters and a
 // test still import it from there; injecting the stable function reference here
-// keeps the import acyclic — the same wiring analytics.mjs uses for the same
+// keeps the import acyclic — the same wiring analytics.ts uses for the same
 // helper.
 /* v8 ignore start */
 let readHealthMetaKv: HealthMetaKvReader = () => {
@@ -102,7 +102,7 @@ let readHealthMetaKv: HealthMetaKvReader = () => {
 };
 /* v8 ignore stop */
 
-// Called once at api.mjs module-init to wire the api.mjs-local KV reader.
+// Called once at api.ts module-init to wire the api.ts-local KV reader.
 export function configureRpcProxy(deps: {
   readHealthMetaKv: HealthMetaKvReader;
 }) {
@@ -769,7 +769,7 @@ export async function handleRpcProxyRequest(
   return new Response(response.body, { status: response.status, headers });
 }
 
-// Exported so tests/docs-content-drift.test.mjs can assert content/docs/rpc.mdx
+// Exported so tests/docs-content-drift.test.ts can assert content/docs/rpc.mdx
 // documents the real values instead of a second hand-copied literal.
 export const RPC_MAX_ATTEMPTS = 3;
 const RPC_ATTEMPT_TIMEOUT_MS = 6000;
