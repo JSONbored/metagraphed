@@ -115,6 +115,45 @@ test("challenge: 503 when the KV challenge store is unavailable", async () => {
   assert.equal(res.status, 503);
 });
 
+test("challenge: 413 when content-length declares an oversized body", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req("/api/v1/watch/challenges", {
+      method: "POST",
+      headers: { "content-length": "999999" },
+      body: { ss58: "x" },
+    }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
+test("challenge: 413 on a body that actually exceeds the byte limit (no content-length lie needed)", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req("/api/v1/watch/challenges", {
+      method: "POST",
+      body: { ss58: "x".repeat(5000) },
+    }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
+test("challenge: 400 on unparsable JSON body", async () => {
+  const env = baseEnv();
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/watch/challenges", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{not json",
+    }),
+    env,
+    {} as unknown as ExecutionContext,
+  );
+  assert.equal(res.status, 400);
+});
+
 test("challenge: 429 when the wallet-auth rate limiter denies", async () => {
   const wallet = makeTestWallet(2);
   const env = baseEnv({
@@ -145,6 +184,17 @@ test("challenge: 200 with a signable, watch-purpose message for a valid ss58", a
   assert.match(body.message, new RegExp(wallet.ss58));
   assert.match(body.message, /^metagraph\.sh watch verification\n/);
   assert.ok(body.expires_in_seconds > 0);
+});
+
+test("challenge: a non-string ss58 (number/null/object) is coerced to empty and rejected, never passed through", async () => {
+  const env = baseEnv();
+  for (const ss58 of [42, null, { nested: true }, ["a"]]) {
+    const res = await fetchRoute(
+      req("/api/v1/watch/challenges", { method: "POST", body: { ss58 } }),
+      env,
+    );
+    assert.equal(res.status, 400);
+  }
 });
 
 test("challenge: a watch challenge and a login challenge for the same ss58 don't collide (distinct KV namespaces)", async () => {
@@ -198,6 +248,32 @@ test("token: 429 when the wallet-auth rate limiter denies", async () => {
   assert.equal(res.status, 429);
 });
 
+test("token: 413 on an oversized body", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req("/api/v1/watch/tokens", {
+      method: "POST",
+      body: { ss58: "x".repeat(5000), signature: "a".repeat(128) },
+    }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
+test("token: 400 on unparsable JSON body", async () => {
+  const env = baseEnv();
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/watch/tokens", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{not json",
+    }),
+    env,
+    {} as unknown as ExecutionContext,
+  );
+  assert.equal(res.status, 400);
+});
+
 test("token: 503 when the KV challenge store is unavailable (distinct from the WATCH_TRIGGER_TOKEN_SECRET 503)", async () => {
   const wallet = makeTestWallet(7);
   const env = baseEnv({ METAGRAPH_CONTROL: undefined });
@@ -222,6 +298,42 @@ test("token: 401 when no challenge was issued", async () => {
     env,
   );
   assert.equal(res.status, 401);
+});
+
+test("token: a non-string ss58 or signature is coerced to empty and rejected, never passed through", async () => {
+  const wallet = makeTestWallet(20);
+  const env = baseEnv();
+  // Non-string ss58 -> invalid_ss58 -> 401 (the anti-oracle collapse).
+  for (const ss58 of [42, null, { nested: true }]) {
+    const res = await fetchRoute(
+      req("/api/v1/watch/tokens", {
+        method: "POST",
+        body: { ss58, signature: "a".repeat(128) },
+      }),
+      env,
+    );
+    assert.equal(res.status, 401);
+  }
+  // Valid ss58 with a non-string signature: a real challenge exists, so this
+  // reaches (and fails) the signature-shape check rather than short-circuiting
+  // on a missing challenge.
+  for (const signature of [42, null, { nested: true }]) {
+    await fetchRoute(
+      req("/api/v1/watch/challenges", {
+        method: "POST",
+        body: { ss58: wallet.ss58 },
+      }),
+      env,
+    );
+    const res = await fetchRoute(
+      req("/api/v1/watch/tokens", {
+        method: "POST",
+        body: { ss58: wallet.ss58, signature },
+      }),
+      env,
+    );
+    assert.equal(res.status, 401);
+  }
 });
 
 test("token: 401 on a signature from the wrong keypair", async () => {
