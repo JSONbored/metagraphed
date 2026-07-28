@@ -280,4 +280,4 @@ export function buildChainStakeFlow(
 // account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
 // path is retired and the `account_events` table is dropped in production, so a live
 // D1 query would always miss. Serving now goes tryPostgresTier -> buildChainStakeFlow([...]),
-// never D1. See src/mcp-server.mjs's get_chain_stake_flow tool for the call site.
+// never D1. See src/mcp-server.ts's get_chain_stake_flow tool for the call site.

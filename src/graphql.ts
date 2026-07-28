@@ -37,7 +37,7 @@ import { loadSearchIndexList } from "./search-index-mcp.ts";
 // Distinct from Subscription.chainEvents (live WebSocket firehose).
 // #7432: GraphQL parity for GET /api/v1/chain-events/stats (the aggregate
 // sibling), reusing loadChainActivity + optionalBlocksWindow that MCP's
-// get_chain_activity already calls — both relocated here from mcp-server.mjs.
+// get_chain_activity already calls — both relocated here from mcp-server.ts.
 import {
   loadChainActivity,
   loadChainEventsFeed,
@@ -1307,7 +1307,7 @@ function paginate(
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
   // 1. An explicit `limit: 0` reaching `Math.max(1, …)` would return a single
   // result, which reads to an agent as "this registry knows one subnet" (the same
-  // reasoning as clampLimit in src/mcp-server.mjs and src/ai-search.mjs).
+  // reasoning as clampLimit in src/mcp-server.ts and src/ai-search.ts).
   const safeLimit =
     typeof limit === "number" && Number.isFinite(limit) && limit >= 1
       ? Math.min(MAX_PAGE_LIMIT, Math.floor(limit))
@@ -1452,8 +1452,8 @@ function postgresTierRequest(
 // call above, there is no D1 predecessor and so no per-table flag to gate on
 // (workers/api.mjs forwards these three paths to DATA_API unconditionally).
 // Mirrors MCP's own loadSubnetOwnershipHistory/loadSubnetConviction/
-// loadSubnetLeaseHistory proxies (src/mcp-server.mjs) byte-for-byte;
-// reimplemented here rather than imported since mcp-server.mjs already
+// loadSubnetLeaseHistory proxies (src/mcp-server.ts) byte-for-byte;
+// reimplemented here rather than imported since mcp-server.ts already
 // imports this file's handleGraphQLRequest and importing back would be
 // circular.
 async function fetchAllEventsTier(
@@ -3273,7 +3273,7 @@ const rootValue = {
 
   rpc_pools(args: QueryRpc_PoolsArgs, context: GqlContext) {
     // rpc-pools' loader additionally reads ctx.readHealthKv for its live
-    // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.mjs's
+    // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.ts's
     // own context has no such property, so it's supplied here from the same
     // module-level import loadLiveHealth/loadEconomics already use.
     return loadRpcPoolsList(

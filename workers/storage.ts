@@ -395,7 +395,7 @@ const STABLE_LATEST_ARTIFACT_PATTERNS = [
   /^\/metagraph\/schemas\/(?!index\.json$)[A-Za-z0-9._:-]+\.json$/,
   // Excludes _capture-report.json (a whole-run summary, not a per-item
   // capture) -- the surface_id charset (see get_api_schema's own validation
-  // in src/mcp-server.mjs) includes "_", so this needs the same explicit
+  // in src/mcp-server.ts) includes "_", so this needs the same explicit
   // exclusion as schemas/index.json above, not just relying on the charset.
   /^\/metagraph\/fixtures\/(?!_capture-report\.json$)[A-Za-z0-9._:-]+\.json$/,
 ];

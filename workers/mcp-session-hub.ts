@@ -1,7 +1,7 @@
 // McpSessionHub -- per-session state for MCP resource subscriptions (#4983
 // MCP half, ADR 0015, docs/realtime-firehose.md). One instance per
 // Mcp-Session-Id (idFromName(sessionId)), minted at `initialize` by
-// src/mcp-server.mjs and reached only from there -- never internet-
+// src/mcp-server.ts and reached only from there -- never internet-
 // addressable on its own, same invariant as ChainFirehoseHub.
 //
 // Deliberately a SEPARATE Durable Object from ChainFirehoseHub, not a fourth
@@ -38,7 +38,7 @@
 // SSE-holding Durable Object has no hibernation exemption (hibernation is a
 // WebSocket-only billing mechanism) -- it stays fully resident for the life
 // of the stream. The MCP spec's 2025-11-25 revision (this server's declared
-// latest-supported version, see MCP_PROTOCOL_VERSIONS in src/mcp-server.mjs)
+// latest-supported version, see MCP_PROTOCOL_VERSIONS in src/mcp-server.ts)
 // explicitly added "support polling SSE streams by allowing servers to
 // disconnect at will", so this class closes its stream after
 // MCP_SESSION_MAX_STREAM_DURATION_MS and relies on the client reconnecting

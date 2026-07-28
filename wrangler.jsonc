@@ -517,8 +517,8 @@
   "durable_objects": {
     "bindings": [
       { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
-      // #4983 MCP half: one instance per Mcp-Session-Id (workers/mcp-session-hub.mjs),
-      // reached only from src/mcp-server.mjs's /mcp dispatch -- see that
+      // #4983 MCP half: one instance per Mcp-Session-Id (workers/mcp-session-hub.ts),
+      // reached only from src/mcp-server.ts's /mcp dispatch -- see that
       // file's own header comment for why this is a SEPARATE DO from
       // ChainFirehoseHub rather than a fourth connection population on it.
       { "name": "MCP_SESSION_HUB", "class_name": "McpSessionHub" },

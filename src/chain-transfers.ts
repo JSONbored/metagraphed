@@ -6,7 +6,7 @@
 // /accounts/{ss58}/transfers + /counterparties routes. #4772 D1 retirement: the D1
 // loader (loadChainTransfers) that queried the now-dropped `account_events` D1 table
 // was removed -- Postgres is the sole live tier (workers/data-api.mjs); a cold/absent
-// tier falls back to buildChainTransfers({}) directly. See src/mcp-server.mjs's
+// tier falls back to buildChainTransfers({}) directly. See src/mcp-server.ts's
 // get_chain_transfers tool for the call site.
 
 // Supported windows (label -> days), the same set + default the sibling /chain/* analytics
