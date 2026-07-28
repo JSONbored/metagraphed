@@ -40,6 +40,7 @@ import {
   CurationChip,
   ExternalLink,
   TimeAgo,
+  LiveTickerProvider,
   SectionAnchor,
   TableState,
   HealthPill,
@@ -1353,71 +1354,79 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
     );
   }
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="mg-type-caption text-ink-muted">
-          {events.length} event{events.length === 1 ? "" : "s"}
-        </span>
-        <div className="flex items-center gap-2">
-          <StreamStatusChip status={streamStatus} testId="subnet-activity-stream-status" />
-          <RealtimeFreshness at={data.meta?.generated_at} />
+    // #8365: shared 1s clock for every row's TimeAgo -- a subnet mid-epoch
+    // can carry dozens of sub-minute-old rows at once, exactly the case a
+    // per-row timer adds up for.
+    <LiveTickerProvider>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="mg-type-caption text-ink-muted">
+            {events.length} event{events.length === 1 ? "" : "s"}
+          </span>
+          <div className="flex items-center gap-2">
+            <StreamStatusChip status={streamStatus} testId="subnet-activity-stream-status" />
+            <RealtimeFreshness at={data.meta?.generated_at} />
+          </div>
         </div>
-      </div>
-      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface/40">
-            <tr>
-              <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
-              <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
-              <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
-              <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
-              <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {events.map((ev, i) => (
-              <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
-                  {ev.block_number != null ? (
-                    <Link
-                      to="/blocks/$ref"
-                      params={{ ref: String(ev.block_number) }}
-                      className="text-ink hover:underline"
-                    >
-                      #{formatNumber(ev.block_number)}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-2.5 whitespace-nowrap">
-                  <EventKindCell kind={ev.event_kind} />
-                </td>
-                <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
-                  {ev.hotkey ? (
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: ev.hotkey }}
-                      className="text-ink-muted hover:text-ink hover:underline"
-                    >
-                      {shortHash(ev.hotkey) ?? ev.hotkey}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
-                  {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
-                </td>
-                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
-                  <TimeAgo at={ev.observed_at} />
-                </td>
+        <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-surface/40">
+              <tr>
+                <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
+                <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
+                <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
+                <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
+                <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </ResponsiveTable>
-    </div>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {events.map((ev, i) => (
+                <tr
+                  key={`${ev.block_number}-${ev.event_index}-${i}`}
+                  className="hover:bg-surface/40"
+                >
+                  <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
+                    {ev.block_number != null ? (
+                      <Link
+                        to="/blocks/$ref"
+                        params={{ ref: String(ev.block_number) }}
+                        className="text-ink hover:underline"
+                      >
+                        #{formatNumber(ev.block_number)}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <EventKindCell kind={ev.event_kind} />
+                  </td>
+                  <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
+                    {ev.hotkey ? (
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: ev.hotkey }}
+                        className="text-ink-muted hover:text-ink hover:underline"
+                      >
+                        {shortHash(ev.hotkey) ?? ev.hotkey}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
+                    {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
+                    <TimeAgo at={ev.observed_at} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ResponsiveTable>
+      </div>
+    </LiveTickerProvider>
   );
 }
 

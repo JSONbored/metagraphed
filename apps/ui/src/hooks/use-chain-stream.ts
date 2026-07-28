@@ -2,8 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { applyNetworkPrefix } from "@/lib/metagraphed/client";
 import { getApiBase, onApiBaseChange, onNetworkChange } from "@/lib/metagraphed/config";
 import type { SseStatus } from "@/hooks/use-registry-events";
+import { usePageVisible } from "@/hooks/use-refetch-interval";
 
 export type { SseStatus };
+
+// #8365: after this many CONSECUTIVE `error` events on one connection
+// attempt (no intervening `open`), stop relying on EventSource's own native
+// auto-reconnect -- which keeps retrying quickly and indefinitely on its
+// own -- and take over reconnect scheduling ourselves on a much longer
+// cadence. Without this, a genuinely down/misconfigured endpoint has every
+// open tab hammering it in a tight retry loop forever; every consumer
+// already has its own polling fallback as the documented gap-cover (see
+// each `onEvent` call site's own `invalidateQueries`/`refetch`), so nothing
+// downstream depends on the stream itself recovering quickly.
+export const CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES = 3;
+export const CHAIN_STREAM_DOWNGRADE_RETRY_MS = 5 * 60_000;
 
 /** Tables the chain firehose can filter on via `?topics=` (#4980 / ADR 0015). */
 export const CHAIN_FIREHOSE_TOPICS = [
@@ -168,19 +181,33 @@ export function createChainStreamSession(deps: ChainStreamSessionDeps): {
   let es: ChainStreamSource | null = null;
   let disposed = false;
   let cancelPendingFlush: (() => void) | null = null;
+  // #8365: consecutive `error` events on the CURRENT connection attempt,
+  // reset to 0 by every explicit `connect()` call (mount, network/API-base
+  // change, or the downgrade retry below) -- each represents a fresh,
+  // deliberate attempt that deserves its own full run at the threshold
+  // rather than inheriting an unrelated prior sequence's count.
+  let consecutiveFailures = 0;
+  let downgradeRetryTimer: ReturnType<typeof setTimeout> | null = null;
   const set = (s: SseStatus) => {
     if (!disposed) deps.setStatus(s);
+  };
+
+  const clearDowngradeRetry = () => {
+    if (downgradeRetryTimer != null) clearTimeout(downgradeRetryTimer);
+    downgradeRetryTimer = null;
   };
 
   const teardown = () => {
     cancelPendingFlush?.();
     cancelPendingFlush = null;
+    clearDowngradeRetry();
     es?.close();
     es = null;
   };
 
   const connect = () => {
     teardown();
+    consecutiveFailures = 0;
     set("connecting");
     try {
       es = deps.openSource();
@@ -213,9 +240,31 @@ export function createChainStreamSession(deps: ChainStreamSessionDeps): {
     es.addEventListener("chain", handle);
     // Some proxies strip named SSE events into unnamed `message` frames.
     es.onmessage = handle;
-    es.addEventListener("open", () => set("open"));
-    // onerror: EventSource auto-reconnects; polling/manual refresh covers the gap.
-    es.addEventListener("error", () => set("error"));
+    es.addEventListener("open", () => {
+      consecutiveFailures = 0;
+      set("open");
+    });
+    es.addEventListener("error", () => {
+      set("error");
+      consecutiveFailures += 1;
+      if (consecutiveFailures < CHAIN_STREAM_DOWNGRADE_AFTER_FAILURES) {
+        // Under the threshold: EventSource's own native auto-reconnect
+        // handles this attempt, same as before -- nothing further to do.
+        return;
+      }
+      // At/over the threshold: close explicitly (stopping the native
+      // auto-reconnect this same `es` would otherwise keep attempting) and
+      // take over on a long, explicit cadence instead. `disposed` is
+      // rechecked inside the timer callback, not just guarded by
+      // clearDowngradeRetry() at teardown, because dispose()/a fresh
+      // connect() elsewhere could race a timer that's already about to fire.
+      es?.close();
+      es = null;
+      downgradeRetryTimer = setTimeout(() => {
+        downgradeRetryTimer = null;
+        if (!disposed) connect();
+      }, CHAIN_STREAM_DOWNGRADE_RETRY_MS);
+    });
   };
 
   const dispose = () => {
@@ -240,6 +289,16 @@ export interface UseChainStreamOptions {
   matches?: (payload: unknown) => boolean;
   /** Coalesce burst fanout from a busy block. Default 400ms. */
   debounceMs?: number;
+  /**
+   * #8365. Called when the tab regains visibility after this hook paused its
+   * connection while hidden -- never on first mount. The stream is fully
+   * torn down while hidden (not merely throttled), so anything that would
+   * have arrived in between was missed entirely; the caller's own refetch
+   * (the same one already backstopping a downgrade to polling) is what
+   * catches back up. Omit if the caller's existing poll/refetch cadence
+   * already covers this on its own.
+   */
+  onVisible?: () => void;
 }
 
 /**
@@ -257,14 +316,35 @@ export function useChainStream(options: UseChainStreamOptions = {}): {
   status: SseStatus;
   lastEventAt: string | null;
 } {
-  const { topics = ["chain_events"], enabled = true, onEvent, matches, debounceMs = 400 } = options;
+  const {
+    topics = ["chain_events"],
+    enabled = true,
+    onEvent,
+    matches,
+    debounceMs = 400,
+    onVisible,
+  } = options;
   const [status, setStatus] = useState<SseStatus>("idle");
   const [lastEventAt, setLastEventAt] = useState<string | null>(null);
 
   const onEventRef = useRef(onEvent);
   const matchesRef = useRef(matches);
+  const onVisibleRef = useRef(onVisible);
   onEventRef.current = onEvent;
   matchesRef.current = matches;
+  onVisibleRef.current = onVisible;
+
+  // #8365: pause the connection entirely while the tab is hidden (not merely
+  // throttled) -- there's no reader to show live updates to, so the socket
+  // is pure cost. `wasHiddenRef` records, at TEARDOWN time, whether that
+  // teardown happened because the tab went hidden (checked via live
+  // `document.hidden`, not the possibly-stale `visible` value this effect's
+  // own closure captured) -- distinguishing "paused for hidden" from every
+  // other reason this effect can tear down (unmount, `enabled` toggling
+  // off, a topic/debounce change). Only the former should make the NEXT
+  // connect fire `onVisible`.
+  const visible = usePageVisible();
+  const wasHiddenRef = useRef(false);
 
   // Serialize topics for a stable effect dep without requiring callers to
   // memoize the array literal.
@@ -273,6 +353,23 @@ export function useChainStream(options: UseChainStreamOptions = {}): {
   useEffect(() => {
     if (!enabled || typeof window === "undefined" || typeof EventSource === "undefined") {
       return;
+    }
+    if (!visible) {
+      // The connection this effect's own PREVIOUS run may have held is
+      // already torn down by that run's cleanup (React always runs the old
+      // cleanup before this new run, even though this body then does
+      // nothing) -- explicitly reflecting "idle" here is still necessary,
+      // because without it `status` would otherwise freeze at whatever it
+      // last was (possibly still "open"), which the LIVE chip would then
+      // truthfully-but-wrongly keep showing for a connection that no longer
+      // exists.
+      setStatus("idle");
+      return;
+    }
+
+    if (wasHiddenRef.current) {
+      wasHiddenRef.current = false;
+      onVisibleRef.current?.();
     }
 
     const topicList = topicsKey
@@ -295,8 +392,11 @@ export function useChainStream(options: UseChainStreamOptions = {}): {
       offNetwork();
       offApiBase();
       session.dispose();
+      if (typeof document !== "undefined" && document.hidden) {
+        wasHiddenRef.current = true;
+      }
     };
-  }, [enabled, topicsKey, debounceMs]);
+  }, [enabled, visible, topicsKey, debounceMs]);
 
   return { status, lastEventAt };
 }

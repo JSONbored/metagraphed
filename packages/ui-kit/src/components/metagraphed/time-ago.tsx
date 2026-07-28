@@ -4,6 +4,7 @@ import {
   formatRelative,
   isUsableTimestamp,
 } from "@/lib/format";
+import { useLiveTicker } from "./live-ticker-context";
 
 /** Absolute local-time tooltip for {@link TimeAgo}, gated like the visible relative text. */
 export function timeAgoAbsoluteTitle(at?: string | null): string | undefined {
@@ -34,6 +35,14 @@ export function timeAgoTickDelayMs(ageMs: number): number {
  * to re-render for an unrelated reason. Without this, a page whose data
  * only refreshes on a slow poll (or not at all after the initial load)
  * showed every age frozen at whatever it read on mount.
+ *
+ * #8365: when a {@link LiveTickerProvider} is an ancestor, this subscribes
+ * to that ONE shared clock instead of scheduling its own `setTimeout` --
+ * `useContext`'s own subscription re-renders this component on every shared
+ * tick, so the render body's fresh `formatRelative(at)` call is all that's
+ * needed; no per-instance timer to schedule at all. Falls back to the
+ * private adaptive timer below when no provider is present, which is the
+ * common case and is completely unchanged.
  */
 export function TimeAgo({
   at,
@@ -46,9 +55,11 @@ export function TimeAgo({
 }) {
   const [mounted, setMounted] = useState(false);
   const [, forceTick] = useState(0);
+  const sharedTicker = useLiveTicker();
+  const hasSharedTicker = sharedTicker !== null;
   useEffect(() => setMounted(true), []);
   useEffect(() => {
-    if (!mounted || !at) return undefined;
+    if (!mounted || !at || hasSharedTicker) return undefined;
     const ts = new Date(at).getTime();
     if (!Number.isFinite(ts)) return undefined;
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -63,7 +74,7 @@ export function TimeAgo({
     };
     schedule();
     return () => clearTimeout(timeoutId);
-  }, [mounted, at]);
+  }, [mounted, at, hasSharedTicker]);
   const text = !at ? fallback : mounted ? formatRelative(at) : "";
   return (
     <span
