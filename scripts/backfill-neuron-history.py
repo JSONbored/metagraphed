@@ -55,7 +55,7 @@ KEY_CHUNK = 50  # >100 keys/call hits a latency cliff; 50 is the measured sweet 
 API_BASE = os.environ.get("METAGRAPH_API_BASE", "https://api.metagraph.sh")
 # /api/v1/internal/backfill-neurons (D1-only) was deleted alongside D1's
 # neuron_daily table (#4772/#4908); this writes neuron_daily/
-# account_position_daily in Postgres instead (workers/data-api.mjs's
+# account_position_daily in Postgres instead (workers/data-api.ts's
 # handleNeuronDailyBackfill) via its own dedicated secret/header -- NOT
 # neurons-sync's (that route also touches the latest-only `neurons` table and
 # runs a deregistration prune, both wrong for a historical backfill).

@@ -177,7 +177,7 @@ export function partitionMismatches(mismatches: string[]): {
  * Renders the "revert, don't rebuild" message for deploy-owned artifact
  * mismatches. Resolves the revert command's remote via resolveBaseRemote so
  * fork contributors (origin = their fork, upstream = canonical) get
- * `upstream/main`, matching the same recommendation as build.mjs's local
+ * `upstream/main`, matching the same recommendation as build.ts's local
  * warning -- never a hardcoded `origin/main`, which is wrong on a fork.
  */
 export function buildDeployOwnedMismatchMessage(

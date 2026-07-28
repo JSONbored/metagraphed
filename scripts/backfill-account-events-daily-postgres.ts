@@ -1,6 +1,6 @@
 // One-time (idempotent, safe to re-run) backfill of Postgres's
 // account_events_daily rollup for the gap before Postgres's own hourly
-// rollup cron (workers/data-api.mjs's handleRollupAccountEventsDaily,
+// rollup cron (workers/data-api.ts's handleRollupAccountEventsDaily,
 // dispatched by the ACCOUNT_EVENTS_ROLLUP_CRON Worker-native cron --
 // formerly a dedicated GitHub Actions workflow, retired) started
 // writing on 2026-07-10. Commit 4c3dbbfe ("retire D1 chain-data write
@@ -238,7 +238,7 @@ function rowToTuple(row: Row): string {
 }
 
 // Mirrors handleRollupAccountEventsDaily's own ON CONFLICT clause
-// (workers/data-api.mjs) exactly -- same columns, same upsert shape --
+// (workers/data-api.ts) exactly -- same columns, same upsert shape --
 // just fed from D1's frozen rows instead of a fresh GROUP BY over
 // Postgres's own account_events.
 function buildUpsertStatements(rows: Row[], chunkSize: number): string[] {
@@ -301,7 +301,7 @@ async function applyDirect(
       const chunk = rows.slice(i, i + opts.chunkSize);
       // TABLE is a fixed in-repo constant, never user input -- inlined
       // directly (matching handleRollupAccountEventsDaily's own literal
-      // `INSERT INTO account_events_daily` in workers/data-api.mjs) rather
+      // `INSERT INTO account_events_daily` in workers/data-api.ts) rather
       // than routed through postgres.js's identifier helper.
       await sql`
         INSERT INTO account_events_daily ${sql(chunk, ...(INSERT_COLUMNS as ["hotkey", "netuid", "day", "event_count", "event_kinds", "first_block", "last_block", "updated_at"]))}

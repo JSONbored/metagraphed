@@ -25,7 +25,7 @@
 // card) -- a stale-but-valid card is always better than blocking the data
 // publish over a decorative image.
 //
-// Runs in build.mjs productionSteps after the final build-artifacts (which
+// Runs in build.ts productionSteps after the final build-artifacts (which
 // writes registry-summary.json to the R2 staging tree) and before r2-manifest
 // (which picks up this file from the same tree). Production-only, like its
 // sibling live-network steps -- local/PR builds skip it.

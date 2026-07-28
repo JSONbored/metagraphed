@@ -112,7 +112,7 @@ function compileResponseValidator(schema: unknown): ValidateFunction {
 
 // The chain-events routes proxy to the Postgres-backed data Worker (DATA_API
 // service binding). It's a separate Worker not present in this harness, so mock it
-// with the bare response shapes it serves (ADR 0013) — api.mjs rewraps them in the
+// with the bare response shapes it serves (ADR 0013) — api.ts rewraps them in the
 // canonical envelope, which is what the checks below assert.
 const baseEnv = createLocalArtifactEnv() as Row;
 const env = createLocalArtifactEnv({
@@ -1062,7 +1062,7 @@ const checks: [string, (body: Row) => void][] = [
     },
   ],
   [
-    // Postgres-backed all-events tier (ADR 0013): DATA_API is mocked above; api.mjs
+    // Postgres-backed all-events tier (ADR 0013): DATA_API is mocked above; api.ts
     // rewraps the bare body in the canonical envelope, so the data shape is asserted.
     "/api/v1/chain-events",
     (body) => {
@@ -1892,7 +1892,7 @@ for (const [route, assertion] of checks) {
 // "postgres", so the live Worker serves these routes via tryPostgresTier →
 // DATA_API. The cold harness above never sets those flags, so AJV only saw the
 // D1/empty fallback. Validate one representative route per flag with a DATA_API
-// mock whose body is built by the same src/* builders workers/data-api.mjs uses.
+// mock whose body is built by the same src/* builders workers/data-api.ts uses.
 {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const OBSERVED_AT_MS = 1_750_009_000_000;
@@ -2254,7 +2254,7 @@ assert.equal(
 // #358: surface verify-now endpoint. A valid-format but unknown surface_id 404s
 // at lookup, before any outbound probe, so this exercises routing + the error
 // envelope without a network call. The probe/mapping path is covered by
-// tests/surface-verify.test.mjs.
+// tests/surface-verify.test.ts.
 const verifyMissing = await handleRequest(
   new Request(
     "https://metagraph.sh/api/v1/surfaces/zzz-not-a-real-surface/verify",

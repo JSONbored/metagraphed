@@ -84,7 +84,7 @@ try {
   if (totalKib >= FAIL_KIB) {
     console.error(
       `Worker bundle ${totalKib.toFixed(1)} KiB exceeds the ${FAIL_KIB} KiB ` +
-        `budget. Trim the Worker entry (workers/api.mjs) or its dependencies ` +
+        `budget. Trim the Worker entry (workers/api.ts) or its dependencies ` +
         `before this reaches Cloudflare's 1024 KiB deploy limit.`,
     );
     process.exit(1);
