@@ -72,7 +72,7 @@ contract. No new authority, no new pipeline.
   `src/artifact-reader.mjs`. That cluster pulls in `readR2`/`readAsset`/
   `latestR2Key`/timeouts/logging and sits on the hot path; extracting it is a
   large, risky refactor for no functional gain. Instead `handleMcpRequest`
-  receives `{ readArtifact, readHealthKv }` from `workers/api.mjs`. Same reuse,
+  receives `{ readArtifact, readHealthKv }` from `workers/api.ts`. Same reuse,
   zero hot-path churn, and the MCP module is unit-testable with stub deps.
 - **Catalog/llms.txt as build artifacts, MCP as a wrapper.** Both reuse the
   generation and serving spine, inherit subset-commit discipline and the
@@ -91,7 +91,7 @@ contract. No new authority, no new pipeline.
   `serverInfo.version`), separate from the date-based `CONTRACT_VERSION` (#393):
   add a tool/additive field → minor; change/remove a tool's I/O → major;
   behavioral-only fix → patch. `validate:mcp` asserts it is SemVer.
-- `tests/mcp-server.test.mjs` unit-tests every tool and the JSON-RPC envelope
+- `tests/mcp-server.test.ts` unit-tests every tool and the JSON-RPC envelope
   (notifications, batch, parse/transport errors, isError degradation) under the
   ≥98%-line coverage gate.
 - `scripts/smoke-live-api.ts` exercises the live MCP handshake + a `tools/call`

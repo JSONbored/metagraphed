@@ -1,11 +1,11 @@
 # ADR 0021 — Account-gated fullnode RPC cluster access
 
 - **Status:** Accepted · implemented (2026-07-19, #6835): wallet-signature
-  login (`src/wallet-auth.mjs`), the `rpc_accounts` table + `api_keys.
+  login (`src/wallet-auth.ts`), the `rpc_accounts` table + `api_keys.
 account_id`, session-authed + invite-gated key mint/list/revoke
-  (`workers/data-api.mjs`), and the isolated `/rpc/v1/fullnode` proxy
-  (`workers/request-handlers/fullnode-rpc-proxy.mjs`, reusing
-  `rpc-proxy.mjs`'s scoring/failover machinery against a separate origin
+  (`workers/data-api.ts`), and the isolated `/rpc/v1/fullnode` proxy
+  (`workers/request-handlers/fullnode-rpc-proxy.ts`, reusing
+  `rpc-proxy.ts`'s scoring/failover machinery against a separate origin
   allowlist) all shipped in one PR. Network exposure (the actual Cloudflare
   Tunnel hostname) remains an infra prerequisite, tracked separately.
 - **Date:** 2026-07-19
@@ -19,7 +19,7 @@ Two RPC surfaces already exist and are explicitly **out of scope for this
 ADR**, kept separate on purpose:
 
 - `GET/POST /rpc/v1/*` — the existing public proxy (`workers/request-handlers/
-rpc-proxy.mjs`), a free, keyless, load-balanced-with-failover pool over
+rpc-proxy.ts`), a free, keyless, load-balanced-with-failover pool over
   **third-party** community RPC endpoints (`TRUSTED_RPC_UPSTREAM_ORIGINS`:
   `archive.chain.opentensor.ai`, OnFinality, Nodies, the two opentensor.ai
   entrypoints — confirmed live, none of them ours). This stays exactly as-is.
@@ -104,7 +104,7 @@ verify.js`) — a **pure-JS, audited implementation** ("Audited & minimal
   dependency for functions this doesn't need) generated an sr25519 keypair,
   signed a message, and verified both the valid signature (accepted) and a
   tampered one (correctly rejected) — no WASM instantiation, no
-  workerd-compatibility surprise of the kind `src/account-balance.mjs`'s
+  workerd-compatibility surprise of the kind `src/account-balance.ts`'s
   header warns about for `node:crypto`'s `blake2b512`. Implementation should
   add `@scure/sr25519` as an explicit direct dependency (currently only a
   transitive one via `apps/ui`'s `@polkadot/util-crypto`) rather than rely on
@@ -117,7 +117,7 @@ verify.js`) — a **pure-JS, audited implementation** ("Audited & minimal
 
 A new `rpc_accounts` table (`ss58 UNIQUE`, `tier`, `created_at`), reached the
 same way `api_keys`/`chain_alert_triggers` are — through
-`workers/data-api.mjs`'s Hyperdrive connection, never D1 (fully retired).
+`workers/data-api.ts`'s Hyperdrive connection, never D1 (fully retired).
 One account can hold multiple API keys (`api_keys.account_id` becomes a
 nullable foreign key — nullable because ADR 0020's own anonymous, contact-
 only keys keep working unchanged for the public API tier this ADR doesn't
@@ -133,7 +133,7 @@ Wallet-verified login alone would let anyone with a wallet complete sign-up
 — too open for the private-team phase. Gate the mint step (not login
 itself) behind a single shared invite code, checked the same way
 `ALERT_TRIGGER_CREATE_TOKEN` already gates `chain_alert_triggers` creation
-(`workers/data-api.mjs`'s `handleAlertTriggerCreate`, `timingSafeEqual`
+(`workers/data-api.ts`'s `handleAlertTriggerCreate`, `timingSafeEqual`
 against an `env`-provisioned secret) — a `wrangler secret put` value the
 owner hands to teammates out-of-band (Slack/email), never committed. Two
 properties this needs to preserve: (1) rotating/killing access for everyone
@@ -147,7 +147,7 @@ wallet verification, not instead of it.
 ### 4a. Evolution: named invite-code cohorts, not one shared secret (2026-07-19)
 
 The single shared invite code above generalized, in practice, to a short
-list of independently-provisioned codes (`workers/data-api.mjs`'s
+list of independently-provisioned codes (`workers/data-api.ts`'s
 `FULLNODE_INVITE_CODE_TIERS`), each mapping to a distinct `tier` stamped on
 any key minted with it — e.g. a separate code for an owner-designated
 partner cohort onboarding its own users, distinct from the original
@@ -155,7 +155,7 @@ private-team code. This preserves both properties section 4 required (a
 single rotation kills exactly one cohort's access, never the other's; each
 is still the "delete the check, keep everything else" relax-later
 mechanism) while adding per-cohort attribution and a per-cohort rate-limit
-policy (`workers/request-handlers/fullnode-rpc-proxy.mjs`'s
+policy (`workers/request-handlers/fullnode-rpc-proxy.ts`'s
 `FULLNODE_RPC_TIER_RATE_LIMITS`) instead of one flat figure for every
 minted key. Deliberately a short, explicit list — not a general
 multi-tenant invite-code registry — until a third cohort actually
@@ -169,12 +169,12 @@ relax happened as planned, but "everything else" changed alongside it: this
 became the freemium API epic (#6733/#6735/#6736), and the decision was to
 put Unkey (unkeyed/unkey) in as the actual key store rather than keep
 hand-rolling it. `src/api-keys.mjs` and the Postgres `secret_hash`-based
-half of `src/api-key-validation.mjs` (section 1's reuse) are retired;
-`src/unkey-client.mjs` mints/verifies/revokes every key now. Every
+half of `src/api-key-validation.ts` (section 1's reuse) are retired;
+`src/unkey-client.ts` mints/verifies/revokes every key now. Every
 wallet-connected account self-serves a key immediately at its account's
 current tier (`rpc_accounts.tier`, default `'free'`) — no invite code, no
 cohort selection at mint time. A cohort/tier change is now an ops action
-(`workers/data-api.mjs`'s `handleAccountTierPromote`, its own internal
+(`workers/data-api.ts`'s `handleAccountTierPromote`, its own internal
 secret) run manually after confirming out of band that an account should
 move up, rather than a code presented at mint time — the same "single
 rotation/promotion, never a per-key sweep" property section 4 required,
@@ -185,7 +185,7 @@ Section 4a's `FULLNODE_RPC_TIER_RATE_LIMITS` (Cloudflare-native, per-tier
 bindings) stays exactly as the enforcement mechanism, now keyed by
 `accountId` instead of the old locally-generated `prefix` (Unkey's key
 format has no separate public-prefix segment to key a cache/rate-limit by).
-See `src/unkey-client.mjs`'s own header comment for why a KV-cache-fronted
+See `src/unkey-client.ts`'s own header comment for why a KV-cache-fronted
 validator and Unkey's own rate-limit checking don't compose: caching a
 rate-limit verdict for the tens-of-minutes TTL this validator needs would
 let a burst get replayed as "still fine" for the whole window.
@@ -217,7 +217,7 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
 - **Real pool/failover architecture from day one (owner decision)**: rather
   than a single-origin proxy refactored into a pool once a second fullnode
   exists, the gated route reuses the SAME scoring/failover machinery
-  `workers/request-handlers/rpc-proxy.mjs` already runs in production for
+  `workers/request-handlers/rpc-proxy.ts` already runs in production for
   the public pool (origin health scoring, best→worst failover walk — see
   that file's own header) against a **separate, dedicated origin list**
   (starting with exactly one entry). This is genuinely lower-risk than it
@@ -268,7 +268,7 @@ here rather than silently expanded.
 - The gated route's failover machinery is shared code with the public
   `/rpc/v1` proxy (section 6) — a bug fix there benefits both; a bug
   introduced there risks both, so changes to
-  `workers/request-handlers/rpc-proxy.mjs`'s scoring/failover logic need
+  `workers/request-handlers/rpc-proxy.ts`'s scoring/failover logic need
   testing against both origin sets, not just the public one.
 
 ## Open questions
@@ -284,10 +284,10 @@ here rather than silently expanded.
 ## Resolved during implementation
 
 - **Session mechanism**: a stateless HMAC-signed bearer token
-  (`src/wallet-auth.mjs`'s `createSessionToken`/`verifySessionToken`, scoped
+  (`src/wallet-auth.ts`'s `createSessionToken`/`verifySessionToken`, scoped
   only to the key-management routes, 1h TTL) — no sessions table, no
   framework; picked over a signed cookie as the simpler correct option this
-  codebase's existing HMAC primitive (`src/webhooks.mjs`'s `signPayload`)
+  codebase's existing HMAC primitive (`src/webhooks.ts`'s `signPayload`)
   already supports.
 
 ## Links/resources
@@ -296,10 +296,10 @@ here rather than silently expanded.
   storage this ADR reuses unchanged)
 - `src/api-keys.mjs` (generateApiKey/hashApiKeySecret/isValidApiKeySecret/
   parseApiKey — already implemented, auth-method-agnostic)
-- `workers/request-handlers/rpc-proxy.mjs` /
-  `workers/config.mjs`'s `TRUSTED_RPC_UPSTREAM_ORIGINS` (the existing public
+- `workers/request-handlers/rpc-proxy.ts` /
+  `workers/config.ts`'s `TRUSTED_RPC_UPSTREAM_ORIGINS` (the existing public
   proxy this ADR does NOT touch)
-- `src/account-balance.mjs` (the precedent for rejecting a crypto primitive
+- `src/account-balance.ts` (the precedent for rejecting a crypto primitive
   after finding it doesn't actually work in workerd — `node:crypto`'s
   `blake2b512` — the same discipline the sr25519 open question needs)
 - taostats docs, researched live 2026-07-19: `docs.taostats.io/docs/

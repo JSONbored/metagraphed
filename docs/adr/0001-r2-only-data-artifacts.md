@@ -15,7 +15,7 @@ plus live enrichment (probes, adapter snapshots) are transformed by a
 reproducible build into a set of artifacts, served by one Cloudflare Worker from
 git static assets (ASSETS) and/or R2.
 
-Artifacts are classified by `src/artifact-storage.mjs` into:
+Artifacts are classified by `src/artifact-storage.ts` into:
 
 - **`dual`** — committed to git **and** uploaded to R2 (~22 files, ~5.2 MB).
 - **`r2`** — R2-only, gitignored (~1,250 detail files).
@@ -31,7 +31,7 @@ This created three coupled problems, all observed in production:
    community submission. Git size grows with data volume and contribution rate,
    not curation effort.
 2. **A fragile reproducibility gate.** Because data artifacts are committed,
-   `scripts/ci-verify-submitted-artifacts.mjs` runs `git diff --exit-code` on
+   `scripts/ci-verify-submitted-artifacts.ts` runs `git diff --exit-code` on
    them. Run mid-`pipeline:refresh` (before the workflow commits), it
    self-fails the sync job whenever a refresh changes a diff-checked artifact.
 3. **A freshness/merge race.** The publish gate requires fresh probe-derived
@@ -93,7 +93,7 @@ the published, versioned R2 evidence-ledger** — a cleaner provenance story.
 2. ✅ **R2-only data** (#206, #209) — reclassified ~4.3 MB of high-churn data
    (`surfaces`, `evidence-ledger`, `search`, `profiles`, `curation`, `gaps`,
    `providers`, `freshness`, `schema-drift`, `review/*`) from dual → r2 in
-   `artifact-storage.mjs`; `git rm`'d the committed copies; the Worker serves
+   `artifact-storage.ts`; `git rm`'d the committed copies; the Worker serves
    them R2-first via the existing tier system. Blocking readers made tier-aware
    (`kv-publish-pointer` via `artifactFilePath`); `validate.yml` excludes
    deletions from ci-verify (`--diff-filter=d`); the `gitBuffer` exit-128 crash

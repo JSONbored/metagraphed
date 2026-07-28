@@ -97,9 +97,9 @@ Concretely:
   `workflow_dispatch`-only for manual backfill. This removes 100% of the
   recurring git churn in one change. No hard publish gate depends on the
   committed native snapshot's freshness — the only hard gate
-  (`assert-published-probe-health.mjs`) checks _probe_ freshness, and the publish
+  (`assert-published-probe-health.ts`) checks _probe_ freshness, and the publish
   build re-snapshots adapters itself "so the freshness gate never depends on a
-  recently-merged sync PR" (`build.mjs` productionSteps).
+  recently-merged sync PR" (`build.ts` productionSteps).
 - **New-subnet and chain-identity discovery moves into the publish refresh**
   (machine data → R2/D1), surfaced through the change-feed / webhooks /
   candidates API — not a git diff. Cadence becomes a free knob (R2 overwrites

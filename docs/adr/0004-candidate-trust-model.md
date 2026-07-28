@@ -17,7 +17,7 @@ URLs enter the system from progressively less-trusted sources:
 1. **Native chain identity** (`SubnetIdentitiesV3`: `subnet_url`, `github_repo`,
    `discord`, `logo_url`) — set by whoever controls the subnet's hotkey.
    Permissionless and attacker-controllable, on both mainnet and testnet.
-2. **Public discovery** (`scripts/discover-candidates.mjs`) — harvested from the
+2. **Public discovery** (`scripts/discover-candidates.ts`) — harvested from the
    chain identity above plus README links and third-party directories
    (taostats, taomarketcap, subnetradar, tensorplex docs).
 3. **Community intake** — UGC submissions under `registry/candidates/community/`.
