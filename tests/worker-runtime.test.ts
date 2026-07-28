@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
-import worker, { handleRequest } from "../workers/api.ts";
+import worker, { handleRequest, recordApiKeyUsage } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { jsonBody, type Row } from "./row-type.ts";
 
@@ -128,6 +128,73 @@ describe("Worker runtime", () => {
     assert.equal(anonymousLimiterCalls, 0);
     await Promise.all(waited);
     assert.equal(usageIncrementCalls, 1);
+  });
+
+  test("recordApiKeyUsage: no-ops when the DATA_API binding is absent", () => {
+    const waited: Promise<unknown>[] = [];
+    recordApiKeyUsage(
+      { API_KEY_LOOKUP_INTERNAL_TOKEN: "t" } as unknown as Env,
+      { waitUntil: (p) => waited.push(p) },
+      "42",
+      "chain-events",
+    );
+    assert.equal(waited.length, 0);
+  });
+
+  test("recordApiKeyUsage: no-ops when API_KEY_LOOKUP_INTERNAL_TOKEN is absent", () => {
+    const waited: Promise<unknown>[] = [];
+    recordApiKeyUsage(
+      { DATA_API: { fetch: async () => new Response("{}") } } as unknown as Env,
+      { waitUntil: (p) => waited.push(p) },
+      "42",
+      "chain-events",
+    );
+    assert.equal(waited.length, 0);
+  });
+
+  test("recordApiKeyUsage: fires the internal usage call via ctx.waitUntil when both are present", async () => {
+    let fetchCalls = 0;
+    const waited: Promise<unknown>[] = [];
+    recordApiKeyUsage(
+      {
+        DATA_API: {
+          fetch: async (req: Request) => {
+            fetchCalls += 1;
+            assert.equal(
+              new URL(req.url).pathname,
+              "/api/v1/internal/keys/usage",
+            );
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+        API_KEY_LOOKUP_INTERNAL_TOKEN: "t",
+      } as unknown as Env,
+      { waitUntil: (p) => waited.push(p) },
+      "42",
+      "chain-events",
+    );
+    assert.equal(waited.length, 1);
+    await Promise.all(waited);
+    assert.equal(fetchCalls, 1);
+  });
+
+  test("recordApiKeyUsage: fires the call directly (no waitUntil) when ctx is undefined", () => {
+    let fetchCalls = 0;
+    recordApiKeyUsage(
+      {
+        DATA_API: {
+          fetch: async () => {
+            fetchCalls += 1;
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+        API_KEY_LOOKUP_INTERNAL_TOKEN: "t",
+      } as unknown as Env,
+      undefined,
+      "42",
+      "chain-events",
+    );
+    assert.equal(fetchCalls, 1);
   });
 
   test("rewraps the DATA_API chain-events body in the canonical envelope", async () => {

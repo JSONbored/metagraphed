@@ -440,7 +440,7 @@ const DATA_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
 // (#8386) -- via ctx.waitUntil so it never adds latency to the response that
 // triggered it, and swallows its own failure (a usage-counter miss must
 // never surface as an error on the actual API call).
-function recordApiKeyUsage(
+export function recordApiKeyUsage(
   env: Env,
   ctx: Ctx | undefined,
   accountId: string,

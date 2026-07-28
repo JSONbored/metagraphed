@@ -916,6 +916,15 @@ test("internal key usage: 400 when account_id or route is missing", async () => 
     env,
   );
   assert.equal(noRoute.status, 400);
+  const noAccountId = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { route: "chain-events" },
+    }),
+    env,
+  );
+  assert.equal(noAccountId.status, 400);
 });
 
 test("internal key usage: 200 and upserts the daily counter", async () => {
