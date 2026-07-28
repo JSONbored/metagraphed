@@ -43,7 +43,7 @@ contract. No new authority, no new pipeline.
    (OpenAPI, agent catalog, MCP).
 
 3. **Remote MCP server** (AI-2). `POST /mcp` is a **stateless** Model Context
-   Protocol server (Streamable HTTP, JSON-RPC 2.0) in `src/mcp-server.mjs`. It
+   Protocol server (Streamable HTTP, JSON-RPC 2.0) in `src/mcp-server.ts`. It
    exposes thirteen read-only tools (`search_subnets`,
    `find_subnets_by_capability`, `get_subnet`, `get_subnet_health`,
    `list_subnet_apis`, `get_api_schema`, `get_agent_catalog`,
@@ -109,7 +109,7 @@ contract. No new authority, no new pipeline.
 
 ## AI-3 — semantic search + `/ask`
 
-`GET /api/v1/search/semantic` and `POST /api/v1/ask` (`src/ai-search.mjs`) are
+`GET /api/v1/search/semantic` and `POST /api/v1/ask` (`src/ai-search.ts`) are
 the only pieces that need new bindings (`AI` + `VECTORIZE`). They are
 **out-of-contract dynamic routes** — special-handled like `/api/v1/events`, not
 in `API_ROUTES`/OpenAPI/the `validate-api` count invariant — so the contract

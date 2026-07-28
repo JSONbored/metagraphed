@@ -8,9 +8,9 @@
 // The incidents source is injected as `deps.loadIncidents(ctx)` rather than
 // read here directly -- get_global_incidents already sources the identical
 // cross-subnet incident ledger via the MCP module's own deps-injected
-// observed_at (mcp-server.mjs's mcpObservedAt), and this reuses that exact
+// observed_at (mcp-server.ts's mcpObservedAt), and this reuses that exact
 // wiring instead of a second path that would bypass the module's
-// injected-KV convention (see mcp-server.mjs's header comment).
+// injected-KV convention (see mcp-server.ts's header comment).
 
 import { z } from "zod";
 import {

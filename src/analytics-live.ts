@@ -396,7 +396,7 @@ export async function loadCompareSubnets({
 // buildChainFees([...]) / buildChainActivity([...]) (all still exported from
 // ./chain-analytics.ts), never D1. See workers/request-handlers/analytics.mjs's
 // handleChainCalls / handleChainFees / handleChainActivity and
-// src/mcp-server.mjs's get_chain_calls tool for the call sites.
+// src/mcp-server.ts's get_chain_calls tool for the call sites.
 
 export function parseAnalyticsWindow(
   window: unknown,

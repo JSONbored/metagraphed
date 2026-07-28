@@ -168,4 +168,4 @@ export function buildChainTransferPairs({
 // account_events Transfer stream) was removed here -- that D1 write path is
 // retired and the `account_events` table is dropped in production, so a live D1
 // query would always miss. Serving now goes tryPostgresTier -> buildChainTransferPairs({}),
-// never D1. See src/mcp-server.mjs's get_chain_transfer_pairs tool for the call site.
+// never D1. See src/mcp-server.ts's get_chain_transfer_pairs tool for the call site.

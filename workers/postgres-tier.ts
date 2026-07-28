@@ -20,7 +20,7 @@ import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 // client-facing error.
 //
 // Extracted from workers/request-handlers/entities.mjs (#4668/#4686) into this
-// neutral module so src/mcp-server.mjs (#4694) can share the identical
+// neutral module so src/mcp-server.ts (#4694) can share the identical
 // contract without importing a route-handler file or duplicating the fallback
 // logic -- REST's handleBlocks/handleExtrinsics and MCP's list_extrinsics/
 // get_extrinsic all call this same function.

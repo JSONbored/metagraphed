@@ -153,7 +153,7 @@ WebSocket connection and only rejects a _duplicate_ operation id, never a
 total count, so the WS connection cap alone doesn't bound subscription count
 -- a single connection could otherwise open unboundedly many subscriptions,
 each one costing a real `execute()`+`send()` on every future `broadcast()`.
-`subscribeChainEvents` returns `null` at the cap; `src/graphql.mjs`'s
+`subscribeChainEvents` returns `null` at the cap; `src/graphql.ts`'s
 resolver turns that into a clear `GraphQLError` rather than hanging the
 client on a stream that will never yield.
 
@@ -195,7 +195,7 @@ routing/auth boundary (mirroring the existing `*-sync-proxy` test shape).
 ## GraphQL subscriptions (#4983, live)
 
 `Subscription.chainEvents(tables: [ChainFirehoseTable!]): ChainEvent!`
-(`src/graphql.mjs`) is a thin protocol adapter over this SAME hub, not a
+(`src/graphql.ts`) is a thin protocol adapter over this SAME hub, not a
 second event pipeline -- exactly like SSE/WS are. Reached over WebSocket at
 the SAME `/api/v1/graphql` path the existing POST query layer uses,
 negotiated via `Sec-WebSocket-Protocol: graphql-transport-ws`
@@ -247,7 +247,7 @@ client can subscribe to per the MCP resource-subscription spec
 (`resources/subscribe` + `notifications/resources/updated`). Unlike GraphQL
 subscriptions above, this is deliberately NOT another population on
 `ChainFirehoseHub` -- it is a separate Durable Object, `McpSessionHub`
-(`workers/mcp-session-hub.mjs`), one instance per `Mcp-Session-Id`. See that
+(`workers/mcp-session-hub.ts`), one instance per `Mcp-Session-Id`. See that
 file's own header comment for the full reasoning; in short: MCP's
 `resources/subscribe` is a one-shot POST, while the actual push channel is a
 separate, reconnect-tolerant GET correlated by session id -- a different
@@ -262,7 +262,7 @@ session DO never blocks ingest).
 **Transport**: MCP's ratified transport (2025-06-18 spec) is Streamable
 HTTP -- POST for JSON-RPC, plus an optional GET for a standalone SSE push
 stream -- not WebSocket (no ratified WS transport exists as of this writing).
-`handleMcpRequest` (`src/mcp-server.mjs`) now branches on method: POST is the
+`handleMcpRequest` (`src/mcp-server.ts`) now branches on method: POST is the
 pre-existing stateless JSON-RPC path (unaffected for every method other than
 `resources/subscribe`/`resources/unsubscribe`); GET forwards to the session's
 `McpSessionHub` `/stream` route; DELETE forwards to `/terminate` for explicit
@@ -286,7 +286,7 @@ of how many events fired in between). A session with no subscribe/stream/
 touch activity for `MCP_SESSION_IDLE_TTL_MS` (30 minutes) self-terminates via
 a Durable Object alarm.
 
-Both `workers/mcp-session-hub.mjs` and the `src/mcp-server.mjs` additions are
+Both `workers/mcp-session-hub.ts` and the `src/mcp-server.ts` additions are
 unit-tested at effectively 100% (no `WebSocketPair`-shaped code here, unlike
 `ChainFirehoseHub` -- `state.storage` is a plain async KV API and
 `ReadableStream` is a real Web Streams API under Node/vitest), and
