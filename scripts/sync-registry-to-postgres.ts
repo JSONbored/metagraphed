@@ -17,7 +17,7 @@
 // the already-reviewed file — the write path a contributor's credentials
 // never reach. There is no Tailscale, SSH, or direct network path from the
 // caller to the database at all: this script POSTs to the registry-sync
-// Worker over HTTPS (see workers/registry-sync-api.mjs); the database itself
+// Worker over HTTPS (see workers/registry-sync-api.ts); the database itself
 // stays exactly as private as it already was.
 //
 // Called by the box-side registry-sync-fast job (see

@@ -170,9 +170,9 @@ def main():
     # Same SUBTENSOR_RPC_URL convention as fetch-metagraph-native.py (ADR 0012):
     # unset -> "finney", set -> route through our own node without exposing it.
     # This was the last chain-fetch script still hardcoded to the public
-    # "finney" alias -- callers are refresh-native-snapshot.mjs (production
+    # "finney" alias -- callers are refresh-native-snapshot.ts (production
     # publish + the indexer-box data-refresh-economics systemd timer) and
-    # sync-subnets.yml via scripts/sync-subnets.mjs's fetchNativeSnapshot().
+    # sync-subnets.yml via scripts/sync-subnets.ts's fetchNativeSnapshot().
     parser.add_argument(
         "--network", default=os.environ.get("SUBTENSOR_RPC_URL") or "finney"
     )

@@ -1,7 +1,7 @@
 // #1000 — Cold-start committed-seed gate.
 //
 // On an R2 cold start — and on any clean checkout — the Worker serves the
-// COMMITTED public/ seed (the DUAL-tier artifacts in src/artifact-storage.mjs).
+// COMMITTED public/ seed (the DUAL-tier artifacts in src/artifact-storage.ts).
 // That seed is only refreshed by a manual `npm run build` + commit, so a
 // schema/contract change that lands WITHOUT the seed refresh ships a seed that
 // no longer satisfies the contract. #356 did exactly this (added the required

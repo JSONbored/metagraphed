@@ -12,7 +12,7 @@
 // candidates/verification stay intact and the build proceeds (the >24h freshness
 // gate is the backstop, exactly as for the native snapshot in #598). The native
 // snapshot must already be refreshed first (discover-candidates reads it), so
-// this runs AFTER the native-snapshot step in build.mjs productionSteps.
+// this runs AFTER the native-snapshot step in build.ts productionSteps.
 // Production-only; local/PR builds use the committed candidates/verification.
 import { spawnSync } from "node:child_process";
 import { stableStringify } from "./lib.ts";
