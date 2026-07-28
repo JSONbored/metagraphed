@@ -20,11 +20,11 @@
 // exchange `code` for a GitHub access token, fetch the GitHub user, upsert
 // a `github_accounts` row via the DATA_API service binding (only that
 // Worker holds the Postgres/Hyperdrive binding -- mirrors
-// handleWalletVerify's shape in workers/data-api.mjs), then call
+// handleWalletVerify's shape in workers/data-api.ts), then call
 // OAuthHelpers.completeAuthorization to mint OUR OWN grant/token for the
 // original MCP client and redirect the browser back to it.
 // completeAuthorization can only be called from THIS Worker (it needs
-// OAUTH_KV, which workers/data-api.mjs does not bind) -- the DATA_API hop
+// OAUTH_KV, which workers/data-api.ts does not bind) -- the DATA_API hop
 // is scoped to exactly the one Postgres write, nothing else.
 //
 // @cloudflare/workers-oauth-provider's real runtime file has a top-level
@@ -32,8 +32,8 @@
 // node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
 // directly, not just its .d.ts) -- that protocol only exists inside the
 // real Workers runtime, so a STATIC import of this package anywhere in
-// workers/api.mjs's module graph would break every one of its ~90+ existing
-// plain-Node vitest tests the moment api.mjs itself is imported, regardless
+// workers/api.ts's module graph would break every one of its ~90+ existing
+// plain-Node vitest tests the moment api.ts itself is imported, regardless
 // of whether those tests ever touch OAuth. getOAuthApi() is therefore never
 // imported at module scope here -- only lazily, inside
 // defaultGetOAuthHelpers below, via dynamic import() (deferred until
@@ -67,7 +67,7 @@ export const OAUTH_PENDING_TTL_SECONDS = 300;
 const OAUTH_PENDING_KV_PREFIX = "oauth-pending:";
 
 // Exported so its trivial, deterministic behavior is directly testable
-// (see tests/github-oauth.test.mjs) even though production code never
+// (see tests/github-oauth.test.ts) even though production code never
 // actually invokes it -- getOAuthApi() reads options.defaultHandler's
 // presence but never calls .fetch() on it, only the real OAuthProvider
 // instance in workers/api.entry.ts does that, with the REAL handler.

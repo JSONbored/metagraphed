@@ -10,7 +10,7 @@
 // alike.
 //
 // Deliberately NOT handled here (separate, sibling concerns):
-// - AccountId32/MultiAddress::Id (#4688, src/ss58.mjs) and raw byte blobs
+// - AccountId32/MultiAddress::Id (#4688, src/ss58.ts) and raw byte blobs
 //   (#4689) are BOTH also "an array wrapping another array" -- this module's
 //   newtype-scalar rule only fires when the wrapped element is a plain
 //   SCALAR, never an array/object, so it never races with either of those.

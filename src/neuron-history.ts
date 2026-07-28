@@ -58,7 +58,7 @@ function toIso(ms: unknown): string | null {
 // negative. D1 can return COUNT/SUM aggregates as numeric strings, so a bare
 // `r.neuron_count ?? null` would leak the string into the subnet-history
 // payload (breaking the ["integer","null"] contract). Mirrors toBlockNumber in
-// blocks.mjs / account-events.mjs.
+// blocks.ts / account-events.ts.
 function toNonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;

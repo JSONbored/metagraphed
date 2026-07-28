@@ -40,7 +40,7 @@ const BURN_STORAGE_KEY_PREFIX =
 // netuid (0..65535) as a u16, little-endian, 2 hex bytes — the Identity-hashed
 // map-key suffix appended to the fixed prefix above. Same shape as subnet-
 // recycled.mjs's own helper, duplicated rather than imported (self-contained
-// file convention this codebase already uses for account-balance.mjs/
+// file convention this codebase already uses for account-balance.ts/
 // sudo-key.ts's own decode helpers).
 function netuidStorageKeySuffix(netuid: number): string {
   const lo = (netuid % 256).toString(16).padStart(2, "0");

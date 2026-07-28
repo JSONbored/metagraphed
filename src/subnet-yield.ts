@@ -48,7 +48,7 @@ function nullableTao(value: unknown): number | null {
 // plain `+=` float accumulation compounds rounding error across the sum even when
 // each individual value is itself exact (metagraphed#2922, the per-subnet analog of
 // the network-wide chain-yield fix in #2933; mirrors the toRao pattern proven in
-// src/account-balance.mjs for #2070). Convert back to TAO only once, at the end.
+// src/account-balance.ts for #2070). Convert back to TAO only once, at the end.
 // Callers always pass an already-finite toNumber() result, so no isFinite guard here.
 function toRaoBig(tao: number): bigint {
   return BigInt(Math.round(tao * 1e9));

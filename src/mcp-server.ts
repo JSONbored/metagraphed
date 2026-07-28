@@ -1829,7 +1829,7 @@ async function resolveArtifactSurfaceId(ctx: McpCtx, surfaceId: string) {
 // Freshest live operational snapshot (KV health:current → Postgres tier
 // surface_status), so MCP tools serve live health like the REST routes do —
 // never a build-time value. Returns null when no live source is available
-// (caller renders `unknown`). Mirrors workers/api.mjs liveHealthOverlay.
+// (caller renders `unknown`). Mirrors workers/api.ts liveHealthOverlay.
 function mcpLiveHealth(ctx: McpCtx) {
   return resolveLiveHealth({ readHealthKv: ctx.readHealthKv, env: ctx.env });
 }
@@ -1844,7 +1844,7 @@ function mcpContractVersion(ctx: McpCtx) {
 // DATA_API via tryPostgresTier (#4694) -- MCP tool handlers receive
 // structured args, not an inbound Request the way REST's handleExtrinsics
 // does, so this reconstructs the identical query-string shape
-// workers/data-api.mjs's extrinsics routes parse. The host in the URL is
+// workers/data-api.ts's extrinsics routes parse. The host in the URL is
 // never dispatched to (DATA_API.fetch resolves the binding directly, the
 // same convention src/data-api-mcp.ts's dataApiFetchJson already uses).
 function mcpExtrinsicsListRequest(args: Row) {
@@ -1880,7 +1880,7 @@ function mcpExtrinsicsListRequest(args: Row) {
 // extrinsics-feed variants (get_sudo -> /api/v1/sudo, call_module=Sudo;
 // get_governance_config_changes -> /api/v1/governance/config-changes,
 // call_module=AdminUtils) -- same query-string shape as
-// mcpExtrinsicsListRequest MINUS signer/call_module (workers/data-api.mjs
+// mcpExtrinsicsListRequest MINUS signer/call_module (workers/data-api.ts
 // derives call_module from the pathname itself for these two routes, not a
 // query param -- see its PATH_TO_CALL_MODULE-style mapping), so passing the
 // correct fixed pathname is what selects the filter, nothing else needed.
@@ -1915,7 +1915,7 @@ function mcpExtrinsicDetailRequest(ref: string) {
 // Synthetic GET /api/v1/subnets/{netuid}/identity-history{...} request,
 // forwarded UNCHANGED to DATA_API via tryPostgresTier -- mirrors REST's
 // handleSubnetIdentityHistory, which parses the identical limit/offset/cursor
-// query-string shape (workers/data-api.mjs's subnetIdentityHistory route),
+// query-string shape (workers/data-api.ts's subnetIdentityHistory route),
 // same METAGRAPH_SUBNET_IDENTITY_SOURCE flag, so get_subnet_identity_history
 // and GET /api/v1/subnets/{netuid}/identity-history never diverge on which
 // tier answered.
@@ -1959,7 +1959,7 @@ function mcpAccountIdentityRequest(ss58: string) {
 // Synthetic GET request for the neurons-tier chain-*/subnet-* analytics
 // family (concentration, performance, yield, turnover, movers + their
 // history variants) -- every one of these routes is gated on the SAME
-// METAGRAPH_NEURONS_SOURCE flag (entities.mjs's handleSubnetConcentration
+// METAGRAPH_NEURONS_SOURCE flag (entities.ts's handleSubnetConcentration
 // et al. all call tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")),
 // so one shared pathname+params builder covers all of them.
 function mcpNeuronsTierRequest(pathname: string, params: Row = {}) {
@@ -1971,7 +1971,7 @@ function mcpNeuronsTierRequest(pathname: string, params: Row = {}) {
   return new Request(`https://d${pathname}${q ? `?${q}` : ""}`);
 }
 
-// Delivery health for get_webhook_subscription -- mirrors workers/api.mjs's
+// Delivery health for get_webhook_subscription -- mirrors workers/api.ts's
 // readDeliveryStatus (the same helper the public GET /api/v1/webhooks/
 // subscriptions/{id} route uses), best-effort: a list/get hiccup or a store
 // without `list` (local dev KV mock) degrades to "ok" rather than failing
@@ -2091,7 +2091,7 @@ async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
   };
 }
 
-// Mirrors loadSubnetOwnershipHistory above (#6638): the data-api.mjs route
+// Mirrors loadSubnetOwnershipHistory above (#6638): the data-api.ts route
 // already does both the subnet_locks read AND the live UnlockRate/
 // MaturityRate RPC lookup and returns the fully-rolled-forward result, so
 // this just proxies -- no duplicate logic here.
@@ -2656,7 +2656,7 @@ function requireHotkey(args: Row) {
 }
 
 // compare_validators' hotkey-list cap + validation (COMPARE_VALIDATORS_MAX,
-// parseCompareHotkeyList) now live in analytics-live.mjs (#6325), shared with
+// parseCompareHotkeyList) now live in analytics-live.ts (#6325), shared with
 // the GET /api/v1/compare/validators REST route's own query-string parser --
 // one hotkey-list contract for both surfaces, mirroring how
 // parseCompareNetuidList/parseCompareNetuids are already shared for
@@ -2671,7 +2671,7 @@ function clampLimit(value: unknown, fallback: number, max: number) {
   // 1. tools/call does not enforce the inputSchema `minimum`, so an explicit
   // limit:0 reaches here; `Math.max(1, …)` would return a single result, which
   // reads to an agent as "this registry knows one subnet" (see the same fix in
-  // src/ai-search.mjs).
+  // src/ai-search.ts).
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
@@ -2688,7 +2688,7 @@ function resolveCursor(args: Row) {
 }
 
 // Cursor-window an already-filtered/ranked row set through the shared list-query
-// machinery (workers/list-query.mjs) so every MCP list/search tool hands back the
+// machinery (workers/list-query.ts) so every MCP list/search tool hands back the
 // same `cursor` / `next_cursor` continuation contract its REST sibling does,
 // replacing the bespoke `offset` / `next_offset` scheme these tools carried. The
 // rows arrive pre-ordered by the caller and are passed under the collection's
@@ -2804,7 +2804,7 @@ export function sortSubnets(rows: Row[], field: string, order: unknown) {
       return av === null ? 1 : -1;
     }
     // Numeric fields subtract; the string field (name) compares lexically. This
-    // mirrors compareValues in workers/list-query.mjs (bare localeCompare), the
+    // mirrors compareValues in workers/list-query.ts (bare localeCompare), the
     // shared sort convention for the REST list endpoints.
     const cmp =
       typeof av === "number"
@@ -2816,7 +2816,7 @@ export function sortSubnets(rows: Row[], field: string, order: unknown) {
 
 // Inclusive numeric range bounds list_subnets accepts, each mapping a `min_`/
 // `max_` arg to a numeric row field — the MCP mirror of the REST list endpoint's
-// `range_filters` (contracts.mjs), generalizing the original one-off `min_readiness`
+// `range_filters` (contracts.ts), generalizing the original one-off `min_readiness`
 // into symmetric min/max bounds over every numeric field the tool exposes. The
 // `readiness` alias is kept for `integration_readiness` so existing `min_readiness`
 // callers are unaffected.
@@ -2843,7 +2843,7 @@ const LIST_SUBNETS_RANGE_BOUNDS = [
 
 // Drop rows outside any requested inclusive bound. A row whose field is absent or
 // non-numeric cannot satisfy a bound, so it is excluded once any bound on that
-// field is set — identical to rangeFilterRows in workers/list-query.mjs. Only
+// field is set — identical to rangeFilterRows in workers/list-query.ts. Only
 // finite numeric args count (tools/call does not enforce inputSchema types).
 export function rangeFilterSubnets(rows: Row[], args: Row) {
   const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
@@ -5742,7 +5742,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "Argument `coldkey` must be a valid SS58 account address (base58, 47-48 chars).",
         );
       }
-      // The DATA_API route (workers/data-api.mjs) wraps its response as
+      // The DATA_API route (workers/data-api.ts) wraps its response as
       // { data, generatedAt } -- unlike the flat-shaped neurons-tier routes
       // mcpNeuronsTierRequest's other callers hit, this one needs its own
       // .data unwrap or a live-Postgres response would violate this tool's
@@ -6297,7 +6297,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ?? buildAccountSummary(ss58, {});
       // Community-contributable entity labels (#6739), same REST-parity join
-      // as workers/request-handlers/entities.mjs's own handleAccount.
+      // as workers/request-handlers/entities.ts's own handleAccount.
       const entitiesArtifact = (await ctx.readArtifact!(
         ctx.env,
         ENTITY_LABELS_ARTIFACT,
@@ -6827,7 +6827,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   // yet wired to Postgres -- each still calls its builder unconditionally with an
   // empty D1 result (account_events' D1 write path is retired, #4772), taking an
   // unused _ctx. When one of these gets wired: its DATA_API route in
-  // workers/data-api.mjs returns json({ data: builder(...), generatedAt }), the
+  // workers/data-api.ts returns json({ data: builder(...), generatedAt }), the
   // SAME wrapped shape get_validator_nominators's own DATA_API route uses (see
   // that tool's handler, above) -- not the flat shape the neurons-tier routes
   // mcpNeuronsTierRequest's other callers hit. Wiring one of these with a bare
@@ -7503,7 +7503,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlockExtrinsics, which destructures `{ data }` from
-      // tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/extrinsics
+      // tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/extrinsics
       // route returns `json({ data: buildBlockExtrinsics(...) })`, not a flat
       // buildBlockExtrinsics(...) body like the sibling account-extrinsics route.
       const { data } = (await tryPostgresTier(
@@ -7542,7 +7542,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       // Mirrors REST's handleBlockEvents, which destructures `{ data }` from
-      // tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/events
+      // tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/events
       // route returns `json({ data: buildBlockEvents(...) })`, not a flat
       // buildBlockEvents(...) body like the sibling account-events routes.
       const { data } = (await tryPostgresTier(
@@ -8514,7 +8514,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const limit = optionalPositiveInt(args, "limit");
       const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
       let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
-      // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
+      // Live per-endpoint health overlay (mirrors workers/api.ts's raw-
       // artifact serving path): the build-time endpoints.json bakes stale
       // operational health, so replace it from the 15-minute cron snapshot
       // before filtering/sorting -- status/pool_eligible filters below (and
@@ -11119,7 +11119,7 @@ function resourceArtifactPath(uri: string) {
 }
 
 // The one live (non-artifact-backed) resource: reads ChainFirehoseHub's own
-// in-memory latestPayload (workers/chain-firehose-hub.mjs's broadcast())
+// in-memory latestPayload (workers/chain-firehose-hub.ts's broadcast())
 // directly -- there is no R2/ASSETS artifact for this resource, so
 // loadArtifactData never applies to it. Degrades to an explicit "no events
 // observed yet" placeholder rather than erroring if the firehose is cold
@@ -11891,7 +11891,7 @@ function bodyTooLargeResponse() {
 // public and unauthenticated, rate-limited by IP only -- rate limiting
 // throttles request COUNT, not a single request's body size), so the
 // declared length can only ever be a fast-path optimization, never the
-// actual enforcement. Mirrors src/graphql.mjs's readLimitedJson (same
+// actual enforcement. Mirrors src/graphql.ts's readLimitedJson (same
 // vulnerability class, already fixed there) -- kept as its own copy rather
 // than a shared helper since the two files' error-response shapes
 // (JSON-RPC vs GraphQL) differ enough that a shared abstraction would need
@@ -12085,7 +12085,7 @@ async function handleMcpTerminateRequest(request: Request, env: Env) {
 }
 
 // Entry point wired into the Worker at `/mcp`. `deps` injects the shared
-// artifact/KV readers from workers/api.mjs. POST carries the stateless
+// artifact/KV readers from workers/api.ts. POST carries the stateless
 // JSON-RPC 2.0 envelope; GET opens the SSE push stream; DELETE terminates a
 // session (see the two handlers above for both).
 export async function handleMcpRequest(

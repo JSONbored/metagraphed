@@ -12,7 +12,7 @@
 // computing open/close with SQL array_agg/window-function tricks: the hard
 // bucketing/OHLC math happens in JS, so it's unit-testable without a database,
 // and the SQL stays a plain filtered `SELECT ... ORDER BY observed_at ASC`
-// (see workers/data-api.mjs's /ohlc block). Null-safe: a cold store or an
+// (see workers/data-api.ts's /ohlc block). Null-safe: a cold store or an
 // empty window yields a schema-stable empty candle array (never throws),
 // matching the sibling live tiers (alpha-volume, stake-flow).
 //
@@ -54,8 +54,8 @@ export const OHLC_INTERVAL_DEFAULT = "1h";
 // Default account_events lookback window for the Postgres loader (#5304's
 // scoping comment: "a bounded default window (e.g., last 90 days) with a
 // wider window as a deliberate, more expensive opt-in"). Exported so the
-// Worker's ?days= clamp (workers/request-handlers/entities.mjs) and the
-// Postgres-tier SQL cutoff (workers/data-api.mjs) share one number instead of
+// Worker's ?days= clamp (workers/request-handlers/entities.ts) and the
+// Postgres-tier SQL cutoff (workers/data-api.ts) share one number instead of
 // two independently-drifting literals.
 export const DEFAULT_OHLC_WINDOW_DAYS = 90;
 export const MAX_OHLC_WINDOW_DAYS = 365;
@@ -71,7 +71,7 @@ export const MAX_OHLC_WINDOW_DAYS = 365;
 // an unrelated ranking, not a chronological series).
 export const MAX_CANDLES = 2000;
 
-// 1 TAO/alpha = 1e9 rao. Copied verbatim from alpha-volume.mjs's/
+// 1 TAO/alpha = 1e9 rao. Copied verbatim from alpha-volume.ts's/
 // chain-alpha-volume.ts's own roundUnit -- every rao-precision rounding
 // helper in this codebase is a deliberate byte-for-byte copy, not a shared
 // import, so each module stays independently reviewable (see those modules'
@@ -129,7 +129,7 @@ interface OhlcBucket {
 // last trade's price, high/low = max/min trade price, volume_alpha/volume_tao
 // = summed alpha_amount/amount_tao, event_count = trade count. Every numeric
 // output is rounded to rao precision (roundUnit) to avoid IEEE-754 dust,
-// mirroring alpha-volume.mjs/chain-alpha-volume.ts's own volume rounding.
+// mirroring alpha-volume.ts/chain-alpha-volume.ts's own volume rounding.
 //
 // Empty buckets (no trades in that time slot) are a genuine GAP -- they never
 // appear in the output array, never synthesized as a flat candle (standard

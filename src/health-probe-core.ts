@@ -1,6 +1,6 @@
 // Pure, isomorphic surface-probing primitives shared by the Node data build
 // (scripts/probes-smoke.ts) and the Cloudflare cron prober (src/health-prober.ts,
-// wired through workers/api.mjs `scheduled()`).
+// wired through workers/api.ts `scheduled()`).
 //
 // NO module-level I/O: `fetch`, the SSRF guard, and the WebSocket connector are
 // INJECTED so every branch is unit-testable and the code runs unchanged on the

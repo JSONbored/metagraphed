@@ -70,7 +70,7 @@ export async function identityHash(snapshot: unknown): Promise<string | null> {
 }
 
 // Non-negative integer block height, or null for absent/blank/negative cells.
-// Mirrors toBlockNumber in account-events.mjs: Number("") / Number("   ") both
+// Mirrors toBlockNumber in account-events.ts: Number("") / Number("   ") both
 // coerce to 0, so a blank D1 cell must be rejected before the Number() coercion.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
@@ -159,7 +159,7 @@ export function overlayPreviouslyKnownAs(
 }
 
 // D1 hands INTEGER columns back as numeric strings on GROUP BY / JOIN read paths
-// (the convention account-events.mjs and analytics-routes.mjs coerce for). Accept
+// (the convention account-events.ts and analytics-routes.ts coerce for). Accept
 // ONLY a real number or an all-digits string so a blank/null/false cell is rejected
 // rather than read as a valid subnet 0 (Number("") === Number(null) === 0). A raw
 // string key otherwise silently misses the integer netuid the callers look up by.
@@ -176,7 +176,7 @@ function rowNetuid(value: unknown): number | null {
 // D1 retirement (2026-07-16, item 8 of the D1->Postgres cleanup): used to
 // query D1's own subnet_identity_history directly; now reads the same latest-
 // per-netuid hash via the Postgres-backed internal endpoint (workers/data-
-// api.mjs's /api/v1/internal/subnet-identity-latest-hashes), reusing
+// api.ts's /api/v1/internal/subnet-identity-latest-hashes), reusing
 // METAGRAPH_SUBNET_IDENTITY_SOURCE (same table, already flipped to postgres).
 // An unavailable/off tier degrades to an empty map -- every profile then
 // reads as "changed" for that one run, the same degrade recordSubnetIdentity
@@ -227,7 +227,7 @@ async function latestBlockNumber(env: Env): Promise<number | null> {
  * #4832 gap-closure: mirror recordSubnetIdentityChanges' D1 write into
  * Postgres via the DATA_API service binding, called directly from
  * writeSubnetSnapshot (src/health-prober.ts) rather than through
- * workers/api.mjs's public proxy layer -- this runs from WITHIN the main
+ * workers/api.ts's public proxy layer -- this runs from WITHIN the main
  * Worker's own hourly cron tick, a pure internal RPC hop, not a public-
  * internet crossing (unlike the other three #4832 sync routes, which are
  * driven by external GitHub Actions workflows and therefore cross the
@@ -390,7 +390,7 @@ export async function loadPreviouslyKnownAs(
 
 // Groups already-fetched (netuid, subnet_name, observed_at) rows by netuid and
 // derives each subnet's alias list — split out of loadPreviouslyKnownAsForNetuids
-// so a Postgres-tier caller (workers/api.mjs) can reuse the exact same grouping
+// so a Postgres-tier caller (workers/api.ts) can reuse the exact same grouping
 // instead of duplicating it, the same way the single-netuid derivePreviouslyKnownAs
 // above is shared by both storage tiers.
 export function deriveNetuidGroupedAliases(

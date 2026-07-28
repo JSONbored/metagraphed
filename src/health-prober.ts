@@ -1,6 +1,6 @@
 // Live operational-health cron prober.
 //
-// Runs in the Worker on a 15-minute Cron Trigger (workers/api.mjs `scheduled()`):
+// Runs in the Worker on a 15-minute Cron Trigger (workers/api.ts `scheduled()`):
 // loads the committed operational-surfaces.json list, probes each surface with
 // the shared isomorphic core (src/health-probe-core.ts) under bounded
 // concurrency, then writes:
@@ -41,7 +41,7 @@ import {
   notifySubnetStatusChanged,
 } from "./subnet-status-subscribe.ts";
 
-// Re-export so existing importers (workers/api.mjs, mcp-server, discovery) keep
+// Re-export so existing importers (workers/api.ts, mcp-server, discovery) keep
 // resolving the KV health keys through the prober; the names now live in kv-keys.
 export { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL };
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
@@ -341,7 +341,7 @@ export function workerWebSocketConnector(
 
 // Read the operational-surfaces.json (DUAL tier — committed + R2-mirrored) via
 // the ASSETS binding, falling back to R2. It is committed precisely so this read
-// never depends on the data publish (see artifact-storage.mjs): a publish outage
+// never depends on the data publish (see artifact-storage.ts): a publish outage
 // must not freeze the live health prober. Returns the surfaces array (empty on
 // failure — the run then no-ops rather than throwing).
 export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
@@ -460,7 +460,7 @@ export async function runHealthProber(
   // Prior status (last_ok + consecutive_failures) for continuity + the breaker.
   // D1 retirement: this used to read D1's own surface_status directly; now
   // reuses the same Postgres-backed internal endpoint resolveLiveHealth's
-  // KV-cold fallback calls (workers/data-api.mjs's
+  // KV-cold fallback calls (workers/data-api.ts's
   // /api/v1/internal/health-status-live), with since=0 so it returns every
   // tracked surface regardless of freshness — this read needs the LAST known
   // row per surface for continuity even if it's stale, unlike the serving
@@ -789,7 +789,7 @@ function utcDayBounds(ms: number): {
 // Durable daily uptime rollup (PR3). Aggregates the raw 15-minute surface_checks
 // for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
 // retained indefinitely for long-term uptime analytics. MUST run before
-// pruneHealthHistory: pruneHealthHistory's caller (workers/api.mjs) skips the
+// pruneHealthHistory: pruneHealthHistory's caller (workers/api.ts) skips the
 // whole prune tick when `rolled` is false, so D1's raw surface_checks (the
 // only remaining recovery source if Postgres's rollup were ever silently
 // broken for a stretch) is never pruned out from under a day that hasn't
@@ -803,7 +803,7 @@ function utcDayBounds(ms: number): {
 // that flag's own header comment). `rolled` now reflects whether the
 // Postgres sync itself succeeded -- rolls up today + yesterday each hour
 // (the post-midnight fire finalizes the prior day; Postgres's own upsert,
-// data-api.mjs's handleHealthUptimeRollupSync, keeps this idempotent).
+// data-api.ts's handleHealthUptimeRollupSync, keeps this idempotent).
 export async function rollupDailyUptime(
   env: Env,
   overrides: { now?: () => number } = {},
@@ -1003,7 +1003,7 @@ export async function writeSubnetSnapshot(
   // to "postgres" in wrangler.jsonc confirms Postgres already holds the full
   // history (see that flag's own header comment for the verification
   // writeup). Postgres's own handleSubnetSnapshotSync
-  // (workers/data-api.mjs) replicates the exact same COALESCE(existing,
+  // (workers/data-api.ts) replicates the exact same COALESCE(existing,
   // excluded) backfill semantics the retired D1 upsert used to apply here --
   // the structural columns + captured_at stay owned by the first same-day
   // fire, and NULL economics columns backfill on a later fire without a

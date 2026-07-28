@@ -1,5 +1,5 @@
 // Balance-based top-holder leaderboard (#6741/#6743) -- the coldkey/balance-
-// centric counterpart to src/accounts-list.mjs (hotkey/neuron-centric,
+// centric counterpart to src/accounts-list.ts (hotkey/neuron-centric,
 // explicitly missing the Free/Total columns this route exists to add — see
 // that module's own header). Sourced from account_balances (a direct
 // System::Account chain-state scan,
