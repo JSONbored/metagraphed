@@ -406,6 +406,86 @@ describe("badge — handleBadgeRequest", () => {
     );
     assert.equal(na.headers.get("access-control-allow-origin"), "*");
   });
+
+  // #8387: stale-while-revalidate + etag/304, on top of the #8329 max-age.
+  test("cache-control carries stale-while-revalidate alongside the existing max-age", async () => {
+    const { res } = await badge("/api/v1/subnets/7/badge.svg");
+    assert.match(
+      res.headers.get("cache-control")!,
+      /max-age=3600, stale-while-revalidate=3600/,
+    );
+  });
+
+  test("every 200 response carries a weak etag", async () => {
+    const { res } = await badge("/api/v1/subnets/7/badge.svg");
+    assert.match(res.headers.get("etag")!, /^W\/"[0-9a-f]{32}"$/);
+  });
+
+  test("If-None-Match with the current etag gets a bodyless 304, same headers otherwise", async () => {
+    const first = await badge("/api/v1/subnets/7/badge.svg");
+    const etag = first.res.headers.get("etag")!;
+
+    const url = new URL("https://api.metagraph.sh/api/v1/subnets/7/badge.svg");
+    const res = await handleBadgeRequest(
+      new Request(url, { headers: { "if-none-match": etag } }),
+      mockEnv(),
+      url,
+      {
+        readArtifact: makeReadArtifact({
+          "/metagraph/subnets.json": SUBNETS,
+          "/metagraph/providers.json": PROVIDERS,
+          "/metagraph/profiles.json": PROFILES,
+          ...SURFACES,
+        }),
+        loadReliability: makeLoadReliability(RELIABILITY),
+      },
+    );
+    assert.equal(res.status, 304);
+    assert.equal(await res.text(), "");
+    // The precondition response still carries the validators a client needs
+    // to keep polling with -- same etag, same cache-control -- just no body.
+    assert.equal(res.headers.get("etag"), etag);
+    assert.match(
+      res.headers.get("cache-control")!,
+      /max-age=3600, stale-while-revalidate=3600/,
+    );
+  });
+
+  test("a stale If-None-Match (score changed) still gets a fresh 200", async () => {
+    const first = await badge("/api/v1/subnets/7/badge.svg");
+    const staleEtag = first.res.headers.get("etag")!;
+
+    // Different subnet == different score == different rendered SVG == a
+    // different etag -- the stale validator from subnet 7 must not match.
+    const { res } = await badge("/api/v1/subnets/3/badge.svg", {
+      fixtures: {},
+    });
+    const url = new URL("https://api.metagraph.sh/api/v1/subnets/3/badge.svg");
+    const conditional = await handleBadgeRequest(
+      new Request(url, { headers: { "if-none-match": staleEtag } }),
+      mockEnv(),
+      url,
+      {
+        readArtifact: makeReadArtifact({
+          "/metagraph/subnets.json": SUBNETS,
+          "/metagraph/providers.json": PROVIDERS,
+          "/metagraph/profiles.json": PROFILES,
+          ...SURFACES,
+        }),
+        loadReliability: makeLoadReliability(RELIABILITY),
+      },
+    );
+    assert.equal(conditional.status, 200);
+    assert.notEqual(conditional.headers.get("etag"), staleEtag);
+    assert.equal(res.status, 200);
+  });
+
+  test("HEAD still carries the etag (headers-only contract preserved)", async () => {
+    const { res } = await badge("/api/v1/subnets/7/badge.svg", {
+      method: "HEAD",
+    });
+    assert.match(res.headers.get("etag")!, /^W\/"[0-9a-f]{32}"$/);
+  });
 });
 
 describe("badge — uptime / reliability metric", () => {
