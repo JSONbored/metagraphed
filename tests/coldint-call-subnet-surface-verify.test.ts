@@ -1,6 +1,6 @@
 // SN29 (Coldint) end-to-end verification for the call_subnet_surface MCP
 // tool (metagraphed#7045, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring
+// tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN29's registry surface
 // (registry/subnets/coldint.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping to HEAD, marking it

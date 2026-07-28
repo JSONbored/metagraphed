@@ -1,6 +1,6 @@
 // SN21 (AdTAO) end-to-end verification for the call_subnet_surface MCP tool
 // (metagraphed#7037, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring
+// tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN21's two issue-scoped
 // registry surfaces (registry/subnets/adtao.json) to the tool's contract,
 // so a future edit that regresses their callability (flipping to HEAD,
