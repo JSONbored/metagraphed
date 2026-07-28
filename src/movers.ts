@@ -84,7 +84,7 @@ function nullableNumber(value: unknown): number | null {
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null
 // explicitly so a null netuid is skipped rather than coerced to subnet 0
-// (Number(null) === 0). Mirrors normalizedNetuid in account-stake-flow.mjs.
+// (Number(null) === 0). Mirrors normalizedNetuid in account-stake-flow.ts.
 function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;

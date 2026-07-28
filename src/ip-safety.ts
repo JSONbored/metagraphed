@@ -1,6 +1,6 @@
 // Shared IPv6 parsing for the SSRF guards in webhooks.ts and health-prober.ts.
 // Leaf module: imports nothing, so either guard can use it without an import
-// cycle (mirrors the de-monolith leaf-module discipline in workers/storage.mjs).
+// cycle (mirrors the de-monolith leaf-module discipline in workers/storage.ts).
 //
 // Several IPv6 textual forms embed an IPv4 address. A guard that only string- or
 // prefix-matches IPv6 cannot see the tunnelled v4, so an attacker reaches a

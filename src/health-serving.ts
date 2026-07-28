@@ -3,7 +3,7 @@
 // Pure functions that overlay the 15-minute cron snapshot (KV health:current /
 // health:rpc-pool / health:meta, written by src/health-prober.ts) onto the 6h
 // static artifacts. Every helper returns null when the live store is cold/absent
-// so the caller (workers/api.mjs) falls back to the static artifact — keeping
+// so the caller (workers/api.ts) falls back to the static artifact — keeping
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
@@ -1592,8 +1592,8 @@ export async function loadReliabilityAggregate(
 // D1 retirement (2026-07-16, item 5 of the D1->Postgres cleanup): the KV-cold
 // fallback reads Postgres via tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
 // a synthesized internal request to /api/v1/internal/health-status-live
-// (workers/data-api.mjs) -- the same "no client request to forward,
-// synthesize one" shape workers/request-handlers/analytics-routes.mjs's
+// (workers/data-api.ts) -- the same "no client request to forward,
+// synthesize one" shape workers/request-handlers/analytics-routes.ts's
 // handleCompare already uses for this exact table. D1 is fully eliminated
 // here (no write, no read fallback) -- surface_status's D1 write retired the
 // same day (see health-prober.ts's runHealthProber header comment); a

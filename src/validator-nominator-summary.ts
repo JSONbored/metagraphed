@@ -2,8 +2,8 @@
 // only, refreshed by its own low-frequency job (scripts/fetch-validator-
 // nominator-counts.py, see migrations/0043_validator_nominator_counts.sql for
 // why this is a separate side table rather than a neurons column). Read/join
-// lands here; the fetch/sync write path lives in workers/data-api.mjs
-// (handleValidatorNominatorCountsSync), mirroring account-identity.mjs's role
+// lands here; the fetch/sync write path lives in workers/data-api.ts
+// (handleValidatorNominatorCountsSync), mirroring account-identity.ts's role
 // for its own sync handler.
 
 type Row = Record<string, unknown>;

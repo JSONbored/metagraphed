@@ -6,7 +6,7 @@
 // proving one can't be replayed as proof of the other (see the
 // WalletChallengePurpose comment below). This is the identity layer only --
 // the rpc_accounts upsert and the actual mg_... API key (src/api-keys.mjs,
-// reused unchanged) live in workers/data-api.mjs, the one place with a
+// reused unchanged) live in workers/data-api.ts, the one place with a
 // Postgres binding.
 //
 // sr25519 verification is @scure/sr25519's `verify` -- a pure-JS, audited
@@ -86,7 +86,7 @@ function challengeKvKey(ss58: string, purpose: WalletChallengePurpose): string {
 }
 
 /** Issues a fresh single-use nonce for `ss58` in KV. Returns a discriminated
- * result rather than null/throw so the caller (workers/data-api.mjs) can
+ * result rather than null/throw so the caller (workers/data-api.ts) can
  * distinguish a client error (bad ss58 -> 400) from an infra gap (KV
  * unbound -> 503) instead of collapsing both into one generic failure. */
 export async function issueWalletChallenge(

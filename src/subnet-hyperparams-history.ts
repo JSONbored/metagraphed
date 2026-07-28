@@ -8,15 +8,15 @@
 // route already formats.
 //
 // The write path itself (diff-against-last-hash-and-append) lives in
-// workers/data-api.mjs's handleSubnetHyperparamsSync (Postgres) — this file
+// workers/data-api.ts's handleSubnetHyperparamsSync (Postgres) — this file
 // owns only the tier-agnostic pieces both that write path and the read route
 // share: the shaping (formatHyperparamsHistoryEntry/
 // buildSubnetHyperparamsHistory) and the hash (hyperparamsHash) both hash
 // against, so history rows stay hash-identical no matter which tier wrote
 // them. D1's own diff-and-append (recordSubnetHyperparamsChanges) and
 // paginated read (loadSubnetHyperparamsHistory) are retired alongside D1's
-// subnet_hyperparams write path — see workers/api.mjs's staged-loader
-// retirement note (#4772) and workers/request-handlers/entities.mjs's
+// subnet_hyperparams write path — see workers/api.ts's staged-loader
+// retirement note (#4772) and workers/request-handlers/entities.ts's
 // handleSubnetHyperparamsHistory.
 
 import { formatSubnetHyperparams } from "./subnet-hyperparams.ts";

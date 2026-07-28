@@ -1,5 +1,5 @@
 // Shape `neurons` rows (migration 0007; also the Postgres mirror written by
-// workers/data-api.mjs's handleNeuronsSync, #4771) into the per-UID metagraph
+// workers/data-api.ts's handleNeuronsSync, #4771) into the per-UID metagraph
 // API responses for #1304/#1305 (epic #1302). Populated by the refresh-metagraph
 // cron first-party via the Bittensor SDK (#1348) -- no Taostats, no API key.
 // Pure + exported for tests; the Worker handlers run the D1 or Postgres query
@@ -65,7 +65,7 @@ const RAO_PER_TAO = 1e9;
 // Bittensor's network-wide block time is a long-stable EXTERNAL protocol
 // parameter (~12s) that this repo does not measure per-request -- distinct
 // from any live-computed block-time distribution elsewhere in this repo
-// (e.g. blocks-summary.mjs's blockTimeDistribution), which would make the
+// (e.g. blocks-summary.ts's blockTimeDistribution), which would make the
 // same emission_tao annualize differently on every request purely from
 // block-production jitter. If a future chain upgrade changes Bittensor's
 // consensus block time, this constant needs a matching update; it is a
@@ -124,7 +124,7 @@ function roundTao(value: unknown): number {
 // `+=` compounds rounding error across the accumulation even when each
 // individual value is itself exact (metagraphed#2922, mirrors the toRaoBig
 // pattern in src/chain-yield.ts and the toRao helper proven in
-// src/account-balance.mjs for #2070). Convert back to TAO only once, at the
+// src/account-balance.ts for #2070). Convert back to TAO only once, at the
 // very end. Callers always pass an already-finite numberOrZero()/roundTao()
 // result, so no isFinite guard here.
 function toRaoBig(tao: number): bigint {
@@ -171,7 +171,7 @@ interface ImmunityWindow {
 // would otherwise serialize as 0 instead of null. roundTao itself falls
 // back to numberOrZero(0) for null/non-finite, so the wrapping guards here
 // are what keep "missing cell" cells flowing through as null. Mirrors the
-// proven toBlockNumber / toTaoOrNull null-guards in account-events.mjs
+// proven toBlockNumber / toTaoOrNull null-guards in account-events.ts
 // (#2487).
 // featuredHotkeys (optional) is a Set of hotkeys from the featured_validators
 // side table (#5166; see deploy/postgres/schema.sql for why that's a separate
@@ -452,7 +452,7 @@ function finalizeApy(acc: ApyAccumulator): Row {
 // Realized-return windows (#7228): the lookback in days for each of the three
 // backward-looking return figures. The keys index the per-hotkey baseline
 // object the worker resolves from neuron_daily (see loadRealizedStakeBaselines
-// in workers/data-api.mjs); the values are the human window labels the field
+// in workers/data-api.ts); the values are the human window labels the field
 // names carry (1d/1w/1m). A cold/absent baseline (D1 fallback, or a hotkey with
 // no neuron_daily row far enough back) leaves that window's return null.
 const REALIZED_RETURN_FIELDS: Array<[string, string]> = [
@@ -870,7 +870,7 @@ export async function loadSubnetValidators(
 // is retired -- Postgres is the only actively-written copy -- so this D1
 // fallback deliberately serves a stable coldkey_identity:{has_identity:false,
 // ...} shape rather than joining a frozen/stale D1 copy. The live route
-// (workers/data-api.mjs's /api/v1/validators, Postgres-backed) is what
+// (workers/data-api.ts's /api/v1/validators, Postgres-backed) is what
 // actually joins.
 export async function loadGlobalValidators(
   d1: D1Runner,

@@ -8,7 +8,7 @@
 // No per-subnet poll loops — the 15-minute probe sweep is already the clock.
 //
 // Chain stream URI is the literal string (same value as
-// MCP_CHAIN_STREAM_RESOURCE_URI in workers/mcp-session-hub.mjs) — this module
+// MCP_CHAIN_STREAM_RESOURCE_URI in workers/mcp-session-hub.ts) — this module
 // must not import that file, or it would cycle with McpSessionHub's import of
 // parseSubnetStatusResourceUri below.
 

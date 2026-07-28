@@ -3,7 +3,7 @@
 // apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs and
 // migrations/0036_subnet_hyperparams.sql. Mirrors NEURON_INSERT_COLUMNS's
 // role in src/metagraph-neurons.ts — the full column set written by the
-// Postgres write path (workers/data-api.mjs's handleSubnetHyperparamsSync)
+// Postgres write path (workers/data-api.ts's handleSubnetHyperparamsSync)
 // and read by the serving route (#4307/1.4).
 
 type Row = Record<string, unknown>;

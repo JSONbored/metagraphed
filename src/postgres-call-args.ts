@@ -8,7 +8,7 @@
 // indexer-rs's raw `{name: "PalletName", values: [{name: "function_name",
 // values: <args>}]}` enum-tree dump (#4691).
 //
-// Must run BEFORE scale-normalize.mjs's normalizePostgresValue (#4690), not
+// Must run BEFORE scale-normalize.ts's normalizePostgresValue (#4690), not
 // after or independently. Reconstruction needs the PRISTINE raw shape: a
 // genuinely zero-argument nested call's inner function-node is
 // `{name: "fn", values: []}` -- structurally identical to a C-like
@@ -39,7 +39,7 @@ interface TypedFieldDescriptor {
 }
 
 // True when `value` is D1/indexer-rs's typed call_args field descriptor
-// `{name, type, value}` -- duplicated from scale-normalize.mjs's identical
+// `{name, type, value}` -- duplicated from scale-normalize.ts's identical
 // check (not imported: that module deliberately treats AccountId32/byte-blob
 // decoding as a sibling concern it never touches, so importing its type
 // predicate here would be the only coupling between the two modules for a
@@ -70,7 +70,7 @@ function isAccountId32Type(type: string): boolean {
   return type === "AccountId32" || type.startsWith("MultiAddress<");
 }
 
-// Duplicated from scale-normalize.mjs's identical COLLECTION_TYPE_RE/
+// Duplicated from scale-normalize.ts's identical COLLECTION_TYPE_RE/
 // isCollectionType (not imported, same "one shared shape-test, not a real
 // coupling" rationale as isTypedFieldDescriptor above) -- a collection-typed
 // field's single-element `value` must never be attempted as a byte-blob
@@ -157,7 +157,7 @@ interface StructVariantEnum {
 // SubtensorModule.set_root_claim_type's `new_root_claim_type` is a
 // STRUCT-variant enum (RootClaimTypeEnum::KeepSubnets{subnets:
 // BTreeSet<NetUid>}), unlike every OTHER enum shape this file/
-// scale-normalize.mjs handles (all TUPLE-variant, `values` an ARRAY) --
+// scale-normalize.ts handles (all TUPLE-variant, `values` an ARRAY) --
 // confirmed live 2026-07-12: its raw shape is {name:"KeepSubnets",
 // values:{subnets:[[u16,...]]}}, `values` a plain OBJECT. isEnumTreeNode's
 // own Array.isArray(values) check correctly does NOT recognize this as an
@@ -380,7 +380,7 @@ function decodeRawDataValue(value: {
   } catch {
     // Malformed UTF-8 for a field expected to be textual -- fall back to
     // hex rather than producing mojibake, mirroring decodeBytesField's
-    // identical fallback (src/bytes.mjs).
+    // identical fallback (src/bytes.ts).
     return { [value.name]: bytesToHex(bytes) };
   }
 }
@@ -523,7 +523,7 @@ function walk(
   // decodeBytesField hex-encodes it -- actively WRONG, not just undecoded,
   // and only for values 0-255 (a genuine Some(32896091) survives unscathed,
   // since 32896091 fails the byte-array shape check and falls through
-  // untouched). scale-normalize.mjs's normalizePostgresValue (which runs
+  // untouched). scale-normalize.ts's normalizePostgresValue (which runs
   // AFTER this module) still does the actual Some/None/C-enum collapse on
   // the shape this preserves -- this branch only protects `values`'
   // elements from the byte-blob heuristic before that later pass gets a
