@@ -89,9 +89,7 @@ export function AddressDisplay({
   // viewports instead of ellipsizing -- caught by
   // tests/e2e/responsive-overflow.spec.ts on the extrinsic detail page's
   // Signer field.
-  const textClassName = valueClassName
-    ? `hover:underline ${valueClassName}`
-    : "hover:underline";
+  const textClassName = valueClassName ? `hover:underline ${valueClassName}` : "hover:underline";
 
   return (
     <span className="inline-flex items-center gap-1 min-w-0">
