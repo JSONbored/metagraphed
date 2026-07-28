@@ -24367,6 +24367,36 @@
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
           },
+          "github_commits_weekly": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "week": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "week",
+                    "count"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "github_languages": {
             "anyOf": [
               {
@@ -24396,6 +24426,21 @@
                 "type": "null"
               }
             ]
+          },
+          "github_stars": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_unreachable": {
+            "type": "boolean"
           },
           "lifecycle": {
             "enum": [
@@ -26990,6 +27035,36 @@
             "minimum": 0,
             "type": "integer"
           },
+          "github_commits_weekly": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "week": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "week",
+                    "count"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "github_languages": {
             "anyOf": [
               {
@@ -27019,6 +27094,21 @@
                 "type": "null"
               }
             ]
+          },
+          "github_stars": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_unreachable": {
+            "type": "boolean"
           },
           "integration_readiness": {
             "maximum": 100,
@@ -28724,6 +28814,81 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "github_commits_weekly": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "week": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "week",
+                    "count"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_languages": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_last_push_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_stars": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_unreachable": {
+            "type": "boolean"
           },
           "identity_evidence": {
             "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
@@ -57228,8 +57393,16 @@
                           "archive"
                         ]
                       },
+                      "github_commits_weekly": [
+                        {
+                          "count": 1,
+                          "week": "2026-06-01T00:00:00.000Z"
+                        }
+                      ],
                       "github_languages": {},
                       "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_stars": 1,
+                      "github_unreachable": false,
                       "lifecycle": "active",
                       "links": [
                         {}
@@ -62588,6 +62761,16 @@
                       "gap_reasons": [
                         "example"
                       ],
+                      "github_commits_weekly": [
+                        {
+                          "count": 1,
+                          "week": "2026-06-01T00:00:00.000Z"
+                        }
+                      ],
+                      "github_languages": {},
+                      "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_stars": 1,
+                      "github_unreachable": false,
                       "identity_evidence": {
                         "candidate_identity_count": 1,
                         "curated_identity_count": 1,
@@ -63418,6 +63601,16 @@
                       "gap_reasons": [
                         "example"
                       ],
+                      "github_commits_weekly": [
+                        {
+                          "count": 1,
+                          "week": "2026-06-01T00:00:00.000Z"
+                        }
+                      ],
+                      "github_languages": {},
+                      "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_stars": 1,
+                      "github_unreachable": false,
                       "identity_evidence": {
                         "candidate_identity_count": 1,
                         "curated_identity_count": 1,
@@ -63557,8 +63750,16 @@
                           "archive"
                         ]
                       },
+                      "github_commits_weekly": [
+                        {
+                          "count": 1,
+                          "week": "2026-06-01T00:00:00.000Z"
+                        }
+                      ],
                       "github_languages": {},
                       "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_stars": 1,
+                      "github_unreachable": false,
                       "lifecycle": "active",
                       "links": [
                         {}

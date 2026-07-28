@@ -1,8 +1,16 @@
-// Per-subnet GitHub language + last-push dev-activity signal (#6639, #5968
-// survey — Bittensor.ai finding). Reuses the same api.github.com REST calls
-// verify-candidates.ts already makes for source-repo verification (owner/repo
-// parsing, GITHUB_TOKEN auth), but captures developer-signal metadata
-// (language breakdown, last push) instead of existence/redirect verification.
+// Per-subnet GitHub language + last-push + commit-activity dev-activity
+// signal (#6639, #8379, #5968 survey — Bittensor.ai finding). Reuses the same
+// api.github.com REST calls verify-candidates.ts already makes for
+// source-repo verification (owner/repo parsing, GITHUB_TOKEN auth), but
+// captures developer-signal metadata (language breakdown, last push, star
+// count, 90-day weekly commit history) instead of existence/redirect
+// verification.
+//
+// #8379 asks for this via GitHub's GraphQL API, batched. It's REST here
+// instead, on purpose: GitHub's REST `stats/commit_activity` endpoint already
+// returns 52 weeks of commit history pre-bucketed in ONE call — no batching
+// scheme needed — and staying REST keeps this script's one HTTP-client style
+// consistent rather than introducing a second one for a single field.
 //
 // A SEPARATE periodic pass from verify-candidates.ts on purpose: that script
 // only ever sees NEWLY SUBMITTED candidates (registry/candidates/), so bolting
@@ -17,7 +25,16 @@
 // Output is a committed JSON file (registry/generated/github-signals.json),
 // same "periodically maintainer-run, git-committed" shape as
 // registry/verification/promotions.json -- machine-derived, not
-// community-editable (mirrors how `categories`/`verification` work).
+// community-editable (mirrors how `categories`/`verification` work). #8379
+// wires this into publish-cloudflare.yml's `refresh` job (a token is already
+// available there), so "periodically maintainer-run" becomes "run once daily
+// by the publish workflow" without changing the committed-artifact shape.
+//
+// #8379's failure-honesty requirement: a repo whose metadata call fails
+// doesn't just vanish from the artifact anymore. If a previous successful
+// capture exists and is <30d old, its last-good values are retained with
+// `unreachable: true`; otherwise the repo is dropped from the artifact
+// entirely (never published as `unreachable` forever with no data behind it).
 
 import path from "node:path";
 import {
@@ -86,9 +103,19 @@ export function githubHeaders(): Record<string, string> {
   };
 }
 
+export interface CommitWeek {
+  /** ISO date (UTC) of the Sunday that starts this week, matching GitHub's own bucketing. */
+  week: string;
+  count: number;
+}
+
 export interface GithubSignalEntry {
   languages: Row | null;
   last_push_at: string | null;
+  stars: number | null;
+  commits_weekly: CommitWeek[] | null;
+  unreachable: boolean;
+  captured_at: string | null;
 }
 
 // Loads the committed signals file into a Map keyed by githubRepoMapKey.
@@ -114,6 +141,12 @@ export async function loadGithubSignals(): Promise<
               ? (entry.languages as Row)
               : null,
           last_push_at: (entry.last_push_at as string | undefined) || null,
+          stars: typeof entry.stars === "number" ? entry.stars : null,
+          commits_weekly: Array.isArray(entry.commits_weekly)
+            ? (entry.commits_weekly as CommitWeek[])
+            : null,
+          unreachable: entry.unreachable === true,
+          captured_at: (entry.captured_at as string | undefined) || null,
         },
       ]),
   );
@@ -122,8 +155,8 @@ export async function loadGithubSignals(): Promise<
 // Resolves one subnet's FINAL source_repo URL (curated overlay wins, else the
 // on-chain backfill -- mirrors mergeSubnet/buildExpectedGeneratedSubnet
 // exactly) and looks up its captured signals. Returns the schema-stable
-// {languages: null, last_push_at: null} shape for anything that doesn't
-// resolve to a GitHub repo, or that hasn't been captured yet.
+// null-valued shape for anything that doesn't resolve to a GitHub repo, or
+// that hasn't been captured yet.
 export function githubSignalsForSubnet(
   signalsByRepo: Map<string, GithubSignalEntry>,
   overlay: Row | undefined,
@@ -135,7 +168,13 @@ export function githubSignalsForSubnet(
   );
   const parsed = parseGithubRepoUrl(sourceRepo);
   if (!parsed) {
-    return { github_languages: null, github_last_push_at: null };
+    return {
+      github_languages: null,
+      github_last_push_at: null,
+      github_stars: null,
+      github_commits_weekly: null,
+      github_unreachable: false,
+    };
   }
   const signals = signalsByRepo.get(
     githubRepoMapKey(parsed.owner, parsed.repo),
@@ -143,6 +182,9 @@ export function githubSignalsForSubnet(
   return {
     github_languages: signals?.languages ?? null,
     github_last_push_at: signals?.last_push_at ?? null,
+    github_stars: signals?.stars ?? null,
+    github_commits_weekly: signals?.commits_weekly ?? null,
+    github_unreachable: signals?.unreachable ?? false,
   };
 }
 
@@ -184,28 +226,72 @@ async function fetchJson(url: string): Promise<Row> {
   return { ok: true, body: await res.json() };
 }
 
-interface RepoSignal {
+export interface RepoSignal {
   owner: string;
   repo: string;
   last_push_at: string | null;
   languages: Row | null;
+  stars: number | null;
+  commits_weekly: CommitWeek[] | null;
+  unreachable: boolean;
+  captured_at: string | null;
 }
 
-// One repo's signals: pushed_at from the repo metadata call, plus the full
-// language-by-byte-count breakdown from the dedicated /languages endpoint
-// (a SEPARATE call -- the repo metadata response only ever carries the
-// single primary `language`, never the full breakdown). A failed/rate-limited
-// call yields null for that repo (never throws) so one bad repo doesn't abort
-// the whole run.
-async function fetchRepoSignals({
-  owner,
-  repo,
-}: GithubRepoRef): Promise<RepoSignal | null> {
-  const [metaRes, langRes] = await Promise.all([
+const COMMIT_WEEKS_SHOWN = 13; // ~90 days
+const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+// The last 52 weeks of commit activity, pre-bucketed by GitHub -- one call,
+// no pagination or GraphQL batching needed. GitHub computes these stats
+// asynchronously for a repo with no recent cache: a cold cache returns 202
+// with an empty array while it builds the cache server-side, which this
+// treats the same as "not available yet" (null), not an error -- the next
+// day's run picks it up once GitHub finishes computing it.
+export async function fetchCommitActivity(
+  owner: string,
+  repo: string,
+): Promise<CommitWeek[] | null> {
+  const res = await fetchJson(
+    `https://api.github.com/repos/${owner}/${repo}/stats/commit_activity`,
+  );
+  if (!res.ok || !Array.isArray(res.body)) {
+    return null;
+  }
+  const weeks = res.body as Row[];
+  if (weeks.length === 0) {
+    return null;
+  }
+  return weeks.slice(-COMMIT_WEEKS_SHOWN).map((w) => ({
+    week: new Date((w.week as number) * 1000).toISOString(),
+    count: (w.total as number | undefined) ?? 0,
+  }));
+}
+
+// One repo's signals: pushed_at + star count from the repo metadata call,
+// the full language-by-byte-count breakdown from the dedicated /languages
+// endpoint (a SEPARATE call -- the repo metadata response only ever carries
+// the single primary `language`, never the full breakdown), and the last 13
+// weeks of commit activity. A failed/rate-limited metadata call degrades to
+// the retained last-good entry (marked unreachable) when one exists and is
+// still within the 30-day retention window, or drops the repo from this run's
+// output entirely when it doesn't -- never throws, so one bad repo can't
+// abort the whole run.
+export async function fetchRepoSignals(
+  { owner, repo }: GithubRepoRef,
+  previousEntry: RepoSignal | undefined,
+): Promise<RepoSignal | null> {
+  const [metaRes, langRes, commitsWeekly] = await Promise.all([
     fetchJson(`https://api.github.com/repos/${owner}/${repo}`),
     fetchJson(`https://api.github.com/repos/${owner}/${repo}/languages`),
+    fetchCommitActivity(owner, repo),
   ]);
   if (!metaRes.ok) {
+    if (
+      previousEntry &&
+      previousEntry.captured_at &&
+      Date.now() - Date.parse(previousEntry.captured_at) <= RETENTION_MS
+    ) {
+      return { ...previousEntry, owner, repo, unreachable: true };
+    }
     return null;
   }
   const metaBody = metaRes.body as Row;
@@ -214,6 +300,10 @@ async function fetchRepoSignals({
     repo,
     last_push_at: (metaBody.pushed_at as string | undefined) || null,
     languages: langRes.ok ? (langRes.body as Row) : null,
+    stars: (metaBody.stargazers_count as number | undefined) ?? null,
+    commits_weekly: commitsWeekly,
+    unreachable: false,
+    captured_at: buildTimestamp(),
   };
 }
 
@@ -240,28 +330,63 @@ async function mapLimit<T, R extends { owner: string; repo: string }>(
   );
 }
 
+// Keyed the same way the committed artifact's own entries are looked up
+// elsewhere (githubRepoMapKey) so a repo's previous capture can be found
+// regardless of case drift between runs.
+async function loadPreviousSignalsByKey(): Promise<Map<string, RepoSignal>> {
+  const doc: Row | null = await readJson(githubSignalsPath).catch(() => null);
+  const entries: Row[] = Array.isArray(doc?.signals)
+    ? (doc?.signals as Row[])
+    : [];
+  return new Map(
+    entries
+      .filter((e) => e?.owner && e?.repo)
+      .map((e) => [
+        githubRepoMapKey(e.owner as string, e.repo as string),
+        e as unknown as RepoSignal,
+      ]),
+  );
+}
+
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
   const shouldWrite = args.has("--write");
-  const repos = await resolveTrackedRepos();
-  const signals = await mapLimit(repos, 8, fetchRepoSignals);
-  const artifact = {
-    schema_version: 1,
-    generated_at: buildTimestamp(),
-    repo_count: repos.length,
-    captured_count: signals.length,
-    signals,
-  };
-  if (shouldWrite) {
-    await writeJson(githubSignalsPath, artifact);
+  // Tolerant by design (#8379), same convention as this pipeline's other
+  // "refresh live external data" steps (refresh-native-snapshot.ts,
+  // refresh-candidates.ts): an unexpected failure here (e.g. the resolved
+  // repo list can't be loaded) must not block the publish -- it keeps
+  // whatever was last committed and the build proceeds with that.
+  try {
+    const repos = await resolveTrackedRepos();
+    const previousByKey = await loadPreviousSignalsByKey();
+    const signals = await mapLimit(repos, 8, (ref) =>
+      fetchRepoSignals(
+        ref,
+        previousByKey.get(githubRepoMapKey(ref.owner, ref.repo)),
+      ),
+    );
+    const artifact = {
+      schema_version: 1,
+      generated_at: buildTimestamp(),
+      repo_count: repos.length,
+      captured_count: signals.length,
+      signals,
+    };
+    if (shouldWrite) {
+      await writeJson(githubSignalsPath, artifact);
+    }
+    console.log(
+      stableStringify({
+        mode: shouldWrite ? "write" : "dry-run",
+        repo_count: artifact.repo_count,
+        captured_count: artifact.captured_count,
+      }),
+    );
+  } catch (error) {
+    console.warn(
+      `::warning::github-signals refresh failed; keeping the last committed signals. ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
-  console.log(
-    stableStringify({
-      mode: shouldWrite ? "write" : "dry-run",
-      repo_count: artifact.repo_count,
-      captured_count: artifact.captured_count,
-    }),
-  );
 }
 
 // Only run when invoked directly (`node scripts/github-signals.ts`), not

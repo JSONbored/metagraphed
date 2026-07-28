@@ -533,10 +533,13 @@ const subnetIndex: Row[] = mergedSubnets.map((subnet) => {
     registered_at_block: subnet.registered_at_block,
     slug: subnet.slug,
     source_repo: subnet.source_repo,
-    // #6639: computed once on the canonical merged subnet (mergeSubnet),
+    // #6639/#8379: computed once on the canonical merged subnet (mergeSubnet),
     // passed through so index + detail agree, same convention as social/contact above.
     github_languages: subnet.github_languages,
     github_last_push_at: subnet.github_last_push_at,
+    github_stars: subnet.github_stars,
+    github_commits_weekly: subnet.github_commits_weekly,
+    github_unreachable: subnet.github_unreachable,
     status: subnet.status,
     subnet_type: subnet.subnet_type,
     surface_count: subnet.surface_count,
@@ -3253,6 +3256,15 @@ function buildSubnetProfile({
     subnet_type: subnet.subnet_type,
     status: subnet.status,
     symbol: subnet.symbol,
+    // #8379: carried through from the merged subnet (mergeSubnet's own
+    // githubSignalsForSubnet spread, #6639) so the About-tab dev-activity
+    // module needs no separate query -- this page already fetches the
+    // profile artifact.
+    github_languages: subnet.github_languages,
+    github_last_push_at: subnet.github_last_push_at,
+    github_stars: subnet.github_stars,
+    github_commits_weekly: subnet.github_commits_weekly,
+    github_unreachable: subnet.github_unreachable,
     project_name: subnet.name,
     team: null,
     categories: subnet.categories || [],

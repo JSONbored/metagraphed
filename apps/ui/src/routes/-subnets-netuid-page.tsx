@@ -54,6 +54,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
+import { DevActivityPanel } from "@/components/metagraphed/dev-activity-panel";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
@@ -727,6 +728,8 @@ function AboutPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfi
       <IdentityHistoryPanel netuid={netuid} />
 
       <SubnetLineageSection netuid={netuid} />
+
+      <DevActivityPanel profile={profile} />
 
       <SectionAnchor
         id="evidence"

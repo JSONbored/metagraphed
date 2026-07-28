@@ -223,6 +223,13 @@ export interface SubnetProfile extends Subnet {
   missing_kinds?: string[];
   gap_notes?: string[];
   primary_app_surface?: PrimaryAppSurface;
+  // dev activity (#8379, extends #6639) — null/undefined for a subnet with no
+  // resolved source repo, or one not yet captured.
+  github_languages?: Record<string, number> | null;
+  github_last_push_at?: string | null;
+  github_stars?: number | null;
+  github_commits_weekly?: { week: string; count: number }[] | null;
+  github_unreachable?: boolean;
   // embedded
   surfaces?: Surface[];
   endpoints?: Endpoint[];
