@@ -1,11 +1,11 @@
 name: Sync MCP server version
 
 # Auto-opens a chore/sync-mcp-version PR whenever the MCP tool registry
-# (src/mcp-server.mjs) changes on main without a matching MCP_SERVER_VERSION
+# (src/mcp-server.ts) changes on main without a matching MCP_SERVER_VERSION
 # bump. This decouples the version bump from the contributor PR, the same
 # way sync-client-version.yml already does for the published SDK --
 # eliminating both the manual toil (every "add an MCP tool" PR previously
-# had to hand-edit src/mcp-server.mjs's MCP_SERVER_VERSION constant AND
+# had to hand-edit src/mcp-server.ts's MCP_SERVER_VERSION constant AND
 # server.json's "version" field to match) and the merge conflicts that
 # come from many concurrent tool-adding PRs all touching the same
 # version-bump line (this repo gets hundreds of contributor PRs; MCP tool
@@ -60,7 +60,7 @@ jobs:
           fetch-depth: 0
 
       # Real change-detection: every MCP tool addition necessarily imports
-      # and registers the new tool in src/mcp-server.mjs's MCP_TOOLS array,
+      # and registers the new tool in src/mcp-server.ts's MCP_TOOLS array,
       # so that file changing since the last bump is a reliable, sufficient
       # signal -- the same pragmatic "watch the one file everything routes
       # through" approach sync-client-version.yml uses for its own three
@@ -77,7 +77,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "last MCP version bump commit: ${last_bump}"
-            if git diff --quiet "${last_bump}" HEAD -- src/mcp-server.mjs; then
+            if git diff --quiet "${last_bump}" HEAD -- src/mcp-server.ts; then
               echo "no MCP tool registry changes since ${last_bump}; skipping version bump"
               echo "changed=false" >> "$GITHUB_OUTPUT"
             else
@@ -101,7 +101,7 @@ jobs:
         id: version
         run: |
           current=$(node -p "
-            require('fs').readFileSync('src/mcp-server.mjs', 'utf8')
+            require('fs').readFileSync('src/mcp-server.ts', 'utf8')
               .match(/export const MCP_SERVER_VERSION = \"([^\"]+)\"/)[1]
           ")
           IFS='.' read -r maj min pat <<< "$current"
@@ -109,12 +109,12 @@ jobs:
           echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "next=$next" >> "$GITHUB_OUTPUT"
 
-      - name: Bump MCP_SERVER_VERSION in src/mcp-server.mjs
+      - name: Bump MCP_SERVER_VERSION in src/mcp-server.ts
         if: steps.mcp-diff.outputs.changed == 'true'
         run: |
           node -e "
           const fs = require('fs');
-          const path = 'src/mcp-server.mjs';
+          const path = 'src/mcp-server.ts';
           const content = fs.readFileSync(path, 'utf8');
           const updated = content.replace(
             /export const MCP_SERVER_VERSION = \"[^\"]+\"/,
@@ -141,11 +141,11 @@ jobs:
           branch: chore/sync-mcp-version
           delete-branch: true
           add-paths: |
-            src/mcp-server.mjs
+            src/mcp-server.ts
             server.json
           title: "chore(mcp): bump server version to ${{ steps.version.outputs.next }}"
           commit-message: "chore(mcp): bump server version to ${{ steps.version.outputs.next }}"
           body: |
-            Auto-bumps `MCP_SERVER_VERSION` (and the matching `server.json` MCP Registry listing) from `${{ steps.version.outputs.current }}` to `${{ steps.version.outputs.next }}` because `src/mcp-server.mjs`'s tool registry changed on main.
+            Auto-bumps `MCP_SERVER_VERSION` (and the matching `server.json` MCP Registry listing) from `${{ steps.version.outputs.current }}` to `${{ steps.version.outputs.next }}` because `src/mcp-server.ts`'s tool registry changed on main.
           labels: |
             automation
