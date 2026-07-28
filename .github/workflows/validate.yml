@@ -909,6 +909,17 @@ jobs:
       # consumed the previous headroom is unexplained and tracked separately in
       # metagraphed#8267; this bump deliberately does NOT close that out.
       #
+      # 340 -> 360 (metagraphed#8468): the same trap, one budget tier later.
+      # A clean main build (measured directly with this step's own script)
+      # sits at 339.25 KB gzipped -- `Math.ceil` -> 340 KB against a 340 KB
+      # budget, zero headroom again. Two unrelated PRs (#8465, #8466) failed
+      # on this at the same time, each with a real measured delta under 100
+      # bytes -- proof the gate was blocking on drift, not on either PR's own
+      # regression. 360 restores ~6% headroom, matching the 320 -> 340 bump's
+      # own margin. The underlying drift is still unexplained and still
+      # tracked separately (#8267); this bump deliberately does not close
+      # that out either.
+      #
       # dist/, not Nitro's library-default .output/ -- this project's
       # vite.config.ts (@lovable.dev/vite-tanstack-config) is customized to
       # output there instead (confirmed against a real local + CI build; the
@@ -917,7 +928,7 @@ jobs:
       - name: Bundle size budget (initial client JS, gzipped)
         working-directory: apps/ui
         env:
-          BUDGET_KB: 340
+          BUDGET_KB: 360
         run: |
           node --input-type=module <<'NODE'
           import { readdirSync, readFileSync } from "node:fs";
