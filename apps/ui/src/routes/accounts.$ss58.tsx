@@ -4,6 +4,9 @@ import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { accountQuery } from "@/lib/metagraphed/queries";
 import { AccountDetailPage } from "./-accounts-ss58-page";
 
 type SearchParams = {
@@ -39,7 +42,28 @@ export const Route = createFileRoute("/accounts/$ss58")({
     if (!isValidSs58(ss58)) throw notFound();
     return { ss58 };
   },
-  head: ({ params }) => {
+  // #8489: primes accountQuery -- the same query the page itself reads -- so
+  // the OG card can show real activity figures instead of only a truncated
+  // ss58. Shared cache, so this moves the request earlier rather than adding
+  // one. Non-fatal; a failure falls back to the address-only card.
+  loader: async ({ context, params }) => {
+    try {
+      const { data } = await context.queryClient.ensureQueryData(accountQuery(params.ss58));
+      return {
+        eventCount:
+          typeof data.event_count === "number" && Number.isFinite(data.event_count)
+            ? data.event_count
+            : null,
+        subnetCount:
+          typeof data.subnet_count === "number" && Number.isFinite(data.subnet_count)
+            ? data.subnet_count
+            : null,
+      };
+    } catch {
+      return null;
+    }
+  },
+  head: ({ params, loaderData }) => {
     // parseParams above rejects a malformed ss58, but head() still runs with the
     // raw param -- verified against the routes that already validate: /blocks/
     // not-a-ref titles "Block not-a-ref" and /subnets/not-a-netuid titles
@@ -61,6 +85,22 @@ export const Route = createFileRoute("/accounts/$ss58")({
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
+        // #8489: route-owned card (server.ts skips these paths). resolveAddress
+        // is reused for the label rather than a second formatting path, per the
+        // issue's own requirement to not re-derive address rendering.
+        ...ogImageMeta({
+          title: label,
+          subtitle: "Cross-subnet activity, registrations, and chain-event history.",
+          eyebrow: "Account",
+          stats: [
+            ...(loaderData?.eventCount != null
+              ? [{ label: "Events", value: formatNumber(loaderData.eventCount) }]
+              : []),
+            ...(loaderData?.subnetCount != null
+              ? [{ label: "Subnets", value: String(loaderData.subnetCount) }]
+              : []),
+          ],
+        }),
       ],
     };
   },

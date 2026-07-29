@@ -1,7 +1,23 @@
-// Edge-rendered Open Graph image (/og). Renders a branded 1200×630 PNG card via
-// workers-og (satori + resvg-wasm) so social/link unfurls have a real image. The
-// title comes from ?title= (server.ts derives it from the route). Infra module
-// (imported by the Worker entry), so it survives Lovable regens.
+// Edge-rendered Open Graph image (/og). Renders a BRANDED 1200x630 PNG card via
+// workers-og (satori + resvg-wasm) so social/link unfurls have a real image.
+// Infra module (imported by the Worker entry), so it survives Lovable regens.
+//
+// #8489: this card used to be three lines of plain text on flat black with no
+// mark, no brand colour and no data -- the same generic card for the home page,
+// every subnet, every validator and every doc. It is the card that actually
+// travels (every share of metagraph.sh unfurls through here), so it now carries
+// the brand lockup and, for entity pages, real information about that entity.
+//
+// DESIGN NOTE -- why ink-on-mint is inverted here relative to src/og-image.ts.
+// The landing card (src/og-image.ts, api.metagraph.sh) is a mint field with an
+// ink mark: a poster, one headline, no data. These per-page cards carry three
+// to five lines of dense entity text, and a full-bleed mint field behind that
+// much copy reads as a marketing banner rather than a data card. The app itself
+// is ink-backgrounded with mint accents, so an unfurl on ink is recognisably
+// THIS product's surface. The two cards are deliberately complementary rather
+// than identical -- same mark, same palette, inverted ground -- and #8489
+// requirement 1 explicitly allows the dark-ink variant when the reason is
+// stated. This is that statement.
 //
 // workers-og is loaded lazily inside handleOgImage (see below), NOT statically:
 // it pulls in a yoga `.wasm` that Node's ESM loader can't resolve, which would
@@ -11,15 +27,43 @@ type WorkersOg = typeof import("workers-og");
 
 const OG_PATH = "/og";
 const SUBTITLE = "The Bittensor subnet integration registry";
-// #8257: bumped whenever the rendered card changes, so already-unfurled links
-// pick up the new design instead of serving last month's PNG from the edge
-// cache for its full 7-day stale-while-revalidate window.
-const CARD_VERSION = "2";
+const WORDMARK = "Metagraphed";
+
+// Brand palette, matching src/og-image.ts exactly (that file is the reference
+// implementation; these are the same three values, not new ones).
+const MINT = "#30FFC0";
+const INK = "#0B1F1A";
+// A lift off INK for the card ground, so the mint mark and the accent shape
+// both have somewhere to sit without the whole card reading as pure black.
+const INK_DEEP = "#071512";
+const INK_LINE = "#1C3A33";
+const TEXT_MUTED = "#9FBDB4";
+
+// #8257/#8489: bumped whenever the rendered card changes, so already-unfurled
+// links pick up the new design instead of serving last month's PNG from the
+// edge cache for its full 7-day stale-while-revalidate window. Bumped to "3"
+// for the #8489 rebuild -- every previously cached card is the old plain-text
+// one and must be retired.
+const CARD_VERSION = "3";
+
 const MAX_SUBTITLE_LENGTH = 90;
 const DEFAULT_TITLE = "Metagraphed";
 const MAX_TITLE_LENGTH = 110;
+// #8489: bounds for the new entity params, same posture as title/subtitle --
+// this is an unauthenticated endpoint crawlers hit, so every interpolated
+// value is both length-bounded AND escaped.
+const MAX_EYEBROW_LENGTH = 32;
+const MAX_STAT_LABEL_LENGTH = 24;
+const MAX_STAT_VALUE_LENGTH = 28;
 const MAX_QUERY_LENGTH = 512;
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+
+// The brand "M" mark, recoloured from src/og-image.ts's ink version to MINT so
+// it reads on the ink ground (see the design note above). Same geometry, same
+// brand kit source -- only the fill differs. Injected via <img> rather than
+// inline <svg> for reliable satori rasterization, matching the landing card.
+const LOGO_DATA_URI =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgZmlsbD0ibm9uZSI+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgxLjkyMCwxNTEuNzM4KSBzY2FsZSgwLjQ2NTQ1KSIgZD0iTSAzMTUuNSwxLjE5OTk5OTk5OTk5OTk4ODYgQyAzMTMuNDAwMDAwMDAwMDAwMDMsMS42OTk5OTk5OTk5OTk5ODg2IDI4MS43LDMyLjc5OTk5OTk5OTk5OTk1NSAyMDYuNSwxMDcuODk5OTk5OTk5OTk5OTggQyAxNDYuNSwxNjcuODk5OTk5OTk5OTk5OTggOTkuMzAwMDAwMDAwMDAwMDEsMjE0LjM5OTk5OTk5OTk5OTk4IDk3LjcsMjE1LjAgQyA5NS45LDIxNS42IDc5LjQsMjE2LjAgNTIuMzAwMDAwMDAwMDAwMDA0LDIxNi4wIEMgMTEuNCwyMTYuMCA5LjYwMDAwMDAwMDAwMDAwMSwyMTYuMSA2LjUsMjE4LjAgQyAtMC40LDIyMi4yOTk5OTk5OTk5OTk5OCAwLjAsMjE1Ljc5OTk5OTk5OTk5OTk4IDAuMCwzMjguNyBDIDAuMCw0MjguNSAwLjAsNDMwLjYgMi4wLDQzMy44IEMgNi4wLDQ0MC4zIDEyLjksNDQyLjUgMTkuNSw0MzkuNCBDIDIxLjMsNDM4LjYgNzAuOSwzODkuNCAxMzAuNiwzMjkuMyBDIDIyMy45LDIzNS41IDIzOS4yMDAwMDAwMDAwMDAwMiwyMjAuMzk5OTk5OTk5OTk5OTggMjQzLjgsMjE4LjM5OTk5OTk5OTk5OTk4IEMgMjQ5LjAsMjE2LjAgMjQ5LjUsMjE2LjAgMjgxLjgsMjE2LjAgQyAzMTIuNDAwMDAwMDAwMDAwMDMsMjE2LjAgMzE0LjcwMDAwMDAwMDAwMDA1LDIxNi4xIDMxNy43MDAwMDAwMDAwMDAwNSwyMTguMCBDIDMxOS40MDAwMDAwMDAwMDAwMywyMTkuMCAzMjEuNSwyMjAuODk5OTk5OTk5OTk5OTggMzIyLjIwMDAwMDAwMDAwMDA1LDIyMi4yIEMgMzIzLjIwMDAwMDAwMDAwMDA1LDIyNC4wIDMyMy42LDI0NS4xIDMyNC4wLDMyOC4wIEwgMzI0LjUsNDMxLjUgTCAzMjYuOCw0MzQuOCBDIDMzMS4wLDQ0MC42IDMzOC4xLDQ0Mi42IDM0My44LDQzOS42IEMgMzQ1LjMsNDM4LjggMzk1LjgsMzg4LjggNDU2LjAsMzI4LjUgQyA1MTYuMiwyNjguMiA1NjYuNywyMTguMiA1NjguMiwyMTcuMzk5OTk5OTk5OTk5OTggQyA1NzAuNCwyMTYuMjk5OTk5OTk5OTk5OTggNTc3LjMwMDAwMDAwMDAwMDEsMjE2LjAgNjA1LjIsMjE2LjAgQyA2MzcuNDAwMDAwMDAwMDAwMSwyMTYuMCA2MzkuNywyMTYuMSA2NDIuNywyMTguMCBDIDY0NC40MDAwMDAwMDAwMDAxLDIxOS4wIDY0Ni41LDIyMC44OTk5OTk5OTk5OTk5OCA2NDcuMiwyMjIuMiBDIDY0OC4yLDIyNC4wIDY0OC42LDI0NS43IDY0OS4wLDMzMS43IEMgNjQ5LjUsNDM4LjEgNjQ5LjUsNDM4LjkgNjUxLjYsNDQxLjcgQyA2NTQuODAwMDAwMDAwMDAwMSw0NDYuMSA2NTkuNyw0NDguMiA2NjUuMCw0NDcuNSBDIDY2OS40MDAwMDAwMDAwMDAxLDQ0Ny4wIDY3MC42LDQ0NS45IDcwNy4zMDAwMDAwMDAwMDAxLDQwOS4yIEMgNzI4LjEsMzg4LjUgNzQ1LjgwMDAwMDAwMDAwMDEsMzcwLjMgNzQ2LjYsMzY4LjggQyA3NDcuODAwMDAwMDAwMDAwMSwzNjYuNSA3NDguMCwzNTQuOSA3NDguMCwyOTUuNzk5OTk5OTk5OTk5OTUgQyA3NDguMCwyMjguMCA3NDcuOTAwMDAwMDAwMDAwMSwyMjUuMzk5OTk5OTk5OTk5OTggNzQ2LjAsMjIyLjI5OTk5OTk5OTk5OTk4IEMgNzQyLjUsMjE2LjUgNzQyLjYsMjE2LjUgNzAzLjMwMDAwMDAwMDAwMDEsMjE2LjAgQyA2NjguNywyMTUuNSA2NjcuMCwyMTUuMzk5OTk5OTk5OTk5OTggNjY0LjMwMDAwMDAwMDAwMDEsMjEzLjM5OTk5OTk5OTk5OTk4IEMgNjYyLjgwMDAwMDAwMDAwMDEsMjEyLjI5OTk5OTk5OTk5OTk4IDY2MC43LDIwOS43OTk5OTk5OTk5OTk5OCA2NTkuODAwMDAwMDAwMDAwMSwyMDcuODk5OTk5OTk5OTk5OTggQyA2NTguMSwyMDQuNyA2NTguMCwxOTcuODk5OTk5OTk5OTk5OTggNjU4LjAsMTA3Ljc5OTk5OTk5OTk5OTk1IEMgNjU4LjAsLTAuNzAwMDAwMDAwMDAwMDQ1NSA2NTguNDAwMDAwMDAwMDAwMSw1Ljc5OTk5OTk5OTk5OTk1NDUgNjUwLjgwMDAwMDAwMDAwMDEsMS44OTk5OTk5OTk5OTk5NzczIEMgNjQ2LjYsLTAuMjAwMDAwMDAwMDAwMDQ1NDcgNjQzLjQwMDAwMDAwMDAwMDEsLTAuNSA2MzkuMzAwMDAwMDAwMDAwMSwxLjA5OTk5OTk5OTk5OTk2NiBDIDYzNy43LDEuNjk5OTk5OTk5OTk5OTg4NiA1OTAuMiw0OC41OTk5OTk5OTk5OTk5NjYgNTI5LjksMTA5LjA5OTk5OTk5OTk5OTk3IEwgNDIzLjMsMjE2LjEgTCAzODIuNzAwMDAwMDAwMDAwMDUsMjE1Ljc5OTk5OTk5OTk5OTk4IEMgMzQzLjUsMjE1LjUgMzQyLjEsMjE1LjM5OTk5OTk5OTk5OTk4IDMzOS4zLDIxMy4zOTk5OTk5OTk5OTk5OCBDIDMzNy44LDIxMi4yOTk5OTk5OTk5OTk5OCAzMzUuNzAwMDAwMDAwMDAwMDUsMjA5Ljc5OTk5OTk5OTk5OTk4IDMzNC44LDIwNy44OTk5OTk5OTk5OTk5OCBDIDMzMy4xLDIwNC43IDMzMy4wLDE5Ny44OTk5OTk5OTk5OTk5OCAzMzMuMCwxMDcuNjk5OTk5OTk5OTk5OTkgQyAzMzMuMCw0LjA5OTk5OTk5OTk5OTk2NiAzMzMuMjAwMDAwMDAwMDAwMDUsOC4xOTk5OTk5OTk5OTk5ODg5IDMyOC4xLDMuNTk5OTk5OTk5OTk5OTY2IEMgMzI1LjYsMS4yOTk5OTk5OTk5OTk5NTQ1IDMxOS41LDAuMDk5OTk5OTk5OTk5OTk2NTkgMzE1LjUsMS4xOTk5OTk5OTk5OTk5ODg2IiBmaWxsPSIjMzBGRkMwIi8+Cjwvc3ZnPgo=";
 
 // A tiny valid PNG returned when rendering dependencies fail. This keeps the
 // public endpoint cheap and predictable instead of retrying expensive work.
@@ -64,14 +108,177 @@ export function normalizeSubtitle(value: string | null): string {
     : trimmed;
 }
 
+/**
+ * Generic bounded-text normalizer for the #8489 entity params.
+ *
+ * Returns null (not "") for an absent/blank value so every call site can use a
+ * plain truthiness check, and the card's own fallback path is a single
+ * `?:` rather than scattered emptiness checks.
+ */
+export function normalizeParam(value: string | null, max: number): string | null {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return null;
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+}
+
+/** One "LABEL / value" cell in the card's stat rail. */
+export interface OgStat {
+  label: string;
+  value: string;
+}
+
+/**
+ * Read the entity params off the query string.
+ *
+ * Every value is bounded here and escaped at render, so a crawler-supplied
+ * query can neither overflow the card nor inject markup into the string satori
+ * parses -- the same treatment title/subtitle already had, extended to the new
+ * fields rather than trusting them because they're "ours".
+ *
+ * Stats are read as up to two `stat`/`statv` pairs. Two is a deliberate cap:
+ * the rail is one row, and a third cell either wraps or shrinks the type below
+ * legibility at unfurl size.
+ */
+export function readCardParams(params: URLSearchParams): {
+  eyebrow: string | null;
+  stats: OgStat[];
+} {
+  const eyebrow = normalizeParam(params.get("eyebrow"), MAX_EYEBROW_LENGTH);
+  const stats: OgStat[] = [];
+  for (const [labelKey, valueKey] of [
+    ["stat1", "stat1v"],
+    ["stat2", "stat2v"],
+  ] as const) {
+    const label = normalizeParam(params.get(labelKey), MAX_STAT_LABEL_LENGTH);
+    const value = normalizeParam(params.get(valueKey), MAX_STAT_VALUE_LENGTH);
+    // Both halves required: a value with no label is unreadable, and a label
+    // with no value is an empty promise.
+    if (label && value) stats.push({ label, value });
+  }
+  return { eyebrow, stats };
+}
+
+/**
+ * Title size, stepped down by length.
+ *
+ * A fixed 68px is right for the short names that dominate in practice
+ * ("Chutes", "tao.bot", a truncated ss58), but `normalizeTitle` allows up to
+ * 110 characters, and at 68px that wraps to four lines and shoves the stat
+ * rail off the bottom of the card -- verified by rendering the pathological
+ * case, not assumed. Satori has no reliable line-clamp, so the deterministic
+ * fix is to scale the type to the content. Every returned size is chosen so
+ * the worst case at that length still fits the 630px canvas.
+ */
+export function titleFontSize(length: number): number {
+  if (length <= 24) return 68;
+  if (length <= 48) return 54;
+  return 42;
+}
+
+/**
+ * The card markup.
+ *
+ * satori is strict: any element with more than one child needs an explicit
+ * `display:flex`, and text must live in leaf nodes. Every container below sets
+ * it deliberately -- a missing one renders as a blank card, not a warning.
+ *
+ * Two layout details, both found by rendering the real markup and MEASURING
+ * it rather than eyeballing a thumbnail:
+ *
+ *  1. The root carries EXPLICIT 1200x630 pixel dimensions, not 100%/100%.
+ *     Percentage sizing has to resolve against a parent, and when it doesn't
+ *     the card lays out at its intrinsic content height instead of the canvas
+ *     -- which silently pushed the stat rail past the bottom edge, cropped
+ *     (measured 774px against a 630px canvas).
+ *  2. The padded inner wrapper is `position:relative`. Absolutely-positioned
+ *     elements paint above non-positioned in-flow content, so the decorative
+ *     diagonal was washing out the subtitle behind it -- visible only by
+ *     looking at a real render. Positioning the content wrapper lifts the copy
+ *     back above the decoration, and the text columns are additionally capped
+ *     short of the diagonal's footprint so legibility never depends on the
+ *     stacking rule alone.
+ *  3. Padding lives on an INNER wrapper, never on the sized root. With the CSS
+ *     default `box-sizing: content-box`, width:1200px + 80px horizontal
+ *     padding renders 1360px wide -- the card silently outgrows its own
+ *     canvas. Separating "the box that is exactly the canvas" from "the box
+ *     that has the padding" is unambiguous under either box model, and is the
+ *     same structure src/og-image.ts (the landing card) already uses.
+ *
+ * Exported so a test can assert the structure without running the wasm
+ * rasterizer.
+ */
+export function renderCardMarkup(opts: {
+  title: string;
+  subtitle: string;
+  eyebrow: string | null;
+  stats: OgStat[];
+}): string {
+  const title = escapeText(opts.title);
+  const subtitle = escapeText(opts.subtitle);
+  const eyebrow = opts.eyebrow ? escapeText(opts.eyebrow) : null;
+
+  const statCells = opts.stats
+    .map(
+      (stat) => `
+        <div style="display:flex;flex-direction:column;margin-right:56px;">
+          <div style="display:flex;font-size:22px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1.5px;">${escapeText(
+            stat.label.toUpperCase(),
+          )}</div>
+          <div style="display:flex;font-size:40px;font-weight:700;color:${MINT};margin-top:6px;">${escapeText(
+            stat.value,
+          )}</div>
+        </div>`,
+    )
+    .join("");
+
+  return `
+    <div style="position:relative;display:flex;width:1200px;height:630px;background:${INK_DEEP};color:#F2FBF8;font-family:'Space Grotesk';overflow:hidden;">
+      <div style="position:absolute;top:-360px;right:-330px;width:740px;height:740px;background:${INK};opacity:0.7;transform:rotate(34deg);display:flex;"></div>
+      <div style="position:absolute;top:0;left:0;width:1200px;height:8px;background:${MINT};display:flex;"></div>
+      <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:64px 80px;">
+
+      <div style="display:flex;align-items:center;">
+        <img src="${LOGO_DATA_URI}" style="width:64px;height:64px;" />
+        <div style="display:flex;font-size:38px;font-weight:700;letter-spacing:-1px;margin-left:6px;">${WORDMARK}</div>
+        ${
+          eyebrow
+            ? `<div style="display:flex;margin-left:24px;padding:7px 18px;border:2px solid ${INK_LINE};border-radius:999px;font-size:22px;font-weight:500;color:${MINT};letter-spacing:1.5px;">${escapeText(
+                eyebrow.toUpperCase(),
+              )}</div>`
+            : ""
+        }
+      </div>
+
+      <div style="display:flex;flex-direction:column;">
+        <div style="display:flex;font-size:${titleFontSize(opts.title.length)}px;font-weight:700;line-height:1.08;max-width:900px;">${title}</div>
+        <div style="display:flex;font-size:30px;font-weight:400;color:${TEXT_MUTED};margin-top:20px;max-width:820px;">${subtitle}</div>
+      </div>
+
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;">
+        <div style="display:flex;">${statCells}</div>
+        <div style="display:flex;font-size:24px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   const cacheUrl = new URL(url);
-  cacheUrl.search = "";
-  cacheUrl.searchParams.set("title", title);
-  cacheUrl.searchParams.set("subtitle", subtitle);
+  const original = cacheUrl.searchParams;
+  const next = new URLSearchParams();
+  next.set("title", title);
+  next.set("subtitle", subtitle);
+  // #8489: the entity params are part of the rendered output, so they MUST be
+  // part of the cache key -- otherwise two subnets sharing a title would serve
+  // each other's stats from the edge.
+  for (const key of ["eyebrow", "stat1", "stat1v", "stat2", "stat2v"]) {
+    const value = original.get(key);
+    if (value) next.set(key, value);
+  }
   // Part of the key, not just the markup: bumping it retires every cached
   // card at once rather than waiting each entry out.
-  cacheUrl.searchParams.set("v", CARD_VERSION);
+  next.set("v", CARD_VERSION);
+  cacheUrl.search = next.toString();
   return new Request(cacheUrl.toString(), { method: "GET" });
 }
 
@@ -105,6 +312,7 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
 
   const normalizedTitle = normalizeTitle(url.searchParams.get("title"));
   const normalizedSubtitle = normalizeSubtitle(url.searchParams.get("subtitle"));
+  const { eyebrow, stats } = readCardParams(url.searchParams);
   const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle);
   const cached = await cacheStorage?.match(cacheKey);
   if (cached) {
@@ -134,36 +342,41 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     return fallbackImageResponse();
   }
 
-  const title = escapeText(normalizedTitle);
-  const subtitle = escapeText(normalizedSubtitle);
-  // Subset each weight to only the bounded glyphs we render (smaller + faster fetch).
-  const glyphs = `${normalizedTitle}${normalizedSubtitle}metagraph.sh`;
+  // Subset each weight to only the bounded glyphs we render (smaller + faster
+  // fetch). #8489: the subset must cover the entity params too, or a stat's
+  // digits would render as tofu.
+  const glyphs = `${normalizedTitle}${normalizedSubtitle}${WORDMARK}metagraph.sh${eyebrow ?? ""}${stats
+    .map((s) => `${s.label}${s.label.toUpperCase()}${s.value}`)
+    .join("")}`;
   let bold: ArrayBuffer;
   let regular: ArrayBuffer;
+  let medium: ArrayBuffer;
   try {
-    [bold, regular] = await Promise.all([
-      loadGoogleFont({ family: "Inter", weight: 700, text: glyphs }),
-      loadGoogleFont({ family: "Inter", weight: 400, text: glyphs }),
+    [bold, regular, medium] = await Promise.all([
+      loadGoogleFont({ family: "Space Grotesk", weight: 700, text: glyphs }),
+      loadGoogleFont({ family: "Space Grotesk", weight: 400, text: glyphs }),
+      loadGoogleFont({ family: "Space Grotesk", weight: 500, text: glyphs }),
     ]);
   } catch (error) {
     console.error("Failed to load OG image fonts", error);
     return fallbackImageResponse();
   }
 
-  const markup = `
-    <div style="display:flex;flex-direction:column;justify-content:space-between;width:100%;height:100%;padding:80px;background:#0a0a0a;color:#fafafa;font-family:Inter;">
-      <div style="display:flex;align-items:center;font-size:30px;font-weight:400;color:#a1a1aa;letter-spacing:1px;">metagraph.sh</div>
-      <div style="display:flex;font-size:76px;font-weight:700;line-height:1.05;max-width:1040px;">${title}</div>
-      <div style="display:flex;font-size:34px;font-weight:400;color:#a1a1aa;">${subtitle}</div>
-    </div>`;
+  const markup = renderCardMarkup({
+    title: normalizedTitle,
+    subtitle: normalizedSubtitle,
+    eyebrow,
+    stats,
+  });
 
   try {
     const image = new ImageResponse(markup, {
       width: 1200,
       height: 630,
       fonts: [
-        { name: "Inter", data: bold, weight: 700, style: "normal" },
-        { name: "Inter", data: regular, weight: 400, style: "normal" },
+        { name: "Space Grotesk", data: bold, weight: 700, style: "normal" },
+        { name: "Space Grotesk", data: medium, weight: 500, style: "normal" },
+        { name: "Space Grotesk", data: regular, weight: 400, style: "normal" },
       ],
     });
     const response = withOgHeaders(image);

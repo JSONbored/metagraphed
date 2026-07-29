@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleOgImage } from "./lib/og-image";
+import { routeOwnsOgImage } from "./lib/metagraphed/og-card";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
 type ServerEntry = {
@@ -409,6 +410,11 @@ function injectAnalytics(response: Response, request: Request): Response {
   // a static homepage value.
   const ogUrlTag = `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}">`;
   const jsonLdTag = `<script type="application/ld+json">${buildJsonLd(pathname)}</script>`;
+  // #8489: the three entity detail routes emit their own og:image in head(),
+  // where loaderData is available and the card can carry real per-entity data.
+  // Skipping them here is what keeps exactly ONE og:image tag on the page --
+  // see routeOwnsOgImage's own comment for why ownership moved.
+  const routeOwnsCard = routeOwnsOgImage(pathname);
   const ogCopy = ogCardCopy(pathname);
   const ogImage =
     `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCopy.title)}` +
@@ -432,7 +438,7 @@ function injectAnalytics(response: Response, request: Request): Response {
               element.append(canonicalTag, { html: true });
               element.append(ogUrlTag, { html: true });
               element.append(jsonLdTag, { html: true });
-              element.append(ogImageTags, { html: true });
+              if (!routeOwnsCard) element.append(ogImageTags, { html: true });
               element.append(WEB_VITALS_SNIPPET, { html: true });
             },
           })

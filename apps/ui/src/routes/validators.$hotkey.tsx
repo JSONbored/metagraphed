@@ -6,6 +6,9 @@ import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
+import { formatTao } from "@/lib/metagraphed/format";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { validatorDetailQuery } from "@/lib/metagraphed/queries";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
 const validatorDetailSearchSchema = z.object({
@@ -31,7 +34,33 @@ export const Route = createFileRoute("/validators/$hotkey")({
     if (!isValidSs58(hotkey)) throw notFound();
     return { hotkey };
   },
-  head: ({ params }) => {
+  // #8489: primes the SAME query the page's own useSuspenseQuery reads
+  // (validatorDetailQuery), so head() can put real stake/subnet-count figures
+  // on the OG card. Shared react-query cache means this is the request moving
+  // earlier, not a second one -- the exact pattern subnets.$netuid.tsx already
+  // uses. Non-fatal: any failure returns null and the card falls back to the
+  // truncated-hotkey form.
+  loader: async ({ context, params }) => {
+    try {
+      const { data } = await context.queryClient.ensureQueryData(
+        validatorDetailQuery(params.hotkey),
+      );
+      return {
+        name: data.coldkey_identity?.name ?? null,
+        totalStakeTao:
+          typeof data.total_stake_tao === "number" && Number.isFinite(data.total_stake_tao)
+            ? data.total_stake_tao
+            : null,
+        subnetCount:
+          typeof data.subnet_count === "number" && Number.isFinite(data.subnet_count)
+            ? data.subnet_count
+            : null,
+      };
+    } catch {
+      return null;
+    }
+  },
+  head: ({ params, loaderData }) => {
     // See accounts.$ss58.tsx: parseParams rejects a malformed hotkey, but head()
     // still runs with the raw param (the already-validating /blocks and /subnets
     // routes title invalid ids the same way today), so the not-found metadata is
@@ -55,6 +84,22 @@ export const Route = createFileRoute("/validators/$hotkey")({
           property: "og:description",
           content: "Cross-subnet validator performance, nominators, and staking history.",
         },
+        // #8489: route-owned card (server.ts skips these paths). Prefers the
+        // on-chain identity name over the truncated hotkey, and shows stake +
+        // reach rather than an anonymous address.
+        ...ogImageMeta({
+          title: loaderData?.name || label,
+          subtitle: "Cross-subnet performance, nominators, and staking history.",
+          eyebrow: "Validator",
+          stats: [
+            ...(loaderData?.totalStakeTao != null
+              ? [{ label: "Total stake", value: formatTao(loaderData.totalStakeTao) }]
+              : []),
+            ...(loaderData?.subnetCount != null
+              ? [{ label: "Subnets", value: String(loaderData.subnetCount) }]
+              : []),
+          ],
+        }),
       ],
     };
   },
