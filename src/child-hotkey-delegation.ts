@@ -30,10 +30,10 @@
 // introducing a batched state_queryStorageAt shape this codebase has never
 // used before.
 //
-// blake2_128Concat(x) = blake2b-128(x) ++ x, reusing src/account-balance.mjs's
+// blake2_128Concat(x) = blake2b-128(x) ++ x, reusing src/account-balance.ts's
 // own already-live-verified pattern (System::Account's storage key) rather
 // than a new primitive -- @noble/hashes' blake2b already covers this, unlike
-// twox64/twox128 (src/twox-storage-key.mjs), which needed a hand-rolled
+// twox64/twox128 (src/twox-storage-key.ts), which needed a hand-rolled
 // implementation because no XXHash64 dependency exists in this repo.
 
 import { blake2b } from "@noble/hashes/blake2.js";
@@ -58,7 +58,7 @@ const MAX_NETUID_KEYS = 250;
 // meaning there's no leading-zero-byte case to reconstruct via a leading '1'
 // character either. No defensive re-checks here: trusting a precondition
 // the caller already verified, matching this codebase's "don't validate
-// twice" convention. Duplicates account-balance.mjs's base58 decode rather
+// twice" convention. Duplicates account-balance.ts's base58 decode rather
 // than importing it (self-contained-module convention already established
 // by subnet-burn.ts/sudo-key.ts for small codec helpers).
 function accountIdFromSs58(ss58: string): Uint8Array {

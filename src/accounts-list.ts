@@ -10,7 +10,7 @@
 // therefore "Total" (Free + Delegated) are NOT derivable from account_events
 // or neurons — this codebase has no balance-tracking tier; the only place
 // balance is known at all is a per-address LIVE RPC query
-// (loadAccountBalance, src/account-balance.mjs), which doesn't scale to a
+// (loadAccountBalance, src/account-balance.ts), which doesn't scale to a
 // full-table leaderboard (one RPC round trip per row). total_stake_tao below
 // is the "Delegated" analog: for a validator hotkey this is the FULL stake
 // pool delegated to it by every nominator (migrations/0007_neurons.sql's own
@@ -23,8 +23,8 @@
 // on every refresh-metagraph run) — an address that only ever transferred TAO
 // or delegated to someone else's validator, and never registered its own
 // hotkey, never appears here. That is the same "hotkey-only" framing
-// loadAccountPortfolio (src/account-portfolio.mjs) and
-// src/account-position-history.mjs already carry for this exact reason — not
+// loadAccountPortfolio (src/account-portfolio.ts) and
+// src/account-position-history.ts already carry for this exact reason — not
 // a new gap this route introduces.
 
 const RAO_PER_TAO = 1e9;

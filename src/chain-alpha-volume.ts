@@ -6,7 +6,7 @@
 // adds the REST envelope. Null-safe: a cold store or an empty window yields schema-stable
 // zeros (never throws), matching the sibling live tiers.
 //
-// Reuses alpha-volume.mjs's buildAlphaVolume for each subnet's scorecard (buy/sell/total volume
+// Reuses alpha-volume.ts's buildAlphaVolume for each subnet's scorecard (buy/sell/total volume
 // + sentiment) rather than re-deriving the same math — this module only groups rows by netuid,
 // ranks the resulting scorecards, and rolls them up into a network-wide total + distribution.
 //
@@ -29,7 +29,7 @@ export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
 
 // 1 TAO/alpha = 1e9 rao. Summing many already-rounded per-subnet totals can still accumulate
 // IEEE-754 noise below the rao floor; round every network-rollup output to rao precision,
-// mirroring alpha-volume.mjs's own roundUnit / chain-stake-flow.ts's roundTao.
+// mirroring alpha-volume.ts's own roundUnit / chain-stake-flow.ts's roundTao.
 const RAO_PER_UNIT = 1e9;
 function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
@@ -199,7 +199,7 @@ export function buildChainAlphaVolume(
     sell_count: sellCount,
     net_volume_alpha: roundUnit(netAlpha),
     // Network-wide sentiment reading (#4339/8.2 at the network scope), derived from the SAME
-    // net/gross alpha totals above via alpha-volume.mjs's own sentimentRatio/classifySentiment
+    // net/gross alpha totals above via alpha-volume.ts's own sentimentRatio/classifySentiment
     // rather than re-deriving the math a second time.
     sentiment_ratio: sentimentRatio(netAlpha, grossAlpha),
     sentiment: classifySentiment(netAlpha, grossAlpha),

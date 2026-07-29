@@ -58,7 +58,7 @@ export function decodeCursor(raw: unknown, arity: number): number[] | null {
     // long digit strings, and `Number()` silently rounds anything above
     // MAX_SAFE_INTEGER (e.g. "9007199254740993" -> 9007199254740992), which
     // `Number.isInteger` would still accept and hand back as a corrupted seek key.
-    // Mirror the offset-pagination sibling `integerParam` (workers/list-query.mjs),
+    // Mirror the offset-pagination sibling `integerParam` (workers/list-query.ts),
     // which gates on `Number.isSafeInteger`, so an out-of-range cursor is ignored.
     if (!Number.isSafeInteger(n) || n < 0) return null;
     parts.push(n);
