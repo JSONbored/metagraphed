@@ -307,18 +307,229 @@ function buildJsonLd(pathname: string): string {
   }).replace(/</g, "\\u003c");
 }
 
-// A short, human-readable title for the rendered OG card, derived from the path.
-const OG_SECTION_TITLES: Record<string, string> = {
-  "/subnets": "Subnets",
-  "/apis/providers": "Providers",
-  "/apis": "Interfaces",
-  "/apis/endpoints": "Endpoints",
-  "/health": "Health",
-  "/status": "Status",
-  "/apis/schemas": "Schemas",
-  "/contribute": "Contribute",
-  "/about": "About",
+/**
+ * Per-section OG card copy, keyed by exact pathname (#8489).
+ *
+ * Previously nine entries against ~49 routes, with everything else falling
+ * through to a bare "Metagraphed" — so /agents, /leaderboards, /explorer,
+ * /chain/*, /events, /blocks, /docs and most of the app unfurled IDENTICALLY
+ * to the home page. This covers every real section so a shared link says what
+ * it is.
+ *
+ * `eyebrow` renders as the pill beside the wordmark, matching the entity
+ * cards' treatment. Home is deliberately absent: its card is the brand
+ * statement, and an "eyebrow" on it would be noise.
+ */
+interface OgCopy {
+  title: string;
+  subtitle?: string;
+  eyebrow?: string;
+}
+
+export const OG_SECTIONS: Record<string, OgCopy> = {
+  // Registry
+  "/subnets": {
+    title: "Subnets",
+    subtitle: "Every Bittensor subnet, its surfaces, health and economics",
+    eyebrow: "Registry",
+  },
+  "/validators": {
+    title: "Validators",
+    subtitle: "Stake, take and cross-subnet performance for every validator",
+    eyebrow: "Registry",
+  },
+  "/accounts": {
+    title: "Accounts",
+    subtitle: "Balances, positions and on-chain activity by address",
+    eyebrow: "Registry",
+  },
+  "/leaderboards": {
+    title: "Leaderboards",
+    subtitle: "Ranked subnets, validators and endpoints across the network",
+    eyebrow: "Registry",
+  },
+  "/domains": {
+    title: "Domains",
+    subtitle: "Subnets grouped by what they actually do",
+    eyebrow: "Registry",
+  },
+
+  // Interfaces
+  "/apis": {
+    title: "Interfaces",
+    subtitle: "What every subnet exposes — APIs, docs and schemas",
+    eyebrow: "Interfaces",
+  },
+  "/apis/providers": {
+    title: "Providers",
+    subtitle: "Infrastructure providers and the endpoints they operate",
+    eyebrow: "Interfaces",
+  },
+  "/apis/endpoints": {
+    title: "Endpoints",
+    subtitle: "Every registered endpoint, with live operational health",
+    eyebrow: "Interfaces",
+  },
+  "/apis/schemas": {
+    title: "Schemas",
+    subtitle: "Machine-readable schemas for every catalogued interface",
+    eyebrow: "Interfaces",
+  },
+  "/providers": {
+    title: "Providers",
+    subtitle: "Infrastructure providers and the endpoints they operate",
+    eyebrow: "Interfaces",
+  },
+  "/endpoints": {
+    title: "Endpoints",
+    subtitle: "Every registered endpoint, with live operational health",
+    eyebrow: "Interfaces",
+  },
+  "/schemas": {
+    title: "Schemas",
+    subtitle: "Machine-readable schemas for every catalogued interface",
+    eyebrow: "Interfaces",
+  },
+  "/surfaces": {
+    title: "Surfaces",
+    subtitle: "The full catalogue of subnet-published surfaces",
+    eyebrow: "Interfaces",
+  },
+  "/gaps": {
+    title: "Coverage gaps",
+    subtitle: "Where the registry is still missing interface coverage",
+    eyebrow: "Interfaces",
+  },
+
+  // Chain explorer
+  "/chain": {
+    title: "Chain",
+    subtitle: "Live Bittensor base-layer activity, blocks and economics",
+    eyebrow: "Explorer",
+  },
+  "/chain/analytics": {
+    title: "Chain analytics",
+    subtitle: "Stake flow, concentration and emission trends across the network",
+    eyebrow: "Explorer",
+  },
+  "/chain/blocks": {
+    title: "Blocks",
+    subtitle: "Recent Bittensor blocks, extrinsics and events",
+    eyebrow: "Explorer",
+  },
+  "/chain/events": {
+    title: "Chain events",
+    subtitle: "First-party decoded events from the Bittensor chain",
+    eyebrow: "Explorer",
+  },
+  "/chain/extrinsics": {
+    title: "Extrinsics",
+    subtitle: "Signed extrinsics, fees and call data",
+    eyebrow: "Explorer",
+  },
+  "/chain/governance": {
+    title: "Governance",
+    subtitle: "Runtime parameters, sudo activity and config changes",
+    eyebrow: "Explorer",
+  },
+  "/chain/runtime": {
+    title: "Runtime",
+    subtitle: "Spec versions and runtime upgrade history",
+    eyebrow: "Explorer",
+  },
+  "/blocks": {
+    title: "Blocks",
+    subtitle: "Recent Bittensor blocks, extrinsics and events",
+    eyebrow: "Explorer",
+  },
+  "/extrinsics": {
+    title: "Extrinsics",
+    subtitle: "Signed extrinsics, fees and call data",
+    eyebrow: "Explorer",
+  },
+  "/events": {
+    title: "Events",
+    subtitle: "First-party decoded events from the Bittensor chain",
+    eyebrow: "Explorer",
+  },
+  "/runtime": {
+    title: "Runtime",
+    subtitle: "Spec versions and runtime upgrade history",
+    eyebrow: "Explorer",
+  },
+  "/explorer": {
+    title: "Explorer",
+    subtitle: "Search blocks, extrinsics, accounts and events",
+    eyebrow: "Explorer",
+  },
+  "/sudo": {
+    title: "Sudo",
+    subtitle: "Privileged runtime calls and config changes",
+    eyebrow: "Explorer",
+  },
+  "/admin-changes": {
+    title: "Admin changes",
+    subtitle: "The public AdminUtils config-change feed",
+    eyebrow: "Explorer",
+  },
+
+  // Health
+  "/health": {
+    title: "Health",
+    subtitle: "Live operational health across every registered endpoint",
+    eyebrow: "Health",
+  },
+  "/status": {
+    title: "Status",
+    subtitle: "Metagraphed's own uptime and publish health",
+    eyebrow: "Health",
+  },
+
+  // Agents & developers
+  "/agents": {
+    title: "Agents",
+    subtitle: "Connect an AI agent to Bittensor — MCP tools, playbooks and live data",
+    eyebrow: "Agents",
+  },
+  "/docs": {
+    title: "Docs",
+    subtitle: "API reference, guides and machine-readable contracts",
+    eyebrow: "Developers",
+  },
+  "/graphql/explorer": {
+    title: "GraphQL explorer",
+    subtitle: "Query the registry interactively over GraphQL",
+    eyebrow: "Developers",
+  },
+  "/tools/ss58": {
+    title: "SS58 tools",
+    subtitle: "Encode, decode and inspect Bittensor addresses",
+    eyebrow: "Developers",
+  },
+  "/settings": {
+    title: "Developer settings",
+    subtitle: "API keys, alert triggers and webhook subscriptions",
+    eyebrow: "Developers",
+  },
+
+  // Product
+  "/delegate": {
+    title: "Delegate",
+    subtitle: "Stake to a validator, non-custodially, from your own wallet",
+    eyebrow: "Staking",
+  },
+  "/contribute": {
+    title: "Contribute",
+    subtitle: "Add a subnet's surfaces to the registry",
+    eyebrow: "Open source",
+  },
+  "/about": {
+    title: "About",
+    subtitle: "What Metagraphed is, and how the data is produced",
+    eyebrow: "About",
+  },
 };
+
 /** Shortens an ss58/hotkey for a card, which has no room for 48 characters. */
 function shortKey(key: string): string {
   return key.length > 16 ? `${key.slice(0, 6)}…${key.slice(-6)}` : key;
@@ -333,17 +544,24 @@ function shortKey(key: string): string {
  * worth adding a blocking request to the critical path. The card is
  * identifying, not a live dashboard.
  */
-function ogCardCopy(pathname: string): { title: string; subtitle?: string } {
+/** Exported for tests: the section-coverage map is hand-maintained, and the
+ * whole point of #8489's follow-up is that it must not silently go stale. */
+export function ogCardCopy(pathname: string): OgCopy {
   const subnet = pathname.match(/^\/subnets\/([^/]+)\/?$/);
   if (subnet) {
     const id = safeDecodePathSegment(subnet[1]);
-    return { title: `Subnet ${id}`, subtitle: "Surfaces, health and economics on Bittensor" };
+    return {
+      title: `Subnet ${id}`,
+      subtitle: "Surfaces, health and economics on Bittensor",
+      eyebrow: "Subnet",
+    };
   }
   const validator = pathname.match(/^\/validators\/([^/]+)\/?$/);
   if (validator) {
     return {
       title: shortKey(safeDecodePathSegment(validator[1])),
       subtitle: "Validator — stake, take and subnet memberships",
+      eyebrow: "Validator",
     };
   }
   const account = pathname.match(/^\/accounts\/([^/]+)\/?$/);
@@ -351,6 +569,7 @@ function ogCardCopy(pathname: string): { title: string; subtitle?: string } {
     return {
       title: shortKey(safeDecodePathSegment(account[1])),
       subtitle: "Account — balance, positions and on-chain activity",
+      eyebrow: "Account",
     };
   }
   const provider = pathname.match(/^\/providers\/([^/]+)\/?$/);
@@ -358,9 +577,32 @@ function ogCardCopy(pathname: string): { title: string; subtitle?: string } {
     return {
       title: safeDecodePathSegment(provider[1]),
       subtitle: "Provider — endpoints and operational health",
+      eyebrow: "Provider",
     };
   }
-  return { title: OG_SECTION_TITLES[pathname] ?? "Metagraphed" };
+  // #8489: block/extrinsic detail pages name the thing being shared rather
+  // than falling through to the generic card. Cheap -- the id is in the URL,
+  // so this still needs no data fetch.
+  const block = pathname.match(/^\/blocks\/([^/]+)\/?$/);
+  if (block) {
+    const ref = safeDecodePathSegment(block[1]);
+    return {
+      title: /^\d+$/.test(ref) ? `Block ${Number(ref).toLocaleString("en-US")}` : shortKey(ref),
+      subtitle: "Extrinsics, events and timing for one Bittensor block",
+      eyebrow: "Block",
+    };
+  }
+  const extrinsic = pathname.match(/^\/extrinsics\/([^/]+)\/?$/);
+  if (extrinsic) {
+    return {
+      title: shortKey(safeDecodePathSegment(extrinsic[1])),
+      subtitle: "Call data, signer, fee and emitted events",
+      eyebrow: "Extrinsic",
+    };
+  }
+  // Exact-path section copy, then the brand card for anything genuinely
+  // contentless (home, and any route not yet given its own copy).
+  return OG_SECTIONS[pathname.replace(/\/+$/, "") || "/"] ?? { title: "Metagraphed" };
 }
 
 // Warm the TCP+TLS connection to the API origin before the first data fetch
@@ -418,7 +660,8 @@ function injectAnalytics(response: Response, request: Request): Response {
   const ogCopy = ogCardCopy(pathname);
   const ogImage =
     `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCopy.title)}` +
-    (ogCopy.subtitle ? `&subtitle=${encodeURIComponent(ogCopy.subtitle)}` : "");
+    (ogCopy.subtitle ? `&subtitle=${encodeURIComponent(ogCopy.subtitle)}` : "") +
+    (ogCopy.eyebrow ? `&eyebrow=${encodeURIComponent(ogCopy.eyebrow)}` : "");
   const ogImageTags =
     `<meta property="og:image" content="${escapeHtmlAttr(ogImage)}">` +
     `<meta property="og:image:width" content="1200">` +
