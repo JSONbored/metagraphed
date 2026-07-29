@@ -6911,7 +6911,8 @@ async function dispatchDataApiRequest(
         // docs/conviction-lock-mechanism.md for the on-chain mechanism this
         // reads. Netuid lives inside the JSONB args column (chain_events has
         // no netuid column of its own, unlike account_events), so the filter
-        // is an args->>'netuid' cast rather than a plain column match --
+        // reads netuid out of JSONB rather than matching a plain column --
+        // and does so WITHOUT a cast, see #8649 on the query below --
         // this is the all-events tier (ADR 0013), same idx_ce_pallet_method
         // index /blocks/:n/chain-events and /chain-events already rely on.
         // Cold/absent store -> the schema-stable empty-list shape (never a
@@ -6921,11 +6922,33 @@ async function dispatchDataApiRequest(
         );
         if (subnetOwnershipHistory) {
           const netuid = Number(subnetOwnershipHistory[1]);
+          // #8649: netuid is compared as TEXT, and that is the whole fix.
+          // This was `(args->>'netuid')::int = ${netuid}`, which threw
+          //   invalid input syntax for type integer: "[18]"
+          // on EVERY request, for every netuid -- so this endpoint returned
+          // 502 data_query_failed across REST, MCP (get_subnet_ownership_
+          // history) and GraphQL alike. Reproduced against postgres:16 with
+          // the real row shape before fixing.
+          //
+          // The cause is that chain_events.args stores netuid as an ARRAY --
+          // a live row reads {"netuid":[18],"new_coldkey":…} -- so
+          // `args->>'netuid'` yields the text "[18]", not "18". Casting that
+          // to int throws, and because Postgres may evaluate the cast on any
+          // row it visits rather than only on rows already matched by the
+          // pallet/method filters, ONE such row poisons every query.
+          //
+          // `args->'netuid'->>0` reads element 0 of an array and is NULL for
+          // a scalar; `args->>'netuid'` is the scalar and is "[18]" for an
+          // array. COALESCE takes whichever is a bare number, so both shapes
+          // work -- and comparing TEXT rather than casting means no malformed
+          // args (a string, null, an object, a missing key) can ever raise
+          // again. JSON numbers have no leading zeros, so text equality is
+          // exact here.
           const rows = await sql`
           SELECT block_number, pallet, method, args, observed_at
           FROM chain_events
           WHERE pallet = 'SubtensorModule' AND method = ${OWNERSHIP_CHANGE_EVENT_METHOD}
-            AND (args->>'netuid')::int = ${netuid}
+            AND COALESCE(args->'netuid'->>0, args->>'netuid') = ${String(netuid)}
           ORDER BY block_number ASC`;
           return json(buildSubnetOwnershipHistory(rows, netuid));
         }
