@@ -18554,6 +18554,101 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.match(body.errors[0].message, /coldkey must be a valid SS58/);
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
+
+  test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547)", async () => {
+    let capturedUrl: URL | undefined;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r: Request) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "30d",
+              sort: "net_staked",
+              limit: 10,
+              offset: 10,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                  staked_tao: 12.5,
+                  unstaked_tao: 2.5,
+                  net_staked_tao: 10,
+                  gross_staked_tao: 15,
+                  event_count: 3,
+                  last_observed_at: "2026-07-10T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-10T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 10, offset: 10)`),
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
+    assert.equal(body.data.validator_nominators.limit, 10);
+    assert.equal(body.data.validator_nominators.offset, 10);
+  });
+
+  test("a cold store echoes the requested limit/offset in the schema-stable envelope (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 5, offset: 15)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_nominators.limit, 5);
+    assert.equal(body.data.validator_nominators.offset, 15);
+    assert.equal(body.data.validator_nominators.nominator_count, 0);
+  });
+
+  test("a limit above the max is a GraphQL error, not a silently clamped default (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 2001)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(
+      body.errors[0].message,
+      /`limit` must be an integer between 1 and 2000/,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("a limit below 1 is a GraphQL error (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 0)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(
+      body.errors[0].message,
+      /`limit` must be an integer between 1 and 2000/,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("a negative offset is a GraphQL error (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", offset: -1)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(
+      body.errors[0].message,
+      /`offset` must be a non-negative integer/,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
 });
 
 describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fallback)", () => {

@@ -2722,7 +2722,7 @@ export type Query = {
   validator?: Maybe<Validator>;
   /** One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history. */
   validator_history: ValidatorHistory;
-  /** One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked). An unsupported window/sort is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators. */
+  /** One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked), paginated with limit (1-2000, default 20)/offset. An unsupported window/sort or an out-of-range limit/offset is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators. */
   validator_nominators: NominatorList;
   /** Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Paginate with limit/cursor like providers. Mirrors GET /api/v1/validators. */
   validators: ValidatorList;
@@ -3952,6 +3952,8 @@ export type QueryValidator_HistoryArgs = {
 export type QueryValidator_NominatorsArgs = {
   coldkey?: InputMaybe<Scalars['String']['input']>;
   hotkey: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
