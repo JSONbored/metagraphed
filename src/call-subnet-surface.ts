@@ -416,7 +416,7 @@ export async function callSubnetSurface(
 async function readBodyCapped(
   response: Response,
   maxBytes: number,
-  deadlineMs?: number,
+  deadlineMs: number,
 ): Promise<{ text: string; truncated: boolean }> {
   if (!response.body) {
     const text = await response.text();
@@ -435,8 +435,9 @@ async function readBodyCapped(
   // A stream that is still producing when the deadline passes is TRUNCATED,
   // not failed: the first few KB of an event stream is genuinely useful to an
   // agent, and matches how an oversized body is already handled here.
-  const deadline =
-    deadlineMs && deadlineMs > 0 ? Date.now() + deadlineMs : Infinity;
+  // `deadlineMs` is always the surface's resolved timeout (callSubnetSurface
+  // defaults it to 10s), so there is no "no deadline" case to guard for.
+  const deadline = Date.now() + deadlineMs;
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
@@ -449,16 +450,15 @@ async function readBodyCapped(
     // agent.
     const DEADLINE = Symbol("deadline");
     for (;;) {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) {
-        truncated = true;
-        break;
-      }
+      // No separate "already past the deadline" guard: a non-positive delay
+      // makes setTimeout fire on the next tick, so the race below resolves
+      // DEADLINE immediately anyway. A guard here would be a second way to
+      // express the same rule, and an unreachable one.
       let timer: ReturnType<typeof setTimeout> | undefined;
       const chunk = await Promise.race([
         reader.read(),
         new Promise<typeof DEADLINE>((resolve) => {
-          timer = setTimeout(() => resolve(DEADLINE), remaining);
+          timer = setTimeout(() => resolve(DEADLINE), deadline - Date.now());
         }),
       ]);
       clearTimeout(timer);
