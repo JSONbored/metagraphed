@@ -4803,7 +4803,14 @@ const rootValue = {
   },
 
   async validator_nominators(
-    { hotkey, window, sort, coldkey }: QueryValidator_NominatorsArgs,
+    {
+      hotkey,
+      window,
+      sort,
+      coldkey,
+      limit,
+      offset,
+    }: QueryValidator_NominatorsArgs,
     context: GqlContext,
   ) {
     // Same window/sort allow-lists handleValidatorNominators validates against --
@@ -4833,16 +4840,38 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // #8547: full limit/offset parity with the REST route + MCP tool. REST's
+    // parseBoundedIntParam rejects an out-of-range value (limit 1-
+    // GLOBAL_VALIDATOR_LIMIT_MAX, offset >= 0) rather than clamping, so a SUPPLIED
+    // out-of-range value is a BAD_USER_INPUT error here too, matching the schema's
+    // stated convention; an omitted arg falls through to the builder's own default.
+    // The GraphQL `Int` type already guarantees an integer, so REST's separate
+    // non-integer guard (it parses a raw string query param) is unnecessary here.
+    if (limit != null && (limit < 1 || limit > GLOBAL_VALIDATOR_LIMIT_MAX)) {
+      throw new GraphQLError(
+        `\`limit\` must be an integer between 1 and ${GLOBAL_VALIDATOR_LIMIT_MAX}. Received "${limit}".`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (offset != null && offset < 0) {
+      throw new GraphQLError(
+        `\`offset\` must be a non-negative integer. Received "${offset}".`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     if (sort != null) params.set("sort", sort);
     if (coldkey != null) params.set("coldkey", coldkey);
+    if (limit != null) params.set("limit", String(limit));
+    if (offset != null) params.set("offset", String(offset));
     // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildValidatorNominators
     // fallback contract REST uses. The Postgres tier's response is a REST-style
     // { data, generatedAt } envelope, so only its `.data` is taken; `generatedAt` is
     // REST envelope meta with no GraphQL field to carry it. A hotkey with no
     // nominators yields a schema-stable empty list, never a GraphQL error. limit/offset
-    // are deliberately not GraphQL args, so the module's own defaults apply. #4772 D1
+    // ride the same request params REST parses (#8547); an omitted arg uses the
+    // module's own default (20/0). #4772 D1
     // retirement: the `account_events` D1 table is dropped in production, so the
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
@@ -4860,6 +4889,8 @@ const rootValue = {
       buildValidatorNominators([], hotkey, {
         window: requestedWindow,
         sort: sort ?? undefined,
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
       });
     return {
       schema_version: data.schema_version ?? 1,
