@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   escapeText,
+  glyphsForMarkup,
   normalizeLogoHost,
   normalizeSubtitle,
   normalizeTitle,
@@ -238,5 +239,84 @@ describe("entity logo (#8489)", () => {
       stats: [],
     });
     expect(markup).not.toContain("/api/v1/icon");
+  });
+});
+
+describe("glyph subsetting (#8489) — every painted character must be subset", () => {
+  // Fonts are loaded with `text=<glyphs>`; anything missing rasterizes as a
+  // tofu box. This is the invariant, asserted structurally rather than by
+  // listing characters — a hand-written list is exactly what drifted before
+  // (stat labels were mirrored as .toUpperCase(), the eyebrow pill was not).
+  function paintedChars(markup: string): Set<string> {
+    return new Set(glyphsForMarkup(markup).replace(/\s/g, ""));
+  }
+
+  it("covers the UPPERCASED eyebrow, which the markup transforms", () => {
+    // Regression: eyebrow "Validator" is painted "VALIDATOR". With the old
+    // hand-written subset it rendered "V" + 8 tofu boxes whenever the title
+    // didn't happen to supply those capitals.
+    const markup = renderCardMarkup({
+      title: "chutes",
+      subtitle: "a subnet.",
+      eyebrow: "Validator",
+      stats: [],
+    });
+    const painted = paintedChars(markup);
+    for (const ch of "VALIDATOR") {
+      expect(painted.has(ch), `subset is missing "${ch}"`).toBe(true);
+    }
+  });
+
+  it("covers UPPERCASED stat labels", () => {
+    const markup = renderCardMarkup({
+      title: "x",
+      subtitle: "y",
+      eyebrow: null,
+      stats: [{ label: "Alpha price", value: "0.0832 τ" }],
+    });
+    const painted = paintedChars(markup);
+    for (const ch of "ALPHA PRICE".replace(/\s/g, "")) {
+      expect(painted.has(ch), `subset is missing "${ch}"`).toBe(true);
+    }
+  });
+
+  it("covers the wordmark, the footer lockup, and stat values", () => {
+    const markup = renderCardMarkup({
+      title: "x",
+      subtitle: "y",
+      eyebrow: null,
+      stats: [{ label: "Netuid", value: "SN64" }],
+    });
+    const painted = paintedChars(markup);
+    for (const ch of "Metagraphedmetagraph.shSN64") {
+      expect(painted.has(ch), `subset is missing "${ch}"`).toBe(true);
+    }
+  });
+
+  it("decodes escaped entities back to the glyph actually drawn", () => {
+    // escapeText turns & into &amp;, but the card paints "&" — so the subset
+    // must contain "&", not "a","m","p",";".
+    const markup = renderCardMarkup({
+      title: "Rock & Roll",
+      subtitle: "y",
+      eyebrow: null,
+      stats: [],
+    });
+    expect(paintedChars(markup).has("&")).toBe(true);
+    expect(glyphsForMarkup(markup)).not.toContain("&amp;");
+  });
+
+  it("contains no markup residue — tags and their attributes are stripped", () => {
+    const markup = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "y",
+      eyebrow: "Subnet",
+      stats: [{ label: "Netuid", value: "SN64" }],
+      logoHost: "chutes.ai",
+    });
+    const glyphs = glyphsForMarkup(markup);
+    // Style/attribute text would balloon the subset request for glyphs that
+    // are never painted.
+    expect(glyphs).not.toMatch(/display:flex|border-radius|<div|https:/);
   });
 });

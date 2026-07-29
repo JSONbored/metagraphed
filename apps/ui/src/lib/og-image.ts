@@ -371,6 +371,34 @@ export function renderCardMarkup(opts: {
     </div>`;
 }
 
+/**
+ * The exact set of characters the card will paint, derived FROM the rendered
+ * markup rather than re-listed by hand.
+ *
+ * Fonts are subset to `text=` for size, so any character that isn't in this
+ * string rasterizes as a tofu box. Maintaining a parallel list of "everything
+ * we render" is a bug generator: it silently drifts every time the markup
+ * transforms a value. It already bit twice — stat labels are rendered
+ * `.toUpperCase()`, and so is the eyebrow pill, but only the former was
+ * mirrored into the hand-written list, so an eyebrow like "Validator" painted
+ * "V" followed by eight tofu boxes wherever the title happened not to supply
+ * the capitals.
+ *
+ * Deriving from the markup makes that impossible: whatever the template
+ * renders is by construction what gets subset. Tags are stripped (their
+ * attributes go with them, since they live inside `<...>`), then the four
+ * entities `escapeText` can introduce are decoded back to the glyphs actually
+ * drawn.
+ */
+export function glyphsForMarkup(markup: string): string {
+  return markup
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+}
+
 function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   const cacheUrl = new URL(url);
   const original = cacheUrl.searchParams;
@@ -451,12 +479,18 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     return fallbackImageResponse();
   }
 
-  // Subset each weight to only the bounded glyphs we render (smaller + faster
-  // fetch). #8489: the subset must cover the entity params too, or a stat's
-  // digits would render as tofu.
-  const glyphs = `${normalizedTitle}${normalizedSubtitle}${WORDMARK}metagraph.sh${eyebrow ?? ""}${stats
-    .map((s) => `${s.label}${s.label.toUpperCase()}${s.value}`)
-    .join("")}`;
+  // Build the markup FIRST so the font subset can be derived from it -- see
+  // glyphsForMarkup for why a hand-maintained glyph list is a bug generator.
+  const markup = renderCardMarkup({
+    title: normalizedTitle,
+    subtitle: normalizedSubtitle,
+    eyebrow,
+    stats,
+    logoHost,
+  });
+  // Subset each weight to only the glyphs actually painted (smaller + faster
+  // fetch) plus the tau, which Space Grotesk lacks entirely and Inter supplies.
+  const glyphs = glyphsForMarkup(markup);
   let bold: ArrayBuffer;
   let regular: ArrayBuffer;
   let medium: ArrayBuffer;
@@ -480,14 +514,6 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     console.error("Failed to load OG image fonts", error);
     return fallbackImageResponse();
   }
-
-  const markup = renderCardMarkup({
-    title: normalizedTitle,
-    subtitle: normalizedSubtitle,
-    eyebrow,
-    stats,
-    logoHost,
-  });
 
   try {
     const image = new ImageResponse(markup, {
