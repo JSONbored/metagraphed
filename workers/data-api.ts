@@ -659,7 +659,7 @@ function validEventFilter(value: unknown) {
 // archive-then-prune complexity (src/neuron-history.ts, #4770) has an
 // equivalent here to build.
 const NEURONS_SYNC_TOKEN_HEADER = "x-neurons-sync-token";
-// ~33k rows today (129 subnets x <=256 UIDs); generous headroom over that
+// ~33k rows today (129 netuids x <=256 UIDs); generous headroom over that
 // (matches the D1 staging path's MAX_STAGED_NEURON_ROWS/MAX_STAGED_NEURONS_BYTES,
 // workers/request-handlers/staging.mjs) without inviting a pathological body.
 const NEURONS_SYNC_MAX_BODY_BYTES = 32_000_000;
@@ -1356,7 +1356,7 @@ async function handleRollupAccountEventsDaily(request: Request, env: Env) {
 // a plain NOT IN against this batch's netuids, unlike neurons-sync's
 // per-netuid captured_at-scoped prune.
 const SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER = "x-subnet-hyperparams-sync-token";
-// ~129 rows today (one per active subnet); generous headroom.
+// ~129 rows today (one per active netuid, root included); generous headroom.
 const SUBNET_HYPERPARAMS_SYNC_MAX_BODY_BYTES = 2_000_000;
 const SUBNET_HYPERPARAMS_SYNC_MAX_ROWS = 2_000;
 const SUBNET_HYPERPARAMS_SYNC_MAX_NETUID = 65_535;
@@ -1609,7 +1609,7 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
 const SUBNET_LOCKS_SYNC_TOKEN_HEADER = "x-subnet-locks-sync-token";
 // Real-world row count is small (a few dozen active locks network-wide as
 // of 2026-07-18 -- building conviction is opt-in and most subnets have
-// none), but generous headroom for growth: ~129 subnets x up to a few
+// none), but generous headroom for growth: ~129 netuids x up to a few
 // hundred concurrent challengers each, x2 for the perpetual/decaying split.
 const SUBNET_LOCKS_SYNC_MAX_BODY_BYTES = 5_000_000;
 const SUBNET_LOCKS_SYNC_MAX_ROWS = 50_000;
@@ -2413,7 +2413,7 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
 // validation either -- identitySnapshotFromProfile's own null-guard already
 // skips a malformed individual profile without erroring the batch.
 const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
-// ~129 subnets today; generous headroom, matching the other sync routes'
+// ~129 netuids today; generous headroom, matching the other sync routes'
 // convention.
 const SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES = 5_000_000;
 const SUBNET_IDENTITY_SYNC_MAX_ROWS = 2_000;
@@ -2932,7 +2932,7 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
 // columns can backfill across the day's later fires but a later NULL can
 // never wipe an earlier fire's good value.
 const SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER = "x-subnet-snapshot-sync-token";
-// ~129 subnets/day; generous headroom, matching the other sync routes.
+// ~129 netuids/day; generous headroom, matching the other sync routes.
 const SUBNET_SNAPSHOT_SYNC_MAX_BODY_BYTES = 2_000_000;
 const SUBNET_SNAPSHOT_SYNC_MAX_ROWS = 2_000;
 

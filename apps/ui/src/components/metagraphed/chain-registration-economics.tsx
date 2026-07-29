@@ -8,7 +8,7 @@ import type { SubnetEconomics } from "@/lib/metagraphed/types";
  * the only bulk-friendly source for this. There is no bulk "recycled totals"
  * endpoint in the current API (recycled is per-subnet only, GET
  * /subnets/{netuid}/recycled) and no bulk registration-count-trend endpoint
- * either; both would need one call per subnet (~129), blowing this tab's
+ * either; both would need one call per netuid (~129), blowing this tab's
  * 6-request budget. Scoped out — see the #8378 scope-note comment.
  */
 export function ChainRegistrationEconomics({ subnets }: { subnets: SubnetEconomics[] }) {
