@@ -1629,3 +1629,286 @@ test("fetch: GET /evaluate (wrong method) 404s", async () => {
   );
   assert.equal(res.status, 404);
 });
+
+// --- webpush channel (#8385) --------------------------------------------------
+//
+// Covers the delivery path end to end EXCEPT the network: the VAPID signing and
+// aes128gcm encryption themselves are unit-tested in tests/web-push.test.ts
+// (including a real RFC 8291 round-trip decrypt), so these tests assert the
+// channel's own wiring — provisioning guards, subscription lookup, and the
+// 404/410 prune contract.
+
+const VAPID_ENV = {
+  VAPID_PUBLIC_KEY:
+    "BJ2rXk8jTBLm2vSBM4dTHLmVUvB6nrM1sZ0X8kQ4rTqUW9YvL2nOaPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVw",
+  VAPID_PRIVATE_KEY: "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdefg",
+  VAPID_SUBJECT: "mailto:ops@metagraph.sh",
+};
+
+const PUSH_ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123";
+
+/** A real P-256 subscription, so encryption actually runs rather than being stubbed. */
+async function realSubscription() {
+  const pair = (await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"],
+  )) as CryptoKeyPair;
+  const raw = new Uint8Array(
+    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+  );
+  const b64 = (b: Uint8Array) =>
+    btoa(String.fromCharCode(...b))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  return {
+    endpoint: PUSH_ENDPOINT,
+    p256dh: b64(raw),
+    auth: b64(crypto.getRandomValues(new Uint8Array(16))),
+  };
+}
+
+/** A VAPID keypair the signer will actually accept. */
+async function realVapid() {
+  const pair = (await crypto.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign"],
+  )) as CryptoKeyPair;
+  const raw = new Uint8Array(
+    (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+  );
+  const jwk = (await crypto.subtle.exportKey(
+    "jwk",
+    pair.privateKey,
+  )) as JsonWebKey;
+  const b64 = (b: Uint8Array) =>
+    btoa(String.fromCharCode(...b))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  return {
+    VAPID_PUBLIC_KEY: b64(raw),
+    VAPID_PRIVATE_KEY: jwk.d as string,
+    VAPID_SUBJECT: "mailto:ops@metagraph.sh",
+  };
+}
+
+test("deliverAlertMatch: webpush records a failure when VAPID isn't provisioned", async () => {
+  for (const missing of [
+    "VAPID_PUBLIC_KEY",
+    "VAPID_PRIVATE_KEY",
+    "VAPID_SUBJECT",
+  ]) {
+    const env = mockEnv({ ...VAPID_ENV, [missing]: undefined });
+    const outcomes: Row[] = [];
+    const ok = await deliverAlertMatch(
+      triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+      { netuid: 7 },
+      env,
+      vi.fn() as never,
+      { onOutcome: (o: Row) => outcomes.push(o) },
+    );
+    assert.equal(ok, false, missing);
+    assert.equal(outcomes[0]!.success, false);
+    assert.match(String(outcomes[0]!.responseSnippet), /not provisioned/);
+  }
+});
+
+test("deliverAlertMatch: webpush records 'device expired' when the subscription is gone", async () => {
+  // DATA_API resolves the endpoint to nothing -- the device was pruned.
+  const env = mockEnv({
+    ...VAPID_ENV,
+    ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    DATA_API: fakeDataApi(
+      async () => new Response(JSON.stringify({ subscription: null })),
+    ),
+  });
+  const outcomes: Row[] = [];
+  const ok = await deliverAlertMatch(
+    triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+    { netuid: 7 },
+    env,
+    vi.fn() as never,
+    { onOutcome: (o: Row) => outcomes.push(o) },
+  );
+  assert.equal(ok, false);
+  assert.equal(outcomes[0]!.responseSnippet, "device expired");
+});
+
+test("deliverAlertMatch: webpush is a recorded failure when DATA_API isn't bound", async () => {
+  const env = mockEnv({ ...VAPID_ENV, DATA_API: undefined });
+  const outcomes: Row[] = [];
+  const ok = await deliverAlertMatch(
+    triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+    { netuid: 7 },
+    env,
+    vi.fn() as never,
+    { onOutcome: (o: Row) => outcomes.push(o) },
+  );
+  assert.equal(ok, false);
+  assert.equal(outcomes[0]!.responseSnippet, "device expired");
+});
+
+test("deliverAlertMatch: webpush survives a DATA_API lookup that throws or 500s", async () => {
+  for (const dataApi of [
+    fakeDataApi(async () => {
+      throw new Error("binding down");
+    }),
+    fakeDataApi(async () => new Response("nope", { status: 500 })),
+  ]) {
+    const env = mockEnv({
+      ...VAPID_ENV,
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      DATA_API: dataApi,
+    });
+    const outcomes: Row[] = [];
+    // Must never throw into ChainFirehoseHub's ingest path.
+    const ok = await deliverAlertMatch(
+      triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+      { netuid: 7 },
+      env,
+      vi.fn() as never,
+      { onOutcome: (o: Row) => outcomes.push(o) },
+    );
+    assert.equal(ok, false);
+    assert.equal(outcomes[0]!.responseSnippet, "device expired");
+  }
+});
+
+test("deliverAlertMatch: webpush POSTs an encrypted, VAPID-signed request and resolves true", async () => {
+  const sub = await realSubscription();
+  const vapid = await realVapid();
+  let received: { url: unknown; init?: RequestInit } | undefined;
+  const env = mockEnv({
+    ...vapid,
+    ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    DATA_API: fakeDataApi(
+      async () => new Response(JSON.stringify({ subscription: sub })),
+    ),
+  });
+  const fetchFn = vi.fn(async (url: unknown, init?: RequestInit) => {
+    received = { url, init };
+    return new Response(null, { status: 201 });
+  });
+  const outcomes: Row[] = [];
+  const ok = await deliverAlertMatch(
+    triggerRow({
+      channel: "webpush",
+      destination: PUSH_ENDPOINT,
+      name: "My alert",
+    }) as never,
+    { netuid: 64, event_kind: "StakeAdded" },
+    env,
+    fetchFn as never,
+    { onOutcome: (o: Row) => outcomes.push(o) },
+  );
+  assert.equal(ok, true);
+  assert.equal(outcomes[0]!.success, true);
+  assert.equal(received!.url, PUSH_ENDPOINT);
+  const headers = received!.init!.headers as Record<string, string>;
+  assert.match(
+    headers.authorization,
+    /^vapid t=[\w-]+\.[\w-]+\.[\w-]+, k=[\w-]+$/,
+  );
+  assert.equal(headers["content-encoding"], "aes128gcm");
+  // Body is ciphertext, never the plaintext payload.
+  const body = received!.init!.body as Uint8Array;
+  assert.ok(body.byteLength > 0);
+  assert.ok(!new TextDecoder().decode(body).includes("StakeAdded"));
+});
+
+test("deliverAlertMatch: webpush prunes the device on 404/410 and says so in history", async () => {
+  for (const status of [404, 410]) {
+    const sub = await realSubscription();
+    const vapid = await realVapid();
+    const dataApiCalls: Array<{ method: string; body: unknown }> = [];
+    const env = mockEnv({
+      ...vapid,
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      DATA_API: fakeDataApi(async (_url: unknown, init?: RequestInit) => {
+        dataApiCalls.push({
+          method: init?.method ?? "GET",
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+        });
+        return new Response(JSON.stringify({ subscription: sub }));
+      }),
+    });
+    const outcomes: Row[] = [];
+    const ok = await deliverAlertMatch(
+      triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+      { netuid: 7 },
+      env,
+      vi.fn(async () => new Response("gone", { status })) as never,
+      { onOutcome: (o: Row) => outcomes.push(o) },
+    );
+    assert.equal(ok, false, String(status));
+    assert.equal(outcomes[0]!.statusCode, status);
+    assert.equal(outcomes[0]!.responseSnippet, "device expired");
+    // The row is actually pruned rather than retried forever.
+    const del = dataApiCalls.find((c) => c.method === "DELETE");
+    assert.ok(del, `expected a prune on ${status}`);
+    assert.deepEqual(del!.body, { endpoint: PUSH_ENDPOINT });
+  }
+});
+
+test("deliverAlertMatch: webpush leaves a transient 5xx to the normal retry path, unpruned", async () => {
+  const sub = await realSubscription();
+  const vapid = await realVapid();
+  const methods: string[] = [];
+  const env = mockEnv({
+    ...vapid,
+    ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    DATA_API: fakeDataApi(async (_url: unknown, init?: RequestInit) => {
+      methods.push(init?.method ?? "GET");
+      return new Response(JSON.stringify({ subscription: sub }));
+    }),
+  });
+  const outcomes: Row[] = [];
+  const ok = await deliverAlertMatch(
+    triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+    { netuid: 7 },
+    env,
+    vi.fn(async () => new Response("busy", { status: 503 })) as never,
+    { onOutcome: (o: Row) => outcomes.push(o) },
+  );
+  assert.equal(ok, false);
+  assert.equal(outcomes[0]!.statusCode, 503);
+  assert.notEqual(outcomes[0]!.responseSnippet, "device expired");
+  assert.ok(!methods.includes("DELETE"), "a 503 must not prune the device");
+});
+
+test("deliverAlertMatch: webpush refuses a stored subscription with an unusable endpoint", async () => {
+  // Defense in depth: intake validates the endpoint, but a row that predates
+  // that (or slipped past it) must not produce a signed request aimed
+  // somewhere unintended — buildPushRequest returns null and the delivery is
+  // recorded as a failure rather than throwing.
+  const sub = await realSubscription();
+  const vapid = await realVapid();
+  const env = mockEnv({
+    ...vapid,
+    ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    DATA_API: fakeDataApi(
+      async () =>
+        new Response(
+          JSON.stringify({
+            subscription: { ...sub, endpoint: "http://insecure.example/push" },
+          }),
+        ),
+    ),
+  });
+  const fetchFn = vi.fn();
+  const outcomes: Row[] = [];
+  const ok = await deliverAlertMatch(
+    triggerRow({ channel: "webpush", destination: PUSH_ENDPOINT }) as never,
+    { netuid: 7 },
+    env,
+    fetchFn as never,
+    { onOutcome: (o: Row) => outcomes.push(o) },
+  );
+  assert.equal(ok, false);
+  assert.equal(outcomes[0]!.success, false);
+  // Nothing was ever sent.
+  assert.equal(fetchFn.mock.calls.length, 0);
+});

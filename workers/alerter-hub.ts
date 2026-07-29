@@ -32,6 +32,12 @@ import {
   resolveWebhookHostnamesWithDoh,
 } from "../src/webhooks.ts";
 import {
+  buildPushRequest,
+  isExpiredSubscriptionStatus,
+  type PushSubscriptionKeys,
+} from "../src/web-push.ts";
+import { buildPushNotificationPayload } from "../src/web-push-payload.ts";
+import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
   buildTelegramDeliveryRequest,
@@ -147,6 +153,73 @@ export interface AlertDeliveryOutcome {
 // called on the rejected-fetch path -- that path never resolves this
 // function at all, so evaluate()'s own catch block records that outcome
 // instead (see below).
+// #8385: resolve a webpush trigger's destination (a push-service endpoint)
+// to the crypto material needed to encrypt for that device. Reads through
+// the SAME internal service-binding + token pattern refreshTriggers() uses,
+// rather than giving this Worker its own database handle.
+//
+// Returns null on any failure (unprovisioned, network, pruned device, bad
+// shape) so the caller records a delivery failure instead of throwing into
+// ChainFirehoseHub's ingest path.
+async function loadPushSubscription(
+  env: Env,
+  endpoint: string,
+): Promise<PushSubscriptionKeys | null> {
+  if (!env.DATA_API || !env.ALERT_TRIGGERS_INTERNAL_TOKEN) return null;
+  try {
+    const upstream = await env.DATA_API.fetch(
+      `https://data-api.internal/api/v1/internal/push-subscription?endpoint=${encodeURIComponent(endpoint)}`,
+      {
+        headers: {
+          "x-alert-triggers-internal-token": env.ALERT_TRIGGERS_INTERNAL_TOKEN,
+        },
+        signal: AbortSignal.timeout(ALERT_TRIGGER_REFRESH_TIMEOUT_MS),
+      },
+    );
+    if (!upstream.ok) return null;
+    const body = (await upstream.json()) as {
+      subscription?: PushSubscriptionKeys | null;
+    };
+    const sub = body?.subscription;
+    if (!sub?.endpoint || !sub.p256dh || !sub.auth) return null;
+    return sub;
+  } catch {
+    return null;
+  }
+}
+
+// #8385 requirement 4: a 404/410 from the push service means the browser
+// unsubscribed or the endpoint was purged -- terminal, so the row is pruned
+// rather than retried forever (the classic web-push storage leak). Fire and
+// forget: pruning is bookkeeping, and its failure must never turn a
+// already-recorded delivery outcome into a thrown error.
+async function prunePushSubscription(
+  env: Env,
+  endpoint: string,
+): Promise<void> {
+  // Asserted, not guarded. Prune only ever runs after a SUCCESSFUL
+  // subscription lookup (loadPushSubscription), which already required both
+  // bindings -- so a runtime check here would be an unreachable branch rather
+  // than defense. If either were somehow absent, the call below throws and is
+  // swallowed by the same catch that already makes this fire-and-forget.
+  const internalToken = env.ALERT_TRIGGERS_INTERNAL_TOKEN as string;
+  try {
+    await env.DATA_API!.fetch(
+      "https://data-api.internal/api/v1/internal/push-subscription",
+      {
+        method: "DELETE",
+        headers: {
+          "x-alert-triggers-internal-token": internalToken,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ endpoint }),
+      },
+    );
+  } catch {
+    /* best effort */
+  }
+}
+
 export async function deliverAlertMatch(
   trigger: Trigger,
   payload: unknown,
@@ -206,6 +279,63 @@ export async function deliverAlertMatch(
         fromAddress: env.RESEND_FROM_ADDRESS,
       });
       break;
+    // #8385: the destination is the push-service endpoint; the crypto
+    // material lives in watch_push_subscriptions, and the VAPID keypair in
+    // Worker secrets. Unprovisioned deploys degrade exactly like telegram/
+    // email above (a recorded failure, never a throw).
+    case "webpush": {
+      if (
+        !env.VAPID_PUBLIC_KEY ||
+        !env.VAPID_PRIVATE_KEY ||
+        !env.VAPID_SUBJECT
+      ) {
+        onOutcome?.({
+          success: false,
+          statusCode: null,
+          responseSnippet: "webpush is not provisioned on this deployment",
+        });
+        return false;
+      }
+      // Goes through the DATA_API service binding, not the injectable
+      // fetchFn -- that override exists for the outbound delivery request,
+      // which is what tests stub.
+      const subscription = await loadPushSubscription(
+        env,
+        alertTrigger.destination,
+      );
+      if (!subscription) {
+        // The device was pruned (or never existed) -- a terminal state for
+        // this trigger, recorded so the Alert Center can show why.
+        onOutcome?.({
+          success: false,
+          statusCode: null,
+          responseSnippet: "device expired",
+        });
+        return false;
+      }
+      const pushRequest = await buildPushRequest(
+        JSON.stringify(
+          buildPushNotificationPayload(alertTrigger, alertPayload, Date.now()),
+        ),
+        subscription,
+        {
+          publicKey: env.VAPID_PUBLIC_KEY,
+          signingKey: env.VAPID_PRIVATE_KEY,
+          subject: env.VAPID_SUBJECT,
+        },
+      );
+      request = pushRequest
+        ? {
+            url: pushRequest.url,
+            init: {
+              method: "POST",
+              headers: pushRequest.headers,
+              body: pushRequest.body as unknown as BodyInit,
+            },
+          }
+        : null;
+      break;
+    }
     default:
       onOutcome?.({ success: false, statusCode: null, responseSnippet: null });
       return false;
@@ -258,6 +388,21 @@ export async function deliverAlertMatch(
     } catch {
       // Best-effort -- an unreadable body (already consumed, a stream
       // error) just means no snippet, never a thrown deliverAlertMatch.
+    }
+    // #8385 requirement 4: 404/410 from a push service is terminal -- the
+    // browser unsubscribed or the endpoint was purged. Prune the device and
+    // say so in the history, rather than retrying a dead endpoint forever.
+    if (
+      trigger.channel === "webpush" &&
+      isExpiredSubscriptionStatus(response.status)
+    ) {
+      await prunePushSubscription(env, alertTrigger.destination);
+      onOutcome?.({
+        success: false,
+        statusCode: response.status,
+        responseSnippet: "device expired",
+      });
+      return false;
     }
     onOutcome?.({
       success: false,

@@ -993,7 +993,7 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
   -- its own. NULL for every pre-#6746 trigger (a fixed-field-only match,
   -- unaffected by this column's presence).
   condition         JSONB,
-  channel           TEXT NOT NULL CHECK (channel IN ('webhook', 'email', 'telegram', 'discord')),
+  channel           TEXT NOT NULL CHECK (channel IN ('webhook', 'email', 'telegram', 'discord', 'webpush')),
   -- Shape depends on channel: a public https:// URL (webhook), an email
   -- address (email), a chat id or @channelusername (telegram), or the exact
   -- Discord incoming-webhook URL shape (discord) -- validated at write time
@@ -1017,6 +1017,25 @@ ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS condition JSONB;
 -- WATCH_TRIGGERS_MAX_PER_ADDRESS at create time and, later, to list "my
 -- triggers" in the alert center (#8375, same epic).
 ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS owner_ss58 TEXT;
+-- #8385: widen the channel CHECK to admit 'webpush'.
+--
+-- This ALTER is load-bearing, not decorative. The CREATE TABLE above is
+-- `IF NOT EXISTS`, so on an already-deployed database its inline CHECK is
+-- never re-evaluated -- editing the constraint text up there alone is a
+-- silent no-op against production, and every INSERT of a webpush trigger
+-- would fail with a check-constraint violation. Same reason `condition` and
+-- `owner_ss58` above ship as explicit ALTERs rather than column edits.
+--
+-- DROP ... IF EXISTS immediately followed by ADD keeps the pair idempotent
+-- (ADD CONSTRAINT alone would fail on a second run). The constraint name is
+-- the one Postgres auto-generates for an unnamed inline column CHECK,
+-- `<table>_<column>_check` -- verified against postgres:16-alpine rather
+-- than assumed.
+ALTER TABLE chain_alert_triggers
+  DROP CONSTRAINT IF EXISTS chain_alert_triggers_channel_check;
+ALTER TABLE chain_alert_triggers
+  ADD CONSTRAINT chain_alert_triggers_channel_check
+  CHECK (channel IN ('webhook', 'email', 'telegram', 'discord', 'webpush'));
 -- Covers AlerterHub's own "give me every active trigger" cache-refresh scan
 -- (#4984 Part 2) -- the only query pattern against this table that isn't
 -- already a fast primary-key lookup by id.
@@ -1052,6 +1071,42 @@ CREATE TABLE IF NOT EXISTS chain_alert_deliveries (
   response_snippet  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cad_trigger_delivered_at ON chain_alert_deliveries (trigger_id, delivered_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- Web-push device subscriptions (#8385, epic T9) -- the `webpush` alert
+-- channel's delivery targets. Deliberately its OWN table rather than more
+-- chain_alert_triggers.destination text: a subscription is three correlated
+-- values (endpoint + two key materials), it is per-DEVICE while a trigger is
+-- per-alert, and one device is reused by every trigger the same address owns.
+-- A trigger with channel='webpush' therefore stores the subscription's
+-- `endpoint` in `destination`, and this table holds the crypto material.
+--
+-- Bound to the T6 wallet-verified address (#8374), same identity the trigger
+-- tokens use -- so "my devices" is answerable without an accounts system.
+--
+-- p256dh/auth are the subscriber's OWN public key + auth secret handed to us
+-- by the browser's Push API. They are not our secrets, and are useless
+-- without the secret half that never leaves the device -- but they ARE
+-- per-user data: never log them, and never expose them on a read route (the
+-- GET returns only the metadata a human needs to recognise a device).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS watch_push_subscriptions (
+  id           BIGSERIAL PRIMARY KEY,
+  -- The T6 verified ss58 that owns this device.
+  address      TEXT NOT NULL,
+  -- Push-service URL. UNIQUE so re-subscribing the same browser updates in
+  -- place instead of silently accruing duplicate devices (browsers reissue
+  -- the same endpoint for an unchanged subscription).
+  endpoint     TEXT NOT NULL UNIQUE,
+  p256dh       TEXT NOT NULL,
+  auth         TEXT NOT NULL,
+  -- Coarse label so a human can tell "iPhone" from "work laptop" when
+  -- revoking. Truncated at write time; never the raw full UA string.
+  user_agent   TEXT,
+  created_at   BIGINT NOT NULL,
+  last_used_at BIGINT
+);
+CREATE INDEX IF NOT EXISTS idx_wps_address ON watch_push_subscriptions (address, created_at DESC);
 
 -- ---------------------------------------------------------------------------
 -- Self-serve API keys (ADR 0020, epic #6733/#6735) -- the optional identity

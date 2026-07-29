@@ -131,7 +131,34 @@ test("ALERT_CHANNELS is the documented set", () => {
     "email",
     "telegram",
     "webhook",
+    // #8385: web-push delivery to a subscribed device.
+    "webpush",
   ]);
+});
+
+test("isValidAlertDestination: webpush accepts a public https push endpoint", () => {
+  assert.equal(
+    isValidAlertDestination(
+      "webpush",
+      "https://fcm.googleapis.com/fcm/send/abc123",
+    ),
+    true,
+  );
+});
+
+test("isValidAlertDestination: webpush rejects private/non-https endpoints (SSRF)", () => {
+  // A VAPID-signed request must never be aimed at an internal address --
+  // same guard the webhook channel relies on.
+  for (const bad of [
+    "http://fcm.googleapis.com/fcm/send/abc",
+    "https://127.0.0.1/push",
+    "https://localhost/push",
+    "https://192.168.1.10/push",
+    "not-a-url",
+    "",
+  ]) {
+    assert.equal(isValidAlertDestination("webpush", bad), false, bad);
+  }
 });
 
 // --- validateAlertTriggerInput ----------------------------------------------

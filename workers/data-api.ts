@@ -499,7 +499,9 @@ function latestObservedIso(rows: Row[], field: string = "last_observed") {
   }
   return latest == null ? null : new Date(latest).toISOString();
 }
-import { timingSafeEqual } from "../src/webhooks.ts";
+import { isPublicWebhookUrl, timingSafeEqual } from "../src/webhooks.ts";
+// #8385: shape-check push key material at intake (see that module).
+import { isValidPushKeyMaterial } from "../src/web-push.ts";
 import {
   ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
@@ -4488,6 +4490,276 @@ async function handleWatchTriggersRoute(request: Request, env: Env, url: URL) {
   );
 }
 
+// --- Web-push device subscriptions (#8385) ---------------------------------
+//
+// The `webpush` alert channel's delivery targets, bound to the SAME T6
+// wallet-verified address the watch triggers use (requireVerifiedWatchSs58
+// above) -- so "my devices" is answerable without an accounts system.
+//
+// Privacy: p256dh/auth are the subscriber's own key material. They are
+// accepted on write and used at delivery time, but NEVER returned by the
+// read route -- a device list only needs enough metadata for a human to
+// recognise which device to revoke.
+
+// #8385 requirement 1's decided cap.
+const WATCH_PUSH_MAX_DEVICES_PER_ADDRESS = 3;
+// Coarse label only; the raw UA string is neither needed nor stored in full.
+const WATCH_PUSH_USER_AGENT_MAX = 120;
+
+/** The device fields safe to hand back to the owner. Deliberately omits
+ * p256dh/auth -- see this section's header comment. */
+function pushSubscriptionView(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    endpoint: String(row.endpoint ?? ""),
+    user_agent: row.user_agent ?? null,
+    created_at: row.created_at != null ? Number(row.created_at) : null,
+    last_used_at: row.last_used_at != null ? Number(row.last_used_at) : null,
+  };
+}
+
+async function handleWatchPushSubscriptionsList(request: Request, env: Env) {
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    const rows = await sql`
+      SELECT id, endpoint, user_agent, created_at, last_used_at
+      FROM watch_push_subscriptions
+      WHERE address = ${auth.ss58}
+      ORDER BY created_at DESC`;
+    return writeJson({
+      subscriptions: rows.map(pushSubscriptionView),
+      max_devices: WATCH_PUSH_MAX_DEVICES_PER_ADDRESS,
+    });
+  });
+}
+
+async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+
+  const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
+  const p256dh = typeof body.p256dh === "string" ? body.p256dh : "";
+  const authKey = typeof body.auth === "string" ? body.auth : "";
+  // Same public-https guard the webhook/webpush destinations use: a
+  // VAPID-signed request must never be aimed at a private address.
+  if (!isPublicWebhookUrl(endpoint)) {
+    return writeJson(
+      { error: "endpoint must be a public https:// push-service URL" },
+      400,
+    );
+  }
+  if (!p256dh || !authKey) {
+    return writeJson({ error: "p256dh and auth are required" }, 400);
+  }
+  // Shape-check the key material up front so a malformed subscription fails
+  // at intake rather than silently at every future delivery.
+  if (!isValidPushKeyMaterial(p256dh, authKey)) {
+    return writeJson(
+      { error: "p256dh or auth is not valid base64url key material" },
+      400,
+    );
+  }
+
+  const userAgent =
+    typeof body.user_agent === "string" && body.user_agent.trim()
+      ? body.user_agent.trim().slice(0, WATCH_PUSH_USER_AGENT_MAX)
+      : null;
+  const now = Date.now();
+
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    // Read the OWNER, not just existence. An endpoint is globally unique, so
+    // without this check a verified address could POST an endpoint already
+    // registered to someone else and the upsert below would silently reassign
+    // it: the original owner loses their device, the taker skips their own
+    // device cap, and the taker's alert triggers start pushing to a browser
+    // that never subscribed to them. Ownership is the thing being enforced
+    // here -- existence alone is not enough.
+    const existing = await sql`
+      SELECT id, address FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
+    const owner = existing[0]?.address as string | undefined;
+
+    if (owner !== undefined && owner !== auth.ss58) {
+      return writeJson(
+        { error: "that endpoint is already registered to another account" },
+        409,
+      );
+    }
+
+    // Only a genuinely NEW device counts against the cap. Re-subscribing the
+    // same browser reissues the same endpoint, so charging it again would
+    // make a routine key rotation look like "device limit reached".
+    if (existing.length === 0) {
+      const count = await sql`
+        SELECT COUNT(*)::int AS n FROM watch_push_subscriptions
+        WHERE address = ${auth.ss58}`;
+      const n = Number(count[0]?.n ?? 0);
+      if (n >= WATCH_PUSH_MAX_DEVICES_PER_ADDRESS) {
+        return writeJson(
+          {
+            error: `device limit reached (${WATCH_PUSH_MAX_DEVICES_PER_ADDRESS}) — remove a device first`,
+          },
+          409,
+        );
+      }
+    }
+
+    const rows = await sql`
+      INSERT INTO watch_push_subscriptions
+        (address, endpoint, p256dh, auth, user_agent, created_at)
+      VALUES (${auth.ss58}, ${endpoint}, ${p256dh}, ${authKey}, ${userAgent}, ${now})
+      ON CONFLICT (endpoint) DO UPDATE SET
+        p256dh = EXCLUDED.p256dh,
+        auth = EXCLUDED.auth,
+        user_agent = EXCLUDED.user_agent
+      WHERE watch_push_subscriptions.address = EXCLUDED.address
+      RETURNING id, endpoint, user_agent, created_at, last_used_at`;
+    // Defense in depth: `address` is no longer reassignable at all (dropped
+    // from the SET list), and the WHERE means a conflicting row owned by
+    // anyone else updates nothing and returns no row. The explicit check
+    // above should already have caught that, so reaching here means a race --
+    // treat it the same way rather than emitting a 201 with an empty body.
+    if (rows.length === 0) {
+      return writeJson(
+        { error: "that endpoint is already registered to another account" },
+        409,
+      );
+    }
+    return writeJson({ subscription: pushSubscriptionView(rows[0]!) }, 201);
+  });
+}
+
+async function handleWatchPushSubscriptionDelete(
+  request: Request,
+  env: Env,
+  id: string,
+) {
+  if (!/^[0-9]{1,19}$/.test(id)) {
+    return writeJson({ error: "malformed subscription id" }, 400);
+  }
+  const auth = await requireVerifiedWatchSs58(request, env);
+  if (!auth.ok) return auth.response;
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    // Scoped by address: another address' id returns the same 404 a
+    // nonexistent one does (the anti-oracle posture the trigger routes use).
+    const rows = await sql`
+      DELETE FROM watch_push_subscriptions
+      WHERE id = ${id} AND address = ${auth.ss58}
+      RETURNING id`;
+    if (rows.length === 0)
+      return writeJson({ error: "subscription not found" }, 404);
+    return writeJson({ deleted: true, id: String(rows[0]!.id) });
+  });
+}
+
+// Internal-only (AlerterHub via the DATA_API service binding, same
+// ALERT_TRIGGERS_INTERNAL_TOKEN gate the active-trigger list uses): resolve a
+// push endpoint to its crypto material at delivery time, and prune a device
+// the push service reported as gone (#8385 requirement 4).
+//
+// NOT public: this is the one place p256dh/auth leave the database, and only
+// over the internal binding -- the owner-facing GET deliberately omits them.
+async function handleInternalPushSubscription(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  // Same inline gate the sibling internal routes use (no shared helper
+  // exists; matching their shape rather than introducing one here).
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "internal push routes are not provisioned" },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+
+  if (request.method === "GET") {
+    const endpoint = url.searchParams.get("endpoint") || "";
+    if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
+    return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+      const rows = await sql`
+        SELECT endpoint, p256dh, auth FROM watch_push_subscriptions
+        WHERE endpoint = ${endpoint}`;
+      const row = rows[0];
+      if (!row) return writeJson({ subscription: null });
+      // Best-effort liveness stamp so the device list can show "last used".
+      await sql`
+        UPDATE watch_push_subscriptions SET last_used_at = ${Date.now()}
+        WHERE endpoint = ${endpoint}`;
+      return writeJson({
+        subscription: {
+          endpoint: String(row.endpoint),
+          p256dh: String(row.p256dh),
+          auth: String(row.auth),
+        },
+      });
+    });
+  }
+
+  if (request.method === "DELETE") {
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return writeJson({ error: "body must be JSON" }, 400);
+    }
+    const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
+    if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
+    return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+      await sql`DELETE FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
+      // Idempotent: pruning an already-pruned device is a success, not a 404
+      // -- the caller is fire-and-forget and must never see a spurious error.
+      return writeJson({ pruned: true });
+    });
+  }
+
+  return writeJson({ error: "Use GET or DELETE." }, 405);
+}
+
+async function handleWatchPushSubscriptionsRoute(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const segments = url.pathname.split("/").filter(Boolean);
+  // ["api", "v1", "watch", "push-subscriptions", <id?>]
+  const id = segments[4];
+  if (!id && request.method === "GET") {
+    return handleWatchPushSubscriptionsList(request, env);
+  }
+  if (!id && request.method === "POST") {
+    return handleWatchPushSubscriptionCreate(request, env);
+  }
+  if (id && request.method === "DELETE") {
+    return handleWatchPushSubscriptionDelete(request, env, id);
+  }
+  return writeJson(
+    {
+      error:
+        "Use GET/POST /api/v1/watch/push-subscriptions or DELETE /api/v1/watch/push-subscriptions/{id}.",
+    },
+    405,
+  );
+}
+
 // --- Wallet-signature login + self-serve fullnode/freemium API keys
 // (originally ADR 0021/#6835, reworked onto Unkey 2026-07-19) --------------
 //
@@ -5330,6 +5602,15 @@ async function dispatchDataApiRequest(
     // checks" shape as handleAlertTriggersRoute just above.
     if (url.pathname.startsWith("/api/v1/watch/triggers")) {
       return handleWatchTriggersRoute(request, env, url);
+    }
+    // #8385: the same address-scoped shape for web-push device
+    // subscriptions (GET list, POST subscribe, DELETE one device).
+    if (url.pathname.startsWith("/api/v1/watch/push-subscriptions")) {
+      return handleWatchPushSubscriptionsRoute(request, env, url);
+    }
+    // #8385: internal-only push-subscription resolve/prune for AlerterHub.
+    if (url.pathname === "/api/v1/internal/push-subscription") {
+      return handleInternalPushSubscription(request, env, url);
     }
     // Wallet login + account-gated fullnode API keys (ADR 0021, #6835) --
     // same multi-method-can't-join-the-exact-match-checks shape as the
