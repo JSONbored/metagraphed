@@ -457,6 +457,17 @@
 .mg-glass-soft {
   background: color-mix(in oklab, var(--card) 60%, transparent);
 }
+/* Elevated opaque panel (#8554): an unconditional 95%-opaque card surface with
+   NO backdrop-filter and no @supports branch -- it renders identically whether
+   or not backdrop-filter is supported. This is the flat elevated-panel tier the
+   `bg-card/95` + mg-card-glow detail cards want: `.mg-glass` can't serve them
+   because it drops to 80% + blur(8px) wherever backdrop-filter IS supported (a
+   real visual change), and `.mg-glass-soft` is 60%. Byte-for-byte the same
+   surface Tailwind's `bg-card/95` produces (both compose var(--card) at 95% via
+   the same color-mix), so swapping a raw `bg-card/95` for this is pixel-identical. */
+.mg-glass-opaque {
+  background: color-mix(in oklab, var(--card) 95%, transparent);
+}
 
 /* ============ DARK — Ink + dialed mint ============ */
 .dark {
