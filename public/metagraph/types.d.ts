@@ -3197,6 +3197,7 @@ export interface components {
                 observed_at?: string | null;
                 signer?: string | null;
                 success?: boolean | null;
+                summary?: string | null;
                 tip_tao?: number | null;
             }[];
             limit: number;
@@ -3912,6 +3913,7 @@ export interface components {
                 observed_at?: number | null;
                 pallet: string | null;
                 phase?: string | null;
+                summary?: string | null;
             }[];
         } & {
             [key: string]: unknown;
@@ -3961,6 +3963,7 @@ export interface components {
                 observed_at: string | null;
                 signer: string | null;
                 success: boolean | null;
+                summary: string | null;
                 tip_tao: number | null;
             }[];
             limit: number;
@@ -4311,6 +4314,7 @@ export interface components {
                 observed_at?: number | null;
                 pallet: string | null;
                 phase?: string | null;
+                summary?: string | null;
             }[];
             next_before?: number | null;
             next_cursor?: string | null;
@@ -5488,6 +5492,7 @@ export interface components {
                 observed_at: string | null;
                 signer: string | null;
                 success: boolean | null;
+                summary: string | null;
                 tip_tao: number | null;
             } | null;
             ref: string | null;
@@ -5510,6 +5515,7 @@ export interface components {
                 observed_at: string | null;
                 signer: string | null;
                 success: boolean | null;
+                summary: string | null;
                 tip_tao: number | null;
             }[];
             limit: number;
@@ -13360,6 +13366,7 @@ export interface operations {
                      *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "signer": "example",
                      *             "success": false,
+                     *             "summary": "Example description.",
                      *             "tip_tao": 0.5
                      *           }
                      *         ],
@@ -19556,6 +19563,7 @@ export interface operations {
                      *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "signer": "example",
                      *             "success": false,
+                     *             "summary": "Example description.",
                      *             "tip_tao": 0.5
                      *           }
                      *         ],
@@ -19685,6 +19693,7 @@ export interface operations {
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "signer": "example",
                      *           "success": false,
+                     *           "summary": "Example description.",
                      *           "tip_tao": 0.5
                      *         },
                      *         "ref": "example",
@@ -20310,6 +20319,7 @@ export interface operations {
                      *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "signer": "example",
                      *             "success": false,
+                     *             "summary": "Example description.",
                      *             "tip_tao": 0.5
                      *           }
                      *         ],
@@ -32110,6 +32120,7 @@ export interface operations {
                      *             "observed_at": "2026-06-01T00:00:00.000Z",
                      *             "signer": "example",
                      *             "success": false,
+                     *             "summary": "Example description.",
                      *             "tip_tao": 0.5
                      *           }
                      *         ],

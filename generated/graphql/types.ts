@@ -1061,6 +1061,8 @@ export type ChainEventRow = {
   observed_at?: Maybe<Scalars['Float']['output']>;
   pallet?: Maybe<Scalars['String']['output']>;
   phase?: Maybe<Scalars['String']['output']>;
+  /** Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525). */
+  summary?: Maybe<Scalars['String']['output']>;
 };
 
 /** Paginated all-events feed from the Postgres-backed all-events tier. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents. */
@@ -1969,6 +1971,8 @@ export type Extrinsic = {
   observed_at?: Maybe<Scalars['String']['output']>;
   signer?: Maybe<Scalars['String']['output']>;
   success?: Maybe<Scalars['Boolean']['output']>;
+  /** Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525). */
+  summary?: Maybe<Scalars['String']['output']>;
   tip_tao?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -6852,6 +6856,7 @@ export type ChainEventRowResolvers<ContextType = GqlContext, ParentType extends 
   observed_at?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   pallet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   phase?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type ChainEventsFeedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainEventsFeed'] = ResolversParentTypes['ChainEventsFeed']> = ResolversObject<{
@@ -7590,6 +7595,7 @@ export type ExtrinsicResolvers<ContextType = GqlContext, ParentType extends Reso
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   signer?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   success?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   tip_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 

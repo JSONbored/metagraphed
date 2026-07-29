@@ -13,8 +13,7 @@
 
 import { asDecodedCall, callArgValue, type DecodedCall } from "./extrinsics";
 import { summarizeChainEvent } from "./chain-event-summary";
-import { formatTao } from "./format";
-import { shortHash } from "./blocks";
+import { formatTao, shortHash } from "./format";
 
 export interface SummaryContext {
   /** The extrinsic's signer, or the account that authored a chain event. */

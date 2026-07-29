@@ -1228,6 +1228,37 @@ test("GET /api/v1/extrinsics returns a feed with call_args parsed from the ::tex
   expect(queryText()).toContain("call_args::text AS call_args");
 });
 
+test("GET /api/v1/extrinsics populates the action-sentence summary field, null for an unmatched call (#8525)", async () => {
+  mockRows.current = [
+    {
+      ...EXTRINSIC_ROW,
+      call_module: "Timestamp",
+      call_function: "set",
+      call_args: "[]",
+    },
+    {
+      ...EXTRINSIC_ROW,
+      call_module: "NoSuchModule",
+      call_function: "no_such_function",
+      call_args: "[]",
+    },
+  ];
+  const res = await req("/api/v1/extrinsics?limit=2");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.extrinsics[0].summary).toBe("Set the chain timestamp.");
+  expect(body.extrinsics[1].summary).toBe(null);
+});
+
+test("GET /api/v1/chain-events populates the action-sentence summary field (#8525)", async () => {
+  const res = await req(
+    "/api/v1/chain-events?limit=1&pallet=System&method=ExtrinsicSuccess&before=500",
+  );
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.events[0].summary).toBe("Extrinsic executed successfully.");
+});
+
 test("GET /api/v1/extrinsics applies the same filter set as loadExtrinsics", async () => {
   mockRows.current = [EXTRINSIC_ROW];
   await req(

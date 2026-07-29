@@ -41,6 +41,10 @@ export const ExtrinsicItemSchema = z
     fee_tao: z.unknown().optional(),
     tip_tao: z.unknown().optional(),
     observed_at: z.string().nullable().optional(),
+    // #8525: deterministic human-readable action sentence for this
+    // extrinsic's call, or null when no template matches
+    // call_module.call_function -- never a guessed/partial sentence.
+    summary: z.string().nullable().optional(),
   })
   .passthrough();
 

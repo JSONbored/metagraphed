@@ -21,7 +21,9 @@ describe("decodeChainEventArgs", () => {
   });
 
   it("decodes account bytes nested inside an array (who: [<bytes>])", () => {
-    expect(decodeChainEventArgs({ who: [ALICE] })).toEqual({ who: [ALICE_SS58] });
+    expect(decodeChainEventArgs({ who: [ALICE] })).toEqual({
+      who: [ALICE_SS58],
+    });
   });
 
   it("renders a 32-byte array under a non-account key as 0x-hex, not a mislabelled address", () => {
@@ -30,7 +32,14 @@ describe("decodeChainEventArgs", () => {
   });
 
   it("leaves non-account values untouched", () => {
-    expect(decodeChainEventArgs({ netuid: 7, flag: true, note: "x", list: [1, 2, 3] })).toEqual({
+    expect(
+      decodeChainEventArgs({
+        netuid: 7,
+        flag: true,
+        note: "x",
+        list: [1, 2, 3],
+      }),
+    ).toEqual({
       netuid: 7,
       flag: true,
       note: "x",

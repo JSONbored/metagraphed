@@ -9,8 +9,8 @@ export default defineConfig({
     // full repo copy with its own tests) from doubling the run + skewing coverage.
     // `deploy/**` is standalone infra (the wss-lb service is tested via
     // `node --test`, not vitest) — keep it out of the Worker test run.
-    // `apps/ui/**` and `packages/ui-kit/**` each have their own vitest config +
-    // test run, gated separately in CI.
+    // `apps/ui/**`, `packages/ui-kit/**`, and `packages/chain-summaries/**` each
+    // have their own vitest config + test run, gated separately in CI.
     exclude: [
       "node_modules/**",
       "private/**",
@@ -18,6 +18,7 @@ export default defineConfig({
       "deploy/**",
       "apps/ui/**",
       "packages/ui-kit/**",
+      "packages/chain-summaries/**",
     ],
     // Run test FILES sequentially (each still in its own isolated fork). Three
     // files mutate shared on-disk state outside their own process and must never
