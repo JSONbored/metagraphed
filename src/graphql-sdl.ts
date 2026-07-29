@@ -2149,6 +2149,8 @@ export const SDL = /* GraphQL */ `
     phase: String
     extrinsic_index: Int
     observed_at: Float
+    "Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525)."
+    summary: String
   }
 
   "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the Postgres-backed all-events tier. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
@@ -3248,6 +3250,8 @@ export const SDL = /* GraphQL */ `
     fee_tao: Float
     tip_tao: Float
     observed_at: String
+    "Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525)."
+    summary: String
   }
 
   type ExtrinsicDetail {

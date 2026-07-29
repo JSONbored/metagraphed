@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { CopyableCode } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
-import { decodeSs58, DEFAULT_SS58_FORMAT } from "@/lib/metagraphed/ss58";
+import { decodeSs58, DEFAULT_SS58_FORMAT } from "@jsonbored/chain-summaries";
 import { classNames } from "@/lib/metagraphed/format";
 
 // #8252: extracted verbatim from the retired standalone /tools/ss58 route so

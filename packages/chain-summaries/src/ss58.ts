@@ -113,7 +113,12 @@ function compress(ctx: Blake2bCtx, last: boolean): void {
 
 /** blake2b digest of `input` with the given output length (default 64 bytes). */
 export function blake2b(input: Uint8Array, outlen = 64): Uint8Array {
-  const ctx: Blake2bCtx = { b: new Uint8Array(128), h: new Uint32Array(BLAKE2B_IV32), t: 0, c: 0 };
+  const ctx: Blake2bCtx = {
+    b: new Uint8Array(128),
+    h: new Uint32Array(BLAKE2B_IV32),
+    t: 0,
+    c: 0,
+  };
   ctx.h[0] = (ctx.h[0] ^ 0x01010000 ^ outlen) >>> 0;
   for (let i = 0; i < input.length; i++) {
     if (ctx.c === 128) {
@@ -246,7 +251,13 @@ export function decodeSs58(address: string): DecodedSs58 | null {
   if (first >= 128) return null;
 
   if (first > 63) {
-    return { valid: false, format: -1, pubkey: null, checksumValid: false, extendedFormat: true };
+    return {
+      valid: false,
+      format: -1,
+      pubkey: null,
+      checksumValid: false,
+      extendedFormat: true,
+    };
   }
 
   if (bytes.length !== 35) return null;

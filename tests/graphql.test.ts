@@ -4090,6 +4090,59 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     );
   });
 
+  test("extrinsics: exposes the action-sentence summary field, and null for an unmatched call (#8525)", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 2,
+          limit: 20,
+          offset: 0,
+          next_cursor: null,
+          extrinsics: [
+            {
+              block_number: 5,
+              extrinsic_index: 0,
+              extrinsic_hash: `0x${"a".repeat(64)}`,
+              signer: "5Signer",
+              call_module: "Timestamp",
+              call_function: "set",
+              call_args: [],
+              success: true,
+              fee_tao: 0.001,
+              tip_tao: 0,
+              observed_at: "2026-07-14T00:00:00.000Z",
+              summary: "Set the chain timestamp.",
+            },
+            {
+              block_number: 6,
+              extrinsic_index: 1,
+              extrinsic_hash: `0x${"b".repeat(64)}`,
+              signer: "5Signer",
+              call_module: "NoSuchModule",
+              call_function: "no_such_function",
+              call_args: [],
+              success: true,
+              fee_tao: 0.001,
+              tip_tao: 0,
+              observed_at: "2026-07-14T00:00:00.000Z",
+              summary: null,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ extrinsics { items { call_module summary } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const [templated, unmatched] = body.data.extrinsics.items;
+    assert.equal(templated.summary, "Set the chain timestamp.");
+    assert.equal(unmatched.summary, null);
+  });
+
   test("extrinsics: filter args are forwarded as query params to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
@@ -22469,6 +22522,50 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     assert.equal(event.method, "WeightsSet");
     assert.deepEqual(event.args, { netuid: 7 });
     assert.equal(event.observed_at, 1_720_000_000_000);
+  });
+
+  test("exposes the action-sentence summary field, and null for an unmatched pallet.method (#8525)", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          count: 2,
+          next_before: 100,
+          next_cursor: "1.100.1",
+          events: [
+            {
+              block_number: 100,
+              event_index: 0,
+              pallet: "System",
+              method: "ExtrinsicSuccess",
+              args: {},
+              phase: "ApplyExtrinsic",
+              extrinsic_index: 2,
+              observed_at: 1_720_000_000_000,
+              summary: "Extrinsic executed successfully.",
+            },
+            {
+              block_number: 100,
+              event_index: 1,
+              pallet: "NoSuchPallet",
+              method: "NoSuchEvent",
+              args: {},
+              phase: "ApplyExtrinsic",
+              extrinsic_index: 2,
+              observed_at: 1_720_000_000_000,
+              summary: null,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ chain_events { events { pallet summary } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const [templated, unmatched] = body.data.chain_events.events;
+    assert.equal(templated.summary, "Extrinsic executed successfully.");
+    assert.equal(unmatched.summary, null);
   });
 
   test("a block+extrinsic lookup resolves that extrinsic's emitted events", async () => {

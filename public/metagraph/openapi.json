@@ -1114,6 +1114,16 @@
                     }
                   ]
                 },
+                "summary": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "tip_tao": {
                   "anyOf": [
                     {
@@ -5198,6 +5208,16 @@
                       "type": "null"
                     }
                   ]
+                },
+                "summary": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -5584,6 +5604,16 @@
                     }
                   ]
                 },
+                "summary": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "tip_tao": {
                   "anyOf": [
                     {
@@ -5606,7 +5636,8 @@
                 "success",
                 "fee_tao",
                 "tip_tao",
-                "observed_at"
+                "observed_at",
+                "summary"
               ],
               "type": "object"
             },
@@ -7577,6 +7608,16 @@
                   ]
                 },
                 "phase": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "summary": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -14482,6 +14523,16 @@
                       }
                     ]
                   },
+                  "summary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "tip_tao": {
                     "anyOf": [
                       {
@@ -14504,7 +14555,8 @@
                   "success",
                   "fee_tao",
                   "tip_tao",
-                  "observed_at"
+                  "observed_at",
+                  "summary"
                 ],
                 "type": "object"
               },
@@ -14665,6 +14717,16 @@
                     }
                   ]
                 },
+                "summary": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "tip_tao": {
                   "anyOf": [
                     {
@@ -14687,7 +14749,8 @@
                 "success",
                 "fee_tao",
                 "tip_tao",
-                "observed_at"
+                "observed_at",
+                "summary"
               ],
               "type": "object"
             },
@@ -39591,6 +39654,7 @@
                         "observed_at": "2026-06-01T00:00:00.000Z",
                         "signer": "example",
                         "success": false,
+                        "summary": "Example description.",
                         "tip_tao": 0.5
                       }
                     ],
@@ -48450,6 +48514,7 @@
                         "observed_at": "2026-06-01T00:00:00.000Z",
                         "signer": "example",
                         "success": false,
+                        "summary": "Example description.",
                         "tip_tao": 0.5
                       }
                     ],
@@ -48606,6 +48671,7 @@
                       "observed_at": "2026-06-01T00:00:00.000Z",
                       "signer": "example",
                       "success": false,
+                      "summary": "Example description.",
                       "tip_tao": 0.5
                     },
                     "ref": "example",
@@ -49509,6 +49575,7 @@
                         "observed_at": "2026-06-01T00:00:00.000Z",
                         "signer": "example",
                         "success": false,
+                        "summary": "Example description.",
                         "tip_tao": 0.5
                       }
                     ],
@@ -67209,6 +67276,7 @@
                         "observed_at": "2026-06-01T00:00:00.000Z",
                         "signer": "example",
                         "success": false,
+                        "summary": "Example description.",
                         "tip_tao": 0.5
                       }
                     ],

@@ -28,6 +28,7 @@
     "screenshots": "node tests/e2e/capture-pr-screenshots.ts"
   },
   "dependencies": {
+    "@jsonbored/chain-summaries": "*",
     "@jsonbored/metagraphed": "*",
     "@jsonbored/ui-kit": "*",
     "@polkadot/api": "^16.5.6",
