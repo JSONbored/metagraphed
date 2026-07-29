@@ -69,7 +69,8 @@ const VARIANTS: Record<string, Variant> = {
     stats: [],
   },
   "6-longtitle": {
-    title: "A deliberately very long subnet name that should clamp rather than overflow the card edge",
+    title:
+      "A deliberately very long subnet name that should clamp rather than overflow the card edge",
     subtitle:
       "Bounded-input check: the title is capped at 110 chars and the subtitle at 90 before it ever reaches the renderer.",
     eyebrow: "Subnet",
