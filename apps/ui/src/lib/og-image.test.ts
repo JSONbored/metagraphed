@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   escapeText,
   glyphsForMarkup,
+  monogramFor,
   normalizeLogoHost,
   normalizeSubtitle,
   normalizeTitle,
@@ -318,5 +319,60 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
     // Style/attribute text would balloon the subset request for glyphs that
     // are never painted.
     expect(glyphs).not.toMatch(/display:flex|border-radius|<div|https:/);
+  });
+});
+
+describe("monogram fallback (#8489) — an entity card never shows a blank tile", () => {
+  it("matches ui-kit BrandIcon's rule: two words → initials, else first two chars", () => {
+    expect(monogramFor("tao.bot")).toBe("TA");
+    expect(monogramFor("Chutes")).toBe("CH");
+    expect(monogramFor("Open Tensor")).toBe("OT");
+    expect(monogramFor("5Grwva…GKutQY")).toBe("5G");
+    expect(monogramFor("   ")).toBe("··");
+  });
+
+  it("renders a monogram tile for an entity card with no logo", () => {
+    // The exact complaint: tao.bot showed nothing where the site shows a chip.
+    const markup = renderCardMarkup({
+      title: "tao.bot",
+      subtitle: "x",
+      eyebrow: "Validator",
+      stats: [],
+    });
+    expect(markup).toContain(">TA<");
+    expect(markup).not.toContain("/api/v1/icon");
+  });
+
+  it("prefers a real logo over the monogram when a host is present", () => {
+    const markup = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "x",
+      eyebrow: "Subnet",
+      stats: [],
+      logoHost: "chutes.ai",
+    });
+    expect(markup).toContain("/api/v1/icon?host=chutes.ai");
+    expect(markup).not.toContain(">CH<");
+  });
+
+  it("keeps the plain mint rule on NON-entity cards, where a monogram is meaningless", () => {
+    const markup = renderCardMarkup({
+      title: "Metagraphed",
+      subtitle: "x",
+      eyebrow: null,
+      stats: [],
+    });
+    expect(markup).not.toContain(">ME<");
+  });
+
+  it("subsets the monogram's glyphs — it is uppercased, like the eyebrow was", () => {
+    const markup = renderCardMarkup({
+      title: "tao.bot",
+      subtitle: "x",
+      eyebrow: "Validator",
+      stats: [],
+    });
+    const painted = new Set(glyphsForMarkup(markup));
+    for (const ch of "TA") expect(painted.has(ch)).toBe(true);
   });
 });

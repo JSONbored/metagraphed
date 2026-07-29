@@ -3,7 +3,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { formatTao } from "@/lib/metagraphed/format";
-import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
 
 export type SearchParams = {
@@ -47,6 +47,10 @@ export const Route = createFileRoute("/subnets/$netuid")({
         // already on the profile this loader reads -- no extra request.
         // Coerced explicitly: the profile's field is loosely typed here, and
         // an uncoerced value would reach formatTao as a non-number.
+        // #8489: whichever of these resolves first is the host the site's own
+        // BrandIcon would use for this subnet.
+        iconUrl: (data.icon_url ?? null) as string | { light?: string; dark?: string } | null,
+        website: (data.website ?? null) as string | null,
         alphaPriceTao:
           typeof data.alpha_price_tao === "number" && Number.isFinite(data.alpha_price_tao)
             ? data.alpha_price_tao
@@ -79,6 +83,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
           title: loaderData?.name || `Subnet ${params.netuid}`,
           subtitle: description,
           eyebrow: "Subnet",
+          logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
           stats: [
             { label: "Netuid", value: `SN${params.netuid}` },
             ...(loaderData?.alphaPriceTao != null

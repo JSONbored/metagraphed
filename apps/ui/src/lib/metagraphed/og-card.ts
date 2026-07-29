@@ -33,6 +33,9 @@ export interface OgCardOptions {
   /** Small pill next to the wordmark, e.g. "SUBNET" / "VALIDATOR". */
   eyebrow?: string | null;
   stats?: OgCardStat[];
+  /** Bare DNS name (use `logoHostFrom`). The card renders it through the
+   * SSRF-safe icon proxy; absent, it falls back to a monogram. */
+  logoHost?: string | null;
 }
 
 /**
@@ -47,6 +50,7 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   const params = new URLSearchParams({ title: options.title });
   if (options.subtitle) params.set("subtitle", options.subtitle);
   if (options.eyebrow) params.set("eyebrow", options.eyebrow);
+  if (options.logoHost) params.set("logo", options.logoHost);
   // Only the first two stats are rendered; sending more would just push the
   // URL toward the length cap for content the card ignores.
   (options.stats ?? []).slice(0, 2).forEach((stat, index) => {
@@ -55,6 +59,36 @@ export function buildOgImageUrl(options: OgCardOptions): string {
     params.set(`stat${index + 1}v`, stat.value);
   });
   return `${SITE_ORIGIN}/og?${params.toString()}`;
+}
+
+/**
+ * Reduce whatever logo-ish value a route has to the bare HOST the card accepts.
+ *
+ * Routes hold full URLs (a subnet's `icon_url`/`website`, a validator
+ * identity's `image`/`url`/`github`) but /og deliberately takes a hostname,
+ * never a URL — see normalizeLogoHost in src/lib/og-image.ts for why. This
+ * does that reduction in one place so each route doesn't hand-roll it.
+ *
+ * Candidates are tried in the same order the site's BrandIcon uses, so the
+ * card resolves to the icon the page itself would show. Returns null when
+ * nothing usable is present, and the card falls back to a monogram.
+ */
+export function logoHostFrom(
+  ...candidates: Array<string | { light?: string; dark?: string } | null | undefined>
+): string | null {
+  for (const candidate of candidates) {
+    const raw =
+      typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light ?? null);
+    if (!raw) continue;
+    try {
+      // Accept a bare host too, not just an absolute URL.
+      const url = new URL(raw.includes("://") ? raw : `https://${raw}`);
+      if (url.hostname) return url.hostname.toLowerCase();
+    } catch {
+      // Unparseable candidate — try the next one rather than failing the card.
+    }
+  }
+  return null;
 }
 
 /** The og:image + twitter:image meta a route's head() returns. */

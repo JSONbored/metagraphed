@@ -7,7 +7,7 @@ import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 import { formatTao } from "@/lib/metagraphed/format";
-import { ogImageMeta } from "@/lib/metagraphed/og-card";
+import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { validatorDetailQuery } from "@/lib/metagraphed/queries";
 import { ValidatorDetailPage } from "./-validators-hotkey-page";
 
@@ -45,8 +45,11 @@ export const Route = createFileRoute("/validators/$hotkey")({
       const { data } = await context.queryClient.ensureQueryData(
         validatorDetailQuery(params.hotkey),
       );
+      const identity = data.coldkey_identity;
       return {
-        name: data.coldkey_identity?.name ?? null,
+        name: identity?.name ?? null,
+        // Same candidate ladder the site's BrandIcon uses for a validator.
+        logoHost: logoHostFrom(identity?.image, identity?.url, identity?.github),
         totalStakeTao:
           typeof data.total_stake_tao === "number" && Number.isFinite(data.total_stake_tao)
             ? data.total_stake_tao
@@ -91,6 +94,7 @@ export const Route = createFileRoute("/validators/$hotkey")({
           title: loaderData?.name || label,
           subtitle: "Cross-subnet performance, nominators, and staking history.",
           eyebrow: "Validator",
+          logoHost: loaderData?.logoHost ?? null,
           stats: [
             ...(loaderData?.totalStakeTao != null
               ? [{ label: "Total stake", value: formatTao(loaderData.totalStakeTao) }]

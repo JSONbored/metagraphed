@@ -257,6 +257,28 @@ export function titleFontSize(length: number): number {
 }
 
 /**
+ * Two-character monogram for an entity with no resolvable logo.
+ *
+ * Byte-for-byte the same rule as ui-kit's `monogramFor` (BrandIcon): two or
+ * more words -> first letter of each; otherwise the first two characters;
+ * uppercased. Copied rather than imported because this module is Worker-side
+ * and must not pull the React component graph in.
+ *
+ * The point is that the site's BrandIcon ALWAYS renders something -- an image
+ * when it has one, a monogram chip otherwise -- so a validator like "tao.bot"
+ * shows "TA" rather than a blank space. The card previously rendered nothing
+ * at all without a logo, which is why entity cards looked unfinished next to
+ * the same entity on the site.
+ */
+export function monogramFor(title: string): string {
+  const source = title.trim();
+  if (!source) return "··";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
+
+/**
  * The card markup.
  *
  * satori is strict: any element with more than one child needs an explicit
@@ -323,13 +345,24 @@ export function renderCardMarkup(opts: {
   // surface, matching how the site shows a subnet/provider avatar beside its
   // name. Absent host -> the mint rule alone anchors the title, which is the
   // right fallback for accounts/validators that have no logo at all.
+  // Mirrors the site's BrandIcon ladder: a real icon when we have one,
+  // otherwise a monogram chip -- never nothing. The bare mint rule is kept
+  // only for NON-entity cards (home, docs), where a monogram of the page
+  // title would be meaningless.
+  const tileShell = `display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;background:${SURFACE};border:1px solid ${HAIRLINE};margin-right:28px;margin-top:4px;`;
   const logo = opts.logoHost
-    ? `<div style="display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;background:${SURFACE};border:1px solid ${HAIRLINE};margin-right:28px;margin-top:4px;">
+    ? `<div style="${tileShell}">
          <img src="https://api.metagraph.sh/api/v1/icon?host=${encodeURIComponent(
            opts.logoHost,
          )}&size=128&theme=dark" style="width:64px;height:64px;border-radius:14px;" />
        </div>`
-    : `<div style="display:flex;width:5px;height:96px;border-radius:3px;background:${MINT};margin-right:28px;margin-top:4px;"></div>`;
+    : opts.eyebrow
+      ? `<div style="${tileShell}">
+           <div style="display:flex;font-size:38px;font-weight:700;color:${MINT};letter-spacing:-0.5px;">${escapeText(
+             monogramFor(opts.title),
+           )}</div>
+         </div>`
+      : `<div style="display:flex;width:5px;height:96px;border-radius:3px;background:${MINT};margin-right:28px;margin-top:4px;"></div>`;
 
   return `
     <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};background-image:radial-gradient(${DOT_COLOR} 1px, transparent 1px),linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px),radial-gradient(ellipse 110% 60% at 50% 0%, rgba(48,255,192,0.05) 0%, transparent 70%);background-size:${DOT_SIZE}px ${DOT_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 100% 100%;color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
