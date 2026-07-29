@@ -5448,6 +5448,161 @@ async function handleApiQuotaSpend(request: Request, env: Env) {
   return result instanceof Response ? result : writeJson(result);
 }
 
+// Internal-only: fold a batch of usage observations into api_usage_rollup
+// (#8597). Same shared secret and trust boundary as the usage counter above --
+// recording that traffic happened is a strictly smaller capability than
+// verifying a key.
+//
+// BATCHED on purpose. The caller coalesces a request's observations before
+// sending (src/usage-rollup.ts's foldObservations), so a burst of requests to
+// one family becomes one upsert rather than one per request. Fire-and-forget
+// from the caller's side, so this always returns 200 even on a swallowed write
+// error -- a usage-rollup miss must never affect the request that triggered it,
+// and there is nothing for the caller to react to either way.
+async function handleUsageRollupIncrement(request: Request, env: Env) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "usage rollup is not provisioned on this deployment" },
+      503,
+    );
+  }
+  if (request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) !== configured) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  let body: { buckets?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return writeJson({ error: "invalid body" }, 400);
+  }
+  const buckets = Array.isArray(body?.buckets) ? body.buckets : [];
+  if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
+  try {
+    await withAccountsSql(env, async (sql: postgres.Sql) => {
+      for (const bucket of buckets as Row[]) {
+        const day = typeof bucket?.day === "string" ? bucket.day : null;
+        const family =
+          typeof bucket?.family === "string"
+            ? bucket.family.slice(0, 200)
+            : null;
+        const shape =
+          typeof bucket?.cost_shape === "string" ? bucket.cost_shape : null;
+        const count = Number(bucket?.request_count);
+        const keyed = Number(bucket?.keyed_count) || 0;
+        // A malformed bucket is skipped, never allowed to abort the batch --
+        // one bad row must not discard the other 177 families' counts.
+        if (
+          !day ||
+          !family ||
+          !shape ||
+          !Number.isFinite(count) ||
+          count <= 0
+        ) {
+          continue;
+        }
+        await sql`
+          INSERT INTO api_usage_rollup
+            (day, route_family, cost_shape, request_count, keyed_count)
+          VALUES (${day}, ${family}, ${shape}, ${count}, ${keyed})
+          ON CONFLICT (day, route_family, cost_shape)
+          DO UPDATE SET
+            request_count = api_usage_rollup.request_count + EXCLUDED.request_count,
+            keyed_count = api_usage_rollup.keyed_count + EXCLUDED.keyed_count`;
+      }
+    });
+  } catch {
+    // Best-effort counter -- see header.
+  }
+  return writeJson({ ok: true, applied: buckets.length });
+}
+
+// Internal-only READ path (#8597): "requests per route family per day, by cost
+// shape". This is the deliverable -- the point of the issue is to make the
+// pricing question cheap to RE-ASK, so it must be answerable without a deploy
+// or an SSH session.
+async function handleUsageRollupRead(request: Request, env: Env) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "usage rollup is not provisioned on this deployment" },
+      503,
+    );
+  }
+  if (request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) !== configured) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  const url = new URL(request.url);
+  const days = Math.min(
+    365,
+    Math.max(1, Number(url.searchParams.get("days")) || 30),
+  );
+  const since = new Date(Date.now() - days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const groupBy =
+    url.searchParams.get("group_by") === "shape" ? "shape" : "family";
+  const result = await withAccountsSql(env, async (sql: postgres.Sql) => {
+    const rows =
+      groupBy === "shape"
+        ? await sql`
+            SELECT cost_shape,
+                   SUM(request_count) AS request_count,
+                   SUM(keyed_count) AS keyed_count
+            FROM api_usage_rollup
+            WHERE day >= ${since}
+            GROUP BY cost_shape
+            ORDER BY SUM(request_count) DESC`
+        : await sql`
+            SELECT route_family, cost_shape,
+                   SUM(request_count) AS request_count,
+                   SUM(keyed_count) AS keyed_count
+            FROM api_usage_rollup
+            WHERE day >= ${since}
+            GROUP BY route_family, cost_shape
+            ORDER BY SUM(request_count) DESC
+            LIMIT 500`;
+    // SUM() over BIGINT returns NUMERIC, which postgres.js hands back as a
+    // STRING -- the #8607 trap. Coerced here so the readout is arithmetic-ready
+    // rather than relying on every consumer to remember.
+    const total = rows.reduce((sum, row) => sum + Number(row.request_count), 0);
+    const totalKeyed = rows.reduce(
+      (sum, row) => sum + Number(row.keyed_count),
+      0,
+    );
+    return writeJson({
+      window_days: days,
+      since,
+      group_by: groupBy,
+      total_requests: total,
+      total_keyed: totalKeyed,
+      // The single number ADR 0022 is waiting on: what fraction of traffic is
+      // keyless. If this is overwhelming, the memo's "don't price the edge"
+      // recommendation holds; if not, Option (a) comes back into play.
+      keyless_share:
+        total > 0 ? Number(((total - totalKeyed) / total).toFixed(4)) : null,
+      rows: rows.map((row) => ({
+        ...(row.route_family === undefined
+          ? {}
+          : { route_family: row.route_family }),
+        cost_shape: row.cost_shape,
+        request_count: Number(row.request_count),
+        keyed_count: Number(row.keyed_count),
+      })),
+    });
+  });
+  // withAccountsSql returns T | Response, and this callback's T is already a
+  // Response (writeJson), so the union collapses -- no unwrapping branch to
+  // write, and none to leave untested.
+  return result;
+}
+
 const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 
 // Internal-only: bumps ONE account's tier. An ops action, run manually after
@@ -5961,6 +6116,21 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/keys/usage"
     ) {
       return handleApiKeyUsageIncrement(request, env);
+    }
+    // Internal-only all-traffic usage rollup (#8597) -- the measurement ADR
+    // 0022's pricing decision is blocked on. Write is batched+fire-and-forget;
+    // read is the maintainer's queryable readout.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/usage-rollup"
+    ) {
+      return handleUsageRollupIncrement(request, env);
+    }
+    if (
+      request.method === "GET" &&
+      url.pathname === "/api/v1/internal/usage-rollup"
+    ) {
+      return handleUsageRollupRead(request, env);
     }
     // Internal-only daily-quota spend (#8608) -- see handleApiQuotaSpend's own
     // header comment for why it shares the verify route's secret and why,

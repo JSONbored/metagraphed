@@ -427,6 +427,7 @@ import {
 } from "./tiered-rate-limit.ts";
 import { buildTierPolicies } from "../src/api-tiers.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
+import { foldObservations, observeRequest } from "../src/usage-rollup.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -443,6 +444,53 @@ export const DATA_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   tiers: buildTierPolicies("DATA_RATE_LIMITER", 300),
   keyPrefix: "data",
 };
+
+// Route-template matchers for #8597's usage rollup, built once at module load
+// from the SAME API_ROUTES table the dispatcher uses. Reusing that table is the
+// whole point: the rollup's family set is bounded by the route table by
+// construction, and cannot drift from the routes actually served the way a
+// hand-maintained family map would.
+const USAGE_ROLLUP_MATCHERS = API_ROUTES.map((entry) => ({
+  path: entry.path,
+  pattern: compileRoutePattern(entry.path),
+}));
+
+// Fire-and-forget ALL-TRAFFIC usage rollup (#8597) -- keyed and keyless alike.
+//
+// Distinct from recordApiKeyUsage below, which it does not replace: that one is
+// per-account and only fires for requests presenting a key, powering the tenant
+// dashboard. This one has no account dimension and fires for EVERY API request,
+// because keyless traffic is the majority by design and is the entire subject
+// of the "does the free tier cost too much" question ADR 0022 defers.
+//
+// Same posture as recordApiKeyUsage: ctx.waitUntil so it adds no latency, and
+// it swallows its own failure -- a rollup miss must never surface as an error
+// on the actual API call.
+export function recordUsageRollup(
+  env: Env,
+  ctx: Ctx | undefined,
+  pathname: string,
+  keyed: boolean,
+): void {
+  if (!env.DATA_API?.fetch || !env.API_KEY_LOOKUP_INTERNAL_TOKEN) return;
+  const observation = observeRequest(pathname, USAGE_ROLLUP_MATCHERS, {
+    keyed,
+  });
+  const buckets = foldObservations([observation]);
+  const pending = env.DATA_API.fetch(
+    new Request("https://api.metagraph.sh/api/v1/internal/usage-rollup", {
+      method: "POST",
+      headers: {
+        [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ buckets }),
+    }),
+  ).catch(() => {});
+  if (typeof ctx?.waitUntil === "function") {
+    ctx.waitUntil(pending);
+  }
+}
 
 // Fire-and-forget usage-counter increment for the self-serve dashboard
 // (#8386) -- via ctx.waitUntil so it never adds latency to the response that
@@ -1763,6 +1811,34 @@ export async function handleRequest(
 
   if (request.method === "OPTIONS") {
     return corsPreflight(request);
+  }
+
+  // #8597: count EVERY API request, keyed or keyless, into the cost rollup.
+  //
+  // Placed here -- the one point every request passes -- rather than at the ~6
+  // sites recordApiKeyUsage is called from, because those sites are by
+  // definition only reached by requests that presented a key. Keyless traffic
+  // is the majority by design and is the entire subject of ADR 0022's deferred
+  // pricing question, so counting it anywhere downstream would reproduce
+  // exactly the blind spot this issue exists to remove.
+  //
+  // AFTER the OPTIONS early-return: a CORS preflight is browser bookkeeping,
+  // not a request for data, and counting it would inflate every browser-facing
+  // family by roughly 2x against the same family called from an agent.
+  //
+  // `keyed` is a cheap header SHAPE check, deliberately NOT a key validation --
+  // validating here would put a KV/service-binding round trip in front of every
+  // request including keyless ones, which is the opposite of this being free.
+  // A malformed `mg_` bearer counts as keyed and is a rounding error against
+  // the question being asked.
+  if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
+    const authHeader = request.headers.get("authorization") || "";
+    recordUsageRollup(
+      env,
+      ctx,
+      url.pathname,
+      authHeader.startsWith("Bearer mg_"),
+    );
   }
 
   // Multi-network addressing: an explicit /{network}/ prefix (mainnet/testnet/

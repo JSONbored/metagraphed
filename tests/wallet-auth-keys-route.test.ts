@@ -1555,6 +1555,286 @@ test("anomalies: 401 without the block token", async () => {
   assert.equal(res.status, 401);
 });
 
+// --- /api/v1/internal/usage-rollup (#8597) ----------------------------------
+
+const rollupReq = (
+  body: unknown,
+  token: string | null = LOOKUP_TOKEN,
+  method = "POST",
+  query = "",
+) =>
+  req(`/api/v1/internal/usage-rollup${query}`, {
+    method,
+    headers: token ? { "x-api-key-lookup-token": token } : {},
+    ...(method === "POST" ? { body } : {}),
+  });
+
+test("usage rollup: 503 unprovisioned, 401 on a wrong or missing token (both verbs)", async () => {
+  const body = { buckets: [] };
+  assert.equal((await fetchRoute(rollupReq(body), baseEnv())).status, 503);
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  assert.equal((await fetchRoute(rollupReq(body, "wrong"), env)).status, 401);
+  assert.equal((await fetchRoute(rollupReq(body, null), env)).status, 401);
+  assert.equal(
+    (await fetchRoute(rollupReq(null, null, "GET"), env)).status,
+    401,
+  );
+  assert.equal(
+    (await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET"), baseEnv())).status,
+    503,
+  );
+});
+
+test("usage rollup: 400 on an unparseable body", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    new Request("https://d/api/v1/internal/usage-rollup", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key-lookup-token": LOOKUP_TOKEN,
+      },
+      body: "{not json",
+    }),
+    env,
+  );
+  assert.equal(res.status, 400);
+});
+
+test("usage rollup: an empty batch is a no-op, not a write", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(rollupReq({ buckets: [] }), env);
+  assert.equal(res.status, 200);
+  assert.equal(((await res.json()) as Row).applied, 0);
+  assert.ok(!sqlCalls.some((c) => /api_usage_rollup/.test(c.text)));
+});
+
+test("usage rollup: upserts additively so a re-post accumulates", async () => {
+  // Buckets arrive many times a day from many isolates; the write must ADD,
+  // not replace, or every batch but the last is silently discarded.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    rollupReq({
+      buckets: [
+        {
+          day: "2026-07-29",
+          family: "/api/v1/subnets/{netuid}",
+          cost_shape: "edge",
+          request_count: 12,
+          keyed_count: 3,
+        },
+      ],
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const call = sqlCalls.find((c) =>
+    /INSERT INTO api_usage_rollup/.test(c.text),
+  );
+  assert.ok(call, "issued the upsert");
+  assert.ok(/ON CONFLICT \(day, route_family, cost_shape\)/.test(call!.text));
+  assert.ok(
+    /request_count = api_usage_rollup\.request_count \+ EXCLUDED\.request_count/.test(
+      call!.text,
+    ),
+    "adds rather than replaces",
+  );
+});
+
+test("usage rollup: a malformed bucket is skipped without discarding the batch", async () => {
+  // One bad row must not cost us the other 177 families' counts.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  await fetchRoute(
+    rollupReq({
+      buckets: [
+        { day: "", family: "x", cost_shape: "edge", request_count: 5 },
+        { day: "2026-07-29", family: "", cost_shape: "edge", request_count: 5 },
+        {
+          day: "2026-07-29",
+          family: "y",
+          cost_shape: "edge",
+          request_count: 0,
+        },
+        {
+          day: "2026-07-29",
+          family: "/api/v1/subnets",
+          cost_shape: "edge",
+          request_count: 7,
+          keyed_count: 1,
+        },
+      ],
+    }),
+    env,
+  );
+  const writes = sqlCalls.filter((c) =>
+    /INSERT INTO api_usage_rollup/.test(c.text),
+  );
+  assert.equal(writes.length, 1, "only the well-formed bucket was written");
+});
+
+test("usage rollup: still 200 when the write fails (fire-and-forget contract)", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  failNextQuery.error = new Error("db down");
+  const res = await fetchRoute(
+    rollupReq({
+      buckets: [
+        {
+          day: "2026-07-29",
+          family: "/api/v1/subnets",
+          cost_shape: "edge",
+          request_count: 1,
+        },
+      ],
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+});
+
+test("usage rollup: a non-array or absent buckets field is a no-op", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  for (const body of [
+    {},
+    { buckets: null },
+    { buckets: "all" },
+    { buckets: 7 },
+  ]) {
+    const res = await fetchRoute(rollupReq(body), env);
+    assert.equal(res.status, 200, JSON.stringify(body));
+    assert.equal(((await res.json()) as Row).applied, 0);
+  }
+  assert.ok(!sqlCalls.some((c) => /api_usage_rollup/.test(c.text)));
+});
+
+test("usage rollup: non-string bucket fields are skipped, not coerced", async () => {
+  // A numeric `family` coerced to "42" would invent a route family that no
+  // route serves, making the readout un-joinable against the route table.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  await fetchRoute(
+    rollupReq({
+      buckets: [
+        {
+          day: 20260729,
+          family: "/api/v1/x",
+          cost_shape: "edge",
+          request_count: 5,
+        },
+        { day: "2026-07-29", family: 42, cost_shape: "edge", request_count: 5 },
+        {
+          day: "2026-07-29",
+          family: "/api/v1/x",
+          cost_shape: 1,
+          request_count: 5,
+        },
+      ],
+    }),
+    env,
+  );
+  assert.ok(!sqlCalls.some((c) => /INSERT INTO api_usage_rollup/.test(c.text)));
+});
+
+test("usage rollup: a bucket with no keyed_count counts as fully keyless", async () => {
+  // Absent must mean zero, not NaN — a NaN would poison the running total and
+  // silently destroy the keyless share the pricing decision depends on.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  await fetchRoute(
+    rollupReq({
+      buckets: [
+        {
+          day: "2026-07-29",
+          family: "/api/v1/subnets",
+          cost_shape: "edge",
+          request_count: 9,
+        },
+      ],
+    }),
+    env,
+  );
+  const call = sqlCalls.find((c) =>
+    /INSERT INTO api_usage_rollup/.test(c.text),
+  );
+  assert.ok(call!.values.includes(0), "keyed_count defaulted to 0");
+});
+
+test("usage rollup READ: 503 when hyperdrive is unbound", async () => {
+  const env = baseEnv({
+    API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
+    HYPERDRIVE: undefined,
+  });
+  const res = await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET"), env);
+  assert.equal(res.status, 503);
+});
+
+test("usage rollup READ: reports the keyless share, coerced off BIGINT strings", async () => {
+  // SUM() over BIGINT returns NUMERIC, which postgres.js hands back as a
+  // STRING (#8607's trap). If it reached the arithmetic uncoerced the share
+  // would be NaN or a concatenation -- and this share is the single number
+  // ADR 0022's decision turns on.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current = [
+    [
+      {
+        route_family: "/api/v1/subnets",
+        cost_shape: "edge",
+        request_count: "800",
+        keyed_count: "100",
+      },
+      {
+        route_family: "/api/v1/chain-events",
+        cost_shape: "postgres",
+        request_count: "200",
+        keyed_count: "100",
+      },
+    ],
+  ];
+  const res = await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET"), env);
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.strictEqual(body.total_requests, 1000);
+  assert.strictEqual(body.total_keyed, 200);
+  assert.strictEqual(body.keyless_share, 0.8);
+  assert.strictEqual((body.rows as Row[])[0].request_count, 800);
+});
+
+test("usage rollup READ: group_by=shape aggregates across families", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current = [
+    [{ cost_shape: "postgres", request_count: "50", keyed_count: "5" }],
+  ];
+  const res = await fetchRoute(
+    rollupReq(null, LOOKUP_TOKEN, "GET", "?group_by=shape"),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.equal(body.group_by, "shape");
+  assert.ok(!("route_family" in (body.rows as Row[])[0]));
+  const call = sqlCalls.find((c) => /GROUP BY cost_shape/.test(c.text));
+  assert.ok(call, "grouped by shape in SQL, not in JS");
+});
+
+test("usage rollup READ: no traffic yields a null share, never a divide-by-zero", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current = [[]];
+  const res = await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET"), env);
+  const body = (await res.json()) as Row;
+  assert.equal(body.total_requests, 0);
+  assert.equal(body.keyless_share, null);
+});
+
+test("usage rollup READ: window is clamped to a sane range", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  for (const [q, expected] of [
+    ["?days=0", 30],
+    ["?days=9999", 365],
+    ["?days=7", 7],
+    ["?days=abc", 30],
+  ] as const) {
+    mockQueue.current = [[]];
+    const res = await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET", q), env);
+    assert.equal(((await res.json()) as Row).window_days, expected, q);
+  }
+});
+
 // --- GET /api/v1/keys/usage (#8386) -----------------------------------------
 
 test("keys usage: 401 when the session is missing", async () => {
