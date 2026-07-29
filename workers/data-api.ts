@@ -549,6 +549,13 @@ import {
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import { applyQuotaSpend, utcDayKey } from "../src/daily-quota.ts";
 import {
+  BLOCK_REASON_CODES,
+  isBlockReasonCode,
+  scoreUsageAnomalies,
+} from "../src/api-key-abuse.ts";
+import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
+import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
+import {
   createSessionToken,
   createTriggerToken,
   issueWalletChallenge,
@@ -5501,6 +5508,227 @@ async function handleAccountTierPromote(request: Request, env: Env) {
   });
 }
 
+const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
+
+/**
+ * Refresh the cached blocklist the edge reads (#8611).
+ *
+ * Written straight after the ledger write rather than left to expire, so a
+ * block takes effect as fast as KV propagates instead of waiting out
+ * BLOCKLIST_KV_TTL. The TTL then only bounds how stale things can get if THIS
+ * write fails -- it is the safety net, not the mechanism.
+ *
+ * Best-effort: a KV hiccup must not fail the block itself. The row is the
+ * source of truth and the next refresh will pick it up.
+ */
+async function refreshBlocklistSnapshot(env: Env, sql: postgres.Sql) {
+  const rows = await sql`
+    SELECT account_id, reason_code, blocked_at
+    FROM api_key_blocks
+    WHERE unblocked_at IS NULL
+    ORDER BY account_id`;
+  const snapshot = {
+    generated_at: new Date().toISOString(),
+    blocks: rows.map((row) => ({
+      // account_id is BIGINT -- postgres.js returns it as a STRING, and
+      // evaluateBlock compares with Number(). Coerced here so the SNAPSHOT is
+      // already the right shape rather than relying on every reader to
+      // remember (the #8607 trap).
+      accountId: Number(row.account_id),
+      reasonCode: row.reason_code,
+      blockedAt: Number(row.blocked_at),
+    })),
+  };
+  try {
+    await env.METAGRAPH_CONTROL?.put(
+      BLOCKLIST_KV_KEY,
+      JSON.stringify(snapshot),
+      { expirationTtl: BLOCKLIST_KV_TTL },
+    );
+  } catch {
+    // Ledger already written; the periodic refresh is the backstop.
+  }
+  return snapshot.blocks.length;
+}
+
+function requireBlockToken(request: Request, env: Env) {
+  const configured = (
+    env as unknown as { API_KEY_BLOCK_INTERNAL_TOKEN?: string }
+  ).API_KEY_BLOCK_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "key blocking is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(API_KEY_BLOCK_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_BLOCK_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  return null;
+}
+
+// Internal-only: block ONE account's API access (#8611).
+//
+// Its own shared secret, not the key-verify one, following the same
+// "different capability, different secret" rule as handleAccountTierPromote
+// above -- cutting off a paying customer is a materially higher-privilege act
+// than recording that one made a request.
+//
+// Account-level, not key-level: blocking a single key of an abusive account
+// just invites minting another. Reversible by design, with the whole history
+// kept -- see the api_key_blocks comment in schema.sql.
+async function handleApiKeyBlock(request: Request, env: Env) {
+  const denied = requireBlockToken(request, env);
+  if (denied) return denied;
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const accountId = Number(body?.account_id);
+  const reasonCode = body?.reason_code;
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return writeJson({ error: "provide a valid account_id" }, 400);
+  }
+  if (!isBlockReasonCode(reasonCode)) {
+    return writeJson(
+      {
+        error: "provide a known reason_code",
+        reason_codes: Object.keys(BLOCK_REASON_CODES),
+      },
+      400,
+    );
+  }
+  const note = typeof body?.note === "string" ? body.note.slice(0, 2000) : null;
+  const blockedBy =
+    typeof body?.blocked_by === "string" ? body.blocked_by.slice(0, 200) : null;
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
+    // ON CONFLICT DO NOTHING against the one-active-block-per-account partial
+    // unique index: blocking an already-blocked account is a no-op rather than
+    // an error, so an ops action that gets retried or double-clicked stays
+    // idempotent instead of 500ing.
+    const [row] = await sql`
+      INSERT INTO api_key_blocks
+        (account_id, reason_code, note, blocked_at, blocked_by)
+      VALUES (${accountId}, ${reasonCode}, ${note}, ${Date.now()}, ${blockedBy})
+      ON CONFLICT DO NOTHING
+      RETURNING id`;
+    const active = await refreshBlocklistSnapshot(env, sql);
+    return writeJson({
+      account_id: accountId,
+      reason_code: reasonCode,
+      already_blocked: !row,
+      active_blocks: active,
+    });
+  });
+}
+
+// Internal-only: lift a block (#8611). The false-positive path, and the reason
+// api_key_blocks is an append-only ledger rather than a boolean column -- this
+// closes the row instead of deleting it, so "blocked in error on the 3rd,
+// lifted on the 4th, here is why" stays answerable months later.
+async function handleApiKeyUnblock(request: Request, env: Env) {
+  const denied = requireBlockToken(request, env);
+  if (denied) return denied;
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const accountId = Number(body?.account_id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return writeJson({ error: "provide a valid account_id" }, 400);
+  }
+  // Required, not optional. An unblock with no stated reason is how a
+  // false-positive review becomes unauditable a month later.
+  const note = typeof body?.note === "string" ? body.note.trim() : "";
+  if (!note) {
+    return writeJson(
+      { error: "provide a note explaining why the block is being lifted" },
+      400,
+    );
+  }
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
+    const [row] = await sql`
+      UPDATE api_key_blocks
+      SET unblocked_at = ${Date.now()}, unblocked_note = ${note.slice(0, 2000)}
+      WHERE account_id = ${accountId} AND unblocked_at IS NULL
+      RETURNING id`;
+    const active = await refreshBlocklistSnapshot(env, sql);
+    return writeJson({
+      account_id: accountId,
+      unblocked: Boolean(row),
+      active_blocks: active,
+    });
+  });
+}
+
+// Internal-only: the review queue (#8611). Anomaly signals for recently-active
+// keyed accounts, strongest first, alongside their current block state.
+// READ-ONLY on purpose -- nothing here blocks anyone. Signals rank a queue; a
+// human decides, using handleApiKeyBlock above. An automated block on a
+// heuristic like "used many route families" would eventually cut off a
+// legitimate integration doing exactly what the API is for.
+async function handleApiKeyAnomalies(request: Request, env: Env) {
+  const denied = requireBlockToken(request, env);
+  if (denied) return denied;
+  const url = new URL(request.url);
+  const days = Math.min(
+    30,
+    Math.max(1, Number(url.searchParams.get("days")) || 7),
+  );
+  const since = new Date(Date.now() - days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
+    const usage = await sql`
+      SELECT account_id, day::text AS day, route, request_count
+      FROM api_key_usage_daily
+      WHERE day >= ${since}
+      ORDER BY account_id, day`;
+    const blocked = await sql`
+      SELECT account_id, reason_code FROM api_key_blocks
+      WHERE unblocked_at IS NULL`;
+    const blockedBy = new Map(
+      blocked.map((row) => [Number(row.account_id), row.reason_code]),
+    );
+
+    const byAccount = new Map<number, Map<string, Record<string, number>>>();
+    for (const row of usage) {
+      const id = Number(row.account_id);
+      const perDay = byAccount.get(id) ?? new Map();
+      const routes = perDay.get(row.day) ?? {};
+      routes[String(row.route)] = Number(row.request_count);
+      perDay.set(row.day, routes);
+      byAccount.set(id, perDay);
+    }
+
+    const flagged = [];
+    for (const [accountId, perDay] of byAccount) {
+      const usageDays = [...perDay].map(([day, routes]) => ({ day, routes }));
+      // The tier ceiling as a per-DAY number. MCP's keyed tier is the widest
+      // surface a key can spend against, so it is the honest denominator for
+      // "riding the ceiling" rather than any one narrower route's limit.
+      const signals = scoreUsageAnomalies(
+        usageDays,
+        MCP_TIERED_RATE_LIMIT.keyed.limit * 1440,
+      );
+      if (signals.length === 0) continue;
+      flagged.push({
+        account_id: accountId,
+        signals,
+        top_score: signals[0].score,
+        blocked_reason_code: blockedBy.get(accountId) ?? null,
+      });
+    }
+    flagged.sort((a, b) => b.top_score - a.top_score);
+    return writeJson({
+      window_days: days,
+      accounts_seen: byAccount.size,
+      flagged_count: flagged.length,
+      flagged,
+    });
+  });
+}
+
 // Session-gated usage dashboard (#8386): the calling account's own last 7
 // days of request counts by day, plus the top routes across that window --
 // scoped to account_id, never key_id, since api_key_usage_daily is recorded
@@ -5510,6 +5738,40 @@ async function handleAccountTierPromote(request: Request, env: Env) {
 // usage across all of them, which matches "how much of my headroom am I
 // using" better than a per-key split would.
 const USAGE_DASHBOARD_WINDOW_DAYS = 7;
+
+// Session-gated block status for the calling account (#8611): "tenant-visible
+// status on the dashboard".
+//
+// Deliberately narrow. It reports THAT the account is blocked, the reason code,
+// and when -- never the internal `note`, which is written by a maintainer for
+// maintainers and can name a person, a ticket or a suspicion. The unblock path
+// is a support conversation, not a self-serve button, so there is nothing to
+// action here beyond knowing.
+async function handleAccountKeyStatus(request: Request, env: Env) {
+  const { session, error: sessionError } = await requireAccountSession(
+    request,
+    env,
+  );
+  if (sessionError) return sessionError;
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
+    const [row] = await sql`
+      SELECT reason_code, blocked_at FROM api_key_blocks
+      WHERE account_id = ${session.accountId} AND unblocked_at IS NULL
+      LIMIT 1`;
+    if (!row) return writeJson({ blocked: false });
+    const reasonCode = isBlockReasonCode(row.reason_code)
+      ? row.reason_code
+      : "abuse_manual";
+    return writeJson({
+      blocked: true,
+      reason_code: reasonCode,
+      // The published sentence for the code, so the dashboard never has to
+      // keep its own copy of these strings in sync.
+      message: BLOCK_REASON_CODES[reasonCode],
+      blocked_at: Number(row.blocked_at),
+    });
+  });
+}
 
 async function handleAccountKeyUsage(request: Request, env: Env) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -5563,13 +5825,16 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
   if (keyId === "usage" && request.method === "GET") {
     return handleAccountKeyUsage(request, env);
   }
+  if (keyId === "status" && request.method === "GET") {
+    return handleAccountKeyStatus(request, env);
+  }
   if (keyId && request.method === "DELETE") {
     return handleAccountKeyRevoke(request, env, keyId);
   }
   return writeJson(
     {
       error:
-        "Use POST/GET /api/v1/keys, GET /api/v1/keys/usage, or DELETE /api/v1/keys/{key_id}.",
+        "Use POST/GET /api/v1/keys, GET /api/v1/keys/usage, GET /api/v1/keys/status, or DELETE /api/v1/keys/{key_id}.",
     },
     405,
   );
@@ -5705,6 +5970,27 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/keys/quota"
     ) {
       return handleApiQuotaSpend(request, env);
+    }
+    // Internal-only key-level abuse controls (#8611). Own shared secret --
+    // blocking a paying customer is a higher-privilege act than recording a
+    // request, so it does not share the verify route's token.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/keys/block"
+    ) {
+      return handleApiKeyBlock(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/keys/unblock"
+    ) {
+      return handleApiKeyUnblock(request, env);
+    }
+    if (
+      request.method === "GET" &&
+      url.pathname === "/api/v1/internal/keys/anomalies"
+    ) {
+      return handleApiKeyAnomalies(request, env);
     }
     // Internal-only, ops-triggered account tier promotion -- see
     // handleAccountTierPromote's own header comment.

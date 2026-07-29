@@ -1229,6 +1229,48 @@ CREATE INDEX IF NOT EXISTS idx_api_key_usage_daily_account_day
   ON api_key_usage_daily (account_id, day DESC);
 
 -- ---------------------------------------------------------------------------
+-- Key-level blocklist (#8611). Distinct from api_keys.revoked_at, which is the
+-- OWNER's own "I am done with this key" action and is permanent per key.
+--
+-- A block is ours, it is account-level (blocking one key of an abusive account
+-- just invites minting another), it carries a reason code, and it is
+-- REVERSIBLE -- because the false-positive path is a first-class requirement,
+-- not an afterthought. That is why this is an append-only ledger rather than a
+-- boolean column: unblocking sets unblocked_at and keeps the row, so "this
+-- account was blocked in error on the 3rd and unblocked on the 4th with this
+-- note" stays answerable. A column would erase exactly the history you need
+-- when a customer asks what happened.
+--
+-- Nothing writes here automatically. Anomaly signals (src/api-key-abuse.ts)
+-- rank an internal review queue; a human decides. An automated block on a
+-- heuristic like "used many route families" would eventually cut off a
+-- legitimate integration doing precisely what the API is for.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS api_key_blocks (
+  id              BIGSERIAL PRIMARY KEY,
+  account_id      BIGINT NOT NULL,
+  -- Closed set, mirrored in src/api-key-abuse.ts's BLOCK_REASON_CODES. Not a
+  -- CHECK constraint: adding a code should not need a schema migration, and
+  -- the writing route validates against the same closed set.
+  reason_code     TEXT NOT NULL,
+  -- Internal, maintainer-facing. May name a person or a ticket, so it is
+  -- NEVER surfaced to the blocked caller -- see evaluateBlock.
+  note            TEXT,
+  blocked_at      BIGINT NOT NULL,
+  blocked_by      TEXT,
+  unblocked_at    BIGINT,
+  unblocked_note  TEXT
+);
+-- The snapshot query: currently-active blocks only. Partial, because the
+-- ledger grows forever while the active set stays small.
+CREATE INDEX IF NOT EXISTS idx_api_key_blocks_active
+  ON api_key_blocks (account_id) WHERE unblocked_at IS NULL;
+-- One account cannot hold two simultaneous active blocks: a second block would
+-- make "unblock this account" ambiguous and leave it still blocked.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_api_key_blocks_one_active_per_account
+  ON api_key_blocks (account_id) WHERE unblocked_at IS NULL;
+
+-- ---------------------------------------------------------------------------
 -- Per-account daily quota counter (#8608), in COST units rather than requests
 -- (src/route-cost-weights.ts, following ADR 0022's four cost shapes -- a
 -- cached artifact read spends 1, an LLM-backed call 25).

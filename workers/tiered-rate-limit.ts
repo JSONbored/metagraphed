@@ -21,6 +21,7 @@ import {
   validateApiKey,
 } from "../src/api-key-validation.ts";
 import { routeCost } from "../src/route-cost-weights.ts";
+import { evaluateBlock, type BlockVerdict } from "../src/api-key-abuse.ts";
 
 export interface RateLimitTierPolicy {
   /** Env binding name for this tier's Cloudflare Rate Limiting binding. */
@@ -94,6 +95,49 @@ export interface TieredRateLimitResult {
   /** The verified account id when a valid API key was supplied, else null
    * (anonymous, IP-keyed). */
   accountId: string | null;
+  /**
+   * Set when the account is on the #8611 blocklist. Present ONLY on a rejection
+   * -- an allowed request carries no block, so a caller cannot tell from a 200
+   * that a blocklist exists at all.
+   */
+  block?: BlockVerdict;
+}
+
+/**
+ * TTL for the cached blocklist snapshot (#8611).
+ *
+ * 60s is the "effective at the edge within one cache interval" the issue asks
+ * for, made small enough to actually mean something. The snapshot is one tiny
+ * KV value covering every blocked account -- not one entry per key -- so a
+ * short TTL costs one cheap edge-local read per request, not a fan-out.
+ */
+export const BLOCKLIST_KV_TTL = 60;
+export const BLOCKLIST_KV_KEY = "api-key-blocklist";
+
+/**
+ * The block verdict for this account, from the cached snapshot.
+ *
+ * Fails OPEN on every error path, and unlike the rate-limit gate the reason is
+ * asymmetry of harm rather than politeness to paying callers: a corrupt or
+ * unreachable blocklist that read as "blocked" would lock out EVERY customer
+ * at once, while reading as "not blocked" costs one TTL of traffic from an
+ * already-identified bad actor.
+ */
+async function loadBlockVerdict(
+  env: Env,
+  accountId: unknown,
+): Promise<BlockVerdict> {
+  const kv = (env as unknown as { METAGRAPH_CONTROL?: KVNamespace })
+    .METAGRAPH_CONTROL;
+  if (!kv?.get) return evaluateBlock(null, accountId);
+  try {
+    const snapshot = (await kv.get(BLOCKLIST_KV_KEY, { type: "json" })) as {
+      blocks?: unknown;
+    } | null;
+    return evaluateBlock(snapshot, accountId);
+  } catch {
+    return evaluateBlock(null, accountId);
+  }
 }
 
 /**
@@ -199,6 +243,22 @@ export async function applyTieredRateLimit(
       tier: tier ?? "keyed",
       accountId: String(auth.accountId),
     };
+    // #8611: the blocklist comes BEFORE any ceiling. A blocked caller is not
+    // "going too fast", and spending their daily quota on requests we are about
+    // to refuse would be wrong twice over -- they would be billed for units they
+    // never got served, and the quota would mask the block as a 429.
+    //
+    // This deliberately does NOT ride the key-validation cache. That cache
+    // holds a VALID key for 30 minutes (API_KEY_LOOKUP_KV_TTL) and is keyed by
+    // a hash of the raw key we never store, so a block could neither be pushed
+    // into it nor targeted for deletion -- an abusive key would keep working
+    // for up to half an hour after someone hit block. The blocklist is its own
+    // small snapshot on a short TTL instead, so a block lands within one
+    // BLOCKLIST_KV_TTL rather than one identity-cache lifetime.
+    const block = await loadBlockVerdict(env, auth.accountId);
+    if (block.blocked) {
+      return { allowed: false, ...result, block };
+    }
     // Daily quota first: it is the coarser, more expensive-to-exceed control,
     // and a caller already over their day should be told that rather than
     // being told they are going too fast this minute.
@@ -236,6 +296,53 @@ export async function applyTieredRateLimit(
     key: `${config.keyPrefix}:${resolveClientIp(request)}`,
   });
   return { allowed: success, policy, tier: "anonymous", accountId: null };
+}
+
+/**
+ * How a rejected request should be reported (#8611).
+ *
+ * A blocked caller must NOT get a 429. 429 means "slow down and retry", which
+ * is advice that will never work here and invites exactly the retry storm a
+ * block exists to stop. 403 with a stable reason code says "this will not
+ * succeed until something changes", which is both true and actionable.
+ *
+ * `retry-after` is deliberately absent on a block: there is no time after
+ * which it starts working again.
+ */
+export function tieredRejectionResponse(
+  result: TieredRateLimitResult,
+  rateLimited: { code: string; message: string },
+): {
+  status: number;
+  code: string;
+  message: string;
+  headers: Record<string, string>;
+} | null {
+  if (result.allowed) return null;
+  if (result.block?.blocked) {
+    return {
+      status: 403,
+      code: "api_key_blocked",
+      // The closed-set sentence, never the internal note -- that is written by
+      // a maintainer for maintainers and can name people or suspicions.
+      message: `${result.block.message} Contact support if you believe this is an error.`,
+      headers: {
+        "x-ratelimit-scope": "blocked",
+        "x-api-key-block-reason": result.block.reasonCode ?? "abuse_manual",
+        ...(result.tier ? { "x-ratelimit-tier": result.tier } : {}),
+      },
+    };
+  }
+  // The route's own 429 wording, passed in. Deliberately NOT a ternary at each
+  // call site: four consumers each picking between a block message and their
+  // own rate-limit message meant four duplicated two-way branches, and the
+  // decision belongs here -- with the thing that knows which ceiling rejected
+  // the caller -- not repeated in every handler.
+  return {
+    status: 429,
+    ...rateLimited,
+    headers: tieredRateLimitHeaders(result.policy, result.tier, result.quota),
+  };
 }
 
 /**

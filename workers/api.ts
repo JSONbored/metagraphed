@@ -357,6 +357,7 @@ import {
   EXTRINSICS_FEED_PATH_PATTERN,
   ACCOUNT_EVENTS_ROLLUP_CRON,
   BULK_TRENDS_PATH_PATTERN,
+  ABUSE_SCAN_CRON,
   EMBEDDING_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
@@ -420,7 +421,7 @@ import {
 } from "./config.ts";
 import {
   applyTieredRateLimit,
-  tieredRateLimitHeaders,
+  tieredRejectionResponse,
   type TieredRateLimitConfig,
   type TieredRateLimitResult,
 } from "./tiered-rate-limit.ts";
@@ -466,6 +467,58 @@ export function recordApiKeyUsage(
   ).catch(() => {});
   if (typeof ctx?.waitUntil === "function") {
     ctx.waitUntil(pending);
+  }
+}
+
+// #8611: the daily per-key abuse scan.
+//
+// Calls the internal anomalies route (the one place that scores usage) and
+// reports the result to the ops channel -- PostHog, which is where this
+// codebase's operational signal already goes. Notification ONLY: nothing here
+// blocks anyone. An automated block on a heuristic like "used many route
+// families" would eventually cut off a legitimate integration doing exactly
+// what the API is for, so the scan ranks a queue and a human decides.
+export const ABUSE_SCAN_ALERT_THRESHOLD = 1;
+
+export async function runAbuseScan(env: Env, ctx?: Ctx) {
+  const token = (env as unknown as { API_KEY_BLOCK_INTERNAL_TOKEN?: string })
+    .API_KEY_BLOCK_INTERNAL_TOKEN;
+  if (!env.DATA_API?.fetch || !token) {
+    return { ok: false, reason: "not_provisioned" };
+  }
+  const startedAt = Date.now();
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/keys/anomalies?days=7",
+        { headers: { "x-api-key-block-token": token } },
+      ),
+    );
+    if (!upstream.ok)
+      return { ok: false, reason: `upstream_${upstream.status}` };
+    const body = (await upstream.json()) as {
+      flagged_count?: number;
+      accounts_seen?: number;
+    };
+    const flagged = Number(body?.flagged_count) || 0;
+    // Quiet when there is nothing to say. A daily "0 flagged" event would
+    // train whoever watches this channel to skip it.
+    if (flagged >= ABUSE_SCAN_ALERT_THRESHOLD) {
+      const pending = recordUsageEvent(env, {
+        route: "abuse-scan",
+        ok: true,
+        durationMs: Date.now() - startedAt,
+      }).catch(() => false);
+      if (typeof ctx?.waitUntil === "function") ctx.waitUntil(pending);
+    }
+    return {
+      ok: true,
+      flagged,
+      accountsSeen: Number(body?.accounts_seen) || 0,
+    };
+  } catch {
+    // A scan that cannot run is not an outage -- it is one missed daily report.
+    return { ok: false, reason: "unreachable" };
   }
 }
 
@@ -862,6 +915,16 @@ export async function handleScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === ABUSE_SCAN_CRON) {
+    // #8611: score recent per-key usage and report a spike to the ops channel.
+    //
+    // Daily, not hourly. Every signal is an aggregate over whole DAYS of usage
+    // (sustained ceiling-riding needs a multi-day run), so a tighter cadence
+    // would re-report the same standing set of accounts and train whoever
+    // watches the channel to ignore it. Nothing here blocks anybody -- it
+    // notifies, and a human decides via the block route.
+    return runAbuseScan(env, ctx);
   }
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
     // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,
@@ -1760,16 +1823,18 @@ export async function handleRequest(
       DATA_TIERED_RATE_LIMIT,
     );
     if (!rateLimit.allowed) {
+      // #8611: a blocked account gets 403 + reason code, not a 429 that
+      // invites the retry storm a block exists to stop.
+      const rejection = tieredRejectionResponse(rateLimit, {
+        code: "data_rate_limited",
+        message: "Too many data API requests from this client; slow down.",
+      })!;
       return errorResponse(
-        "data_rate_limited",
-        "Too many data API requests from this client; slow down.",
-        429,
+        rejection.code,
+        rejection.message,
+        rejection.status,
         {},
-        tieredRateLimitHeaders(
-          rateLimit.policy,
-          rateLimit.tier,
-          rateLimit.quota,
-        ),
+        rejection.headers,
       );
     }
     if (rateLimit.accountId) {
@@ -4891,12 +4956,17 @@ async function webhookSubscriptionRateLimited(
     WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
   );
   if (!rateLimit.allowed) {
+    const rejection = tieredRejectionResponse(rateLimit, {
+      code: "webhook_subscription_rate_limited",
+      message:
+        "Too many webhook subscription requests from this client; slow down.",
+    })!;
     return errorResponse(
-      "webhook_subscription_rate_limited",
-      "Too many webhook subscription requests from this client; slow down.",
-      429,
+      rejection.code,
+      rejection.message,
+      rejection.status,
       {},
-      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
+      rejection.headers,
     );
   }
   if (rateLimit.accountId) {
@@ -5228,12 +5298,16 @@ function aiRateLimitedResponse(rateLimit: TieredRateLimitResult) {
   // reset -- and which tier it was measured against. /ask is the dearest
   // family in src/route-cost-weights.ts (25 units a call), so it is the route
   // most likely to exhaust a quota long before any per-minute limit.
+  const rejection = tieredRejectionResponse(rateLimit, {
+    code: "rate_limited",
+    message: "Too many AI requests. Please retry shortly.",
+  })!;
   return errorResponse(
-    "rate_limited",
-    "Too many AI requests. Please retry shortly.",
-    429,
+    rejection.code,
+    rejection.message,
+    rejection.status,
     {},
-    tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
+    rejection.headers,
   );
 }
 

@@ -15,6 +15,13 @@ export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Distinct minute (odd) so it never collides with the 15-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
+// #8611: daily per-key abuse scan. Daily rather than hourly because every
+// signal is an aggregate over whole days -- sustained ceiling-riding needs a
+// multi-day run to fire at all -- so a tighter cadence would re-report the same
+// standing set of accounts and train whoever watches the ops channel to ignore
+// it. Offset from the other daily crons so they do not contend for the same
+// Postgres pool.
+export const ABUSE_SCAN_CRON = "53 4 * * *";
 // Hourly account_events_daily rollup (#4832 gap-closure), moved off the
 // former rollup-account-events-daily.yml GitHub Actions workflow onto this
 // Worker-native cron -- offset from the top-of-hour prune (0) so the two
