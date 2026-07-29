@@ -65,5 +65,31 @@
   "/chain/runtime@375": [],
   "/chain/runtime@768": [],
   "/chain/runtime@1024": [],
-  "/chain/runtime@1280": []
+  "/chain/runtime@1280": [],
+  "/accounts@375": [],
+  "/accounts@768": [],
+  "/accounts@1024": [],
+  "/accounts@1280": [],
+  "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9@375": [],
+  "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9@768": [],
+  "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9@1024": [],
+  "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9@1280": [],
+  "/portfolio@375": [],
+  "/portfolio@768": [],
+  "/portfolio@1024": [],
+  "/portfolio@1280": [],
+  "/leaderboards@375": [],
+  "/leaderboards@768": [],
+  "/leaderboards@1024": [],
+  "/leaderboards@1280": [],
+  "/providers@375": [],
+  "/providers@768": [],
+  "/providers@1024": [],
+  "/providers@1280": [],
+  "/apis@375": [
+    "A:inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong hover:decoration-ink"
+  ],
+  "/apis@768": [],
+  "/apis@1024": [],
+  "/apis@1280": []
 }
