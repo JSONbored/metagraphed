@@ -530,6 +530,11 @@ const req = (path: string, init?: RequestInit) =>
     ctx as unknown as ExecutionContext,
   );
 const queryText = () => sqlCalls.map((call) => call.text).join("\n");
+/** Every bound parameter across the recorded calls, stringified (#8649). */
+const queryParams = () =>
+  sqlCalls.flatMap((call) =>
+    (call.values ?? []).map((v: unknown) => String(v)),
+  );
 
 beforeEach(() => {
   sqlCalls.length = 0;
@@ -4250,7 +4255,56 @@ test("GET /api/v1/subnets/:netuid/ownership-history shapes raw chain_events rows
   const text = queryText();
   expect(text).toContain("FROM chain_events");
   expect(text).toContain("pallet = 'SubtensorModule'");
-  expect(text).toContain("(args->>'netuid')::int =");
+  // #8649: this used to assert the CAST -- `(args->>'netuid')::int =` -- and
+  // so pinned the bug in place. chain_events stores netuid as an array, so
+  // that cast threw `invalid input syntax for type integer: "[18]"` on every
+  // request and the endpoint 502'd across REST, MCP and GraphQL. The filter
+  // must compare text, never cast.
+  expect(text).toContain("COALESCE(args->'netuid'->>0, args->>'netuid')");
+  expect(text).not.toContain("::int");
+});
+
+test("GET /api/v1/subnets/:netuid/ownership-history matches the ARRAY netuid shape production actually stores", async () => {
+  // The fixture above uses `netuid: 7`, a scalar -- which is why this bug
+  // survived every test. A live row reads {"netuid":[18],…}: the value is an
+  // array. Verified against the real API before writing this.
+  mockRows.current = [
+    {
+      block_number: "8724813",
+      pallet: "SubtensorModule",
+      method: "SubnetOwnerChanged",
+      args: {
+        netuid: [18],
+        old_coldkey: [
+          [
+            230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+            251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+            143, 88,
+          ],
+        ],
+        new_coldkey: [
+          [
+            109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          ],
+        ],
+      },
+      observed_at: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/18/ownership-history");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.count).toBe(1);
+  expect(body.ownership_changes[0].netuid).toBe(18);
+});
+
+test("GET /api/v1/subnets/:netuid/ownership-history binds the netuid as text, not a number", async () => {
+  // Comparing text is what makes malformed args unable to raise. If the bound
+  // parameter went back to a number the cast would have to come back with it.
+  mockRows.current = [];
+  await req("/api/v1/subnets/64/ownership-history");
+  expect(queryParams()).toContain("64");
 });
 
 test("GET /api/v1/subnets/:netuid/ownership-history with no rows returns an empty list, not a throw", async () => {
