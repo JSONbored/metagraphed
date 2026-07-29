@@ -368,7 +368,14 @@ export default tseslint.config(
       "src/routes/-design-primitives-page.tsx",
       "src/components/metagraphed/primitives/**",
       "src/lib/health-tokens.ts",
+      // The OG card is rasterized by satori on the Worker, where CSS custom
+      // properties do not exist -- every colour has to ship as a literal hex,
+      // which is why this file is exempt. Its TEST is exempt for the same
+      // reason: the assertions that the card uses --accent-text rather than
+      // the unreadable brand mint, and the site's own health colours, can only
+      // be written against those literals.
       "src/lib/og-image.ts",
+      "src/lib/og-image.test.ts",
     ],
     rules: { "no-restricted-syntax": "off" },
   },
