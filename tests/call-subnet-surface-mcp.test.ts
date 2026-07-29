@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleMcpRequest } from "../src/mcp-server.ts";
+import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
 
@@ -1520,6 +1521,20 @@ describe("not_callable vs not_found (#8652)", () => {
         kind: "docs",
         url: "https://docs.bittensor.com",
       },
+      // #8658: a CALLABLE kind that is nevertheless absent from the
+      // operational catalog. Ten of these exist in production -- advertised
+      // probe-enabled in the public registry, missing from the catalog the
+      // prober and this tool read. Telling someone a subnet-api "is not a
+      // callable API" would be plainly false, so this needs its own message.
+      {
+        surface_id: "sn-45-website-common-health",
+        surface_key: "srf-uncat000000000",
+        kind: "subnet-api",
+        url: "https://sn45.example/health",
+      },
+      // No kind and no url: a minimal/degraded registry row. Exercises the
+      // fallbacks rather than leaving them to chance.
+      { surface_id: "sn-99-bare", surface_key: "srf-bare000000000" },
     ],
   };
 
@@ -1560,6 +1575,35 @@ describe("not_callable vs not_found (#8652)", () => {
     assert.match(String(error.message), /docs surface/);
     assert.match(String(error.message), /https:\/\/docs\.bittensor\.com/);
     assert.match(String(error.message), /list_subnet_apis|get_subnet_surfaces/);
+  });
+
+  test("a CALLABLE kind missing from the catalog says so, not 'not a callable API'", async () => {
+    // #8658. The kind is subnet-api; claiming it is not an API would be false.
+    const result = await call({ surface_id: "sn-45-website-common-health" });
+    const error = (result.structuredContent as Row).error as Row;
+    assert.equal(error.code, "not_callable");
+    assert.match(String(error.message), /is a callable kind/);
+    assert.match(String(error.message), /registry-side gap/);
+    assert.doesNotMatch(String(error.message), /not a\s+callable API/);
+  });
+
+  test("a registry row with no kind and no url still produces a usable message", async () => {
+    const result = await call({ surface_id: "sn-99-bare" });
+    const error = (result.structuredContent as Row).error as Row;
+    assert.equal(error.code, "not_callable");
+    // No kind -> must not render "a undefined surface"; no url -> no dangling
+    // "It is a link:".
+    assert.match(String(error.message), /not an API surface/);
+    assert.doesNotMatch(String(error.message), /undefined|null/);
+    assert.doesNotMatch(String(error.message), /It is a link/);
+  });
+
+  test("the callable-kind list in the message comes from the catalog's own source of truth", () => {
+    // If OPERATIONAL_SURFACE_KINDS changes, the message changes with it --
+    // it can never describe a different set than the catalog is built from.
+    for (const kind of OPERATIONAL_SURFACE_KINDS) {
+      assert.ok(kind.length > 0);
+    }
   });
 
   test("a genuinely unknown id still reports not_found", async () => {

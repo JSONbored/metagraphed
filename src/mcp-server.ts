@@ -359,6 +359,10 @@ import {
   loadSurfacesList,
   SURFACES_ARTIFACT,
 } from "./surfaces-mcp.ts";
+// The single source of truth for which kinds are callable -- the same list
+// scripts/build-artifacts.ts filters operational-surfaces.json by, so this
+// error can never describe a different set than the catalog actually holds.
+import { OPERATIONAL_SURFACE_KINDS } from "./health-probe-core.ts";
 import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
@@ -1878,16 +1882,33 @@ async function uncallableSurfaceError(
     // bad id into an internal error.
   }
   if (known) {
-    const kind = typeof known.kind === "string" ? known.kind : "non-API";
+    const kind = typeof known.kind === "string" ? known.kind : null;
     const url = typeof known.url === "string" ? known.url : null;
+    const link = url ? ` It is a link: ${url}.` : "";
+    // Two genuinely different reasons an id can be absent from the callable
+    // catalog, and saying the wrong one is its own bug. A docs page is not
+    // callable BY KIND. But a `subnet-api` can also be missing -- 10 such
+    // surfaces are advertised probe-enabled in the public registry yet absent
+    // from operational-surfaces.json (#8658) -- and telling someone that a
+    // subnet-api "is not a callable API" would be plainly false.
+    if (kind && OPERATIONAL_SURFACE_KINDS.includes(kind)) {
+      return toolError(
+        "not_callable",
+        `Surface "${surfaceId}" is a ${kind} surface, which is a callable ` +
+          `kind, but it is not in the operational catalog, so it is not ` +
+          `callable right now and is not being health-probed.${link} This is ` +
+          `a registry-side gap rather than a bad id; use list_subnet_apis or ` +
+          `get_subnet_surfaces to find this subnet's currently callable ones.`,
+      );
+    }
     return toolError(
       "not_callable",
-      `Surface "${surfaceId}" is catalogued but is a ${kind} surface, not a ` +
-        `callable API, so there is nothing to request. ` +
-        (url ? `It is a link: ${url}. ` : "") +
-        `Only subnet-api, data-artifact, subtensor-rpc/wss and sse surfaces ` +
-        `can be called; use list_subnet_apis or get_subnet_surfaces to find ` +
-        `this subnet's callable ones.`,
+      `Surface "${surfaceId}" is catalogued but is ` +
+        `${kind ? `a ${kind} surface` : "not an API surface"}, not a ` +
+        `callable API, so there is nothing to request.${link} Only ` +
+        `${OPERATIONAL_SURFACE_KINDS.join(", ")} surfaces can be called; use ` +
+        `list_subnet_apis or get_subnet_surfaces to find this subnet's ` +
+        `callable ones.`,
     );
   }
   return toolError(
