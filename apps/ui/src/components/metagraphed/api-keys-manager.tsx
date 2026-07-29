@@ -28,6 +28,17 @@ interface ApiKeyUsage {
   top_routes: { route: string; count: number }[];
 }
 
+// #8611. Mirrors GET /api/v1/keys/status. Deliberately has no `note` field:
+// the internal note is written by a maintainer for maintainers and can name a
+// person or a ticket, so the route never sends it and the client has nowhere
+// to put it even by accident.
+interface ApiKeyStatus {
+  blocked: boolean;
+  reason_code?: string;
+  message?: string;
+  blocked_at?: number;
+}
+
 function authHeaders(token: string): HeadersInit {
   return { authorization: `Bearer ${token}` };
 }
@@ -179,8 +190,39 @@ function ApiKeysPanel({
     enabled: activeKeys.length > 0,
   });
 
+  // #8611: a blocked account must be able to see that it is blocked. Without
+  // this the only symptom is every request failing with a 403 the dashboard
+  // never explains, which turns a deliberate action into a mystery outage.
+  // Runs regardless of whether any key exists -- the block is account-level.
+  const statusQuery = useQuery({
+    queryKey: ["api-keys-status", token],
+    queryFn: async (): Promise<ApiKeyStatus> => {
+      const res = await apiFetch<ApiKeyStatus>("/api/v1/keys/status", {
+        init: { headers: authHeaders(token) },
+      });
+      return res.data;
+    },
+  });
+  const blockStatus = statusQuery.data;
+
   return (
     <div className="space-y-4">
+      {blockStatus?.blocked ? (
+        <div
+          role="alert"
+          className="rounded border border-health-down/30 bg-health-down/5 p-3 space-y-1"
+        >
+          <p className="mg-type-caption font-medium text-health-down">
+            API access is currently blocked
+          </p>
+          <p className="mg-type-caption text-ink-muted">{blockStatus.message}</p>
+          <p className="mg-type-caption text-ink-subtle">
+            Reason code <span className="font-mono text-ink-muted">{blockStatus.reason_code}</span>.
+            Existing keys stay listed below but will be refused until the block is lifted.
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="mg-type-caption text-ink-muted">
           Tier: <span className="font-mono text-ink-strong">{tier ?? "free"}</span>

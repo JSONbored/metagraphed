@@ -1129,6 +1129,432 @@ test("internal quota: 503 when hyperdrive is unbound", async () => {
   assert.equal(res.status, 503);
 });
 
+// --- key-level abuse controls (#8611) ---------------------------------------
+
+const BLOCK_TOKEN = "test-block-token";
+const blockEnv = (over: Record<string, unknown> = {}) =>
+  baseEnv({ API_KEY_BLOCK_INTERNAL_TOKEN: BLOCK_TOKEN, ...over });
+const blockReq = (
+  path: string,
+  body: unknown,
+  token: string | null = BLOCK_TOKEN,
+  method = "POST",
+) =>
+  req(path, {
+    method,
+    headers: token ? { "x-api-key-block-token": token } : {},
+    ...(method === "POST" ? { body } : {}),
+  });
+
+test("block: 503 unprovisioned, 401 on a wrong or missing token", async () => {
+  const body = { account_id: 7, reason_code: "abuse_manual" };
+  assert.equal(
+    (await fetchRoute(blockReq("/api/v1/internal/keys/block", body), baseEnv()))
+      .status,
+    503,
+  );
+  const env = blockEnv();
+  assert.equal(
+    (
+      await fetchRoute(
+        blockReq("/api/v1/internal/keys/block", body, "wrong"),
+        env,
+      )
+    ).status,
+    401,
+  );
+  assert.equal(
+    (await fetchRoute(blockReq("/api/v1/internal/keys/block", body, null), env))
+      .status,
+    401,
+  );
+});
+
+test("unblock: 503 unprovisioned, 401 on a wrong or missing token", async () => {
+  // Lifting a block is the same privilege as applying one -- an unblock route
+  // that was easier to reach than the block route would be the way out.
+  const body = { account_id: 7, note: "reviewed" };
+  assert.equal(
+    (
+      await fetchRoute(
+        blockReq("/api/v1/internal/keys/unblock", body),
+        baseEnv(),
+      )
+    ).status,
+    503,
+  );
+  const env = blockEnv();
+  assert.equal(
+    (
+      await fetchRoute(
+        blockReq("/api/v1/internal/keys/unblock", body, "wrong"),
+        env,
+      )
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await fetchRoute(
+        blockReq("/api/v1/internal/keys/unblock", body, null),
+        env,
+      )
+    ).status,
+    401,
+  );
+});
+
+test("block: does NOT share the key-verify token", async () => {
+  // Cutting off a paying customer is a materially higher-privilege act than
+  // recording that one made a request. If the verify token ever worked here,
+  // anything holding it could block customers.
+  const env = baseEnv({
+    API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
+    API_KEY_BLOCK_INTERNAL_TOKEN: BLOCK_TOKEN,
+  });
+  const res = await fetchRoute(
+    blockReq(
+      "/api/v1/internal/keys/block",
+      { account_id: 7, reason_code: "abuse_manual" },
+      LOOKUP_TOKEN,
+    ),
+    env,
+  );
+  assert.equal(res.status, 401);
+});
+
+test("block: rejects an unknown reason code and lists the valid ones", async () => {
+  const env = blockEnv();
+  for (const reason of ["", "made-up", "constructor", "__proto__", 7, null]) {
+    const res = await fetchRoute(
+      blockReq("/api/v1/internal/keys/block", {
+        account_id: 7,
+        reason_code: reason,
+      }),
+      env,
+    );
+    assert.equal(res.status, 400, String(reason));
+    const body = (await res.json()) as Row;
+    assert.ok(Array.isArray(body.reason_codes));
+  }
+});
+
+test("block: rejects a bad account_id", async () => {
+  const env = blockEnv();
+  for (const id of [0, -1, 1.5, "abc", null]) {
+    const res = await fetchRoute(
+      blockReq("/api/v1/internal/keys/block", {
+        account_id: id,
+        reason_code: "abuse_manual",
+      }),
+      env,
+    );
+    assert.equal(res.status, 400, String(id));
+  }
+});
+
+test("block: writes the ledger row AND refreshes the edge snapshot", async () => {
+  const puts: Array<{ key: string; value: string }> = [];
+  const env = blockEnv({
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async (key: string, value: string) => {
+        puts.push({ key, value });
+      },
+      delete: async () => {},
+    },
+  });
+  mockQueue.current = [
+    [{ id: "1" }],
+    [{ account_id: "7", reason_code: "abuse_scraping", blocked_at: "1" }],
+  ];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/block", {
+      account_id: 7,
+      reason_code: "abuse_scraping",
+      note: "ticket 12",
+      blocked_by: "ops",
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.already_blocked, false);
+  assert.ok(sqlCalls.some((c) => /INSERT INTO api_key_blocks/.test(c.text)));
+  // Idempotent against the one-active-block-per-account index: a retried or
+  // double-clicked ops action must not 500.
+  assert.ok(sqlCalls.some((c) => /ON CONFLICT DO NOTHING/.test(c.text)));
+  // The snapshot is written immediately, not left to expire -- otherwise a
+  // block would take up to BLOCKLIST_KV_TTL to reach the edge.
+  assert.equal(puts.length, 1);
+  assert.equal(puts[0].key, "api-key-blocklist");
+  const snapshot = JSON.parse(puts[0].value);
+  // account_id is BIGINT -> a STRING from postgres.js. The snapshot must carry
+  // a NUMBER or evaluateBlock's comparison misses (the #8607 trap).
+  assert.strictEqual(snapshot.blocks[0].accountId, 7);
+});
+
+test("unblock: REQUIRES a note, because an unaudited unblock is the false-positive hole", async () => {
+  const env = blockEnv();
+  for (const note of [undefined, "", "   "]) {
+    const res = await fetchRoute(
+      blockReq("/api/v1/internal/keys/unblock", { account_id: 7, note }),
+      env,
+    );
+    assert.equal(res.status, 400, String(note));
+  }
+});
+
+test("unblock: closes the row rather than deleting it, and refreshes the snapshot", async () => {
+  const puts: string[] = [];
+  const env = blockEnv({
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async (_k: string, v: string) => {
+        puts.push(v);
+      },
+      delete: async () => {},
+    },
+  });
+  mockQueue.current = [[{ id: "1" }], []];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/unblock", {
+      account_id: 7,
+      note: "false positive, legitimate batch job",
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.equal(((await res.json()) as Row).unblocked, true);
+  const call = sqlCalls.find((c) => /UPDATE api_key_blocks/.test(c.text));
+  assert.ok(call, "closes the existing row");
+  assert.ok(/unblocked_at = /.test(call!.text));
+  assert.ok(
+    !sqlCalls.some((c) => /DELETE FROM api_key_blocks/.test(c.text)),
+    "history is kept, so 'blocked in error, here is why' stays answerable",
+  );
+  assert.equal(puts.length, 1);
+  assert.deepEqual(JSON.parse(puts[0]).blocks, []);
+});
+
+test("unblock: rejects a bad account_id before touching the database", async () => {
+  const env = blockEnv();
+  for (const id of [0, -1, 1.5, "abc", null]) {
+    const res = await fetchRoute(
+      blockReq("/api/v1/internal/keys/unblock", {
+        account_id: id,
+        note: "reviewed",
+      }),
+      env,
+    );
+    assert.equal(res.status, 400, String(id));
+  }
+  assert.ok(!sqlCalls.some((c) => /api_key_blocks/.test(c.text)));
+});
+
+test("anomalies: an already-blocked account is annotated, not re-flagged", async () => {
+  const env = blockEnv();
+  mockQueue.current = [
+    [
+      { account_id: "7", day: "2026-07-01", route: "a", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "b", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "c", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "d", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "e", request_count: "5" },
+    ],
+    [{ account_id: "7", reason_code: "abuse_scraping" }],
+  ];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/anomalies", null, BLOCK_TOKEN, "GET"),
+    env,
+  );
+  const flagged = ((await res.json()) as Row).flagged as Row[];
+  assert.equal(flagged[0].blocked_reason_code, "abuse_scraping");
+});
+
+test("unblock: reports false when there was no active block", async () => {
+  const env = blockEnv({
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async () => {},
+      delete: async () => {},
+    },
+  });
+  mockQueue.current = [[], []];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/unblock", { account_id: 7, note: "n/a" }),
+    env,
+  );
+  assert.equal(((await res.json()) as Row).unblocked, false);
+});
+
+test("anomalies: read-only review queue, ranked, never blocks anyone", async () => {
+  const env = blockEnv();
+  mockQueue.current = [
+    [
+      { account_id: "7", day: "2026-07-01", route: "mcp", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "ask", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "a", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "b", request_count: "5" },
+      { account_id: "7", day: "2026-07-01", route: "c", request_count: "5" },
+    ],
+    [],
+  ];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/anomalies", null, BLOCK_TOKEN, "GET"),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.flagged_count, 1);
+  const flagged = (body.flagged as Row[])[0];
+  assert.equal(flagged.account_id, 7);
+  assert.equal(flagged.blocked_reason_code, null);
+  // Advisory only: the route issues no writes at all.
+  assert.ok(
+    !sqlCalls.some((c) =>
+      /INSERT INTO api_key_blocks|UPDATE api_key_blocks/.test(c.text),
+    ),
+  );
+});
+
+test("block/unblock: 400 on an unparseable body", async () => {
+  const env = blockEnv();
+  for (const path of [
+    "/api/v1/internal/keys/block",
+    "/api/v1/internal/keys/unblock",
+  ]) {
+    const res = await fetchRoute(
+      new Request(`https://d${path}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key-block-token": BLOCK_TOKEN,
+        },
+        body: "{not json",
+      }),
+      env,
+    );
+    assert.equal(res.status, 400, path);
+  }
+});
+
+test("block: a non-string note or blocked_by is dropped, not stringified", async () => {
+  const env = blockEnv({
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async () => {},
+      delete: async () => {},
+    },
+  });
+  mockQueue.current = [[{ id: "1" }], []];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/block", {
+      account_id: 7,
+      reason_code: "abuse_manual",
+      note: { evil: true },
+      blocked_by: 42,
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const call = sqlCalls.find((c) => /INSERT INTO api_key_blocks/.test(c.text));
+  // "[object Object]" in an audit note would be worse than no note at all.
+  assert.ok(call!.values.includes(null));
+});
+
+// --- GET /api/v1/keys/status (#8611, tenant-visible) -------------------------
+
+test("keys status: session-gated", async () => {
+  const res = await fetchRoute(req("/api/v1/keys/status"), baseEnv());
+  assert.equal(res.status, 401);
+});
+
+test("keys status: reports not-blocked for a clean account", async () => {
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [[]];
+  const res = await fetchRoute(
+    req("/api/v1/keys/status", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { blocked: false });
+});
+
+test("keys status: reports the block WITHOUT the internal note", async () => {
+  // The note is written by a maintainer for maintainers and can name a person,
+  // a ticket or a suspicion. The route must never send it, and the response
+  // shape gives the client nowhere to put it even by accident.
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [
+    [
+      {
+        reason_code: "abuse_scraping",
+        blocked_at: "1753800000000",
+        note: "ticket 12 - suspect",
+      },
+    ],
+  ];
+  const res = await fetchRoute(
+    req("/api/v1/keys/status", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.equal(body.blocked, true);
+  assert.equal(body.reason_code, "abuse_scraping");
+  assert.match(String(body.message), /scraping/i);
+  // blocked_at is BIGINT -> a string from postgres.js; the route coerces it.
+  assert.strictEqual(body.blocked_at, 1753800000000);
+  assert.ok(!JSON.stringify(body).includes("ticket 12"));
+});
+
+test("keys status: an unrecognised stored code degrades to abuse_manual", async () => {
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [[{ reason_code: "legacy-code", blocked_at: "1" }]];
+  const res = await fetchRoute(
+    req("/api/v1/keys/status", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.equal(body.blocked, true);
+  assert.equal(body.reason_code, "abuse_manual");
+});
+
+test("anomalies: an account with no signals is omitted, not listed with an empty array", async () => {
+  // A review queue that lists every active account with `signals: []` is a
+  // queue nobody reads.
+  const env = blockEnv();
+  mockQueue.current = [
+    [{ account_id: "9", day: "2026-07-01", route: "mcp", request_count: "3" }],
+    [],
+  ];
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/anomalies", null, BLOCK_TOKEN, "GET"),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.equal(body.accounts_seen, 1);
+  assert.equal(body.flagged_count, 0);
+  assert.deepEqual(body.flagged, []);
+});
+
+test("anomalies: 401 without the block token", async () => {
+  const res = await fetchRoute(
+    blockReq("/api/v1/internal/keys/anomalies", null, null, "GET"),
+    blockEnv(),
+  );
+  assert.equal(res.status, 401);
+});
+
 // --- GET /api/v1/keys/usage (#8386) -----------------------------------------
 
 test("keys usage: 401 when the session is missing", async () => {

@@ -579,7 +579,13 @@
     // branch was left wired-but-inert for a while) -- this entry and that
     // dead branch are removed together rather than left firing daily for
     // nothing.
-    "crons": ["*/15 * * * *", "0 * * * *", "17 * * * *", "37 3 * * *"],
+    "crons": [
+      "*/15 * * * *",
+      "0 * * * *",
+      "17 * * * *",
+      "37 3 * * *",
+      "53 4 * * *",
+    ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
   // for enabling METAGRAPH_ENABLE_RPC_PROXY). 100 requests / 60s per client IP;

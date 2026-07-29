@@ -7,6 +7,7 @@ import { describe, test } from "vitest";
 import {
   applyTieredRateLimit,
   tieredRateLimitHeaders,
+  tieredRejectionResponse,
 } from "../workers/tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { AI_TIERED_RATE_LIMIT } from "../src/ai-search.ts";
@@ -972,6 +973,197 @@ describe("daily quotas (#8608)", () => {
     const minute = tieredRateLimitHeaders(CONFIG.anonymous);
     assert.equal(minute["x-ratelimit-scope"], "per-minute");
     assert.ok(!("x-ratelimit-tier" in minute));
+  });
+});
+
+describe("key-level blocklist (#8611)", () => {
+  const CONFIG = {
+    anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
+    keyed: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+    tiers: {
+      paid: {
+        envVar: "KEYED",
+        limit: 5000,
+        windowSeconds: 60,
+        dailyUnits: 1000,
+      },
+    },
+    keyPrefix: "t",
+  };
+
+  function envWithBlocklist(snapshot: unknown, quotaSpends: unknown[] = []) {
+    const kv = {
+      get: async (key: string) =>
+        key === "api-key-blocklist" ? snapshot : null,
+      put: async () => {},
+    };
+    return envWithTier("paid", {
+      METAGRAPH_CONTROL: kv,
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: true }) },
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          if (path === "/api/v1/internal/keys/quota") {
+            quotaSpends.push(await request.clone().json());
+            return Response.json({
+              allowed: true,
+              used: 1,
+              limit: 1000,
+              remaining: 999,
+              resetAt: "x",
+            });
+          }
+          return Response.json({
+            valid: true,
+            code: "VALID",
+            tier: "paid",
+            accountId: "42",
+          });
+        },
+      },
+    });
+  }
+
+  const req = () =>
+    new Request("https://api.metagraph.sh/api/v1/subnets", {
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+
+  test("a blocked account is rejected, with its reason code", async () => {
+    const env = envWithBlocklist({
+      blocks: [{ accountId: 42, reasonCode: "abuse_scraping" }],
+    });
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, false);
+    assert.equal(result.block?.blocked, true);
+    assert.equal(result.block?.reasonCode, "abuse_scraping");
+  });
+
+  test("the block is checked BEFORE the daily quota is spent", async () => {
+    // Spending quota on a request we are about to refuse would bill a blocked
+    // caller for units they never got served, and would surface the block as a
+    // 429 once that quota ran out.
+    const spends: unknown[] = [];
+    const env = envWithBlocklist(
+      { blocks: [{ accountId: 42, reasonCode: "abuse_manual" }] },
+      spends,
+    );
+    await applyTieredRateLimit(req(), env, CONFIG);
+    assert.deepEqual(spends, [], "no quota was spent for a blocked caller");
+  });
+
+  test("an unblocked account is unaffected and still carries no block field", async () => {
+    const env = envWithBlocklist({
+      blocks: [{ accountId: 999, reasonCode: "abuse_manual" }],
+    });
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    // A 200 must not reveal that a blocklist exists at all.
+    assert.equal(result.block, undefined);
+  });
+
+  test("an absent, empty or unreadable blocklist blocks NOBODY", async () => {
+    for (const snapshot of [null, {}, { blocks: null }, { blocks: "all" }]) {
+      const env = envWithBlocklist(snapshot);
+      const result = await applyTieredRateLimit(req(), env, CONFIG);
+      assert.equal(result.allowed, true, JSON.stringify(snapshot));
+    }
+    // A KV binding that throws must also fail open, not lock everyone out.
+    const throwing = envWithTier("paid", {
+      METAGRAPH_CONTROL: {
+        get: async () => {
+          throw new Error("kv down");
+        },
+      },
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: true }) },
+    });
+    assert.equal(
+      (await applyTieredRateLimit(req(), throwing, CONFIG)).allowed,
+      true,
+    );
+    // As must a missing binding entirely.
+    const unbound = envWithTier("paid", {
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: true }) },
+    });
+    assert.equal(
+      (await applyTieredRateLimit(req(), unbound, CONFIG)).allowed,
+      true,
+    );
+  });
+
+  test("a block is reported as 403, not 429", async () => {
+    // 429 means "retry shortly", which will never work and invites exactly the
+    // retry storm a block exists to stop.
+    const env = envWithBlocklist({
+      blocks: [{ accountId: 42, reasonCode: "abuse_key_sharing" }],
+    });
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    const rejection = tieredRejectionResponse(result, {
+      code: "rate_limited",
+      message: "Too many requests; slow down.",
+    })!;
+    assert.equal(rejection.status, 403);
+    assert.equal(rejection.code, "api_key_blocked");
+    assert.equal(rejection.headers["x-ratelimit-scope"], "blocked");
+    assert.equal(
+      rejection.headers["x-api-key-block-reason"],
+      "abuse_key_sharing",
+    );
+    // No retry-after: there is no time after which this starts working.
+    assert.ok(!("retry-after" in rejection.headers));
+    assert.match(rejection.message, /Contact support/);
+  });
+
+  test("a plain rate-limit rejection is still a 429", async () => {
+    const env = envWithTier("paid", {
+      METAGRAPH_CONTROL: { get: async () => null },
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: false }) },
+    });
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    const rejection = tieredRejectionResponse(result, {
+      code: "rate_limited",
+      message: "Too many requests; slow down.",
+    })!;
+    assert.equal(rejection.status, 429);
+    assert.equal(rejection.code, "rate_limited");
+    assert.equal(rejection.headers["retry-after"], "60");
+  });
+
+  test("a block with no tier omits the tier header rather than stringifying it", async () => {
+    const rejection = tieredRejectionResponse(
+      {
+        allowed: false,
+        policy: CONFIG.keyed,
+        tier: "",
+        accountId: "42",
+        block: {
+          blocked: true,
+          reasonCode: null,
+          message: "Blocked.",
+        },
+      },
+      { code: "rate_limited", message: "x" },
+    )!;
+    assert.equal(rejection.status, 403);
+    // reasonCode null degrades to the generic code rather than emitting "null".
+    assert.equal(rejection.headers["x-api-key-block-reason"], "abuse_manual");
+    assert.ok(!("x-ratelimit-tier" in rejection.headers));
+  });
+
+  test("an allowed request produces no rejection at all", async () => {
+    const env = envWithBlocklist(null);
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(
+      tieredRejectionResponse(result, {
+        code: "rate_limited",
+        message: "Too many requests; slow down.",
+      }),
+      null,
+    );
   });
 });
 

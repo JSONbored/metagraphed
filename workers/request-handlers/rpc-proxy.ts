@@ -71,7 +71,7 @@ import {
 } from "../config.ts";
 import {
   applyTieredRateLimit,
-  tieredRateLimitHeaders,
+  tieredRejectionResponse,
   type TieredRateLimitConfig,
 } from "../tiered-rate-limit.ts";
 import { buildTierPolicies } from "../../src/api-tiers.ts";
@@ -528,16 +528,17 @@ export async function handleRpcProxyRequest(
       STATE_QUERY_TIERED_RATE_LIMIT,
     );
     if (!rateLimit.allowed) {
+      const rejection = tieredRejectionResponse(rateLimit, {
+        code: "rpc_state_query_rate_limited",
+        message:
+          "Too many state-query RPC requests from this client; slow down.",
+      })!;
       return errorResponse(
-        "rpc_state_query_rate_limited",
-        "Too many state-query RPC requests from this client; slow down.",
-        429,
+        rejection.code,
+        rejection.message,
+        rejection.status,
         {},
-        tieredRateLimitHeaders(
-          rateLimit.policy,
-          rateLimit.tier,
-          rateLimit.quota,
-        ),
+        rejection.headers,
       );
     }
     if (rateLimit.accountId) {

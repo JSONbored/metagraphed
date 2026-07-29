@@ -194,7 +194,7 @@ import {
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import {
   applyTieredRateLimit,
-  tieredRateLimitHeaders,
+  tieredRejectionResponse,
   type TieredRateLimitConfig,
 } from "../workers/tiered-rate-limit.ts";
 import { buildTierPolicies } from "./api-tiers.ts";
@@ -11997,14 +11997,17 @@ async function enforceMcpRateLimit(
     MCP_TIERED_RATE_LIMIT,
   );
   if (!rateLimit.allowed) {
+    // #8611: a blocked account gets 403 + its reason code. 429 would tell an
+    // agent to retry shortly, which will never work and produces exactly the
+    // retry storm a block exists to stop.
+    const rejection = tieredRejectionResponse(rateLimit, {
+      code: "rate_limited",
+      message: "Too many MCP requests from this client; slow down.",
+    })!;
     return jsonResponse(
-      rpcError(
-        null,
-        RPC_INVALID_REQUEST,
-        "Too many MCP requests from this client; slow down.",
-      ),
-      429,
-      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
+      rpcError(null, RPC_INVALID_REQUEST, rejection.message),
+      rejection.status,
+      rejection.headers,
     );
   }
   // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
