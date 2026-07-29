@@ -18,13 +18,13 @@
 // runtime, never a test -- ever executes the wrapped path. This file
 // itself is excluded from coverage tracking (vitest.config.ts); it's a
 // thin, mechanical composition with no logic of its own worth testing here
-// (isAnonymousMcpRequest/buildOAuthProviderOptions have their own coverage
+// (isNonOAuthMcpRequest/buildOAuthProviderOptions have their own coverage
 // in tests/github-oauth.test.ts).
 import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import handler from "./api.ts";
 import {
   buildOAuthProviderOptions,
-  isAnonymousMcpRequest,
+  isNonOAuthMcpRequest,
 } from "../src/github-oauth.ts";
 // wrangler.jsonc's "main" points at THIS file, so wrangler looks for every
 // Durable Object binding's class as a named export from here, not from
@@ -43,7 +43,7 @@ export {
 // /mcp to apiHandler with ctx.props populated when a valid Bearer token is
 // present). A BARE /mcp request with no Bearer token is routed to the real,
 // unmodified `handler` directly, bypassing oauthProvider.fetch() entirely --
-// isAnonymousMcpRequest below, NOT anything inside OAuthProvider's own
+// isNonOAuthMcpRequest below, NOT anything inside OAuthProvider's own
 // apiRoute/apiHandler machinery, is what keeps anonymous/IP-rate-limited
 // access to /mcp working. This was a real production regression (silently
 // 401ing every anonymous MCP client since #7151) until this explicit bypass
@@ -53,7 +53,7 @@ export {
 // present, else fall through to defaultHandler" option (confirmed against
 // node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
 // directly, not just its .d.ts); see src/github-oauth.ts's
-// buildOAuthProviderOptions/isAnonymousMcpRequest comments for the full
+// buildOAuthProviderOptions/isNonOAuthMcpRequest comments for the full
 // story. Every other path -- /authorize, /oauth/token, /oauth/register,
 // OAuthProvider's own discovery endpoints, and /mcp WITH a Bearer token --
 // still needs the real oauthProvider.fetch() dispatch, so this bypass stays
@@ -72,7 +72,7 @@ const oauthProvider = new OAuthProvider(buildOAuthProviderOptions(handler));
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) =>
-    isAnonymousMcpRequest(request)
+    isNonOAuthMcpRequest(request)
       ? handler.fetch(request, env, ctx)
       : oauthProvider.fetch(request, env, ctx),
   // Discards handleScheduled's (api.ts) return value --

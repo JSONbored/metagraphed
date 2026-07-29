@@ -60,6 +60,14 @@ const GITHUB_USER_API_URL = "https://api.github.com/user";
 // two can never drift apart.
 const MCP_API_ROUTE = "/mcp";
 
+/**
+ * The tag every metagraphed API key carries (`mg_<opaque random>`), mirrored
+ * from src/api-key-validation.ts's own `bareKeyFrom`. Duplicated rather than
+ * imported to keep this module free of the key-validation graph -- it runs on
+ * the entrypoint's hot path for every single request.
+ */
+const MG_API_KEY_TAG = "mg_";
+
 // Mirrors wallet-auth.ts's WALLET_CHALLENGE_TTL_SECONDS: long enough for a
 // human to complete a GitHub login popup, short enough that an intercepted
 // nonce is worthless soon after.
@@ -133,25 +141,55 @@ export function buildOAuthProviderOptions(
 }
 
 /**
- * True when `request` targets the OAuth-gated /mcp route with no Bearer
- * Authorization header -- the one case @cloudflare/workers-oauth-provider's
- * apiRoute/apiHandler machinery cannot serve anonymously (see
- * buildOAuthProviderOptions' apiHandler comment for the confirmed library
- * behavior). The real entrypoint (workers/api.entry.ts) routes a true result
- * DIRECTLY to the plain handler, bypassing oauthProvider.fetch() entirely, so
- * an anonymous MCP client gets byte-identical behavior to before GitHub OAuth
- * (metagraphed#7151) was added. Every other path -- /authorize, /oauth/token,
- * /oauth/register, OAuthProvider's own discovery endpoints, and /mcp WITH a
- * Bearer token -- still needs the real oauthProvider.fetch() dispatch, so
- * this stays narrowly scoped to exactly the one route/no-token combination,
- * not a blanket "no Authorization header" bypass.
+ * True when `request` targets /mcp with credentials OAuthProvider cannot
+ * evaluate -- either none at all, or one of OUR OWN `mg_` API keys.
+ *
+ * The real entrypoint (workers/api.entry.ts) routes a true result DIRECTLY to
+ * the plain handler, bypassing oauthProvider.fetch() entirely.
+ * @cloudflare/workers-oauth-provider's apiRoute/apiHandler machinery
+ * unconditionally requires a valid OAuth Bearer token and 401s BEFORE
+ * apiHandler is ever reached -- there is no library-level "authenticate if
+ * present, else fall through" option (confirmed against
+ * node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
+ * directly, not just its .d.ts). So anything the library would reject but we
+ * would accept has to be diverted before it gets there.
+ *
+ * The no-token case was the original fix (#7151 silently 401'd every anonymous
+ * MCP client until it was added). The `mg_` case is #8643: the same bug, one
+ * scheme over. Our Unkey API keys are sent as `Authorization: Bearer mg_...`,
+ * which is a Bearer token OAuthProvider did not issue, so the old
+ * "any Bearer at all" test handed them to the library and the library 401'd
+ * them. The visible consequence was that MCP_TIERED_RATE_LIMIT.keyed
+ * (500 req/60s) could never be reached on /mcp -- the tier existed, was
+ * tested, and was unreachable in production -- and that a client configured
+ * with a working API key fared WORSE than one sending nothing at all.
+ * It stayed hidden until wallet login was provisioned and keys could first be
+ * minted (#8640).
+ *
+ * `mg_` is matched as a prefix only, deliberately: this decides ROUTING, not
+ * authentication. A forged `mg_` string reaches the plain handler and is then
+ * rejected by the real validator (src/api-key-validation.ts, Unkey-backed) --
+ * exactly as an anonymous request would be, and with the anonymous rate-limit
+ * ceiling still applied, which is what workers/tiered-rate-limit.ts already
+ * documents as intended ("a bad key is not itself abuse"). Nothing here grants
+ * access; it only chooses which code gets to say no.
+ *
+ * Everything else -- /authorize, /oauth/token, /oauth/register, OAuthProvider's
+ * discovery endpoints, and /mcp with a genuine OAuth Bearer -- still needs the
+ * real oauthProvider.fetch() dispatch.
  */
-export function isAnonymousMcpRequest(request: Request): boolean {
-  return (
-    new URL(request.url).pathname === MCP_API_ROUTE &&
-    !request.headers.get("Authorization")?.startsWith("Bearer ")
-  );
+export function isNonOAuthMcpRequest(request: Request): boolean {
+  if (new URL(request.url).pathname !== MCP_API_ROUTE) return false;
+  const header = request.headers.get("Authorization");
+  if (!header?.startsWith("Bearer ")) return true;
+  return header.slice("Bearer ".length).startsWith(MG_API_KEY_TAG);
 }
+
+/**
+ * @deprecated Renamed to isNonOAuthMcpRequest in #8643, which widened it past
+ * "anonymous". Kept as an alias so nothing importing the old name breaks.
+ */
+export const isAnonymousMcpRequest = isNonOAuthMcpRequest;
 
 // Real production helpers resolver -- lazy-imports the package so no test
 // that never calls it pays the cloudflare:workers cost. Can only run in the
