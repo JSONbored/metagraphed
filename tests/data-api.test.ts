@@ -1250,13 +1250,34 @@ test("GET /api/v1/extrinsics populates the action-sentence summary field, null f
   expect(body.extrinsics[1].summary).toBe(null);
 });
 
-test("GET /api/v1/chain-events populates the action-sentence summary field (#8525)", async () => {
-  const res = await req(
-    "/api/v1/chain-events?limit=1&pallet=System&method=ExtrinsicSuccess&before=500",
-  );
+test("GET /api/v1/chain-events populates the action-sentence summary field, null for an unmatched event (#8525)", async () => {
+  mockRows.current = [
+    {
+      block_number: "8587754",
+      event_index: 0,
+      pallet: "System",
+      method: "ExtrinsicSuccess",
+      args: {},
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 0,
+      observed_at: "100",
+    },
+    {
+      block_number: "8587754",
+      event_index: 1,
+      pallet: "NoSuchPallet",
+      method: "NoSuchEvent",
+      args: {},
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 0,
+      observed_at: "100",
+    },
+  ];
+  const res = await req("/api/v1/chain-events?limit=2");
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.events[0].summary).toBe("Extrinsic executed successfully.");
+  expect(body.events[1].summary).toBe(null);
 });
 
 test("GET /api/v1/extrinsics applies the same filter set as loadExtrinsics", async () => {
