@@ -67,12 +67,6 @@ const TEXT_STRONG = "#101818";
 /** --ink-muted: supporting copy. */
 const TEXT_MUTED = "#616B6C";
 /**
- * --ink-subtle-TEXT, not --ink-subtle. The plain token (#A5ACAD) is a
- * border/fill value and drops to 2.2:1 as type on paper; styles.css keeps a
- * darker AA variant for exactly this case, and stat labels are small text.
- */
-const TEXT_SUBTLE = "#6A7070";
-/**
  * The app's hairline. `--border` is `--ink-strong` at 8% alpha; satori has no
  * reliable color-mix/oklab support, so this is that composite precomputed --
  * once over --paper (the card's own bands) and once over --surface (the logo
@@ -106,15 +100,39 @@ const DOT_SIZE = 24;
 const GRID_SIZE = 96;
 
 /**
- * --health-ok / --health-warn-text / --health-down / --health-unknown, the
- * same four the site's health pill uses. `warn` is again the AA text variant,
- * for the same reason TEXT_SUBTLE is.
+ * The card's INK band -- the foot, and the tile our own mark sits in.
+ *
+ * The body is bone; the foot is ink. That contrast is the app's own (its
+ * masthead and footer sit on ink against the paper canvas), it gives the card
+ * a real base instead of a white slab fading into a warm ground, and it gives
+ * the brand mint somewhere it can be used at full strength: on ink the vivid
+ * accent is a highlight, where on paper it had to be dialled all the way down
+ * to #008156 to stay legible.
+ *
+ * These are the app's own `.dark` tokens, converted the same way the light
+ * ones above were -- so this is the product's dark theme, not "a dark grey".
+ */
+const INK_GROUND = "#08090A";
+/** --ink-muted (dark). Stat labels; --ink-subtle at #4B4D4F is too dim here. */
+const INK_TEXT_MUTED = "#8A8C8F";
+/** --ink-strong (dark). The footer lockup. */
+const INK_TEXT_STRONG = "#EFF2F6";
+/** --accent (dark). Stat values and our mark, at full strength on ink. */
+const INK_ACCENT = "#5DEBBC";
+
+/**
+ * --health-ok / --health-warn / --health-down / --health-unknown.
+ *
+ * The DARK set, because the only thing this colours is the dot in the ink
+ * foot. The light theme's AA text variants (#966800 amber, #DF2321 red) are
+ * darkened to survive on paper and read as mud on ink -- the app switches
+ * these per theme for exactly that reason, and so does the card.
  */
 const HEALTH_COLORS: Record<string, string> = {
-  ok: "#00B575",
-  warn: "#966800",
-  down: "#DF2321",
-  unknown: "#8C9494",
+  ok: "#5DEBBC",
+  warn: "#FCB442",
+  down: "#FF6759",
+  unknown: "#67696C",
 };
 
 /**
@@ -177,8 +195,21 @@ export function markDataUri(fill: string): string {
 
 /** Wordmark lockup mark: ink, matching the app masthead on the bone ground. */
 const LOGO_DATA_URI = markDataUri(TEXT_STRONG);
-/** Avatar-slot mark for our own routes: accent, inside the surface tile. */
-const BRAND_TILE_MARK = markDataUri(ACCENT);
+/**
+ * Avatar-slot mark for our own routes: full-strength mint, on an INK tile.
+ *
+ * It was mint on the white tile, and at that size the light accent on near-
+ * white is genuinely hard to see -- the mark is a thin stroke, so it has far
+ * less area to carry the contrast than a block of type does. Putting our own
+ * mark on ink fixes it at the source rather than by darkening the brand
+ * colour, and pairs the tile with the ink foot.
+ *
+ * This treatment is for OUR mark only. Entity tiles stay white: they hold a
+ * third-party logo whose contrast we don't control, and white is the safe
+ * canvas for an arbitrary one -- the same reason ui-kit's BrandIcon flips a
+ * dark-on-transparent logo onto a white tile in dark mode.
+ */
+const BRAND_TILE_MARK = markDataUri(INK_ACCENT);
 
 // A tiny valid PNG returned when rendering dependencies fail. This keeps the
 // public endpoint cheap and predictable instead of retrying expensive work.
@@ -451,18 +482,21 @@ export function renderCardMarkup(opts: {
     .map(
       (stat) => `
         <div style="display:flex;flex-direction:column;margin-right:${gutter}px;">
-          <div style="display:flex;font-size:${labelSize}px;font-weight:500;color:${TEXT_SUBTLE};letter-spacing:2px;">${sanitizeText(
+          <div style="display:flex;font-size:${labelSize}px;font-weight:500;color:${INK_TEXT_MUTED};letter-spacing:2px;">${sanitizeText(
             stat.label.toUpperCase(),
           )}</div>
-          <div style="display:flex;font-size:${valueSize}px;font-weight:700;color:${ACCENT_TEXT};margin-top:8px;">${sanitizeText(
+          <div style="display:flex;font-size:${valueSize}px;font-weight:700;color:${INK_ACCENT};margin-top:8px;">${sanitizeText(
             stat.value,
           )}</div>
         </div>`,
     )
     .join("");
 
-  // The stat band only takes its lifted surface when there are stats -- an
-  // empty slab across the foot of the fallback card would be worse than none.
+  // The ink foot is unconditional -- unlike the old white slab, which had to be
+  // suppressed on a statless card because a lifted panel with nothing in it
+  // read as a mistake. An ink band with just the lockup in it is a base, so the
+  // home and docs cards get one too and every card ends the same way. Only the
+  // padding still varies: two lines of stats need less than a single lockup.
   const hasStats = opts.stats.length > 0;
 
   // The avatar slot, mirroring the site's BrandIcon ladder so the card shows
@@ -476,7 +510,11 @@ export function renderCardMarkup(opts: {
   //      meaningless -- the brand mark is the honest answer, and it is what
   //      the site puts in its own masthead. The previous bare mint rule left
   //      those cards looking unfinished.
-  const tileShell = `display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;background:${SURFACE};border:1px solid ${HAIRLINE_ON_SURFACE};margin-right:28px;margin-top:4px;`;
+  const tileBase = `display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;margin-right:28px;margin-top:4px;`;
+  // Entity tiles: white, with the app's on-surface hairline. Our own tile: ink,
+  // which needs no border because it carries its own contrast against bone.
+  const tileShell = `${tileBase}background:${SURFACE};border:1px solid ${HAIRLINE_ON_SURFACE};`;
+  const brandTileShell = `${tileBase}background:${INK_GROUND};`;
   const logo = opts.icon
     ? `<div style="${tileShell}">
          <img src="${opts.icon}" style="width:64px;height:64px;border-radius:14px;" />
@@ -487,7 +525,7 @@ export function renderCardMarkup(opts: {
              monogramFor(opts.title),
            )}</div>
          </div>`
-      : `<div style="${tileShell}">
+      : `<div style="${brandTileShell}">
            <img src="${BRAND_TILE_MARK}" style="width:58px;height:58px;" />
          </div>`;
 
@@ -495,7 +533,7 @@ export function renderCardMarkup(opts: {
   // colour when a card carries a status, so a shared subnet link says
   // "degraded" at a glance the way the site's health pill does.
   const dotColor =
-    (opts.status && isHealthState(opts.status) && HEALTH_COLORS[opts.status]) || ACCENT;
+    (opts.status && isHealthState(opts.status) && HEALTH_COLORS[opts.status]) || INK_ACCENT;
 
   return `
     <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};background-image:radial-gradient(${DOT_COLOR} 1px, transparent 1px),linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px),radial-gradient(ellipse 110% 60% at 50% 0%, rgba(0,200,153,0.07) 0%, transparent 70%);background-size:${DOT_SIZE}px ${DOT_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 100% 100%;color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
@@ -526,12 +564,12 @@ export function renderCardMarkup(opts: {
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;padding:${
-        hasStats ? "26px" : "32px"
-      } 80px;border-top:1px solid ${HAIRLINE};background:${hasStats ? SURFACE : "transparent"};">
+        hasStats ? "26px" : "34px"
+      } 80px;background:${INK_GROUND};">
         <div style="display:flex;">${statCells}</div>
         <div style="display:flex;align-items:center;">
           <div style="display:flex;width:9px;height:9px;border-radius:5px;background:${dotColor};margin-right:14px;"></div>
-          <div style="display:flex;font-size:29px;font-weight:700;color:${TEXT_STRONG};letter-spacing:-0.2px;">metagraph.sh</div>
+          <div style="display:flex;font-size:29px;font-weight:700;color:${INK_TEXT_STRONG};letter-spacing:-0.2px;">metagraph.sh</div>
         </div>
       </div>
     </div>`;

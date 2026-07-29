@@ -410,7 +410,7 @@ describe("monogram fallback (#8489) — an entity card never shows a blank tile"
       stats: [],
     });
     expect(markup).not.toContain(">AG<");
-    expect(markup).toContain(markDataUri("#00C899"));
+    expect(markup).toContain(markDataUri("#5DEBBC"));
   });
 
   it("subsets the monogram's glyphs — it is uppercased, like the eyebrow was", () => {
@@ -507,12 +507,15 @@ describe("status dot (#8489)", () => {
       entity: true,
       status: "warn",
     });
-    expect(markup).toContain("#966800");
+    // The DARK health amber. The light theme's AA text variant (#966800) is
+    // darkened to survive on paper and reads as mud on the ink foot.
+    expect(markup).toContain("#FCB442");
+    expect(markup).not.toContain("#966800");
   });
 
   it("falls back to the brand accent when no status is given", () => {
     const markup = renderCardMarkup({ title: "x", subtitle: "y", eyebrow: null, stats: [] });
-    expect(markup).toContain("background:#00C899;margin-right:14px");
+    expect(markup).toContain("background:#5DEBBC;margin-right:14px");
   });
 
   it("never interpolates a prototype property into the card's CSS", () => {
@@ -527,7 +530,7 @@ describe("status dot (#8489)", () => {
       status: "constructor",
     });
     expect(markup).not.toContain("function");
-    expect(markup).toContain("background:#00C899;margin-right:14px");
+    expect(markup).toContain("background:#5DEBBC;margin-right:14px");
   });
 });
 
@@ -559,5 +562,38 @@ describe("three-stat rail (#8489)", () => {
     });
     expect(two).toContain("font-size:42px");
     expect(two).toContain("margin-right:64px");
+  });
+});
+
+describe("ink foot (#8622) — the card ends on the app's dark theme, not a white slab", () => {
+  const base = { title: "Chutes", subtitle: "x", eyebrow: "Subnet", entity: true };
+
+  it("uses the dark tokens for the whole band, including with no stats", () => {
+    // Unconditional, unlike the old lifted white surface: a panel with nothing
+    // in it read as a mistake, an ink band with just the lockup reads as a base.
+    for (const stats of [[], [{ label: "Netuid", value: "SN64" }]]) {
+      const markup = renderCardMarkup({ ...base, stats });
+      expect(markup).toContain("background:#08090A;");
+      expect(markup).toContain("#EFF2F6"); // --ink-strong (dark), the lockup
+    }
+  });
+
+  it("puts the stat rail on the dark tokens, with mint at full strength", () => {
+    const markup = renderCardMarkup({ ...base, stats: [{ label: "Netuid", value: "SN64" }] });
+    expect(markup).toContain("#8A8C8F"); // --ink-muted (dark), stat labels
+    expect(markup).toContain("#5DEBBC"); // --accent (dark), stat values
+    // The dialled-down paper variant belongs on the bone body, never on ink.
+    expect(markup).not.toContain("color:#008156;margin-top:8px");
+  });
+
+  it("puts OUR mark on an ink tile, and an entity's logo on a white one", () => {
+    // Our mark is a thin stroke, so mint-on-white had too little area to carry
+    // the contrast. An entity tile stays white because we do not control the
+    // contrast of a third-party logo.
+    const ours = renderCardMarkup({ title: "Agents", subtitle: "x", eyebrow: "Agents", stats: [] });
+    expect(ours).toMatch(/border-radius:22px;margin-right:28px;margin-top:4px;background:#08090A;/);
+
+    const theirs = renderCardMarkup({ ...base, stats: [], icon: "data:image/png;base64,AAAA" });
+    expect(theirs).toMatch(/margin-top:4px;background:#FFFFFF;border:1px solid #E9EAEA;/);
   });
 });
