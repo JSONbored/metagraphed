@@ -8,16 +8,21 @@
 // travels (every share of metagraph.sh unfurls through here), so it now carries
 // the brand lockup and, for entity pages, real information about that entity.
 //
-// DESIGN NOTE -- why ink-on-mint is inverted here relative to src/og-image.ts.
-// The landing card (src/og-image.ts, api.metagraph.sh) is a mint field with an
-// ink mark: a poster, one headline, no data. These per-page cards carry three
-// to five lines of dense entity text, and a full-bleed mint field behind that
-// much copy reads as a marketing banner rather than a data card. The app itself
-// is ink-backgrounded with mint accents, so an unfurl on ink is recognisably
-// THIS product's surface. The two cards are deliberately complementary rather
-// than identical -- same mark, same palette, inverted ground -- and #8489
-// requirement 1 explicitly allows the dark-ink variant when the reason is
-// stated. This is that statement.
+// DESIGN NOTE -- why this card is dark-ground rather than the landing card's
+// mint field. src/og-image.ts (api.metagraph.sh) is a mint poster: one
+// headline, no data. These per-page cards carry three to five lines of dense
+// entity text, and a full-bleed mint field behind that much copy reads as a
+// marketing banner rather than a data card.
+//
+// The ground is the app's OWN --paper token, so an unfurl looks like the page
+// it links to. Mint is used the way the product uses it -- as an ACCENT only:
+// the mark, the top rule, the eyebrow, the rule beside the headline, and the
+// stat values. There is deliberately no large tinted shape behind the copy: a
+// low-opacity green field over near-black still renders a visible hard-edged
+// arc rather than a soft wash, which read as a smudge rather than a design
+// element. Accent-on-neutral is both cleaner and closer to the product.
+// #8489 requirement 1 allows the dark variant when the reason is stated; this
+// is that statement.
 //
 // workers-og is loaded lazily inside handleOgImage (see below), NOT statically:
 // it pulls in a yoga `.wasm` that Node's ESM loader can't resolve, which would
@@ -29,15 +34,26 @@ const OG_PATH = "/og";
 const SUBTITLE = "The Bittensor subnet integration registry";
 const WORDMARK = "Metagraphed";
 
-// Brand palette, matching src/og-image.ts exactly (that file is the reference
-// implementation; these are the same three values, not new ones).
+// Palette. The ACCENT is the brand mint from src/og-image.ts (the brand-kit
+// value, deliberately the vivid one rather than the app's slightly dialed-back
+// UI token -- this is a marketing surface).
+//
+// Everything else is the app's OWN dark theme, converted from the oklch tokens
+// in packages/ui-kit/src/styles.css's `.dark` block. Those are NEUTRAL (hue
+// 250 at chroma 0.003-0.006 -- a cool near-black), not green: mint is an
+// accent in this product, never a ground. An earlier pass used a green-tinted
+// ink for the card background, which looked nothing like the app it links to.
 const MINT = "#30FFC0";
-const INK = "#0B1F1A";
-// A lift off INK for the card ground, so the mint mark and the accent shape
-// both have somewhere to sit without the whole card reading as pure black.
-const INK_DEEP = "#071512";
-const INK_LINE = "#1C3A33";
-const TEXT_MUTED = "#9FBDB4";
+/** --paper: the app's actual page background. */
+const GROUND = "#08090A";
+/** --surface: the card/panel lift used for the stat band. */
+const SURFACE = "#0F1112";
+/** --ink-strong: headline text. */
+const TEXT_STRONG = "#EFF2F6";
+/** --ink-muted: supporting copy. */
+const TEXT_MUTED = "#8A8C8F";
+/** --ink-subtle: stat labels + hairlines. */
+const TEXT_SUBTLE = "#4B4D4F";
 
 // #8257/#8489: bumped whenever the rendered card changes, so already-unfurled
 // links pick up the new design instead of serving last month's PNG from the
@@ -220,44 +236,60 @@ export function renderCardMarkup(opts: {
   const statCells = opts.stats
     .map(
       (stat) => `
-        <div style="display:flex;flex-direction:column;margin-right:56px;">
-          <div style="display:flex;font-size:22px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1.5px;">${escapeText(
+        <div style="display:flex;flex-direction:column;margin-right:64px;">
+          <div style="display:flex;font-size:21px;font-weight:500;color:${TEXT_SUBTLE};letter-spacing:2px;">${escapeText(
             stat.label.toUpperCase(),
           )}</div>
-          <div style="display:flex;font-size:40px;font-weight:700;color:${MINT};margin-top:6px;">${escapeText(
+          <div style="display:flex;font-size:42px;font-weight:700;color:${MINT};margin-top:8px;">${escapeText(
             stat.value,
           )}</div>
         </div>`,
     )
     .join("");
 
+  // The stat band only earns its lifted surface when there are stats. Without
+  // it the fallback card would carry an empty grey slab across its foot.
+  const hasStats = opts.stats.length > 0;
+
   return `
-    <div style="position:relative;display:flex;width:1200px;height:630px;background:${INK_DEEP};color:#F2FBF8;font-family:'Space Grotesk';overflow:hidden;">
-      <div style="position:absolute;top:-360px;right:-330px;width:740px;height:740px;background:${INK};opacity:0.7;transform:rotate(34deg);display:flex;"></div>
-      <div style="position:absolute;top:0;left:0;width:1200px;height:8px;background:${MINT};display:flex;"></div>
-      <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:64px 80px;">
+    <div style="position:relative;display:flex;width:1200px;height:630px;background:${GROUND};color:${TEXT_STRONG};font-family:'Space Grotesk';overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;width:1200px;height:6px;background:${MINT};display:flex;"></div>
 
-      <div style="display:flex;align-items:center;">
-        <img src="${LOGO_DATA_URI}" style="width:64px;height:64px;" />
-        <div style="display:flex;font-size:38px;font-weight:700;letter-spacing:-1px;margin-left:6px;">${WORDMARK}</div>
-        ${
-          eyebrow
-            ? `<div style="display:flex;margin-left:24px;padding:7px 18px;border:2px solid ${INK_LINE};border-radius:999px;font-size:22px;font-weight:500;color:${MINT};letter-spacing:1.5px;">${escapeText(
-                eyebrow.toUpperCase(),
-              )}</div>`
-            : ""
-        }
-      </div>
-
-      <div style="display:flex;flex-direction:column;">
-        <div style="display:flex;font-size:${titleFontSize(opts.title.length)}px;font-weight:700;line-height:1.08;max-width:900px;">${title}</div>
-        <div style="display:flex;font-size:30px;font-weight:400;color:${TEXT_MUTED};margin-top:20px;max-width:820px;">${subtitle}</div>
-      </div>
-
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;">
-        <div style="display:flex;">${statCells}</div>
-        <div style="display:flex;font-size:24px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
+      <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:60px 80px ${
+        hasStats ? "0px" : "60px"
+      } 80px;">
+        <div style="display:flex;align-items:center;">
+          <img src="${LOGO_DATA_URI}" style="width:60px;height:60px;" />
+          <div style="display:flex;font-size:36px;font-weight:700;letter-spacing:-0.5px;margin-left:8px;">${WORDMARK}</div>
+          ${
+            eyebrow
+              ? `<div style="display:flex;margin-left:22px;padding:7px 18px;border:2px solid ${MINT};border-radius:999px;font-size:21px;font-weight:500;color:${MINT};letter-spacing:2px;">${escapeText(
+                  eyebrow.toUpperCase(),
+                )}</div>`
+              : ""
+          }
         </div>
+
+        <div style="display:flex;align-items:stretch;padding-bottom:${hasStats ? "48px" : "0px"};">
+          <div style="display:flex;width:5px;border-radius:3px;background:${MINT};margin-right:28px;"></div>
+          <div style="display:flex;flex-direction:column;">
+            <div style="display:flex;font-size:${titleFontSize(
+              opts.title.length,
+            )}px;font-weight:700;line-height:1.08;letter-spacing:-1px;max-width:880px;">${title}</div>
+            <div style="display:flex;font-size:29px;font-weight:400;line-height:1.35;color:${TEXT_MUTED};margin-top:18px;max-width:800px;">${subtitle}</div>
+          </div>
+        </div>
+
+        ${
+          hasStats
+            ? `<div style="display:flex;align-items:center;justify-content:space-between;margin:0 -80px;padding:30px 80px;background:${SURFACE};border-top:1px solid ${TEXT_SUBTLE};">
+          <div style="display:flex;">${statCells}</div>
+          <div style="display:flex;font-size:23px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
+        </div>`
+            : `<div style="display:flex;justify-content:flex-end;">
+          <div style="display:flex;font-size:23px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
+        </div>`
+        }
       </div>
     </div>`;
 }
