@@ -318,10 +318,10 @@ import {
 } from "./request-handlers/saved-queries.ts";
 import {
   aiEnabled,
+  AI_TIERED_RATE_LIMIT,
   askQuestion,
   runEmbeddingSync,
   semanticSearch,
-  withinRateLimit,
 } from "../src/ai-search.ts";
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
@@ -1843,7 +1843,7 @@ export async function handleRequest(
   // Grounded RAG answer endpoint (POST). Runs before the read-only method gate
   // and degrades to 503 when the AI bindings/kill-switch are absent.
   if (url.pathname === "/api/v1/ask") {
-    return handleAskRequest(request, env);
+    return handleAskRequest(request, env, ctx);
   }
 
   // The only write path into the registry Postgres instance (a dedicated,
@@ -2111,7 +2111,7 @@ export async function handleRequest(
   // Semantic (vector) search over the registry. Special-handled (dynamic, not
   // artifact-backed) like /api/v1/events; degrades to 503 when AI is off.
   if (url.pathname === "/api/v1/search/semantic") {
-    return handleSemanticSearchRequest(request, env, url);
+    return handleSemanticSearchRequest(request, env, url, ctx);
   }
 
   // Registry leaderboards (registry projections; D1 fully eliminated
@@ -5168,29 +5168,18 @@ function aiUnavailableResponse() {
   );
 }
 
-// Mirrors the AI_RATE_LIMITER binding's `simple` config (limit 20 / period 60s)
-// so the 429's advertised quota matches what the limiter actually enforces.
-const AI_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
-
-function aiRateLimitedResponse() {
+function aiRateLimitedResponse(policy: TieredRateLimitConfig["anonymous"]) {
   // Same standard rate-limit header set the webhook / alert-trigger 429s expose
   // (#6572), so an AI client can discover its quota, not just the retry delay.
+  // #8521: headers now come from the tiered policy that actually rejected the
+  // caller (anonymous 20/60s here), via the shared tieredRateLimitHeaders.
   return errorResponse(
     "rate_limited",
     "Too many AI requests. Please retry shortly.",
     429,
     {},
-    {
-      "retry-after": String(AI_RATE_LIMIT.windowSeconds),
-      "x-ratelimit-limit": String(AI_RATE_LIMIT.limit),
-      "x-ratelimit-policy": `${AI_RATE_LIMIT.limit};w=${AI_RATE_LIMIT.windowSeconds}`,
-      "x-ratelimit-remaining": "0",
-    },
+    tieredRateLimitHeaders(policy),
   );
-}
-
-function aiClientKey(request: Request, scope: string) {
-  return `${scope}:${resolveClientIp(request)}`;
 }
 
 async function readBoundedRequestText(request: Request, maxBytes: number) {
@@ -5233,6 +5222,7 @@ async function handleSemanticSearchRequest(
   request: Request,
   env: Env,
   url: URL,
+  ctx?: Ctx,
 ) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
@@ -5245,8 +5235,19 @@ async function handleSemanticSearchRequest(
     headers.set("cache-control", "no-store");
     return new Response(null, { status: 200, headers });
   }
-  if (!(await withinRateLimit(env, aiClientKey(request, "semantic")))) {
-    return aiRateLimitedResponse();
+  // #8521: tiered -- a valid mg_... key rides AI_RATE_LIMITER_KEYED (100/60s,
+  // account-keyed); everyone else keeps the anonymous AI_RATE_LIMITER (20/60s,
+  // IP-keyed). Mirrors the DATA checkpoint above.
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    AI_TIERED_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) {
+    return aiRateLimitedResponse(rateLimit.policy);
+  }
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "semantic-search");
   }
   try {
     // `?type=subnet&type=provider` (repeatable) scopes results; absent → all
@@ -5275,7 +5276,7 @@ async function handleSemanticSearchRequest(
   }
 }
 
-async function handleAskRequest(request: Request, env: Env) {
+async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
   if (request.method !== "POST") {
     return errorResponse(
       "method_not_allowed",
@@ -5288,8 +5289,17 @@ async function handleAskRequest(request: Request, env: Env) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
   }
-  if (!(await withinRateLimit(env, aiClientKey(request, "ask")))) {
-    return aiRateLimitedResponse();
+  // #8521: tiered, same as semantic search above.
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    AI_TIERED_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) {
+    return aiRateLimitedResponse(rateLimit.policy);
+  }
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "ask");
   }
   let body;
   try {
