@@ -41,6 +41,12 @@ function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
     METAGRAPH_CONTROL: createFakeKv(),
     WATCH_TRIGGER_TOKEN_SECRET: TOKEN_SECRET,
+    // #8640: /auth/wallet/challenge now refuses to mint a challenge on a
+    // deployment with no WALLET_SESSION_SECRET, since /verify would reject the
+    // resulting signature anyway. These tests exercise challenge behaviour, not
+    // provisioning, so the base env is provisioned; the unprovisioned case has
+    // its own test.
+    WALLET_SESSION_SECRET: "test-wallet-session-secret",
     ...overrides,
   } as unknown as Env;
 }

@@ -1163,3 +1163,44 @@ test("keys: 503 when the Hyperdrive binding is unavailable", async () => {
   );
   assert.equal(res.status, 503);
 });
+
+// #8640: reported from production. `challenge` returned 200 on a deployment
+// with no WALLET_SESSION_SECRET, so the UI asked the user for a real wallet
+// signature — an extension prompt — for a message `verify` was then guaranteed
+// to reject with 503. The two endpoints must agree on the precondition.
+test("challenge: 503 when WALLET_SESSION_SECRET is not provisioned", async () => {
+  const wallet = makeTestWallet(11);
+  const res = await fetchRoute(
+    req("/api/v1/auth/wallet/challenge", {
+      method: "POST",
+      body: { ss58: wallet.ss58 },
+    }),
+    baseEnv({ WALLET_SESSION_SECRET: undefined }),
+  );
+  assert.equal(res.status, 503);
+  const body = (await res.json()) as Row;
+  assert.match(String(body.error), /not provisioned/);
+});
+
+test("challenge and verify agree: neither mints work the other cannot honour", async () => {
+  // The invariant, stated directly: if verify would 503, challenge must not
+  // hand back something to sign.
+  const wallet = makeTestWallet(12);
+  const env = baseEnv({ WALLET_SESSION_SECRET: undefined });
+  const challenge = await fetchRoute(
+    req("/api/v1/auth/wallet/challenge", {
+      method: "POST",
+      body: { ss58: wallet.ss58 },
+    }),
+    env,
+  );
+  const verify = await fetchRoute(
+    req("/api/v1/auth/wallet/verify", {
+      method: "POST",
+      body: { ss58: wallet.ss58, signature: "0x00" },
+    }),
+    env,
+  );
+  assert.equal(challenge.status, verify.status);
+  assert.equal(challenge.status, 503);
+});

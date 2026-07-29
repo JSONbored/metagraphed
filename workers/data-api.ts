@@ -4877,6 +4877,20 @@ async function walletAuthRateLimited(request: Request, env: Env) {
 async function handleWalletChallenge(request: Request, env: Env) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
+  // #8640: fail fast on the SAME precondition /verify enforces. Without this
+  // the challenge succeeds on a deployment with no WALLET_SESSION_SECRET, so
+  // the UI happily asks the user to produce a wallet signature -- a real
+  // browser-extension prompt, for a message that /verify is then guaranteed to
+  // reject with 503. Reported from production, where exactly that happened:
+  // challenge returned 200, the user signed, and the flow died at the last
+  // step. Checking the same secret here turns a wasted signature into an
+  // upfront, accurate "not provisioned".
+  if (!env.WALLET_SESSION_SECRET) {
+    return writeJson(
+      { error: "wallet login is not provisioned on this deployment" },
+      503,
+    );
+  }
   const { body, error } = await readAccountRouteBody(request);
   if (error) return error;
   const ss58 = typeof body?.ss58 === "string" ? body.ss58 : "";
