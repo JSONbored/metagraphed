@@ -1501,3 +1501,114 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
   });
 });
+
+describe("not_callable vs not_found (#8652)", () => {
+  // The operational catalog is the CALLABLE subset (617 surfaces in
+  // production). The public registry behind list_surfaces / GET
+  // /api/v1/surfaces is the full 3,491 — docs, dashboards, websites, repos,
+  // OpenAPI documents, SDKs, examples. Both are correct. What was wrong is
+  // that asking to call a docs surface said its id did not exist, when the
+  // agent had just read that id out of list_surfaces. Measured across every
+  // probe-enabled surface: 208 of 313 failures were this, all of them
+  // non-callable kinds.
+  const REGISTRY = {
+    surfaces: [
+      ...CATALOG.surfaces,
+      {
+        surface_id: "bittensor-networks-docs",
+        surface_key: "srf-docs000000000",
+        kind: "docs",
+        url: "https://docs.bittensor.com",
+      },
+    ],
+  };
+
+  async function call(args: Row, withRegistry = true) {
+    const response = await handleMcpRequest(
+      new Request("https://metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "call_subnet_surface", arguments: args },
+        }),
+      }),
+      {} as unknown as Env,
+      {
+        readArtifact: async (_e: Row, path: string) => {
+          if (path === "/metagraph/operational-surfaces.json") {
+            return { ok: true, data: CATALOG };
+          }
+          if (path === "/metagraph/surfaces.json" && withRegistry) {
+            return { ok: true, data: REGISTRY };
+          }
+          return { ok: false, status: 404 };
+        },
+      },
+    );
+    return ((await response.json()) as Row).result as Row;
+  }
+
+  test("a catalogued-but-uncallable surface reports not_callable, not not_found", async () => {
+    const result = await call({ surface_id: "bittensor-networks-docs" });
+    const error = (result.structuredContent as Row).error as Row;
+    assert.equal(error.code, "not_callable");
+    // It must say what the thing IS and where to go instead — the old message
+    // sent agents hunting for an id that does not exist.
+    assert.match(String(error.message), /docs surface/);
+    assert.match(String(error.message), /https:\/\/docs\.bittensor\.com/);
+    assert.match(String(error.message), /list_subnet_apis|get_subnet_surfaces/);
+  });
+
+  test("a genuinely unknown id still reports not_found", async () => {
+    const result = await call({ surface_id: "sn-999-does-not-exist" });
+    assert.equal(
+      ((result.structuredContent as Row).error as Row).code,
+      "not_found",
+    );
+  });
+
+  test("an unreadable registry degrades to not_found, never an internal error", async () => {
+    // A bad id must not become a 500 just because the registry read failed.
+    const result = await call({ surface_id: "bittensor-networks-docs" }, false);
+    assert.equal(
+      ((result.structuredContent as Row).error as Row).code,
+      "not_found",
+    );
+  });
+
+  test("verify_integration reports the same distinction", async () => {
+    const response = await handleMcpRequest(
+      new Request("https://metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "verify_integration",
+            arguments: { surface_id: "bittensor-networks-docs" },
+          },
+        }),
+      }),
+      {} as unknown as Env,
+      {
+        readArtifact: async (_e: Row, path: string) => {
+          if (path === "/metagraph/operational-surfaces.json")
+            return { ok: true, data: CATALOG };
+          if (path === "/metagraph/surfaces.json")
+            return { ok: true, data: REGISTRY };
+          return { ok: false, status: 404 };
+        },
+      },
+    );
+    const result = ((await response.json()) as Row).result as Row;
+    assert.equal(
+      ((result.structuredContent as Row).error as Row).code,
+      "not_callable",
+    );
+  });
+});
