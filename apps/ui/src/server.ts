@@ -83,9 +83,14 @@ const DISCOVERY_LINK_HEADER = [
  * marked. `og:locale` is here for the same reason it is anywhere: the site is
  * single-locale, and stating it stops platforms guessing.
  */
-const SEO_DEFAULT_TAGS =
+export const SEO_DEFAULT_TAGS =
   `<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">` +
-  `<meta property="og:locale" content="en_US">`;
+  `<meta property="og:locale" content="en_US">` +
+  // X attributes the card to this account and shows it on the unfurl. `site`
+  // and `creator` are the same handle because the site IS the author here --
+  // there are no per-article bylines to differentiate.
+  `<meta name="twitter:site" content="@metagraphed">` +
+  `<meta name="twitter:creator" content="@metagraphed">`;
 
 // Canonical human-facing pages for the sitemap (per-subnet pages are appended from the live list).
 const SITEMAP_STATIC_PATHS = [
