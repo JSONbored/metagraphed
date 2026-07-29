@@ -2,6 +2,8 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { subnetProfileQuery } from "@/lib/metagraphed/queries";
+import { formatTao } from "@/lib/metagraphed/format";
+import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
 
 export type SearchParams = {
@@ -37,7 +39,23 @@ export const Route = createFileRoute("/subnets/$netuid")({
   loader: async ({ context, params }) => {
     try {
       const { data } = await context.queryClient.ensureQueryData(subnetProfileQuery(params.netuid));
-      return { name: data.name ?? null, health: data.health ?? null };
+      return {
+        name: data.name ?? null,
+        health: data.health ?? null,
+        // #8489: the OG card's primary stat. Alpha price is the one figure a
+        // reader most wants at a glance on a shared subnet link, and it's
+        // already on the profile this loader reads -- no extra request.
+        // Coerced explicitly: the profile's field is loosely typed here, and
+        // an uncoerced value would reach formatTao as a non-number.
+        // #8489: whichever of these resolves first is the host the site's own
+        // BrandIcon would use for this subnet.
+        iconUrl: (data.icon_url ?? null) as string | { light?: string; dark?: string } | null,
+        website: (data.website ?? null) as string | null,
+        alphaPriceTao:
+          typeof data.alpha_price_tao === "number" && Number.isFinite(data.alpha_price_tao)
+            ? data.alpha_price_tao
+            : null,
+      };
     } catch {
       return null;
     }
@@ -58,6 +76,23 @@ export const Route = createFileRoute("/subnets/$netuid")({
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
+        // #8489: this route owns its own og:image (src/server.ts skips the
+        // paths routeOwnsOgImage matches) so the card can carry the subnet's
+        // real name, price and health rather than just its netuid.
+        ...ogImageMeta({
+          title: loaderData?.name || `Subnet ${params.netuid}`,
+          subtitle: description,
+          eyebrow: "Subnet",
+          logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
+          stats: [
+            { label: "Netuid", value: `SN${params.netuid}` },
+            ...(loaderData?.alphaPriceTao != null
+              ? [{ label: "Alpha price", value: formatTao(loaderData.alphaPriceTao) }]
+              : health
+                ? [{ label: "Health", value: health }]
+                : []),
+          ],
+        }),
       ],
     };
   },
