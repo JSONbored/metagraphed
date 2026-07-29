@@ -27,7 +27,26 @@ export interface RateLimitTierPolicy {
 
 export interface TieredRateLimitConfig {
   anonymous: RateLimitTierPolicy;
+  /**
+   * Fallback for a valid key whose tier has no entry in `tiers` -- an account
+   * on a tier this route has not priced yet, or a tier string we do not
+   * recognise. Deliberately a fallback rather than an error: an unpriced tier
+   * must never become an outage for a paying caller.
+   */
   keyed: RateLimitTierPolicy;
+  /**
+   * Per-tier ceilings, keyed by `rpc_accounts.tier` (#8608). Before this, every
+   * valid key got the single `keyed` policy no matter what tier it was on --
+   * `validateApiKey` already resolved the tier and the result was thrown away,
+   * so a paid account and a free one were rate-limited identically and #6646
+   * had nothing to attach a paid model to.
+   *
+   * The tier is read from the key lookup on every request, so a server-side
+   * tier change takes effect WITHOUT re-issuing the key -- bounded by the
+   * lookup's KV cache (API_KEY_LOOKUP_KV_TTL, 30 min), not by the key's
+   * lifetime.
+   */
+  tiers?: Record<string, RateLimitTierPolicy>;
   /** Short label used in the rate-limit key, e.g. "data" -- keeps different
    * routes' limiter keys from colliding if they ever share a binding. */
   keyPrefix: string;
@@ -36,6 +55,8 @@ export interface TieredRateLimitConfig {
 export interface TieredRateLimitResult {
   allowed: boolean;
   policy: RateLimitTierPolicy;
+  /** The tier the policy was chosen for: a tier name, or "anonymous". */
+  tier: string;
   /** The verified account id when a valid API key was supplied, else null
    * (anonymous, IP-keyed). */
   accountId: string | null;
@@ -59,17 +80,25 @@ export async function applyTieredRateLimit(
     : { ok: false as const };
 
   if (auth.ok) {
-    const policy = config.keyed;
+    const tier = typeof auth.tier === "string" && auth.tier ? auth.tier : null;
+    const policy = (tier && config.tiers?.[tier]) || config.keyed;
     const limiter = (env as unknown as Record<string, RateLimit | undefined>)[
       policy.envVar
     ];
-    if (!limiter?.limit) {
-      return { allowed: true, policy, accountId: String(auth.accountId) };
-    }
+    const result = {
+      policy,
+      tier: tier ?? "keyed",
+      accountId: String(auth.accountId),
+    };
+    if (!limiter?.limit) return { allowed: true, ...result };
+    // Keyed by account AND tier: moving an account between tiers must start a
+    // fresh window on the new ceiling rather than inheriting the old tier's
+    // partially-spent one, which would otherwise let a downgrade be dodged (or
+    // an upgrade be throttled) for the rest of the window.
     const { success } = await limiter.limit({
-      key: `${config.keyPrefix}:${auth.accountId}`,
+      key: `${config.keyPrefix}:${result.tier}:${auth.accountId}`,
     });
-    return { allowed: success, policy, accountId: String(auth.accountId) };
+    return { allowed: success, ...result };
   }
 
   const policy = config.anonymous;
@@ -77,12 +106,12 @@ export async function applyTieredRateLimit(
     policy.envVar
   ];
   if (!limiter?.limit) {
-    return { allowed: true, policy, accountId: null };
+    return { allowed: true, policy, tier: "anonymous", accountId: null };
   }
   const { success } = await limiter.limit({
     key: `${config.keyPrefix}:${resolveClientIp(request)}`,
   });
-  return { allowed: success, policy, accountId: null };
+  return { allowed: success, policy, tier: "anonymous", accountId: null };
 }
 
 /**
@@ -97,6 +126,7 @@ export async function applyTieredRateLimit(
  */
 export function tieredRateLimitHeaders(
   policy: RateLimitTierPolicy,
+  tier?: string,
 ): Record<string, string> {
   const resetAt = new Date(
     Date.now() + policy.windowSeconds * 1000,
@@ -107,5 +137,10 @@ export function tieredRateLimitHeaders(
     "x-ratelimit-remaining": "0",
     "x-ratelimit-reset": resetAt,
     "x-ratelimit-policy": `${policy.limit};w=${policy.windowSeconds}`,
+    // #8608: which ceiling this caller was measured against. Without it a 429
+    // is unactionable -- a caller cannot tell "you are on free, upgrade" from
+    // "you are on paid and genuinely over", which is the first question anyone
+    // asks when they get rate limited.
+    ...(tier ? { "x-ratelimit-tier": tier } : {}),
   };
 }

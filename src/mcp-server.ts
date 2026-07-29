@@ -1759,7 +1759,27 @@ export const MAX_MCP_BATCH_LENGTH = 10;
 // number). Exported for the tiered-rate-limit regression tests.
 export const MCP_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   anonymous: { envVar: "MCP_RATE_LIMITER", limit: 100, windowSeconds: 60 },
+  // Fallback for a valid key on a tier not priced below -- never an outage.
   keyed: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 500, windowSeconds: 60 },
+  // #8608: the ceilings as code, one entry per rpc_accounts.tier. Until now
+  // every key got the single `keyed` policy regardless of tier, so a paid
+  // account and a free one were throttled identically -- the tier was resolved
+  // by validateApiKey and then discarded.
+  //
+  // `free` is the default every self-serve account starts on, so it keeps the
+  // 500/min the keyed tier already granted: nobody who has a key today loses
+  // headroom on this change. `community` and `paid` sit above it and share the
+  // same binding -- the binding enforces per-key counters, and the ceiling
+  // compared against is this table's, so tiers do not need one binding each.
+  tiers: {
+    free: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 500, windowSeconds: 60 },
+    community: {
+      envVar: "MCP_RATE_LIMITER_KEYED",
+      limit: 1_500,
+      windowSeconds: 60,
+    },
+    paid: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 5_000, windowSeconds: 60 },
+  },
   keyPrefix: "mcp",
 };
 
@@ -11993,7 +12013,7 @@ async function enforceMcpRateLimit(
         "Too many MCP requests from this client; slow down.",
       ),
       429,
-      tieredRateLimitHeaders(rateLimit.policy),
+      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier),
     );
   }
   // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed

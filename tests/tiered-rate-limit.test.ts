@@ -34,6 +34,21 @@ function createFakeKv() {
 
 const VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
 
+function envWithTier(tier: string, overrides: Row = {}) {
+  return {
+    METAGRAPH_CONTROL: createFakeKv(),
+    API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+    DATA_API: {
+      fetch: async () =>
+        new Response(
+          JSON.stringify({ valid: true, code: "VALID", tier, accountId: "42" }),
+          { status: 200 },
+        ),
+    },
+    ...overrides,
+  } as unknown as Env;
+}
+
 function envWithKeyVerify(overrides: Row = {}) {
   return {
     METAGRAPH_CONTROL: createFakeKv(),
@@ -103,7 +118,8 @@ describe("applyTieredRateLimit", () => {
     assert.equal(result.allowed, true);
     assert.equal(result.policy, KEYED);
     assert.equal(result.accountId, "42");
-    assert.deepEqual(calls, [{ key: "test:42" }]);
+    // #8608: tier-scoped, so a tier change starts a fresh window.
+    assert.deepEqual(calls, [{ key: "test:free:42" }]);
   });
 
   test("an invalid/malformed key falls back to the anonymous tier, not a rejection", async () => {
@@ -220,10 +236,13 @@ describe("applyTieredRateLimit with the MCP surface config (#8520)", () => {
       MCP_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      MCP_TIERED_RATE_LIMIT.tiers?.free ?? MCP_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
     // keyed by accountId under the mcp: prefix, and the anon limiter is untouched.
-    assert.deepEqual(keyedCalls, [{ key: "mcp:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "mcp:free:42" }]);
   });
 
   test("a keyed MCP request fails open when MCP_RATE_LIMITER_KEYED is unprovisioned", async () => {
@@ -241,7 +260,10 @@ describe("applyTieredRateLimit with the MCP surface config (#8520)", () => {
       MCP_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      MCP_TIERED_RATE_LIMIT.tiers?.free ?? MCP_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -273,10 +295,13 @@ describe("applyTieredRateLimit with the AI search/ask surface config (#8521)", (
       AI_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      AI_TIERED_RATE_LIMIT.tiers?.free ?? AI_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
     // keyed by accountId under the ai: prefix, and the anon limiter is untouched.
-    assert.deepEqual(keyedCalls, [{ key: "ai:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "ai:free:42" }]);
   });
 
   test("the anonymous ceiling is unchanged -- 20/60s, keyed by ai:<ip> via AI_RATE_LIMITER (regression)", async () => {
@@ -324,7 +349,10 @@ describe("applyTieredRateLimit with the AI search/ask surface config (#8521)", (
       AI_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      AI_TIERED_RATE_LIMIT.tiers?.free ?? AI_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -355,9 +383,13 @@ describe("applyTieredRateLimit with the state-query surface config (#8522)", () 
       STATE_QUERY_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      STATE_QUERY_TIERED_RATE_LIMIT.tiers?.free ??
+        STATE_QUERY_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
-    assert.deepEqual(keyedCalls, [{ key: "state:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "state:free:42" }]);
   });
 
   test("the anonymous ceiling is unchanged -- 20/60s, keyed by state:<ip> via STATE_QUERY_RATE_LIMITER (regression)", async () => {
@@ -404,7 +436,11 @@ describe("applyTieredRateLimit with the state-query surface config (#8522)", () 
       STATE_QUERY_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      STATE_QUERY_TIERED_RATE_LIMIT.tiers?.free ??
+        STATE_QUERY_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -440,9 +476,13 @@ describe("applyTieredRateLimit with the webhook-subscription surface config (#85
       WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.tiers?.free ??
+        WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
-    assert.deepEqual(keyedCalls, [{ key: "webhook:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "webhook:free:42" }]);
   });
 
   test("the anonymous ceiling is unchanged -- 10/60s, keyed by webhook:<ip> via WEBHOOK_SUBSCRIPTION_RATE_LIMITER (regression)", async () => {
@@ -500,7 +540,11 @@ describe("applyTieredRateLimit with the webhook-subscription surface config (#85
       WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.tiers?.free ??
+        WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -524,5 +568,112 @@ describe("tieredRateLimitHeaders", () => {
     const resetMs = Date.parse(headers["x-ratelimit-reset"]!);
     assert.ok(resetMs >= before + ANONYMOUS.windowSeconds * 1000);
     assert.ok(resetMs <= before + ANONYMOUS.windowSeconds * 1000 + 5000);
+  });
+});
+
+describe("per-tier ceilings (#8608)", () => {
+  // Before this, every valid key got the single `keyed` policy no matter what
+  // tier it was on -- validateApiKey resolved the tier and the result was
+  // thrown away, so a paid account and a free one were throttled identically
+  // and #6646 had nothing to attach a paid model to.
+  const CONFIG = {
+    anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
+    keyed: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+    tiers: {
+      free: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+      paid: { envVar: "KEYED", limit: 5000, windowSeconds: 60 },
+    },
+    keyPrefix: "t",
+  };
+
+  function limiterEnv(tier: string) {
+    const calls: unknown[] = [];
+    const env = envWithTier(tier, {
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: {
+        limit: async (arg: unknown) => {
+          calls.push(arg);
+          return { success: true };
+        },
+      },
+    });
+    return { env, calls };
+  }
+
+  const req = () =>
+    new Request("https://api.metagraph.sh/x", {
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+
+  test("a paid key gets the paid ceiling, not the generic keyed one", async () => {
+    const { env } = limiterEnv("paid");
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.policy.limit, 5000);
+    assert.equal(result.tier, "paid");
+  });
+
+  test("a free key keeps exactly the ceiling it has today — nobody loses headroom", async () => {
+    const { env } = limiterEnv("free");
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.policy.limit, 100);
+    assert.equal(result.policy.limit, CONFIG.keyed.limit);
+  });
+
+  test("an unpriced tier falls back to `keyed` rather than failing the request", async () => {
+    // An account on a tier this route has not priced yet must never become an
+    // outage for a paying caller.
+    const { env } = limiterEnv("enterprise-2027");
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy.limit, CONFIG.keyed.limit);
+    assert.equal(result.tier, "enterprise-2027");
+  });
+
+  test("the limiter key is scoped by tier, so a tier change starts a fresh window", async () => {
+    // Otherwise a downgrade would inherit the old tier's partially-spent
+    // window (dodging the new lower ceiling), and an upgrade would stay
+    // throttled for the rest of it.
+    const paid = limiterEnv("paid");
+    await applyTieredRateLimit(req(), paid.env, CONFIG);
+    assert.deepEqual(paid.calls, [{ key: "t:paid:42" }]);
+
+    const free = limiterEnv("free");
+    await applyTieredRateLimit(req(), free.env, CONFIG);
+    assert.deepEqual(free.calls, [{ key: "t:free:42" }]);
+  });
+
+  test("anonymous is untouched by the tier table", async () => {
+    const calls: unknown[] = [];
+    const env = envWithTier("paid", {
+      ANON: {
+        limit: async (arg: unknown) => {
+          calls.push(arg);
+          return { success: true };
+        },
+      },
+    });
+    const result = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/x", {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }),
+      env,
+      CONFIG,
+    );
+    assert.equal(result.tier, "anonymous");
+    assert.equal(result.policy.limit, 10);
+    assert.deepEqual(calls, [{ key: "t:203.0.113.9" }]);
+  });
+
+  test("the 429 headers name the tier the caller was measured against", () => {
+    // Without it a 429 is unactionable: "you are on free, upgrade" and "you
+    // are on paid and genuinely over" look identical.
+    const headers = tieredRateLimitHeaders(CONFIG.tiers.paid, "paid");
+    assert.equal(headers["x-ratelimit-tier"], "paid");
+    assert.equal(headers["x-ratelimit-limit"], "5000");
+    // Omitted entirely when no tier is supplied — never rendered as "undefined".
+    assert.equal(
+      tieredRateLimitHeaders(CONFIG.anonymous)["x-ratelimit-tier"],
+      undefined,
+    );
   });
 });
