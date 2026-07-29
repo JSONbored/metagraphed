@@ -606,6 +606,22 @@
         "period": 60,
       },
     },
+    // #8520: the keyed tier for the MCP surface -- 5x MCP_RATE_LIMITER's
+    // anonymous limit, keyed by account id instead of client IP
+    // (workers/tiered-rate-limit.ts), for a caller presenting a valid self-serve
+    // mg_... API key. A SEPARATE named binding, not the same one with a different
+    // number -- one named binding is one fixed limit/period pair. Deploy
+    // prerequisite: this binding must be provisioned via `wrangler deploy`; until
+    // then the keyed tier fails open, the same "skipped when the binding is
+    // absent" posture every limiter in this codebase already has.
+    {
+      "name": "MCP_RATE_LIMITER_KEYED",
+      "namespace_id": "1014",
+      "simple": {
+        "limit": 500,
+        "period": 60,
+      },
+    },
     // Per-client abuse control for the AI routes (semantic + /ask). 20 requests
     // / 60s per client IP — tighter than the RPC proxy because /ask drives an
     // LLM call. Skipped when the binding is absent (local dev/CI).
