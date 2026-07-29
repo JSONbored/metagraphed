@@ -1099,6 +1099,111 @@ describe("script utility contracts", () => {
     assert.equal(surface.rate_limit_notes, "See docs for tier details.");
   });
 
+  test("stamps last_verified_at from the verification run (#8658)", async () => {
+    // Every promoted surface shipped `last_verified_at: null` while also
+    // carrying `probe.enabled: true` and `public_safe: true`, so a consumer
+    // could not tell a just-verified surface from one whose verification had
+    // gone stale. Found in production: sn-45-website-common-health published
+    // as probe-enabled and public-safe with no verification timestamp at all,
+    // its own note reading "Requires verification before promotion".
+    const overlaySet = (await generateBaselineOverlaySet({
+      candidates: [
+        {
+          id: "sn-91-verified-api",
+          netuid: 91,
+          name: "Verified API",
+          kind: "subnet-api",
+          url: "https://verified.example.com/api",
+          provider: "verified",
+          source_type: "project-website-common-path",
+          source_tier: "provider-claimed",
+          source_url: "https://verified.example.com/docs",
+          source_urls: ["https://verified.example.com/docs"],
+        },
+      ],
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot: {
+        captured_at: "2026-06-08T00:00:00.000Z",
+        subnets: [{ netuid: 91, name: "Verified", status: "active" }],
+      },
+      verification: {
+        schema_version: 1,
+        observed_at: "2026-06-14T09:03:05.163Z",
+        results: [
+          {
+            candidate_id: "sn-91-verified-api",
+            classification: "live",
+            content_type: "application/json",
+            quality_signals: {
+              content_type_matches_kind: true,
+              public_safe: true,
+              rate_limited: false,
+              redirected: false,
+              source_tier: "provider-claimed",
+              transient_failure: false,
+            },
+          },
+        ],
+      },
+    })) as Row;
+
+    const [surface] = overlaySet.generatedOverlays[0].surfaces;
+    assert.equal(surface.last_verified_at, "2026-06-14T09:03:05.163Z");
+    // The pairing is the point: probe.enabled is only meaningful alongside
+    // evidence of when it was last true.
+    assert.equal(surface.probe.enabled, true);
+    assert.equal(surface.public_safe, true);
+  });
+
+  test("last_verified_at is null, not undefined, when the run has no timestamp", async () => {
+    // An older verification file with no observed_at must still produce a
+    // well-formed surface rather than dropping the key.
+    const overlaySet = (await generateBaselineOverlaySet({
+      candidates: [
+        {
+          id: "sn-92-untimed-api",
+          netuid: 92,
+          name: "Untimed API",
+          kind: "subnet-api",
+          url: "https://untimed.example.com/api",
+          provider: "untimed",
+          source_type: "project-website-common-path",
+          source_tier: "provider-claimed",
+          source_url: "https://untimed.example.com/docs",
+          source_urls: ["https://untimed.example.com/docs"],
+        },
+      ],
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot: {
+        captured_at: "2026-06-08T00:00:00.000Z",
+        subnets: [{ netuid: 92, name: "Untimed", status: "active" }],
+      },
+      verification: {
+        schema_version: 1,
+        results: [
+          {
+            candidate_id: "sn-92-untimed-api",
+            classification: "live",
+            content_type: "application/json",
+            quality_signals: {
+              content_type_matches_kind: true,
+              public_safe: true,
+              rate_limited: false,
+              redirected: false,
+              source_tier: "provider-claimed",
+              transient_failure: false,
+            },
+          },
+        ],
+      },
+    })) as Row;
+
+    const [surface] = overlaySet.generatedOverlays[0].surfaces;
+    assert.equal(surface.last_verified_at, null);
+  });
+
   test("only elevates generated overlays when reviewed evidence is promoted", async () => {
     const nativeSnapshot = {
       captured_at: "2026-06-08T00:00:00.000Z",

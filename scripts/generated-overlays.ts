@@ -128,6 +128,15 @@ export async function generateBaselineOverlaySet(
       result,
     ]),
   );
+  // #8658: the verification RUN's timestamp. Individual results carry no time
+  // of their own, so this file-level value is the only provenance a promoted
+  // surface can record -- and without it every promoted surface published
+  // `last_verified_at: null`, which is what let an unverifiable surface look
+  // identical to a freshly-checked one.
+  const verificationObservedAt =
+    typeof verification.observed_at === "string"
+      ? verification.observed_at
+      : null;
   const providersById = new Map(
     providers.map((provider) => [provider.id, provider]),
   );
@@ -143,6 +152,7 @@ export async function generateBaselineOverlaySet(
       nativeSubnet,
       providersById,
       verificationByCandidate,
+      verificationObservedAt,
       maintainerReviewedDecisionsByNetuid,
     });
     if (manualNetuids.has(nativeSubnet.netuid)) {
@@ -385,6 +395,7 @@ interface BuildGeneratedOverlayOptions {
   nativeSubnet: Row;
   providersById: Map<unknown, Row>;
   verificationByCandidate: Map<unknown, Row>;
+  verificationObservedAt?: string | null;
   maintainerReviewedDecisionsByNetuid?: Map<unknown, Row[]>;
 }
 
@@ -394,6 +405,7 @@ function buildGeneratedOverlay({
   nativeSubnet,
   providersById,
   verificationByCandidate,
+  verificationObservedAt = null,
   maintainerReviewedDecisionsByNetuid = new Map(),
 }: BuildGeneratedOverlayOptions): Row {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
@@ -406,7 +418,7 @@ function buildGeneratedOverlay({
       isPromotable(candidate, verification, providersById),
     )
     .map(({ candidate, verification }) =>
-      promoteCandidate(candidate, verification as Row),
+      promoteCandidate(candidate, verification as Row, verificationObservedAt),
     )
     .filter(uniqueSurfaceLocator())
     .filter(limitPromotedSurfaceKinds())
@@ -625,7 +637,11 @@ function uniqueSurfaceLocator(): (surface: Row) => boolean {
   };
 }
 
-function promoteCandidate(candidate: Row, verification: Row): Row {
+function promoteCandidate(
+  candidate: Row,
+  verification: Row,
+  verificationObservedAt: string | null = null,
+): Row {
   const surface: Row = {
     id: candidate.id,
     name: candidate.name,
@@ -636,6 +652,13 @@ function promoteCandidate(candidate: Row, verification: Row): Row {
     authority: "registry-observed",
     public_safe: true,
     source_urls: candidate.source_urls || [candidate.source_url],
+    // #8658: stamp WHEN this surface was verified. It was hardcoded absent, so
+    // every promoted surface shipped `last_verified_at: null` while also
+    // carrying `probe.enabled: true` and `public_safe: true` -- leaving
+    // consumers no way to tell a just-checked surface from one whose
+    // verification has since gone stale. isPromotable already guarantees the
+    // classification was live/redirected at build time; this records it.
+    last_verified_at: verificationObservedAt,
     quality_signals: verification.quality_signals,
     rate_limit: candidate.rate_limit,
     rate_limit_notes: candidate.rate_limit_notes,
