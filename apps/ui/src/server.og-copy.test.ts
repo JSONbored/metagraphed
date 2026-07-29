@@ -61,7 +61,15 @@ describe("OG card copy coverage (#8489)", () => {
 
     const paths = fs
       .readdirSync(routesDir)
-      .filter((f) => f.endsWith(".tsx") && !f.startsWith("-") && !f.startsWith("__"))
+      // `.test.tsx` files live in routes/ but are not routes — TanStack Router
+      // skips them too (it warns "does not export a Route"). Without this they
+      // are read as pathnames: #8621's ChainHeadTip test landed here as
+      // "/index-page-chain-head-tip/render/test", which turned main red the
+      // moment #8605 (this guard) and #8621 (that file) were both merged.
+      .filter(
+        (f) =>
+          f.endsWith(".tsx") && !f.includes(".test.") && !f.startsWith("-") && !f.startsWith("__"),
+      )
       .map((f) => f.replace(/\.tsx$/, ""))
       // Route-file naming -> pathname; skip param and splat segments, which are
       // handled by the regex branches above, not the exact-path map.
