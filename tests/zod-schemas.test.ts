@@ -8,6 +8,7 @@
 // issue's non-vacuous requirement: an empty object must fail every schema.
 import assert from "node:assert/strict";
 import { describe, test, vi, afterEach } from "vitest";
+import { summarizeEvent } from "@jsonbored/chain-summaries";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { SubnetsResponseSchema } from "../schemas-src/routes/subnets.ts";
@@ -2078,6 +2079,39 @@ describe("batch 6 (#8060) route artifact schemas parse real builder output", () 
     assert.equal(result.success, false);
   });
 
+  test("chain-events: ArtifactSchema accepts the action-sentence summary field, null for an unmatched pallet.method (#8525)", () => {
+    const templated = {
+      block_number: 100,
+      event_index: 0,
+      pallet: "System",
+      method: "ExtrinsicSuccess",
+      args: {},
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 0,
+      observed_at: 1750000000000,
+      summary: summarizeEvent("System", "ExtrinsicSuccess", {}),
+    };
+    const unmatched = {
+      block_number: 100,
+      event_index: 1,
+      pallet: "NoSuchPallet",
+      method: "NoSuchEvent",
+      args: {},
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 0,
+      observed_at: 1750000000000,
+      summary: summarizeEvent("NoSuchPallet", "NoSuchEvent", {}),
+    };
+    const parsed = ChainEventsFeedArtifactSchema.parse({
+      count: 2,
+      next_before: null,
+      next_cursor: null,
+      events: [templated, unmatched],
+    });
+    assert.equal(typeof parsed.events[0].summary, "string");
+    assert.equal(parsed.events[1].summary, null);
+  });
+
   test("chain-events-stats: ArtifactSchema.parse(<live get_chain_activity response>) succeeds", () => {
     const data = {
       window_blocks: 100,
@@ -2477,6 +2511,37 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
   test("extrinsics: ArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = ExtrinsicsFeedArtifactSchema.safeParse({});
     assert.equal(result.success, false);
+  });
+
+  test("extrinsics: buildExtrinsicFeed populates the action-sentence summary field, null for an unmatched call (#8525)", () => {
+    const feed = buildExtrinsicFeed(
+      [
+        {
+          block_number: 1000,
+          extrinsic_index: 0,
+          extrinsic_hash: "0xhash1",
+          signer: "5Signer",
+          call_module: "Timestamp",
+          call_function: "set",
+          call_args: "[]",
+          observed_at: 1750000000000,
+        },
+        {
+          block_number: 1000,
+          extrinsic_index: 1,
+          extrinsic_hash: "0xhash2",
+          signer: "5Signer",
+          call_module: "NoSuchModule",
+          call_function: "no_such_function",
+          call_args: "[]",
+          observed_at: 1750000000000,
+        },
+      ],
+      { limit: 50, offset: 0 },
+    );
+    const parsed = ExtrinsicsFeedArtifactSchema.parse(feed);
+    assert.equal(parsed.extrinsics[0].summary, "Set the chain timestamp.");
+    assert.equal(parsed.extrinsics[1].summary, null);
   });
 
   test("extrinsic-detail: ArtifactSchema.parse(buildExtrinsic(...)) succeeds", () => {

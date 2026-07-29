@@ -4400,6 +4400,11 @@ const rootValue = {
           phase: event.phase ?? null,
           extrinsic_index: event.extrinsic_index ?? null,
           observed_at: event.observed_at ?? null,
+          // #8525: loadChainEventsFeed's underlying rows already carry
+          // summary (coerceEvent computes it once, server-side); map it
+          // through the same explicit-field pattern as every other column
+          // here.
+          summary: event.summary ?? null,
         })),
       };
     } catch (rawErr) {

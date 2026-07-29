@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
+import { summarizeEvent } from "@jsonbored/chain-summaries";
 import {
   MCP_TOOLS,
   MCP_PROTOCOL_VERSIONS,
@@ -3740,6 +3741,48 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     );
     assert.equal(dataApi.calls[0].searchParams.get("method"), "WeightsSet");
     assert.equal(dataApi.calls[0].searchParams.get("limit"), "10");
+  });
+
+  test("list_chain_events surfaces the action-sentence summary field, null for an unmatched pallet.method (#8525)", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        count: 2,
+        next_before: 4199999,
+        next_cursor: "cursor-xyz",
+        events: [
+          {
+            block_number: 4200000,
+            event_index: 3,
+            pallet: "System",
+            method: "ExtrinsicSuccess",
+            args: {},
+            phase: "ApplyExtrinsic",
+            extrinsic_index: 2,
+            observed_at: 1750009000000,
+            summary: "Extrinsic executed successfully.",
+          },
+          {
+            block_number: 4200000,
+            event_index: 4,
+            pallet: "NoSuchPallet",
+            method: "NoSuchEvent",
+            args: {},
+            phase: "ApplyExtrinsic",
+            extrinsic_index: 2,
+            observed_at: 1750009000000,
+            summary: null,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_chain_events",
+      { limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events[0].summary, "Extrinsic executed successfully.");
+    assert.equal(out.events[1].summary, null);
   });
 
   test("list_chain_events surfaces a data-Worker 400 as an invalid_params error", async () => {
@@ -13989,6 +14032,32 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(res.body.result.structuredContent.extrinsic_count, 99);
     });
 
+    test("list_extrinsics: surfaces the action-sentence summary field, null for an unmatched call (#8525)", async () => {
+      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
+      env.DATA_API = dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 2,
+          limit: 50,
+          offset: 0,
+          next_cursor: null,
+          extrinsics: [
+            { ...EXTRINSIC_ROW, summary: "Set the chain timestamp." },
+            {
+              ...EXTRINSIC_ROW,
+              call_module: "NoSuchModule",
+              call_function: "no_such_function",
+              summary: null,
+            },
+          ],
+        }),
+      );
+      const res = await callTool("list_extrinsics", {}, { env });
+      const items = res.body.result.structuredContent.extrinsics;
+      assert.equal(items[0].summary, "Set the chain timestamp.");
+      assert.equal(items[1].summary, null);
+    });
+
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
     // in production, so the tail of the tryPostgresTier ?? chain is now the
     // schema-stable empty feed (buildExtrinsicFeed([], {...})), not a live D1
@@ -14073,6 +14142,29 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(
         res.body.result.structuredContent.extrinsic.signer,
         "postgres-signer",
+      );
+    });
+
+    test("get_extrinsic: surfaces the action-sentence summary field (#8525)", async () => {
+      const hash = "0x" + "d".repeat(64);
+      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
+      env.DATA_API = dataApi(
+        Response.json({
+          schema_version: 1,
+          ref: hash,
+          extrinsic: {
+            ...EXTRINSIC_ROW,
+            call_module: "Timestamp",
+            call_function: "set",
+            summary: "Set the chain timestamp.",
+          },
+          events: [],
+        }),
+      );
+      const res = await callTool("get_extrinsic", { ref: hash }, { env });
+      assert.equal(
+        res.body.result.structuredContent.extrinsic.summary,
+        "Set the chain timestamp.",
       );
     });
 
@@ -14314,6 +14406,47 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     assert.match(dataApi.calls[0].pathname, /\/blocks\/4200000\/chain-events$/);
   });
 
+  test("get_block_chain_events surfaces the action-sentence summary field, null for an unmatched event (#8525)", async () => {
+    const endowedArgs = {
+      account: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      free_balance: 1_000_000_000,
+    };
+    const dataApi = makeDataApi({
+      payload: {
+        block_number: 4200000,
+        count: 2,
+        events: [
+          {
+            event_index: 0,
+            pallet: "Balances",
+            method: "Endowed",
+            args: endowedArgs,
+            observed_at: 1,
+            summary: summarizeEvent("Balances", "Endowed", endowedArgs),
+          },
+          {
+            event_index: 1,
+            pallet: "NoSuchPallet",
+            method: "NoSuchEvent",
+            observed_at: 1,
+            summary: null,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_block_chain_events",
+      { block_number: 4200000 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(
+      out.events[0].summary,
+      "5Grwva…GKutQY was endowed with 1.00 τ.",
+    );
+    assert.equal(out.events[1].summary, null);
+  });
+
   test("get_block_chain_events round-trips the DATA_API block chain-events contract", async () => {
     const dataApi = makeDataApi({
       payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
@@ -14363,6 +14496,36 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     assert.equal(typeof out.events[0].observed_at, "number");
     assert.equal(dataApi.calls[0].searchParams.get("block"), "5870000");
     assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
+  });
+
+  test("get_extrinsic_chain_events surfaces the action-sentence summary field (#8525)", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        count: 1,
+        next_before: null,
+        next_cursor: null,
+        events: [
+          {
+            block_number: 123,
+            event_index: 0,
+            pallet: "System",
+            method: "ExtrinsicSuccess",
+            args: {},
+            phase: "ApplyExtrinsic",
+            extrinsic_index: 2,
+            observed_at: 100,
+            summary: "Extrinsic executed successfully.",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "123-2" },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events[0].summary, "Extrinsic executed successfully.");
   });
 
   test("get_extrinsic_chain_events follows next_cursor on a follow-up page", async () => {

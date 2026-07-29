@@ -1,0 +1,14 @@
+node_modules
+
+# dist/index.js + dist/index.cjs (the RUNTIME bundle only) are committed --
+# same exception as packages/client/.gitignore and packages/ui-kit/.gitignore,
+# same reason: apps/ui consumes this package as a live workspace link, and
+# Cloudflare Workers Builds' apps/ui deploy is scoped to `--workspace=apps/ui`
+# only, so it must never depend on rebuilding a sibling workspace package.
+# The .d.ts/.d.cts type declarations stay gitignored -- built fresh by CI/
+# local dev only.
+!dist
+!dist/index.js
+!dist/index.cjs
+dist/index.d.ts
+dist/index.d.cts

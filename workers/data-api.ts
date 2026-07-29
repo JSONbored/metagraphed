@@ -154,6 +154,7 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
 } from "../src/top-holders.ts";
 import { decodeChainEventArgs } from "../src/chain-event-args.ts";
+import { summarizeEvent } from "@jsonbored/chain-summaries";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
@@ -3629,15 +3630,22 @@ async function resolveBlockNumberPg(sql: postgres.TransactionSql, ref: string) {
 // response the same as an absent key, so there's no schema-shape risk in
 // leaving this unconditional.
 function coerceEvent(row: Row) {
+  const args = decodeChainEventArgs(row.args, {
+    pallet: row.pallet,
+    method: row.method,
+  });
   return {
     ...row,
     ...(row.block_number !== undefined
       ? { block_number: numberOrNull(row.block_number) }
       : {}),
-    args: decodeChainEventArgs(row.args, {
-      pallet: row.pallet,
-      method: row.method,
-    }),
+    args,
+    // #8525: computed from the SAME already-decoded `args` above (the
+    // account-id-decoded, positional-hint-applied shape) -- summarizeEvent's
+    // templates read positional/keyed fields expecting exactly that shape,
+    // not the raw indexer-rs value. null when no template matches
+    // pallet.method.
+    summary: summarizeEvent(row.pallet, row.method, args) ?? null,
     observed_at: numberOrNull(row.observed_at),
   };
 }

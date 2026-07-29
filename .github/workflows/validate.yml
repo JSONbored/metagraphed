@@ -196,7 +196,7 @@ jobs:
           else
             echo "run_db_types_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^apps/ui/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
+          if grep -qE '^apps/ui/|^packages/chain-summaries/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
@@ -797,6 +797,19 @@ jobs:
             exit 1
           fi
 
+      # Same drift-check shape as packages/client/packages/ui-kit above, same
+      # reason: packages/chain-summaries/dist/{index.js,index.cjs} are
+      # committed (see packages/chain-summaries/.gitignore) so apps/ui's
+      # Cloudflare Workers Builds deploy never depends on rebuilding a sibling
+      # workspace package first (#8525).
+      - name: Build packages/chain-summaries (drift check)
+        run: |
+          npm run build --workspace=packages/chain-summaries
+          if ! git diff --exit-code -- packages/chain-summaries/dist; then
+            echo "::error::packages/chain-summaries/dist is stale -- run 'npm run build --workspace=packages/chain-summaries' and commit the result."
+            exit 1
+          fi
+
       # Same drift-check shape as packages/client/packages/ui-kit above
       # (#1652's docs-freshness acceptance line): content/docs/api-reference/
       # is entirely generated from public/metagraph/openapi.json (except the
@@ -840,6 +853,20 @@ jobs:
       # @tanstack/react-query, or any import resolving into apps/ui/**.
       - name: Lint packages/ui-kit (app-logic import guardrail)
         run: npm run lint --workspace=packages/ui-kit
+
+      - name: Typecheck packages/chain-summaries
+        run: npm run typecheck --workspace=packages/chain-summaries
+
+      - name: Test packages/chain-summaries
+        run: npm test --workspace=packages/chain-summaries
+
+      # Enforces #8525's core invariant: this package stays a real,
+      # standalone, framework-free library both apps/ui and workers/ import
+      # identically. no-restricted-imports (packages/chain-summaries/
+      # eslint.config.ts) fails on react or any import resolving into
+      # apps/ui/**.
+      - name: Lint packages/chain-summaries (app-logic import guardrail)
+        run: npm run lint --workspace=packages/chain-summaries
 
       - name: Lint (ESLint + Prettier)
         run: npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui

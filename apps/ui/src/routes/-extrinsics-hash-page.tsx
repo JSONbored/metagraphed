@@ -21,17 +21,20 @@ import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
-import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import {
-  asDecodedCall,
   extrinsicCall,
   extrinsicHashPathSegment,
   multisigCallHash,
   proxyRealAccount,
-  type DecodedCall,
 } from "@/lib/metagraphed/extrinsics";
-import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
+import {
+  asDecodedCall,
+  unwrapByteArray,
+  decodeBytesField,
+  summarizeCall,
+  type DecodedCall,
+} from "@jsonbored/chain-summaries";
 import { TaoValue } from "@/components/metagraphed/tao-value";
 import { ValueUnitProvider, ValueUnitControl } from "@/lib/metagraphed/value-unit";
 import {
