@@ -339,13 +339,14 @@ test("readR2 for a schema document reads the literal latest/ key even when the p
 });
 
 // ---- R2-preferred dual artifacts (lines 78-87) -----------------------------
-// R2_PREFERRED_DUAL_PATTERNS is currently empty (subnets/coverage moved to plain
-// R2-only), so isR2PreferredDualArtifactPath() never matches a real path. The
-// R2-first-then-asset fallback logic in readArtifact is still live code and is
-// the correct serving path for any future dual artifact that needs fresh
-// per-publish fields. Mock the predicate to true (the tier stays a real "dual")
-// to drive the three branches: R2 hit, asset fallback, and the
-// non-404-wins tiebreak.
+// R2_PREFERRED_DUAL_PATTERNS holds operational-surfaces.json (#8658): the cron
+// prober's input list and call_subnet_surface's resolution catalog, which must
+// track the freshly published registry rather than the committed baseline that
+// only the hourly sync refreshes. The three branches below -- R2 hit, asset
+// fallback, and the non-404-wins tiebreak -- are what keeps that from
+// reintroducing the #1017 SPOF: preferring R2 is not depending on it. The
+// predicate is mocked to true (the tier stays a real "dual") so these stay
+// focused on the fallback logic itself rather than on which paths match.
 
 test("readArtifact serves R2-first for an R2-preferred dual artifact (R2 hit)", async () => {
   vi.resetModules();

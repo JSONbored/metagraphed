@@ -455,13 +455,39 @@ export const DUAL_PATTERNS: RegExp[] = [
   /^operational-surfaces\.json$/,
 ];
 
-// R2-preferred dual artifacts: now EMPTY. subnets/coverage were the last
-// members; they moved to plain R2-only (#1003), so no committed artifact needs
-// R2-first serving anymore — the only remaining dual artifacts are the
-// reproducible contract, which is correct to serve ASSETS-first. Kept as an
-// (empty) extension point and for the exported isR2PreferredDualArtifactPath()
-// contract.
-const R2_PREFERRED_DUAL_PATTERNS: RegExp[] = [];
+// R2-preferred dual artifacts: served from the fresh published R2 copy, falling
+// back to the committed baseline when R2 is cold (see workers/storage.ts).
+//
+// subnets/coverage were the original members and moved to plain R2-only (#1003),
+// leaving this empty as an extension point. #8658 is the case it was kept for.
+const R2_PREFERRED_DUAL_PATTERNS: RegExp[] = [
+  // #8658: the prober's input list and `call_subnet_surface`'s resolution
+  // catalog. ASSETS-first made these two artifacts disagree about what is
+  // probe-enabled and callable:
+  //
+  //   * GET /api/v1/surfaces serves surfaces.json from R2, republished on every
+  //     data publish, so it reflects the newest candidate discovery.
+  //   * operational-surfaces.json was read ASSETS-first, i.e. the COMMITTED
+  //     copy, refreshed only by the hourly sync-operational-surfaces PR from
+  //     the committed inputs.
+  //
+  // Between those two cadences the live registry advertised surfaces the
+  // callable catalog had never heard of: 10 of them measured on 2026-07-29 --
+  // all `probe.enabled: true`, `public_safe: true`, callable kinds -- which
+  // were therefore never health-probed AND returned an error from
+  // `call_subnet_surface`, while 4 that had left the registry were still being
+  // probed. Both artifacts are built in the SAME `npm run build` and agree
+  // exactly there (verified: 617 == 617, zero drift either way, enforced now by
+  // scripts/validate-operational-surface-parity.ts). The divergence was purely
+  // which COPY each reader got.
+  //
+  // This does NOT reintroduce the #1017 SPOF that made the file committed in
+  // the first place. R2-preferred is not R2-only: workers/storage.ts falls back
+  // to the ASSETS copy whenever the R2 read fails, so the prober still has a
+  // guaranteed cold-start list from the deployed bundle during a publish
+  // outage. It just prefers the current one when there is one.
+  /^operational-surfaces\.json$/,
+];
 
 export function isR2PreferredDualArtifactPath(
   artifactPath: string = "",

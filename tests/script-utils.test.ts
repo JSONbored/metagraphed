@@ -731,6 +731,32 @@ describe("script utility contracts", () => {
       isR2PreferredDualArtifactPath("/metagraph/coverage.json"),
       false,
     );
+    // #8658: operational-surfaces.json is the one R2-PREFERRED dual artifact.
+    // It stays DUAL (a committed copy still ships in the bundle, so the prober
+    // has a guaranteed cold-start list during a publish outage -- the #1017
+    // SPOF this file's own comment warns about), but it is now served R2-FIRST
+    // so the callable catalog tracks the freshly published registry instead of
+    // whatever the last hourly sync committed. That gap is what let the live
+    // registry advertise 10 probe-enabled surfaces the callable catalog had
+    // never heard of, while 4 that had left the registry were still probed.
+    assert.equal(
+      artifactStorageTierForRelativePath("operational-surfaces.json"),
+      ARTIFACT_STORAGE_TIERS.dual,
+    );
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/operational-surfaces.json"),
+      true,
+    );
+    // Still ASSETS-first: the reproducible contract files have no per-publish
+    // fields to be fresh about.
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/openapi.json"),
+      false,
+    );
+    assert.equal(
+      isR2PreferredDualArtifactPath("/metagraph/contracts.json"),
+      false,
+    );
     assert.equal(
       artifactStorageTierForRelativePath("subnets.json"),
       ARTIFACT_STORAGE_TIERS.r2,

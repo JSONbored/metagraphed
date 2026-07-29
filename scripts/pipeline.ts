@@ -94,6 +94,9 @@ function checkCommands(): Step[] {
     step("validate:docs"),
     step("validate:intake"),
     step("validate:surface"),
+    // #8658: runs after the build steps above, so the staged surfaces.json
+    // exists to compare the callable catalog against.
+    step("validate:operational-surface-parity"),
     step("validate:workflows"),
     step("validate:migrations"),
     step("validate:db-types-drift"),
@@ -158,6 +161,9 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:docs"),
     step("validate:intake"),
     step("validate:surface"),
+    // #8658: runs after the build steps above, so the staged surfaces.json
+    // exists to compare the callable catalog against.
+    step("validate:operational-surface-parity"),
     step("validate:workflows"),
     step("validate:migrations"),
     step("validate:db-types-drift"),
