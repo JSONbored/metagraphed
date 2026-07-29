@@ -124,6 +124,7 @@
     "smoke:live": "node scripts/smoke-live-api.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
+    "pretypecheck": "npm run build --workspace=packages/chain-summaries",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run pipeline:check && npm run validate:docs",
     "test": "vitest run",
