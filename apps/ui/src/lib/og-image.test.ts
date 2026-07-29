@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   escapeText,
+  normalizeLogoHost,
   normalizeSubtitle,
   normalizeTitle,
   readCardParams,
@@ -80,6 +81,7 @@ describe("readCardParams (#8489)", () => {
     });
     expect(readCardParams(p)).toEqual({
       eyebrow: "Subnet",
+      logoHost: null,
       stats: [
         { label: "Netuid", value: "SN64" },
         { label: "Alpha price", value: "0.0832 τ" },
@@ -93,7 +95,11 @@ describe("readCardParams (#8489)", () => {
   });
 
   it("returns null eyebrow and no stats when absent, so the card falls back", () => {
-    expect(readCardParams(new URLSearchParams())).toEqual({ eyebrow: null, stats: [] });
+    expect(readCardParams(new URLSearchParams())).toEqual({
+      eyebrow: null,
+      stats: [],
+      logoHost: null,
+    });
   });
 
   it("bounds every param, so a crawler-supplied query can't overflow the card", () => {
@@ -151,5 +157,86 @@ describe("renderCardMarkup (#8489)", () => {
 
   it("omits the eyebrow pill entirely when there is none", () => {
     expect(renderCardMarkup({ ...base, eyebrow: null })).not.toContain("border-radius:999px");
+  });
+});
+
+describe("normalizeLogoHost (#8489) — /og is unauthenticated, so this gates SSRF", () => {
+  it("accepts a plain public DNS name", () => {
+    expect(normalizeLogoHost("chutes.ai")).toBe("chutes.ai");
+    expect(normalizeLogoHost("  Sub.Example.CO.UK ")).toBe("sub.example.co.uk");
+  });
+
+  it("rejects anything that is a URL rather than a hostname", () => {
+    // The whole point: a caller must never be able to name the fetch target.
+    for (const bad of [
+      "https://evil.example/x",
+      "//evil.example",
+      "evil.example/path",
+      "user@evil.example",
+      "evil.example:8080",
+      "javascript:alert(1)",
+      "data:text/html,x",
+    ]) {
+      expect(normalizeLogoHost(bad)).toBeNull();
+    }
+  });
+
+  it("rejects IP literals and internal names", () => {
+    for (const bad of [
+      "127.0.0.1",
+      "10.0.0.1",
+      "192.168.1.1",
+      "169.254.169.254",
+      "localhost",
+      "foo.localhost",
+      "svc.internal",
+      "box.local",
+    ]) {
+      expect(normalizeLogoHost(bad)).toBeNull();
+    }
+  });
+
+  it("rejects empty, over-long, and malformed input", () => {
+    expect(normalizeLogoHost(null)).toBeNull();
+    expect(normalizeLogoHost("")).toBeNull();
+    expect(normalizeLogoHost("nodot")).toBeNull();
+    expect(normalizeLogoHost(`${"a".repeat(90)}.com`)).toBeNull();
+  });
+});
+
+describe("card font stack (#8489)", () => {
+  it("lists Inter after the display face so tau isn't tofu", () => {
+    // Space Grotesk has no Greek coverage; every TAO value contains τ. Caught
+    // by a real satori render — Chromium substituted a system font and hid it.
+    const markup = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "x",
+      eyebrow: null,
+      stats: [{ label: "Alpha price", value: "0.0832 τ" }],
+    });
+    expect(markup).toContain("font-family:'Space Grotesk','Inter'");
+  });
+});
+
+describe("entity logo (#8489)", () => {
+  it("renders the logo through OUR icon proxy, never the caller's URL", () => {
+    const markup = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "x",
+      eyebrow: "Subnet",
+      stats: [],
+      logoHost: "chutes.ai",
+    });
+    expect(markup).toContain("https://api.metagraph.sh/api/v1/icon?host=chutes.ai");
+  });
+
+  it("falls back to the mint rule when there is no logo", () => {
+    const markup = renderCardMarkup({
+      title: "5Grwva…GKutQY",
+      subtitle: "x",
+      eyebrow: "Account",
+      stats: [],
+    });
+    expect(markup).not.toContain("/api/v1/icon");
   });
 });

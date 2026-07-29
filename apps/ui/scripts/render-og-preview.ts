@@ -36,6 +36,7 @@ const VARIANTS: Record<string, Variant> = {
   },
   "2-subnet": {
     title: "Chutes",
+    logoHost: "chutes.ai",
     subtitle:
       "Chutes: Bittensor subnet 64 — interfaces, endpoints, schemas and live health (healthy), machine-readable on Metagraphed.",
     eyebrow: "Subnet",

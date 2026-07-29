@@ -72,6 +72,25 @@ const TEXT_SUBTLE = "#4B4D4F";
  * reads as a flat void and looks nothing like the product.
  */
 const HAIRLINE = "#212324";
+/**
+ * The site's background PATTERN, from packages/ui-kit/src/styles.css's
+ * "Premium Blockmachine background: hairline grid + dot field + soft top
+ * vignette" on `body`. Matching --paper alone still didn't look like the
+ * product, because the product's ground is never a flat fill.
+ *
+ * Both are `--ink-strong` at low alpha (dot 10%, grid 5%) which satori can't
+ * express, so they ship precomputed over --paper. Sizes are the dark-theme
+ * values: --mg-dot-size 26px, grid 96px.
+ *
+ * Verified satori actually renders this stack before relying on it -- the
+ * local preview uses Chromium, which would happily render a pattern satori
+ * silently dropped. A probe confirmed satori emits <pattern>,
+ * <radialGradient> and <linearGradient> for exactly these declarations.
+ */
+const DOT_COLOR = "#1F2022";
+const GRID_COLOR = "#141516";
+const DOT_SIZE = 26;
+const GRID_SIZE = 96;
 
 // #8257/#8489: bumped whenever the rendered card changes, so already-unfurled
 // links pick up the new design instead of serving last month's PNG from the
@@ -89,6 +108,8 @@ const MAX_TITLE_LENGTH = 110;
 const MAX_EYEBROW_LENGTH = 32;
 const MAX_STAT_LABEL_LENGTH = 24;
 const MAX_STAT_VALUE_LENGTH = 28;
+/** A bare DNS name, e.g. "chutes.ai". Never a URL — see readCardParams. */
+const MAX_LOGO_HOST_LENGTH = 80;
 const MAX_QUERY_LENGTH = 512;
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 
@@ -176,8 +197,10 @@ export interface OgStat {
 export function readCardParams(params: URLSearchParams): {
   eyebrow: string | null;
   stats: OgStat[];
+  logoHost: string | null;
 } {
   const eyebrow = normalizeParam(params.get("eyebrow"), MAX_EYEBROW_LENGTH);
+  const logoHost = normalizeLogoHost(params.get("logo"));
   const stats: OgStat[] = [];
   for (const [labelKey, valueKey] of [
     ["stat1", "stat1v"],
@@ -189,7 +212,31 @@ export function readCardParams(params: URLSearchParams): {
     // with no value is an empty promise.
     if (label && value) stats.push({ label, value });
   }
-  return { eyebrow, stats };
+  return { eyebrow, stats, logoHost };
+}
+
+/**
+ * Validate the `logo` param as a bare public DNS name.
+ *
+ * This is the security-critical one. /og is unauthenticated and crawler-
+ * reachable, so accepting a URL here would let anyone make this Worker issue
+ * an outbound request to a host of their choosing. Instead the param is a
+ * HOSTNAME, and the card renders it through the existing SSRF-safe icon proxy
+ * (src/icon-proxy.ts), which only ever fetches fixed favicon-aggregator
+ * origins and passes the host as a query value — never as the request target.
+ *
+ * Rejects anything that isn't a plain dotted DNS label: schemes, slashes,
+ * userinfo, ports, IP literals, and the localhost/.local/.internal family,
+ * mirroring the proxy's own validation rather than trusting it blindly.
+ */
+export function normalizeLogoHost(value: string | null): string | null {
+  const raw = (value || "").trim().toLowerCase();
+  if (!raw || raw.length > MAX_LOGO_HOST_LENGTH) return null;
+  // Plain DNS name only: labels of alphanumerics/hyphens, at least one dot,
+  // and a non-numeric TLD (which also rules out bare IPv4 literals).
+  if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(raw)) return null;
+  if (/(^|\.)(localhost|local|internal|test|invalid|example)$/.test(raw)) return null;
+  return raw;
 }
 
 /**
@@ -246,6 +293,8 @@ export function renderCardMarkup(opts: {
   subtitle: string;
   eyebrow: string | null;
   stats: OgStat[];
+  /** Bare DNS name; rendered via the SSRF-safe icon proxy. */
+  logoHost?: string | null;
 }): string {
   const title = escapeText(opts.title);
   const subtitle = escapeText(opts.subtitle);
@@ -269,13 +318,26 @@ export function renderCardMarkup(opts: {
   // empty slab across the foot of the fallback card would be worse than none.
   const hasStats = opts.stats.length > 0;
 
+  // Entity logo, resolved through OUR icon proxy rather than the caller's URL
+  // (see normalizeLogoHost). Rendered as a rounded tile on the app's own
+  // surface, matching how the site shows a subnet/provider avatar beside its
+  // name. Absent host -> the mint rule alone anchors the title, which is the
+  // right fallback for accounts/validators that have no logo at all.
+  const logo = opts.logoHost
+    ? `<div style="display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;background:${SURFACE};border:1px solid ${HAIRLINE};margin-right:28px;margin-top:4px;">
+         <img src="https://api.metagraph.sh/api/v1/icon?host=${encodeURIComponent(
+           opts.logoHost,
+         )}&size=128&theme=dark" style="width:64px;height:64px;border-radius:14px;" />
+       </div>`
+    : `<div style="display:flex;width:5px;height:96px;border-radius:3px;background:${MINT};margin-right:28px;margin-top:4px;"></div>`;
+
   return `
-    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};color:${TEXT_STRONG};font-family:'Space Grotesk';overflow:hidden;">
+    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};background-image:radial-gradient(${DOT_COLOR} 1px, transparent 1px),linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px),radial-gradient(ellipse 110% 60% at 50% 0%, rgba(48,255,192,0.05) 0%, transparent 70%);background-size:${DOT_SIZE}px ${DOT_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 100% 100%;color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
       <div style="display:flex;width:1200px;height:6px;background:${MINT};"></div>
 
-      <div style="display:flex;align-items:center;padding:34px 80px;border-bottom:1px solid ${HAIRLINE};">
-        <img src="${LOGO_DATA_URI}" style="width:52px;height:52px;" />
-        <div style="display:flex;font-size:33px;font-weight:700;letter-spacing:-0.5px;margin-left:8px;">${WORDMARK}</div>
+      <div style="display:flex;align-items:center;padding:32px 80px;border-bottom:1px solid ${HAIRLINE};">
+        <img src="${LOGO_DATA_URI}" style="width:50px;height:50px;" />
+        <div style="display:flex;font-size:32px;font-weight:700;letter-spacing:-0.5px;margin-left:8px;">${WORDMARK}</div>
         ${
           eyebrow
             ? `<div style="display:flex;margin-left:22px;padding:6px 17px;border:2px solid ${MINT};border-radius:999px;font-size:20px;font-weight:500;color:${MINT};letter-spacing:2px;">${escapeText(
@@ -286,22 +348,25 @@ export function renderCardMarkup(opts: {
       </div>
 
       <div style="display:flex;flex:1;align-items:center;padding:0 80px;">
-        <div style="display:flex;align-items:stretch;">
-          <div style="display:flex;width:5px;border-radius:3px;background:${MINT};margin-right:28px;"></div>
+        <div style="display:flex;align-items:flex-start;">
+          ${logo}
           <div style="display:flex;flex-direction:column;">
             <div style="display:flex;font-size:${titleFontSize(
               opts.title.length,
-            )}px;font-weight:700;line-height:1.08;letter-spacing:-1px;max-width:880px;">${title}</div>
-            <div style="display:flex;font-size:29px;font-weight:400;line-height:1.35;color:${TEXT_MUTED};margin-top:18px;max-width:800px;">${subtitle}</div>
+            )}px;font-weight:700;line-height:1.08;letter-spacing:-1px;max-width:860px;">${title}</div>
+            <div style="display:flex;font-size:29px;font-weight:400;line-height:1.35;color:${TEXT_MUTED};margin-top:18px;max-width:780px;">${subtitle}</div>
           </div>
         </div>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;padding:${
-        hasStats ? "28px" : "34px"
-      } 80px;border-top:1px solid ${HAIRLINE};background:${hasStats ? SURFACE : GROUND};">
+        hasStats ? "26px" : "32px"
+      } 80px;border-top:1px solid ${HAIRLINE};background:${hasStats ? SURFACE : "transparent"};">
         <div style="display:flex;">${statCells}</div>
-        <div style="display:flex;font-size:23px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
+        <div style="display:flex;align-items:center;">
+          <div style="display:flex;width:9px;height:9px;border-radius:5px;background:${MINT};margin-right:14px;"></div>
+          <div style="display:flex;font-size:29px;font-weight:700;color:${TEXT_STRONG};letter-spacing:-0.2px;">metagraph.sh</div>
+        </div>
       </div>
     </div>`;
 }
@@ -315,7 +380,7 @@ function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   // #8489: the entity params are part of the rendered output, so they MUST be
   // part of the cache key -- otherwise two subnets sharing a title would serve
   // each other's stats from the edge.
-  for (const key of ["eyebrow", "stat1", "stat1v", "stat2", "stat2v"]) {
+  for (const key of ["eyebrow", "stat1", "stat1v", "stat2", "stat2v", "logo"]) {
     const value = original.get(key);
     if (value) next.set(key, value);
   }
@@ -356,7 +421,7 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
 
   const normalizedTitle = normalizeTitle(url.searchParams.get("title"));
   const normalizedSubtitle = normalizeSubtitle(url.searchParams.get("subtitle"));
-  const { eyebrow, stats } = readCardParams(url.searchParams);
+  const { eyebrow, stats, logoHost } = readCardParams(url.searchParams);
   const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle);
   const cached = await cacheStorage?.match(cacheKey);
   if (cached) {
@@ -395,11 +460,21 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
   let bold: ArrayBuffer;
   let regular: ArrayBuffer;
   let medium: ArrayBuffer;
+  let fallbackBold: ArrayBuffer;
+  let fallbackRegular: ArrayBuffer;
   try {
-    [bold, regular, medium] = await Promise.all([
+    [bold, regular, medium, fallbackBold, fallbackRegular] = await Promise.all([
       loadGoogleFont({ family: "Space Grotesk", weight: 700, text: glyphs }),
       loadGoogleFont({ family: "Space Grotesk", weight: 400, text: glyphs }),
       loadGoogleFont({ family: "Space Grotesk", weight: 500, text: glyphs }),
+      // #8489: Space Grotesk has NO Greek coverage, so the tau in every TAO
+      // value ("0.0832 τ") rasterizes as a tofu box. Caught by rendering the
+      // card through real satori -- the local Chromium preview substituted a
+      // system font and showed a perfect tau, hiding it completely. Inter is
+      // registered as a per-glyph fallback so the display face stays Space
+      // Grotesk and only the glyphs it lacks come from Inter.
+      loadGoogleFont({ family: "Inter", weight: 700, text: glyphs }),
+      loadGoogleFont({ family: "Inter", weight: 400, text: glyphs }),
     ]);
   } catch (error) {
     console.error("Failed to load OG image fonts", error);
@@ -411,6 +486,7 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     subtitle: normalizedSubtitle,
     eyebrow,
     stats,
+    logoHost,
   });
 
   try {
@@ -421,6 +497,10 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
         { name: "Space Grotesk", data: bold, weight: 700, style: "normal" },
         { name: "Space Grotesk", data: medium, weight: 500, style: "normal" },
         { name: "Space Grotesk", data: regular, weight: 400, style: "normal" },
+        // Fallback only -- listed after the display face, so satori reaches
+        // for it per-glyph rather than for whole runs.
+        { name: "Inter", data: fallbackBold, weight: 700, style: "normal" },
+        { name: "Inter", data: fallbackRegular, weight: 400, style: "normal" },
       ],
     });
     const response = withOgHeaders(image);
