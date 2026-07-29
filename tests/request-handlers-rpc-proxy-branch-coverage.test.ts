@@ -834,6 +834,78 @@ describe("state-query methods (#4344/9.2)", () => {
     assert.equal(body.error.code, "rpc_state_query_rate_limited");
   });
 
+  test("a keyed state-query request rides the account tier and records usage (#8522)", async () => {
+    // #8522: a valid mg_ key resolves the keyed tier (accountId set) → the
+    // request proceeds and the injected recordApiKeyUsage recorder fires with
+    // the "rpc-state-query" route label.
+    const STATE_VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
+    const usageCalls: Array<{ accountId: string; route: string }> = [];
+    configureRpcProxy({
+      readHealthMetaKv: async () => ({ last_run_at: OBSERVED_AT }),
+      recordApiKeyUsage: (_env, _ctx, accountId, route) =>
+        usageCalls.push({ accountId, route }),
+    });
+    const kvStore = new Map<string, string>();
+    const env = rpcEnv(poolWith(ep("a", SAFE_A)), {
+      STATE_QUERY_RATE_LIMITER_KEYED: {
+        limit: async () => ({ success: true }),
+      },
+      METAGRAPH_CONTROL: {
+        async get(k: string, o?: { type?: string }) {
+          if (!kvStore.has(k)) return null;
+          const raw = kvStore.get(k)!;
+          return o?.type === "json" ? JSON.parse(raw) : raw;
+        },
+        async put(k: string, v: string) {
+          kvStore.set(k, v);
+        },
+      },
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "free",
+              accountId: "42",
+            }),
+            { status: 200 },
+          ),
+      },
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = scriptedFetch(
+      jsonResponse(200, { jsonrpc: "2.0", id: 1, result: "0xdeadbeef" }),
+    );
+    try {
+      const res = await handleRpcProxyRequest(
+        req("/rpc/v1/finney", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.20",
+            authorization: `Bearer ${STATE_VALID_KEY}`,
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "state_getStorage",
+            params: [HEX_KEY],
+          }),
+        }),
+        env,
+        url("/rpc/v1/finney"),
+      );
+      assert.equal(res.status, 200);
+      assert.deepEqual(usageCalls, [
+        { accountId: "42", route: "rpc-state-query" },
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("200 happy path for state_getStorage", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = scriptedFetch(

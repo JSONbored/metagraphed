@@ -3982,8 +3982,9 @@ configureAnalytics({ readHealthMetaKv });
 // rpc-proxy.ts, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
 // for its observed_at stamp. Injecting the stable reference keeps rpc-proxy.ts
 // from importing api.ts back (it owns the RPC_HEALTH breaker + pool-artifact memo
-// itself; this is the only api.ts-local helper it depends on).
-configureRpcProxy({ readHealthMetaKv });
+// itself). #8522: recordApiKeyUsage is injected the same way so the state-query
+// tiered checkpoint can record keyed usage without an import cycle.
+configureRpcProxy({ readHealthMetaKv, recordApiKeyUsage });
 
 // economics:current is a large blob (one row per subnet) that resolveLiveEconomics
 // reads on every /api/v1/economics request AND every /api/v1/subnets/{netuid}
