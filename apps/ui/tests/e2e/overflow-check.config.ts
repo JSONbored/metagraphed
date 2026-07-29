@@ -15,6 +15,16 @@ export const ROUTES = [
   "/extrinsics/0x986f1f7da3d93882e8c19bbe3b303ef8ba5454062272446598d17aa599ca4428",
   "/apis/schemas",
   "/validators",
+  // #8538: extend the matrix to the Chain hub and its six tab routes. A
+  // measurement change, not a fix -- whatever violations these reveal get
+  // recorded in the baseline (like the existing entries), never fixed here.
+  "/chain",
+  "/chain/blocks",
+  "/chain/events",
+  "/chain/extrinsics",
+  "/chain/analytics",
+  "/chain/governance",
+  "/chain/runtime",
 ];
 
 export const VIEWPORTS = [
