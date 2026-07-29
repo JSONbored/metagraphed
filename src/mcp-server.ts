@@ -12026,8 +12026,20 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
       rpcError(
         null,
         RPC_INVALID_REQUEST,
-        "GET requires a valid Mcp-Session-Id header (obtained from the " +
-          "initialize response).",
+        // #8632: name the WHOLE precondition, not just the header. The old
+        // text stopped at "obtained from the initialize response", which reads
+        // as "initialize, then GET" -- and that sequence 404s, because a
+        // session is only registered with the stream hub by resources/
+        // subscribe. Anyone following the message landed on a dead end, which
+        // is exactly how this was reported. Also says outright that this is
+        // not a browsable URL, since opening /mcp in a browser is the most
+        // common way to arrive here.
+        "GET /mcp is the server-to-client SSE push channel, not a browsable " +
+          "endpoint. It requires a valid Mcp-Session-Id header AND an active " +
+          "subscription: call initialize (which returns the session id), then " +
+          "resources/subscribe on a subscribable resource " +
+          "(metagraph://chain/stream or metagraph://subnet/{netuid}/status), " +
+          "then GET with that session id. Every other MCP method is POST.",
       ),
       400,
     );
@@ -12051,7 +12063,15 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
         RPC_INVALID_REQUEST,
         upstream.status === 409
           ? "A stream is already open for this session."
-          : "No such MCP session; call initialize again.",
+          : // #8632: "call initialize again" was wrong advice -- initialize
+            // mints a session id but does NOT register it here, so following
+            // it produces this same 404 forever. The missing step is the
+            // subscription.
+            "No stream is open for this Mcp-Session-Id. A session is only " +
+              "registered by resources/subscribe -- call it (on " +
+              "metagraph://chain/stream or metagraph://subnet/{netuid}/status) " +
+              "before opening the GET stream. If the session has since expired, " +
+              "re-run initialize and subscribe again.",
       ),
       upstream.status === 409 ? 409 : 404,
     );
