@@ -306,7 +306,9 @@ import {
 } from "./metagraph-neurons.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
-import { CURATION_ARTIFACT } from "./curation-mcp.ts";
+// #8550: the same loadCurationList that MCP list_curation + REST /curation call,
+// so the curation field's filter/sort/page set can never drift from theirs.
+import { loadCurationList } from "./curation-mcp.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import {
@@ -595,6 +597,7 @@ import type {
   QueryChain_WeightsArgs,
   QueryCompareArgs,
   QueryCompare_ValidatorsArgs,
+  QueryCurationArgs,
   QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
   QueryEconomics_TrendsArgs,
@@ -3774,10 +3777,15 @@ const rootValue = {
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
   },
 
-  async curation(_args: unknown, context: GqlContext) {
-    // Same baked artifact the REST /api/v1/curation route + list_curation MCP
-    // tool read; opaque-JSON passthrough degrading to null on cold.
-    return loadArtifact(context, CURATION_ARTIFACT);
+  // #8550: full REST/MCP filter parity -- delegate to loadCurationList (the same
+  // read + filter/sort/page list_curation runs over the curation artifact),
+  // mirroring evidence, rather than an opaque passthrough. BREAKING: the return
+  // type moves from opaque JSON to the CurationList envelope, so a consumer that
+  // selected `curation` as raw JSON must now select fields. The loader validates
+  // its own args and throws on an invalid filter/sort (or a cold/absent artifact);
+  // that throw becomes a GraphQL error, matching provider_endpoints/evidence.
+  curation(args: QueryCurationArgs, context: GqlContext) {
+    return loadCurationList(mcpCtx(context), args, { readArtifact });
   },
 
   async coverage(_args: unknown, context: GqlContext) {

@@ -22883,27 +22883,89 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
   });
 });
 
-// --- curation parity (#6982) ---
-describe("graphql — curation parity (#6982)", () => {
-  test("curation resolves the baked curation-states artifact", async () => {
-    const env = fixtureEnv({
+// --- curation parity (#6982, #8550) ---
+describe("graphql — curation parity (#6982, #8550)", () => {
+  const env = () =>
+    fixtureEnv({
       "/metagraph/curation.json": {
-        subnets: [
-          { netuid: 1, level: "core", review_state: "maintainer-reviewed" },
+        generated_at: "2026-07-20T00:00:00.000Z",
+        curation: [
+          {
+            netuid: 1,
+            coverage_level: "probed",
+            curation_level: "maintainer-reviewed",
+          },
+          {
+            netuid: 2,
+            coverage_level: "manifested",
+            curation_level: "adapter-backed",
+          },
+          {
+            netuid: 3,
+            coverage_level: "probed",
+            curation_level: "adapter-backed",
+          },
         ],
       },
     });
-    const { status, body } = await gql("{ curation }", env);
+
+  test("curation resolves the baked artifact as a CurationList envelope (#8550)", async () => {
+    const { status, body } = await gql(
+      "{ curation { curation total next_cursor } }",
+      env(),
+    );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.curation.subnets[0].level, "core");
+    assert.equal(body.data.curation.total, 3);
+    assert.equal(body.data.curation.curation[0].netuid, 1);
   });
 
-  test("curation degrades to null when the artifact has not been baked", async () => {
-    const { status, body } = await gql("{ curation }");
+  test("curation filters by netuid/coverage_level/curation_level and sorts, at parity with REST/MCP (#8550)", async () => {
+    const byNetuid = await gql(
+      "{ curation(netuid: 2) { curation total } }",
+      env(),
+    );
+    assert.equal(byNetuid.body.errors, undefined);
+    assert.equal(byNetuid.body.data.curation.total, 1);
+    assert.equal(byNetuid.body.data.curation.curation[0].netuid, 2);
+
+    const byCoverage = await gql(
+      '{ curation(coverage_level: "probed") { total } }',
+      env(),
+    );
+    assert.equal(byCoverage.body.data.curation.total, 2);
+
+    const byLevel = await gql(
+      '{ curation(curation_level: "adapter-backed") { total } }',
+      env(),
+    );
+    assert.equal(byLevel.body.data.curation.total, 2);
+
+    const sorted = await gql(
+      '{ curation(sort: "netuid", order: "desc") { curation } }',
+      env(),
+    );
+    assert.equal(sorted.body.errors, undefined);
+    assert.deepEqual(
+      sorted.body.data.curation.curation.map((c: Row) => c.netuid),
+      [3, 2, 1],
+    );
+  });
+
+  test("curation rejects an unsupported filter/sort as a GraphQL error, not a silent default (#8550)", async () => {
+    const { body } = await gql(
+      '{ curation(sort: "not_a_column") { total } }',
+      env(),
+    );
+    assert.ok(body.errors);
+    assert.equal(body.data?.curation ?? null, null);
+  });
+
+  test("curation on a cold/absent artifact is a GraphQL error, not null (BREAKING, #8550)", async () => {
+    const { status, body } = await gql("{ curation { total } }");
     assert.equal(status, 200);
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.curation, null);
+    assert.ok(body.errors, "cold curation artifact must be a GraphQL error");
+    assert.equal(body.data?.curation ?? null, null);
   });
 
   test("curation is weighted as a fan-out field like its sibling artifact resolvers", () => {

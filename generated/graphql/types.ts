@@ -1784,6 +1784,21 @@ export type Contracts = {
   type_definitions_url?: Maybe<Scalars['String']['output']>;
 };
 
+/** Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
+export type CurationList = {
+  __typename?: 'CurationList';
+  curation: Array<Scalars['JSON']['output']>;
+  cursor: Scalars['Int']['output'];
+  generated_at?: Maybe<Scalars['String']['output']>;
+  limit: Scalars['Int']['output'];
+  next_cursor?: Maybe<Scalars['Int']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
+  order?: Maybe<Scalars['String']['output']>;
+  returned: Scalars['Int']['output'];
+  sort?: Maybe<Scalars['String']['output']>;
+  total: Scalars['Int']['output'];
+};
+
 /** The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains. */
 export type DomainOverview = {
   __typename?: 'DomainOverview';
@@ -1917,7 +1932,6 @@ export type EndpointList = {
   total: Scalars['Int']['output'];
 };
 
-/** Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
 export type EvidenceList = {
   __typename?: 'EvidenceList';
   claims: Array<Scalars['JSON']['output']>;
@@ -2504,8 +2518,8 @@ export type Query = {
   coverage?: Maybe<Scalars['JSON']['output']>;
   /** The machine-usable coverage-depth scorecard and ranked enrichment queue: per-subnet tier/score/priority rows plus the ranked queue of enrichment targets. Null when the coverage-depth artifact has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the /api/v1/coverage-depth REST shape. Mirrors GET /api/v1/coverage-depth. */
   coverage_depth?: Maybe<Scalars['JSON']['output']>;
-  /** Curation states by subnet — each subnet's registry curation level and review state. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_curation MCP/REST shape. Mirrors GET /api/v1/curation. */
-  curation?: Maybe<Scalars['JSON']['output']>;
+  /** Per-subnet curation states with full REST filter parity: each subnet's coverage_level, curation_level, and source counts. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the curation rows, as opaque JSON. An invalid filter/sort is a GraphQL error, and a cold/absent artifact is a GraphQL error (matching REST/MCP not_found), not a null. Mirrors GET /api/v1/curation. */
+  curation: CurationList;
   /** One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary. */
   domain_summary: DomainSummary;
   /** The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. */
@@ -3105,6 +3119,17 @@ export type QueryCompareArgs = {
 export type QueryCompare_ValidatorsArgs = {
   hotkeys: Array<Scalars['String']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryCurationArgs = {
+  coverage_level?: InputMaybe<Scalars['String']['input']>;
+  curation_level?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5544,6 +5569,7 @@ export type ResolversTypes = ResolversObject<{
   ComparedValidator: ResolverTypeWrapper<ComparedValidator>;
   ConcentrationMetrics: ResolverTypeWrapper<ConcentrationMetrics>;
   Contracts: ResolverTypeWrapper<Contracts>;
+  CurationList: ResolverTypeWrapper<CurationList>;
   DomainOverview: ResolverTypeWrapper<DomainOverview>;
   DomainSummary: ResolverTypeWrapper<DomainSummary>;
   EconomicsList: ResolverTypeWrapper<EconomicsList>;
@@ -5838,6 +5864,7 @@ export type ResolversParentTypes = ResolversObject<{
   ComparedValidator: ComparedValidator;
   ConcentrationMetrics: ConcentrationMetrics;
   Contracts: Contracts;
+  CurationList: CurationList;
   DomainOverview: DomainOverview;
   DomainSummary: DomainSummary;
   EconomicsList: EconomicsList;
@@ -7403,6 +7430,19 @@ export type ContractsResolvers<ContextType = GqlContext, ParentType extends Reso
   type_definitions_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type CurationListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CurationList'] = ResolversParentTypes['CurationList']> = ResolversObject<{
+  curation?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type DomainOverviewResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DomainOverview'] = ResolversParentTypes['DomainOverview']> = ResolversObject<{
   domain_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   domains?: Resolver<Array<ResolversTypes['DomainSummary']>, ParentType, ContextType>;
@@ -7962,7 +8002,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   contracts?: Resolver<Maybe<ResolversTypes['Contracts']>, ParentType, ContextType>;
   coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   coverage_depth?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  curation?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  curation?: Resolver<ResolversTypes['CurationList'], ParentType, ContextType, Partial<QueryCurationArgs>>;
   domain_summary?: Resolver<ResolversTypes['DomainSummary'], ParentType, ContextType, RequireFields<QueryDomain_SummaryArgs, 'tag'>>;
   domains?: Resolver<ResolversTypes['DomainOverview'], ParentType, ContextType>;
   economics?: Resolver<ResolversTypes['EconomicsList'], ParentType, ContextType, Partial<QueryEconomicsArgs>>;
@@ -9291,6 +9331,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ComparedValidator?: ComparedValidatorResolvers<ContextType>;
   ConcentrationMetrics?: ConcentrationMetricsResolvers<ContextType>;
   Contracts?: ContractsResolvers<ContextType>;
+  CurationList?: CurationListResolvers<ContextType>;
   DomainOverview?: DomainOverviewResolvers<ContextType>;
   DomainSummary?: DomainSummaryResolvers<ContextType>;
   EconomicsList?: EconomicsListResolvers<ContextType>;
