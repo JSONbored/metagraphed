@@ -172,7 +172,7 @@ export function EntityHero({
         >
           {visibleStats.map((s) => (
             <div key={s.label}>
-              <div className="mg-type-micro text-ink-muted">{s.label}</div>
+              <div className="mg-type-caption text-ink-muted">{s.label}</div>
               <div className="mt-1.5 flex items-baseline gap-2">
                 <span
                   className={classNames(

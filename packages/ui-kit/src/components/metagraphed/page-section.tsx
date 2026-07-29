@@ -60,7 +60,7 @@ export function PageSection({
         >
           <div className="min-w-0">
             {eyebrow ? (
-              <div className="mg-type-micro text-ink-muted inline-flex items-center gap-2">
+              <div className="mg-type-caption text-ink-muted inline-flex items-center gap-2">
                 {eyebrow}
               </div>
             ) : null}

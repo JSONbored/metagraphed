@@ -60,7 +60,9 @@ export function StatWithSpark({
               className,
             )}
           >
-            <div className="mg-type-micro text-ink-muted truncate">{label}</div>
+            <div className="mg-type-caption text-ink-muted truncate">
+              {label}
+            </div>
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span
                 className={classNames(
@@ -74,7 +76,7 @@ export function StatWithSpark({
                 {value}
               </span>
               {unit ? (
-                <span className="shrink-0 mg-type-micro text-ink-muted">
+                <span className="shrink-0 mg-type-data text-ink-muted">
                   {unit}
                 </span>
               ) : null}
@@ -265,7 +267,7 @@ export function NoDataSpark({
               aria-hidden
               className="inline-block size-1 rounded-full bg-ink-muted/60"
             />
-            <span className="truncate mg-type-micro text-ink-muted/80">
+            <span className="truncate mg-type-caption text-ink-muted/80">
               {freshLine ?? reason}
             </span>
           </div>

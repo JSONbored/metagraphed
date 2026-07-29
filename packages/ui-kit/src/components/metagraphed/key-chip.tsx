@@ -65,7 +65,7 @@ export function KeyChip({
           side="top"
           className="max-w-[90vw] break-all mg-type-data"
         >
-          <span className="mr-1 mg-type-micro opacity-70">{label}</span>
+          <span className="mr-1 mg-type-label opacity-70">{label}</span>
           {value}
         </TooltipContent>
       </Tooltip>

@@ -110,7 +110,7 @@ export function Donut({
             </span>
           ) : null}
           {centerSub ? (
-            <span className="mg-type-micro text-ink-muted mt-0.5">
+            <span className="mg-type-caption text-ink-muted mt-0.5">
               {centerSub}
             </span>
           ) : null}

@@ -174,8 +174,15 @@ const RADIUS_RULES = [
 // It joins FULL_DESIGN_RULES and inherits that severity: warn in src/**, error
 // in RATCHETED_DIRS. `no-restricted-syntax` carries one severity for all its
 // selectors, so there is no way to run this at error while the token worklist
-// stays at warn -- visual-grammar-guardrails.test.ts does that job instead,
-// failing CI outright on any occurrence anywhere in either package.
+// stays at warn. For the marquee ban, visual-grammar-guardrails.test.ts does
+// that job instead, failing CI outright on any occurrence anywhere in either
+// package. The #8325 label-diet rule below is NOT in that suite (a 2026-07-29
+// audit found the previous version of this comment overstated its coverage --
+// the suite asserts marquee/infinite-translate/full-bleed-accent only): its
+// boundary needs the element set + rounded-full chip exemption, which lives
+// in AST-selector form here, so its cross-package enforcement is the verbatim
+// copy of the selector in packages/ui-kit/eslint.config.ts (#8557), at error
+// tier for ui-kit's ratcheted src/components/**.
 //
 // The companion accent-budget rule is deliberately NOT here. Telling a
 // legitimate accent data mark (a bar sized `width: ${pct}%`, a sparkline

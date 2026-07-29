@@ -134,6 +134,24 @@ const SSR_SAFETY_RULES = [
   },
 ];
 
+// #8325 label diet, ported verbatim from apps/ui/eslint.config.ts's
+// VISUAL_GRAMMAR_RULES (#8557 -- the sweep never reached this package).
+// mg-type-micro is 9.5px mono UPPERCASE with 0.18em tracking -- reserved for
+// table headers and provenance chips, where a label is structural furniture
+// the eye skips. Scoped to the element set the sweep covered, and excludes
+// className values containing `rounded-full` (the chip/pill family keeps
+// micro legitimately); th/thead/td/tr aren't listed at all, so table headers
+// are safe by construction rather than by exception. PRIMITIVE_FILES below
+// keep their blanket no-restricted-syntax exemption, matching the ratchet.
+const VISUAL_GRAMMAR_RULES = [
+  {
+    selector:
+      "JSXOpeningElement[name.name=/^(?:span|div|button|Link|dt|p|a|label|ExternalLink|CommandShortcut)$/] JSXAttribute[name.name='className'] Literal[value=/\\bmg-type-micro\\b/][value!=/rounded-full/]",
+    message:
+      "mg-type-micro is for table headers and provenance chips only (#8325). Section labels and eyebrows use mg-type-caption / <SectionLabel> / <SectionHeading>.",
+  },
+];
+
 // The primitives relocated from apps/ui (2026-07-23) authoritatively define
 // these patterns (Panel/SectionLabel don't wrap themselves in <Panel>, and
 // external-link.tsx/table-state.tsx are known, documented exceptions -- see
@@ -255,7 +273,12 @@ export default tseslint.config(
       ],
       // "warn", not "error" -- matching apps/ui's own rationale: fix
       // incrementally as files are touched, don't block unrelated PRs.
-      "no-restricted-syntax": ["warn", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
+      "no-restricted-syntax": [
+        "warn",
+        ...DESIGN_RULES,
+        ...SSR_SAFETY_RULES,
+        ...VISUAL_GRAMMAR_RULES,
+      ],
     },
   },
   {
@@ -266,7 +289,12 @@ export default tseslint.config(
     // exemption unchanged even if a ratcheted glob ever overlapped one.
     files: RATCHETED_DIRS,
     rules: {
-      "no-restricted-syntax": ["error", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
+      "no-restricted-syntax": [
+        "error",
+        ...DESIGN_RULES,
+        ...SSR_SAFETY_RULES,
+        ...VISUAL_GRAMMAR_RULES,
+      ],
     },
   },
   {
@@ -277,7 +305,12 @@ export default tseslint.config(
     files: ["src/components/**/*.{ts,tsx}"],
     ignores: RATCHETED_COMPONENT_EXCEPTIONS,
     rules: {
-      "no-restricted-syntax": ["error", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
+      "no-restricted-syntax": [
+        "error",
+        ...DESIGN_RULES,
+        ...SSR_SAFETY_RULES,
+        ...VISUAL_GRAMMAR_RULES,
+      ],
     },
   },
   {
