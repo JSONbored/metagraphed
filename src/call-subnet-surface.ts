@@ -386,7 +386,7 @@ export async function callSubnetSurface(
     };
   }
 
-  const raw = await readBodyCapped(response, MAX_RESPONSE_BYTES);
+  const raw = await readBodyCapped(response, MAX_RESPONSE_BYTES, timeoutMs);
   let body: unknown = raw.text;
   let parseError: string | null = null;
   if (kind === "json" && raw.text) {
@@ -416,19 +416,57 @@ export async function callSubnetSurface(
 async function readBodyCapped(
   response: Response,
   maxBytes: number,
+  deadlineMs: number,
 ): Promise<{ text: string; truncated: boolean }> {
   if (!response.body) {
     const text = await response.text();
     return { text, truncated: false };
   }
+  // #8655: the body read needs its own deadline. safetyCheckedFetch's abort
+  // timer is cleared in a `finally` that runs when the RESPONSE HEADERS
+  // arrive, so by the time we get here nothing is watching the clock any
+  // more. A body that never ends therefore hung forever: `sse` is one of the
+  // callable surface kinds, and calling one (allways-sse) pinned the request
+  // until the platform killed it and the agent got a bare
+  // "internal_error: The tool failed to complete". Any slow-trickling body
+  // does the same thing -- an unbounded read on a public tool is an
+  // availability problem, not just a bad error message.
+  //
+  // A stream that is still producing when the deadline passes is TRUNCATED,
+  // not failed: the first few KB of an event stream is genuinely useful to an
+  // agent, and matches how an oversized body is already handled here.
+  // `deadlineMs` is always the surface's resolved timeout (callSubnetSurface
+  // defaults it to 10s), so there is no "no deadline" case to guard for.
+  const deadline = Date.now() + deadlineMs;
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let received = 0;
   let truncated = false;
   try {
+    // A distinct sentinel, so "the deadline won" is never confused with "the
+    // stream ended". Resolving the race as `done` would report a timed-out
+    // stream as a complete body, which is exactly the wrong thing to tell an
+    // agent.
+    const DEADLINE = Symbol("deadline");
     for (;;) {
-      const { done, value } = await reader.read();
+      // No separate "already past the deadline" guard: a non-positive delay
+      // makes setTimeout fire on the next tick, so the race below resolves
+      // DEADLINE immediately anyway. A guard here would be a second way to
+      // express the same rule, and an unreachable one.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const chunk = await Promise.race([
+        reader.read(),
+        new Promise<typeof DEADLINE>((resolve) => {
+          timer = setTimeout(() => resolve(DEADLINE), deadline - Date.now());
+        }),
+      ]);
+      clearTimeout(timer);
+      if (chunk === DEADLINE) {
+        truncated = true;
+        break;
+      }
+      const { done, value } = chunk;
       if (done) break;
       received += value.byteLength;
       if (received > maxBytes) {

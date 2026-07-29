@@ -1540,3 +1540,62 @@ describe("matchSchemaOperation", () => {
     });
   });
 });
+
+describe("body-read deadline (#8655)", () => {
+  // safetyCheckedFetch's abort timer is cleared in a `finally` that runs when
+  // the response HEADERS arrive, so nothing was watching the clock while the
+  // body streamed. `sse` is a callable surface kind, so calling one
+  // (allways-sse in production) hung until the platform killed the request and
+  // the agent got a bare "internal_error: The tool failed to complete".
+  // Reproduced against production before fixing: the call never returned.
+  const endlessStream = () =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("data: first\n\n"));
+          // …and then never closes, exactly like a real event stream.
+        },
+      }),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+
+  const surface = {
+    url: "https://example.com/stream",
+    probe: { method: "GET", timeout_ms: 300 },
+  };
+
+  test("a never-ending body returns truncated instead of hanging", async () => {
+    const started = Date.now();
+    const result = await callSubnetSurface(surface, {
+      isUnsafeUrl: SAFE,
+      fetchImpl: async () => endlessStream(),
+    });
+    const elapsed = Date.now() - started;
+    // The point of the test: it comes back at all.
+    assert.ok(
+      elapsed < 5000,
+      `took ${elapsed}ms -- the read is still unbounded`,
+    );
+    assert.equal((result as Row).truncated, true);
+  });
+
+  test("what it did read is still returned, not discarded", async () => {
+    // A truncated event stream is useful to an agent; failing outright is not.
+    const result = await callSubnetSurface(surface, {
+      isUnsafeUrl: SAFE,
+      fetchImpl: async () => endlessStream(),
+    });
+    assert.match(JSON.stringify(result), /first/);
+  });
+
+  test("a normal body is unaffected and never reports truncated", async () => {
+    const result = await callSubnetSurface(
+      {
+        url: "https://example.com/api",
+        probe: { method: "GET", timeout_ms: 5000 },
+      },
+      { isUnsafeUrl: SAFE, fetchImpl: async () => jsonResponse({ ok: true }) },
+    );
+    assert.notEqual((result as Row).truncated, true);
+  });
+});
