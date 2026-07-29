@@ -237,10 +237,15 @@ function base64UrlDecodeToBytes(encoded: string): Uint8Array {
 
 export async function createSessionToken(
   secret: string,
-  { accountId, ss58 }: { accountId: number; ss58: string },
+  { accountId, ss58 }: { accountId: number | string; ss58: string },
 ): Promise<string> {
   const payload = {
-    account_id: accountId,
+    // #8607: NORMALISED, because the caller hands us whatever Postgres
+    // returned. rpc_accounts.id is a BIGSERIAL and the driver surfaces it as
+    // a STRING ("1"), so the token used to carry `"account_id":"1"` while
+    // verifySessionToken required a number -- and rejected every session it
+    // had just issued. Nobody could reach any /api/v1/keys route.
+    account_id: Number(accountId),
     ss58,
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
@@ -276,16 +281,31 @@ export async function verifySessionToken(
   } catch {
     return null;
   }
+  // #8607: accept a numeric STRING as well as a number. Normalising at mint
+  // time (above) fixes what we issue, but a token is a credential that outlives
+  // the deploy that made it, and the whole class of bug here was a type
+  // mismatch between what Postgres returns and what this shape check demanded.
+  // Accepting both costs nothing -- the HMAC is what authenticates; this is a
+  // shape check, not an authorisation one -- and means a token minted by the
+  // previous build keeps working for the rest of its hour.
+  const accountId =
+    typeof payload?.account_id === "number"
+      ? payload.account_id
+      : typeof payload?.account_id === "string" &&
+          /^\d+$/.test(payload.account_id)
+        ? Number(payload.account_id)
+        : null;
   if (
     !payload ||
-    typeof payload.account_id !== "number" ||
+    accountId === null ||
+    !Number.isFinite(accountId) ||
     typeof payload.ss58 !== "string" ||
     typeof payload.exp !== "number"
   ) {
     return null;
   }
   if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-  return { accountId: payload.account_id, ss58: payload.ss58 };
+  return { accountId, ss58: payload.ss58 };
 }
 
 // --- watch trigger-creation tokens (#8374) --------------------------------
