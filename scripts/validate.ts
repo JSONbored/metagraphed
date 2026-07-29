@@ -31,6 +31,7 @@ import {
   stableStringify,
   subnetSurfaceKey,
   findUnmaterializedMaintainerReviews,
+  loadSurfaceProbeEvidence,
 } from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
@@ -963,8 +964,10 @@ async function validateGeneratedArtifacts(
   // #1006: mirror the build's per-surface freshness stamp (last_verified_at is
   // added inside flattenSurfaces; `stale` is computed against the same committed
   // captured_at) so the per-subnet detail artifact stays reproducible.
+  // #8689: same probe evidence the build uses, via the same loader.
+  const surfaceProbeEvidence = await loadSurfaceProbeEvidence();
   const surfaces = withSurfaceFreshness(
-    flattenSurfaces(activeOverlays),
+    flattenSurfaces(activeOverlays, surfaceProbeEvidence),
     Date.parse(nativeSnapshot.captured_at),
   );
   // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate

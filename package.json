@@ -32,6 +32,8 @@
     "discover:candidates:dry-run": "node scripts/discover-candidates.ts --dry-run",
     "discover:testnet": "node scripts/discover-testnet-surfaces.ts",
     "verify:candidates": "node scripts/verify-candidates.ts --write",
+    "sync:surface-verification": "node scripts/sync-surface-verification.ts --write",
+    "sync:surface-verification:dry-run": "node scripts/sync-surface-verification.ts --dry-run",
     "verify:candidates:dry-run": "node scripts/verify-candidates.ts --dry-run",
     "curate:baseline": "node scripts/curate-baseline.ts --write",
     "curate:baseline:dry-run": "node scripts/curate-baseline.ts --dry-run",

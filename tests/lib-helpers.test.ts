@@ -1743,6 +1743,100 @@ describe("flattenSurfaces curation_level (#1757)", () => {
   });
 });
 
+describe("flattenSurfaces probe-derived verification (#8689)", () => {
+  // Before this, `machine-verified` was a tier the codebase could compute but
+  // that nothing could produce: last_verified_at came ONLY from a hand-edited
+  // registry field, so the live registry reported ZERO machine-verified
+  // surfaces against 623 eligible ones. These tests pin the wiring that fixed
+  // it, end to end through flattenSurfaces.
+  const PASSING = {
+    day_count: 19,
+    samples: 1561,
+    uptime_ratio: 0.9981,
+    last_ok: "2026-07-29T13:00:55.953Z",
+    classification: null,
+  };
+
+  const subnetWith = (surface: Record<string, unknown>) => [
+    {
+      netuid: 7,
+      slug: "seven",
+      name: "Seven",
+      curation: { level: "candidate-discovered", verified_at: null },
+      surfaces: [
+        {
+          id: "sn-7-api",
+          kind: "subnet-api",
+          url: "https://a.example",
+          ...surface,
+        },
+      ],
+    },
+  ];
+
+  test("probe evidence promotes a community surface to machine-verified", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {
+      "sn-7-api": PASSING,
+    });
+    assert.equal(row.last_verified_at, PASSING.last_ok);
+    assert.equal(row.curation_level, "machine-verified");
+    // Verification state changed; PROVENANCE did not. A community surface that
+    // probes healthy is machine-verified, never official -- laundering
+    // authority through a probe would let anyone mint "official" by keeping a
+    // URL up.
+    assert.equal(row.authority, "community");
+  });
+
+  test("no evidence leaves the surface exactly as it was before #8689", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {});
+    assert.equal(row.last_verified_at, null);
+    assert.equal(row.curation_level, "candidate-discovered");
+  });
+
+  test("evidence below the bar does not promote", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {
+      "sn-7-api": { ...PASSING, day_count: 2 },
+    });
+    assert.equal(row.last_verified_at, null);
+    assert.equal(row.curation_level, "candidate-discovered");
+  });
+
+  test("a hand-authored verification still outranks probe evidence", () => {
+    // A maintainer who vetted this exact surface knows more than our prober.
+    const [row] = flattenSurfaces(
+      subnetWith({
+        authority: "official",
+        verification: { verified_at: "2026-06-01T00:00:00Z" },
+      }),
+      { "sn-7-api": PASSING },
+    );
+    assert.equal(row.last_verified_at, "2026-06-01T00:00:00Z");
+  });
+
+  test("a CONFIRMED-DEAD surface loses verification even if hand-authored", () => {
+    // The #8658 complaint: a dead surface must stop being advertised as
+    // verified immediately, not coast until its freshness TTL expires. Live
+    // evidence outranks a historical hand-edit about whether a thing exists.
+    const [row] = flattenSurfaces(
+      subnetWith({
+        authority: "official",
+        verification: { verified_at: "2026-06-01T00:00:00Z" },
+      }),
+      { "sn-7-api": { ...PASSING, classification: "dead" } },
+    );
+    assert.equal(row.last_verified_at, null);
+    assert.notEqual(row.curation_level, "machine-verified");
+    assert.equal(row.authority, "official", "authority is still untouched");
+  });
+
+  test("evidence for a DIFFERENT surface id never leaks across", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {
+      "sn-7-other": PASSING,
+    });
+    assert.equal(row.last_verified_at, null);
+  });
+});
+
 describe("withSurfaceFreshness curation_level re-resolution (#1757)", () => {
   const nowMs = Date.parse("2026-06-24T00:00:00Z");
 

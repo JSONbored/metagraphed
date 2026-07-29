@@ -14,6 +14,11 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
 import { entityLabelsIndex } from "../src/entity-labels.ts";
+import {
+  isProbeDemoted,
+  verifyFromProbeEvidence,
+  type SurfaceProbeRecord,
+} from "../src/surface-verification.ts";
 import { sanitizeChainText, slugify } from "./lib/formatting.ts";
 
 type Row = Record<string, unknown>;
@@ -794,6 +799,34 @@ export async function loadCandidates(
   );
 }
 
+/**
+ * Per-surface probe evidence for machine verification (#8689), keyed by
+ * surface id. Written by scripts/sync-surface-verification.ts from the live
+ * cron prober's per-surface uptime history.
+ *
+ * A MISSING or unreadable file yields `{}`, which means every surface falls
+ * back to hand-authored verification exactly as before this existed. That is
+ * the correct failure mode: an absent snapshot must never mass-DEMOTE the
+ * registry, and it must never mass-promote it either. Both callers
+ * (build-artifacts and validate) go through here so they cannot disagree about
+ * the evidence and fail parity.
+ */
+export async function loadSurfaceProbeEvidence(): Promise<
+  Record<string, SurfaceProbeRecord>
+> {
+  try {
+    const artifact = await readJson(
+      path.join(repoRoot, "registry/verification/surface-health.json"),
+    );
+    const surfaces = artifact?.surfaces;
+    return surfaces && typeof surfaces === "object"
+      ? (surfaces as Record<string, SurfaceProbeRecord>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function loadVerification(
   options: { preferDetailed?: boolean } = {},
 ): Promise<Row> {
@@ -886,7 +919,10 @@ export function resolveSurfaceCurationLevel({
   return "native";
 }
 
-export function flattenSurfaces(subnets: Row[]): Row[] {
+export function flattenSurfaces(
+  subnets: Row[],
+  surfaceProbeEvidence: Record<string, SurfaceProbeRecord> = {},
+): Row[] {
   return subnets
     .flatMap((subnet) =>
       (subnet.surfaces as Row[]).map((surface) => {
@@ -898,16 +934,40 @@ export function flattenSurfaces(subnets: Row[]): Row[] {
         };
         // #1005: a stable identity decoupled from the hand-authored display id.
         flattened.key = surfaceStableKey(flattened);
+        // #8689: probe evidence from the 15-minute cron prober
+        // (registry/verification/surface-health.json). This is the rung that
+        // was missing: before it, `last_verified_at` could ONLY come from a
+        // hand-edited registry field, so `machine-verified` was a tier nothing
+        // could produce -- the live registry reported exactly ZERO of them
+        // against 623 eligible surfaces. See src/surface-verification.ts.
+        //
+        // Ranked BELOW a hand-authored per-surface verification and ABOVE the
+        // inherited subnet-curation date: a maintainer who vetted this exact
+        // surface knows more than our prober, but a passing probe is stronger
+        // evidence about THIS surface than a date attached to the whole subnet.
+        const probeRecord = surfaceProbeEvidence[String(surface.id ?? "")];
+        const probeVerdict = verifyFromProbeEvidence(probeRecord);
+        // A surface the prober has CONFIRMED dead loses verification outright,
+        // overriding even a hand-authored date. Staleness and deadness are
+        // different failures: a stale verification means "we have not looked
+        // recently" and correctly ages out via the per-kind TTL, but a dead
+        // surface means "we looked, and it is gone" -- and continuing to
+        // advertise that as verified for the rest of the TTL is exactly the
+        // complaint in #8658's title. Live evidence outranks a historical
+        // hand-edit when the two disagree about whether something still exists.
+        const confirmedDead = isProbeDemoted(probeRecord);
         // #1006: the as-of timestamp every served surface should carry. A
         // per-surface verification wins; otherwise only official surfaces may
         // inherit subnet curation verified_at (when a maintainer last vetted the
         // overlay). Community-submitted/provider-claimed surfaces stay
         // unverified until they carry their own probe verification.
-        flattened.last_verified_at =
-          (surface.verification as Row | undefined)?.verified_at ??
-          (surface.authority === "official"
-            ? ((subnet.curation as Row | undefined)?.verified_at ?? null)
-            : null);
+        flattened.last_verified_at = confirmedDead
+          ? null
+          : ((surface.verification as Row | undefined)?.verified_at ??
+            probeVerdict.verifiedAt ??
+            (surface.authority === "official"
+              ? ((subnet.curation as Row | undefined)?.verified_at ?? null)
+              : null));
         // #1757: the resolved trust tier for this surface. `stale` is stamped
         // later (withSurfaceFreshness, which carries the nowMs reference), so a
         // surface fresh at flatten time may still resolve down a tier once the
