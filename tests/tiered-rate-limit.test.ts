@@ -10,6 +10,7 @@ import {
 } from "../workers/tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { AI_TIERED_RATE_LIMIT } from "../src/ai-search.ts";
+import { STATE_QUERY_TIERED_RATE_LIMIT } from "../workers/request-handlers/rpc-proxy.ts";
 import type { Row } from "./row-type.ts";
 
 const ANONYMOUS = { envVar: "TEST_ANON_LIMITER", limit: 60, windowSeconds: 60 };
@@ -323,6 +324,86 @@ describe("applyTieredRateLimit with the AI search/ask surface config (#8521)", (
     );
     assert.equal(result.allowed, true);
     assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+  });
+});
+
+describe("applyTieredRateLimit with the state-query surface config (#8522)", () => {
+  test("a keyed state-query request rides the higher STATE_QUERY_RATE_LIMITER_KEYED tier above the anonymous ceiling", async () => {
+    const keyedCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      STATE_QUERY_RATE_LIMITER: { limit: async () => ({ success: false }) },
+      STATE_QUERY_RATE_LIMITER_KEYED: {
+        limit: async (args: unknown) => {
+          keyedCalls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/rpc/v1/finney", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${VALID_KEY}`,
+        "cf-connecting-ip": "203.0.113.9",
+      },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      STATE_QUERY_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+    assert.deepEqual(keyedCalls, [{ key: "state:42" }]);
+  });
+
+  test("the anonymous ceiling is unchanged -- 20/60s, keyed by state:<ip> via STATE_QUERY_RATE_LIMITER (regression)", async () => {
+    const anonCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      STATE_QUERY_RATE_LIMITER: {
+        limit: async (args: unknown) => {
+          anonCalls.push(args);
+          return { success: false };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/rpc/v1/finney", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "203.0.113.9" },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      STATE_QUERY_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, false);
+    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.anonymous);
+    assert.equal(result.policy.limit, 20);
+    assert.equal(result.policy.windowSeconds, 60);
+    assert.equal(result.accountId, null);
+    assert.deepEqual(anonCalls, [{ key: "state:203.0.113.9" }]);
+  });
+
+  test("a keyed state-query request fails open when STATE_QUERY_RATE_LIMITER_KEYED is unprovisioned", async () => {
+    const env = {
+      ...envWithKeyVerify(),
+      STATE_QUERY_RATE_LIMITER: { limit: async () => ({ success: true }) },
+      // STATE_QUERY_RATE_LIMITER_KEYED intentionally absent (pre-provision deploy).
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/rpc/v1/finney", {
+      method: "POST",
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      STATE_QUERY_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
     assert.equal(result.accountId, "42");
   });
 });
