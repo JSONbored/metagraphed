@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOgImageUrl, routeOwnsOgImage } from "./lib/metagraphed/og-card";
-import { sitemapLastmod } from "./server";
+import { SEO_DEFAULT_TAGS, sitemapLastmod } from "./server";
 
 // #8624. These are the SEO properties that were silently wrong in production and
 // that nothing was asserting: every /docs/* page shared one OG card, and the
@@ -55,5 +55,24 @@ describe("docs cards are OURS, not an entity's (#8624)", () => {
   it("still defaults to entity=1, so the entity routes are unaffected", () => {
     const url = new URL(buildOgImageUrl({ title: "Chutes", eyebrow: "Subnet" }));
     expect(url.searchParams.get("entity")).toBe("1");
+  });
+});
+
+describe("site-wide crawler + attribution defaults (#8626)", () => {
+  it("carries the directives the OG cards depend on, and the X attribution", () => {
+    // max-image-preview:large is the load-bearing one: without it Google caps
+    // the preview to a thumbnail, which wastes the per-page card programme.
+    expect(SEO_DEFAULT_TAGS).toContain("max-image-preview:large");
+    expect(SEO_DEFAULT_TAGS).toContain('name="robots"');
+    expect(SEO_DEFAULT_TAGS).toContain('content="en_US"');
+    expect(SEO_DEFAULT_TAGS).toContain('name="twitter:site" content="@metagraphed"');
+    expect(SEO_DEFAULT_TAGS).toContain('name="twitter:creator" content="@metagraphed"');
+  });
+
+  it("never emits noindex itself — a route's own noindex must be free to win", () => {
+    // Crawlers take the most restrictive directive when tags conflict, so this
+    // block sitting alongside entityNotFoundMeta's `noindex` is safe. It would
+    // NOT be safe the other way round.
+    expect(SEO_DEFAULT_TAGS).not.toContain("noindex");
   });
 });
