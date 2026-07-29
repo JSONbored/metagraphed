@@ -811,15 +811,18 @@ export async function loadCandidates(
  * (build-artifacts and validate) go through here so they cannot disagree about
  * the evidence and fail parity.
  */
-export async function loadSurfaceProbeEvidence(): Promise<
-  Record<string, SurfaceProbeRecord>
-> {
+export const SURFACE_HEALTH_PATH = "registry/verification/surface-health.json";
+
+export async function loadSurfaceProbeEvidence(
+  filePath: string = path.join(repoRoot, SURFACE_HEALTH_PATH),
+): Promise<Record<string, SurfaceProbeRecord>> {
   try {
-    const artifact = await readJson(
-      path.join(repoRoot, "registry/verification/surface-health.json"),
-    );
+    const artifact = await readJson(filePath);
     const surfaces = artifact?.surfaces;
-    return surfaces && typeof surfaces === "object"
+    // An array is `typeof "object"` too, and would silently index by numeric
+    // string, matching nothing -- rejected explicitly so a malformed snapshot
+    // reads as "no evidence" rather than as a map that never matches.
+    return surfaces && typeof surfaces === "object" && !Array.isArray(surfaces)
       ? (surfaces as Record<string, SurfaceProbeRecord>)
       : {};
   } catch {
@@ -945,7 +948,14 @@ export function flattenSurfaces(
         // inherited subnet-curation date: a maintainer who vetted this exact
         // surface knows more than our prober, but a passing probe is stronger
         // evidence about THIS surface than a date attached to the whole subnet.
-        const probeRecord = surfaceProbeEvidence[String(surface.id ?? "")];
+        // The id is the join key, so an idless surface must miss the lookup
+        // entirely. `String(surface.id ?? "")` would coerce to "" and match an
+        // evidence row keyed the same way, promoting every idless surface at
+        // once off one malformed snapshot entry.
+        const probeRecord =
+          typeof surface.id === "string" && surface.id
+            ? surfaceProbeEvidence[surface.id]
+            : undefined;
         const probeVerdict = verifyFromProbeEvidence(probeRecord);
         // A surface the prober has CONFIRMED dead loses verification outright,
         // overriding even a hand-authored date. Staleness and deadness are

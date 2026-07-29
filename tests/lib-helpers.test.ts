@@ -41,6 +41,7 @@ import {
   writeJson,
   resolveSurfaceCurationLevel,
   flattenSurfaces,
+  loadSurfaceProbeEvidence,
   withSurfaceFreshness,
   resolveBaseRemote,
   dirtyTrackedPaths,
@@ -1827,6 +1828,75 @@ describe("flattenSurfaces probe-derived verification (#8689)", () => {
     assert.equal(row.last_verified_at, null);
     assert.notEqual(row.curation_level, "machine-verified");
     assert.equal(row.authority, "official", "authority is still untouched");
+  });
+
+  test("loadSurfaceProbeEvidence reads the snapshot's surfaces map", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "mg-surface-health-"));
+    const file = path.join(dir, "surface-health.json");
+    writeFileSync(file, JSON.stringify({ surfaces: { "sn-7-api": PASSING } }));
+    assert.deepEqual(await loadSurfaceProbeEvidence(file), {
+      "sn-7-api": PASSING,
+    });
+  });
+
+  test("a missing or malformed snapshot yields no evidence, never a throw", async () => {
+    // The failure mode that matters: an absent snapshot must leave every
+    // surface on its hand-authored verification exactly as before #8689 -- it
+    // must not mass-demote the registry, and it must not mass-promote it.
+    const dir = mkdtempSync(path.join(tmpdir(), "mg-surface-health-bad-"));
+    assert.deepEqual(
+      await loadSurfaceProbeEvidence(path.join(dir, "absent.json")),
+      {},
+    );
+
+    for (const body of [
+      "{}",
+      '{"surfaces": null}',
+      '{"surfaces": []}', // an array is typeof "object" but indexes nothing
+      '{"surfaces": "nope"}',
+      "not json at all",
+    ]) {
+      const file = path.join(dir, `bad-${body.length}.json`);
+      writeFileSync(file, body);
+      assert.deepEqual(await loadSurfaceProbeEvidence(file), {}, body);
+    }
+  });
+
+  test("the committed snapshot is readable and joins to real surface ids", async () => {
+    // Guards the default path: a rename of registry/verification/
+    // surface-health.json would otherwise silently return {} and quietly undo
+    // every promotion, with nothing failing.
+    const evidence = await loadSurfaceProbeEvidence();
+    assert.ok(
+      Object.keys(evidence).length > 0,
+      "the committed surface-health.json snapshot loads",
+    );
+  });
+
+  test("a surface with no id is never matched by probe evidence", () => {
+    // The id is the join key. An idless surface must miss the lookup entirely
+    // rather than coercing to "" and colliding with any evidence row that
+    // happened to be keyed the same way.
+    const [row] = flattenSurfaces(
+      [
+        {
+          netuid: 7,
+          slug: "seven",
+          name: "Seven",
+          curation: { level: "candidate-discovered", verified_at: null },
+          surfaces: [
+            {
+              kind: "subnet-api",
+              url: "https://a.example",
+              authority: "community",
+            },
+          ],
+        },
+      ],
+      { "": PASSING, "sn-7-api": PASSING },
+    );
+    assert.equal(row.last_verified_at, null);
+    assert.equal(row.curation_level, "candidate-discovered");
   });
 
   test("evidence for a DIFFERENT surface id never leaks across", () => {
