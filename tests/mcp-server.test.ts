@@ -20813,3 +20813,53 @@ describe("get_coverage_depth MCP tool (#6983)", () => {
     assert.equal(res.body.result.structuredContent.error.code, "not_found");
   });
 });
+
+describe("tools that require one of two identifiers advertise it (#8636)", () => {
+  // Found by calling every tool with no `required` args using `{}`: these two
+  // were the only ones that rejected it. Both take either of two identifiers
+  // and need one, but both are `.optional()` in Zod, so the generated schema
+  // declared nothing required — an agent reads "callable with no arguments",
+  // calls it empty, and gets invalid_params.
+  const cases: Array<[string, string[]]> = [
+    ["how_do_i_call", ["netuid", "subnet"]],
+    ["verify_integration", ["surface_id", "netuid"]],
+  ];
+
+  for (const [name, keys] of cases) {
+    test(`${name} declares anyOf over ${keys.join(" | ")}`, () => {
+      const tool = MCP_TOOLS.find((t) => t.name === name);
+      assert.ok(tool, `${name} is registered`);
+      const schema = tool!.inputSchema as Row;
+      assert.deepEqual(
+        schema.anyOf,
+        keys.map((key) => ({ required: [key] })),
+      );
+      // The properties themselves stay optional — anyOf carries the constraint,
+      // so neither key becomes unconditionally mandatory.
+      assert.equal(schema.required, undefined);
+      for (const key of keys) {
+        assert.ok(
+          (schema.properties as Row)[key],
+          `${key} is still a property`,
+        );
+      }
+    });
+  }
+
+  test("every other zero-required tool really is callable with no arguments", () => {
+    // The guard against regressing the other way: if a tool grows a
+    // mandatory argument, it must say so in `required` or `anyOf` rather than
+    // only failing at call time.
+    const advertisesNothing = MCP_TOOLS.filter((t) => {
+      const schema = t.inputSchema as Row;
+      return !schema.required && !schema.anyOf;
+    });
+    const named = new Set(cases.map(([name]) => name));
+    for (const tool of advertisesNothing) {
+      assert.ok(
+        !named.has(tool.name),
+        `${tool.name} should advertise its constraint`,
+      );
+    }
+  });
+});

@@ -3066,6 +3066,30 @@ function withoutSchemaMeta(schema: Row): Row {
 // Tool registry. Each tool is a thin wrapper over artifact/KV reads.
 // ---------------------------------------------------------------------------
 
+/**
+ * Express "at least one of these properties" in the JSON Schema an agent reads
+ * (#8636).
+ *
+ * Some tools accept either of two identifiers and require one -- `how_do_i_call`
+ * takes netuid OR subnet, `verify_integration` takes surface_id OR netuid --
+ * but both are `.optional()` in Zod, so the generated schema declared NOTHING
+ * required. An agent reading it sees a tool callable with no arguments, calls
+ * it empty, and gets `invalid_params`. Found by calling every no-required-arg
+ * tool with `{}`: these two were the only ones that rejected it.
+ *
+ * A Zod `.refine()` cannot fix this -- z.toJSONSchema drops refinements
+ * silently, so the constraint would still be invisible. `anyOf` with bare
+ * `required` clauses is the standard JSON Schema spelling and is what clients
+ * actually validate against, while leaving Zod parsing (and the inferred TS
+ * input type) untouched.
+ */
+function requireAnyOf(
+  schema: Record<string, unknown>,
+  keys: string[],
+): Record<string, unknown> {
+  return { ...schema, anyOf: keys.map((key) => ({ required: [key] })) };
+}
+
 export const MCP_TOOLS: McpToolDefinition[] = [
   {
     name: "search_subnets",
@@ -9658,9 +9682,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "last-known health — plus next steps. Accepts a netuid or a slug/chain " +
       "name. When a subnet exposes nothing callable, says so and points to its " +
       "profile. Pairs with find_subnet_for_task / search_subnets.",
-    inputSchema: z.toJSONSchema(HowDoICallInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: requireAnyOf(
+      z.toJSONSchema(HowDoICallInputSchema, { target: "draft-2020-12" }),
+      ["netuid", "subnet"],
+    ),
     async handler(args: z.infer<typeof HowDoICallInputSchema>, ctx: McpCtx) {
       const netuid = await resolveNetuid(ctx, args);
       const staticDetail = await loadArtifactData(
@@ -9749,9 +9774,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     title: "Verify a surface is callable right now",
     description:
       'Live-probe a single catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
-    inputSchema: z.toJSONSchema(VerifyIntegrationInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: requireAnyOf(
+      z.toJSONSchema(VerifyIntegrationInputSchema, { target: "draft-2020-12" }),
+      ["surface_id", "netuid"],
+    ),
     async handler(
       args: z.infer<typeof VerifyIntegrationInputSchema>,
       ctx: McpCtx,
