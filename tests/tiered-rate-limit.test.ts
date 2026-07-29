@@ -9,6 +9,7 @@ import {
   tieredRateLimitHeaders,
 } from "../workers/tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
+import { AI_TIERED_RATE_LIMIT } from "../src/ai-search.ts";
 import type { Row } from "./row-type.ts";
 
 const ANONYMOUS = { envVar: "TEST_ANON_LIMITER", limit: 60, windowSeconds: 60 };
@@ -239,6 +240,89 @@ describe("applyTieredRateLimit with the MCP surface config (#8520)", () => {
     );
     assert.equal(result.allowed, true);
     assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+  });
+});
+
+describe("applyTieredRateLimit with the AI search/ask surface config (#8521)", () => {
+  test("a keyed AI request rides the higher AI_RATE_LIMITER_KEYED tier above the anonymous ceiling", async () => {
+    const keyedCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      // anonymous tier is exhausted (rejects); a valid key must NOT be capped by it.
+      AI_RATE_LIMITER: { limit: async () => ({ success: false }) },
+      AI_RATE_LIMITER_KEYED: {
+        limit: async (args: unknown) => {
+          keyedCalls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/api/v1/ask", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${VALID_KEY}`,
+        "cf-connecting-ip": "203.0.113.9",
+      },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      AI_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+    // keyed by accountId under the ai: prefix, and the anon limiter is untouched.
+    assert.deepEqual(keyedCalls, [{ key: "ai:42" }]);
+  });
+
+  test("the anonymous ceiling is unchanged -- 20/60s, keyed by ai:<ip> via AI_RATE_LIMITER (regression)", async () => {
+    const anonCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      AI_RATE_LIMITER: {
+        limit: async (args: unknown) => {
+          anonCalls.push(args);
+          return { success: false };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/search/semantic?q=x",
+      { headers: { "cf-connecting-ip": "203.0.113.9" } },
+    );
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      AI_TIERED_RATE_LIMIT,
+    );
+    // No key -> anonymous tier, still cut off at the same 20/60s IP-keyed ceiling.
+    assert.equal(result.allowed, false);
+    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.anonymous);
+    assert.equal(result.policy.limit, 20);
+    assert.equal(result.policy.windowSeconds, 60);
+    assert.equal(result.accountId, null);
+    assert.deepEqual(anonCalls, [{ key: "ai:203.0.113.9" }]);
+  });
+
+  test("a keyed AI request fails open when AI_RATE_LIMITER_KEYED is unprovisioned", async () => {
+    const env = {
+      ...envWithKeyVerify(),
+      AI_RATE_LIMITER: { limit: async () => ({ success: true }) },
+      // AI_RATE_LIMITER_KEYED intentionally absent (pre-provision deploy).
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/api/v1/ask", {
+      method: "POST",
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      AI_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
     assert.equal(result.accountId, "42");
   });
 });

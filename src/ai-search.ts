@@ -11,6 +11,7 @@
 // and question length.
 
 import type { StorageReadResult } from "../workers/storage.ts";
+import type { TieredRateLimitConfig } from "../workers/tiered-rate-limit.ts";
 import { recordAiGenerationEvent } from "./usage-telemetry.ts";
 
 // Best free Workers AI models (verified available on the account):
@@ -85,8 +86,23 @@ export function aiEnabled(env: Env): boolean {
   return env?.METAGRAPH_ENABLE_AI === "true" && aiConfigured(env);
 }
 
+// #8521: tiered rate limiting for the AI search/ask surface, mirroring
+// workers/api.ts's DATA_TIERED_RATE_LIMIT. Anonymous callers keep the existing
+// 20/60s IP-keyed ceiling (AI_RATE_LIMITER); a valid mg_... key rides the 5x
+// account-keyed tier (AI_RATE_LIMITER_KEYED). The "ai" prefix namespaces the
+// bucket so it never collides with another surface sharing a binding. Consumed
+// by handleSemanticSearchRequest / handleAskRequest in workers/api.ts; fails
+// open when a binding is absent, like every limiter here.
+export const AI_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: { envVar: "AI_RATE_LIMITER", limit: 20, windowSeconds: 60 },
+  keyed: { envVar: "AI_RATE_LIMITER_KEYED", limit: 100, windowSeconds: 60 },
+  keyPrefix: "ai",
+};
+
 // Optional native Workers rate limiter. Absent in local/CI (and when the
-// binding is not configured) -> allow. Never throws.
+// binding is not configured) -> allow. Never throws. Still used by the MCP AI
+// tool path (src/mcp-server.ts); the REST AI endpoints now use the tiered
+// AI_TIERED_RATE_LIMIT above via applyTieredRateLimit.
 export async function withinRateLimit(env: Env, key: string): Promise<boolean> {
   if (!env?.AI_RATE_LIMITER?.limit) return true;
   try {
