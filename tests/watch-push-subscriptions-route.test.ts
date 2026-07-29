@@ -224,11 +224,11 @@ test("POST push-subscriptions: 409 at the device cap", async () => {
   assert.equal(res.status, 409);
 });
 
-test("POST push-subscriptions: re-subscribing the SAME endpoint upserts past the cap", async () => {
-  // Browsers reissue the same endpoint for an unchanged subscription, so a
-  // routine re-subscribe must not read as "device limit reached".
+test("POST push-subscriptions: the SAME owner re-subscribing upserts without spending cap", async () => {
+  // A browser reissues its own endpoint on key rotation, so charging it
+  // against the cap again would surface as a bogus "device limit reached".
   mockQueue.current = [
-    [{ id: 4 }], // existing row for this endpoint
+    [{ id: 4, address: SS58 }], // existing row, owned by THIS caller
     [
       {
         id: 4,
@@ -245,8 +245,82 @@ test("POST push-subscriptions: re-subscribing the SAME endpoint upserts past the
     body: JSON.stringify({ endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH }),
   });
   assert.equal(res.status, 201);
-  // The cap COUNT query must not even run on the upsert path.
   assert.ok(!sqlCalls.some((c) => /COUNT\(\*\)/.test(c.text)));
+});
+
+test("POST push-subscriptions: 409 when the endpoint belongs to ANOTHER address", async () => {
+  // Endpoints are globally unique. Without an ownership check the upsert
+  // reassigned the row: the original owner silently lost their device, the
+  // taker skipped their own cap, and the taker's triggers would then push to
+  // a browser that never subscribed to them.
+  mockQueue.current = [
+    [{ id: 4, address: "5SomeoneElsesAddress000000000000000000000000000" }],
+  ];
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    method: "POST",
+    headers: await watchHeaders(),
+    body: JSON.stringify({ endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH }),
+  });
+  assert.equal(res.status, 409);
+  // Nothing was written, and the cap was not consulted on a rejected takeover.
+  assert.ok(
+    !sqlCalls.some((c) => /INSERT INTO watch_push_subscriptions/.test(c.text)),
+  );
+  assert.ok(!sqlCalls.some((c) => /COUNT\(\*\)/.test(c.text)));
+});
+
+test("POST push-subscriptions: the upsert can never reassign `address`", async () => {
+  mockQueue.current = [
+    [{ id: 4, address: SS58 }],
+    [
+      {
+        id: 4,
+        endpoint: ENDPOINT,
+        user_agent: null,
+        created_at: 1,
+        last_used_at: null,
+      },
+    ],
+  ];
+  await call("/api/v1/watch/push-subscriptions", {
+    method: "POST",
+    headers: await watchHeaders(),
+    body: JSON.stringify({ endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH }),
+  });
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO watch_push_subscriptions/.test(c.text),
+  )!;
+  // Inspect ONLY the SET list (up to WHERE): the WHERE clause legitimately
+  // mentions address, so a greedy match over the whole statement proves
+  // nothing.
+  const setClause = insert.text.slice(
+    insert.text.indexOf("DO UPDATE SET"),
+    insert.text.indexOf("WHERE watch_push_subscriptions"),
+  );
+  assert.ok(setClause.length > 0, "expected a guarded DO UPDATE SET ... WHERE");
+  assert.ok(
+    !/address\s*=/.test(setClause),
+    `address is reassignable: ${setClause}`,
+  );
+  assert.match(
+    insert.text,
+    /WHERE watch_push_subscriptions\.address = EXCLUDED\.address/,
+  );
+});
+
+test("POST push-subscriptions: 409 rather than an empty 201 if the guarded upsert matches nothing", async () => {
+  // Race: ownership passed the explicit check, then the ON CONFLICT WHERE
+  // rejected the update anyway. Must not emit a 201 with an empty body.
+  mockQueue.current = [
+    [{ id: 4, address: SS58 }],
+    [], // guarded upsert updated nothing
+  ];
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    method: "POST",
+    headers: await watchHeaders(),
+    body: JSON.stringify({ endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH }),
+  });
+  assert.equal(res.status, 409);
 });
 
 // --- owner-facing: delete --------------------------------------------------
@@ -390,4 +464,101 @@ test("internal push-subscription: 405 on an unsupported method", async () => {
     headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
   });
   assert.equal(res.status, 405);
+});
+
+// --- branch completeness -----------------------------------------------------
+// Each of these pins one side of a defensive branch that the happy-path tests
+// above never reach. They are cheap, but they are the difference between "the
+// null-safety is written" and "the null-safety is exercised".
+
+test("GET push-subscriptions: a row with null metadata degrades instead of emitting junk", async () => {
+  // Postgres can hand back nulls for user_agent/created_at/last_used_at, and a
+  // row missing `endpoint` entirely must not serialize as "undefined".
+  mockQueue.current = [[{ id: 5 }]];
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    headers: await watchHeaders(),
+  });
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.deepEqual(body.subscriptions, [
+    {
+      id: "5",
+      endpoint: "",
+      user_agent: null,
+      created_at: null,
+      last_used_at: null,
+    },
+  ]);
+});
+
+test("GET push-subscriptions: numeric timestamps are coerced, not passed through", async () => {
+  mockQueue.current = [
+    [
+      {
+        id: 6,
+        endpoint: ENDPOINT,
+        user_agent: "UA",
+        created_at: "1785000000000",
+        last_used_at: "1785000009999",
+      },
+    ],
+  ];
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    headers: await watchHeaders(),
+  });
+  const body = (await res.json()) as Row;
+  const sub = (body.subscriptions as Row[])[0]!;
+  assert.equal(sub.created_at, 1785000000000);
+  assert.equal(sub.last_used_at, 1785000009999);
+});
+
+test("POST push-subscriptions: 401 without a valid watch token", async () => {
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    method: "POST",
+    body: JSON.stringify({ endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test("DELETE push-subscriptions/{id}: 401 without a valid watch token", async () => {
+  const res = await call("/api/v1/watch/push-subscriptions/9", {
+    method: "DELETE",
+  });
+  assert.equal(res.status, 401);
+});
+
+test("POST push-subscriptions: 400 when body fields are the wrong TYPE, not just absent", async () => {
+  // A JSON number/object where a string belongs must be rejected the same way
+  // a missing field is, rather than being coerced into the query.
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    method: "POST",
+    headers: await watchHeaders(),
+    body: JSON.stringify({ endpoint: 42, p256dh: { a: 1 }, auth: ["x"] }),
+  });
+  assert.equal(res.status, 400);
+});
+
+test("POST push-subscriptions: treats an empty COUNT result as zero devices", async () => {
+  // Defensive: if the aggregate ever returns no row, the cap must read as 0
+  // (allow the write) rather than NaN (which compares false and would also
+  // allow it, but for the wrong reason).
+  mockQueue.current = [
+    [], // no existing row for this endpoint
+    [], // COUNT returned nothing at all
+    [
+      {
+        id: 2,
+        endpoint: ENDPOINT,
+        user_agent: null,
+        created_at: 1,
+        last_used_at: null,
+      },
+    ],
+  ];
+  const res = await call("/api/v1/watch/push-subscriptions", {
+    method: "POST",
+    headers: await watchHeaders(),
+    body: JSON.stringify({ endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH }),
+  });
+  assert.equal(res.status, 201);
 });

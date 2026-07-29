@@ -4575,11 +4575,27 @@ async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
   const now = Date.now();
 
   return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
-    // Re-subscribing the same browser reissues the SAME endpoint, so upsert
-    // rather than reject -- otherwise a routine key rotation would look like
-    // "device limit reached" to the user.
+    // Read the OWNER, not just existence. An endpoint is globally unique, so
+    // without this check a verified address could POST an endpoint already
+    // registered to someone else and the upsert below would silently reassign
+    // it: the original owner loses their device, the taker skips their own
+    // device cap, and the taker's alert triggers start pushing to a browser
+    // that never subscribed to them. Ownership is the thing being enforced
+    // here -- existence alone is not enough.
     const existing = await sql`
-      SELECT id FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
+      SELECT id, address FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
+    const owner = existing[0]?.address as string | undefined;
+
+    if (owner !== undefined && owner !== auth.ss58) {
+      return writeJson(
+        { error: "that endpoint is already registered to another account" },
+        409,
+      );
+    }
+
+    // Only a genuinely NEW device counts against the cap. Re-subscribing the
+    // same browser reissues the same endpoint, so charging it again would
+    // make a routine key rotation look like "device limit reached".
     if (existing.length === 0) {
       const count = await sql`
         SELECT COUNT(*)::int AS n FROM watch_push_subscriptions
@@ -4600,15 +4616,23 @@ async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
         (address, endpoint, p256dh, auth, user_agent, created_at)
       VALUES (${auth.ss58}, ${endpoint}, ${p256dh}, ${authKey}, ${userAgent}, ${now})
       ON CONFLICT (endpoint) DO UPDATE SET
-        address = EXCLUDED.address,
         p256dh = EXCLUDED.p256dh,
         auth = EXCLUDED.auth,
         user_agent = EXCLUDED.user_agent
+      WHERE watch_push_subscriptions.address = EXCLUDED.address
       RETURNING id, endpoint, user_agent, created_at, last_used_at`;
-    return writeJson(
-      { subscription: pushSubscriptionView(rows[0] ?? {}) },
-      201,
-    );
+    // Defense in depth: `address` is no longer reassignable at all (dropped
+    // from the SET list), and the WHERE means a conflicting row owned by
+    // anyone else updates nothing and returns no row. The explicit check
+    // above should already have caught that, so reaching here means a race --
+    // treat it the same way rather than emitting a 201 with an empty body.
+    if (rows.length === 0) {
+      return writeJson(
+        { error: "that endpoint is already registered to another account" },
+        409,
+      );
+    }
+    return writeJson({ subscription: pushSubscriptionView(rows[0]!) }, 201);
   });
 }
 
