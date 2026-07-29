@@ -728,6 +728,24 @@
         "period": 60,
       },
     },
+    // #8523: the keyed-tier ceiling for the same webhook-subscription routes
+    // above -- 5x WEBHOOK_SUBSCRIPTION_RATE_LIMITER's anonymous limit, keyed by
+    // account id instead of client IP (workers/tiered-rate-limit.ts), for a
+    // caller presenting a valid self-serve mg_... API key. A SEPARATE named
+    // binding, not a parameter on WEBHOOK_SUBSCRIPTION_RATE_LIMITER -- one
+    // binding is always one fixed limit/period pair. Deploy prerequisite: this
+    // binding must be provisioned (`wrangler deploy`) before the keyed tier
+    // takes effect; until then applyTieredRateLimit fails OPEN for the keyed
+    // tier (same "skipped when the binding is absent" posture every limiter in
+    // this file already has), never blocking a keyed caller.
+    {
+      "name": "WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED",
+      "namespace_id": "1017",
+      "simple": {
+        "limit": 50,
+        "period": 60,
+      },
+    },
     // Per-client abuse control for the six proxyToDataApi internal-sync write
     // routes (#5549: neurons-sync, backfill-neuron-daily, rollup-account-
     // events-daily, subnet-hyperparams-sync, account-identity-sync,
