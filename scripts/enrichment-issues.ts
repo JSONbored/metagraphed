@@ -12,6 +12,7 @@
 // the surface:add command + CONTRIBUTING, labels gittensor:priority +
 // good first issue + help wanted, and references the #427 tracker.
 import { execFileSync } from "node:child_process";
+import { parseAskedPairs, plannedKindsFor } from "./enrichment-planner.ts";
 
 type Row = Record<string, unknown>;
 
@@ -107,9 +108,25 @@ async function fetchJson(path: string): Promise<Row> {
   return res.json();
 }
 
-// netuids that already have an open "Enrich SN<n>" issue — skip them so we never
-// pile a second task on a subnet the tracker already covers.
-function coveredNetuids(): Set<number> {
+// (netuid, kind) pairs that have ALREADY been asked for -- in ANY state, open
+// or closed (#8676).
+//
+// This used to read `--state open` only, which made closing an Enrich issue the
+// trigger for recreating it. The identical "Enrich SN51 lium.io — add SSE
+// stream" was filed four times (#5179, #6653, #7615, #8662): the weekly cron
+// ran, saw no OPEN issue for SN51, and made another one. A maintainer closing
+// an enrichment task is a DECISION -- usually "this subnet does not expose
+// that, stop asking" -- and re-asking every Wednesday overrode it.
+//
+// Keyed by (netuid, kind) rather than by netuid alone, deliberately: closing
+// "SN51 — add SSE stream" must not also suppress a future "SN51 — add OpenAPI
+// spec" if an OpenAPI candidate later shows up. One answered question stays
+// answered; a genuinely new one can still be asked.
+//
+// A closed issue whose work was actually DONE needs no special handling: the
+// surface is in the manifest, so the kind is no longer missing and the queue
+// never offers it again.
+function askedPairs(): Set<string> {
   try {
     const out = execFileSync(
       "gh",
@@ -117,9 +134,16 @@ function coveredNetuids(): Set<number> {
         "issue",
         "list",
         "--state",
-        "open",
+        "all",
+        // "Enrich in:title", not "Enrich SN in:title": GitHub's search drops
+        // the bare "SN" token, and the two-word form silently matches NOTHING.
+        // Verified against the live tracker -- "Enrich in:title" returns 288
+        // titles, "Enrich SN in:title" returns 0. A dedup query that quietly
+        // matches nothing is worse than no dedup, because it looks like it works.
+        "--search",
+        "Enrich in:title",
         "--limit",
-        "200",
+        "1000",
         "--json",
         "title",
         "-q",
@@ -127,15 +151,10 @@ function coveredNetuids(): Set<number> {
       ],
       { encoding: "utf8" },
     );
-    const covered = new Set<number>();
-    for (const title of out.split("\n")) {
-      const m = /Enrich SN(\d+)\b/.exec(title);
-      if (m) covered.add(Number(m[1]));
-    }
-    return covered;
+    return parseAskedPairs(out.split("\n"), KIND_LABEL);
   } catch (error) {
     console.warn(
-      `warning: could not read open issues for dedup (${(error as Error).message}); proceeding WITHOUT dedup.`,
+      `warning: could not read existing issues for dedup (${(error as Error).message}); proceeding WITHOUT dedup.`,
     );
     return new Set();
   }
@@ -177,18 +196,13 @@ const queue =
     (await fetchJson(`/api/v1/review/enrichment-queue?limit=128`)).data as
       Row | undefined
   )?.queue as Row[] | undefined) || [];
-const covered = coveredNetuids();
+const asked = askedPairs();
 
 const planned: PlannedIssue[] = [];
 for (const entry of queue) {
   if (planned.length >= LIMIT) break;
   const netuid = entry.netuid as number;
-  if (covered.has(netuid)) continue;
-  const missing = ((entry.missing_kinds as string[] | undefined) || [])
-    .filter((k) => KINDS.includes(k))
-    // Lead with the highest-value surface so the surface:add command targets
-    // it: a callable API + its spec matter more to agents than artifacts/streams.
-    .sort((a, b) => VALUE_PRIORITY.indexOf(a) - VALUE_PRIORITY.indexOf(b));
+  const missing = plannedKindsFor(entry, KINDS, asked, VALUE_PRIORITY);
   if (!missing.length) continue;
   // One issue per subnet; ask for its top 2 in-scope missing kinds (the
   // surface:add command targets the first).
@@ -209,7 +223,7 @@ console.log(
       mode: dryRun ? "dry-run" : "write",
       api_base: API_BASE,
       queue_size: queue.length,
-      already_covered: covered.size,
+      already_asked_pairs: asked.size,
       kinds_in_scope: KINDS,
       limit: LIMIT,
       planned_count: planned.length,
