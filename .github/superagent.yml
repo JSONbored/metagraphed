@@ -3,13 +3,17 @@
 prScan:
   enabled: true
 
+# Contributor-trust scoring is DISABLED (2026-07-29), matching JSONbored/loopover and
+# JSONbored/awesome-claude. It does not discriminate here: established repeat contributors with dozens of
+# merged PRs were scored "dangerous" (10/100) on volume and velocity alone. The `trustedAuthors` allowlist
+# that used to sit here was meant to fix exactly that and did NOT work -- a listed author (shin-core) was
+# still flagged `action_required` -- so it has been removed rather than carried along inert and misleading.
+#
+# The verdict also has no consumer any more: LoopOver lists this check under `gate.ignoredCheckRuns`
+# (loopover#9813) on all three gate repos, so a non-passing result no longer gates, pends, or holds
+# anything. The SECURITY SCAN above stays enabled and still gates CI normally.
 contributorTrust:
-  enabled: true
-  blockBelowScore: 30
-  # These are established, high-volume repeat contributors (dozens of merged PRs each) who kept tripping
-  # the trust scorer on volume/velocity alone, not on any real signal. Exempts them from contributor-trust
-  # scoring entirely going forward.
-  trustedAuthors: [dhgoal, shin-core, andriypolanski]
+  enabled: false
 
 comments:
   mode: detailed
