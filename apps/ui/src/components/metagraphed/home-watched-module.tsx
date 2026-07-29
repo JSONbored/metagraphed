@@ -1,9 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Star, Clock } from "lucide-react";
+import { Star, Clock, Rss, Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Panel, HealthPill } from "@jsonbored/ui-kit";
+import { Panel, HealthPill, ExternalLink } from "@jsonbored/ui-kit";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
+import { useApiBase } from "@/hooks/use-api-base";
+import { useCopy } from "@/hooks/use-copy";
+import {
+  encodeWatchFeedIds,
+  buildWatchFeedUrl,
+  WATCH_FEED_FORMATS,
+} from "@/lib/metagraphed/watch-feed";
 import { useSwCacheAge } from "@/hooks/use-sw-cache-age";
 import {
   economicsQuery,
@@ -137,6 +144,64 @@ export function HomeWatchedModule() {
         {watchedSubnets.length > 0 ? <WatchedSubnets netuids={watchedSubnets} /> : null}
         {watchedValidators.length > 0 ? <WatchedValidators hotkeys={watchedValidators} /> : null}
       </div>
+      <WatchFeedSubscribe subnetIds={watchedSubnets} validatorIds={watchedValidators} />
+    </div>
+  );
+}
+
+/**
+ * #8526: "Subscribe to this watchlist" affordance — the UI half of the #8376
+ * per-watchlist feed endpoint (GET /api/v1/feeds/watch?ids=). Mirrors the
+ * per-subnet WatchEntitySheet's format list + the registry-feed RSS affordance:
+ * the current watchlist re-encoded straight into the URL (local-first, no server
+ * round-trip), offered as RSS / Atom / JSON with a copy button. Only rendered
+ * from HomeWatchedModule's non-empty branch, so there is never an empty `ids=`.
+ */
+function WatchFeedSubscribe({
+  subnetIds,
+  validatorIds,
+}: {
+  subnetIds: string[];
+  validatorIds: string[];
+}) {
+  const { base } = useApiBase();
+  const { copied, copy } = useCopy({ label: "watchlist feed url" });
+  const encoded = encodeWatchFeedIds({ subnet: subnetIds, validator: validatorIds });
+  // Defensive: HomeWatchedModule only renders this in its non-empty branch, but
+  // keep the guard so the component is safe to render anywhere.
+  if (!encoded) return null;
+  const rssUrl = buildWatchFeedUrl(base, encoded, ".rss");
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2 mg-type-caption text-ink-muted">
+      <span className="inline-flex items-center gap-1.5">
+        <Rss className="size-3 shrink-0 text-accent" aria-hidden />
+        Subscribe to this watchlist
+      </span>
+      <span className="inline-flex flex-wrap items-center gap-2">
+        {WATCH_FEED_FORMATS.map((fmt) => {
+          const href = buildWatchFeedUrl(base, encoded, fmt.suffix);
+          return href ? (
+            <ExternalLink key={fmt.suffix} href={href} className="text-accent-text hover:underline">
+              {fmt.label}
+            </ExternalLink>
+          ) : null;
+        })}
+        {rssUrl ? (
+          <button
+            type="button"
+            onClick={() => copy(rssUrl)}
+            aria-label="Copy watchlist RSS feed URL"
+            className="mg-focus-ring inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-ink-muted transition-colors hover:bg-surface hover:text-ink-strong"
+          >
+            {copied ? (
+              <Check className="size-3 text-health-ok" aria-hidden />
+            ) : (
+              <Copy className="size-3" aria-hidden />
+            )}
+            {copied ? "Copied" : "Copy URL"}
+          </button>
+        ) : null}
+      </span>
     </div>
   );
 }
