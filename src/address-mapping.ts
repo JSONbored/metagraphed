@@ -24,7 +24,7 @@ const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 const FINNEY_SS58_PREFIX = 42;
 
 // Caller shape-checks h160 with this before calling loadAddressMapping,
-// same split src/account-balance.mjs's isFinneySs58Address/loadAccountBalance
+// same split src/account-balance.ts's isFinneySs58Address/loadAccountBalance
 // pair already establishes.
 export const H160_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 

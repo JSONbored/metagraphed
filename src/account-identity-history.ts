@@ -1,11 +1,11 @@
 // Personal (coldkey) chain identity history diff-tracking (#4326, epic
 // #4301/5.2): detect account_identity changes against the last recorded hash
 // per account. The append-only write itself lives entirely in Postgres now
-// (workers/data-api.mjs's handleAccountIdentitySync does its own diff-and-
+// (workers/data-api.ts's handleAccountIdentitySync does its own diff-and-
 // append against Postgres's account_identity_history directly) -- this
 // file's own D1-side diff-and-append (recordAccountIdentityChanges) never had
 // a production caller (only ever invoked via loadStagedAccountIdentity, which
-// was removed in the D1→Postgres cutover #4772 — see workers/api.mjs's
+// was removed in the D1→Postgres cutover #4772 — see workers/api.ts's
 // staged-loader note) and was retired outright (2026-07-16, D1 fully
 // eliminated from this module) rather than ported, mirroring src/subnet-
 // hyperparams-history.mjs's own recordSubnetHyperparamsChanges retirement.

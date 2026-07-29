@@ -521,7 +521,7 @@ type D1Runner = (
 ) => Promise<Array<Record<string, unknown>>>;
 
 // Shared D1 loaders for MCP tools — mirror handleSubnetConcentration and
-// handleSubnetConcentrationHistory in workers/request-handlers/entities.mjs.
+// handleSubnetConcentrationHistory in workers/request-handlers/entities.ts.
 export async function loadSubnetConcentration(
   d1: D1Runner,
   netuid: number,

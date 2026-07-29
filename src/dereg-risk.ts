@@ -6,10 +6,10 @@
 // rows (the economics tier, formatNeuron's own immunity_expires_at_block
 // output, src/metagraph-neurons.ts) and the current block number --
 // matches this codebase's other pure-shaping/no-I/O module convention
-// (src/concentration.ts, src/alpha-volume.mjs).
+// (src/concentration.ts, src/alpha-volume.ts).
 //
 // buildDeregRiskSnapshot's return shape is exactly what
-// src/alert-triggers.mjs's readConditionMetric reads from -- see that
+// src/alert-triggers.ts's readConditionMetric reads from -- see that
 // module's ALERT_CONDITION_METRICS for the two metric names this backs.
 
 // Ranks subnets by alpha_price_tao descending (1 = highest price) -- the
@@ -42,7 +42,7 @@ export function subnetAlphaPriceRank(
 }
 
 // Blocks remaining until each currently-immune neuron's immunity period
-// expires, keyed by "netuid:hotkey" (the same key alert-triggers.mjs's
+// expires, keyed by "netuid:hotkey" (the same key alert-triggers.ts's
 // readConditionMetric looks up). `rows` is a flat list drawn from any
 // combination of subnets' already-formatted neuron rows (formatNeuron's own
 // output, src/metagraph-neurons.ts -- immunity_expires_at_block is only

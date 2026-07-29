@@ -27,7 +27,7 @@ function toIso(ms: unknown): string | null {
 // non-finite, or negative. D1 can return an INTEGER column as a numeric string,
 // so a bare `row.block_number ?? null` would silently leak the string into the
 // API payload (and break downstream arithmetic/comparisons). Mirrors the
-// `toBlockNumber` already applied in account-events.mjs / chain-analytics.ts
+// `toBlockNumber` already applied in account-events.ts / chain-analytics.ts
 // and the `nullableInteger` coercion added to counterparties in #2414.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
@@ -79,7 +79,7 @@ export function formatBlock(
     // extrinsic_count / event_count / spec_version (D1 INTEGER columns) — coerce
     // through toBlockNumber like block_number above, so a numeric string never
     // leaks the string form into these ["integer","null"] contract fields.
-    // Mirrors the count coercion in account-events.mjs and the fix in #2435.
+    // Mirrors the count coercion in account-events.ts and the fix in #2435.
     extrinsic_count: toBlockNumber(row.extrinsic_count),
     event_count: toBlockNumber(row.event_count),
     spec_version: toBlockNumber(row.spec_version),

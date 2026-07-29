@@ -2,7 +2,7 @@
 // EVERY subnet's per-UID PERFORMANCE columns (incentive, dividends, trust,
 // consensus, validator_trust) from the live `neurons` D1 tier. The network analog
 // of a per-subnet reward scorecard and the reward-flow companion to
-// chain-concentration.mjs — concentration measures who holds the STAKE/EMISSION
+// chain-concentration.ts — concentration measures who holds the STAKE/EMISSION
 // across the network; this measures how concentrated the actual REWARDS are and
 // how the 0..1 trust/consensus scores are spread across all neurons at once.
 // Every function is pure + exported for unit tests; the Worker does the D1 read +
