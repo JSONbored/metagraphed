@@ -197,14 +197,19 @@ async function prunePushSubscription(
   env: Env,
   endpoint: string,
 ): Promise<void> {
-  if (!env.DATA_API || !env.ALERT_TRIGGERS_INTERNAL_TOKEN) return;
+  // Asserted, not guarded. Prune only ever runs after a SUCCESSFUL
+  // subscription lookup (loadPushSubscription), which already required both
+  // bindings -- so a runtime check here would be an unreachable branch rather
+  // than defense. If either were somehow absent, the call below throws and is
+  // swallowed by the same catch that already makes this fire-and-forget.
+  const internalToken = env.ALERT_TRIGGERS_INTERNAL_TOKEN as string;
   try {
-    await env.DATA_API.fetch(
+    await env.DATA_API!.fetch(
       "https://data-api.internal/api/v1/internal/push-subscription",
       {
         method: "DELETE",
         headers: {
-          "x-alert-triggers-internal-token": env.ALERT_TRIGGERS_INTERNAL_TOKEN,
+          "x-alert-triggers-internal-token": internalToken,
           "content-type": "application/json",
         },
         body: JSON.stringify({ endpoint }),

@@ -310,6 +310,13 @@ describe("web-push crypto (#8385)", () => {
     }
   });
 
+  it("rejects key material whose length makes decoding throw", () => {
+    // A single base64url character passes the alphabet regex but pads to
+    // "A===", which atob rejects outright — so the decode guard is a real
+    // path, not dead defensive code. Verified against atob directly.
+    expect(isValidPushKeyMaterial("A", "A")).toBe(false);
+  });
+
   it("treats only 404/410 as a permanently expired subscription", () => {
     expect(isExpiredSubscriptionStatus(404)).toBe(true);
     expect(isExpiredSubscriptionStatus(410)).toBe(true);
