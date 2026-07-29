@@ -237,9 +237,10 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
   return (
     <div className="border-t border-border max-h-[55vh] overflow-auto">
       <table className="min-w-full mg-type-caption">
-        {/* local stacking context: sticky corner cell over sticky row/col — not a global layer (#7841) */}
+        {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
         <thead className="sticky top-0 mg-glass z-[1]">
           <tr>
+            {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
             <th className="sticky left-0 z-[2] w-40 mg-glass px-3 py-2 text-left mg-type-micro text-ink-muted">
               Metric
             </th>
@@ -256,6 +257,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.label}>
+              {/* eslint-disable-next-line no-restricted-syntax -- deliberate raw z-index: this is a local stacking context (sticky corner cell layered over the sticky row/column headers inside one scroll container), not a global layer, so none of the --mg-z-* layer tokens applies (#7841) */}
               <td className="sticky left-0 z-[1] bg-card px-3 py-2 mg-type-micro text-ink-muted">
                 {row.label}
               </td>

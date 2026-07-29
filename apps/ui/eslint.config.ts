@@ -238,8 +238,15 @@ const FULL_DESIGN_RULES = [
 // explaining why. Initial set (2026-07-24 audit): src/hooks/** was clean
 // end-to-end. #8424 cleared the last src/lib/** residuals (dead
 // download-csv-button text-[11px], ValueUnitControl, and a gap-5 fixture
-// false-positive) and added that directory here.
-const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"];
+// false-positive) and added that directory here. #8552 finished
+// src/components/**: #8167-#8171 took it from 81 warning-files down to 13
+// warnings, #8571 deleted its inert text-[10px] trio, and the remaining 10
+// were fixed or suppressed-with-reason in the same PR that ratcheted it.
+const RATCHETED_DIRS = [
+  "src/hooks/**/*.{ts,tsx}",
+  "src/lib/**/*.{ts,tsx}",
+  "src/components/**/*.{ts,tsx}",
+];
 
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see

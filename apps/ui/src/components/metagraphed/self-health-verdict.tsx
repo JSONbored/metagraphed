@@ -125,7 +125,7 @@ function ComponentStrip({ component }: { component: SelfHealthComponentView }) {
   const pct = component.uptime_90d != null ? `${(component.uptime_90d * 100).toFixed(2)}%` : "—";
 
   return (
-    <div className="rounded border border-border bg-card p-3">
+    <Panel as="div" flush className="p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="truncate mg-type-caption text-ink-strong">
           {COMPONENT_LABEL[component.component] ?? component.component}
@@ -147,7 +147,7 @@ function ComponentStrip({ component }: { component: SelfHealthComponentView }) {
         <div className="mt-1 mg-type-caption text-health-warn">{component.note}</div>
       ) : null}
       <UptimeStrip days={component.days} />
-    </div>
+    </Panel>
   );
 }
 

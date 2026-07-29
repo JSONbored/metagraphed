@@ -134,10 +134,10 @@ export function RegistryEmpty({
                   on -gaps-page / -surfaces-page), and <ExternalLink>'s
                   safeExternalUrl rejects relative URLs outright -- converting
                   would render the "blocked unsafe URL" fallback and break the
-                  link. Residual no-restricted-syntax warning flagged in the
-                  PR body per the issue's req-2 escape hatch. */}
+                  link (#8192). */}
               <a
                 href={evidenceHref}
+                // eslint-disable-next-line no-restricted-syntax -- raw target="_blank" is genuinely required here: <ExternalLink>'s safeExternalUrl calls `new URL(href)` with no base URL, so the same-origin relative artifact paths this prop receives in production (/metagraph/gaps.json, /metagraph/endpoints.json, /metagraph/surfaces.json) all throw, get rejected, and would render as the "Blocked unsafe external URL" fallback instead of a working link
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-accent hover:underline"
