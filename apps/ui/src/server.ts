@@ -240,6 +240,31 @@ async function buildSitemap(): Promise<Response> {
   } catch {
     // Network hiccup — subnets are omitted; the sitemap stays valid XML.
   }
+  // Validators. All 1029 are active on at least one subnet and 999 hold over 1000 TAO, so these
+  // are substantive pages rather than the thin ones a large auto-generated set usually implies —
+  // they were simply never listed. No <lastmod>: the only timestamp the list carries is
+  // `latest_captured_at`, which is when we last PROBED, not when the page's content changed.
+  // Stamping that would be the "lastmod is really just now" antipattern the helper above exists
+  // to avoid, on 1029 URLs at once.
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/v1/validators?limit=2000`, {
+      headers: { accept: "application/json" },
+    });
+    if (res.ok) {
+      const payload = (await res.json()) as {
+        data?: { validators?: Array<{ hotkey?: unknown }> };
+      };
+      for (const validator of payload.data?.validators ?? []) {
+        if (typeof validator?.hotkey === "string" && validator.hotkey) {
+          entries.push({
+            loc: `${SITE_ORIGIN}/validators/${encodeURIComponent(validator.hotkey)}`,
+          });
+        }
+      }
+    }
+  } catch {
+    // Network hiccup — validators are omitted; the sitemap stays valid XML.
+  }
   try {
     const res = await fetch(`${API_ORIGIN}/api/v1/providers?limit=500`, {
       headers: { accept: "application/json" },
