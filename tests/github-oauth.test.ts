@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   buildOAuthProviderOptions,
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
   isAnonymousMcpRequest,
+  isNonOAuthMcpRequest,
   OAUTH_PENDING_TTL_SECONDS,
   UNUSED_DEFAULT_HANDLER,
 } from "../src/github-oauth.ts";
@@ -537,5 +538,66 @@ describe("handleGithubOAuthCallback", () => {
     );
     assert.equal(res.status, 302);
     assert.equal(getOAuthApiMock.mock.calls.length, 1);
+  });
+});
+
+describe("isNonOAuthMcpRequest (#8643) — our own API keys must not reach OAuthProvider", () => {
+  const at = (headers: Record<string, string> = {}) =>
+    new Request("https://api.metagraph.sh/mcp", { method: "POST", headers });
+
+  test("diverts an mg_ API key to the plain handler", () => {
+    // The bug: `mg_` keys are Bearer tokens OAuthProvider never issued, so the
+    // old "any Bearer at all" test handed them to the library, which 401s
+    // anything it cannot validate. MCP_TIERED_RATE_LIMIT.keyed was therefore
+    // unreachable in production, and a client WITH a valid key fared worse
+    // than one sending nothing.
+    expect(
+      isNonOAuthMcpRequest(
+        at({ Authorization: "Bearer mg_live_abcdefghijklmnop" }),
+      ),
+    ).toBe(true);
+  });
+
+  test("still diverts an anonymous request, the original #7151 case", () => {
+    expect(isNonOAuthMcpRequest(at())).toBe(true);
+    expect(isNonOAuthMcpRequest(at({ Authorization: "" }))).toBe(true);
+  });
+
+  test("still routes a genuine OAuth bearer to OAuthProvider", () => {
+    expect(
+      isNonOAuthMcpRequest(at({ Authorization: "Bearer gho_someoauthtoken" })),
+    ).toBe(false);
+    expect(
+      isNonOAuthMcpRequest(at({ Authorization: "Bearer eyJhbGciOi.J9.sig" })),
+    ).toBe(false);
+  });
+
+  test("never diverts a non-/mcp path, whatever the credentials", () => {
+    for (const url of [
+      "https://api.metagraph.sh/authorize",
+      "https://api.metagraph.sh/oauth/token",
+      "https://api.metagraph.sh/api/v1/subnets",
+    ]) {
+      const request = new Request(url, {
+        headers: { Authorization: "Bearer mg_abcdefghijklmnop" },
+      });
+      expect(isNonOAuthMcpRequest(request), url).toBe(false);
+    }
+  });
+
+  test("routes on the prefix only — it decides WHO validates, never whether access is granted", () => {
+    // A forged mg_ string is diverted to the plain handler on purpose: the
+    // real Unkey-backed validator rejects it there, with the anonymous
+    // ceiling still applied. Diversion is not authentication.
+    expect(isNonOAuthMcpRequest(at({ Authorization: "Bearer mg_" }))).toBe(
+      true,
+    );
+    expect(
+      isNonOAuthMcpRequest(at({ Authorization: "Bearer mg_totally-made-up" })),
+    ).toBe(true);
+  });
+
+  test("keeps the old name working as an alias", () => {
+    expect(isAnonymousMcpRequest).toBe(isNonOAuthMcpRequest);
   });
 });
