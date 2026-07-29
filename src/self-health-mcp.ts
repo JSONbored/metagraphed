@@ -1,7 +1,31 @@
-// Self-health loader for MCP parity on GET /api/v1/self-health (#8422).
-// Serves the baked /metagraph/self-health.json artifact (metagraphed's OWN
-// uptime verdict plus each component's trailing-90-day daily ratios), the same
-// meta-artifact family as build/changelog/contracts.
+// Self-health loader for MCP + GraphQL parity on GET /api/v1/self-health
+// (#8422, fixed #8633). Serves metagraphed's OWN uptime verdict plus each
+// component's trailing-90-day daily ratios.
+//
+// RESOLUTION ORDER, and why it is this way round. This module originally read
+// the baked /metagraph/self-health.json artifact FIRST, on the theory that
+// self-health belongs to the same meta-artifact family as build/changelog/
+// contracts. It does not, and the consequence was that `get_self_health` and
+// the GraphQL `selfHealth` field were BOTH dead in production -- returning
+// "not_found" while GET /api/v1/self-health happily returned
+// verdict: "operational". Two of three surfaces down, silently.
+//
+// Two things make the artifact the wrong primary:
+//
+//  1. Nothing has ever written it. It is absent from public/metagraph/ (which
+//     does carry contracts.json, openapi.json, api-index.json), and no script
+//     or workflow generates it. `artifact_not_found` was not an edge case
+//     here; it was the only case.
+//  2. It would be wrong even if it existed. Self-health is live probe data
+//     that moves every minute, which is exactly why the REST route (#8318)
+//     reads the self_health_* Postgres tier and uses the artifact path only as
+//     a `meta.artifact_path` LABEL -- never for data. A build-time bake would
+//     serve a stale verdict.
+//
+// So the live tier comes first, matching REST byte for byte. The artifact is
+// deliberately KEPT as a fallback rather than deleted: it is what dev, test
+// and any fixture-backed environment load, and it costs nothing to honour a
+// baked file if one ever appears. The schema-stable empty shape is the floor.
 
 import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -27,6 +51,37 @@ export function selfHealthToolError(
   return error;
 }
 
+/**
+ * The live verdict, from the same place GET /api/v1/self-health gets it.
+ *
+ * Reached by asking the DATA_API binding for that very route rather than by
+ * re-implementing the query: `handleSelfHealth` does
+ * `tryPostgresTier(env, request, "METAGRAPH_SELF_HEALTH_SOURCE")`, which
+ * forwards the request by PATH, so the honest way to share it is to send the
+ * path. One source of truth; no second copy of the aggregation to drift.
+ *
+ * Returns null rather than throwing on every failure, so the caller can fall
+ * through instead of surfacing plumbing to an agent.
+ */
+async function readSelfHealthTier(env: Env): Promise<unknown | null> {
+  if (env.METAGRAPH_SELF_HEALTH_SOURCE !== "postgres" || !env.DATA_API) {
+    return null;
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request("https://api.metagraph.sh/api/v1/self-health", {
+        method: "GET",
+        headers: { accept: "application/json" },
+      }),
+    );
+    if (!upstream.ok) return null;
+    const payload = (await upstream.json()) as { ok?: boolean; data?: unknown };
+    return payload?.ok && payload.data ? payload.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadSelfHealth(
   ctx: {
     env: Env;
@@ -38,23 +93,32 @@ export async function loadSelfHealth(
     readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
   } = {},
 ): Promise<unknown> {
+  // 1. Live tier — what REST serves, so the three surfaces agree.
+  const live = await readSelfHealthTier(ctx.env);
+  if (live) return live;
+
+  // 2. Baked artifact — dev/test/fixture environments, and any future bake.
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, SELF_HEALTH_ARTIFACT);
-  if (!result?.ok) {
-    const code =
-      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
-    if (code === "artifact_not_found") {
-      throw selfHealthToolError(
-        "not_found",
-        "The self-health verdict is unavailable in this environment.",
-      );
-    }
-    throw selfHealthToolError(
-      code,
-      `Could not load ${SELF_HEALTH_ARTIFACT} (${code}).`,
-    );
+  if (result?.ok) return result.data;
+
+  const code =
+    (result as { code?: string } | undefined)?.code || "artifact_unavailable";
+
+  // 3. An ABSENT artifact is not an error: it is production's normal state,
+  //    and "we have no readings" is a real answer. Returning the schema-stable
+  //    empty shape (three components, current_ok null, verdict "degraded") is
+  //    precisely handleSelfHealth's own documented convention -- it never 404s
+  //    on a cold store either. A genuinely broken read still raises, because
+  //    absence and failure are different things.
+  if (code === "artifact_not_found") {
+    const { buildSelfHealth } = await import("./self-health.ts");
+    return buildSelfHealth([], []);
   }
-  return result.data;
+  throw selfHealthToolError(
+    code,
+    `Could not load ${SELF_HEALTH_ARTIFACT} (${code}).`,
+  );
 }
 
 export const GET_SELF_HEALTH_INSTRUCTIONS =
