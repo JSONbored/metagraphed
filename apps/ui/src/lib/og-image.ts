@@ -8,11 +8,14 @@
 // travels (every share of metagraph.sh unfurls through here), so it now carries
 // the brand lockup and, for entity pages, real information about that entity.
 //
-// DESIGN NOTE -- why this card is dark-ground rather than the landing card's
-// mint field. src/og-image.ts (api.metagraph.sh) is a mint poster: one
-// headline, no data. These per-page cards carry three to five lines of dense
-// entity text, and a full-bleed mint field behind that much copy reads as a
-// marketing banner rather than a data card.
+// DESIGN NOTE -- why this card is the app's LIGHT theme rather than the
+// landing card's mint field or the app's dark one. src/og-image.ts
+// (api.metagraph.sh) is a mint poster: one headline, no data. These per-page
+// cards carry three to five lines of dense entity text, and a full-bleed mint
+// field behind that much copy reads as a marketing banner rather than a data
+// card. Light is also what a visitor actually lands on -- "Bone & Ink" is the
+// DEFAULT theme (packages/ui-kit/src/styles.css: light in `:root`, dark under
+// `.dark`), so a dark card promised a page the reader doesn't get.
 //
 // The ground is the app's OWN --paper, and -- just as importantly -- so is its
 // STRUCTURE. Matching the background colour alone was not enough: the site
@@ -21,15 +24,15 @@
 // colour, so a card with the correct background but no rules still felt like a
 // flat void rather than a page from this product. The card is therefore banded
 // the same way: lockup row, body, stat band, each separated by the app's own
-// --border hairline.
+// --border hairline, with the stat band on pure white --surface exactly as the
+// site lifts a panel off the bone canvas.
 //
 // Mint is used the way the product uses it -- as an ACCENT only: the top rule,
-// the mark, the eyebrow, the rule beside the headline, and the stat values.
-// There is deliberately no large tinted shape behind the copy: a low-opacity
-// green field over near-black still rasterizes a visible hard-edged arc rather
-// than a soft wash, which read as a smudge rather than a design element.
-// #8489 requirement 1 allows the dark variant when the reason is stated; this
-// is that statement.
+// the eyebrow, the status dot and the stat values. Note the split between
+// --accent (#00C899, for FILLS: rules, dots, borders) and --accent-text
+// (#008156, for TEXT): the app makes exactly this distinction, because the
+// vivid mint is 1.9:1 on paper and unreadable as small type. Getting that
+// wrong is the single easiest way to make a light card look amateurish.
 //
 // workers-og is loaded lazily inside handleOgImage (see below), NOT statically:
 // it pulls in a yoga `.wasm` that Node's ESM loader can't resolve, which would
@@ -41,63 +44,98 @@ const OG_PATH = "/og";
 const SUBTITLE = "The Bittensor subnet integration registry";
 const WORDMARK = "Metagraphed";
 
-// Palette. The ACCENT is the brand mint from src/og-image.ts (the brand-kit
-// value, deliberately the vivid one rather than the app's slightly dialed-back
-// UI token -- this is a marketing surface).
-//
-// Everything else is the app's OWN dark theme, converted from the oklch tokens
-// in packages/ui-kit/src/styles.css's `.dark` block. Those are NEUTRAL (hue
-// 250 at chroma 0.003-0.006 -- a cool near-black), not green: mint is an
-// accent in this product, never a ground. An earlier pass used a green-tinted
-// ink for the card background, which looked nothing like the app it links to.
-const MINT = "#30FFC0";
-/** --paper: the app's actual page background. */
-const GROUND = "#08090A";
-/** --surface: the card/panel lift used for the stat band. */
-const SURFACE = "#0F1112";
-/** --ink-strong: headline text. */
-const TEXT_STRONG = "#EFF2F6";
-/** --ink-muted: supporting copy. */
-const TEXT_MUTED = "#8A8C8F";
-/** --ink-subtle: stat labels. */
-const TEXT_SUBTLE = "#4B4D4F";
+// Palette -- the app's OWN light theme ("Bone & Ink"), not an approximation of
+// it. satori has no oklch, no color-mix and no oklab interpolation, so every
+// token below is the styles.css `:root` value converted to sRGB with the same
+// maths a browser uses (see scripts/render-og-preview.ts's sibling note): the
+// oklch -> linear-sRGB matrix for the plain tokens, and oklab interpolation
+// against --paper for the alpha ones. Eyeballed hexes drift; these don't.
+
+/** --accent. A FILL colour: rules, dots, borders, the mark. Never small text. */
+const ACCENT = "#00C899";
 /**
- * The app's hairline. `--border` is `--ink-strong` at 11% alpha; satori has no
- * reliable color-mix/oklab support, so this is that composite precomputed over
- * --paper. Sampled from the running app rather than guessed.
+ * --accent-text. The AA-safe variant the app uses wherever the mint styles
+ * type (4.58:1 on paper). Every accent-coloured STRING on this card uses it.
+ */
+const ACCENT_TEXT = "#008156";
+/** --paper: the app's actual page background ("warm bone"). */
+const GROUND = "#F8F7F2";
+/** --surface: pure white, the card/panel lift used for the stat band. */
+const SURFACE = "#FFFFFF";
+/** --ink-strong: headline text. */
+const TEXT_STRONG = "#101818";
+/** --ink-muted: supporting copy. */
+const TEXT_MUTED = "#616B6C";
+/**
+ * --ink-subtle-TEXT, not --ink-subtle. The plain token (#A5ACAD) is a
+ * border/fill value and drops to 2.2:1 as type on paper; styles.css keeps a
+ * darker AA variant for exactly this case, and stat labels are small text.
+ */
+const TEXT_SUBTLE = "#6A7070";
+/**
+ * The app's hairline. `--border` is `--ink-strong` at 8% alpha; satori has no
+ * reliable color-mix/oklab support, so this is that composite precomputed --
+ * once over --paper (the card's own bands) and once over --surface (the logo
+ * tile, which sits on white).
  *
  * This token matters more than it looks: the site's whole character comes from
  * hairline-separated bands and panels sitting almost ON the ground colour, not
  * from strong surface contrast. A card with the right background but no rules
  * reads as a flat void and looks nothing like the product.
  */
-const HAIRLINE = "#212324";
+const HAIRLINE = "#E3E2DE";
+const HAIRLINE_ON_SURFACE = "#E9EAEA";
 /**
  * The site's background PATTERN, from packages/ui-kit/src/styles.css's
  * "Premium Blockmachine background: hairline grid + dot field + soft top
  * vignette" on `body`. Matching --paper alone still didn't look like the
  * product, because the product's ground is never a flat fill.
  *
- * Both are `--ink-strong` at low alpha (dot 10%, grid 5%) which satori can't
- * express, so they ship precomputed over --paper. Sizes are the dark-theme
- * values: --mg-dot-size 26px, grid 96px.
+ * Both are `--ink-strong` at low alpha (dot 6%, grid 3.5% in light) which
+ * satori can't express, so they ship precomputed over --paper. Sizes are the
+ * LIGHT-theme values: --mg-dot-size 24px (dark uses 26px), grid 96px in both.
  *
  * Verified satori actually renders this stack before relying on it -- the
  * local preview uses Chromium, which would happily render a pattern satori
  * silently dropped. A probe confirmed satori emits <pattern>,
  * <radialGradient> and <linearGradient> for exactly these declarations.
  */
-const DOT_COLOR = "#1F2022";
-const GRID_COLOR = "#141516";
-const DOT_SIZE = 26;
+const DOT_COLOR = "#E8E7E3";
+const GRID_COLOR = "#EEEEEA";
+const DOT_SIZE = 24;
 const GRID_SIZE = 96;
+
+/**
+ * --health-ok / --health-warn-text / --health-down / --health-unknown, the
+ * same four the site's health pill uses. `warn` is again the AA text variant,
+ * for the same reason TEXT_SUBTLE is.
+ */
+const HEALTH_COLORS: Record<string, string> = {
+  ok: "#00B575",
+  warn: "#966800",
+  down: "#DF2321",
+  unknown: "#8C9494",
+};
+
+/**
+ * Whether a crawler-supplied `status` is one of the four states.
+ *
+ * `Object.hasOwn`, deliberately, not `key in HEALTH_COLORS`: `in` walks the
+ * prototype chain, so `?status=constructor` (or `toString`, or `valueOf`)
+ * would pass the check and then interpolate a stringified function into the
+ * card's inline CSS. Own-property only.
+ */
+function isHealthState(value: string): boolean {
+  return Object.hasOwn(HEALTH_COLORS, value);
+}
 
 // #8257/#8489: bumped whenever the rendered card changes, so already-unfurled
 // links pick up the new design instead of serving last month's PNG from the
 // edge cache for its full 7-day stale-while-revalidate window. Bumped to "3"
 // for the #8489 rebuild -- every previously cached card is the old plain-text
-// one and must be retired.
-const CARD_VERSION = "3";
+// one and must be retired -- and to "4" for the light-theme pass, which
+// changes every pixel of every card.
+const CARD_VERSION = "4";
 
 const MAX_SUBTITLE_LENGTH = 90;
 const DEFAULT_TITLE = "Metagraphed";
@@ -113,12 +151,34 @@ const MAX_LOGO_HOST_LENGTH = 80;
 const MAX_QUERY_LENGTH = 512;
 const CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 
-// The brand "M" mark, recoloured from src/og-image.ts's ink version to MINT so
-// it reads on the ink ground (see the design note above). Same geometry, same
-// brand kit source -- only the fill differs. Injected via <img> rather than
-// inline <svg> for reliable satori rasterization, matching the landing card.
-const LOGO_DATA_URI =
-  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgZmlsbD0ibm9uZSI+CjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgxLjkyMCwxNTEuNzM4KSBzY2FsZSgwLjQ2NTQ1KSIgZD0iTSAzMTUuNSwxLjE5OTk5OTk5OTk5OTk4ODYgQyAzMTMuNDAwMDAwMDAwMDAwMDMsMS42OTk5OTk5OTk5OTk5ODg2IDI4MS43LDMyLjc5OTk5OTk5OTk5OTk1NSAyMDYuNSwxMDcuODk5OTk5OTk5OTk5OTggQyAxNDYuNSwxNjcuODk5OTk5OTk5OTk5OTggOTkuMzAwMDAwMDAwMDAwMDEsMjE0LjM5OTk5OTk5OTk5OTk4IDk3LjcsMjE1LjAgQyA5NS45LDIxNS42IDc5LjQsMjE2LjAgNTIuMzAwMDAwMDAwMDAwMDA0LDIxNi4wIEMgMTEuNCwyMTYuMCA5LjYwMDAwMDAwMDAwMDAwMSwyMTYuMSA2LjUsMjE4LjAgQyAtMC40LDIyMi4yOTk5OTk5OTk5OTk5OCAwLjAsMjE1Ljc5OTk5OTk5OTk5OTk4IDAuMCwzMjguNyBDIDAuMCw0MjguNSAwLjAsNDMwLjYgMi4wLDQzMy44IEMgNi4wLDQ0MC4zIDEyLjksNDQyLjUgMTkuNSw0MzkuNCBDIDIxLjMsNDM4LjYgNzAuOSwzODkuNCAxMzAuNiwzMjkuMyBDIDIyMy45LDIzNS41IDIzOS4yMDAwMDAwMDAwMDAwMiwyMjAuMzk5OTk5OTk5OTk5OTggMjQzLjgsMjE4LjM5OTk5OTk5OTk5OTk4IEMgMjQ5LjAsMjE2LjAgMjQ5LjUsMjE2LjAgMjgxLjgsMjE2LjAgQyAzMTIuNDAwMDAwMDAwMDAwMDMsMjE2LjAgMzE0LjcwMDAwMDAwMDAwMDA1LDIxNi4xIDMxNy43MDAwMDAwMDAwMDAwNSwyMTguMCBDIDMxOS40MDAwMDAwMDAwMDAwMywyMTkuMCAzMjEuNSwyMjAuODk5OTk5OTk5OTk5OTggMzIyLjIwMDAwMDAwMDAwMDA1LDIyMi4yIEMgMzIzLjIwMDAwMDAwMDAwMDA1LDIyNC4wIDMyMy42LDI0NS4xIDMyNC4wLDMyOC4wIEwgMzI0LjUsNDMxLjUgTCAzMjYuOCw0MzQuOCBDIDMzMS4wLDQ0MC42IDMzOC4xLDQ0Mi42IDM0My44LDQzOS42IEMgMzQ1LjMsNDM4LjggMzk1LjgsMzg4LjggNDU2LjAsMzI4LjUgQyA1MTYuMiwyNjguMiA1NjYuNywyMTguMiA1NjguMiwyMTcuMzk5OTk5OTk5OTk5OTggQyA1NzAuNCwyMTYuMjk5OTk5OTk5OTk5OTggNTc3LjMwMDAwMDAwMDAwMDEsMjE2LjAgNjA1LjIsMjE2LjAgQyA2MzcuNDAwMDAwMDAwMDAwMSwyMTYuMCA2MzkuNywyMTYuMSA2NDIuNywyMTguMCBDIDY0NC40MDAwMDAwMDAwMDAxLDIxOS4wIDY0Ni41LDIyMC44OTk5OTk5OTk5OTk5OCA2NDcuMiwyMjIuMiBDIDY0OC4yLDIyNC4wIDY0OC42LDI0NS43IDY0OS4wLDMzMS43IEMgNjQ5LjUsNDM4LjEgNjQ5LjUsNDM4LjkgNjUxLjYsNDQxLjcgQyA2NTQuODAwMDAwMDAwMDAwMSw0NDYuMSA2NTkuNyw0NDguMiA2NjUuMCw0NDcuNSBDIDY2OS40MDAwMDAwMDAwMDAxLDQ0Ny4wIDY3MC42LDQ0NS45IDcwNy4zMDAwMDAwMDAwMDAxLDQwOS4yIEMgNzI4LjEsMzg4LjUgNzQ1LjgwMDAwMDAwMDAwMDEsMzcwLjMgNzQ2LjYsMzY4LjggQyA3NDcuODAwMDAwMDAwMDAwMSwzNjYuNSA3NDguMCwzNTQuOSA3NDguMCwyOTUuNzk5OTk5OTk5OTk5OTUgQyA3NDguMCwyMjguMCA3NDcuOTAwMDAwMDAwMDAwMSwyMjUuMzk5OTk5OTk5OTk5OTggNzQ2LjAsMjIyLjI5OTk5OTk5OTk5OTk4IEMgNzQyLjUsMjE2LjUgNzQyLjYsMjE2LjUgNzAzLjMwMDAwMDAwMDAwMDEsMjE2LjAgQyA2NjguNywyMTUuNSA2NjcuMCwyMTUuMzk5OTk5OTk5OTk5OTggNjY0LjMwMDAwMDAwMDAwMDEsMjEzLjM5OTk5OTk5OTk5OTk4IEMgNjYyLjgwMDAwMDAwMDAwMDEsMjEyLjI5OTk5OTk5OTk5OTk4IDY2MC43LDIwOS43OTk5OTk5OTk5OTk5OCA2NTkuODAwMDAwMDAwMDAwMSwyMDcuODk5OTk5OTk5OTk5OTggQyA2NTguMSwyMDQuNyA2NTguMCwxOTcuODk5OTk5OTk5OTk5OTggNjU4LjAsMTA3Ljc5OTk5OTk5OTk5OTk1IEMgNjU4LjAsLTAuNzAwMDAwMDAwMDAwMDQ1NSA2NTguNDAwMDAwMDAwMDAwMSw1Ljc5OTk5OTk5OTk5OTk1NDUgNjUwLjgwMDAwMDAwMDAwMDEsMS44OTk5OTk5OTk5OTk5NzczIEMgNjQ2LjYsLTAuMjAwMDAwMDAwMDAwMDQ1NDcgNjQzLjQwMDAwMDAwMDAwMDEsLTAuNSA2MzkuMzAwMDAwMDAwMDAwMSwxLjA5OTk5OTk5OTk5OTk2NiBDIDYzNy43LDEuNjk5OTk5OTk5OTk5OTg4NiA1OTAuMiw0OC41OTk5OTk5OTk5OTk5NjYgNTI5LjksMTA5LjA5OTk5OTk5OTk5OTk3IEwgNDIzLjMsMjE2LjEgTCAzODIuNzAwMDAwMDAwMDAwMDUsMjE1Ljc5OTk5OTk5OTk5OTk4IEMgMzQzLjUsMjE1LjUgMzQyLjEsMjE1LjM5OTk5OTk5OTk5OTk4IDMzOS4zLDIxMy4zOTk5OTk5OTk5OTk5OCBDIDMzNy44LDIxMi4yOTk5OTk5OTk5OTk5OCAzMzUuNzAwMDAwMDAwMDAwMDUsMjA5Ljc5OTk5OTk5OTk5OTk4IDMzNC44LDIwNy44OTk5OTk5OTk5OTk5OCBDIDMzMy4xLDIwNC43IDMzMy4wLDE5Ny44OTk5OTk5OTk5OTk5OCAzMzMuMCwxMDcuNjk5OTk5OTk5OTk5OTkgQyAzMzMuMCw0LjA5OTk5OTk5OTk5OTk2NiAzMzMuMjAwMDAwMDAwMDAwMDUsOC4xOTk5OTk5OTk5OTk5ODg5IDMyOC4xLDMuNTk5OTk5OTk5OTk5OTY2IEMgMzI1LjYsMS4yOTk5OTk5OTk5OTk5NTQ1IDMxOS41LDAuMDk5OTk5OTk5OTk5OTk2NTkgMzE1LjUsMS4xOTk5OTk5OTk5OTk5ODg2IiBmaWxsPSIjMzBGRkMwIi8+Cjwvc3ZnPgo=";
+/**
+ * The brand "M" mark (the same brand-kit geometry src/og-image.ts uses),
+ * emitted as an <img> data URI rather than inline <svg> for reliable satori
+ * rasterization.
+ *
+ * Built from ONE path at two fills instead of two hand-pasted base64 blobs:
+ * the card needs an ink mark for the light lockup and a mint one for the
+ * accent tile, and a base64 constant cannot be recoloured -- which is how the
+ * dark card ended up with a mint mark hardcoded and no way to follow the
+ * theme. Coordinates are rounded to 2dp (the export carried float noise like
+ * 1.1999999999999886); at a 0-750 user space scaled to 512px that is well
+ * under a tenth of a pixel.
+ */
+const MARK_PATH =
+  "M 315.5,1.2 C 313.4,1.7 281.7,32.8 206.5,107.9 C 146.5,167.9 99.3,214.4 97.7,215 C 95.9,215.6 79.4,216 52.3,216 C 11.4,216 9.6,216.1 6.5,218 C -0.4,222.3 0,215.8 0,328.7 C 0,428.5 0,430.6 2,433.8 C 6,440.3 12.9,442.5 19.5,439.4 C 21.3,438.6 70.9,389.4 130.6,329.3 C 223.9,235.5 239.2,220.4 243.8,218.4 C 249,216 249.5,216 281.8,216 C 312.4,216 314.7,216.1 317.7,218 C 319.4,219 321.5,220.9 322.2,222.2 C 323.2,224 323.6,245.1 324,328 L 324.5,431.5 L 326.8,434.8 C 331,440.6 338.1,442.6 343.8,439.6 C 345.3,438.8 395.8,388.8 456,328.5 C 516.2,268.2 566.7,218.2 568.2,217.4 C 570.4,216.3 577.3,216 605.2,216 C 637.4,216 639.7,216.1 642.7,218 C 644.4,219 646.5,220.9 647.2,222.2 C 648.2,224 648.6,245.7 649,331.7 C 649.5,438.1 649.5,438.9 651.6,441.7 C 654.8,446.1 659.7,448.2 665,447.5 C 669.4,447 670.6,445.9 707.3,409.2 C 728.1,388.5 745.8,370.3 746.6,368.8 C 747.8,366.5 748,354.9 748,295.8 C 748,228 747.9,225.4 746,222.3 C 742.5,216.5 742.6,216.5 703.3,216 C 668.7,215.5 667,215.4 664.3,213.4 C 662.8,212.3 660.7,209.8 659.8,207.9 C 658.1,204.7 658,197.9 658,107.8 C 658,-0.7 658.4,5.8 650.8,1.9 C 646.6,-0.2 643.4,-0.5 639.3,1.1 C 637.7,1.7 590.2,48.6 529.9,109.1 L 423.3,216.1 L 382.7,215.8 C 343.5,215.5 342.1,215.4 339.3,213.4 C 337.8,212.3 335.7,209.8 334.8,207.9 C 333.1,204.7 333,197.9 333,107.7 C 333,4.1 333.2,8.2 328.1,3.6 C 325.6,1.3 319.5,0.1 315.5,1.2";
+
+/** `data:` URI for the mark at an arbitrary fill. */
+export function markDataUri(fill: string): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">` +
+    `<path transform="translate(81.920,151.738) scale(0.46545)" d="${MARK_PATH}" fill="${fill}"/></svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
+/** Wordmark lockup mark: ink, matching the app masthead on the bone ground. */
+const LOGO_DATA_URI = markDataUri(TEXT_STRONG);
+/** Avatar-slot mark for our own routes: accent, inside the surface tile. */
+const BRAND_TILE_MARK = markDataUri(ACCENT);
 
 // A tiny valid PNG returned when rendering dependencies fail. This keeps the
 // public endpoint cheap and predictable instead of retrying expensive work.
@@ -135,13 +195,29 @@ type EdgeCache = {
 
 const cacheStorage = (globalThis as { caches?: { default?: EdgeCache } }).caches?.default ?? null;
 
-// Escape text for safe embedding in the HTML string satori parses.
-export function escapeText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+/**
+ * Make a value safe to interpolate into the HTML string satori parses.
+ *
+ * This DELETES the two structural characters rather than escaping them, and
+ * that is deliberate: workers-og's parser does NOT decode HTML entities in
+ * text nodes. Verified against the deployed Worker, not assumed --
+ * `/og?title=Agents %26 MCP` rendered the literal characters `& a m p ;`,
+ * eight tofu boxes wide, because the subset had no glyph for most of them.
+ * So the previous `&` -> `&amp;` escaping was not protecting the card; it was
+ * the thing corrupting it, on every title with an ampersand in it.
+ *
+ * Only `<` and `>` can change how the markup parses, so only they have to go.
+ * Removing them is strictly safer than escaping: the character cannot appear
+ * in the output at all, so no tag can be formed no matter how the parser
+ * behaves. Everything else -- `&`, quotes, apostrophes -- is ordinary text and
+ * is passed through untouched, which is what makes it render correctly.
+ *
+ * This is safe only because no caller-supplied value reaches an ATTRIBUTE:
+ * the one attribute carrying dynamic data is the icon's `src`, and that is a
+ * data URI this module builds itself (see resolveIcon). Keep it that way.
+ */
+export function sanitizeText(value: string): string {
+  return value.replace(/[<>]/g, "");
 }
 
 export function normalizeTitle(value: string | null): string {
@@ -190,21 +266,41 @@ export interface OgStat {
  * parses -- the same treatment title/subtitle already had, extended to the new
  * fields rather than trusting them because they're "ours".
  *
- * Stats are read as up to two `stat`/`statv` pairs. Two is a deliberate cap:
- * the rail is one row, and a third cell either wraps or shrinks the type below
- * legibility at unfurl size.
+ * Stats are read as up to THREE `stat`/`statv` pairs. Three is the cap because
+ * the rail is a single row and a fourth cell either wraps or shrinks the type
+ * below legibility at unfurl size -- measured on a real render, at the 1200px
+ * card width, against the "metagraph.sh" lockup that shares the band. Three
+ * also matches what the product itself considers headline-worthy: the subnet
+ * masthead's KPI band (#8247) leads with price, emission share and total
+ * stake, and those are exactly the three a shared subnet link should carry.
+ *
+ * `entity` and `status` are the two non-text params:
+ *   - `entity=1` marks a card for a NAMED THING (a subnet, a validator, an
+ *     account) as opposed to one of our own routes. It decides the avatar
+ *     slot's fallback -- see renderCardMarkup -- and is a flag rather than an
+ *     inference because "has an eyebrow" stopped being a usable proxy once
+ *     every route got one.
+ *   - `status` is a health state from the same four-value vocabulary as the
+ *     site's health pill, rendered as a coloured dot. Anything else is
+ *     dropped rather than guessed at.
  */
 export function readCardParams(params: URLSearchParams): {
   eyebrow: string | null;
   stats: OgStat[];
   logoHost: string | null;
+  entity: boolean;
+  status: string | null;
 } {
   const eyebrow = normalizeParam(params.get("eyebrow"), MAX_EYEBROW_LENGTH);
   const logoHost = normalizeLogoHost(params.get("logo"));
+  const entity = params.get("entity") === "1";
+  const rawStatus = (params.get("status") || "").trim().toLowerCase();
+  const status = isHealthState(rawStatus) ? rawStatus : null;
   const stats: OgStat[] = [];
   for (const [labelKey, valueKey] of [
     ["stat1", "stat1v"],
     ["stat2", "stat2v"],
+    ["stat3", "stat3v"],
   ] as const) {
     const label = normalizeParam(params.get(labelKey), MAX_STAT_LABEL_LENGTH);
     const value = normalizeParam(params.get(valueKey), MAX_STAT_VALUE_LENGTH);
@@ -212,7 +308,21 @@ export function readCardParams(params: URLSearchParams): {
     // with no value is an empty promise.
     if (label && value) stats.push({ label, value });
   }
-  return { eyebrow, stats, logoHost };
+  return { eyebrow, stats, logoHost, entity, status };
+}
+
+/**
+ * The icon-proxy URL for a host.
+ *
+ * Kept next to normalizeLogoHost (which is what makes the host safe to put
+ * here) and separate from the markup, because the markup must not know about
+ * the network: handleOgImage resolves this to an inline data URI BEFORE
+ * rendering so a 404 can fall back to a monogram. satori has no `onerror`, so
+ * an unresolvable <img> paints an empty tile forever -- which is exactly what
+ * a validator like tao.bot got, since no favicon aggregator has it.
+ */
+export function iconProxyUrl(host: string): string {
+  return `https://api.metagraph.sh/api/v1/icon?host=${encodeURIComponent(host)}&size=128&theme=light`;
 }
 
 /**
@@ -315,21 +425,36 @@ export function renderCardMarkup(opts: {
   subtitle: string;
   eyebrow: string | null;
   stats: OgStat[];
-  /** Bare DNS name; rendered via the SSRF-safe icon proxy. */
-  logoHost?: string | null;
+  /**
+   * Already-resolved image src for the avatar slot (a `data:` URI). Resolution
+   * happens in handleOgImage, never here -- see iconProxyUrl.
+   */
+  icon?: string | null;
+  /** Card is about a NAMED THING, so an unresolved icon falls back to a monogram. */
+  entity?: boolean;
+  /** Health state key into HEALTH_COLORS; colours the footer dot. */
+  status?: string | null;
 }): string {
-  const title = escapeText(opts.title);
-  const subtitle = escapeText(opts.subtitle);
-  const eyebrow = opts.eyebrow ? escapeText(opts.eyebrow) : null;
+  const title = sanitizeText(opts.title);
+  const subtitle = sanitizeText(opts.subtitle);
+  const eyebrow = opts.eyebrow ? sanitizeText(opts.eyebrow) : null;
 
+  // Three cells have to share the band with the "metagraph.sh" lockup, so the
+  // type steps down by one notch versus the old two-cell rail and the gutter
+  // shrinks with it. Measured, not guessed: at the previous 21/42px with a
+  // 64px gutter, three cells plus the lockup overran 1040px of usable width.
+  const wide = opts.stats.length >= 3;
+  const labelSize = wide ? 19 : 21;
+  const valueSize = wide ? 36 : 42;
+  const gutter = wide ? 44 : 64;
   const statCells = opts.stats
     .map(
       (stat) => `
-        <div style="display:flex;flex-direction:column;margin-right:64px;">
-          <div style="display:flex;font-size:21px;font-weight:500;color:${TEXT_SUBTLE};letter-spacing:2px;">${escapeText(
+        <div style="display:flex;flex-direction:column;margin-right:${gutter}px;">
+          <div style="display:flex;font-size:${labelSize}px;font-weight:500;color:${TEXT_SUBTLE};letter-spacing:2px;">${sanitizeText(
             stat.label.toUpperCase(),
           )}</div>
-          <div style="display:flex;font-size:42px;font-weight:700;color:${MINT};margin-top:8px;">${escapeText(
+          <div style="display:flex;font-size:${valueSize}px;font-weight:700;color:${ACCENT_TEXT};margin-top:8px;">${sanitizeText(
             stat.value,
           )}</div>
         </div>`,
@@ -340,40 +465,48 @@ export function renderCardMarkup(opts: {
   // empty slab across the foot of the fallback card would be worse than none.
   const hasStats = opts.stats.length > 0;
 
-  // Entity logo, resolved through OUR icon proxy rather than the caller's URL
-  // (see normalizeLogoHost). Rendered as a rounded tile on the app's own
-  // surface, matching how the site shows a subnet/provider avatar beside its
-  // name. Absent host -> the mint rule alone anchors the title, which is the
-  // right fallback for accounts/validators that have no logo at all.
-  // Mirrors the site's BrandIcon ladder: a real icon when we have one,
-  // otherwise a monogram chip -- never nothing. The bare mint rule is kept
-  // only for NON-entity cards (home, docs), where a monogram of the page
-  // title would be meaningless.
-  const tileShell = `display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;background:${SURFACE};border:1px solid ${HAIRLINE};margin-right:28px;margin-top:4px;`;
-  const logo = opts.logoHost
+  // The avatar slot, mirroring the site's BrandIcon ladder so the card shows
+  // the same mark the page does -- it always renders SOMETHING, never a gap:
+  //
+  //   1. a resolved entity icon (verified fetchable before we got here),
+  //   2. else, for an entity, a monogram chip -- "tao.bot" -> "TA", exactly
+  //      what BrandIcon falls back to when no aggregator has a favicon,
+  //   3. else OUR OWN MARK. Our routes (/agents, /docs, the home page) have no
+  //      per-entity logo, and a monogram of a page title ("AG" for /agents) is
+  //      meaningless -- the brand mark is the honest answer, and it is what
+  //      the site puts in its own masthead. The previous bare mint rule left
+  //      those cards looking unfinished.
+  const tileShell = `display:flex;align-items:center;justify-content:center;width:96px;height:96px;border-radius:22px;background:${SURFACE};border:1px solid ${HAIRLINE_ON_SURFACE};margin-right:28px;margin-top:4px;`;
+  const logo = opts.icon
     ? `<div style="${tileShell}">
-         <img src="https://api.metagraph.sh/api/v1/icon?host=${encodeURIComponent(
-           opts.logoHost,
-         )}&size=128&theme=dark" style="width:64px;height:64px;border-radius:14px;" />
+         <img src="${opts.icon}" style="width:64px;height:64px;border-radius:14px;" />
        </div>`
-    : opts.eyebrow
+    : opts.entity
       ? `<div style="${tileShell}">
-           <div style="display:flex;font-size:38px;font-weight:700;color:${MINT};letter-spacing:-0.5px;">${escapeText(
+           <div style="display:flex;font-size:38px;font-weight:700;color:${ACCENT_TEXT};letter-spacing:-0.5px;">${sanitizeText(
              monogramFor(opts.title),
            )}</div>
          </div>`
-      : `<div style="display:flex;width:5px;height:96px;border-radius:3px;background:${MINT};margin-right:28px;margin-top:4px;"></div>`;
+      : `<div style="${tileShell}">
+           <img src="${BRAND_TILE_MARK}" style="width:58px;height:58px;" />
+         </div>`;
+
+  // Footer dot. Mint by default (a brand bullet before the domain); the health
+  // colour when a card carries a status, so a shared subnet link says
+  // "degraded" at a glance the way the site's health pill does.
+  const dotColor =
+    (opts.status && isHealthState(opts.status) && HEALTH_COLORS[opts.status]) || ACCENT;
 
   return `
-    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};background-image:radial-gradient(${DOT_COLOR} 1px, transparent 1px),linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px),radial-gradient(ellipse 110% 60% at 50% 0%, rgba(48,255,192,0.05) 0%, transparent 70%);background-size:${DOT_SIZE}px ${DOT_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 100% 100%;color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
-      <div style="display:flex;width:1200px;height:6px;background:${MINT};"></div>
+    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};background-image:radial-gradient(${DOT_COLOR} 1px, transparent 1px),linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px),radial-gradient(ellipse 110% 60% at 50% 0%, rgba(0,200,153,0.07) 0%, transparent 70%);background-size:${DOT_SIZE}px ${DOT_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 100% 100%;color:${TEXT_STRONG};font-family:'Space Grotesk','Inter';overflow:hidden;">
+      <div style="display:flex;width:1200px;height:6px;background:${ACCENT};"></div>
 
       <div style="display:flex;align-items:center;padding:32px 80px;border-bottom:1px solid ${HAIRLINE};">
         <img src="${LOGO_DATA_URI}" style="width:50px;height:50px;" />
         <div style="display:flex;font-size:32px;font-weight:700;letter-spacing:-0.5px;margin-left:8px;">${WORDMARK}</div>
         ${
           eyebrow
-            ? `<div style="display:flex;margin-left:22px;padding:6px 17px;border:2px solid ${MINT};border-radius:999px;font-size:20px;font-weight:500;color:${MINT};letter-spacing:2px;">${escapeText(
+            ? `<div style="display:flex;margin-left:22px;padding:6px 17px;border:2px solid ${ACCENT};border-radius:999px;font-size:20px;font-weight:500;color:${ACCENT_TEXT};letter-spacing:2px;">${sanitizeText(
                 eyebrow.toUpperCase(),
               )}</div>`
             : ""
@@ -397,7 +530,7 @@ export function renderCardMarkup(opts: {
       } 80px;border-top:1px solid ${HAIRLINE};background:${hasStats ? SURFACE : "transparent"};">
         <div style="display:flex;">${statCells}</div>
         <div style="display:flex;align-items:center;">
-          <div style="display:flex;width:9px;height:9px;border-radius:5px;background:${MINT};margin-right:14px;"></div>
+          <div style="display:flex;width:9px;height:9px;border-radius:5px;background:${dotColor};margin-right:14px;"></div>
           <div style="display:flex;font-size:29px;font-weight:700;color:${TEXT_STRONG};letter-spacing:-0.2px;">metagraph.sh</div>
         </div>
       </div>
@@ -418,18 +551,18 @@ export function renderCardMarkup(opts: {
  * the capitals.
  *
  * Deriving from the markup makes that impossible: whatever the template
- * renders is by construction what gets subset. Tags are stripped (their
- * attributes go with them, since they live inside `<...>`), then the four
- * entities `escapeText` can introduce are decoded back to the glyphs actually
- * drawn.
+ * renders is by construction what gets subset.
+ *
+ * Stripping tags is the whole job -- their attributes go with them, since they
+ * live inside `<...>`, which is what keeps the inlined icon's base64 and every
+ * style declaration out of the font request. There is deliberately no entity
+ * decoding step: `sanitizeText` no longer emits entities (workers-og does not
+ * decode them, so emitting them was the bug), and a decode here would have
+ * quietly hidden that by subsetting the glyph the card was never going to
+ * paint.
  */
 export function glyphsForMarkup(markup: string): string {
-  return markup
-    .replace(/<[^>]*>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
+  return markup.replace(/<[^>]*>/g, "");
 }
 
 function makeCacheKey(url: URL, title: string, subtitle: string): Request {
@@ -441,7 +574,18 @@ function makeCacheKey(url: URL, title: string, subtitle: string): Request {
   // #8489: the entity params are part of the rendered output, so they MUST be
   // part of the cache key -- otherwise two subnets sharing a title would serve
   // each other's stats from the edge.
-  for (const key of ["eyebrow", "stat1", "stat1v", "stat2", "stat2v", "logo"]) {
+  for (const key of [
+    "eyebrow",
+    "stat1",
+    "stat1v",
+    "stat2",
+    "stat2v",
+    "stat3",
+    "stat3v",
+    "logo",
+    "entity",
+    "status",
+  ]) {
     const value = original.get(key);
     if (value) next.set(key, value);
   }
@@ -457,6 +601,56 @@ function withOgHeaders(response: Response): Response {
   headers.set("cache-control", CACHE_CONTROL);
   headers.set("content-type", "image/png");
   return new Response(response.body, { status: response.status, headers });
+}
+
+/**
+ * How large an entity icon may be before we decline to inline it.
+ *
+ * The proxy serves 128px PNGs (~20KB is typical), so this is generous headroom
+ * rather than a tuned limit -- its job is to stop a pathological response from
+ * being base64'd into the markup, not to reject real icons.
+ */
+const MAX_ICON_BYTES = 256 * 1024;
+
+/**
+ * Fetch an entity icon through our proxy and inline it as a `data:` URI, or
+ * return null so the card falls back to a monogram.
+ *
+ * This exists because satori has no `onerror`. The site can put a broken
+ * <img> on the page and let BrandIcon's chain advance to a monogram; a card
+ * cannot -- an unresolvable src rasterizes as an empty tile and stays that way
+ * in every unfurl for the life of the cache entry. That is exactly what
+ * happened to tao.bot: it publishes a favicon, but no aggregator the proxy
+ * queries has one, so the proxy 404s and the tile came out blank while the
+ * site showed "TA".
+ *
+ * Resolving here rather than letting satori fetch also means ONE request
+ * instead of two, on a response that is edge-cached for a day.
+ *
+ * Every failure mode returns null rather than throwing: an OG card must render
+ * something even when the icon service is down.
+ */
+export async function resolveIcon(
+  host: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  try {
+    const response = await fetchImpl(iconProxyUrl(host));
+    if (!response.ok) return null;
+    const type = response.headers.get("content-type") || "";
+    if (!type.startsWith("image/")) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_ICON_BYTES) return null;
+    // btoa needs a binary string; chunked so a large icon can't blow the
+    // argument limit with String.fromCharCode(...spread).
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    return `data:${type.split(";")[0]};base64,${btoa(binary)}`;
+  } catch {
+    return null;
+  }
 }
 
 function fallbackImageResponse(status = 200): Response {
@@ -482,7 +676,7 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
 
   const normalizedTitle = normalizeTitle(url.searchParams.get("title"));
   const normalizedSubtitle = normalizeSubtitle(url.searchParams.get("subtitle"));
-  const { eyebrow, stats, logoHost } = readCardParams(url.searchParams);
+  const { eyebrow, stats, logoHost, entity, status } = readCardParams(url.searchParams);
   const cacheKey = makeCacheKey(url, normalizedTitle, normalizedSubtitle);
   const cached = await cacheStorage?.match(cacheKey);
   if (cached) {
@@ -512,6 +706,10 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     return fallbackImageResponse();
   }
 
+  // Resolve the entity icon before rendering so an unresolvable one degrades
+  // to a monogram instead of an empty tile -- see resolveIcon.
+  const icon = logoHost ? await resolveIcon(logoHost) : null;
+
   // Build the markup FIRST so the font subset can be derived from it -- see
   // glyphsForMarkup for why a hand-maintained glyph list is a bug generator.
   const markup = renderCardMarkup({
@@ -519,7 +717,9 @@ export async function handleOgImage(request: Request): Promise<Response | null> 
     subtitle: normalizedSubtitle,
     eyebrow,
     stats,
-    logoHost,
+    icon,
+    entity,
+    status,
   });
   // Subset each weight to only the glyphs actually painted (smaller + faster
   // fetch) plus the tau, which Space Grotesk lacks entirely and Inter supplies.

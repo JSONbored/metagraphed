@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
-import { subnetProfileQuery } from "@/lib/metagraphed/queries";
+import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
@@ -38,23 +38,35 @@ export const Route = createFileRoute("/subnets/$netuid")({
   // and the page's own useSuspenseQuery still drives the error/notFound path.
   loader: async ({ context, params }) => {
     try {
-      const { data } = await context.queryClient.ensureQueryData(subnetProfileQuery(params.netuid));
+      // Both queries are ones the page itself reads (SubnetMasthead uses
+      // economicsQuery for its KPI band), so the shared react-query cache
+      // makes this the requests moving earlier, not extra ones.
+      //
+      // #8489 originally read `alpha_price_tao` off the PROFILE. That field
+      // does not exist there -- normalizeSubnetProfile never emits it, so the
+      // price stat silently never rendered and every subnet card fell through
+      // to its health string. The economics list is where the site itself gets
+      // price, and it carries emission share and total stake alongside.
+      const [{ data }, econRes] = await Promise.all([
+        context.queryClient.ensureQueryData(subnetProfileQuery(params.netuid)),
+        context.queryClient.ensureQueryData(economicsQuery()).catch(() => null),
+      ]);
+      const econ = econRes?.data.find((row) => row.netuid === params.netuid);
+      const num = (value: unknown): number | null =>
+        typeof value === "number" && Number.isFinite(value) ? value : null;
       return {
         name: data.name ?? null,
         health: data.health ?? null,
-        // #8489: the OG card's primary stat. Alpha price is the one figure a
-        // reader most wants at a glance on a shared subnet link, and it's
-        // already on the profile this loader reads -- no extra request.
-        // Coerced explicitly: the profile's field is loosely typed here, and
-        // an uncoerced value would reach formatTao as a non-number.
         // #8489: whichever of these resolves first is the host the site's own
         // BrandIcon would use for this subnet.
         iconUrl: (data.icon_url ?? null) as string | { light?: string; dark?: string } | null,
         website: (data.website ?? null) as string | null,
-        alphaPriceTao:
-          typeof data.alpha_price_tao === "number" && Number.isFinite(data.alpha_price_tao)
-            ? data.alpha_price_tao
-            : null,
+        // The three facts the subnet masthead's own KPI band leads with
+        // (#8247: price, emission share, total stake) -- the same ranking,
+        // applied to the card that travels.
+        alphaPriceTao: num(econ?.alpha_price_tao),
+        emissionShare: num(econ?.emission_share),
+        totalStakeTao: num(econ?.total_stake_tao),
       };
     } catch {
       return null;
@@ -84,13 +96,29 @@ export const Route = createFileRoute("/subnets/$netuid")({
           subtitle: description,
           eyebrow: "Subnet",
           logoHost: logoHostFrom(loaderData?.iconUrl, loaderData?.website),
+          // The health state colours the card's footer dot instead of
+          // spending a whole stat cell on a one-word string.
+          status: loaderData?.health ?? null,
+          // Netuid always leads (it is the subnet's identity, and the one fact
+          // that is never missing), then price, emission share and total stake
+          // in the KPI band's own order -- capped at three by the renderer, so
+          // whichever of the three resolve fill the rail left to right.
           stats: [
             { label: "Netuid", value: `SN${params.netuid}` },
             ...(loaderData?.alphaPriceTao != null
-              ? [{ label: "Alpha price", value: formatTao(loaderData.alphaPriceTao) }]
-              : health
-                ? [{ label: "Health", value: health }]
-                : []),
+              ? [{ label: "Price", value: formatTao(loaderData.alphaPriceTao) }]
+              : []),
+            ...(loaderData?.emissionShare != null
+              ? [
+                  {
+                    label: "Emission",
+                    value: `${(loaderData.emissionShare * 100).toFixed(2)}%`,
+                  },
+                ]
+              : []),
+            ...(loaderData?.totalStakeTao != null
+              ? [{ label: "Total stake", value: formatTao(loaderData.totalStakeTao) }]
+              : []),
           ],
         }),
       ],

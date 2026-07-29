@@ -36,6 +36,12 @@ export interface OgCardOptions {
   /** Bare DNS name (use `logoHostFrom`). The card renders it through the
    * SSRF-safe icon proxy; absent, it falls back to a monogram. */
   logoHost?: string | null;
+  /**
+   * Health state ("ok" | "warn" | "down" | "unknown") — colours the card's
+   * footer dot the way the site's health pill colours itself. Anything outside
+   * that vocabulary is dropped by the renderer rather than guessed at.
+   */
+  status?: string | null;
 }
 
 /**
@@ -51,9 +57,16 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   if (options.subtitle) params.set("subtitle", options.subtitle);
   if (options.eyebrow) params.set("eyebrow", options.eyebrow);
   if (options.logoHost) params.set("logo", options.logoHost);
-  // Only the first two stats are rendered; sending more would just push the
+  if (options.status) params.set("status", options.status);
+  // Every card built HERE is about a named thing -- a subnet, a validator, an
+  // account -- because only entity routes call this (src/server.ts builds its
+  // own URL for our own pages). The flag tells the renderer to fall back to a
+  // monogram when the icon doesn't resolve, instead of to our brand mark:
+  // "TA" is right for tao.bot, the Metagraphed "M" is right for /agents.
+  params.set("entity", "1");
+  // Only the first three stats are rendered; sending more would just push the
   // URL toward the length cap for content the card ignores.
-  (options.stats ?? []).slice(0, 2).forEach((stat, index) => {
+  (options.stats ?? []).slice(0, 3).forEach((stat, index) => {
     if (!stat.label || !stat.value) return;
     params.set(`stat${index + 1}`, stat.label);
     params.set(`stat${index + 1}v`, stat.value);

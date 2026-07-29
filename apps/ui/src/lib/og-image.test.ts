@@ -1,32 +1,42 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  escapeText,
   glyphsForMarkup,
+  iconProxyUrl,
+  markDataUri,
   monogramFor,
   normalizeLogoHost,
   normalizeSubtitle,
   normalizeTitle,
   readCardParams,
   renderCardMarkup,
+  resolveIcon,
+  sanitizeText,
   titleFontSize,
 } from "./og-image";
 
-describe("escapeText", () => {
-  it("escapes HTML metacharacters for safe satori markup embedding", () => {
-    expect(escapeText(`Tom & Jerry say "hello" <world>`)).toBe(
-      "Tom &amp; Jerry say &quot;hello&quot; &lt;world&gt;",
-    );
+describe("sanitizeText", () => {
+  it("REMOVES the structural characters and passes everything else through", () => {
+    // The ampersand must survive verbatim. workers-og does not decode HTML
+    // entities in text nodes -- verified against the deployed Worker, where
+    // `?title=Agents %26 MCP` painted the literal characters `& a m p ;` as
+    // eight tofu boxes -- so escaping it was the corruption, not the fix.
+    expect(sanitizeText(`Tom & Jerry say "hello" <world>`)).toBe(`Tom & Jerry say "hello" world`);
+  });
+
+  it("leaves no way to form a tag, which is the only thing that could alter the parse", () => {
+    expect(sanitizeText('<img src=x onerror="alert(1)">')).not.toMatch(/[<>]/);
+    expect(sanitizeText('</div><div style="width:99999px">')).not.toMatch(/[<>]/);
   });
 
   it("neutralizes user-controlled markup breakout attempts in ?title=", () => {
-    expect(escapeText(`</div><img src=x onerror=alert(1)>`)).toBe(
-      "&lt;/div&gt;&lt;img src=x onerror=alert(1)&gt;",
+    expect(sanitizeText(`</div><img src=x onerror=alert(1)>`)).toBe(
+      "/divimg src=x onerror=alert(1)",
     );
   });
 
   it("leaves plain titles unchanged", () => {
-    expect(escapeText("Subnet 7 overview")).toBe("Subnet 7 overview");
+    expect(sanitizeText("Subnet 7 overview")).toBe("Subnet 7 overview");
   });
 });
 
@@ -73,22 +83,41 @@ describe("normalizeSubtitle (#8257)", () => {
 // --- #8489: brand card params + layout guards ---------------------------
 
 describe("readCardParams (#8489)", () => {
-  it("reads eyebrow and up to two stat pairs", () => {
+  it("reads eyebrow and up to three stat pairs", () => {
     const p = new URLSearchParams({
       eyebrow: "Subnet",
       stat1: "Netuid",
       stat1v: "SN64",
-      stat2: "Alpha price",
+      stat2: "Price",
       stat2v: "0.0832 τ",
+      stat3: "Emission",
+      stat3v: "3.41%",
+      stat4: "Ignored",
+      stat4v: "nope",
     });
     expect(readCardParams(p)).toEqual({
       eyebrow: "Subnet",
       logoHost: null,
+      entity: false,
+      status: null,
       stats: [
         { label: "Netuid", value: "SN64" },
-        { label: "Alpha price", value: "0.0832 τ" },
+        { label: "Price", value: "0.0832 τ" },
+        { label: "Emission", value: "3.41%" },
       ],
     });
+  });
+
+  it("reads entity as a strict flag and status from a fixed vocabulary", () => {
+    const read = (q: Record<string, string>) => readCardParams(new URLSearchParams(q));
+    expect(read({ entity: "1" }).entity).toBe(true);
+    expect(read({ entity: "true" }).entity).toBe(false);
+    expect(read({ status: "warn" }).status).toBe("warn");
+    expect(read({ status: "OK" }).status).toBe("ok");
+    // Not a health state we know -- dropped rather than guessed at, so a
+    // crawler-supplied value can never reach the colour lookup.
+    expect(read({ status: "constructor" }).status).toBe(null);
+    expect(read({ status: "on fire" }).status).toBe(null);
   });
 
   it("drops a half-specified stat — a value with no label is unreadable", () => {
@@ -101,6 +130,8 @@ describe("readCardParams (#8489)", () => {
       eyebrow: null,
       stats: [],
       logoHost: null,
+      entity: false,
+      status: null,
     });
   });
 
@@ -137,16 +168,27 @@ describe("titleFontSize (#8489)", () => {
 describe("renderCardMarkup (#8489)", () => {
   const base = { title: "Chutes", subtitle: "A subnet", eyebrow: "Subnet", stats: [] };
 
-  it("escapes every interpolated value — this endpoint is crawler-reachable", () => {
+  it("sanitizes every interpolated value — this endpoint is crawler-reachable", () => {
     const markup = renderCardMarkup({
       ...base,
       title: "<script>alert(1)</script>",
       eyebrow: '"><img>',
       stats: [{ label: "<b>", value: "</div>" }],
     });
-    expect(markup).not.toContain("<script>");
-    expect(markup).not.toContain("<img>");
-    expect(markup).toContain("&lt;script&gt;");
+    expect(markup).not.toContain("<script");
+    expect(markup).not.toContain("<b>");
+    // The card legitimately contains <div> and <img>, so "no <img>" would be a
+    // false assertion. What actually matters is that hostile input adds NO
+    // element: the tag inventory has to match a benign render exactly.
+    const benign = renderCardMarkup({
+      ...base,
+      title: "script alert(1) script",
+      eyebrow: "img",
+      stats: [{ label: "b", value: "div" }],
+    });
+    const tags = (m: string) =>
+      (m.match(/<\/?[a-zA-Z][^>]*>/g) ?? []).map((t) => t.split(/[ >]/)[0]);
+    expect(tags(markup)).toEqual(tags(benign));
   });
 
   it("sizes the root to exactly the canvas, with padding on an inner wrapper", () => {
@@ -221,24 +263,22 @@ describe("card font stack (#8489)", () => {
 });
 
 describe("entity logo (#8489)", () => {
-  it("renders the logo through OUR icon proxy, never the caller's URL", () => {
+  it("builds the icon URL through OUR proxy, never the caller's URL", () => {
+    expect(iconProxyUrl("chutes.ai")).toBe(
+      "https://api.metagraph.sh/api/v1/icon?host=chutes.ai&size=128&theme=light",
+    );
+  });
+
+  it("inlines the resolved icon so the markup never carries a network URL", () => {
     const markup = renderCardMarkup({
       title: "Chutes",
       subtitle: "x",
       eyebrow: "Subnet",
       stats: [],
-      logoHost: "chutes.ai",
+      entity: true,
+      icon: "data:image/png;base64,AAAA",
     });
-    expect(markup).toContain("https://api.metagraph.sh/api/v1/icon?host=chutes.ai");
-  });
-
-  it("falls back to the mint rule when there is no logo", () => {
-    const markup = renderCardMarkup({
-      title: "5Grwva…GKutQY",
-      subtitle: "x",
-      eyebrow: "Account",
-      stats: [],
-    });
+    expect(markup).toContain('src="data:image/png;base64,AAAA"');
     expect(markup).not.toContain("/api/v1/icon");
   });
 });
@@ -294,15 +334,18 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
     }
   });
 
-  it("decodes escaped entities back to the glyph actually drawn", () => {
-    // escapeText turns & into &amp;, but the card paints "&" — so the subset
-    // must contain "&", not "a","m","p",";".
+  it("subsets a literal ampersand, and never the letters of an entity", () => {
+    // The card paints "&", so the subset must contain "&" -- not "a","m","p",
+    // ";", which is what an escaped title both emitted AND subset, making the
+    // corruption self-consistent and therefore invisible to a glyph test.
     const markup = renderCardMarkup({
       title: "Rock & Roll",
       subtitle: "y",
       eyebrow: null,
       stats: [],
     });
+    expect(markup).toContain("Rock & Roll");
+    expect(markup).not.toContain("&amp;");
     expect(paintedChars(markup).has("&")).toBe(true);
     expect(glyphsForMarkup(markup)).not.toContain("&amp;");
   });
@@ -313,7 +356,8 @@ describe("glyph subsetting (#8489) — every painted character must be subset", 
       subtitle: "y",
       eyebrow: "Subnet",
       stats: [{ label: "Netuid", value: "SN64" }],
-      logoHost: "chutes.ai",
+      entity: true,
+      icon: "data:image/png;base64,AAAA",
     });
     const glyphs = glyphsForMarkup(markup);
     // Style/attribute text would balloon the subset request for glyphs that
@@ -338,31 +382,35 @@ describe("monogram fallback (#8489) — an entity card never shows a blank tile"
       subtitle: "x",
       eyebrow: "Validator",
       stats: [],
+      entity: true,
     });
     expect(markup).toContain(">TA<");
-    expect(markup).not.toContain("/api/v1/icon");
   });
 
-  it("prefers a real logo over the monogram when a host is present", () => {
+  it("prefers a resolved icon over the monogram", () => {
     const markup = renderCardMarkup({
       title: "Chutes",
       subtitle: "x",
       eyebrow: "Subnet",
       stats: [],
-      logoHost: "chutes.ai",
+      entity: true,
+      icon: "data:image/png;base64,AAAA",
     });
-    expect(markup).toContain("/api/v1/icon?host=chutes.ai");
+    expect(markup).toContain("data:image/png;base64,AAAA");
     expect(markup).not.toContain(">CH<");
   });
 
-  it("keeps the plain mint rule on NON-entity cards, where a monogram is meaningless", () => {
+  it("shows OUR mark on a non-entity card, where a monogram is meaningless", () => {
+    // /agents should not read "AG" -- the Metagraphed mark is the honest
+    // avatar for a page that is ours rather than an entity's.
     const markup = renderCardMarkup({
-      title: "Metagraphed",
+      title: "Agent tooling",
       subtitle: "x",
-      eyebrow: null,
+      eyebrow: "Agents",
       stats: [],
     });
-    expect(markup).not.toContain(">ME<");
+    expect(markup).not.toContain(">AG<");
+    expect(markup).toContain(markDataUri("#00C899"));
   });
 
   it("subsets the monogram's glyphs — it is uppercased, like the eyebrow was", () => {
@@ -371,8 +419,145 @@ describe("monogram fallback (#8489) — an entity card never shows a blank tile"
       subtitle: "x",
       eyebrow: "Validator",
       stats: [],
+      entity: true,
     });
     const painted = new Set(glyphsForMarkup(markup));
     for (const ch of "TA") expect(painted.has(ch)).toBe(true);
+  });
+});
+
+describe("resolveIcon (#8489) — satori has no onerror, so we resolve first", () => {
+  const png = (bytes: number[]) =>
+    new Response(new Uint8Array(bytes), {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    });
+
+  it("inlines a fetched icon as a data URI", async () => {
+    const fetchImpl = async () => png([1, 2, 3]);
+    expect(await resolveIcon("chutes.ai", fetchImpl as unknown as typeof fetch)).toBe(
+      "data:image/png;base64,AQID",
+    );
+  });
+
+  it("returns null on a 404 — the tao.bot case, where no aggregator has a favicon", async () => {
+    // The whole point of resolving up front: this used to paint an empty tile
+    // in every unfurl for the life of the cache entry, while the site showed
+    // a "TA" monogram. Null here is what lets the card fall back the same way.
+    const fetchImpl = async () => new Response(null, { status: 404 });
+    expect(await resolveIcon("tao.bot", fetchImpl as unknown as typeof fetch)).toBe(null);
+  });
+
+  it("rejects a non-image response rather than inlining it", async () => {
+    const fetchImpl = async () =>
+      new Response("<!doctype html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    expect(await resolveIcon("example.org", fetchImpl as unknown as typeof fetch)).toBe(null);
+  });
+
+  it("rejects an empty body and an implausibly large one", async () => {
+    const empty = async () => png([]);
+    expect(await resolveIcon("a.example", empty as unknown as typeof fetch)).toBe(null);
+    const huge = async () =>
+      new Response(new Uint8Array(300 * 1024), {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    expect(await resolveIcon("b.example", huge as unknown as typeof fetch)).toBe(null);
+  });
+
+  it("strips content-type parameters so the data URI stays well-formed", async () => {
+    const fetchImpl = async () =>
+      new Response(new Uint8Array([1]), {
+        status: 200,
+        headers: { "content-type": "image/svg+xml; charset=utf-8" },
+      });
+    expect(await resolveIcon("c.example", fetchImpl as unknown as typeof fetch)).toBe(
+      "data:image/svg+xml;base64,AQ==",
+    );
+  });
+
+  it("never throws — a card must render even when the icon service is down", async () => {
+    const fetchImpl = async () => {
+      throw new Error("network down");
+    };
+    expect(await resolveIcon("d.example", fetchImpl as unknown as typeof fetch)).toBe(null);
+  });
+
+  it("base64s past the 8192-byte chunk boundary without corrupting the icon", async () => {
+    // The chunked String.fromCharCode loop exists so a large icon can't blow
+    // the argument limit; this proves the seams line up.
+    const bytes = Array.from({ length: 20000 }, (_, i) => i % 256);
+    const fetchImpl = async () => png(bytes);
+    const uri = await resolveIcon("e.example", fetchImpl as unknown as typeof fetch);
+    const decoded = Uint8Array.from(atob(uri!.split(",")[1]!), (c) => c.charCodeAt(0));
+    expect(Array.from(decoded)).toEqual(bytes);
+  });
+});
+
+describe("status dot (#8489)", () => {
+  it("colours the footer dot with the site's own health colour", () => {
+    const markup = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "x",
+      eyebrow: "Subnet",
+      stats: [],
+      entity: true,
+      status: "warn",
+    });
+    expect(markup).toContain("#966800");
+  });
+
+  it("falls back to the brand accent when no status is given", () => {
+    const markup = renderCardMarkup({ title: "x", subtitle: "y", eyebrow: null, stats: [] });
+    expect(markup).toContain("background:#00C899;margin-right:14px");
+  });
+
+  it("never interpolates a prototype property into the card's CSS", () => {
+    // `key in obj` would let ?status=constructor through and stringify a
+    // function into an inline style. renderCardMarkup re-checks rather than
+    // trusting its caller.
+    const markup = renderCardMarkup({
+      title: "x",
+      subtitle: "y",
+      eyebrow: null,
+      stats: [],
+      status: "constructor",
+    });
+    expect(markup).not.toContain("function");
+    expect(markup).toContain("background:#00C899;margin-right:14px");
+  });
+});
+
+describe("three-stat rail (#8489)", () => {
+  it("steps the type down at three cells so the rail still fits the band", () => {
+    const three = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "x",
+      eyebrow: "Subnet",
+      entity: true,
+      stats: [
+        { label: "Netuid", value: "SN64" },
+        { label: "Price", value: "0.0832 τ" },
+        { label: "Emission", value: "3.41%" },
+      ],
+    });
+    expect(three).toContain("font-size:36px");
+    expect(three).toContain("margin-right:44px");
+
+    const two = renderCardMarkup({
+      title: "Chutes",
+      subtitle: "x",
+      eyebrow: "Subnet",
+      entity: true,
+      stats: [
+        { label: "Netuid", value: "SN64" },
+        { label: "Price", value: "0.0832 τ" },
+      ],
+    });
+    expect(two).toContain("font-size:42px");
+    expect(two).toContain("margin-right:64px");
   });
 });
