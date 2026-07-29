@@ -67,6 +67,26 @@ const DISCOVERY_LINK_HEADER = [
   `<${API_ORIGIN}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
 ].join(", ");
 
+/**
+ * Site-wide crawler defaults (#8624).
+ *
+ * `max-image-preview:large` is the one that matters: WITHOUT it Google caps the
+ * preview to a thumbnail, which quietly wastes the whole per-page OG card
+ * programme (#8489/#8622) in Search and Discover. `index,follow` is the default
+ * anyway and is stated only so the directive list is readable.
+ *
+ * Appending this unconditionally is safe next to a route that emits its own
+ * `noindex` (every detail route does, for a missing entity — see
+ * entityNotFoundMeta). When a page carries conflicting robots tags, crawlers
+ * take the MOST RESTRICTIVE directive, so `noindex` still wins; the failure
+ * mode is biased towards not indexing, never towards indexing something we
+ * marked. `og:locale` is here for the same reason it is anywhere: the site is
+ * single-locale, and stating it stops platforms guessing.
+ */
+const SEO_DEFAULT_TAGS =
+  `<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">` +
+  `<meta property="og:locale" content="en_US">`;
+
 // Canonical human-facing pages for the sitemap (per-subnet pages are appended from the live list).
 const SITEMAP_STATIC_PATHS = [
   "/",
@@ -155,28 +175,95 @@ function buildRobots(): Response {
   });
 }
 
-// Build the apex sitemap: canonical static pages + one entry per live subnet (by netuid) and per
-// provider (by slug) — the two dynamic detail routes (/subnets/$netuid, /providers/$slug). Each
-// dynamic source is fetched independently and tolerant of failure, so a network hiccup just omits
-// that source and the sitemap is always valid XML (never 500s).
+// Build the apex sitemap: canonical static pages, every docs page, and one entry per live subnet
+// (by netuid) and per provider (by slug) — the dynamic detail routes (/subnets/$netuid,
+// /providers/$slug). Each dynamic source is fetched independently and tolerant of failure, so a
+// network hiccup just omits that source and the sitemap is always valid XML (never 500s).
+//
+// #8624 added two things. Docs were absent entirely — 20 pages of the most keyword-rich,
+// most link-worthy content on the site, in a sitemap that listed 266 subnet and provider URLs.
+// And no entry carried a <lastmod>, which for a product whose whole pitch is freshness left
+// crawlers with nothing to schedule a recrawl against.
+//
+// <lastmod> is emitted ONLY where a real timestamp exists (a subnet's `updated_at`). It is
+// deliberately NOT synthesised for static or docs pages: Google discounts lastmod wholesale
+// once it catches a site stamping "now" on URLs that didn't change, so a fabricated value
+// would cost us the real ones too. No value is better than a dishonest one.
+interface SitemapEntry {
+  loc: string;
+  lastmod?: string;
+}
+
+/** ISO-8601 date (W3C Datetime) if the value is a usable timestamp, else undefined. */
+export function sitemapLastmod(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
+}
+
 async function buildSitemap(): Promise<Response> {
-  const locs = SITEMAP_STATIC_PATHS.map((path) => `${SITE_ORIGIN}${path}`);
+  const entries: SitemapEntry[] = SITEMAP_STATIC_PATHS.map((path) => ({
+    loc: `${SITE_ORIGIN}${path}`,
+  }));
+  // Docs come from the same source that renders them, so a page added to content/docs/ is in
+  // the sitemap the moment it ships — no second list to forget to update.
+  //
+  // Imported LAZILY, and that is not incidental: docs-source.ts pulls `collections/server`, a
+  // fumadocs-mdx build-time virtual module that does not exist under vitest. A static import
+  // here made every test that touches server.ts fail to collect. The dynamic import keeps the
+  // module graph clean for tests and resolves only on a real /sitemap.xml request.
+  try {
+    const { docsSource } = await import("./lib/docs-source");
+    for (const page of docsSource.getPages()) {
+      entries.push({ loc: `${SITE_ORIGIN}${page.url}` });
+    }
+  } catch {
+    // Docs source unavailable — omit rather than fail the whole sitemap.
+  }
   try {
     const res = await fetch(`${API_ORIGIN}/api/v1/subnets?limit=500`, {
       headers: { accept: "application/json" },
     });
     if (res.ok) {
       const payload = (await res.json()) as {
-        data?: { subnets?: Array<{ netuid?: unknown }> };
+        data?: { subnets?: Array<{ netuid?: unknown; updated_at?: unknown }> };
       };
       for (const subnet of payload.data?.subnets ?? []) {
         if (Number.isInteger(subnet?.netuid)) {
-          locs.push(`${SITE_ORIGIN}/subnets/${String(subnet.netuid)}`);
+          entries.push({
+            loc: `${SITE_ORIGIN}/subnets/${String(subnet.netuid)}`,
+            lastmod: sitemapLastmod(subnet?.updated_at),
+          });
         }
       }
     }
   } catch {
     // Network hiccup — subnets are omitted; the sitemap stays valid XML.
+  }
+  // Validators. All 1029 are active on at least one subnet and 999 hold over 1000 TAO, so these
+  // are substantive pages rather than the thin ones a large auto-generated set usually implies —
+  // they were simply never listed. No <lastmod>: the only timestamp the list carries is
+  // `latest_captured_at`, which is when we last PROBED, not when the page's content changed.
+  // Stamping that would be the "lastmod is really just now" antipattern the helper above exists
+  // to avoid, on 1029 URLs at once.
+  try {
+    const res = await fetch(`${API_ORIGIN}/api/v1/validators?limit=2000`, {
+      headers: { accept: "application/json" },
+    });
+    if (res.ok) {
+      const payload = (await res.json()) as {
+        data?: { validators?: Array<{ hotkey?: unknown }> };
+      };
+      for (const validator of payload.data?.validators ?? []) {
+        if (typeof validator?.hotkey === "string" && validator.hotkey) {
+          entries.push({
+            loc: `${SITE_ORIGIN}/validators/${encodeURIComponent(validator.hotkey)}`,
+          });
+        }
+      }
+    }
+  } catch {
+    // Network hiccup — validators are omitted; the sitemap stays valid XML.
   }
   try {
     const res = await fetch(`${API_ORIGIN}/api/v1/providers?limit=500`, {
@@ -184,7 +271,7 @@ async function buildSitemap(): Promise<Response> {
     });
     if (res.ok) {
       const payload = (await res.json()) as {
-        data?: { providers?: Array<{ slug?: unknown; id?: unknown }> };
+        data?: { providers?: Array<{ slug?: unknown; id?: unknown; updated_at?: unknown }> };
       };
       for (const provider of payload.data?.providers ?? []) {
         // The list endpoint keys providers by `id`; the UI derives the route slug as
@@ -196,7 +283,10 @@ async function buildSitemap(): Promise<Response> {
               ? provider.id
               : null;
         if (slug) {
-          locs.push(`${SITE_ORIGIN}/providers/${encodeURIComponent(slug)}`);
+          entries.push({
+            loc: `${SITE_ORIGIN}/providers/${encodeURIComponent(slug)}`,
+            lastmod: sitemapLastmod(provider?.updated_at),
+          });
         }
       }
     }
@@ -206,7 +296,14 @@ async function buildSitemap(): Promise<Response> {
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    locs.map((loc) => `  <url><loc>${loc}</loc></url>`).join("\n") +
+    entries
+      .map(
+        (entry) =>
+          `  <url><loc>${entry.loc}</loc>${
+            entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ""
+          }</url>`,
+      )
+      .join("\n") +
     `\n</urlset>\n`;
   return new Response(body, {
     status: 200,
@@ -662,11 +759,17 @@ function injectAnalytics(response: Response, request: Request): Response {
     `${SITE_ORIGIN}/og?title=${encodeURIComponent(ogCopy.title)}` +
     (ogCopy.subtitle ? `&subtitle=${encodeURIComponent(ogCopy.subtitle)}` : "") +
     (ogCopy.eyebrow ? `&eyebrow=${encodeURIComponent(ogCopy.eyebrow)}` : "");
+  // #8624: og:image:alt is what a screen reader announces for an unfurl, and
+  // several platforms surface it as the image caption. The card's own copy is
+  // exactly the right text -- it IS what the image says.
+  const ogImageAlt = ogCopy.subtitle ? `${ogCopy.title} — ${ogCopy.subtitle}` : ogCopy.title;
   const ogImageTags =
     `<meta property="og:image" content="${escapeHtmlAttr(ogImage)}">` +
     `<meta property="og:image:width" content="1200">` +
     `<meta property="og:image:height" content="630">` +
-    `<meta name="twitter:image" content="${escapeHtmlAttr(ogImage)}">`;
+    `<meta property="og:image:alt" content="${escapeHtmlAttr(ogImageAlt)}">` +
+    `<meta name="twitter:image" content="${escapeHtmlAttr(ogImage)}">` +
+    `<meta name="twitter:image:alt" content="${escapeHtmlAttr(ogImageAlt)}">`;
   // HTMLRewriter is a Cloudflare Workers runtime global; under local `vite dev`
   // (Node) it's absent. Skip the streaming <head> injection there — these meta
   // tags are a production SEO/unfurl concern — and pass the rendered HTML through
@@ -681,6 +784,7 @@ function injectAnalytics(response: Response, request: Request): Response {
               element.append(canonicalTag, { html: true });
               element.append(ogUrlTag, { html: true });
               element.append(jsonLdTag, { html: true });
+              element.append(SEO_DEFAULT_TAGS, { html: true });
               if (!routeOwnsCard) element.append(ogImageTags, { html: true });
               element.append(WEB_VITALS_SNIPPET, { html: true });
             },

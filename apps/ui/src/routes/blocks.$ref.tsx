@@ -4,6 +4,7 @@ import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { blockQuery } from "@/lib/metagraphed/queries";
 import { isValidBlockRef } from "@/lib/metagraphed/blocks";
 import { BlockDetailPage } from "./-blocks-ref-page";
+import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 
 export const Route = createFileRoute("/blocks/$ref")({
   // #3422: validate the ref at the router level so an invalid one renders the
@@ -21,11 +22,19 @@ export const Route = createFileRoute("/blocks/$ref")({
     try {
       const { data } = await context.queryClient.ensureQueryData(blockQuery(params.ref));
       return { blockNumber: data?.block_number ?? null };
-    } catch {
+    } catch (error) {
+      // #8624: only a 404 from our own API means "no such entity". Any other
+      // failure keeps returning null so the page still renders and the
+      // component's own query drives the error path -- marking a page noindex
+      // on a transient blip would de-index real entities during an outage.
+      if (isMissingEntityError(error)) return { missing: true as const };
       return null;
     }
   },
   head: ({ params, loaderData }) => {
+    if (loaderData && "missing" in loaderData) {
+      return entityNotFoundMeta("Block", "No indexed Bittensor block matches this number or hash.");
+    }
     const label = loaderData?.blockNumber != null ? `#${loaderData.blockNumber}` : params.ref;
     const title = `Block ${label} — Metagraphed`;
     const description = `Bittensor block ${label}: hash, parent, author, extrinsic and event counts, indexed from the chain on Metagraphed.`;

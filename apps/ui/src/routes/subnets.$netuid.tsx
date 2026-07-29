@@ -4,6 +4,7 @@ import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { economicsQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
+import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
 
 export type SearchParams = {
@@ -68,11 +69,32 @@ export const Route = createFileRoute("/subnets/$netuid")({
         emissionShare: num(econ?.emission_share),
         totalStakeTao: num(econ?.total_stake_tao),
       };
-    } catch {
+    } catch (error) {
+      // #8624: a 404 from our own API is the one signal that means "netuid
+      // 99999 is not a subnet" rather than "the API is having a moment". Only
+      // that flips head() to the noindex not-found metadata; every other
+      // failure keeps returning null, so the page still renders and the
+      // component's own useSuspenseQuery drives the error path exactly as
+      // before. Marking a page noindex on a transient blip would de-index real
+      // subnets during an outage.
+      if (isMissingEntityError(error)) return { missing: true as const };
       return null;
     }
   },
   head: ({ params, loaderData }) => {
+    // #8624: /subnets/99999 used to return 200 with a confident title and no
+    // robots tag -- a soft 404 on an unbounded URL space. Both the malformed
+    // case (parseParams throws, but head() still runs with the raw param) and
+    // the well-formed-but-absent case land here now.
+    if (!Number.isFinite(Number(params.netuid))) {
+      return entityNotFoundMeta("Subnet", "This subnet identifier is not a valid netuid.");
+    }
+    if (loaderData && "missing" in loaderData) {
+      return entityNotFoundMeta(
+        "Subnet",
+        `No active Bittensor subnet is registered at netuid ${params.netuid}.`,
+      );
+    }
     const title = loaderData?.name
       ? `${loaderData.name} (Subnet ${params.netuid}) — Metagraphed`
       : `Subnet ${params.netuid} — Metagraphed`;

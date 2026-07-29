@@ -5,7 +5,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
-import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
+import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { validatorDetailQuery } from "@/lib/metagraphed/queries";
@@ -59,11 +59,22 @@ export const Route = createFileRoute("/validators/$hotkey")({
             ? data.subnet_count
             : null,
       };
-    } catch {
+    } catch (error) {
+      // #8624: only a 404 from our own API means "no such entity". Any other
+      // failure keeps returning null so the page still renders and the
+      // component's own query drives the error path -- marking a page noindex
+      // on a transient blip would de-index real entities during an outage.
+      if (isMissingEntityError(error)) return { missing: true as const };
       return null;
     }
   },
   head: ({ params, loaderData }) => {
+    if (loaderData && "missing" in loaderData) {
+      return entityNotFoundMeta(
+        "Validator",
+        "No Bittensor validator is registered at this hotkey.",
+      );
+    }
     // See accounts.$ss58.tsx: parseParams rejects a malformed hotkey, but head()
     // still runs with the raw param (the already-validating /blocks and /subnets
     // routes title invalid ids the same way today), so the not-found metadata is
