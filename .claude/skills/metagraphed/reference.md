@@ -394,12 +394,12 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   this to typecheck at all — without it, TypeScript infers the array's element type by intersecting
   every entry's `handler` parameter (contravariant), which collapses into an unsatisfiable type the
   moment more than one entry declares a specific (non-`Row`) `args` type; the explicit interface uses
-  bivariant parameter checking for the method-shorthand syntax every tool already uses instead. Run
-  `npm run diff:mcp-tool-schemas` (an equivalence-diff audit against hand-transcribed pre-conversion
-  literals, normalizing known cosmetic differences — see its own file header) until it reports PASS
-  for a newly-converted tool; per #7863's own "hard wire-compatibility constraint," description-string
-  loss is the ONLY issue-sanctioned cosmetic difference — any other diff is a real regression to fix
-  in the Zod schema, not normalize away.
+  bivariant parameter checking for the method-shorthand syntax every tool already uses instead. The
+  one-time conversion audit that guarded this (`npm run diff:mcp-tool-schemas`) was **retired in
+  #8639**: it compared generated schemas against a frozen, edit-forbidden transcription of the
+  pre-conversion literals, so every later feature that legitimately added a parameter or corrected a
+  type made it fail. `npm run validate:mcp` is the living check — it exercises all 205 tools, the
+  lifecycle, and both subscribe→notify round trips against the real handler.
 - **`packages/client` is an npm workspace (#3066), with no lockfile of its own.** `apps/ui` consumes it
   as a live workspace link (`"@jsonbored/metagraphed": "*"` in `apps/ui/package.json`, resolved from
   `packages/client` directly) instead of round-tripping through the published npm package. Verified
