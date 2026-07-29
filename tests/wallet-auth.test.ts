@@ -14,6 +14,7 @@ import {
   SESSION_TTL_SECONDS,
   verifySessionToken,
   verifyTriggerToken,
+  challengeSignatureForms,
   verifyWalletChallenge,
   WALLET_CHALLENGE_TTL_SECONDS,
   walletChallengeMessage,
@@ -530,5 +531,102 @@ describe("createTriggerToken / verifyTriggerToken (#8374)", () => {
 
   test("WATCH_TOKEN_TTL_SECONDS is 90 days", () => {
     assert.equal(WATCH_TOKEN_TTL_SECONDS, 90 * 24 * 3600);
+  });
+});
+
+describe("browser-extension <Bytes> wrapping (#8645)", () => {
+  // Polkadot extensions do not sign the bytes handed to signRaw({type:"bytes"}).
+  // They wrap them in <Bytes>…</Bytes> first, so a dapp cannot trick a user into
+  // blind-signing something that is really an extrinsic payload. We verified only
+  // the unwrapped form, so EVERY signature from a real wallet failed with
+  // "signature verification failed" — while these tests stayed green, because
+  // @scure/sr25519 signs the bare bytes and never wraps.
+  const enc = new TextEncoder();
+  const wrap = (msg: string) =>
+    new Uint8Array([
+      ...enc.encode("<Bytes>"),
+      ...enc.encode(msg),
+      ...enc.encode("</Bytes>"),
+    ]);
+
+  function wallet(seedByte: number) {
+    const seed = Uint8Array.from(
+      { length: 32 },
+      (_, i) => (i + seedByte) % 256,
+    );
+    const secretKey = secretFromSeed(seed);
+    const publicKey = getPublicKey(secretKey);
+    return { secretKey, ss58: encodeAccountId32(publicKey)! };
+  }
+  const hex = (u: Uint8Array) =>
+    [...u].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  async function envWithNonce(ss58: string, purpose?: "login" | "watch") {
+    const kv = createFakeKv();
+    const env = { METAGRAPH_CONTROL: kv } as unknown as Env;
+    await issueWalletChallenge(env, ss58, purpose);
+    const nonce = [
+      ...(kv as unknown as { _store: Map<string, unknown> })._store.values(),
+    ][0];
+    return { env, nonce: String(nonce) };
+  }
+
+  test("accepts a signature wrapped the way a real extension wraps it", async () => {
+    const { secretKey, ss58 } = wallet(31);
+    const { env, nonce } = await envWithNonce(ss58);
+    const signature = hex(
+      sr25519Sign(secretKey, wrap(walletChallengeMessage(ss58, nonce))),
+    );
+    assert.deepEqual(await verifyWalletChallenge(env, ss58, signature), {
+      ok: true,
+    });
+  });
+
+  test("still accepts a bare signature, so CLI and service signers keep working", async () => {
+    const { secretKey, ss58 } = wallet(32);
+    const { env, nonce } = await envWithNonce(ss58);
+    const signature = hex(
+      sr25519Sign(secretKey, enc.encode(walletChallengeMessage(ss58, nonce))),
+    );
+    assert.deepEqual(await verifyWalletChallenge(env, ss58, signature), {
+      ok: true,
+    });
+  });
+
+  test("wrapping is honoured for the watch purpose too, not just login", async () => {
+    const { secretKey, ss58 } = wallet(33);
+    const { env, nonce } = await envWithNonce(ss58, "watch");
+    const signature = hex(
+      sr25519Sign(
+        secretKey,
+        wrap(walletChallengeMessage(ss58, nonce, "watch")),
+      ),
+    );
+    assert.deepEqual(
+      await verifyWalletChallenge(env, ss58, signature, "watch"),
+      { ok: true },
+    );
+  });
+
+  test("a wrapped signature over a DIFFERENT nonce is still rejected", async () => {
+    // Accepting two framings must not accept two messages.
+    const { secretKey, ss58 } = wallet(34);
+    const { env } = await envWithNonce(ss58);
+    const signature = hex(
+      sr25519Sign(
+        secretKey,
+        wrap(walletChallengeMessage(ss58, "not-the-nonce")),
+      ),
+    );
+    assert.deepEqual(await verifyWalletChallenge(env, ss58, signature), {
+      ok: false,
+      code: "invalid_signature",
+    });
+  });
+
+  test("challengeSignatureForms returns exactly the wrapped and bare byte strings", () => {
+    const [wrapped, bare] = challengeSignatureForms(enc.encode("hello"));
+    assert.equal(new TextDecoder().decode(wrapped), "<Bytes>hello</Bytes>");
+    assert.equal(new TextDecoder().decode(bare!), "hello");
   });
 });

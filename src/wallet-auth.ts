@@ -122,6 +122,48 @@ export async function issueWalletChallenge(
  * missing Schnorrkel marker all reach @scure/sr25519's own `abytes`/marker
  * assertions, which throw -- caught here and folded into `invalid_signature`
  * rather than a 500). */
+/**
+ * The byte sequences a wallet may actually have signed, for one challenge
+ * message (#8645).
+ *
+ * Polkadot browser extensions do NOT sign the bytes you hand `signRaw({ type:
+ * "bytes" })`. They wrap them in `<Bytes>` … `</Bytes>` first -- deliberately,
+ * so a dapp can never trick a user into blind-signing something that is
+ * actually a valid extrinsic payload. `@polkadot/util`'s `u8aWrapBytes` is the
+ * canonical implementation; these are the same two literals.
+ *
+ * We verified only the UNWRAPPED form, so every signature a real extension
+ * produced failed with `invalid_signature`. It shipped because the tests sign
+ * with `@scure/sr25519` directly, which does not wrap -- the test path and the
+ * production path differed in exactly the way that hides this, and the tests
+ * were green the whole time. Reproduced against the real code before fixing:
+ * an extension-style wrapped signature returned `invalid_signature`, the bare
+ * one returned ok.
+ *
+ * Both forms are accepted rather than swapping one for the other. Wrapped is
+ * what browser extensions send; bare is what a CLI signer, a backend service
+ * or a test harness signing the message directly will send, and that path was
+ * working. Accepting both costs one extra sr25519 verify on a route that is
+ * already rate-limited to 10/min per IP, and breaks nobody.
+ *
+ * This is not a weakening: both candidates are built from the SAME
+ * server-generated nonce, so an attacker gains no new signable text -- only
+ * the framing differs, and the framing is not secret.
+ */
+export function challengeSignatureForms(message: Uint8Array): Uint8Array[] {
+  const encoder = new TextEncoder();
+  const prefix = encoder.encode("<Bytes>");
+  const postfix = encoder.encode("</Bytes>");
+  const wrapped = new Uint8Array(
+    prefix.length + message.length + postfix.length,
+  );
+  wrapped.set(prefix, 0);
+  wrapped.set(message, prefix.length);
+  wrapped.set(postfix, prefix.length + message.length);
+  // Wrapped first: browser extensions are the overwhelmingly common caller.
+  return [wrapped, message];
+}
+
 export async function verifyWalletChallenge(
   env: Env,
   ss58: string,
@@ -152,16 +194,14 @@ export async function verifyWalletChallenge(
   const message = new TextEncoder().encode(
     walletChallengeMessage(ss58, nonce, purpose),
   );
-  let verified: boolean;
-  try {
-    verified = sr25519Verify(
-      message,
-      hexToBytes(signatureHex.toLowerCase()),
-      decoded.publicKey,
-    );
-  } catch {
-    verified = false;
-  }
+  const signature = hexToBytes(signatureHex.toLowerCase());
+  const verified = challengeSignatureForms(message).some((candidate) => {
+    try {
+      return sr25519Verify(candidate, signature, decoded.publicKey);
+    } catch {
+      return false;
+    }
+  });
   if (!verified) {
     return { ok: false, code: "invalid_signature" };
   }
