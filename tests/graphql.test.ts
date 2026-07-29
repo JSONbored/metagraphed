@@ -1534,7 +1534,76 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     );
     assert.equal(paged.body.data.surfaces.items.length, 1);
     assert.equal(paged.body.data.surfaces.total, 3);
-    assert.equal(paged.body.data.surfaces.next_cursor, "s1");
+    // #8548: the root surfaces field now delegates to loadSurfacesList (the same
+    // loader REST /surfaces and MCP list_surfaces use), so its cursor is REST's
+    // offset cursor -- surfaces-mcp.test.ts asserts the same `1`. The prior
+    // id-based "s1" cursor was the GraphQL-only divergence this parity fix removes.
+    assert.equal(paged.body.data.surfaces.next_cursor, "1");
+  });
+
+  test("surfaces filters by kind/provider/id and sorts, at parity with REST/MCP (#8548)", async () => {
+    const env = () =>
+      fixtureEnv({
+        "/metagraph/surfaces.json": {
+          surfaces: [
+            { id: "s-a", netuid: 1, kind: "subnet-api", provider: "alpha" },
+            { id: "s-b", netuid: 1, kind: "docs", provider: "beta" },
+            { id: "s-c", netuid: 2, kind: "subnet-api", provider: "alpha" },
+          ],
+        },
+      });
+
+    const byKind = await gql(
+      '{ surfaces(kind: "subnet-api") { items { id kind } total } }',
+      env() as unknown as Env,
+    );
+    assert.equal(byKind.body.errors, undefined);
+    assert.equal(byKind.body.data.surfaces.total, 2);
+    assert.ok(
+      byKind.body.data.surfaces.items.every(
+        (s: Row) => s.kind === "subnet-api",
+      ),
+    );
+
+    const byProvider = await gql(
+      '{ surfaces(provider: "beta") { items { id provider } total } }',
+      env() as unknown as Env,
+    );
+    assert.equal(byProvider.body.data.surfaces.total, 1);
+    assert.equal(byProvider.body.data.surfaces.items[0].id, "s-b");
+
+    const byId = await gql(
+      '{ surfaces(id: "s-c") { items { id } total } }',
+      env() as unknown as Env,
+    );
+    assert.equal(byId.body.data.surfaces.total, 1);
+    assert.equal(byId.body.data.surfaces.items[0].id, "s-c");
+
+    const sorted = await gql(
+      '{ surfaces(sort: "id", order: "desc") { items { id } } }',
+      env() as unknown as Env,
+    );
+    assert.equal(sorted.body.errors, undefined);
+    assert.deepEqual(
+      sorted.body.data.surfaces.items.map((s: Row) => s.id),
+      ["s-c", "s-b", "s-a"],
+    );
+  });
+
+  test("surfaces rejects an unsupported filter/sort as a GraphQL error, not a silent default (#8548)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [{ id: "s-a", netuid: 1, kind: "subnet-api" }],
+      },
+    });
+    for (const arg of ['kind: "bogus"', 'sort: "not_a_column"']) {
+      const { body } = await gql(
+        `{ surfaces(${arg}) { items { id } } }`,
+        env as unknown as Env,
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.data?.surfaces ?? null, null);
+    }
   });
 
   test("endpoints filters by netuid", async () => {
@@ -3351,11 +3420,11 @@ describe("graphql — resolver branch coverage", () => {
     assert.equal(second.body.data.providers.next_cursor, null);
   });
 
-  test("surfaces paginate, falling back to key for the cursor when id is absent", async () => {
+  test("surfaces paginate via loadSurfacesList's REST-parity offset cursor (#8548)", async () => {
     const env = fixtureEnv({
       "/metagraph/surfaces.json": {
         surfaces: [
-          { key: "k1", netuid: 1, kind: "sse" }, // no id → cursor uses key
+          { key: "k1", netuid: 1, kind: "sse" },
           { id: "s2", netuid: 1, kind: "rpc" },
         ],
       },
@@ -3365,7 +3434,10 @@ describe("graphql — resolver branch coverage", () => {
       env as unknown as Env,
     );
     assert.equal(first.body.data.surfaces.total, 2);
-    assert.equal(first.body.data.surfaces.next_cursor, "k1");
+    // #8548: the root surfaces field now delegates to loadSurfacesList, whose
+    // cursor is REST's positional offset ("1"), independent of any per-row id/key
+    // -- the removed listPage's id/key keyFn no longer applies.
+    assert.equal(first.body.data.surfaces.next_cursor, "1");
   });
 
   test("invalid Content-Length is rejected before the body is read", async () => {

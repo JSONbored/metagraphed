@@ -2714,7 +2714,7 @@ export type Query = {
   sudo: ExtrinsicList;
   /** The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key. */
   sudo_key?: Maybe<SudoKey>;
-  /** Curated public interface surfaces, optionally scoped to one subnet. */
+  /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
   /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
@@ -3927,8 +3927,13 @@ export type QuerySudoArgs = {
 
 export type QuerySurfacesArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 

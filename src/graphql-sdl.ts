@@ -322,8 +322,17 @@ export const SDL = /* GraphQL */ `
     adapter(slug: String!): Adapter
     "Paginated per-subnet economic + validator metrics."
     economics(limit: Int, cursor: String): EconomicsList!
-    "Curated public interface surfaces, optionally scoped to one subnet."
-    surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
+    "Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces."
+    surfaces(
+      netuid: Int
+      kind: String
+      provider: String
+      id: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: String
+    ): SurfaceList!
     "Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints."
     endpoints(
       netuid: Int
