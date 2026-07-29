@@ -5,8 +5,8 @@
 // (same URL/header/secret the retired Python script already posts to,
 // see roles/data-refresh-cron/vars/main.yml), reusing that route's
 // hash-diff-into-subnet_hyperparams_history logic (SHA-256 of a
-// stable-JSON-stringify of the formatted row, workers/data-api.mjs +
-// src/subnet-hyperparams-history.mjs) rather than re-implementing it
+// stable-JSON-stringify of the formatted row, workers/data-api.ts +
+// src/subnet-hyperparams-history.ts) rather than re-implementing it
 // bit-for-bit in Rust.
 //
 // That's a deliberate choice, not an oversight: bit-for-bit replicating

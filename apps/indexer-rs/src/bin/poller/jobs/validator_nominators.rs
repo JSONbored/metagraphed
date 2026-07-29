@@ -29,7 +29,7 @@
 // `{bits: u64}` struct; true value is bits / 2**64), NOT a TAO/alpha
 // amount -- these are pool-internal accounting shares, normalized here into
 // a dimensionless share_fraction per (hotkey, coldkey, netuid) row. The
-// API-side join (src/account-nominator-positions.mjs) multiplies that
+// API-side join (src/account-nominator-positions.ts) multiplies that
 // fraction by the already-ingested neurons.stake_tao at serve time.
 //
 // Root (netuid 0) is NOT covered: every Alpha entry at netuid 0 is always
@@ -39,7 +39,7 @@
 //
 // No prune step for either output table, matching
 // handleValidatorNominatorCountsSync / handleNominatorPositionsSync's own
-// upsert-only semantics (workers/data-api.mjs) exactly.
+// upsert-only semantics (workers/data-api.ts) exactly.
 
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;

@@ -11,7 +11,7 @@ reference, not a per-change checklist); the channel policy and rationale live in
 | ------------------------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Code + bundled assets                                         | push to `main`                         | Cloudflare Workers Builds (CF git integration)                                                                                               |
 | Data artifacts (R2 / KV)                                      | push to `registry/**` + daily schedule | `publish-cloudflare.yml`                                                                                                                     |
-| Health                                                        | scheduled crons                        | Worker-native cron (`HEALTH_PRUNE_CRON`, `workers/api.mjs`), …                                                                               |
+| Health                                                        | scheduled crons                        | Worker-native cron (`HEALTH_PRUNE_CRON`, `workers/api.ts`), …                                                                                |
 | Economics / metagraph / account-identity / subnet-hyperparams | scheduled systemd timers               | indexer-box `data-refresh-cron` / `data-refresh-economics` (JSONbored/metagraphed-infra) -- moved off GitHub Actions 2026-07-13 / 2026-07-15 |
 
 Data is probe- and chain-derived and rebuilt on schedule — it is never
