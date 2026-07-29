@@ -3221,19 +3221,47 @@ const rootValue = {
     }
   },
 
-  async economics({ limit, cursor }: QueryEconomicsArgs, context: GqlContext) {
-    // Live-preferring source (not the static-only listPage), paginated like it.
+  async economics(args: QueryEconomicsArgs, context: GqlContext) {
+    // #8549: full REST/MCP filter parity (netuid/registration_allowed/q/sort/order
+    // + limit/cursor) applied to the SAME live-preferring loadEconomics source,
+    // reusing the shared applyQueryFilters engine over the "economics" collection
+    // (the same read + filter/sort/page get_economics runs) rather than re-deriving
+    // it. An invalid filter/sort is a GraphQL BAD_USER_INPUT error, not a silently
+    // substituted default. The cursor is REST's positional offset, like every other
+    // applyQueryFilters-backed list field.
     const data = await loadEconomics(context);
-    const { page, total, nextCursor } = paginate(
-      data?.subnets || [],
-      limit,
-      cursor,
-      (s: Row) => s.netuid,
+    const queryUrl = new URL("https://graphql.internal/economics");
+    for (const [name, value] of [
+      ["netuid", args?.netuid],
+      ["registration_allowed", args?.registration_allowed],
+      ["q", args?.q],
+      ["sort", args?.sort],
+      ["order", args?.order],
+      ["limit", args?.limit],
+      ["cursor", args?.cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    const transformed = applyQueryFilters(
+      { subnets: data?.subnets ?? [] },
+      queryUrl,
+      "economics",
+      [],
     );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // applyQueryFilters always returns the economics collection as an array plus
+    // a pagination meta block (total/next_cursor), even for an empty/cold input,
+    // so no defensive shape fallbacks are needed here.
+    const filtered = transformed.data as Row;
+    const page = (transformed.meta as Row).pagination as Row;
     return {
-      subnets: page,
-      total,
-      next_cursor: nextCursor,
+      subnets: filtered.subnets as Row[],
+      total: page.total as number,
+      next_cursor: (page.next_cursor as string | number | null) ?? null,
       summary: data?.summary ?? null,
     };
   },
