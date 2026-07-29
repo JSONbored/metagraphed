@@ -93,8 +93,16 @@ export function WhatChangedFeed({
   const { data: iRes } = useSuspenseQuery(resolvedEndpointIncidentsQuery());
   // The two chain-side sources are non-suspending: they're additive detail, and
   // a slow or failing one shouldn't hold up (or blank) the whole digest.
-  const identity = useQuery(chainIdentityHistoryQuery(50)).data?.data?.changes ?? [];
-  const runtime = useQuery(runtimeVersionHistoryQuery()).data?.data?.transitions ?? [];
+  // Only the raw query results are kept as reactive values; the `?? []`
+  // fallbacks moved inside the memo below (#8558). Out here they handed the
+  // memo a fresh array identity on every render for as long as either query
+  // had no data yet, which both defeated the memo and tripped
+  // react-hooks/exhaustive-deps. `identityRes`/`runtimeRes` are React
+  // Query's cached result objects -- referentially stable until the
+  // underlying data actually changes, so the memo recomputes exactly when
+  // its inputs do.
+  const { data: identityRes } = useQuery(chainIdentityHistoryQuery(50));
+  const { data: runtimeRes } = useQuery(runtimeVersionHistoryQuery());
 
   const [hidden, setHidden] = useState<Set<DigestKind>>(() => new Set());
 
@@ -109,12 +117,12 @@ export function WhatChangedFeed({
             at?: string;
           }>,
           incidents: (iRes.data ?? []) as EndpointIncident[],
-          identity,
-          runtime,
+          identity: identityRes?.data?.changes ?? [],
+          runtime: runtimeRes?.data?.transitions ?? [],
         },
         cutoff,
       ),
-    [cRes.data, iRes.data, identity, runtime, cutoff],
+    [cRes.data, iRes.data, identityRes, runtimeRes, cutoff],
   );
 
   const counts = useMemo(() => countByKind(all), [all]);
