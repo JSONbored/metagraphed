@@ -59,6 +59,7 @@ import {
   sourceCountLabel,
 } from "@/components/metagraphed/ask-box";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   CommandDialog,
   CommandEmpty,
@@ -1161,13 +1162,18 @@ function AskAnswerPanel({
       </div>
 
       {mutation.isPending ? (
-        <div className="flex items-center gap-2 rounded border border-border bg-card px-3 py-3 mg-type-caption text-ink-muted">
+        <Panel
+          as="div"
+          flush
+          className="px-3 py-3 mg-type-caption text-ink-muted"
+          bodyClassName="flex items-center gap-2"
+        >
           <Loader2 className="size-4 shrink-0 animate-spin text-accent" aria-hidden />
           <span>
             {elapsedMs > 10_000 ? "Still working… " : "Thinking… "}
             {(elapsedMs / 1000).toFixed(1)}s
           </span>
-        </div>
+        </Panel>
       ) : null}
 
       {mutation.isError ? (

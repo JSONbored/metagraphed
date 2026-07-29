@@ -134,10 +134,11 @@ export function RegistryEmpty({
                   on -gaps-page / -surfaces-page), and <ExternalLink>'s
                   safeExternalUrl rejects relative URLs outright -- converting
                   would render the "blocked unsafe URL" fallback and break the
-                  link. Residual no-restricted-syntax warning flagged in the
-                  PR body per the issue's req-2 escape hatch. */}
+                  link (#8192). Suppressed with a written reason for the
+                  #8552 src/components error-tier ratchet. */}
               <a
                 href={evidenceHref}
+                // eslint-disable-next-line no-restricted-syntax -- <ExternalLink>'s safeExternalUrl runs `new URL(href)` with no base, so the same-origin relative artifact paths every call site passes (see comment above) would be rejected and rendered as the blocked-URL fallback; the raw anchor is genuinely required here
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-accent hover:underline"

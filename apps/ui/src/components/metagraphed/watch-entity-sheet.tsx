@@ -65,6 +65,7 @@ export function WatchEntitySheet({ netuid, name }: { netuid: number; name?: stri
             onClick={() => setOpen(false)}
             aria-hidden
           />
+          {/* eslint-disable-next-line no-restricted-syntax -- bottom-sheet dialog surface, not a card shell: mobile-first rounded-t-xl/border-t geometry that upgrades to rounded-xl/full border at sm plus its own scroll region; <Panel> cannot express this without overriding every one of those classes. Same false-positive class as endpoint-snippet.tsx's tablist */}
           <div className="relative z-[var(--mg-z-sticky)] mg-scroll max-h-[85vh] w-full overflow-y-auto rounded-t-xl border-t border-border bg-card p-4 sm:mx-4 sm:max-w-lg sm:rounded-xl sm:border">
             <div className="mb-4 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div className="min-w-0">
