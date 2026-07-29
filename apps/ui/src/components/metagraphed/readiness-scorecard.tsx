@@ -75,11 +75,24 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
           // width, engaging the existing truncate chain.
           className="mt-3 w-full items-center gap-2 rounded-md border border-accent/30 bg-accent-surface px-3 py-2 text-sm"
         >
-          <ArrowRight className="size-4 shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 truncate">
-            <span className="font-medium text-ink-strong">Start here:</span>{" "}
-            {cta.name ?? cta.kind ?? "Primary API"}
-            {cta.provider ? <span className="text-ink-muted"> · {cta.provider}</span> : null}
+          {/* ExternalLink wraps its `children` in its own plain (non-flex)
+              span to make single-text-node children truncate -- that
+              wrapper isn't itself a flex container, so a `flex-1 min-w-0`
+              on an element passed in as children never actually shrinks
+              (flex sizing only applies inside a flex/grid parent). A long
+              `cta.name`/`cta.provider` escaped the viewport at 375px even
+              with the child span correctly marked min-w-0/flex-1 truncate
+              (#8537). Rewrapping the icon+text in our own real flex row
+              here gives the truncate span a genuine flex parent to shrink
+              against, instead of depending on ExternalLink's wrapper to be
+              one. */}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <ArrowRight className="size-4 shrink-0 text-accent" />
+            <span className="min-w-0 flex-1 truncate">
+              <span className="font-medium text-ink-strong">Start here:</span>{" "}
+              {cta.name ?? cta.kind ?? "Primary API"}
+              {cta.provider ? <span className="text-ink-muted"> · {cta.provider}</span> : null}
+            </span>
           </span>
         </ExternalLink>
       ) : null}

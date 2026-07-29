@@ -1793,7 +1793,7 @@ function ExternalLink({
     );
   }
   const content = /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsx("span", { className: "truncate", children }),
+    /* @__PURE__ */ jsx("span", { className: "min-w-0 truncate", children }),
     safeHref ? /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3 shrink-0 text-ink-muted" }) : null,
     authRequired ? /* @__PURE__ */ jsxs(
       "span",

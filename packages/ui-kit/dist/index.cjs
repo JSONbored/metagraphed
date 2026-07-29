@@ -1822,7 +1822,7 @@ function ExternalLink({
     );
   }
   const content = /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate", children }),
+    /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 truncate", children }),
     safeHref ? /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ExternalLink, { className: "size-3 shrink-0 text-ink-muted" }) : null,
     authRequired ? /* @__PURE__ */ jsxRuntime.jsxs(
       "span",

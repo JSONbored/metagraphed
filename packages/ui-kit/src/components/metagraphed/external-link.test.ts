@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { safeExternalUrl } from "./external-link";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ExternalLink, safeExternalUrl } from "./external-link";
 
 describe("safeExternalUrl", () => {
   it("allows ordinary public http(s) URLs", () => {
@@ -43,5 +45,28 @@ describe("safeExternalUrl", () => {
     for (const href of unsafe) {
       expect(safeExternalUrl(href), href).toBeUndefined();
     }
+  });
+});
+
+describe("ExternalLink children wrapper", () => {
+  // The anchor is `inline-flex`, so its direct children are flex items. The
+  // span wrapping `children` needs `min-w-0` or it keeps the flex default
+  // `min-width: auto` -- refusing to shrink below its content's natural
+  // width regardless of any `truncate`/`min-w-0`/`flex-1` the caller puts on
+  // an element *inside* that span, since flex sizing is about the span
+  // itself, not its descendants. Without this, long link text/labels escape
+  // the viewport at narrow widths (#8537) even when the caller did
+  // everything right on their own side.
+  it("gives the wrapping span both min-w-0 and truncate so long children shrink instead of escaping", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ExternalLink, {
+        href: "https://example.com",
+        children:
+          "a very long label that should truncate instead of overflowing its flex container",
+      }),
+    );
+    const match = html.match(/<span class="([^"]*)">/);
+    expect(match?.[1]).toContain("min-w-0");
+    expect(match?.[1]).toContain("truncate");
   });
 });
