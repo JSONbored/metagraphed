@@ -11,6 +11,7 @@ import {
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { AI_TIERED_RATE_LIMIT } from "../src/ai-search.ts";
 import { STATE_QUERY_TIERED_RATE_LIMIT } from "../workers/request-handlers/rpc-proxy.ts";
+import { WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 const ANONYMOUS = { envVar: "TEST_ANON_LIMITER", limit: 60, windowSeconds: 60 };
@@ -404,6 +405,102 @@ describe("applyTieredRateLimit with the state-query surface config (#8522)", () 
     );
     assert.equal(result.allowed, true);
     assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+  });
+});
+
+describe("applyTieredRateLimit with the webhook-subscription surface config (#8523)", () => {
+  test("a keyed webhook request rides the higher WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED tier above the anonymous ceiling", async () => {
+    const keyedCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      WEBHOOK_SUBSCRIPTION_RATE_LIMITER: {
+        limit: async () => ({ success: false }),
+      },
+      WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED: {
+        limit: async (args: unknown) => {
+          keyedCalls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/webhooks/subscriptions",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${VALID_KEY}`,
+          "cf-connecting-ip": "203.0.113.9",
+        },
+      },
+    );
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+    assert.deepEqual(keyedCalls, [{ key: "webhook:42" }]);
+  });
+
+  test("the anonymous ceiling is unchanged -- 10/60s, keyed by webhook:<ip> via WEBHOOK_SUBSCRIPTION_RATE_LIMITER (regression)", async () => {
+    const anonCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      WEBHOOK_SUBSCRIPTION_RATE_LIMITER: {
+        limit: async (args: unknown) => {
+          anonCalls.push(args);
+          return { success: false };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/webhooks/subscriptions",
+      {
+        method: "POST",
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      },
+    );
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, false);
+    assert.equal(
+      result.policy,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.anonymous,
+    );
+    assert.equal(result.policy.limit, 10);
+    assert.equal(result.policy.windowSeconds, 60);
+    assert.equal(result.accountId, null);
+    assert.deepEqual(anonCalls, [{ key: "webhook:203.0.113.9" }]);
+  });
+
+  test("a keyed webhook request fails open when WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED is unprovisioned", async () => {
+    const env = {
+      ...envWithKeyVerify(),
+      WEBHOOK_SUBSCRIPTION_RATE_LIMITER: {
+        limit: async () => ({ success: true }),
+      },
+      // WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED intentionally absent.
+    } as unknown as Env;
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/webhooks/subscriptions",
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${VALID_KEY}` },
+      },
+    );
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed);
     assert.equal(result.accountId, "42");
   });
 });

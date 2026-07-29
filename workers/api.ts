@@ -1770,7 +1770,7 @@ export async function handleRequest(
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
   // must run before the read-only method gate below (like the RPC proxy).
   if (url.pathname.startsWith("/api/v1/webhooks/")) {
-    return handleWebhookRequest(request, env, url);
+    return handleWebhookRequest(request, env, url, ctx);
   }
 
   // Chain alert triggers (#4984 Part 1): CRUD accepts POST/GET/PATCH/DELETE,
@@ -4793,7 +4793,12 @@ async function handleHealthRequest(request: Request, env: Env) {
 // the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
 // publish-time dispatcher (scripts/dispatch-webhooks.ts) reads them and fires
 // HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
-async function handleWebhookRequest(request: Request, env: Env, url: URL) {
+async function handleWebhookRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx?: Ctx,
+) {
   if (!env.METAGRAPH_CONTROL?.get || !env.METAGRAPH_CONTROL?.put) {
     return errorResponse(
       "webhooks_unavailable",
@@ -4812,13 +4817,13 @@ async function handleWebhookRequest(request: Request, env: Env, url: URL) {
   const id = segments[4];
 
   if (!id && request.method === "POST") {
-    return createWebhookSubscription(request, env);
+    return createWebhookSubscription(request, env, ctx);
   }
   if (id && request.method === "GET") {
     return getWebhookSubscription(env, id);
   }
   if (id && request.method === "DELETE") {
-    return deleteWebhookSubscription(request, env, id);
+    return deleteWebhookSubscription(request, env, id, ctx);
   }
   return errorResponse(
     "method_not_allowed",
@@ -4841,27 +4846,57 @@ async function handleWebhookRequest(request: Request, env: Env, url: URL) {
 // absent (local dev/CI), matching every other rate-limiter in this codebase.
 const WEBHOOK_SUBSCRIPTION_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
-async function webhookSubscriptionRateLimited(request: Request, env: Env) {
-  if (!env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER?.limit) return null;
-  const { success } = await env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER.limit({
-    key: `webhook-sub:${resolveClientIp(request)}`,
-  });
-  if (success) return null;
-  return errorResponse(
-    "webhook_subscription_rate_limited",
-    "Too many webhook subscription requests from this client; slow down.",
-    429,
-    {},
-    {
-      "retry-after": String(WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds),
-      "x-ratelimit-limit": String(WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit),
-      "x-ratelimit-policy": `${WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit};w=${WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds}`,
-      "x-ratelimit-remaining": "0",
-    },
+// #8523: tiered rate limiting for webhook subscription create/delete/list,
+// mirroring DATA_TIERED_RATE_LIMIT. Anonymous callers keep the existing 10/60s
+// IP-keyed ceiling (WEBHOOK_SUBSCRIPTION_RATE_LIMITER); a valid mg_... key rides
+// the 5x account-keyed tier (WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED). The
+// "webhook" prefix namespaces the bucket so it never collides with another
+// surface sharing a binding. Fails open when a binding is absent, like every
+// limiter here.
+export const WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: {
+    envVar: "WEBHOOK_SUBSCRIPTION_RATE_LIMITER",
+    limit: WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit,
+    windowSeconds: WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds,
+  },
+  keyed: {
+    envVar: "WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED",
+    limit: 50,
+    windowSeconds: 60,
+  },
+  keyPrefix: "webhook",
+};
+
+async function webhookSubscriptionRateLimited(
+  request: Request,
+  env: Env,
+  ctx?: Ctx,
+) {
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
   );
+  if (!rateLimit.allowed) {
+    return errorResponse(
+      "webhook_subscription_rate_limited",
+      "Too many webhook subscription requests from this client; slow down.",
+      429,
+      {},
+      tieredRateLimitHeaders(rateLimit.policy),
+    );
+  }
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "webhook-subscription");
+  }
+  return null;
 }
 
-async function createWebhookSubscription(request: Request, env: Env) {
+async function createWebhookSubscription(
+  request: Request,
+  env: Env,
+  ctx?: Ctx,
+) {
   // Authenticate BEFORE touching the request body. An unauthenticated or
   // wrong-token caller must be rejected (503 when disabled, else 401) before we
   // read, JSON-parse, or validate any attacker-controlled payload — this avoids
@@ -4876,7 +4911,7 @@ async function createWebhookSubscription(request: Request, env: Env) {
   // Abuse control sits right after auth and before we read/parse the body, so a
   // token-holding caller can't script unbounded subscription creation -- while
   // still rejecting unauthenticated callers first (they never reach the limiter).
-  const rateLimited = await webhookSubscriptionRateLimited(request, env);
+  const rateLimited = await webhookSubscriptionRateLimited(request, env, ctx);
   if (rateLimited) return rateLimited;
 
   if (
@@ -5044,6 +5079,7 @@ async function deleteWebhookSubscription(
   request: Request,
   env: Env,
   id: string,
+  ctx?: Ctx,
 ) {
   if (!isValidSubscriptionId(id)) {
     return errorResponse(
@@ -5056,7 +5092,7 @@ async function deleteWebhookSubscription(
   // delete attempts can't drive unbounded reads. Delete authenticates with the
   // subscription's own secret (checked below), so the limiter is the only
   // volume bound on unauthenticated attempts.
-  const rateLimited = await webhookSubscriptionRateLimited(request, env);
+  const rateLimited = await webhookSubscriptionRateLimited(request, env, ctx);
   if (rateLimited) return rateLimited;
 
   const record = await readWebhookSubscription(env, id);
