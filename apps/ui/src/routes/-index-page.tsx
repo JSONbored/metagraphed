@@ -377,9 +377,16 @@ export function OverviewPage() {
 // SSR snapshot and the client's own fetch resolving (blocks land ~every 12s)
 // made the two sides disagree on `head.block_number` (or null vs the Link),
 // throwing React's hydration-mismatch error (#418).
-function ChainHeadTip() {
+// Exported for the hydration-guard regression test (#8524); rendered only here.
+export function ChainHeadTip() {
   const hydrated = useHydrated();
   const { data } = useQuery({ ...blocksQuery({ limit: 1 }), enabled: hydrated });
+  // `enabled` keeps the query from fetching until hydrated, AND the render
+  // itself checks `hydrated` before ever reading `data` -- registry-ticker.tsx
+  // queries this exact same key, so `enabled: false` alone isn't enough (it
+  // only blocks a new fetch, not a read of whatever's already in the shared
+  // cache from that other consumer). Mirrors -explorer-page.tsx:97.
+  if (!hydrated) return null;
   const head = data?.data?.[0];
   if (!head || head.block_number == null) return null;
   return (
