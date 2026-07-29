@@ -159,7 +159,11 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
             />
           </div>
         </div>
-        <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
+        {/* mg-table-scroll (ui-kit) adds the edge-fade/thin-scrollbar
+            affordance so the horizontal scroll below 1024px is discoverable
+            rather than silent, matching /validators (#8433) and /subnets
+            (#8314). */}
+        <div className="mg-table-scroll w-full overflow-x-auto [scrollbar-gutter:stable]">
           <table
             className="w-full min-w-[480px] mg-type-data"
             role="table"
