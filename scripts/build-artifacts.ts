@@ -2591,7 +2591,17 @@ await writeJson(artifactFile("registry-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
-  subnet_count: mergedSubnets.length,
+  // #8638: netuid 0 is ROOT, not a subnet. This was `mergedSubnets.length`,
+  // which counts it, so every consumer of registry-summary -- including the
+  // `registry_summary` MCP tool, i.e. every agent that asks how big Bittensor
+  // is -- was told 129 when the answer is 128 subnets plus root. The coverage
+  // artifact next door has modelled the distinction correctly all along
+  // (chain_subnet_count / application_subnet_count / root_subnet_count); this
+  // field just reached for the wrong one. Same filter as
+  // application_subnet_count above, deliberately, so the two cannot drift.
+  subnet_count: mergedSubnets.filter(
+    (subnet) => subnet.subnet_type === "application",
+  ).length,
   coverage: coverage.completeness,
   counts: {
     surfaces: surfaces.length,

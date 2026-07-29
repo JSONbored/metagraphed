@@ -10,7 +10,8 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.ts";
 
-// ~129 subnets × 365 days ≈ 47k rows for `all`; generous but finite.
+// ~129 netuids (128 subnets + root) × 365 days ≈ 47k rows for `all`;
+// generous but finite.
 export const ECONOMICS_TRENDS_ROW_CAP = 60000;
 
 export function parseEconomicsTrendsWindow(

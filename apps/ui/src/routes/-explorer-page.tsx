@@ -569,7 +569,7 @@ function StakeFlowMetric({
  * Network-wide stake flow (#3734) — total staked vs unstaked across every subnet
  * for the window, the gaining/losing/flat split, and the top net inflows as a
  * bar list. The endpoint returns subnets sorted descending by net flow and caps
- * the list server-side (LIMIT_MAX 100 of ~129 subnets), so it is a
+ * the list server-side (LIMIT_MAX 100 of ~129 netuids), so it is a
  * top-net-inflows board and cannot surface the biggest outflows — the largest
  * single outflow is reported separately from the full-network distribution.
  * Chain-direct: GET /api/v1/chain/stake-flow.

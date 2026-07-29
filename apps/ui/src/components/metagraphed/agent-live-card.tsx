@@ -15,7 +15,7 @@ const CURL_BY_MODE: Record<LiveMode, string> = {
  * Step 3 of /agents: the live counterpart to Allways' quote widget. Their
  * card proves one thing works (a rate quote from the live orderbook); ours
  * proves the registry is queryable at all — grounded Q&A and vector search
- * over every one of the 129 subnets' 2,292 callable services, run for real
+ * over every one of the 128 subnets' 2,292 callable services, run for real
  * against the live API, not a static example.
  *
  * Ask and Search shared a page section before this redesign as two
@@ -32,7 +32,7 @@ export function AgentLiveCard() {
       <div className="border-b border-border/70 px-4 pt-4 md:px-6 md:pt-6">
         <SectionLabel>Query the registry live</SectionLabel>
         <p className="mt-1 mg-type-caption-lg leading-relaxed text-ink-muted">
-          Grounded answers and vector search over all 129 subnets — the same data the MCP's 204
+          Grounded answers and vector search over all 128 subnets — the same data the MCP's 204
           tools and 2,292 callable services are built on. Run a real query below.
         </p>
         <p className="mt-1 mg-type-caption text-ink-subtle-text">

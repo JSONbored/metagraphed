@@ -1527,7 +1527,7 @@ const READ_ONLY_TOOL_ANNOTATIONS = {
 
 export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
-  "what each of the ~129 subnets exposes (APIs, docs, schemas), whether those " +
+  "what each Bittensor subnet exposes (APIs, docs, schemas), whether those " +
   "surfaces are healthy, and how to call them. Use search_subnets / " +
   "find_subnets_by_capability to discover by keyword/capability, list_subnets to " +
   "enumerate or page through the whole registry, semantic_search " +
