@@ -2510,7 +2510,7 @@ export type Query = {
   domain_summary: DomainSummary;
   /** The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. */
   domains: DomainOverview;
-  /** Paginated per-subnet economic + validator metrics. */
+  /** Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics. */
   economics: EconomicsList;
   /** Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. */
   economics_trends: EconomicsTrends;
@@ -3116,6 +3116,11 @@ export type QueryDomain_SummaryArgs = {
 export type QueryEconomicsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
+  registration_allowed?: InputMaybe<Scalars['Boolean']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 

@@ -320,8 +320,16 @@ export const SDL = /* GraphQL */ `
     provider(id: String!): Provider
     "One adapter-backed public metrics snapshot by slug (e.g. 'gittensor', 'allways', 'sn-64'): the captured adapter snapshot, extension metadata, and netuid linkage. An invalid slug is a BAD_USER_INPUT error; a missing slug resolves to null (schema-stable, never a GraphQL error). Mirrors GET /api/v1/adapters/{slug}."
     adapter(slug: String!): Adapter
-    "Paginated per-subnet economic + validator metrics."
-    economics(limit: Int, cursor: String): EconomicsList!
+    "Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics."
+    economics(
+      netuid: Int
+      registration_allowed: Boolean
+      q: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: String
+    ): EconomicsList!
     "Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces."
     surfaces(
       netuid: Int

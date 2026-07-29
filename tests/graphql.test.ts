@@ -2924,6 +2924,89 @@ describe("graphql — economics pagination", () => {
     assert.equal(second.body.data.economics.next_cursor, null);
   });
 
+  test("economics filters by netuid/registration_allowed/q and sorts, at parity with REST/MCP (#8549)", async () => {
+    const richEnv = () =>
+      fixtureEnv({
+        "/metagraph/economics.json": {
+          subnets: [
+            {
+              netuid: 1,
+              name: "Alpha Net",
+              slug: "alpha",
+              registration_allowed: true,
+              alpha_market_cap_tao: 100,
+            },
+            {
+              netuid: 2,
+              name: "Beta Net",
+              slug: "beta",
+              registration_allowed: false,
+              alpha_market_cap_tao: 300,
+            },
+            {
+              netuid: 3,
+              name: "Gamma Net",
+              slug: "gamma",
+              registration_allowed: true,
+              alpha_market_cap_tao: 200,
+            },
+          ],
+        },
+      });
+
+    const byNetuid = await gql(
+      "{ economics(netuid: 2) { subnets { netuid } total } }",
+      richEnv(),
+    );
+    assert.equal(byNetuid.body.errors, undefined);
+    assert.equal(byNetuid.body.data.economics.total, 1);
+    assert.equal(byNetuid.body.data.economics.subnets[0].netuid, 2);
+
+    const byReg = await gql(
+      "{ economics(registration_allowed: true) { subnets { netuid } total } }",
+      richEnv(),
+    );
+    assert.equal(byReg.body.data.economics.total, 2);
+    assert.deepEqual(
+      byReg.body.data.economics.subnets.map((s: Row) => s.netuid).sort(),
+      [1, 3],
+    );
+
+    const byQ = await gql(
+      '{ economics(q: "beta") { subnets { netuid name } total } }',
+      richEnv(),
+    );
+    assert.equal(byQ.body.data.economics.total, 1);
+    assert.equal(byQ.body.data.economics.subnets[0].netuid, 2);
+
+    const sorted = await gql(
+      '{ economics(sort: "alpha_market_cap_tao", order: "desc") { subnets { netuid } } }',
+      richEnv(),
+    );
+    assert.equal(sorted.body.errors, undefined);
+    assert.deepEqual(
+      sorted.body.data.economics.subnets.map((s: Row) => s.netuid),
+      [2, 3, 1],
+    );
+  });
+
+  test("economics rejects an unsupported filter/sort as a GraphQL error, not a silent default (#8549)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 1, emission_share: 0.1 }],
+      },
+    });
+    for (const arg of ['registration_allowed: true, sort: "not_a_column"']) {
+      const { body } = await gql(
+        `{ economics(${arg}) { subnets { netuid } } }`,
+        env as unknown as Env,
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+      assert.equal(body.data?.economics ?? null, null);
+    }
+  });
+
   test("prefers the fresh KV economics tier over the committed artifact", async () => {
     const env = fixtureEnv(
       // Stale committed copy — must NOT be served while the KV tier is fresh.
