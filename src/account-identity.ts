@@ -6,7 +6,7 @@
 // migrations/0039_account_identity.sql. Mirrors NEURON_INSERT_COLUMNS's role
 // in src/metagraph-neurons.ts — the full column set once written by the
 // retired staged-load path (loadStagedAccountIdentity, removed in the
-// D1→Postgres cutover #4772 — see workers/api.mjs's staged-loader note).
+// D1→Postgres cutover #4772 — see workers/api.ts's staged-loader note).
 //
 // Read/format/build functions land here with the serving route (#4328/5.4).
 
@@ -29,7 +29,7 @@ export const ACCOUNT_IDENTITY_INSERT_COLUMNS = [
 ];
 
 // The 7 identity fields, excluding the account key + captured_at timestamp —
-// same derivation account-identity-history.mjs's IDENTITY_FIELDS uses.
+// same derivation account-identity-history.ts's IDENTITY_FIELDS uses.
 export const IDENTITY_FIELDS = ACCOUNT_IDENTITY_INSERT_COLUMNS.slice(1, -1);
 
 function toIso(ms: unknown): string | null {

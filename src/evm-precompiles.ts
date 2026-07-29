@@ -12,7 +12,7 @@
 // hand-transcribing it (removing an entire class of possible transcription
 // error: get the human-readable signature right and the hex selector follows
 // mechanically, verified at import time against two independently known
-// selectors in tests/evm-precompiles.test.mjs).
+// selectors in tests/evm-precompiles.test.ts).
 //
 // Deliberately excludes 3 of the 17 total subtensor-specific precompile
 // addresses: Ed25519Verify (1026), Sr25519Verify (1027), and
@@ -1355,7 +1355,7 @@ export function decodeAbiArgs(
       // itself strictly null, so this can only mean the registry declared a
       // type outside the closed universe above. Never happens with the real
       // table (every one of its 158 functions is drawn from that universe,
-      // verified in tests/evm-precompiles.test.mjs), but decline the whole
+      // verified in tests/evm-precompiles.test.ts), but decline the whole
       // decode rather than return a silently-misleading partial object.
       const value = decodeStaticWord(type, headWord);
       if (value === null) return null;

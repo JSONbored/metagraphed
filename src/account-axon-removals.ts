@@ -29,7 +29,7 @@ export const DEFAULT_AXON_REMOVAL_WINDOW = "30d";
 
 // Round the HHI concentration ratio to 4 decimals WITHOUT letting a sub-perfect value round up to
 // an exact 1 — the same anti-overstatement invariant the shared concentration ratios enforce
-// (roundConcentration in account-stake-flow.mjs, #2327). An account removing across two or more
+// (roundConcentration in account-stake-flow.ts, #2327). An account removing across two or more
 // subnets (HHI < 1) must never render as 1, which this card's contract defines as "all in one".
 function roundConcentration(value: number): number {
   const rounded = Math.round(value * 10000) / 10000;

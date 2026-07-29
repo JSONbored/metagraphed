@@ -46,7 +46,7 @@ function round(value: number | null | undefined, dp = 4): number | null {
 
 // A subnet's domain membership is the UNION of curated `categories` and derived
 // `derived_categories` -- the exact same resolution ?domain= already uses on
-// /api/v1/subnets (src/contracts.mjs's `arrayFilters: { domain: ["categories",
+// /api/v1/subnets (src/contracts.ts's `arrayFilters: { domain: ["categories",
 // "derived_categories"] }`), so a subnet's domain-summary membership always
 // matches which subnets that existing filter would return for the same tag.
 function subnetDomainTags(subnet: Record<string, unknown>): Set<unknown> {
