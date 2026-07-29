@@ -512,6 +512,17 @@ jobs:
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:surface
 
+      # #8658: the cron prober's input list and call_subnet_surface's resolution
+      # catalog must be exactly the published registry filtered to
+      # probe-enabled + public-safe + callable kinds. When they drift, surfaces
+      # advertised as probe-enabled are never probed AND agents get an error for
+      # ids that demonstrably exist. Runs after `npm run build` above so the
+      # staged surfaces.json exists to compare against; skips (rather than
+      # fails) if it does not, so ordering can never turn into a false alarm.
+      - name: Validate operational-surface parity
+        if: env.DOCS_ONLY != 'true'
+        run: npm run validate:operational-surface-parity
+
       # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.ts
       # reads ONLY .github/workflows/*.yml/.yaml, so a PR with zero changes under
       # that path cannot affect this validator's result. See the `changes` job
