@@ -424,7 +424,11 @@ test("verify: 502 when the Postgres upsert fails", async () => {
 
 // --- /api/v1/keys ------------------------------------------------------------
 
-async function sessionToken(accountId = 1, ss58 = "5Dummy") {
+// #8607: the id is a STRING by default, because that is what the Postgres
+// driver returns for rpc_accounts.id (BIGSERIAL). This helper used to default
+// to the number literal 1, which is precisely why 62 route tests passed while
+// every real session was rejected in production.
+async function sessionToken(accountId: number | string = "1", ss58 = "5Dummy") {
   return createSessionToken(SESSION_SECRET, { accountId, ss58 });
 }
 

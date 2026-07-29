@@ -630,3 +630,72 @@ describe("browser-extension <Bytes> wrapping (#8645)", () => {
     assert.equal(new TextDecoder().decode(bare!), "hello");
   });
 });
+
+describe("session token account_id type (#8607)", () => {
+  const SECRET = "test-session-secret";
+  // The launch blocker for API-key issuance. `rpc_accounts.id` is a BIGSERIAL
+  // and the Postgres driver surfaces it as a STRING, so handleWalletVerify
+  // passed `accountId: "1"` while verifySessionToken demanded a number — and
+  // rejected every session it had just issued. Verified against production:
+  // verify returned 200 with a token, and POST /api/v1/keys answered 401
+  // account_key_unauthorized with that exact token.
+  //
+  // The 62 route tests never caught it because their helper is
+  // `sessionToken(accountId = 1)` — a number literal. Same shape as #8646 and
+  // #8650: the fixture did not match the type production actually produces.
+
+  test("a token minted from a Postgres STRING id verifies", async () => {
+    const token = await createSessionToken(SECRET, {
+      accountId: "1",
+      ss58: "5Dummy",
+    });
+    assert.deepEqual(await verifySessionToken(SECRET, token), {
+      accountId: 1,
+      ss58: "5Dummy",
+    });
+  });
+
+  test("accountId comes back as a NUMBER regardless of how it went in", async () => {
+    // Callers index rows and compare ids with it; a string would silently
+    // break `===` comparisons downstream.
+    for (const input of [7, "7"] as Array<number | string>) {
+      const token = await createSessionToken(SECRET, {
+        accountId: input,
+        ss58: "5Dummy",
+      });
+      const session = await verifySessionToken(SECRET, token);
+      assert.equal(typeof session?.accountId, "number");
+      assert.equal(session?.accountId, 7);
+    }
+  });
+
+  test("a number id still verifies — the original path is unchanged", async () => {
+    const token = await createSessionToken(SECRET, {
+      accountId: 42,
+      ss58: "5Dummy",
+    });
+    assert.equal((await verifySessionToken(SECRET, token))?.accountId, 42);
+  });
+
+  test("a non-numeric account_id is still rejected", async () => {
+    // Widening the shape check must not make it meaningless.
+    const encoded = Buffer.from(
+      JSON.stringify({
+        account_id: "not-a-number",
+        ss58: "5Dummy",
+        exp: Math.floor(Date.now() / 1000) + 60,
+      }),
+    ).toString("base64url");
+    const forged = `${encoded}.${await signPayload(SECRET, encoded)}`;
+    assert.equal(await verifySessionToken(SECRET, forged), null);
+  });
+
+  test("a forged signature is still rejected for a string id", async () => {
+    const token = await createSessionToken(SECRET, {
+      accountId: "1",
+      ss58: "5Dummy",
+    });
+    const tampered = `${token.slice(0, token.lastIndexOf(".") + 1)}${"0".repeat(64)}`;
+    assert.equal(await verifySessionToken(SECRET, tampered), null);
+  });
+});
