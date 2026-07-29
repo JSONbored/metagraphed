@@ -10,7 +10,8 @@ import { StreamStatusChip } from "@/components/metagraphed/stream-status-chip";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
-import { summarizeChainEvent, isNoiseEvent, summarizeEvent } from "@jsonbored/chain-summaries";
+import { summarizeChainEvent, isNoiseEvent } from "@/lib/metagraphed/chain-event-summary";
+import { summarizeEvent } from "@/lib/metagraphed/chain-summaries";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 

@@ -90,7 +90,7 @@ import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { useAddressLabels } from "@/lib/metagraphed/address-labels";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
-import { summarizeCall } from "@jsonbored/chain-summaries";
+import { summarizeCall } from "@/lib/metagraphed/chain-summaries";
 import { ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
