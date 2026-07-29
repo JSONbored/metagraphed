@@ -4,6 +4,7 @@ import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { RoutePending } from "@/components/metagraphed/primitives";
 import { providerQuery } from "@/lib/metagraphed/queries";
 import { ProviderDetail } from "./-providers-slug-page";
+import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 
 type SearchParams = { tab?: string };
 
@@ -22,11 +23,19 @@ export const Route = createFileRoute("/providers/$slug")({
     try {
       const { data } = await context.queryClient.ensureQueryData(providerQuery(params.slug));
       return { name: data.name ?? null };
-    } catch {
+    } catch (error) {
+      // #8624: only a 404 from our own API means "no such entity". Any other
+      // failure keeps returning null so the page still renders and the
+      // component's own query drives the error path -- marking a page noindex
+      // on a transient blip would de-index real entities during an outage.
+      if (isMissingEntityError(error)) return { missing: true as const };
       return null;
     }
   },
   head: ({ params, loaderData }) => {
+    if (loaderData && "missing" in loaderData) {
+      return entityNotFoundMeta("Provider", "No API provider matches this slug.");
+    }
     const name = loaderData?.name ?? params.slug;
     const title = `${name} — Provider — Metagraphed`;
     const description = `${name}: Bittensor infrastructure provider — public endpoints, operational surfaces, and live health on Metagraphed.`;

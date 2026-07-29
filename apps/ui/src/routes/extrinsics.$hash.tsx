@@ -5,6 +5,7 @@ import { extrinsicQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall, isValidExtrinsicHash } from "@/lib/metagraphed/extrinsics";
 import { ExtrinsicDetailPage } from "./-extrinsics-hash-page";
+import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 
 export const Route = createFileRoute("/extrinsics/$hash")({
   // #3422: validate the hash at the router level so an invalid one renders the
@@ -24,11 +25,22 @@ export const Route = createFileRoute("/extrinsics/$hash")({
       return {
         call: data ? extrinsicCall(data.call_module, data.call_function) : null,
       };
-    } catch {
+    } catch (error) {
+      // #8624: only a 404 from our own API means "no such entity". Any other
+      // failure keeps returning null so the page still renders and the
+      // component's own query drives the error path -- marking a page noindex
+      // on a transient blip would de-index real entities during an outage.
+      if (isMissingEntityError(error)) return { missing: true as const };
       return null;
     }
   },
   head: ({ params, loaderData }) => {
+    if (loaderData && "missing" in loaderData) {
+      return entityNotFoundMeta(
+        "Extrinsic",
+        "No indexed Bittensor extrinsic matches this reference.",
+      );
+    }
     const label = shortHash(params.hash) ?? params.hash;
     const call = loaderData?.call && loaderData.call !== "—" ? ` (${loaderData.call})` : "";
     const title = `Extrinsic ${label}${call} — Metagraphed`;

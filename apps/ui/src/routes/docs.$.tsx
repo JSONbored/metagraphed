@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { docsSource } from "@/lib/docs-source";
+import { ogImageMeta } from "@/lib/metagraphed/og-card";
 import { openapi } from "@/lib/openapi-source";
 import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 import { DocsSplatPage } from "./-docs-splat-page";
@@ -45,6 +46,21 @@ export const Route = createFileRoute("/docs/$")({
         content: loaderData ? `${loaderData.title} — Metagraphed Docs` : "Metagraphed Docs",
       },
       { property: "og:description", content: loaderData?.description ?? "" },
+      // #8624: every /docs/* page unfurled with the same generic
+      // `og?title=Metagraphed` card. src/server.ts injects that card from the
+      // PATHNAME alone and has no page data, so the only place the real title
+      // is available is here -- the same reason the entity routes own their
+      // cards (see routeOwnsOgImage, which now matches /docs/* so exactly one
+      // og:image tag survives). Docs are the most link-worthy pages on the
+      // site and they were the ones sharing a card.
+      ...ogImageMeta({
+        title: loaderData?.title ?? "Documentation",
+        subtitle: loaderData?.description || "API reference and guides for the Bittensor registry",
+        eyebrow: "Docs",
+        // Ours, not an entity's: the avatar slot takes the Metagraphed mark
+        // rather than a monogram of the page title ("EC" for /docs/economics).
+        entity: false,
+      }),
     ],
   }),
 });

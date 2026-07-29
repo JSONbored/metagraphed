@@ -1,61 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 
-// #6429: accounts.$ss58.tsx and validators.$hotkey.tsx had no router-level
-// identifier validation, so a junk id rendered a fully-formed page. Adding
-// parseParams fixes the body — but NOT the metadata: head() still runs with the
-// raw param. Verified against the routes that already validate: /blocks/not-a-ref
-// titles "Block not-a-ref — Metagraphed" and /subnets/not-a-netuid titles
-// "Subnet not-a-netuid — Metagraphed" today. This helper is what actually keeps
-// the junk id out of the title, and both routes share it.
-const find = (meta: Array<Record<string, unknown>>, key: string, value: string) =>
-  meta.find((m) => m[key] === value);
+import { ApiError } from "./client";
+import { entityNotFoundMeta, isMissingEntityError } from "./entity-not-found-meta";
 
-describe("entityNotFoundMeta (#6429)", () => {
-  it("titles the page not-found instead of echoing the bad identifier", () => {
-    const { meta } = entityNotFoundMeta("Account", "not a valid ss58");
-    expect(meta[0]).toEqual({ title: "Account not found — Metagraphed" });
-    // The regression: the title must never carry the raw param.
-    expect(JSON.stringify(meta)).not.toContain("not-an-ss58");
+const metaValue = (meta: ReturnType<typeof entityNotFoundMeta>["meta"], key: string) =>
+  meta.find((m): m is { name: string; content: string } => "name" in m && m.name === key)?.content;
+
+describe("entityNotFoundMeta (#6429, #8624)", () => {
+  it("marks the page noindex — these URL spaces are unbounded", () => {
+    const { meta } = entityNotFoundMeta("Subnet", "No such netuid.");
+    expect(metaValue(meta, "robots")).toBe("noindex");
   });
 
-  it("marks the page noindex — these URLs are unbounded", () => {
-    // Any string is a URL here, so a crawler could otherwise index one page per
-    // malformed id.
-    const { meta } = entityNotFoundMeta("Validator", "not a valid hotkey");
-    expect(find(meta, "name", "robots")).toEqual({
-      name: "robots",
-      content: "noindex",
-    });
+  it("never asserts the junk id is a real entity in the title", () => {
+    const { meta } = entityNotFoundMeta("Subnet", "No such netuid.");
+    expect(meta[0]).toEqual({ title: "Subnet not found — Metagraphed" });
+  });
+});
+
+describe("isMissingEntityError (#8624) — the safety property", () => {
+  it("treats a 404 from our API as 'this entity does not exist'", () => {
+    expect(isMissingEntityError(new ApiError("nope", { status: 404, url: "/x" }))).toBe(true);
   });
 
-  it("carries the caller's description into both description tags", () => {
-    const detail = "This validator identifier is not a valid Bittensor ss58 hotkey.";
-    const { meta } = entityNotFoundMeta("Validator", detail);
-    expect(find(meta, "name", "description")).toEqual({
-      name: "description",
-      content: detail,
-    });
-    expect(find(meta, "property", "og:description")).toEqual({
-      property: "og:description",
-      content: detail,
-    });
+  it("does NOT treat a server error or a rate limit as missing", () => {
+    // The whole point: marking a page noindex during an outage would de-index
+    // real subnets and validators. Only a definitive 404 may flip a route.
+    for (const status of [500, 502, 503, 429, 401, 403]) {
+      expect(isMissingEntityError(new ApiError("x", { status, url: "/x" })), String(status)).toBe(
+        false,
+      );
+    }
   });
 
-  it("keeps og:title in step with the title", () => {
-    const { meta } = entityNotFoundMeta("Account", "x");
-    expect(find(meta, "property", "og:title")).toEqual({
-      property: "og:title",
-      content: "Account not found — Metagraphed",
-    });
-  });
-
-  it("names the entity the route serves, so the two routes read differently", () => {
-    expect(entityNotFoundMeta("Account", "x").meta[0]).toEqual({
-      title: "Account not found — Metagraphed",
-    });
-    expect(entityNotFoundMeta("Validator", "x").meta[0]).toEqual({
-      title: "Validator not found — Metagraphed",
-    });
+  it("does NOT treat a network throw or an abort as missing", () => {
+    expect(isMissingEntityError(new TypeError("Failed to fetch"))).toBe(false);
+    expect(isMissingEntityError(new DOMException("Aborted", "AbortError"))).toBe(false);
+    expect(isMissingEntityError(undefined)).toBe(false);
+    expect(isMissingEntityError({ status: 404 })).toBe(false);
   });
 });

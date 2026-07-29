@@ -3,7 +3,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading } from "@/components/metagraphed/states";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
-import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
+import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { ogImageMeta } from "@/lib/metagraphed/og-card";
 import { accountQuery } from "@/lib/metagraphed/queries";
@@ -59,11 +59,19 @@ export const Route = createFileRoute("/accounts/$ss58")({
             ? data.subnet_count
             : null,
       };
-    } catch {
+    } catch (error) {
+      // #8624: only a 404 from our own API means "no such entity". Any other
+      // failure keeps returning null so the page still renders and the
+      // component's own query drives the error path -- marking a page noindex
+      // on a transient blip would de-index real entities during an outage.
+      if (isMissingEntityError(error)) return { missing: true as const };
       return null;
     }
   },
   head: ({ params, loaderData }) => {
+    if (loaderData && "missing" in loaderData) {
+      return entityNotFoundMeta("Account", "No on-chain record exists for this Bittensor address.");
+    }
     // parseParams above rejects a malformed ss58, but head() still runs with the
     // raw param -- verified against the routes that already validate: /blocks/
     // not-a-ref titles "Block not-a-ref" and /subnets/not-a-netuid titles

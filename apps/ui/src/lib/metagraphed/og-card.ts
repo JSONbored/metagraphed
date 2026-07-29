@@ -42,6 +42,17 @@ export interface OgCardOptions {
    * that vocabulary is dropped by the renderer rather than guessed at.
    */
   status?: string | null;
+  /**
+   * Is this card about a NAMED THING (a subnet, a validator, an account) or
+   * about one of OUR pages?
+   *
+   * Defaults to true, because until #8624 only entity routes called this. It
+   * decides the avatar-slot fallback: an entity with no resolvable icon gets a
+   * monogram ("TA" for tao.bot), one of our pages gets the Metagraphed mark.
+   * Docs pass false -- "EC" for /docs/economics would be meaningless, and the
+   * mark is the honest answer for a page that is ours.
+   */
+  entity?: boolean;
 }
 
 /**
@@ -58,12 +69,11 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   if (options.eyebrow) params.set("eyebrow", options.eyebrow);
   if (options.logoHost) params.set("logo", options.logoHost);
   if (options.status) params.set("status", options.status);
-  // Every card built HERE is about a named thing -- a subnet, a validator, an
-  // account -- because only entity routes call this (src/server.ts builds its
-  // own URL for our own pages). The flag tells the renderer to fall back to a
-  // monogram when the icon doesn't resolve, instead of to our brand mark:
-  // "TA" is right for tao.bot, the Metagraphed "M" is right for /agents.
-  params.set("entity", "1");
+  // The flag tells the renderer which fallback to use when there is no icon: a
+  // monogram for a named thing, our mark for one of our own pages. "TA" is
+  // right for tao.bot; the Metagraphed "M" is right for /docs/economics.
+  // Defaults on, since every caller before #8624 was an entity route.
+  if (options.entity ?? true) params.set("entity", "1");
   // Only the first three stats are rendered; sending more would just push the
   // URL toward the length cap for content the card ignores.
   (options.stats ?? []).slice(0, 3).forEach((stat, index) => {
@@ -132,6 +142,12 @@ export function routeOwnsOgImage(pathname: string): boolean {
   return (
     /^\/subnets\/[^/]+\/?$/.test(pathname) ||
     /^\/validators\/[^/]+\/?$/.test(pathname) ||
-    /^\/accounts\/[^/]+\/?$/.test(pathname)
+    /^\/accounts\/[^/]+\/?$/.test(pathname) ||
+    // #8624: /docs/* too. The docs splat route has the page's real title and
+    // description in loaderData; server.ts, working from the pathname alone,
+    // gave all 20 doc pages the identical brand card. Note this matches the
+    // splat's CHILDREN only -- /docs itself has an OG_SECTIONS entry and keeps
+    // the server-injected card.
+    /^\/docs\/.+$/.test(pathname)
   );
 }
