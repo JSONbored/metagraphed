@@ -1500,6 +1500,46 @@ describe("MCP transport handling", () => {
       );
     });
 
+    // #8632: the reported symptom. Opening https://api.metagraph.sh/mcp in a
+    // browser is how most people first meet this endpoint, and the error they
+    // got told them to "obtain a session id from the initialize response" --
+    // advice that then 404s, because a session is only registered with the hub
+    // by resources/subscribe. These pin the message actually being actionable.
+    test("a bare GET (no session) says this is not a browsable URL", async () => {
+      const res = await rpc(null, { method: "GET" });
+      assert.equal(res.status, 400);
+      assert.match(res.body.error.message, /not a browsable endpoint/);
+    });
+
+    test("a bare GET names the FULL precondition, not just the header", async () => {
+      const res = await rpc(null, { method: "GET" });
+      const message = res.body.error.message as string;
+      // Naming initialize alone is what sent people down the dead end.
+      assert.match(message, /resources\/subscribe/);
+      assert.match(message, /initialize/);
+      assert.match(message, /metagraph:\/\/chain\/stream/);
+      // And it should say where everything else lives, since GET is the odd one.
+      assert.match(message, /POST/);
+    });
+
+    test("an unregistered session does NOT advise re-running initialize alone", async () => {
+      // initialize mints the id but does not register it, so that advice loops
+      // forever. The message must point at the missing subscribe step.
+      const hub = fakeMcpSessionHubBinding({
+        "/stream": () => new Response(null, { status: 404 }),
+      });
+      const response = await handleMcpRequest(
+        new Request(MCP_URL, {
+          method: "GET",
+          headers: { "mcp-session-id": A_SESSION_ID },
+        }),
+        { MCP_SESSION_HUB: hub } as unknown as Env,
+      );
+      const body = (await response.json()) as Row;
+      assert.match(body.error.message, /resources\/subscribe/);
+      assert.doesNotMatch(body.error.message, /call initialize again/);
+    });
+
     test("a 409 from the session hub (a stream is already open) passes through as 409", async () => {
       const hub = fakeMcpSessionHubBinding({
         "/stream": () => new Response(null, { status: 409 }),
@@ -1529,7 +1569,10 @@ describe("MCP transport handling", () => {
       } as unknown as Env);
       assert.equal(response.status, 404);
       const body = (await response.json()) as Row;
-      assert.match(body.error.message, /No such MCP session/);
+      assert.match(
+        body.error.message,
+        /No stream is open for this Mcp-Session-Id/,
+      );
     });
   });
 
