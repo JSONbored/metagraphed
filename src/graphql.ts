@@ -3253,13 +3253,15 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // applyQueryFilters always returns the economics collection as an array plus
+    // a pagination meta block (total/next_cursor), even for an empty/cold input,
+    // so no defensive shape fallbacks are needed here.
     const filtered = transformed.data as Row;
-    const page = ((transformed.meta as Row)?.pagination as Row) || {};
-    const rows = Array.isArray(filtered.subnets) ? filtered.subnets : [];
+    const page = (transformed.meta as Row).pagination as Row;
     return {
-      subnets: rows,
-      total: page.total ?? rows.length,
-      next_cursor: page.next_cursor ?? null,
+      subnets: filtered.subnets as Row[],
+      total: page.total as number,
+      next_cursor: (page.next_cursor as string | number | null) ?? null,
       summary: data?.summary ?? null,
     };
   },
