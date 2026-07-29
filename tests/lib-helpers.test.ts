@@ -41,6 +41,7 @@ import {
   writeJson,
   resolveSurfaceCurationLevel,
   flattenSurfaces,
+  loadSurfaceProbeEvidence,
   withSurfaceFreshness,
   resolveBaseRemote,
   dirtyTrackedPaths,
@@ -1740,6 +1741,169 @@ describe("flattenSurfaces curation_level (#1757)", () => {
     const two = flat.find((s) => s.netuid === 2);
     assert.equal(two!.curation_level, "maintainer-reviewed");
     assert.equal(two!.last_verified_at, "2026-06-01T00:00:00Z");
+  });
+});
+
+describe("flattenSurfaces probe-derived verification (#8689)", () => {
+  // Before this, `machine-verified` was a tier the codebase could compute but
+  // that nothing could produce: last_verified_at came ONLY from a hand-edited
+  // registry field, so the live registry reported ZERO machine-verified
+  // surfaces against 623 eligible ones. These tests pin the wiring that fixed
+  // it, end to end through flattenSurfaces.
+  const PASSING = {
+    day_count: 19,
+    samples: 1561,
+    uptime_ratio: 0.9981,
+    last_ok: "2026-07-29T13:00:55.953Z",
+    classification: null,
+  };
+
+  const subnetWith = (surface: Record<string, unknown>) => [
+    {
+      netuid: 7,
+      slug: "seven",
+      name: "Seven",
+      curation: { level: "candidate-discovered", verified_at: null },
+      surfaces: [
+        {
+          id: "sn-7-api",
+          kind: "subnet-api",
+          url: "https://a.example",
+          ...surface,
+        },
+      ],
+    },
+  ];
+
+  test("probe evidence promotes a community surface to machine-verified", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {
+      "sn-7-api": PASSING,
+    });
+    assert.equal(row.last_verified_at, PASSING.last_ok);
+    assert.equal(row.curation_level, "machine-verified");
+    // Verification state changed; PROVENANCE did not. A community surface that
+    // probes healthy is machine-verified, never official -- laundering
+    // authority through a probe would let anyone mint "official" by keeping a
+    // URL up.
+    assert.equal(row.authority, "community");
+  });
+
+  test("no evidence leaves the surface exactly as it was before #8689", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {});
+    assert.equal(row.last_verified_at, null);
+    assert.equal(row.curation_level, "candidate-discovered");
+  });
+
+  test("evidence below the bar does not promote", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {
+      "sn-7-api": { ...PASSING, day_count: 2 },
+    });
+    assert.equal(row.last_verified_at, null);
+    assert.equal(row.curation_level, "candidate-discovered");
+  });
+
+  test("a hand-authored verification still outranks probe evidence", () => {
+    // A maintainer who vetted this exact surface knows more than our prober.
+    const [row] = flattenSurfaces(
+      subnetWith({
+        authority: "official",
+        verification: { verified_at: "2026-06-01T00:00:00Z" },
+      }),
+      { "sn-7-api": PASSING },
+    );
+    assert.equal(row.last_verified_at, "2026-06-01T00:00:00Z");
+  });
+
+  test("a CONFIRMED-DEAD surface loses verification even if hand-authored", () => {
+    // The #8658 complaint: a dead surface must stop being advertised as
+    // verified immediately, not coast until its freshness TTL expires. Live
+    // evidence outranks a historical hand-edit about whether a thing exists.
+    const [row] = flattenSurfaces(
+      subnetWith({
+        authority: "official",
+        verification: { verified_at: "2026-06-01T00:00:00Z" },
+      }),
+      { "sn-7-api": { ...PASSING, classification: "dead" } },
+    );
+    assert.equal(row.last_verified_at, null);
+    assert.notEqual(row.curation_level, "machine-verified");
+    assert.equal(row.authority, "official", "authority is still untouched");
+  });
+
+  test("loadSurfaceProbeEvidence reads the snapshot's surfaces map", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "mg-surface-health-"));
+    const file = path.join(dir, "surface-health.json");
+    writeFileSync(file, JSON.stringify({ surfaces: { "sn-7-api": PASSING } }));
+    assert.deepEqual(await loadSurfaceProbeEvidence(file), {
+      "sn-7-api": PASSING,
+    });
+  });
+
+  test("a missing or malformed snapshot yields no evidence, never a throw", async () => {
+    // The failure mode that matters: an absent snapshot must leave every
+    // surface on its hand-authored verification exactly as before #8689 -- it
+    // must not mass-demote the registry, and it must not mass-promote it.
+    const dir = mkdtempSync(path.join(tmpdir(), "mg-surface-health-bad-"));
+    assert.deepEqual(
+      await loadSurfaceProbeEvidence(path.join(dir, "absent.json")),
+      {},
+    );
+
+    for (const body of [
+      "{}",
+      '{"surfaces": null}',
+      '{"surfaces": []}', // an array is typeof "object" but indexes nothing
+      '{"surfaces": "nope"}',
+      "not json at all",
+    ]) {
+      const file = path.join(dir, `bad-${body.length}.json`);
+      writeFileSync(file, body);
+      assert.deepEqual(await loadSurfaceProbeEvidence(file), {}, body);
+    }
+  });
+
+  test("the committed snapshot is readable and joins to real surface ids", async () => {
+    // Guards the default path: a rename of registry/verification/
+    // surface-health.json would otherwise silently return {} and quietly undo
+    // every promotion, with nothing failing.
+    const evidence = await loadSurfaceProbeEvidence();
+    assert.ok(
+      Object.keys(evidence).length > 0,
+      "the committed surface-health.json snapshot loads",
+    );
+  });
+
+  test("a surface with no id is never matched by probe evidence", () => {
+    // The id is the join key. An idless surface must miss the lookup entirely
+    // rather than coercing to "" and colliding with any evidence row that
+    // happened to be keyed the same way.
+    const [row] = flattenSurfaces(
+      [
+        {
+          netuid: 7,
+          slug: "seven",
+          name: "Seven",
+          curation: { level: "candidate-discovered", verified_at: null },
+          surfaces: [
+            {
+              kind: "subnet-api",
+              url: "https://a.example",
+              authority: "community",
+            },
+          ],
+        },
+      ],
+      { "": PASSING, "sn-7-api": PASSING },
+    );
+    assert.equal(row.last_verified_at, null);
+    assert.equal(row.curation_level, "candidate-discovered");
+  });
+
+  test("evidence for a DIFFERENT surface id never leaks across", () => {
+    const [row] = flattenSurfaces(subnetWith({ authority: "community" }), {
+      "sn-7-other": PASSING,
+    });
+    assert.equal(row.last_verified_at, null);
   });
 });
 

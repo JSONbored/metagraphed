@@ -65,6 +65,7 @@ import {
   subnetLifecycle,
   surfaceFixtureReference,
   writeJson,
+  loadSurfaceProbeEvidence,
 } from "./lib.ts";
 import {
   buildAgentReadiness,
@@ -203,8 +204,13 @@ const activeOverlays = overlays.filter((overlay) =>
 // #1006: stamp the per-surface `stale` flag against the committed native-snapshot
 // captured_at — a deterministic reference (never wall-clock), so the flag stays
 // reproducible across builds. `last_verified_at` is added inside flattenSurfaces.
+// #8689: per-surface probe evidence, so a surface the cron prober has shown
+// healthy for long enough resolves to `machine-verified` without a human
+// editing a registry file. Loaded through lib's shared loader so this and
+// validate.ts cannot disagree about the evidence and fail artifact parity.
+const surfaceProbeEvidence = await loadSurfaceProbeEvidence();
 const surfaces: Row[] = withSurfaceFreshness(
-  flattenSurfaces(activeOverlays),
+  flattenSurfaces(activeOverlays, surfaceProbeEvidence),
   Date.parse(nativeSnapshot.captured_at),
 );
 // #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
