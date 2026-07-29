@@ -59,6 +59,9 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
 import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
+// #8548: the same loadSurfacesList that MCP list_surfaces + REST /surfaces call,
+// so the root surfaces field's filter/sort/page set can never drift from theirs.
+import { loadSurfacesList } from "./surfaces-mcp.ts";
 // #7886: GraphQL parity for GET /api/v1/rpc/endpoints filters — reuse
 // loadRpcEndpointsList (live overlay + applyQueryFilters on the endpoints
 // collection), matching endpoint_pools / rpc_pools / provider_endpoints.
@@ -3235,13 +3238,19 @@ const rootValue = {
     };
   },
 
-  surfaces({ netuid, limit, cursor }: QuerySurfacesArgs, context: GqlContext) {
-    return listPage(context, ARTIFACT.surfaces, "surfaces", {
-      limit,
-      cursor,
-      netuid,
-      keyFn: (s: Row) => s.id ?? s.key,
+  // #8548: delegate to loadSurfacesList -- the same read + filter/sort/page the
+  // REST route and MCP list_surfaces run over the baked curated-surfaces artifact
+  // -- rather than re-deriving a GraphQL-only filter set in listPage. It validates
+  // its own args and throws on an invalid filter/sort (or a cold/absent artifact);
+  // that throw becomes a GraphQL error, matching provider_endpoints' convention.
+  async surfaces(args: QuerySurfacesArgs, context: GqlContext) {
+    const list = await loadSurfacesList(mcpCtx(context), args, {
+      readArtifact,
     });
+    // loadSurfacesList's envelope names the rows `surfaces`; the GraphQL
+    // SurfaceList type calls them `items`. Adapt that one key only -- all
+    // filtering, sorting and paging still live in the shared loader.
+    return { ...list, items: list.surfaces };
   },
 
   endpoints(args: QueryEndpointsArgs, context: GqlContext) {
