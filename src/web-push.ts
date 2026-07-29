@@ -34,8 +34,9 @@ export interface PushSubscriptionKeys {
 export interface VapidKeys {
   /** P-256 public key, uncompressed point (65 bytes), base64url. */
   publicKey: string;
-  /** P-256 private scalar (32 bytes), base64url. */
-  privateKey: string;
+  /** P-256 signing scalar (32 bytes), base64url. The secret half — supplied
+   * from a Worker secret, never stored or logged. */
+  signingKey: string;
   /** `mailto:` or `https:` contact, per RFC 8292 §2.1. */
   subject: string;
 }
@@ -263,7 +264,7 @@ async function importVapidSigningKey(keys: VapidKeys): Promise<CryptoKey> {
     crv: "P-256",
     x: bytesToBase64Url(publicBytes.slice(1, 33)),
     y: bytesToBase64Url(publicBytes.slice(33, 65)),
-    d: keys.privateKey,
+    d: keys.signingKey,
     ext: true,
   };
   return crypto.subtle.importKey(

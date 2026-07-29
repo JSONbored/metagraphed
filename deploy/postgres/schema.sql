@@ -1017,6 +1017,25 @@ ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS condition JSONB;
 -- WATCH_TRIGGERS_MAX_PER_ADDRESS at create time and, later, to list "my
 -- triggers" in the alert center (#8375, same epic).
 ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS owner_ss58 TEXT;
+-- #8385: widen the channel CHECK to admit 'webpush'.
+--
+-- This ALTER is load-bearing, not decorative. The CREATE TABLE above is
+-- `IF NOT EXISTS`, so on an already-deployed database its inline CHECK is
+-- never re-evaluated -- editing the constraint text up there alone is a
+-- silent no-op against production, and every INSERT of a webpush trigger
+-- would fail with a check-constraint violation. Same reason `condition` and
+-- `owner_ss58` above ship as explicit ALTERs rather than column edits.
+--
+-- DROP ... IF EXISTS immediately followed by ADD keeps the pair idempotent
+-- (ADD CONSTRAINT alone would fail on a second run). The constraint name is
+-- the one Postgres auto-generates for an unnamed inline column CHECK,
+-- `<table>_<column>_check` -- verified against postgres:16-alpine rather
+-- than assumed.
+ALTER TABLE chain_alert_triggers
+  DROP CONSTRAINT IF EXISTS chain_alert_triggers_channel_check;
+ALTER TABLE chain_alert_triggers
+  ADD CONSTRAINT chain_alert_triggers_channel_check
+  CHECK (channel IN ('webhook', 'email', 'telegram', 'discord', 'webpush'));
 -- Covers AlerterHub's own "give me every active trigger" cache-refresh scan
 -- (#4984 Part 2) -- the only query pattern against this table that isn't
 -- already a fast primary-key lookup by id.
@@ -1066,10 +1085,10 @@ CREATE INDEX IF NOT EXISTS idx_cad_trigger_delivered_at ON chain_alert_deliverie
 -- tokens use -- so "my devices" is answerable without an accounts system.
 --
 -- p256dh/auth are the subscriber's OWN public key + auth secret handed to us
--- by the browser's Push API. They are not our secrets and are useless without
--- the device's private key, but they ARE per-user data: never log them, and
--- never expose them on a read route (the GET returns only the metadata a
--- human needs to recognise a device).
+-- by the browser's Push API. They are not our secrets, and are useless
+-- without the secret half that never leaves the device -- but they ARE
+-- per-user data: never log them, and never expose them on a read route (the
+-- GET returns only the metadata a human needs to recognise a device).
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS watch_push_subscriptions (
   id           BIGSERIAL PRIMARY KEY,

@@ -33,7 +33,7 @@ async function makeVapidKeys(): Promise<VapidKeys> {
   )) as JsonWebKey;
   return {
     publicKey,
-    privateKey: jwk.d as string,
+    signingKey: jwk.d as string,
     subject: "mailto:ops@metagraph.sh",
   };
 }
