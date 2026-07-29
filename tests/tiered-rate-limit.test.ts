@@ -8,6 +8,7 @@ import {
   applyTieredRateLimit,
   tieredRateLimitHeaders,
 } from "../workers/tiered-rate-limit.ts";
+import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const ANONYMOUS = { envVar: "TEST_ANON_LIMITER", limit: 60, windowSeconds: 60 };
@@ -161,6 +162,83 @@ describe("applyTieredRateLimit", () => {
     const result = await applyTieredRateLimit(request, env, CONFIG);
     assert.equal(result.allowed, true);
     assert.equal(result.policy, KEYED);
+    assert.equal(result.accountId, "42");
+  });
+});
+
+describe("applyTieredRateLimit with the MCP surface config (#8520)", () => {
+  test("an anonymous MCP request is keyed by mcp:<ip> via MCP_RATE_LIMITER", async () => {
+    const calls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      MCP_RATE_LIMITER: {
+        limit: async (args: unknown) => {
+          calls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      headers: { "cf-connecting-ip": "203.0.113.9" },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      MCP_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.anonymous);
+    assert.equal(result.accountId, null);
+    assert.deepEqual(calls, [{ key: "mcp:203.0.113.9" }]);
+  });
+
+  test("a keyed MCP request rides the higher MCP_RATE_LIMITER_KEYED tier even when the anonymous tier would reject", async () => {
+    const keyedCalls: unknown[] = [];
+    const env = {
+      ...envWithKeyVerify(),
+      // anonymous tier is exhausted (rejects); a valid key must NOT be capped by it.
+      MCP_RATE_LIMITER: { limit: async () => ({ success: false }) },
+      MCP_RATE_LIMITER_KEYED: {
+        limit: async (args: unknown) => {
+          keyedCalls.push(args);
+          return { success: true };
+        },
+      },
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      headers: {
+        authorization: `Bearer ${VALID_KEY}`,
+        "cf-connecting-ip": "203.0.113.9",
+      },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      MCP_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
+    assert.equal(result.accountId, "42");
+    // keyed by accountId under the mcp: prefix, and the anon limiter is untouched.
+    assert.deepEqual(keyedCalls, [{ key: "mcp:42" }]);
+  });
+
+  test("a keyed MCP request fails open when MCP_RATE_LIMITER_KEYED is unprovisioned", async () => {
+    const env = {
+      ...envWithKeyVerify(),
+      MCP_RATE_LIMITER: { limit: async () => ({ success: true }) },
+      // MCP_RATE_LIMITER_KEYED intentionally absent (pre-provision deploy).
+    } as unknown as Env;
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+    const result = await applyTieredRateLimit(
+      request,
+      env,
+      MCP_TIERED_RATE_LIMIT,
+    );
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
     assert.equal(result.accountId, "42");
   });
 });

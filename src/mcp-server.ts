@@ -192,6 +192,12 @@ import {
   shouldSampleTrace,
 } from "./tracing.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
+import {
+  applyTieredRateLimit,
+  tieredRateLimitHeaders,
+  type TieredRateLimitConfig,
+} from "../workers/tiered-rate-limit.ts";
+import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
@@ -1741,7 +1747,16 @@ const JSONRPC_VERSION = "2.0";
 // JSON-RPC batches.
 export const MAX_MCP_BODY_BYTES = 64 * 1024;
 export const MAX_MCP_BATCH_LENGTH = 10;
-const MCP_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+// #8520: tiered rate-limit config for the MCP surface. Anonymous callers keep
+// the existing MCP_RATE_LIMITER ceiling (100/60s, IP-keyed, unchanged); a caller
+// presenting a valid mg_... key gets the 5x MCP_RATE_LIMITER_KEYED tier, keyed by
+// account id via the SEPARATE binding (never the same binding at a different
+// number). Exported for the tiered-rate-limit regression tests.
+export const MCP_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: { envVar: "MCP_RATE_LIMITER", limit: 100, windowSeconds: 60 },
+  keyed: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 500, windowSeconds: 60 },
+  keyPrefix: "mcp",
+};
 
 // JSON-RPC error codes (subset of the spec we emit).
 const RPC_PARSE_ERROR = -32700;
@@ -11854,27 +11869,38 @@ function mcpClientKey(request: Request) {
   return resolveClientIp(request);
 }
 
-async function enforceMcpRateLimit(request: Request, env: Env) {
-  const limiter = env.MCP_RATE_LIMITER || env.RPC_RATE_LIMITER;
-  if (!limiter?.limit) return null;
-
-  const { success } = await limiter.limit({ key: mcpClientKey(request) });
-  if (success) return null;
-
-  return jsonResponse(
-    rpcError(
-      null,
-      RPC_INVALID_REQUEST,
-      "Too many MCP requests from this client; slow down.",
-    ),
-    429,
-    {
-      "retry-after": String(MCP_RATE_LIMIT.windowSeconds),
-      "x-ratelimit-limit": String(MCP_RATE_LIMIT.limit),
-      "x-ratelimit-policy": `${MCP_RATE_LIMIT.limit};w=${MCP_RATE_LIMIT.windowSeconds}`,
-      "x-ratelimit-remaining": "0",
-    },
+async function enforceMcpRateLimit(
+  request: Request,
+  env: Env,
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+) {
+  // #8520: tiered rate limiting via the shared applyTieredRateLimit helper
+  // (workers/tiered-rate-limit.ts), mirroring workers/api.ts's DATA checkpoint.
+  // Anonymous callers keep the existing IP-keyed 100/60s ceiling unchanged; a
+  // valid mg_... key gets the 5x account-keyed tier. Fails open when a binding
+  // is absent (local dev/CI/pre-provision), like every limiter here.
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    MCP_TIERED_RATE_LIMIT,
   );
+  if (!rateLimit.allowed) {
+    return jsonResponse(
+      rpcError(
+        null,
+        RPC_INVALID_REQUEST,
+        "Too many MCP requests from this client; slow down.",
+      ),
+      429,
+      tieredRateLimitHeaders(rateLimit.policy),
+    );
+  }
+  // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
+  // caller (accountId set). Matches workers/api.ts's "chain-events" label call.
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "mcp");
+  }
+  return null;
 }
 
 function bodyTooLargeResponse() {
@@ -12093,7 +12119,11 @@ export async function handleMcpRequest(
   env: Env = {} as unknown as Env,
   deps: Row = {},
 ) {
-  const rateLimitResponse = await enforceMcpRateLimit(request, env);
+  const rateLimitResponse = await enforceMcpRateLimit(
+    request,
+    env,
+    deps.executionCtx,
+  );
   if (rateLimitResponse) return rateLimitResponse;
 
   if (request.method === "GET") {

@@ -8,6 +8,7 @@ interface __BaseEnv_Env {
 	VECTORIZE: VectorizeIndex;
 	RPC_RATE_LIMITER: RateLimit;
 	MCP_RATE_LIMITER: RateLimit;
+	MCP_RATE_LIMITER_KEYED: RateLimit;
 	AI_RATE_LIMITER: RateLimit;
 	DATA_RATE_LIMITER: RateLimit;
 	DATA_RATE_LIMITER_KEYED: RateLimit;

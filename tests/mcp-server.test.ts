@@ -1355,7 +1355,9 @@ describe("MCP transport handling", () => {
       response.headers.get("access-control-expose-headers"),
       EXPOSED_RESPONSE_HEADERS_VALUE,
     );
-    assert.equal(rateLimitKey, "203.0.113.7");
+    // #8520: the tiered limiter namespaces the anonymous key under the "mcp:"
+    // prefix so it never collides with another surface sharing the binding.
+    assert.equal(rateLimitKey, "mcp:203.0.113.7");
     const body = (await response.json()) as Row;
     assert.match(body.error.message, /Too many MCP requests/);
   });
