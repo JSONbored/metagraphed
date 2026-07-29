@@ -291,6 +291,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 : "Cross-subnet registrations, first-party chain events, and daily activity rollups for one Bittensor account."}
             </p>
             <div className="flex flex-wrap items-center gap-2">
+              {/* eslint-disable-next-line no-restricted-syntax -- genuinely 80% (#8554): this tier is 95%; .mg-glass would add blur(8px), a real visual change */}
               <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
                 <CopyableCode value={ss58} truncate={false} className="max-w-full" />
               </div>
@@ -447,7 +448,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 {account.event_kinds.map((entry) => (
                   <div
                     key={entry.kind}
-                    className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
+                    className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
                   >
                     <div className="mg-type-caption text-ink-muted">event kind</div>
                     <div className="mt-2 flex items-end justify-between gap-3">
@@ -664,7 +665,7 @@ function AccountKpiBand({
               value={total != null ? fmtTaoCompact(total) : freeValue}
               hint="free + staked · live RPC"
               tone={balanceError ? "down" : "accent"}
-              className="rounded-2xl bg-card/95 p-4 mg-card-glow-accent"
+              className="rounded-2xl mg-glass-opaque p-4 mg-card-glow-accent"
             />
             <StatTile
               icon={Scale}
@@ -727,7 +728,7 @@ function AccountKpiBand({
               value={fmtTaoCompact(validator?.total_stake_tao)}
               hint="validator detail · cross-subnet"
               tone="accent"
-              className="rounded-2xl bg-card/95 p-4 mg-card-glow-accent"
+              className="rounded-2xl mg-glass-opaque p-4 mg-card-glow-accent"
             />
             <StatTile
               icon={Users}
@@ -799,7 +800,7 @@ function AccountRecentActivityPreview({ events }: { events: AccountEvent[] }) {
         {rows.map((ev, i) => (
           <div
             key={`${ev.block_number}-${ev.event_index}-${i}`}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-3 mg-card-glow"
           >
             <div className="min-w-0 flex-1">
               <div
@@ -1177,7 +1178,7 @@ function fmtAlphaPrice(v: number | null | undefined): string {
   return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
 }
 
-const KPI_TILE = "rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow";
+const KPI_TILE = "rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
 // "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
@@ -1529,7 +1530,7 @@ function deriveDelegationStatus(
  */
 function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[] }) {
   return (
-    <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/80 bg-card/95">
+    <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/80 mg-glass-opaque">
       {rows.map((r, i) => {
         const pct =
           r.proportion_fraction != null && Number.isFinite(r.proportion_fraction)
@@ -1988,7 +1989,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
       </div>
 
       {bars.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
+        <div className="mb-4 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
           <div className="mb-3 mg-type-caption text-ink-muted">gross flow by subnet (τ)</div>
           <BarMini data={bars} showValue={false} />
         </div>
@@ -2050,7 +2051,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           </table>
         </DataPanel>
       ) : (
-        <p className="rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-type-data text-ink-muted">
+        <p className="rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-type-data text-ink-muted">
           No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
         </p>
       )}
@@ -2271,7 +2272,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
       tone="accent"
       info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
     >
-      <div className="rounded-2xl border border-border/80 bg-card/95 p-4 mg-card-glow">
+      <div className="rounded-2xl border border-border/80 mg-glass-opaque p-4 mg-card-glow">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="font-display text-lg font-semibold text-ink-strong">
             {identity.name ?? "Unnamed identity"}
@@ -2834,7 +2835,7 @@ function AccountFootprintSection({
       right={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
+        <div className="mb-4 rounded-2xl border border-border/80 mg-glass-opaque px-4 py-4 mg-card-glow">
           <div className="mb-3 mg-type-caption text-ink-muted">stake by subnet (τ)</div>
           <BarMini data={staked} showValue={false} />
         </div>
@@ -3203,7 +3204,7 @@ function DataPanel({ children, className }: { children: ReactNode; className?: s
   return (
     <div
       className={classNames(
-        "overflow-x-auto rounded-2xl border border-border/80 bg-card/95 mg-card-glow",
+        "overflow-x-auto rounded-2xl border border-border/80 mg-glass-opaque mg-card-glow",
         className,
       )}
     >

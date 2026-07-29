@@ -315,7 +315,7 @@ function ApyKpiTile({
       value={formatApyPct(value)}
       hint={usingSnapshot ? "latest snapshot · net of take" : `${window} history · net of take`}
       truncate={false}
-      className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
+      className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
       chart={
         <SegmentedToggle<ValidatorApyWindow>
           options={APY_WINDOWS.map((w) => ({ value: w, label: w }))}
@@ -387,6 +387,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             {/* Hotkey + coldkey (#6427) get identical, symmetric AddressDisplay
                 rows -- the operator name is already the page title, so it
                 isn't repeated here. */}
+            {/* eslint-disable-next-line no-restricted-syntax -- genuinely 80% (#8554): this tier is 95%; .mg-glass would add blur(8px), a real visual change */}
             <dl className="max-w-2xl divide-y divide-border/80 rounded-2xl border border-border/80 bg-card/80 mg-card-glow-accent">
               <FieldRow label="Hotkey">
                 <span className="flex w-full min-w-0 items-center">
@@ -509,7 +510,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
           truncate={false}
           tone="accent"
-          className="rounded-2xl border-accent/25 bg-card/95 p-4 mg-card-glow-accent"
+          className="rounded-2xl border-accent/25 mg-glass-opaque p-4 mg-card-glow-accent"
         />
         <ApyKpiTile hotkey={hotkey} take={detail.take} snapshotApy={snapshotApy} />
         <StatTile
@@ -517,28 +518,28 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           eyebrow="Take rate"
           value={formatTakePct(detail.take)}
           hint="commission kept from delegators"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
+          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
         />
         <StatTile
           icon={Boxes}
           eyebrow="Active subnets"
           value={formatNumber(detail.subnet_count)}
           hint="validator memberships"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
+          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
         />
         <StatTile
           icon={Users}
           eyebrow="Nominators"
           value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
           hint="distinct coldkeys delegated"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
+          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
         />
         <StatTile
           icon={Gauge}
           eyebrow="Avg validator trust"
           value={scoreStr(detail.avg_validator_trust)}
           hint="mean across subnets"
-          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
+          className="rounded-2xl border-border/80 mg-glass-opaque p-4 mg-card-glow"
         />
       </div>
 

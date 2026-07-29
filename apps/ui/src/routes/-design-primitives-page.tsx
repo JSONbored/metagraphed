@@ -382,11 +382,14 @@ function TokensSection({
             ))}
           </div>
         </Panel>
-        <Panel title="Glass surfaces" caption=".mg-glass / .mg-glass-soft">
+        <Panel title="Glass surfaces" caption=".mg-glass / .mg-glass-soft / .mg-glass-opaque">
           <div className="space-y-2">
             <div className="mg-glass rounded-md p-3 mg-type-caption text-ink">.mg-glass</div>
             <div className="mg-glass-soft rounded-md p-3 mg-type-caption text-ink">
               .mg-glass-soft
+            </div>
+            <div className="mg-glass-opaque rounded-md p-3 mg-type-caption text-ink">
+              .mg-glass-opaque
             </div>
           </div>
         </Panel>
