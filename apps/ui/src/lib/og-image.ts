@@ -14,13 +14,20 @@
 // entity text, and a full-bleed mint field behind that much copy reads as a
 // marketing banner rather than a data card.
 //
-// The ground is the app's OWN --paper token, so an unfurl looks like the page
-// it links to. Mint is used the way the product uses it -- as an ACCENT only:
-// the mark, the top rule, the eyebrow, the rule beside the headline, and the
-// stat values. There is deliberately no large tinted shape behind the copy: a
-// low-opacity green field over near-black still renders a visible hard-edged
-// arc rather than a soft wash, which read as a smudge rather than a design
-// element. Accent-on-neutral is both cleaner and closer to the product.
+// The ground is the app's OWN --paper, and -- just as importantly -- so is its
+// STRUCTURE. Matching the background colour alone was not enough: the site
+// reads the way it does because it is built from hairline-separated bands (a
+// masthead rule, a ticker strip, panel borders) sitting almost on the ground
+// colour, so a card with the correct background but no rules still felt like a
+// flat void rather than a page from this product. The card is therefore banded
+// the same way: lockup row, body, stat band, each separated by the app's own
+// --border hairline.
+//
+// Mint is used the way the product uses it -- as an ACCENT only: the top rule,
+// the mark, the eyebrow, the rule beside the headline, and the stat values.
+// There is deliberately no large tinted shape behind the copy: a low-opacity
+// green field over near-black still rasterizes a visible hard-edged arc rather
+// than a soft wash, which read as a smudge rather than a design element.
 // #8489 requirement 1 allows the dark variant when the reason is stated; this
 // is that statement.
 //
@@ -52,8 +59,19 @@ const SURFACE = "#0F1112";
 const TEXT_STRONG = "#EFF2F6";
 /** --ink-muted: supporting copy. */
 const TEXT_MUTED = "#8A8C8F";
-/** --ink-subtle: stat labels + hairlines. */
+/** --ink-subtle: stat labels. */
 const TEXT_SUBTLE = "#4B4D4F";
+/**
+ * The app's hairline. `--border` is `--ink-strong` at 11% alpha; satori has no
+ * reliable color-mix/oklab support, so this is that composite precomputed over
+ * --paper. Sampled from the running app rather than guessed.
+ *
+ * This token matters more than it looks: the site's whole character comes from
+ * hairline-separated bands and panels sitting almost ON the ground colour, not
+ * from strong surface contrast. A card with the right background but no rules
+ * reads as a flat void and looks nothing like the product.
+ */
+const HAIRLINE = "#212324";
 
 // #8257/#8489: bumped whenever the rendered card changes, so already-unfurled
 // links pick up the new design instead of serving last month's PNG from the
@@ -247,30 +265,28 @@ export function renderCardMarkup(opts: {
     )
     .join("");
 
-  // The stat band only earns its lifted surface when there are stats. Without
-  // it the fallback card would carry an empty grey slab across its foot.
+  // The stat band only takes its lifted surface when there are stats -- an
+  // empty slab across the foot of the fallback card would be worse than none.
   const hasStats = opts.stats.length > 0;
 
   return `
-    <div style="position:relative;display:flex;width:1200px;height:630px;background:${GROUND};color:${TEXT_STRONG};font-family:'Space Grotesk';overflow:hidden;">
-      <div style="position:absolute;top:0;left:0;width:1200px;height:6px;background:${MINT};display:flex;"></div>
+    <div style="position:relative;display:flex;flex-direction:column;width:1200px;height:630px;background:${GROUND};color:${TEXT_STRONG};font-family:'Space Grotesk';overflow:hidden;">
+      <div style="display:flex;width:1200px;height:6px;background:${MINT};"></div>
 
-      <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:60px 80px ${
-        hasStats ? "0px" : "60px"
-      } 80px;">
-        <div style="display:flex;align-items:center;">
-          <img src="${LOGO_DATA_URI}" style="width:60px;height:60px;" />
-          <div style="display:flex;font-size:36px;font-weight:700;letter-spacing:-0.5px;margin-left:8px;">${WORDMARK}</div>
-          ${
-            eyebrow
-              ? `<div style="display:flex;margin-left:22px;padding:7px 18px;border:2px solid ${MINT};border-radius:999px;font-size:21px;font-weight:500;color:${MINT};letter-spacing:2px;">${escapeText(
-                  eyebrow.toUpperCase(),
-                )}</div>`
-              : ""
-          }
-        </div>
+      <div style="display:flex;align-items:center;padding:34px 80px;border-bottom:1px solid ${HAIRLINE};">
+        <img src="${LOGO_DATA_URI}" style="width:52px;height:52px;" />
+        <div style="display:flex;font-size:33px;font-weight:700;letter-spacing:-0.5px;margin-left:8px;">${WORDMARK}</div>
+        ${
+          eyebrow
+            ? `<div style="display:flex;margin-left:22px;padding:6px 17px;border:2px solid ${MINT};border-radius:999px;font-size:20px;font-weight:500;color:${MINT};letter-spacing:2px;">${escapeText(
+                eyebrow.toUpperCase(),
+              )}</div>`
+            : ""
+        }
+      </div>
 
-        <div style="display:flex;align-items:stretch;padding-bottom:${hasStats ? "48px" : "0px"};">
+      <div style="display:flex;flex:1;align-items:center;padding:0 80px;">
+        <div style="display:flex;align-items:stretch;">
           <div style="display:flex;width:5px;border-radius:3px;background:${MINT};margin-right:28px;"></div>
           <div style="display:flex;flex-direction:column;">
             <div style="display:flex;font-size:${titleFontSize(
@@ -279,17 +295,13 @@ export function renderCardMarkup(opts: {
             <div style="display:flex;font-size:29px;font-weight:400;line-height:1.35;color:${TEXT_MUTED};margin-top:18px;max-width:800px;">${subtitle}</div>
           </div>
         </div>
+      </div>
 
-        ${
-          hasStats
-            ? `<div style="display:flex;align-items:center;justify-content:space-between;margin:0 -80px;padding:30px 80px;background:${SURFACE};border-top:1px solid ${TEXT_SUBTLE};">
-          <div style="display:flex;">${statCells}</div>
-          <div style="display:flex;font-size:23px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
-        </div>`
-            : `<div style="display:flex;justify-content:flex-end;">
-          <div style="display:flex;font-size:23px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
-        </div>`
-        }
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:${
+        hasStats ? "28px" : "34px"
+      } 80px;border-top:1px solid ${HAIRLINE};background:${hasStats ? SURFACE : GROUND};">
+        <div style="display:flex;">${statCells}</div>
+        <div style="display:flex;font-size:23px;font-weight:500;color:${TEXT_MUTED};letter-spacing:1px;">metagraph.sh</div>
       </div>
     </div>`;
 }
