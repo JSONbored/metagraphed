@@ -46,7 +46,7 @@ import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
-import { formatChainEventArgs } from "@jsonbored/chain-summaries";
+import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import { BLOCK_SECTION_HINTS, BLOCK_TERM_HINTS } from "@/lib/metagraphed/section-hints";
 import { TaoValue } from "@/components/metagraphed/tao-value";

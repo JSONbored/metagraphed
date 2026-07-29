@@ -42,8 +42,10 @@ export function extrinsicCall(module?: string | null, fn?: string | null): strin
 }
 
 // DecodedCall/isDecodedCall/normalizeIndexerRsCall/asDecodedCall/callArgValue
-// moved to @jsonbored/chain-summaries (imported above) -- re-export the type
-// for existing callers that imported it from here.
+// moved to @jsonbored/chain-summaries (imported above) -- re-export both for
+// existing callers that imported them from here (a compatibility shim, no
+// logic of its own -- see chain-summaries.ts's identical note).
+export { asDecodedCall };
 export type { DecodedCall } from "@jsonbored/chain-summaries";
 
 /** The real acting account for a `Proxy.proxy` call, or null when this isn't
