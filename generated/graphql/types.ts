@@ -1784,6 +1784,21 @@ export type Contracts = {
   type_definitions_url?: Maybe<Scalars['String']['output']>;
 };
 
+/** Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
+export type CurationList = {
+  __typename?: 'CurationList';
+  curation: Array<Scalars['JSON']['output']>;
+  cursor: Scalars['Int']['output'];
+  generated_at?: Maybe<Scalars['String']['output']>;
+  limit: Scalars['Int']['output'];
+  next_cursor?: Maybe<Scalars['Int']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
+  order?: Maybe<Scalars['String']['output']>;
+  returned: Scalars['Int']['output'];
+  sort?: Maybe<Scalars['String']['output']>;
+  total: Scalars['Int']['output'];
+};
+
 /** The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains. */
 export type DomainOverview = {
   __typename?: 'DomainOverview';
@@ -1917,7 +1932,6 @@ export type EndpointList = {
   total: Scalars['Int']['output'];
 };
 
-/** Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
 export type EvidenceList = {
   __typename?: 'EvidenceList';
   claims: Array<Scalars['JSON']['output']>;
@@ -2504,13 +2518,13 @@ export type Query = {
   coverage?: Maybe<Scalars['JSON']['output']>;
   /** The machine-usable coverage-depth scorecard and ranked enrichment queue: per-subnet tier/score/priority rows plus the ranked queue of enrichment targets. Null when the coverage-depth artifact has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the /api/v1/coverage-depth REST shape. Mirrors GET /api/v1/coverage-depth. */
   coverage_depth?: Maybe<Scalars['JSON']['output']>;
-  /** Curation states by subnet — each subnet's registry curation level and review state. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_curation MCP/REST shape. Mirrors GET /api/v1/curation. */
-  curation?: Maybe<Scalars['JSON']['output']>;
+  /** Per-subnet curation states with full REST filter parity: each subnet's coverage_level, curation_level, and source counts. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the curation rows, as opaque JSON. An invalid filter/sort is a GraphQL error, and a cold/absent artifact is a GraphQL error (matching REST/MCP not_found), not a null. Mirrors GET /api/v1/curation. */
+  curation: CurationList;
   /** One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary. */
   domain_summary: DomainSummary;
   /** The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. */
   domains: DomainOverview;
-  /** Paginated per-subnet economic + validator metrics. */
+  /** Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics. */
   economics: EconomicsList;
   /** Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. */
   economics_trends: EconomicsTrends;
@@ -2714,7 +2728,7 @@ export type Query = {
   sudo: ExtrinsicList;
   /** The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key. */
   sudo_key?: Maybe<SudoKey>;
-  /** Curated public interface surfaces, optionally scoped to one subnet. */
+  /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
   /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
@@ -2722,7 +2736,7 @@ export type Query = {
   validator?: Maybe<Validator>;
   /** One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history. */
   validator_history: ValidatorHistory;
-  /** One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked). An unsupported window/sort is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators. */
+  /** One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked), paginated with limit (1-2000, default 20)/offset. An unsupported window/sort or an out-of-range limit/offset is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators. */
   validator_nominators: NominatorList;
   /** Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Paginate with limit/cursor like providers. Mirrors GET /api/v1/validators. */
   validators: ValidatorList;
@@ -3108,6 +3122,17 @@ export type QueryCompare_ValidatorsArgs = {
 };
 
 
+export type QueryCurationArgs = {
+  coverage_level?: InputMaybe<Scalars['String']['input']>;
+  curation_level?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryDomain_SummaryArgs = {
   tag: Scalars['String']['input'];
 };
@@ -3116,6 +3141,11 @@ export type QueryDomain_SummaryArgs = {
 export type QueryEconomicsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
+  registration_allowed?: InputMaybe<Scalars['Boolean']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3927,8 +3957,13 @@ export type QuerySudoArgs = {
 
 export type QuerySurfacesArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3952,6 +3987,8 @@ export type QueryValidator_HistoryArgs = {
 export type QueryValidator_NominatorsArgs = {
   coldkey?: InputMaybe<Scalars['String']['input']>;
   hotkey: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -5532,6 +5569,7 @@ export type ResolversTypes = ResolversObject<{
   ComparedValidator: ResolverTypeWrapper<ComparedValidator>;
   ConcentrationMetrics: ResolverTypeWrapper<ConcentrationMetrics>;
   Contracts: ResolverTypeWrapper<Contracts>;
+  CurationList: ResolverTypeWrapper<CurationList>;
   DomainOverview: ResolverTypeWrapper<DomainOverview>;
   DomainSummary: ResolverTypeWrapper<DomainSummary>;
   EconomicsList: ResolverTypeWrapper<EconomicsList>;
@@ -5826,6 +5864,7 @@ export type ResolversParentTypes = ResolversObject<{
   ComparedValidator: ComparedValidator;
   ConcentrationMetrics: ConcentrationMetrics;
   Contracts: Contracts;
+  CurationList: CurationList;
   DomainOverview: DomainOverview;
   DomainSummary: DomainSummary;
   EconomicsList: EconomicsList;
@@ -7391,6 +7430,19 @@ export type ContractsResolvers<ContextType = GqlContext, ParentType extends Reso
   type_definitions_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type CurationListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CurationList'] = ResolversParentTypes['CurationList']> = ResolversObject<{
+  curation?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type DomainOverviewResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DomainOverview'] = ResolversParentTypes['DomainOverview']> = ResolversObject<{
   domain_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   domains?: Resolver<Array<ResolversTypes['DomainSummary']>, ParentType, ContextType>;
@@ -7950,7 +8002,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   contracts?: Resolver<Maybe<ResolversTypes['Contracts']>, ParentType, ContextType>;
   coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   coverage_depth?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  curation?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  curation?: Resolver<ResolversTypes['CurationList'], ParentType, ContextType, Partial<QueryCurationArgs>>;
   domain_summary?: Resolver<ResolversTypes['DomainSummary'], ParentType, ContextType, RequireFields<QueryDomain_SummaryArgs, 'tag'>>;
   domains?: Resolver<ResolversTypes['DomainOverview'], ParentType, ContextType>;
   economics?: Resolver<ResolversTypes['EconomicsList'], ParentType, ContextType, Partial<QueryEconomicsArgs>>;
@@ -9279,6 +9331,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ComparedValidator?: ComparedValidatorResolvers<ContextType>;
   ConcentrationMetrics?: ConcentrationMetricsResolvers<ContextType>;
   Contracts?: ContractsResolvers<ContextType>;
+  CurationList?: CurationListResolvers<ContextType>;
   DomainOverview?: DomainOverviewResolvers<ContextType>;
   DomainSummary?: DomainSummaryResolvers<ContextType>;
   EconomicsList?: EconomicsListResolvers<ContextType>;

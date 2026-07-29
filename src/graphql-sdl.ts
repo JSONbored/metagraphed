@@ -109,8 +109,16 @@ export const SDL = /* GraphQL */ `
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
     agent_resources: JSON
-    "Curation states by subnet — each subnet's registry curation level and review state. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_curation MCP/REST shape. Mirrors GET /api/v1/curation."
-    curation: JSON
+    "Per-subnet curation states with full REST filter parity: each subnet's coverage_level, curation_level, and source counts. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the curation rows, as opaque JSON. An invalid filter/sort is a GraphQL error, and a cold/absent artifact is a GraphQL error (matching REST/MCP not_found), not a null. Mirrors GET /api/v1/curation."
+    curation(
+      netuid: Int
+      coverage_level: String
+      curation_level: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): CurationList!
     "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state/id/confidence, sort with sort + order, and page with limit (1-1000) / cursor, exactly like the REST route — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the candidates rows, as opaque JSON. A cold/absent artifact is a GraphQL error (matching REST/MCP not_found). Mirrors GET /api/v1/candidates."
     candidates(
       netuid: Int
@@ -320,10 +328,27 @@ export const SDL = /* GraphQL */ `
     provider(id: String!): Provider
     "One adapter-backed public metrics snapshot by slug (e.g. 'gittensor', 'allways', 'sn-64'): the captured adapter snapshot, extension metadata, and netuid linkage. An invalid slug is a BAD_USER_INPUT error; a missing slug resolves to null (schema-stable, never a GraphQL error). Mirrors GET /api/v1/adapters/{slug}."
     adapter(slug: String!): Adapter
-    "Paginated per-subnet economic + validator metrics."
-    economics(limit: Int, cursor: String): EconomicsList!
-    "Curated public interface surfaces, optionally scoped to one subnet."
-    surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
+    "Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics."
+    economics(
+      netuid: Int
+      registration_allowed: Boolean
+      q: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: String
+    ): EconomicsList!
+    "Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces."
+    surfaces(
+      netuid: Int
+      kind: String
+      provider: String
+      id: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: String
+    ): SurfaceList!
     "Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints."
     endpoints(
       netuid: Int
@@ -689,12 +714,14 @@ export const SDL = /* GraphQL */ `
     validators(sort: String, limit: Int, cursor: String): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
     validator(hotkey: String!): Validator
-    "One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked). An unsupported window/sort is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators."
+    "One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked), paginated with limit (1-2000, default 20)/offset. An unsupported window/sort or an out-of-range limit/offset is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators."
     validator_nominators(
       hotkey: String!
       window: String
       sort: String
       coldkey: String
+      limit: Int
+      offset: Int
     ): NominatorList!
     "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history."
     validator_history(hotkey: String!, window: String): ValidatorHistory!
@@ -2077,6 +2104,19 @@ export const SDL = /* GraphQL */ `
   }
 
   "Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence)."
+  type CurationList {
+    generated_at: String
+    notes: String
+    curation: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
   type EvidenceList {
     generated_at: String
     schema_version: String

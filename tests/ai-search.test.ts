@@ -1302,6 +1302,71 @@ describe("AI routes through the Worker dispatch", () => {
     assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
   });
 
+  // #8521: a valid mg_... key rides the account-keyed AI tier
+  // (AI_RATE_LIMITER_KEYED) and records usage for the self-serve dashboard.
+  const AI_VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
+  function keyedAiEnv(overrides: Row = {}) {
+    let usageRecorded = false;
+    const env = aiWorkerEnv({
+      AI_RATE_LIMITER_KEYED: {
+        limit: () => Promise.resolve({ success: true }),
+      },
+      METAGRAPH_CONTROL: memKv(),
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          if (new URL(req.url).pathname.endsWith("/keys/usage")) {
+            usageRecorded = true;
+            return new Response(null, { status: 204 });
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "free",
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+      ...overrides,
+    });
+    return { env, usage: () => usageRecorded };
+  }
+
+  test("a keyed semantic request rides the account tier and records usage (#8521)", async () => {
+    const pending: Promise<unknown>[] = [];
+    const { env, usage } = keyedAiEnv();
+    const res = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=images&limit=5`, {
+        headers: { authorization: `Bearer ${AI_VALID_KEY}` },
+      }),
+      env as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => pending.push(p) },
+    );
+    await Promise.all(pending);
+    assert.equal(res.status, 200);
+    assert.equal(usage(), true);
+  });
+
+  test("a keyed /ask request rides the account tier and records usage (#8521)", async () => {
+    const pending: Promise<unknown>[] = [];
+    const { env, usage } = keyedAiEnv();
+    const res = await handleRequest(
+      new Request(ASK_URL, {
+        method: "POST",
+        headers: { authorization: `Bearer ${AI_VALID_KEY}` },
+        body: JSON.stringify({ question: "what is a subnet?" }),
+      }),
+      env as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => pending.push(p) },
+    );
+    await Promise.all(pending);
+    assert.notEqual(res.status, 429);
+    assert.equal(usage(), true);
+  });
+
   test("an AI backend failure degrades to 502", async () => {
     const env = aiWorkerEnv({
       AI: { run: () => Promise.reject(new Error("model down")) },

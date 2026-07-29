@@ -16,7 +16,7 @@
 // "/accounts/{addr}/stake-moves and /transfers" as the two targets, but only
 // half of that holds up: this route is netuid-scoped and alpha-denominated,
 // so "price at the time" has somewhere to attach. /transfers
-// (src/account-events.mjs's buildAccountTransfers) is native-TAO
+// (src/account-events.ts's buildAccountTransfers) is native-TAO
 // Balances.Transfer — it carries no netuid at all, so there is no subnet
 // whose alpha price could apply; deliberately NOT enriched here (see that
 // module's own comment). Daily granularity is what subnet_snapshots has

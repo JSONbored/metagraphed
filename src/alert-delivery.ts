@@ -1,8 +1,8 @@
 // Pure helpers for chain-alert delivery (#4984 Part 3): per-channel request
 // building and burst rate-limiting. No I/O -- fetch/env/now are injected by
-// the caller (workers/alerter-hub.mjs) -- so every branch here is
+// the caller (workers/alerter-hub.ts) -- so every branch here is
 // unit-testable without a network dependency, matching this codebase's
-// established src/*.mjs split.
+// established src/*.ts split.
 //
 // Deliberately single-attempt, no retry/dead-letter (unlike
 // src/webhooks.ts's deliverChangeEvent): these are lower-stakes,
@@ -15,7 +15,7 @@
 //
 // Deliberately NOT HMAC-signed (unlike webhook subscriptions' own
 // deliverChangeEvent): signing would need the per-trigger owner_token
-// available to the evaluator's cache, which src/alert-triggers.mjs's
+// available to the evaluator's cache, which src/alert-triggers.ts's
 // evaluatorAlertTriggerView intentionally never exposes past the CRUD
 // layer (see that function's own comment on why no view is "public").
 // Threading a signing secret through the trusted-internal-cache boundary
@@ -60,7 +60,7 @@ export interface AlertDeliveryRequest {
 // A single human-readable line describing the match, shared across every
 // channel's text body. Only includes fields the specific payload actually
 // carries (blocks/extrinsics/chain_events/account_events each populate a
-// different subset -- see workers/chain-firehose-hub.mjs's
+// different subset -- see workers/chain-firehose-hub.ts's
 // CHAIN_FIREHOSE_TABLES), never assumes account_events' shape universally.
 export function formatAlertMessage(
   trigger: AlertTrigger | null | undefined,
@@ -86,7 +86,7 @@ export function formatAlertMessage(
 }
 
 // `trigger.destination` is already validated as a public https:// URL at
-// write time (src/alert-triggers.mjs's isValidAlertDestination) -- this
+// write time (src/alert-triggers.ts's isValidAlertDestination) -- this
 // re-check is defense in depth against a record that slipped past intake
 // (or a future bug in that validator), matching deliverChangeEvent's own
 // "re-validate at delivery time" precedent.
@@ -116,7 +116,7 @@ export function buildWebhookDeliveryRequest(
 }
 
 // `trigger.destination` is already validated as an exact Discord
-// incoming-webhook URL at write time (src/alert-triggers.mjs's
+// incoming-webhook URL at write time (src/alert-triggers.ts's
 // isValidAlertDestination) -- re-checked here, at delivery time, as
 // defense in depth against a record that slipped past intake, mirroring
 // buildWebhookDeliveryRequest's own re-check above (found by an automated

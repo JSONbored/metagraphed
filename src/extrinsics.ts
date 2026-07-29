@@ -52,8 +52,8 @@ function toIso(ms: unknown): string | null {
 // return an INTEGER column as a numeric string, so a bare `?? null` pass-through
 // would silently leak the string into the API payload and break downstream
 // arithmetic/comparisons. Mirrors the `toBlockNumber` already applied in
-// account-events.mjs / chain-analytics.ts and the `toBlockNumber` added to
-// blocks.mjs in #2435.
+// account-events.ts / chain-analytics.ts and the `toBlockNumber` added to
+// blocks.ts in #2435.
 function toChainPosition(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
@@ -66,7 +66,7 @@ function toChainPosition(value: unknown): number | null {
 // rounded to rao precision (9 dp), or null when missing/non-finite. D1 can
 // return a REAL column as a numeric string, so a bare `?? null` pass-through
 // would leak the string form into the ["number","null"] contract field and
-// serve unrounded float noise. Mirrors toTaoOrNull in account-events.mjs
+// serve unrounded float noise. Mirrors toTaoOrNull in account-events.ts
 // (#2662) and the coercion in formatRegistration (#2487).
 function toTaoOrNull(value: unknown): number | null {
   if (value == null) return null;
@@ -145,7 +145,7 @@ export function formatExtrinsic(
       // to have been silently losing precision now arrives as an exact
       // decimal STRING instead of a rounded number, matching how
       // decodeU256Limbs already represents U256 values for exactly this
-      // reason. See tests/extrinsics.test.mjs for the fixtures this fix
+      // reason. See tests/extrinsics.test.ts for the fixtures this fix
       // resolves.
       call_args = decodeBTreeSetFields(
         row.call_module,
@@ -179,7 +179,7 @@ export function formatExtrinsic(
     // D1 can return the `success` INTEGER column as a numeric string ("1"/"0"),
     // same as block_number/extrinsic_index above — a bare `=== 1` would leave a
     // successful extrinsic mislabeled false. Number()-coerce first, mirroring
-    // toD1Flag in account-events.mjs (#2487).
+    // toD1Flag in account-events.ts (#2487).
     success: row.success == null ? null : Number(row.success) === 1,
     // fee_tao / tip_tao (D1 REAL columns) — coerce through toTaoOrNull so a
     // numeric string never leaks the string form into the ["number","null"]

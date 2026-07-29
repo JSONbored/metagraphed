@@ -69,6 +69,11 @@ import {
   SAFE_RPC_STATE_QUERY_METHODS,
   TRUSTED_RPC_UPSTREAM_ORIGINS,
 } from "../config.ts";
+import {
+  applyTieredRateLimit,
+  tieredRateLimitHeaders,
+  type TieredRateLimitConfig,
+} from "../tiered-rate-limit.ts";
 
 export interface RpcEndpoint {
   id: string;
@@ -102,11 +107,33 @@ let readHealthMetaKv: HealthMetaKvReader = () => {
 };
 /* v8 ignore stop */
 
-// Called once at api.ts module-init to wire the api.ts-local KV reader.
+// #8522: the keyed-usage recorder lives in api.ts (used by the DATA/AI/MCP
+// checkpoints too). Injected here rather than imported to keep this module's
+// import graph acyclic -- api.ts imports rpc-proxy.ts, so importing back would
+// form a cycle whose module-init order breaks (TDZ). Default no-op so a
+// misconfigured/unit-test path never throws; api.ts wires the real one below.
+type ApiKeyUsageRecorder = (
+  env: Env,
+  ctx: EdgeCacheCtx | undefined,
+  accountId: string,
+  route: string,
+) => void;
+
+/* v8 ignore start */
+let recordApiKeyUsage: ApiKeyUsageRecorder = () => {};
+/* v8 ignore stop */
+
+// Called once at api.ts module-init to wire the api.ts-local helpers.
+// recordApiKeyUsage is optional so existing callers that only wire the health
+// reader (and unit tests) keep working; when omitted it stays a no-op.
 export function configureRpcProxy(deps: {
   readHealthMetaKv: HealthMetaKvReader;
+  recordApiKeyUsage?: ApiKeyUsageRecorder;
 }) {
   readHealthMetaKv = deps.readHealthMetaKv;
+  if (deps.recordApiKeyUsage) {
+    recordApiKeyUsage = deps.recordApiKeyUsage;
+  }
 }
 
 // rpc/pools.json is R2-only and static per-build (it changes only on redeploy).
@@ -489,25 +516,27 @@ export async function handleRpcProxyRequest(
     // above, so heavy state-query traffic from one client can't starve that
     // same client's ordinary chain_getBlock/system_health calls through the
     // same proxy, and vice versa.
-    if (env.STATE_QUERY_RATE_LIMITER?.limit) {
-      const clientKey = `rpc-state-query:${resolveClientIp(request)}`;
-      const { success } = await env.STATE_QUERY_RATE_LIMITER.limit({
-        key: clientKey,
-      });
-      if (!success) {
-        return errorResponse(
-          "rpc_state_query_rate_limited",
-          "Too many state-query RPC requests from this client; slow down.",
-          429,
-          {},
-          {
-            "retry-after": String(STATE_QUERY_RATE_LIMIT.windowSeconds),
-            "x-ratelimit-limit": String(STATE_QUERY_RATE_LIMIT.limit),
-            "x-ratelimit-policy": `${STATE_QUERY_RATE_LIMIT.limit};w=${STATE_QUERY_RATE_LIMIT.windowSeconds}`,
-            "x-ratelimit-remaining": "0",
-          },
-        );
-      }
+    //
+    // #8522: tiered -- a valid mg_... key rides STATE_QUERY_RATE_LIMITER_KEYED
+    // (100/60s, account-keyed); everyone else keeps the anonymous
+    // STATE_QUERY_RATE_LIMITER (20/60s, IP-keyed). Mirrors the DATA checkpoint
+    // in workers/api.ts.
+    const rateLimit = await applyTieredRateLimit(
+      request,
+      env,
+      STATE_QUERY_TIERED_RATE_LIMIT,
+    );
+    if (!rateLimit.allowed) {
+      return errorResponse(
+        "rpc_state_query_rate_limited",
+        "Too many state-query RPC requests from this client; slow down.",
+        429,
+        {},
+        tieredRateLimitHeaders(rateLimit.policy),
+      );
+    }
+    if (rateLimit.accountId) {
+      recordApiKeyUsage(env, ctx, rateLimit.accountId, "rpc-state-query");
     }
 
     const validated = validateStateQueryParams(rpcBody.method, rpcBody.params);
@@ -986,8 +1015,30 @@ function streamRpcResponse(
 // RPC_MAX_ATTEMPTS above) for the docs-content drift test.
 export const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // Mirrors wrangler.jsonc's STATE_QUERY_RATE_LIMITER binding (#4344/9.2) --
-// a fifth of the general proxy's budget, its own separate bucket.
+// a fifth of the general proxy's budget, its own separate bucket. Still the
+// single source of truth for the documented anonymous ceiling (docs-content
+// drift test) and the anonymous tier of STATE_QUERY_TIERED_RATE_LIMIT below.
 export const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
+
+// #8522: tiered rate limiting for the expensive state_* RPC queries, mirroring
+// workers/api.ts's DATA_TIERED_RATE_LIMIT. Anonymous callers keep the existing
+// 20/60s IP-keyed ceiling (STATE_QUERY_RATE_LIMITER); a valid mg_... key rides
+// the 5x account-keyed tier (STATE_QUERY_RATE_LIMITER_KEYED). The "state" prefix
+// namespaces the bucket so it never collides with another surface sharing a
+// binding. Fails open when a binding is absent, like every limiter here.
+export const STATE_QUERY_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: {
+    envVar: "STATE_QUERY_RATE_LIMITER",
+    limit: STATE_QUERY_RATE_LIMIT.limit,
+    windowSeconds: STATE_QUERY_RATE_LIMIT.windowSeconds,
+  },
+  keyed: {
+    envVar: "STATE_QUERY_RATE_LIMITER_KEYED",
+    limit: 100,
+    windowSeconds: 60,
+  },
+  keyPrefix: "state",
+};
 function setRpcRateLimitHeaders(headers: Headers) {
   headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
   headers.set(

@@ -1,5 +1,5 @@
 // Pure, isomorphic helpers for chain alert triggers (#4984 Part 1, ADR 0015 /
-// #2114). Shared by workers/data-api.mjs (the Postgres CRUD write path) and
+// #2114). Shared by workers/data-api.ts (the Postgres CRUD write path) and
 // the future AlerterHub Durable Object (#4984 Part 2, which evaluates each
 // live ChainFirehoseHub broadcast against every active trigger). No I/O --
 // Postgres/fetch are injected by callers -- so every branch here is
@@ -45,7 +45,7 @@ export const WATCH_TRIGGER_TOKEN_HEADER = "x-watch-trigger-token";
 // Epic T6's decided cap: "5 active triggers per verified address."
 export const WATCH_TRIGGERS_MAX_PER_ADDRESS = 5;
 
-// Matches MAX_WEBHOOK_BODY_BYTES (workers/config.mjs) -- generous over this
+// Matches MAX_WEBHOOK_BODY_BYTES (workers/config.ts) -- generous over this
 // shape's actual size (a handful of short scalar fields) without inviting a
 // pathological body.
 export const ALERT_TRIGGER_MAX_BODY_BYTES = 8192;
@@ -449,7 +449,7 @@ export interface EvaluatorAlertTrigger {
 
 // Evaluate one active trigger against a firehose broadcast payload (the SAME
 // shape ChainFirehoseHub.broadcast() fans out to SSE/WS/GraphQL/MCP -- see
-// workers/chain-firehose-hub.mjs). Pure, no I/O: the caller owns persistence
+// workers/chain-firehose-hub.ts). Pure, no I/O: the caller owns persistence
 // (match_count/last_matched_at) and delivery.
 //
 // `metricSnapshot` (#6746/#6747) is an OPTIONAL, pre-computed cache the

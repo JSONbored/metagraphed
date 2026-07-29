@@ -1564,7 +1564,7 @@ function CopyableCode({
           className
         ),
         children: [
-          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted mg-type-micro", children: label }) : null,
+          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted mg-type-label", children: label }) : null,
           /* @__PURE__ */ jsx(
             "code",
             {
@@ -1709,14 +1709,14 @@ function EligibilityChip({
           "inline-flex items-center gap-1.5 rounded-full border bg-transparent whitespace-nowrap cursor-help transition-colors",
           "before:content-[''] before:size-1.5 before:rounded-full",
           "hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          size === "xs" ? "px-2 py-0 h-5 mg-type-micro" : "px-2.5 py-0 h-6 mg-type-label",
+          size === "xs" ? "px-2 py-0 h-5 mg-type-label" : "px-2.5 py-0 h-6 mg-type-label",
           TONE[eligibility]
         ),
         children: ELIGIBILITY_LABEL[eligibility]
       }
     ) }),
     /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "max-w-[240px] mg-type-caption", children: [
-      /* @__PURE__ */ jsx("div", { className: "mg-type-micro opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
+      /* @__PURE__ */ jsx("div", { className: "mg-type-caption opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
       RULE[eligibility]
     ] })
   ] }) });
@@ -1996,7 +1996,7 @@ function KeyChip({
             side: "top",
             className: "max-w-[90vw] break-all mg-type-data",
             children: [
-              /* @__PURE__ */ jsx("span", { className: "mr-1 mg-type-micro opacity-70", children: label }),
+              /* @__PURE__ */ jsx("span", { className: "mr-1 mg-type-label opacity-70", children: label }),
               value
             ]
           }
@@ -2170,7 +2170,7 @@ function PageHero({
         caption ? /* @__PURE__ */ jsx("div", { className: "absolute right-0 top-4 hidden md:block", children: /* @__PURE__ */ jsx("span", { className: "mg-hero-caption", children: caption }) }) : null,
         /* @__PURE__ */ jsxs("div", { className: "grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end", children: [
           /* @__PURE__ */ jsxs("div", { className: "min-w-0 max-w-3xl", children: [
-            eyebrow ? /* @__PURE__ */ jsxs("div", { className: "mg-fade-in mg-type-micro text-ink-muted inline-flex items-center gap-2", children: [
+            eyebrow ? /* @__PURE__ */ jsxs("div", { className: "mg-fade-in mg-type-caption text-ink-muted inline-flex items-center gap-2", children: [
               live ? /* @__PURE__ */ jsx("span", { className: "mg-live-dot" }) : null,
               eyebrow
             ] }) : null,
@@ -2181,7 +2181,7 @@ function PageHero({
           aside ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0", children: aside }) : null
         ] }),
         kpis && kpis.length > 0 ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-3 mg-kpi-strip mt-12 md:mt-16", children: kpis.map((k) => /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted", children: k.label }),
+          /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted", children: k.label }),
           /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "font-display text-2xl md:text-[1.75rem] font-semibold tabular-nums text-ink-strong leading-none tracking-[-0.01em]", children: k.value }),
             k.hint ? /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: k.hint }) : null
@@ -2288,7 +2288,7 @@ function EntityHero({
               display ? "mt-12 md:mt-16" : "mt-8 md:mt-10"
             ),
             children: visibleStats.map((s) => /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted", children: s.label }),
+              /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted", children: s.label }),
               /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
                 /* @__PURE__ */ jsx(
                   "span",
@@ -2344,7 +2344,7 @@ function PageSection({
             ),
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-                eyebrow ? /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
+                eyebrow ? /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
                 title ? /* @__PURE__ */ jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink-strong", children: [
                   /* @__PURE__ */ jsx("span", { children: title }),
                   id ? /* @__PURE__ */ jsx(
@@ -3149,7 +3149,7 @@ function MethodologyCallout({
             children: [
               /* @__PURE__ */ jsx(Info, { className: "mt-0.5 size-3.5 shrink-0 text-accent" }),
               /* @__PURE__ */ jsxs("span", { className: "min-w-0 flex-1", children: [
-                /* @__PURE__ */ jsx("span", { className: "block mg-type-micro text-ink-muted", children: "Data freshness & methodology" }),
+                /* @__PURE__ */ jsx("span", { className: "block mg-type-caption text-ink-muted", children: "Data freshness & methodology" }),
                 freshLine ? /* @__PURE__ */ jsx(
                   "span",
                   {
@@ -3173,15 +3173,15 @@ function MethodologyCallout({
         ),
         open ? /* @__PURE__ */ jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 mg-type-caption text-ink-muted md:grid-cols-2", children: [
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Sparklines" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Sparklines" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Uptime & latency sparklines plot the active health window (7d default, switchable to 30d). Each point is the mean across every tracked endpoint in that bucket \u2014 gaps mean no probe landed in the window, not zero." })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Donuts & mosaics" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Donuts & mosaics" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Pool ratio comes from on-chain AMM reserves; endpoint topology counts tracked public surfaces by kind. The mosaic in Operational status colors one cell per endpoint by its last probe result." })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Staleness" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Staleness" }),
             /* @__PURE__ */ jsxs("p", { className: "mt-1", children: [
               "Tiles show a ",
               /* @__PURE__ */ jsx("span", { className: "text-health-warn-text", children: "stale" }),
@@ -3193,11 +3193,11 @@ function MethodologyCallout({
             ] })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Verified vs. candidate" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Verified vs. candidate" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Only curated surfaces feed donuts and the topology breakdown. Unverified leads live in the Candidates tab and never count toward health, completeness, or pool ratios." })
           ] }),
           stakeRisk ? /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Root vs. alpha risk" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-strong", children: "Root vs. alpha risk" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Root stake (netuid 0) is TAO-denominated with no principal risk \u2014 what you stake is what you can unstake. Alpha stake is price-exposed: it's held in the subnet's own token, so a positive nominal APY can still net-lose TAO if the alpha price falls faster than the yield accrues." })
           ] }) : null
         ] }) : null
@@ -3246,7 +3246,7 @@ function BarMini({
           {
             className: "grid grid-cols-[5.5rem_1fr_auto] items-center gap-2",
             children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted truncate", children: d.label }),
+              /* @__PURE__ */ jsx("span", { className: "mg-type-caption text-ink-muted truncate", children: d.label }),
               /* @__PURE__ */ jsx("span", { className: "relative h-1.5 rounded-full bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
                 "span",
                 {
@@ -3599,7 +3599,7 @@ function Donut({
             },
             children: [
               centerLabel ? /* @__PURE__ */ jsx("span", { className: "font-display text-base font-semibold tabular-nums text-ink-strong leading-none", children: centerLabel }) : null,
-              centerSub ? /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted mt-0.5", children: centerSub }) : null
+              centerSub ? /* @__PURE__ */ jsx("span", { className: "mg-type-caption text-ink-muted mt-0.5", children: centerSub }) : null
             ]
           }
         ) : null
@@ -3659,16 +3659,16 @@ function SparkLegend({
           avoidCollisions: true,
           className: "max-w-xs mg-type-caption",
           children: [
-            /* @__PURE__ */ jsxs("div", { className: "mg-type-micro mb-1", children: [
+            /* @__PURE__ */ jsxs("div", { className: "mg-type-caption mb-1", children: [
               metric,
               windowLabel ? ` \xB7 ${windowLabel}` : ""
             ] }),
             /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-70", children: "source \xB7 " }),
+              /* @__PURE__ */ jsx("span", { className: "mg-type-label opacity-70", children: "source \xB7 " }),
               source
             ] }),
             staleness ? /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-70", children: "staleness \xB7 " }),
+              /* @__PURE__ */ jsx("span", { className: "mg-type-label opacity-70", children: "staleness \xB7 " }),
               staleness
             ] }) : null,
             fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm opacity-80", children: [
@@ -3876,7 +3876,7 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxs("div", { className: "min-w-[6rem] flex-1", children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 mg-type-micro text-ink-muted", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 mg-type-caption text-ink-muted", children: [
             /* @__PURE__ */ jsx("span", { className: "line-clamp-3 leading-tight", children: eyebrow }),
             tooltip ? /* @__PURE__ */ jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
           ] }),
@@ -3918,7 +3918,7 @@ function StatWithSpark({
             className
           ),
           children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted truncate", children: label }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-caption text-ink-muted truncate", children: label }),
             /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
               /* @__PURE__ */ jsx(
                 "span",
@@ -3933,7 +3933,7 @@ function StatWithSpark({
                   children: value
                 }
               ),
-              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 mg-type-micro text-ink-muted", children: unit }) : null,
+              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 mg-type-data text-ink-muted", children: unit }) : null,
               delta
             ] }),
             viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
@@ -4098,7 +4098,7 @@ function NoDataSpark({
                 className: "inline-block size-1 rounded-full bg-ink-muted/60"
               }
             ),
-            /* @__PURE__ */ jsx("span", { className: "truncate mg-type-micro text-ink-muted/80", children: freshLine ?? reason })
+            /* @__PURE__ */ jsx("span", { className: "truncate mg-type-caption text-ink-muted/80", children: freshLine ?? reason })
           ]
         }
       ) }),

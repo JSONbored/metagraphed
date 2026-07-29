@@ -394,12 +394,23 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         />
       </Panel>
 
-      {/* Dropdown — wider than the input, right-aligned */}
+      {/* Dropdown — wider than the input, right-aligned. Width is
+          min(600px,60vw), not a flat 600px: the panel is anchored `right-0`
+          to this wrapper, whose right edge sits well left of the viewport's
+          in the md band (768px: x≈480, because the trailing action cluster
+          shows its full unfolded icon row until lg). A fixed 600px panel
+          therefore crossed the LEFT viewport edge there (left −120px at
+          768, −88px at 800 — detector-confirmed, #8532), and the global
+          `overflow-x: clip` silently cut off the first column of the
+          "Jump to" grid. The existing max-w only guards the right edge's
+          padding, so it never fired. 60vw keeps the left edge inside the
+          viewport across the md band and restores the full 600px from
+          1000px up, where the anchor has room again. */}
       {open ? (
         <div
           id="nav-omnibox-listbox"
           role="listbox"
-          className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-[var(--mg-z-modal)] overflow-hidden"
+          className="absolute right-0 mt-1.5 w-[min(600px,60vw)] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-[var(--mg-z-modal)] overflow-hidden"
         >
           {/* ── Empty state: no query typed ─────────────────────────── */}
           {showSuggestions ? (

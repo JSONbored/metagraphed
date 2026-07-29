@@ -318,10 +318,10 @@ import {
 } from "./request-handlers/saved-queries.ts";
 import {
   aiEnabled,
+  AI_TIERED_RATE_LIMIT,
   askQuestion,
   runEmbeddingSync,
   semanticSearch,
-  withinRateLimit,
 } from "../src/ai-search.ts";
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
@@ -1770,7 +1770,7 @@ export async function handleRequest(
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
   // must run before the read-only method gate below (like the RPC proxy).
   if (url.pathname.startsWith("/api/v1/webhooks/")) {
-    return handleWebhookRequest(request, env, url);
+    return handleWebhookRequest(request, env, url, ctx);
   }
 
   // Chain alert triggers (#4984 Part 1): CRUD accepts POST/GET/PATCH/DELETE,
@@ -1843,7 +1843,7 @@ export async function handleRequest(
   // Grounded RAG answer endpoint (POST). Runs before the read-only method gate
   // and degrades to 503 when the AI bindings/kill-switch are absent.
   if (url.pathname === "/api/v1/ask") {
-    return handleAskRequest(request, env);
+    return handleAskRequest(request, env, ctx);
   }
 
   // The only write path into the registry Postgres instance (a dedicated,
@@ -2111,7 +2111,7 @@ export async function handleRequest(
   // Semantic (vector) search over the registry. Special-handled (dynamic, not
   // artifact-backed) like /api/v1/events; degrades to 503 when AI is off.
   if (url.pathname === "/api/v1/search/semantic") {
-    return handleSemanticSearchRequest(request, env, url);
+    return handleSemanticSearchRequest(request, env, url, ctx);
   }
 
   // Registry leaderboards (registry projections; D1 fully eliminated
@@ -3982,8 +3982,9 @@ configureAnalytics({ readHealthMetaKv });
 // rpc-proxy.ts, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
 // for its observed_at stamp. Injecting the stable reference keeps rpc-proxy.ts
 // from importing api.ts back (it owns the RPC_HEALTH breaker + pool-artifact memo
-// itself; this is the only api.ts-local helper it depends on).
-configureRpcProxy({ readHealthMetaKv });
+// itself). #8522: recordApiKeyUsage is injected the same way so the state-query
+// tiered checkpoint can record keyed usage without an import cycle.
+configureRpcProxy({ readHealthMetaKv, recordApiKeyUsage });
 
 // economics:current is a large blob (one row per subnet) that resolveLiveEconomics
 // reads on every /api/v1/economics request AND every /api/v1/subnets/{netuid}
@@ -4792,7 +4793,12 @@ async function handleHealthRequest(request: Request, env: Env) {
 // the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
 // publish-time dispatcher (scripts/dispatch-webhooks.ts) reads them and fires
 // HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
-async function handleWebhookRequest(request: Request, env: Env, url: URL) {
+async function handleWebhookRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx?: Ctx,
+) {
   if (!env.METAGRAPH_CONTROL?.get || !env.METAGRAPH_CONTROL?.put) {
     return errorResponse(
       "webhooks_unavailable",
@@ -4811,13 +4817,13 @@ async function handleWebhookRequest(request: Request, env: Env, url: URL) {
   const id = segments[4];
 
   if (!id && request.method === "POST") {
-    return createWebhookSubscription(request, env);
+    return createWebhookSubscription(request, env, ctx);
   }
   if (id && request.method === "GET") {
     return getWebhookSubscription(env, id);
   }
   if (id && request.method === "DELETE") {
-    return deleteWebhookSubscription(request, env, id);
+    return deleteWebhookSubscription(request, env, id, ctx);
   }
   return errorResponse(
     "method_not_allowed",
@@ -4840,27 +4846,57 @@ async function handleWebhookRequest(request: Request, env: Env, url: URL) {
 // absent (local dev/CI), matching every other rate-limiter in this codebase.
 const WEBHOOK_SUBSCRIPTION_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
-async function webhookSubscriptionRateLimited(request: Request, env: Env) {
-  if (!env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER?.limit) return null;
-  const { success } = await env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER.limit({
-    key: `webhook-sub:${resolveClientIp(request)}`,
-  });
-  if (success) return null;
-  return errorResponse(
-    "webhook_subscription_rate_limited",
-    "Too many webhook subscription requests from this client; slow down.",
-    429,
-    {},
-    {
-      "retry-after": String(WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds),
-      "x-ratelimit-limit": String(WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit),
-      "x-ratelimit-policy": `${WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit};w=${WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds}`,
-      "x-ratelimit-remaining": "0",
-    },
+// #8523: tiered rate limiting for webhook subscription create/delete/list,
+// mirroring DATA_TIERED_RATE_LIMIT. Anonymous callers keep the existing 10/60s
+// IP-keyed ceiling (WEBHOOK_SUBSCRIPTION_RATE_LIMITER); a valid mg_... key rides
+// the 5x account-keyed tier (WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED). The
+// "webhook" prefix namespaces the bucket so it never collides with another
+// surface sharing a binding. Fails open when a binding is absent, like every
+// limiter here.
+export const WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: {
+    envVar: "WEBHOOK_SUBSCRIPTION_RATE_LIMITER",
+    limit: WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit,
+    windowSeconds: WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds,
+  },
+  keyed: {
+    envVar: "WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED",
+    limit: 50,
+    windowSeconds: 60,
+  },
+  keyPrefix: "webhook",
+};
+
+async function webhookSubscriptionRateLimited(
+  request: Request,
+  env: Env,
+  ctx?: Ctx,
+) {
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
   );
+  if (!rateLimit.allowed) {
+    return errorResponse(
+      "webhook_subscription_rate_limited",
+      "Too many webhook subscription requests from this client; slow down.",
+      429,
+      {},
+      tieredRateLimitHeaders(rateLimit.policy),
+    );
+  }
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "webhook-subscription");
+  }
+  return null;
 }
 
-async function createWebhookSubscription(request: Request, env: Env) {
+async function createWebhookSubscription(
+  request: Request,
+  env: Env,
+  ctx?: Ctx,
+) {
   // Authenticate BEFORE touching the request body. An unauthenticated or
   // wrong-token caller must be rejected (503 when disabled, else 401) before we
   // read, JSON-parse, or validate any attacker-controlled payload — this avoids
@@ -4875,7 +4911,7 @@ async function createWebhookSubscription(request: Request, env: Env) {
   // Abuse control sits right after auth and before we read/parse the body, so a
   // token-holding caller can't script unbounded subscription creation -- while
   // still rejecting unauthenticated callers first (they never reach the limiter).
-  const rateLimited = await webhookSubscriptionRateLimited(request, env);
+  const rateLimited = await webhookSubscriptionRateLimited(request, env, ctx);
   if (rateLimited) return rateLimited;
 
   if (
@@ -5043,6 +5079,7 @@ async function deleteWebhookSubscription(
   request: Request,
   env: Env,
   id: string,
+  ctx?: Ctx,
 ) {
   if (!isValidSubscriptionId(id)) {
     return errorResponse(
@@ -5055,7 +5092,7 @@ async function deleteWebhookSubscription(
   // delete attempts can't drive unbounded reads. Delete authenticates with the
   // subscription's own secret (checked below), so the limiter is the only
   // volume bound on unauthenticated attempts.
-  const rateLimited = await webhookSubscriptionRateLimited(request, env);
+  const rateLimited = await webhookSubscriptionRateLimited(request, env, ctx);
   if (rateLimited) return rateLimited;
 
   const record = await readWebhookSubscription(env, id);
@@ -5168,29 +5205,18 @@ function aiUnavailableResponse() {
   );
 }
 
-// Mirrors the AI_RATE_LIMITER binding's `simple` config (limit 20 / period 60s)
-// so the 429's advertised quota matches what the limiter actually enforces.
-const AI_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
-
-function aiRateLimitedResponse() {
+function aiRateLimitedResponse(policy: TieredRateLimitConfig["anonymous"]) {
   // Same standard rate-limit header set the webhook / alert-trigger 429s expose
   // (#6572), so an AI client can discover its quota, not just the retry delay.
+  // #8521: headers now come from the tiered policy that actually rejected the
+  // caller (anonymous 20/60s here), via the shared tieredRateLimitHeaders.
   return errorResponse(
     "rate_limited",
     "Too many AI requests. Please retry shortly.",
     429,
     {},
-    {
-      "retry-after": String(AI_RATE_LIMIT.windowSeconds),
-      "x-ratelimit-limit": String(AI_RATE_LIMIT.limit),
-      "x-ratelimit-policy": `${AI_RATE_LIMIT.limit};w=${AI_RATE_LIMIT.windowSeconds}`,
-      "x-ratelimit-remaining": "0",
-    },
+    tieredRateLimitHeaders(policy),
   );
-}
-
-function aiClientKey(request: Request, scope: string) {
-  return `${scope}:${resolveClientIp(request)}`;
 }
 
 async function readBoundedRequestText(request: Request, maxBytes: number) {
@@ -5233,6 +5259,7 @@ async function handleSemanticSearchRequest(
   request: Request,
   env: Env,
   url: URL,
+  ctx?: Ctx,
 ) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
@@ -5245,8 +5272,19 @@ async function handleSemanticSearchRequest(
     headers.set("cache-control", "no-store");
     return new Response(null, { status: 200, headers });
   }
-  if (!(await withinRateLimit(env, aiClientKey(request, "semantic")))) {
-    return aiRateLimitedResponse();
+  // #8521: tiered -- a valid mg_... key rides AI_RATE_LIMITER_KEYED (100/60s,
+  // account-keyed); everyone else keeps the anonymous AI_RATE_LIMITER (20/60s,
+  // IP-keyed). Mirrors the DATA checkpoint above.
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    AI_TIERED_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) {
+    return aiRateLimitedResponse(rateLimit.policy);
+  }
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "semantic-search");
   }
   try {
     // `?type=subnet&type=provider` (repeatable) scopes results; absent → all
@@ -5275,7 +5313,7 @@ async function handleSemanticSearchRequest(
   }
 }
 
-async function handleAskRequest(request: Request, env: Env) {
+async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
   if (request.method !== "POST") {
     return errorResponse(
       "method_not_allowed",
@@ -5288,8 +5326,17 @@ async function handleAskRequest(request: Request, env: Env) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
   }
-  if (!(await withinRateLimit(env, aiClientKey(request, "ask")))) {
-    return aiRateLimitedResponse();
+  // #8521: tiered, same as semantic search above.
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    AI_TIERED_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) {
+    return aiRateLimitedResponse(rateLimit.policy);
+  }
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "ask");
   }
   let body;
   try {

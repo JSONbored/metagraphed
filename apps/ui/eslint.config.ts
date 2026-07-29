@@ -63,8 +63,18 @@ const PRIMITIVE_STEER_RULES = [
     // detail-page panels (#6398), not drift; <Panel> has no glow variant to
     // migrate it to. A 2026-07-23 audit found the unscoped selector's false
     // positives outnumbered genuine hits roughly 3-to-1.
+    //
+    // Third tightening (2026-07-29, #8556): excludes `inline-flex` className
+    // values. Genuine card shells are block-level content surfaces; a div
+    // that lays itself out as an inline-flex row is a *control* shell (the
+    // /health interval segmented control, /status window toggle, the
+    // subnet-detail stake/unstake tablist) sharing the border/bg-card look
+    // without being a content panel -- wrapping those in <Panel> would be
+    // actively wrong, since Panel carries panel semantics and padding a
+    // control must not inherit. Same failure mode as the two tightenings
+    // above: the look-alike class cluster, not the element's actual role.
     selector:
-      "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/]",
+      "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/][value!=/\\binline-flex\\b/]",
     message:
       "Wrap card shells in <Panel> from '@/components/metagraphed/primitives' instead of re-authoring rounded/border/bg-card by hand.",
   },
@@ -174,8 +184,15 @@ const RADIUS_RULES = [
 // It joins FULL_DESIGN_RULES and inherits that severity: warn in src/**, error
 // in RATCHETED_DIRS. `no-restricted-syntax` carries one severity for all its
 // selectors, so there is no way to run this at error while the token worklist
-// stays at warn -- visual-grammar-guardrails.test.ts does that job instead,
-// failing CI outright on any occurrence anywhere in either package.
+// stays at warn. For the marquee ban, visual-grammar-guardrails.test.ts does
+// that job instead, failing CI outright on any occurrence anywhere in either
+// package. The #8325 label-diet rule below is NOT in that suite (a 2026-07-29
+// audit found the previous version of this comment overstated its coverage --
+// the suite asserts marquee/infinite-translate/full-bleed-accent only): its
+// boundary needs the element set + rounded-full chip exemption, which lives
+// in AST-selector form here, so its cross-package enforcement is the verbatim
+// copy of the selector in packages/ui-kit/eslint.config.ts (#8557), at error
+// tier for ui-kit's ratcheted src/components/**.
 //
 // The companion accent-budget rule is deliberately NOT here. Telling a
 // legitimate accent data mark (a bar sized `width: ${pct}%`, a sparkline
@@ -238,8 +255,15 @@ const FULL_DESIGN_RULES = [
 // explaining why. Initial set (2026-07-24 audit): src/hooks/** was clean
 // end-to-end. #8424 cleared the last src/lib/** residuals (dead
 // download-csv-button text-[11px], ValueUnitControl, and a gap-5 fixture
-// false-positive) and added that directory here.
-const RATCHETED_DIRS = ["src/hooks/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"];
+// false-positive) and added that directory here. #8552 finished
+// src/components/**: #8167-#8171 took it from 81 warning-files down to 13
+// warnings, #8571 deleted its inert text-[10px] trio, and the remaining 10
+// were fixed or suppressed-with-reason in the same PR that ratcheted it.
+const RATCHETED_DIRS = [
+  "src/hooks/**/*.{ts,tsx}",
+  "src/lib/**/*.{ts,tsx}",
+  "src/components/**/*.{ts,tsx}",
+];
 
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see

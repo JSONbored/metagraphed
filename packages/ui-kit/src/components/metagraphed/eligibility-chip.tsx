@@ -70,7 +70,7 @@ export function EligibilityChip({
               "before:content-[''] before:size-1.5 before:rounded-full",
               "hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               size === "xs"
-                ? "px-2 py-0 h-5 mg-type-micro"
+                ? "px-2 py-0 h-5 mg-type-label"
                 : "px-2.5 py-0 h-6 mg-type-label",
               TONE[eligibility],
             )}
@@ -79,7 +79,7 @@ export function EligibilityChip({
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[240px] mg-type-caption">
-          <div className="mg-type-micro opacity-70 mb-1">
+          <div className="mg-type-caption opacity-70 mb-1">
             {ELIGIBILITY_LABEL[eligibility]}
           </div>
           {RULE[eligibility]}

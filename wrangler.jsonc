@@ -606,6 +606,22 @@
         "period": 60,
       },
     },
+    // #8520: the keyed tier for the MCP surface -- 5x MCP_RATE_LIMITER's
+    // anonymous limit, keyed by account id instead of client IP
+    // (workers/tiered-rate-limit.ts), for a caller presenting a valid self-serve
+    // mg_... API key. A SEPARATE named binding, not the same one with a different
+    // number -- one named binding is one fixed limit/period pair. Deploy
+    // prerequisite: this binding must be provisioned via `wrangler deploy`; until
+    // then the keyed tier fails open, the same "skipped when the binding is
+    // absent" posture every limiter in this codebase already has.
+    {
+      "name": "MCP_RATE_LIMITER_KEYED",
+      "namespace_id": "1014",
+      "simple": {
+        "limit": 500,
+        "period": 60,
+      },
+    },
     // Per-client abuse control for the AI routes (semantic + /ask). 20 requests
     // / 60s per client IP — tighter than the RPC proxy because /ask drives an
     // LLM call. Skipped when the binding is absent (local dev/CI).
@@ -614,6 +630,23 @@
       "namespace_id": "1002",
       "simple": {
         "limit": 20,
+        "period": 60,
+      },
+    },
+    // #8521: the keyed-tier ceiling for the same AI search/ask routes above --
+    // 5x AI_RATE_LIMITER's anonymous limit, keyed by account id instead of
+    // client IP (workers/tiered-rate-limit.ts), for a caller presenting a valid
+    // self-serve mg_... API key. A SEPARATE named binding, not a parameter on
+    // AI_RATE_LIMITER -- one binding is always one fixed limit/period pair.
+    // Deploy prerequisite: this binding must be provisioned (`wrangler deploy`)
+    // before the keyed tier takes effect; until then applyTieredRateLimit fails
+    // OPEN for the keyed tier (same "skipped when the binding is absent" posture
+    // every limiter in this file already has), never blocking a keyed caller.
+    {
+      "name": "AI_RATE_LIMITER_KEYED",
+      "namespace_id": "1015",
+      "simple": {
+        "limit": 100,
         "period": 60,
       },
     },
@@ -662,6 +695,24 @@
         "period": 60,
       },
     },
+    // #8522: the keyed-tier ceiling for the same state_* RPC queries above --
+    // 5x STATE_QUERY_RATE_LIMITER's anonymous limit, keyed by account id instead
+    // of client IP (workers/tiered-rate-limit.ts), for a caller presenting a
+    // valid self-serve mg_... API key. A SEPARATE named binding, not a parameter
+    // on STATE_QUERY_RATE_LIMITER -- one binding is always one fixed limit/period
+    // pair. Deploy prerequisite: this binding must be provisioned (`wrangler
+    // deploy`) before the keyed tier takes effect; until then applyTieredRateLimit
+    // fails OPEN for the keyed tier (same "skipped when the binding is absent"
+    // posture every limiter in this file already has), never blocking a keyed
+    // caller.
+    {
+      "name": "STATE_QUERY_RATE_LIMITER_KEYED",
+      "namespace_id": "1016",
+      "simple": {
+        "limit": 100,
+        "period": 60,
+      },
+    },
     // Per-client abuse control for the webhook-subscription MUTATION routes
     // (POST create + DELETE remove, #5473). Both authenticate with a SHARED
     // static secret rather than a per-user credential, and each successful POST
@@ -674,6 +725,24 @@
       "namespace_id": "1006",
       "simple": {
         "limit": 10,
+        "period": 60,
+      },
+    },
+    // #8523: the keyed-tier ceiling for the same webhook-subscription routes
+    // above -- 5x WEBHOOK_SUBSCRIPTION_RATE_LIMITER's anonymous limit, keyed by
+    // account id instead of client IP (workers/tiered-rate-limit.ts), for a
+    // caller presenting a valid self-serve mg_... API key. A SEPARATE named
+    // binding, not a parameter on WEBHOOK_SUBSCRIPTION_RATE_LIMITER -- one
+    // binding is always one fixed limit/period pair. Deploy prerequisite: this
+    // binding must be provisioned (`wrangler deploy`) before the keyed tier
+    // takes effect; until then applyTieredRateLimit fails OPEN for the keyed
+    // tier (same "skipped when the binding is absent" posture every limiter in
+    // this file already has), never blocking a keyed caller.
+    {
+      "name": "WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED",
+      "namespace_id": "1017",
+      "simple": {
+        "limit": 50,
         "period": 60,
       },
     },

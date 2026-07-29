@@ -31,7 +31,7 @@
 // partway through a 542k-row stream.
 //
 // No prune step, matching handleAccountBalancesSync's own upsert-only
-// semantics (workers/data-api.mjs) exactly: an account whose balance drops
+// semantics (workers/data-api.ts) exactly: an account whose balance drops
 // to zero is skipped (not written), same as the Python script -- it goes
 // stale in the table rather than being deleted. This table has always been
 // "every account that has EVER held a balance," not "every account with a
@@ -190,7 +190,7 @@ async fn run(chain: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<Job
 /// indexer scale: a plain `INSERT ... ON CONFLICT` per row would be far
 /// slower for chunk-sized batches than one COPY + one merge statement.
 /// `WHERE account_balances.captured_at <= EXCLUDED.captured_at` matches
-/// handleAccountBalancesSync's own guard (workers/data-api.mjs) -- a
+/// handleAccountBalancesSync's own guard (workers/data-api.ts) -- a
 /// slower/retried tick can never overwrite a newer captured_at with a
 /// stale one.
 async fn upsert_chunk(

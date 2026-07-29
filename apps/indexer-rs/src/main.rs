@@ -203,7 +203,7 @@ fn acct(v: &Value<()>) -> Option<String> {
 /// regardless of any path-based alias, so a downstream consumer can key off a
 /// reliable "Vec<"/"BTreeSet<"-style prefix even for a bounded/aliased
 /// wrapper whose own path segment might otherwise be missing or differ from
-/// D1's naming (see metagraphed's src/scale-normalize.mjs, which collapsed a
+/// D1's naming (see metagraphed's src/scale-normalize.ts, which collapsed a
 /// single-element Vec<u16>/BTreeSet<NetUid> to a bare scalar for exactly this
 /// reason before that fix). Named types (structs, enums, chain type aliases
 /// like NetUid/TaoBalance/MechId, and bounded collections like BoundedVec/

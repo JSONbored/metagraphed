@@ -1046,22 +1046,81 @@ describe("dispatchMessage — notification arms across methods", () => {
 
 // ── rate limiter + body-size guards ─────────────────────────────
 describe("handleMcpRequest — rate limiter success + content-length guard", () => {
-  test("the RPC_RATE_LIMITER fallback allows the request when success is true", async () => {
-    // enforceMcpRateLimit: env.MCP_RATE_LIMITER absent → RPC_RATE_LIMITER used;
-    // success: true → returns null (no 429) and the request proceeds.
-    let seenKey;
-    const env = {
-      RPC_RATE_LIMITER: {
-        async limit({ key }: { key: string }) {
-          seenKey = key;
-          return { success: true };
-        },
-      },
-    };
+  test("fails open (allows the request) when the MCP rate-limit binding is absent", async () => {
+    // #8520: enforceMcpRateLimit now delegates to applyTieredRateLimit, which
+    // fails open when MCP_RATE_LIMITER is unbound (local dev/CI/pre-provision) --
+    // the request proceeds, no 429. This replaces the old
+    // `env.MCP_RATE_LIMITER || env.RPC_RATE_LIMITER` fallback, dropped with the
+    // tiered rewrite per #8520.
+    const env = {};
     const res = await rpc({ jsonrpc: "2.0", id: 1, method: "ping" }, { env });
     assert.equal(res.status, 200);
     assert.deepEqual(res.body.result, {});
-    assert.equal(typeof seenKey, "string");
+  });
+
+  test("an anonymous caller over the ceiling gets a 429 with the tiered policy headers", async () => {
+    // #8520: applyTieredRateLimit returns allowed:false for the anonymous tier →
+    // enforceMcpRateLimit's rejection arm: 429, RPC_INVALID_REQUEST, Retry-After.
+    const env = {
+      MCP_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    };
+    const res = await rpc({ jsonrpc: "2.0", id: 1, method: "ping" }, { env });
+    assert.equal(res.status, 429);
+    assert.equal(res.body.error.code, -32600);
+    assert.match(res.body.error.message, /Too many MCP requests/);
+    assert.equal(res.headers.get("Retry-After"), "60");
+  });
+
+  test("a keyed caller under the higher tier is allowed and its usage is recorded", async () => {
+    // #8520: a valid mg_ key resolves the keyed tier (accountId set) → the
+    // recordApiKeyUsage fire-and-forget branch runs and the request proceeds.
+    const VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
+    const kvStore = new Map<string, string>();
+    let usageRecorded = false;
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key: string, options?: { type?: string }) {
+          if (!kvStore.has(key)) return null;
+          const raw = kvStore.get(key)!;
+          return options?.type === "json" ? JSON.parse(raw) : raw;
+        },
+        async put(key: string, value: string) {
+          kvStore.set(key, value);
+        },
+      },
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          if (new URL(req.url).pathname.endsWith("/keys/usage")) {
+            usageRecorded = true;
+            return new Response(null, { status: 204 });
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "free",
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+      MCP_RATE_LIMITER_KEYED: { limit: async () => ({ success: true }) },
+    };
+    const res = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "ping" },
+      {
+        env,
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${VALID_KEY}`,
+        },
+      },
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.result, {});
+    assert.equal(usageRecorded, true);
   });
 
   test("a request whose content-length exceeds the cap is rejected with 413", async () => {

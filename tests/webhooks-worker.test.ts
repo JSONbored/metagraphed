@@ -493,6 +493,55 @@ describe("webhook subscription rate limiting", () => {
     assert.equal(kv.store.has(`webhooks:sub:${id}`), true);
   });
 
+  test("create: a keyed caller rides the account tier and records usage (#8523)", async () => {
+    // #8523: a valid mg_ key in Authorization resolves the keyed tier (accountId
+    // set) -> the request proceeds AND recordApiKeyUsage fires. The webhook auth
+    // stays the shared subscription-token header, independent of the key.
+    const WEBHOOK_VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
+    const kv = makeKv();
+    let usageRecorded = false;
+    const pending: Promise<unknown>[] = [];
+    const env = envWith(kv, {
+      WEBHOOK_SUBSCRIPTION_RATE_LIMITER_KEYED: {
+        limit: async () => ({ success: true }),
+      },
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async (r: Request) => {
+          if (new URL(r.url).pathname.endsWith("/keys/usage")) {
+            usageRecorded = true;
+            return new Response(null, { status: 204 });
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "free",
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    });
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+          authorization: `Bearer ${WEBHOOK_VALID_KEY}`,
+        },
+        body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
+      }),
+      env as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => pending.push(p) },
+    );
+    await Promise.all(pending);
+    assert.equal(res.status, 201);
+    assert.equal(usageRecorded, true);
+  });
+
   test("delete: 200 when the limiter allows the request", async () => {
     const kv = makeKv();
     const created = await (

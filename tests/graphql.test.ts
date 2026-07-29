@@ -1534,7 +1534,76 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     );
     assert.equal(paged.body.data.surfaces.items.length, 1);
     assert.equal(paged.body.data.surfaces.total, 3);
-    assert.equal(paged.body.data.surfaces.next_cursor, "s1");
+    // #8548: the root surfaces field now delegates to loadSurfacesList (the same
+    // loader REST /surfaces and MCP list_surfaces use), so its cursor is REST's
+    // offset cursor -- surfaces-mcp.test.ts asserts the same `1`. The prior
+    // id-based "s1" cursor was the GraphQL-only divergence this parity fix removes.
+    assert.equal(paged.body.data.surfaces.next_cursor, "1");
+  });
+
+  test("surfaces filters by kind/provider/id and sorts, at parity with REST/MCP (#8548)", async () => {
+    const env = () =>
+      fixtureEnv({
+        "/metagraph/surfaces.json": {
+          surfaces: [
+            { id: "s-a", netuid: 1, kind: "subnet-api", provider: "alpha" },
+            { id: "s-b", netuid: 1, kind: "docs", provider: "beta" },
+            { id: "s-c", netuid: 2, kind: "subnet-api", provider: "alpha" },
+          ],
+        },
+      });
+
+    const byKind = await gql(
+      '{ surfaces(kind: "subnet-api") { items { id kind } total } }',
+      env() as unknown as Env,
+    );
+    assert.equal(byKind.body.errors, undefined);
+    assert.equal(byKind.body.data.surfaces.total, 2);
+    assert.ok(
+      byKind.body.data.surfaces.items.every(
+        (s: Row) => s.kind === "subnet-api",
+      ),
+    );
+
+    const byProvider = await gql(
+      '{ surfaces(provider: "beta") { items { id provider } total } }',
+      env() as unknown as Env,
+    );
+    assert.equal(byProvider.body.data.surfaces.total, 1);
+    assert.equal(byProvider.body.data.surfaces.items[0].id, "s-b");
+
+    const byId = await gql(
+      '{ surfaces(id: "s-c") { items { id } total } }',
+      env() as unknown as Env,
+    );
+    assert.equal(byId.body.data.surfaces.total, 1);
+    assert.equal(byId.body.data.surfaces.items[0].id, "s-c");
+
+    const sorted = await gql(
+      '{ surfaces(sort: "id", order: "desc") { items { id } } }',
+      env() as unknown as Env,
+    );
+    assert.equal(sorted.body.errors, undefined);
+    assert.deepEqual(
+      sorted.body.data.surfaces.items.map((s: Row) => s.id),
+      ["s-c", "s-b", "s-a"],
+    );
+  });
+
+  test("surfaces rejects an unsupported filter/sort as a GraphQL error, not a silent default (#8548)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [{ id: "s-a", netuid: 1, kind: "subnet-api" }],
+      },
+    });
+    for (const arg of ['kind: "bogus"', 'sort: "not_a_column"']) {
+      const { body } = await gql(
+        `{ surfaces(${arg}) { items { id } } }`,
+        env as unknown as Env,
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.data?.surfaces ?? null, null);
+    }
   });
 
   test("endpoints filters by netuid", async () => {
@@ -2855,6 +2924,89 @@ describe("graphql — economics pagination", () => {
     assert.equal(second.body.data.economics.next_cursor, null);
   });
 
+  test("economics filters by netuid/registration_allowed/q and sorts, at parity with REST/MCP (#8549)", async () => {
+    const richEnv = () =>
+      fixtureEnv({
+        "/metagraph/economics.json": {
+          subnets: [
+            {
+              netuid: 1,
+              name: "Alpha Net",
+              slug: "alpha",
+              registration_allowed: true,
+              alpha_market_cap_tao: 100,
+            },
+            {
+              netuid: 2,
+              name: "Beta Net",
+              slug: "beta",
+              registration_allowed: false,
+              alpha_market_cap_tao: 300,
+            },
+            {
+              netuid: 3,
+              name: "Gamma Net",
+              slug: "gamma",
+              registration_allowed: true,
+              alpha_market_cap_tao: 200,
+            },
+          ],
+        },
+      });
+
+    const byNetuid = await gql(
+      "{ economics(netuid: 2) { subnets { netuid } total } }",
+      richEnv(),
+    );
+    assert.equal(byNetuid.body.errors, undefined);
+    assert.equal(byNetuid.body.data.economics.total, 1);
+    assert.equal(byNetuid.body.data.economics.subnets[0].netuid, 2);
+
+    const byReg = await gql(
+      "{ economics(registration_allowed: true) { subnets { netuid } total } }",
+      richEnv(),
+    );
+    assert.equal(byReg.body.data.economics.total, 2);
+    assert.deepEqual(
+      byReg.body.data.economics.subnets.map((s: Row) => s.netuid).sort(),
+      [1, 3],
+    );
+
+    const byQ = await gql(
+      '{ economics(q: "beta") { subnets { netuid name } total } }',
+      richEnv(),
+    );
+    assert.equal(byQ.body.data.economics.total, 1);
+    assert.equal(byQ.body.data.economics.subnets[0].netuid, 2);
+
+    const sorted = await gql(
+      '{ economics(sort: "alpha_market_cap_tao", order: "desc") { subnets { netuid } } }',
+      richEnv(),
+    );
+    assert.equal(sorted.body.errors, undefined);
+    assert.deepEqual(
+      sorted.body.data.economics.subnets.map((s: Row) => s.netuid),
+      [2, 3, 1],
+    );
+  });
+
+  test("economics rejects an unsupported filter/sort as a GraphQL error, not a silent default (#8549)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 1, emission_share: 0.1 }],
+      },
+    });
+    for (const arg of ['registration_allowed: true, sort: "not_a_column"']) {
+      const { body } = await gql(
+        `{ economics(${arg}) { subnets { netuid } } }`,
+        env as unknown as Env,
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+      assert.equal(body.data?.economics ?? null, null);
+    }
+  });
+
   test("prefers the fresh KV economics tier over the committed artifact", async () => {
     const env = fixtureEnv(
       // Stale committed copy — must NOT be served while the KV tier is fresh.
@@ -3351,11 +3503,11 @@ describe("graphql — resolver branch coverage", () => {
     assert.equal(second.body.data.providers.next_cursor, null);
   });
 
-  test("surfaces paginate, falling back to key for the cursor when id is absent", async () => {
+  test("surfaces paginate via loadSurfacesList's REST-parity offset cursor (#8548)", async () => {
     const env = fixtureEnv({
       "/metagraph/surfaces.json": {
         surfaces: [
-          { key: "k1", netuid: 1, kind: "sse" }, // no id → cursor uses key
+          { key: "k1", netuid: 1, kind: "sse" },
           { id: "s2", netuid: 1, kind: "rpc" },
         ],
       },
@@ -3365,7 +3517,10 @@ describe("graphql — resolver branch coverage", () => {
       env as unknown as Env,
     );
     assert.equal(first.body.data.surfaces.total, 2);
-    assert.equal(first.body.data.surfaces.next_cursor, "k1");
+    // #8548: the root surfaces field now delegates to loadSurfacesList, whose
+    // cursor is REST's positional offset ("1"), independent of any per-row id/key
+    // -- the removed listPage's id/key keyFn no longer applies.
+    assert.equal(first.body.data.surfaces.next_cursor, "1");
   });
 
   test("invalid Content-Length is rejected before the body is read", async () => {
@@ -18554,6 +18709,101 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.match(body.errors[0].message, /coldkey must be a valid SS58/);
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
+
+  test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547)", async () => {
+    let capturedUrl: URL | undefined;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r: Request) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "30d",
+              sort: "net_staked",
+              limit: 10,
+              offset: 10,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                  staked_tao: 12.5,
+                  unstaked_tao: 2.5,
+                  net_staked_tao: 10,
+                  gross_staked_tao: 15,
+                  event_count: 3,
+                  last_observed_at: "2026-07-10T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-10T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 10, offset: 10)`),
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
+    assert.equal(body.data.validator_nominators.limit, 10);
+    assert.equal(body.data.validator_nominators.offset, 10);
+  });
+
+  test("a cold store echoes the requested limit/offset in the schema-stable envelope (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 5, offset: 15)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_nominators.limit, 5);
+    assert.equal(body.data.validator_nominators.offset, 15);
+    assert.equal(body.data.validator_nominators.nominator_count, 0);
+  });
+
+  test("a limit above the max is a GraphQL error, not a silently clamped default (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 2001)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(
+      body.errors[0].message,
+      /`limit` must be an integer between 1 and 2000/,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("a limit below 1 is a GraphQL error (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 0)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(
+      body.errors[0].message,
+      /`limit` must be an integer between 1 and 2000/,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("a negative offset is a GraphQL error (#8547)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", offset: -1)`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(
+      body.errors[0].message,
+      /`offset` must be a non-negative integer/,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
 });
 
 describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fallback)", () => {
@@ -22633,27 +22883,89 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
   });
 });
 
-// --- curation parity (#6982) ---
-describe("graphql — curation parity (#6982)", () => {
-  test("curation resolves the baked curation-states artifact", async () => {
-    const env = fixtureEnv({
+// --- curation parity (#6982, #8550) ---
+describe("graphql — curation parity (#6982, #8550)", () => {
+  const env = () =>
+    fixtureEnv({
       "/metagraph/curation.json": {
-        subnets: [
-          { netuid: 1, level: "core", review_state: "maintainer-reviewed" },
+        generated_at: "2026-07-20T00:00:00.000Z",
+        curation: [
+          {
+            netuid: 1,
+            coverage_level: "probed",
+            curation_level: "maintainer-reviewed",
+          },
+          {
+            netuid: 2,
+            coverage_level: "manifested",
+            curation_level: "adapter-backed",
+          },
+          {
+            netuid: 3,
+            coverage_level: "probed",
+            curation_level: "adapter-backed",
+          },
         ],
       },
     });
-    const { status, body } = await gql("{ curation }", env);
+
+  test("curation resolves the baked artifact as a CurationList envelope (#8550)", async () => {
+    const { status, body } = await gql(
+      "{ curation { curation total next_cursor } }",
+      env(),
+    );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.curation.subnets[0].level, "core");
+    assert.equal(body.data.curation.total, 3);
+    assert.equal(body.data.curation.curation[0].netuid, 1);
   });
 
-  test("curation degrades to null when the artifact has not been baked", async () => {
-    const { status, body } = await gql("{ curation }");
+  test("curation filters by netuid/coverage_level/curation_level and sorts, at parity with REST/MCP (#8550)", async () => {
+    const byNetuid = await gql(
+      "{ curation(netuid: 2) { curation total } }",
+      env(),
+    );
+    assert.equal(byNetuid.body.errors, undefined);
+    assert.equal(byNetuid.body.data.curation.total, 1);
+    assert.equal(byNetuid.body.data.curation.curation[0].netuid, 2);
+
+    const byCoverage = await gql(
+      '{ curation(coverage_level: "probed") { total } }',
+      env(),
+    );
+    assert.equal(byCoverage.body.data.curation.total, 2);
+
+    const byLevel = await gql(
+      '{ curation(curation_level: "adapter-backed") { total } }',
+      env(),
+    );
+    assert.equal(byLevel.body.data.curation.total, 2);
+
+    const sorted = await gql(
+      '{ curation(sort: "netuid", order: "desc") { curation } }',
+      env(),
+    );
+    assert.equal(sorted.body.errors, undefined);
+    assert.deepEqual(
+      sorted.body.data.curation.curation.map((c: Row) => c.netuid),
+      [3, 2, 1],
+    );
+  });
+
+  test("curation rejects an unsupported filter/sort as a GraphQL error, not a silent default (#8550)", async () => {
+    const { body } = await gql(
+      '{ curation(sort: "not_a_column") { total } }',
+      env(),
+    );
+    assert.ok(body.errors);
+    assert.equal(body.data?.curation ?? null, null);
+  });
+
+  test("curation on a cold/absent artifact is a GraphQL error, not null (BREAKING, #8550)", async () => {
+    const { status, body } = await gql("{ curation { total } }");
     assert.equal(status, 200);
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.curation, null);
+    assert.ok(body.errors, "cold curation artifact must be a GraphQL error");
+    assert.equal(body.data?.curation ?? null, null);
   });
 
   test("curation is weighted as a fan-out field like its sibling artifact resolvers", () => {

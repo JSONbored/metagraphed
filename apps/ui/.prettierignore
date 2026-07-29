@@ -11,7 +11,7 @@ routeTree.gen.ts
 # codegen, not authored code.
 .source
 
-# scripts/generate-openapi-docs.mjs output -- one MDX page per OpenAPI
+# scripts/generate-openapi-docs.ts output -- one MDX page per OpenAPI
 # operation (formatted by fumadocs-openapi itself, not prettier -- each
 # file's own header says as much) plus the per-tag meta.json files the
 # script writes alongside them. index.mdx in this same directory IS
@@ -25,7 +25,7 @@ content/docs/api-reference/**/meta.json
 # root CHANGELOG.md / packages/client/CHANGELOG.md entries).
 CHANGELOG.md
 
-# Playwright-recorded HAR fixtures (tests/e2e/record-har.mjs) -- large
+# Playwright-recorded HAR fixtures (tests/e2e/record-har.ts) -- large
 # machine-generated JSON nobody hand-edits; reformatting would just bloat
 # the diff on every re-record with no readability benefit.
 tests/e2e/har/*.har

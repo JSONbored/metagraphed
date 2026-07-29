@@ -5,14 +5,14 @@
 // copies that snapshot into the append-only `account_position_daily` table,
 // keyed by (account, netuid, snapshot_date) instead of neuron_daily's
 // (netuid, uid, snapshot_date), now runs entirely on the Postgres side
-// (workers/data-api.mjs's handleNeuronsSync, #4839) — in the SAME write
+// (workers/data-api.ts's handleNeuronsSync, #4839) — in the SAME write
 // transaction as the neurons/neuron_daily sync, not from a separate cron.
 // account = hotkey ss58, matching loadAccountPortfolio's own "WHERE hotkey = ?"
-// framing (src/account-portfolio.mjs).
+// framing (src/account-portfolio.ts).
 //
 // This module previously also owned D1's OWN rollup/prune
 // (rollupAccountPositionDaily/pruneAccountPositionDaily, called from
-// workers/api.mjs's NEURON_HISTORY_ROLLUP_CRON) as a parallel write path.
+// workers/api.ts's NEURON_HISTORY_ROLLUP_CRON) as a parallel write path.
 // That D1 side is retired here: #4908 (#4772, D1 chain-data write-path
 // retirement) dropped D1's `neurons` table entirely, so a `FROM neurons`
 // D1 rollup query can no longer even run — confirmed live via `wrangler d1
@@ -22,7 +22,7 @@
 // verified Postgres write + read path, so nothing depends on the D1 side.
 // This module is now READ-PATH ONLY: the shaping/formatting helpers the
 // Postgres-backed handleAccountPositionHistory route
-// (workers/request-handlers/entities.mjs) and workers/data-api.mjs's own
+// (workers/request-handlers/entities.ts) and workers/data-api.ts's own
 // Postgres query both share.
 //
 // Known scope limitation: "position"/stake_tao here is a HOTKEY's own
@@ -34,7 +34,7 @@
 // delegated-stake concept only exists as an account_events log today (would
 // need balance reconstruction, out of scope for this issue). Matches
 // loadAccountPortfolio's existing, equally-unqualified "WHERE hotkey = ?"
-// framing (src/account-portfolio.mjs) — not a new gap, but worth restating
+// framing (src/account-portfolio.ts) — not a new gap, but worth restating
 // here since epic #4329 explicitly frames this as taostats.io's (coldkey-
 // centric) "Alpha Holdings" feature.
 
@@ -42,7 +42,7 @@
 // GET /api/v1/accounts/{ss58}/subnets/{netuid}/history — the per-position
 // counterpart to /accounts/{ss58}/portfolio's live cross-subnet snapshot, one
 // point per snapshot_date for a single (account, netuid) pair. Field shape
-// mirrors buildAccountPortfolio's per-position object (src/account-portfolio.mjs)
+// mirrors buildAccountPortfolio's per-position object (src/account-portfolio.ts)
 // since account_position_daily's columns were deliberately sized to match
 // ACCOUNT_PORTFOLIO_READ_COLUMNS (see the migration's header comment) — a point
 // here and a `positions[]` entry there should read as the same "position",
@@ -58,7 +58,7 @@ export const ACCOUNT_POSITION_DAILY_READ_COLUMNS =
   "rank, trust, incentive, dividends, stake_tao, emission_tao";
 
 // 1 TAO = 1e9 rao; round tao + yield outputs to that precision (matches
-// account-portfolio.mjs's round9 — each module owns its own copy, this
+// account-portfolio.ts's round9 — each module owns its own copy, this
 // codebase's established convention for these small numeric coercions).
 const SCALE = 1e9;
 function round9(value: number): number {
@@ -96,7 +96,7 @@ function toIso(ms: unknown): string | null {
 }
 
 // Emission-per-stake return rate; null when stake is 0 (undefined return).
-// Mirrors computeYieldValue in account-portfolio.mjs.
+// Mirrors computeYieldValue in account-portfolio.ts.
 function computeYieldValue(emission: number, stake: number): number | null {
   if (!(stake > 0)) return null;
   return round9(emission / stake);
@@ -104,7 +104,7 @@ function computeYieldValue(emission: number, stake: number): number | null {
 
 // One day's position, in the same field shape as buildAccountPortfolio's
 // `positions[]` entries (minus netuid — see the read-path header comment).
-// Exported (unlike account-portfolio.mjs's inline per-row mapping) so its
+// Exported (unlike account-portfolio.ts's inline per-row mapping) so its
 // field coercion can be unit-tested directly, matching formatRuntimeTransition
 // (src/runtime-versions.ts)'s precedent for a history route's row formatter.
 export interface AccountPositionEntry {

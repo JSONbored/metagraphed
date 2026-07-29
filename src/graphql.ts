@@ -59,6 +59,9 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
 import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
+// #8548: the same loadSurfacesList that MCP list_surfaces + REST /surfaces call,
+// so the root surfaces field's filter/sort/page set can never drift from theirs.
+import { loadSurfacesList } from "./surfaces-mcp.ts";
 // #7886: GraphQL parity for GET /api/v1/rpc/endpoints filters — reuse
 // loadRpcEndpointsList (live overlay + applyQueryFilters on the endpoints
 // collection), matching endpoint_pools / rpc_pools / provider_endpoints.
@@ -303,7 +306,9 @@ import {
 } from "./metagraph-neurons.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
-import { CURATION_ARTIFACT } from "./curation-mcp.ts";
+// #8550: the same loadCurationList that MCP list_curation + REST /curation call,
+// so the curation field's filter/sort/page set can never drift from theirs.
+import { loadCurationList } from "./curation-mcp.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import {
@@ -592,6 +597,7 @@ import type {
   QueryChain_WeightsArgs,
   QueryCompareArgs,
   QueryCompare_ValidatorsArgs,
+  QueryCurationArgs,
   QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
   QueryEconomics_TrendsArgs,
@@ -3218,30 +3224,64 @@ const rootValue = {
     }
   },
 
-  async economics({ limit, cursor }: QueryEconomicsArgs, context: GqlContext) {
-    // Live-preferring source (not the static-only listPage), paginated like it.
+  async economics(args: QueryEconomicsArgs, context: GqlContext) {
+    // #8549: full REST/MCP filter parity (netuid/registration_allowed/q/sort/order
+    // + limit/cursor) applied to the SAME live-preferring loadEconomics source,
+    // reusing the shared applyQueryFilters engine over the "economics" collection
+    // (the same read + filter/sort/page get_economics runs) rather than re-deriving
+    // it. An invalid filter/sort is a GraphQL BAD_USER_INPUT error, not a silently
+    // substituted default. The cursor is REST's positional offset, like every other
+    // applyQueryFilters-backed list field.
     const data = await loadEconomics(context);
-    const { page, total, nextCursor } = paginate(
-      data?.subnets || [],
-      limit,
-      cursor,
-      (s: Row) => s.netuid,
+    const queryUrl = new URL("https://graphql.internal/economics");
+    for (const [name, value] of [
+      ["netuid", args?.netuid],
+      ["registration_allowed", args?.registration_allowed],
+      ["q", args?.q],
+      ["sort", args?.sort],
+      ["order", args?.order],
+      ["limit", args?.limit],
+      ["cursor", args?.cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    const transformed = applyQueryFilters(
+      { subnets: data?.subnets ?? [] },
+      queryUrl,
+      "economics",
+      [],
     );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // applyQueryFilters always returns the economics collection as an array plus
+    // a pagination meta block (total/next_cursor), even for an empty/cold input,
+    // so no defensive shape fallbacks are needed here.
+    const filtered = transformed.data as Row;
+    const page = (transformed.meta as Row).pagination as Row;
     return {
-      subnets: page,
-      total,
-      next_cursor: nextCursor,
+      subnets: filtered.subnets as Row[],
+      total: page.total as number,
+      next_cursor: (page.next_cursor as string | number | null) ?? null,
       summary: data?.summary ?? null,
     };
   },
 
-  surfaces({ netuid, limit, cursor }: QuerySurfacesArgs, context: GqlContext) {
-    return listPage(context, ARTIFACT.surfaces, "surfaces", {
-      limit,
-      cursor,
-      netuid,
-      keyFn: (s: Row) => s.id ?? s.key,
+  // #8548: delegate to loadSurfacesList -- the same read + filter/sort/page the
+  // REST route and MCP list_surfaces run over the baked curated-surfaces artifact
+  // -- rather than re-deriving a GraphQL-only filter set in listPage. It validates
+  // its own args and throws on an invalid filter/sort (or a cold/absent artifact);
+  // that throw becomes a GraphQL error, matching provider_endpoints' convention.
+  async surfaces(args: QuerySurfacesArgs, context: GqlContext) {
+    const list = await loadSurfacesList(mcpCtx(context), args, {
+      readArtifact,
     });
+    // loadSurfacesList's envelope names the rows `surfaces`; the GraphQL
+    // SurfaceList type calls them `items`. Adapt that one key only -- all
+    // filtering, sorting and paging still live in the shared loader.
+    return { ...list, items: list.surfaces };
   },
 
   endpoints(args: QueryEndpointsArgs, context: GqlContext) {
@@ -3737,10 +3777,15 @@ const rootValue = {
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
   },
 
-  async curation(_args: unknown, context: GqlContext) {
-    // Same baked artifact the REST /api/v1/curation route + list_curation MCP
-    // tool read; opaque-JSON passthrough degrading to null on cold.
-    return loadArtifact(context, CURATION_ARTIFACT);
+  // #8550: full REST/MCP filter parity -- delegate to loadCurationList (the same
+  // read + filter/sort/page list_curation runs over the curation artifact),
+  // mirroring evidence, rather than an opaque passthrough. BREAKING: the return
+  // type moves from opaque JSON to the CurationList envelope, so a consumer that
+  // selected `curation` as raw JSON must now select fields. The loader validates
+  // its own args and throws on an invalid filter/sort (or a cold/absent artifact);
+  // that throw becomes a GraphQL error, matching provider_endpoints/evidence.
+  curation(args: QueryCurationArgs, context: GqlContext) {
+    return loadCurationList(mcpCtx(context), args, { readArtifact });
   },
 
   async coverage(_args: unknown, context: GqlContext) {
@@ -4803,7 +4848,14 @@ const rootValue = {
   },
 
   async validator_nominators(
-    { hotkey, window, sort, coldkey }: QueryValidator_NominatorsArgs,
+    {
+      hotkey,
+      window,
+      sort,
+      coldkey,
+      limit,
+      offset,
+    }: QueryValidator_NominatorsArgs,
     context: GqlContext,
   ) {
     // Same window/sort allow-lists handleValidatorNominators validates against --
@@ -4833,16 +4885,38 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // #8547: full limit/offset parity with the REST route + MCP tool. REST's
+    // parseBoundedIntParam rejects an out-of-range value (limit 1-
+    // GLOBAL_VALIDATOR_LIMIT_MAX, offset >= 0) rather than clamping, so a SUPPLIED
+    // out-of-range value is a BAD_USER_INPUT error here too, matching the schema's
+    // stated convention; an omitted arg falls through to the builder's own default.
+    // The GraphQL `Int` type already guarantees an integer, so REST's separate
+    // non-integer guard (it parses a raw string query param) is unnecessary here.
+    if (limit != null && (limit < 1 || limit > GLOBAL_VALIDATOR_LIMIT_MAX)) {
+      throw new GraphQLError(
+        `\`limit\` must be an integer between 1 and ${GLOBAL_VALIDATOR_LIMIT_MAX}. Received "${limit}".`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (offset != null && offset < 0) {
+      throw new GraphQLError(
+        `\`offset\` must be a non-negative integer. Received "${offset}".`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     if (sort != null) params.set("sort", sort);
     if (coldkey != null) params.set("coldkey", coldkey);
+    if (limit != null) params.set("limit", String(limit));
+    if (offset != null) params.set("offset", String(offset));
     // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildValidatorNominators
     // fallback contract REST uses. The Postgres tier's response is a REST-style
     // { data, generatedAt } envelope, so only its `.data` is taken; `generatedAt` is
     // REST envelope meta with no GraphQL field to carry it. A hotkey with no
     // nominators yields a schema-stable empty list, never a GraphQL error. limit/offset
-    // are deliberately not GraphQL args, so the module's own defaults apply. #4772 D1
+    // ride the same request params REST parses (#8547); an omitted arg uses the
+    // module's own default (20/0). #4772 D1
     // retirement: the `account_events` D1 table is dropped in production, so the
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
@@ -4860,6 +4934,8 @@ const rootValue = {
       buildValidatorNominators([], hotkey, {
         window: requestedWindow,
         sort: sort ?? undefined,
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
       });
     return {
       schema_version: data.schema_version ?? 1,

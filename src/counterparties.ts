@@ -1,6 +1,6 @@
 // Account counterparty / fund-flow analytics: who one account transacts with,
 // aggregated from the account_events Transfer tier (hotkey = from, coldkey = to,
-// amount_tao). Pure + exported for unit tests; workers/data-api.mjs does the
+// amount_tao). Pure + exported for unit tests; workers/data-api.ts does the
 // Postgres read + envelope. Null-safe: no transfers → a schema-stable empty
 // list (never throws), matching the live account tiers the entity handlers
 // already own.
@@ -302,6 +302,6 @@ export function buildCounterpartyRelationship(
 // loadCounterparties/loadCounterpartyRelationship (the D1-querying
 // account_events readers) were deleted (2026-07-17, D1 fully eliminated) --
 // account_events was already dropped from D1 production (#4772), so they had
-// zero live callers; every real route (workers/data-api.mjs with real
+// zero live callers; every real route (workers/data-api.ts with real
 // Postgres rows, the REST/GraphQL/MCP cold paths with []) calls
 // buildCounterparties/buildCounterpartyRelationship directly.

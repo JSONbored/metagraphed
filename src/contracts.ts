@@ -162,7 +162,7 @@ const integerSchema = { type: "integer", minimum: 0 };
 // tighter at 100, in line with the existing pallet/method/call_module limits.
 // SEARCH_TEXT_MAX_LENGTH is exported because the generic maxLength check in
 // validateListQuery only iterates config.filters — `q` is a search param, not a
-// filter, so workers/list-query.mjs enforces its bound from this single source.
+// filter, so workers/list-query.ts enforces its bound from this single source.
 export const SEARCH_TEXT_MAX_LENGTH = 200;
 const FILTER_TEXT_MAX_LENGTH = 100;
 const searchTextSchema = { type: "string", maxLength: SEARCH_TEXT_MAX_LENGTH };
@@ -706,7 +706,7 @@ export const ARTIFACT_STATUS_RETIRED = "retired";
 
 // The current-state health artifacts (latest/summary/subnets/{netuid}) are
 // retired on every network prefix by the live-only policy (#490/#498):
-// workers/api.mjs answers them with this exact code/status/message before any
+// workers/api.ts answers them with this exact code/status/message before any
 // read is attempted, via RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN. Mirrored here
 // verbatim so the catalog cannot drift from the runtime. Note this covers only
 // those three -- health-history (/metagraph/health/history/{date}.json) is NOT
