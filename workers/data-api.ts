@@ -546,6 +546,7 @@ import {
   revokeUnkeyKey,
 } from "../src/unkey-client.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
+import { applyQuotaSpend, utcDayKey } from "../src/daily-quota.ts";
 import {
   createSessionToken,
   createTriggerToken,
@@ -5339,6 +5340,99 @@ async function handleApiKeyUsageIncrement(request: Request, env: Env) {
   return writeJson({ ok: true });
 }
 
+// Internal-only: spends COST units against ONE account's daily quota (#8608)
+// and reports whether the spend was allowed. Same shared secret and same trust
+// boundary as handleApiKeyUsageIncrement above, for the same reason -- the
+// caller has already validated the key this spend is attributed to.
+//
+// Unlike that handler this one is NOT fire-and-forget: workers/tiered-rate-
+// limit.ts awaits the verdict before letting the request through, so the
+// response body is load-bearing and errors must be distinguishable from a
+// clean rejection. The caller fails OPEN on anything non-200 (see
+// spendDailyQuota) -- an unprovisioned or unhappy quota store must never
+// become an outage for a paying caller -- so a 503 here is a real signal, not
+// a swallowed one.
+async function handleApiQuotaSpend(request: Request, env: Env) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "quota accounting is not provisioned on this deployment" },
+      503,
+    );
+  }
+  if (request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) !== configured) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  let body: { account_id?: unknown; cost?: unknown; limit?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return writeJson({ error: "invalid body" }, 400);
+  }
+  const accountId = Number(body?.account_id);
+  const cost = Number(body?.cost);
+  const limit = Number(body?.limit);
+  if (
+    !Number.isInteger(accountId) ||
+    accountId <= 0 ||
+    !Number.isFinite(cost) ||
+    cost < 0 ||
+    !Number.isFinite(limit) ||
+    limit <= 0
+  ) {
+    return writeJson({ error: "provide account_id, cost and limit" }, 400);
+  }
+
+  const now = Date.now();
+  const day = utcDayKey(now);
+
+  // A single request costing more than the whole day's allowance can never be
+  // satisfied, and must be rejected WITHOUT touching the counter. This is not
+  // just an optimisation: the SQL below guards the conflict path only, so on
+  // the first spend of a day (no existing row, hence no conflict) the plain
+  // INSERT would otherwise succeed and bank an over-limit balance.
+  if (cost > limit) {
+    return writeJson(applyQuotaSpend(0, cost, limit, now));
+  }
+
+  const result = await withAccountsSql(env, async (sql: postgres.Sql) => {
+    // One statement, one round trip, atomic. The upsert's WHERE guard is
+    // applyQuotaSpend's reject rule expressed as a conflict predicate: when
+    // the new total would exceed the limit the DO UPDATE does not fire, so no
+    // rows come back from `attempt` AND the counter is left untouched. The
+    // second sub-select then reports the unchanged balance for the 429's
+    // headers -- it reads the statement's own snapshot, which is the correct
+    // pre-spend value precisely because the rejected update never ran.
+    const rows = await sql<{ spent: string | null; current: string | null }[]>`
+      WITH attempt AS (
+        INSERT INTO api_quota_daily AS q (account_id, day, units_spent, updated_at)
+        VALUES (${accountId}, ${day}, ${cost}, now())
+        ON CONFLICT (account_id, day) DO UPDATE
+          SET units_spent = q.units_spent + EXCLUDED.units_spent,
+              updated_at = now()
+          WHERE q.units_spent + EXCLUDED.units_spent <= ${limit}
+        RETURNING units_spent
+      )
+      SELECT
+        (SELECT units_spent FROM attempt) AS spent,
+        (SELECT units_spent FROM api_quota_daily
+           WHERE account_id = ${accountId} AND day = ${day}) AS current`;
+    // units_spent is BIGINT, and postgres.js hands BIGINT back as a STRING to
+    // avoid silently truncating past 2^53. Comparing that string to a number
+    // is the exact bug that made session tokens unusable in #8607 -- coerce
+    // once, here, rather than letting a string reach the arithmetic.
+    const row = rows[0];
+    if (row?.spent != null) {
+      return applyQuotaSpend(Number(row.spent) - cost, cost, limit, now);
+    }
+    return applyQuotaSpend(Number(row?.current ?? 0), cost, limit, now);
+  });
+  return result instanceof Response ? result : writeJson(result);
+}
+
 const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 
 // Internal-only: bumps ONE account's tier. An ops action, run manually after
@@ -5594,6 +5688,15 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/keys/usage"
     ) {
       return handleApiKeyUsageIncrement(request, env);
+    }
+    // Internal-only daily-quota spend (#8608) -- see handleApiQuotaSpend's own
+    // header comment for why it shares the verify route's secret and why,
+    // unlike the usage counter above, its response body is load-bearing.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/keys/quota"
+    ) {
+      return handleApiQuotaSpend(request, env);
     }
     // Internal-only, ops-triggered account tier promotion -- see
     // handleAccountTierPromote's own header comment.

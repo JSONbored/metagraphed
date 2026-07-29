@@ -16,13 +16,32 @@
 // own header comment: this repo's rate limiting stays on infrastructure this
 // codebase can introspect/test directly, not a third party's opaque counter.
 import { resolveClientIp } from "./config.ts";
-import { validateApiKey } from "../src/api-key-validation.ts";
+import {
+  API_KEY_LOOKUP_TOKEN_HEADER,
+  validateApiKey,
+} from "../src/api-key-validation.ts";
+import { routeCost } from "../src/route-cost-weights.ts";
 
 export interface RateLimitTierPolicy {
   /** Env binding name for this tier's Cloudflare Rate Limiting binding. */
   envVar: string;
   limit: number;
   windowSeconds: number;
+  /**
+   * Daily ceiling in COST units, not requests (#8608). Omit for no daily cap.
+   *
+   * Cost units come from src/route-cost-weights.ts, which follows ADR 0022's
+   * four cost shapes -- a cached artifact read spends 1, a deep-history scan
+   * 5, a bulk archive pull 10, an LLM call 25. Counting requests instead would
+   * price them all identically, which ADR 0022 names as the central flaw in a
+   * flat-multiplier model.
+   *
+   * Enforced against `api_quota_daily` on our own indexer box (src/daily-
+   * quota.ts, workers/data-api.ts's handleApiQuotaSpend), consulted ONLY when
+   * this field is set, so the extra round trip lands on precisely the callers
+   * the quota is for -- never on anonymous or unlimited traffic.
+   */
+  dailyUnits?: number;
 }
 
 export interface TieredRateLimitConfig {
@@ -57,9 +76,88 @@ export interface TieredRateLimitResult {
   policy: RateLimitTierPolicy;
   /** The tier the policy was chosen for: a tier name, or "anonymous". */
   tier: string;
+  /**
+   * The daily-quota verdict, when this tier defines one and the store answered.
+   * Carries its own `allowed` because that -- not a derived comparison -- is
+   * what tells the 429 which ceiling actually rejected the caller. A caller
+   * with 10 units left who makes a 25-unit call is rejected BY THE QUOTA while
+   * `remaining` is still 10, so inferring the scope from `remaining <= 0`
+   * mislabels exactly the case a cost-weighted quota exists to create.
+   */
+  quota?: {
+    allowed: boolean;
+    used: number;
+    limit: number;
+    remaining: number;
+    resetAt: string;
+  };
   /** The verified account id when a valid API key was supplied, else null
    * (anonymous, IP-keyed). */
   accountId: string | null;
+}
+
+/**
+ * Spend this request's cost against the account's daily quota.
+ *
+ * The counter lives in `api_quota_daily` on our own indexer box, reached over
+ * the DATA_API service binding -- the same authenticated internal path
+ * workers/api.ts's recordApiKeyUsage already uses on every keyed request, so
+ * this adds a round trip on a proven connection rather than a new dependency.
+ * See deploy/postgres/schema.sql's own comment for why that beat a Durable
+ * Object and Redis.
+ *
+ * Returns null when the binding or shared secret is absent, and on any
+ * non-200 or thrown error -- fails OPEN, matching every other rate-limit
+ * checkpoint in this codebase: an unprovisioned deploy prerequisite, or a
+ * database having a moment, must never block a paying caller. The per-minute
+ * limiter still applies in every one of those cases.
+ */
+async function spendDailyQuota(
+  request: Request,
+  env: Env,
+  accountId: string,
+  dailyUnits: number,
+): Promise<TieredRateLimitResult["quota"] & { allowed: boolean }> {
+  const dataApi = (
+    env as unknown as {
+      DATA_API?: { fetch: (request: Request) => Promise<Response> };
+      API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
+    }
+  ).DATA_API;
+  const token = (env as unknown as { API_KEY_LOOKUP_INTERNAL_TOKEN?: string })
+    .API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!dataApi?.fetch || !token) return null as never;
+  const { weight } = routeCost(new URL(request.url).pathname);
+  try {
+    const response = await dataApi.fetch(
+      new Request("https://api.metagraph.sh/api/v1/internal/keys/quota", {
+        method: "POST",
+        headers: {
+          [API_KEY_LOOKUP_TOKEN_HEADER]: token,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          account_id: Number(accountId),
+          cost: weight,
+          limit: dailyUnits,
+        }),
+      }),
+    );
+    if (!response.ok) return null as never;
+    const payload = (await response.json()) as { allowed?: unknown };
+    // Only a payload that actually carries a boolean verdict is a verdict.
+    // Without this check ANY 200 whose body lacks `allowed` -- a shape change
+    // on the data-api side, a proxy interposing its own JSON, a route that
+    // silently stops existing -- reads as `!undefined`, i.e. REJECTED, and
+    // every quota'd caller starts getting 429s from a store that never said
+    // no. Fail open on an unrecognised shape, like every other branch here.
+    if (typeof payload?.allowed !== "boolean") return null as never;
+    return payload as never;
+  } catch {
+    // Same posture as a missing binding: never turn a quota-store hiccup into
+    // an outage for a caller who is paying us.
+    return null as never;
+  }
 }
 
 /**
@@ -81,7 +179,18 @@ export async function applyTieredRateLimit(
 
   if (auth.ok) {
     const tier = typeof auth.tier === "string" && auth.tier ? auth.tier : null;
-    const policy = (tier && config.tiers?.[tier]) || config.keyed;
+    // Own-property lookup ONLY. `config.tiers?.[tier]` walks the prototype
+    // chain, and `tier` comes from the key-validation response -- an account on
+    // a tier literally named "constructor", "toString", "valueOf" or
+    // "__proto__" would resolve to the inherited Object member, which is
+    // truthy, so the `|| config.keyed` fallback never ran. The resulting
+    // "policy" has no `envVar`, the limiter binding lookup misses, and the
+    // request is allowed with NO rate limiting at all -- a silent bypass.
+    // Same class of bug as the `key in obj` check fixed in #8636.
+    const policy =
+      tier && Object.hasOwn(config.tiers ?? {}, tier)
+        ? (config.tiers as Record<string, RateLimitTierPolicy>)[tier]
+        : config.keyed;
     const limiter = (env as unknown as Record<string, RateLimit | undefined>)[
       policy.envVar
     ];
@@ -90,6 +199,21 @@ export async function applyTieredRateLimit(
       tier: tier ?? "keyed",
       accountId: String(auth.accountId),
     };
+    // Daily quota first: it is the coarser, more expensive-to-exceed control,
+    // and a caller already over their day should be told that rather than
+    // being told they are going too fast this minute.
+    if (policy.dailyUnits) {
+      const quota = await spendDailyQuota(
+        request,
+        env,
+        String(auth.accountId),
+        policy.dailyUnits,
+      );
+      if (quota && !quota.allowed) {
+        return { allowed: false, ...result, quota };
+      }
+      if (quota) Object.assign(result, { quota });
+    }
     if (!limiter?.limit) return { allowed: true, ...result };
     // Keyed by account AND tier: moving an account between tiers must start a
     // fresh window on the new ceiling rather than inheriting the old tier's
@@ -127,7 +251,35 @@ export async function applyTieredRateLimit(
 export function tieredRateLimitHeaders(
   policy: RateLimitTierPolicy,
   tier?: string,
+  quota?: {
+    allowed: boolean;
+    used: number;
+    limit: number;
+    remaining: number;
+    resetAt: string;
+  },
 ): Record<string, string> {
+  // #8608: a DAILY rejection reports the day's real numbers, not the minute's.
+  // Its reset is an EXACT instant (next UTC midnight), unlike the per-minute
+  // approximation below -- so a caller told to come back is told when, truly.
+  //
+  // Keyed on the store's own verdict, never on `remaining <= 0`: a 25-unit
+  // call against 10 remaining units is a quota rejection with 10 remaining,
+  // and reporting the per-minute ceiling for it would tell the caller to retry
+  // in 60 seconds when the truth is "not until UTC midnight".
+  if (quota && !quota.allowed) {
+    return {
+      "retry-after": String(
+        Math.max(1, Math.ceil((Date.parse(quota.resetAt) - Date.now()) / 1000)),
+      ),
+      "x-ratelimit-limit": String(quota.limit),
+      "x-ratelimit-remaining": "0",
+      "x-ratelimit-reset": quota.resetAt,
+      "x-ratelimit-policy": `${quota.limit};w=86400`,
+      "x-ratelimit-scope": "daily-quota",
+      ...(tier ? { "x-ratelimit-tier": tier } : {}),
+    };
+  }
   const resetAt = new Date(
     Date.now() + policy.windowSeconds * 1000,
   ).toISOString();
@@ -141,6 +293,7 @@ export function tieredRateLimitHeaders(
     // is unactionable -- a caller cannot tell "you are on free, upgrade" from
     // "you are on paid and genuinely over", which is the first question anyone
     // asks when they get rate limited.
+    "x-ratelimit-scope": "per-minute",
     ...(tier ? { "x-ratelimit-tier": tier } : {}),
   };
 }

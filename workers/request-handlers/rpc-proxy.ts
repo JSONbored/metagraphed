@@ -74,6 +74,7 @@ import {
   tieredRateLimitHeaders,
   type TieredRateLimitConfig,
 } from "../tiered-rate-limit.ts";
+import { buildTierPolicies } from "../../src/api-tiers.ts";
 
 export interface RpcEndpoint {
   id: string;
@@ -532,7 +533,11 @@ export async function handleRpcProxyRequest(
         "Too many state-query RPC requests from this client; slow down.",
         429,
         {},
-        tieredRateLimitHeaders(rateLimit.policy),
+        tieredRateLimitHeaders(
+          rateLimit.policy,
+          rateLimit.tier,
+          rateLimit.quota,
+        ),
       );
     }
     if (rateLimit.accountId) {
@@ -1037,6 +1042,8 @@ export const STATE_QUERY_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
     limit: 100,
     windowSeconds: 60,
   },
+  // #8608: per-tier ceilings (src/api-tiers.ts).
+  tiers: buildTierPolicies("STATE_QUERY_RATE_LIMITER", 100),
   keyPrefix: "state",
 };
 function setRpcRateLimitHeaders(headers: Headers) {

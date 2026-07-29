@@ -1228,6 +1228,44 @@ CREATE TABLE IF NOT EXISTS api_key_usage_daily (
 CREATE INDEX IF NOT EXISTS idx_api_key_usage_daily_account_day
   ON api_key_usage_daily (account_id, day DESC);
 
+-- ---------------------------------------------------------------------------
+-- Per-account daily quota counter (#8608), in COST units rather than requests
+-- (src/route-cost-weights.ts, following ADR 0022's four cost shapes -- a
+-- cached artifact read spends 1, an LLM-backed call 25).
+--
+-- Separate from api_key_usage_daily above even though both are per-account-
+-- per-day, because they answer different questions and have different
+-- correctness requirements. That table is per-ROUTE, incremented
+-- fire-and-forget for a dashboard: a lost increment costs a slightly wrong
+-- chart. This one is the authoritative ledger the quota gate reads and writes
+-- SYNCHRONOUSLY, so it must be exactly one row per account-day and every
+-- increment must be atomic. Summing the per-route table instead would make
+-- the hot path scan an unbounded number of rows and inherit that table's
+-- deliberate lossiness.
+--
+-- Why Postgres on our own indexer box rather than a Durable Object or Redis:
+-- the tiered-rate-limit gate already calls this database on every keyed
+-- request (workers/api.ts's recordApiKeyUsage, over the DATA_API service
+-- binding through Hyperdrive), so the connection, the auth and the network
+-- path all exist and are exercised in production today. A DO would put the
+-- counter on Cloudflare-owned state; Redis would need a new HTTP shim and the
+-- first-ever public HTTP ingress on the indexer box, whose cloudflared
+-- config is deliberately not Ansible-managed. Neither buys anything a
+-- primary-key upsert does not already give at this volume.
+--
+-- No FK to rpc_accounts: this is written on the request hot path, and a
+-- referential check on every spend is latency spent to protect against an
+-- account id that only ever arrives from our own validated key lookup. Rows
+-- are pruned by day (see the retention sweep), not by cascade.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS api_quota_daily (
+  account_id   BIGINT NOT NULL,
+  day          DATE NOT NULL,
+  units_spent  BIGINT NOT NULL DEFAULT 0,
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (account_id, day)
+);
+
 -- metagraphed's OWN uptime (metagraphed#8317). Every other health table here
 -- is about someone else -- surface_checks probes subnet APIs -- so /status
 -- could only ever answer "are the things we watch up", never "are WE up".

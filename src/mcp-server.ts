@@ -197,6 +197,7 @@ import {
   tieredRateLimitHeaders,
   type TieredRateLimitConfig,
 } from "../workers/tiered-rate-limit.ts";
+import { buildTierPolicies } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
@@ -1766,20 +1767,10 @@ export const MCP_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   // account and a free one were throttled identically -- the tier was resolved
   // by validateApiKey and then discarded.
   //
-  // `free` is the default every self-serve account starts on, so it keeps the
-  // 500/min the keyed tier already granted: nobody who has a key today loses
-  // headroom on this change. `community` and `paid` sit above it and share the
-  // same binding -- the binding enforces per-key counters, and the ceiling
-  // compared against is this table's, so tiers do not need one binding each.
-  tiers: {
-    free: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 500, windowSeconds: 60 },
-    community: {
-      envVar: "MCP_RATE_LIMITER_KEYED",
-      limit: 1_500,
-      windowSeconds: 60,
-    },
-    paid: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 5_000, windowSeconds: 60 },
-  },
+  // `free` reuses MCP_RATE_LIMITER_KEYED at its existing 500/min, so nobody
+  // holding a key today loses headroom. `community` and `paid` get bindings of
+  // their OWN -- see src/api-tiers.ts for why sharing one is not an option.
+  tiers: buildTierPolicies("MCP_RATE_LIMITER", 500),
   keyPrefix: "mcp",
 };
 
@@ -12013,7 +12004,7 @@ async function enforceMcpRateLimit(
         "Too many MCP requests from this client; slow down.",
       ),
       429,
-      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier),
+      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
     );
   }
   // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed

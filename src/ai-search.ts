@@ -12,6 +12,7 @@
 
 import type { StorageReadResult } from "../workers/storage.ts";
 import type { TieredRateLimitConfig } from "../workers/tiered-rate-limit.ts";
+import { buildTierPolicies } from "./api-tiers.ts";
 import { recordAiGenerationEvent } from "./usage-telemetry.ts";
 
 // Best free Workers AI models (verified available on the account):
@@ -96,6 +97,9 @@ export function aiEnabled(env: Env): boolean {
 export const AI_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   anonymous: { envVar: "AI_RATE_LIMITER", limit: 20, windowSeconds: 60 },
   keyed: { envVar: "AI_RATE_LIMITER_KEYED", limit: 100, windowSeconds: 60 },
+  // #8608: per-tier ceilings. `free` keeps AI_RATE_LIMITER_KEYED's existing
+  // 100/min; community and paid get their own bindings (src/api-tiers.ts).
+  tiers: buildTierPolicies("AI_RATE_LIMITER", 100),
   keyPrefix: "ai",
 };
 

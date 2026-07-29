@@ -962,6 +962,173 @@ test("internal key usage: still returns 200 when the write itself fails (best-ef
   assert.equal(res.status, 200);
 });
 
+// --- POST /api/v1/internal/keys/quota (#8608) -------------------------------
+
+const quotaReq = (body: unknown, token: string | null = LOOKUP_TOKEN) =>
+  req("/api/v1/internal/keys/quota", {
+    method: "POST",
+    headers: token ? { "x-api-key-lookup-token": token } : {},
+    body,
+  });
+
+test("internal quota: 503 when the shared secret is not provisioned", async () => {
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 1, limit: 10 }),
+    baseEnv(),
+  );
+  assert.equal(res.status, 503);
+});
+
+test("internal quota: 401 on a wrong or missing token", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const body = { account_id: 7, cost: 1, limit: 10 };
+  assert.equal((await fetchRoute(quotaReq(body, "wrong"), env)).status, 401);
+  assert.equal((await fetchRoute(quotaReq(body, null), env)).status, 401);
+});
+
+test("internal quota: 400 on an unparseable body", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    new Request("https://api.metagraph.sh/api/v1/internal/keys/quota", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: "not json",
+    }),
+    env,
+  );
+  assert.equal(res.status, 400);
+});
+
+test("internal quota: 400 on out-of-range account_id, cost or limit", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  for (const body of [
+    {},
+    { account_id: 0, cost: 1, limit: 10 },
+    { account_id: -1, cost: 1, limit: 10 },
+    { account_id: 1.5, cost: 1, limit: 10 },
+    { account_id: 7, cost: -1, limit: 10 },
+    // A non-numeric cost is the realistic hostile shape -- NaN/Infinity cannot
+    // survive JSON.stringify, so they arrive as null and are caught by the
+    // range checks instead.
+    { account_id: 7, cost: "abc", limit: 10 },
+    { account_id: "7; DROP TABLE", cost: 1, limit: 10 },
+    { account_id: 7, cost: 1, limit: 0 },
+    { account_id: 7, cost: 1, limit: null },
+  ]) {
+    const res = await fetchRoute(quotaReq(body), env);
+    assert.equal(res.status, 400, `expected 400 for ${JSON.stringify(body)}`);
+  }
+});
+
+test("internal quota: a spend larger than the whole day is rejected WITHOUT touching the database", async () => {
+  // The SQL's conflict guard only fires on an existing row, so on the first
+  // spend of a day an over-limit INSERT would otherwise be banked.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 5000, limit: 1000 }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.allowed, false);
+  assert.equal(body.used, 0);
+  assert.equal(body.limit, 1000);
+  assert.equal(body.remaining, 1000, "the whole day is still available");
+  assert.match(String(body.resetAt), /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+  assert.ok(
+    !sqlCalls.some((c) => /api_quota_daily/.test(c.text)),
+    "no statement was issued at all",
+  );
+});
+
+test("internal quota: an allowed spend upserts atomically and reports the new balance", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  // BIGINT comes back from postgres.js as a STRING (#8607's exact trap): if it
+  // reached the arithmetic uncoerced, `"100" + 25` would concatenate to
+  // "10025", blow past the limit and reject a request that is well inside it.
+  mockQueue.current = [[{ spent: "125", current: "125" }]];
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 25, limit: 1000 }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.allowed, true);
+  assert.equal(body.used, 125, "a number, not the string postgres returned");
+  assert.equal(body.remaining, 875);
+  const call = sqlCalls.find((c) => /api_quota_daily/.test(c.text));
+  assert.ok(call, "issued the upsert");
+  // One statement, one round trip -- the guard and the balance read are a CTE,
+  // not a read-then-write race.
+  assert.ok(/ON CONFLICT \(account_id, day\) DO UPDATE/.test(call!.text));
+  assert.ok(
+    /WHERE q\.units_spent \+ EXCLUDED\.units_spent <= \?/.test(call!.text),
+    "the reject-spends-nothing rule is enforced in SQL, not after the write",
+  );
+  assert.equal(
+    sqlCalls.filter((c) => /api_quota_daily/.test(c.text)).length,
+    1,
+  );
+});
+
+test("internal quota: a spend the guard rejected reports the UNCHANGED balance", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  // DO UPDATE did not fire, so `attempt` is empty and only `current` comes back.
+  mockQueue.current = [[{ spent: null, current: "995" }]];
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 25, limit: 1000 }),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.equal(body.allowed, false);
+  assert.equal(body.used, 995, "nothing was spent by the failed attempt");
+  assert.equal(body.remaining, 5, "so the remainder is still spendable");
+});
+
+test("internal quota: a degenerate empty result set does not reject the caller", async () => {
+  // The CTE always yields exactly one row in practice -- if no row existed the
+  // INSERT cannot conflict, so `spent` is never null on a cold start. This is
+  // the defensive path for a driver that hands back nothing at all (a
+  // connection reset mid-statement). Treating "I don't know" as over-quota
+  // would 429 a paying caller on a database hiccup, so it reads as zero spent
+  // and lets the request through, matching every other fail-open branch.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  mockQueue.current = [[]];
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 1, limit: 10 }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.allowed, true);
+  assert.equal(body.used, 1);
+});
+
+test("internal quota: a database failure surfaces as 502 so the caller fails OPEN", async () => {
+  // Unlike the fire-and-forget usage counter, this response is load-bearing:
+  // spendDailyQuota treats any non-200 as "no verdict" and lets the request
+  // through, so a swallowed 200 here would silently cap nobody.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  failNextQuery.error = new Error("db down");
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 1, limit: 10 }),
+    env,
+  );
+  assert.equal(res.status, 502);
+});
+
+test("internal quota: 503 when hyperdrive is unbound", async () => {
+  const env = baseEnv({
+    API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
+    HYPERDRIVE: undefined,
+  });
+  const res = await fetchRoute(
+    quotaReq({ account_id: 7, cost: 1, limit: 10 }),
+    env,
+  );
+  assert.equal(res.status, 503);
+});
+
 // --- GET /api/v1/keys/usage (#8386) -----------------------------------------
 
 test("keys usage: 401 when the session is missing", async () => {
