@@ -112,6 +112,26 @@ const DESIGN_RULES = [
     message:
       "Arbitrary bracketed radius value outside the approved scale. Use rounded-full, rounded, rounded-md, rounded-xl, or rounded-2xl -- see apps/ui/CONTRIBUTING.md.",
   },
+  {
+    // #8555: ported verbatim from apps/ui/eslint.config.ts so ui-kit components,
+    // which render inside apps/ui where these are banned, cannot introduce them
+    // with no signal. ui-kit/src currently has zero occurrences -- prospective.
+    selector: "Literal[value=/\\btop-14\\b|\\btop-\\[3\\.5rem\\]/]",
+    message:
+      "Do not hardcode sticky offsets. Use style={{ top: 'var(--mg-sticky-offset)' }} so the header height stays authoritative.",
+  },
+  {
+    // Unlike apps/ui (which scopes DESIGN_RULES to src/**), this package lints its
+    // own eslint.config.ts under **/*.{ts,tsx}, so this rule's verbatim selector
+    // string -- which literally contains the banned tokens -- self-matches on the
+    // line below. Suppress that one self-reference; the rule itself is unchanged
+    // and still fires on any real component usage.
+    selector:
+      // eslint-disable-next-line no-restricted-syntax
+      "Literal[value=/\\b(?:animate-marquee|animate-scroll|mg-marquee|mg-ticker-track)\\b/]",
+    message:
+      "No marquees or auto-scrolling strips (#8255). Give the reader a static list, or a scroll container they control.",
+  },
 ];
 
 // SSR footguns -- see apps/ui/docs/ssr-safety.md. ui-kit's own components
