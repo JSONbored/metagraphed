@@ -219,7 +219,14 @@ export function AppShell({
   return (
     <TooltipProvider delayDuration={150}>
       <ApiSourceProvider>
-        <div className="min-h-dvh bg-paper text-ink flex flex-col">
+        {/* Deliberately NO background here. `body` already paints --color-paper
+            AND the brand background pattern on top of it (ui-kit's base layer:
+            hairline grid + dot field + soft accent vignette). An opaque
+            `bg-paper` on this full-height wrapper covered that pattern
+            completely — the app rendered as a flat fill on every route, which
+            is not what the design system draws. The colour is unchanged; only
+            the occlusion is removed. */}
+        <div className="min-h-dvh text-ink flex flex-col">
           {/* Skip link: first focusable element, visible only on keyboard focus. */}
           <a
             href="#main-content"
