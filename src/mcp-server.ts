@@ -357,7 +357,12 @@ import {
   LIST_SURFACES_MCP_TOOL,
   LIST_SURFACES_OUTPUT_SCHEMA,
   loadSurfacesList,
+  SURFACES_ARTIFACT,
 } from "./surfaces-mcp.ts";
+// The single source of truth for which kinds are callable -- the same list
+// scripts/build-artifacts.ts filters operational-surfaces.json by, so this
+// error can never describe a different set than the catalog actually holds.
+import { OPERATIONAL_SURFACE_KINDS } from "./health-probe-core.ts";
 import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
@@ -1834,6 +1839,82 @@ async function findCataloguedSurface(
     surface = findSurface(surfaces, surfaceId, aliases);
   }
   return surface as Row | null;
+}
+
+/**
+ * Build the RIGHT error for a surface id the operational catalog does not hold
+ * (#8652).
+ *
+ * `findCataloguedSurface` reads /metagraph/operational-surfaces.json, which is
+ * deliberately the CALLABLE subset -- 617 entries of kinds we can actually
+ * issue a request to (subnet-api, data-artifact, subtensor-rpc/wss, sse). The
+ * public registry behind GET /api/v1/surfaces and `list_surfaces` is the FULL
+ * 3,491-entry catalog, including docs, dashboards, websites, source repos,
+ * OpenAPI documents, SDKs and examples.
+ *
+ * Those are both correct. What was wrong is what we said when the two differ:
+ * every non-callable id came back as
+ *
+ *   not_found: No catalogued surface with id, key, or deprecated id "…"
+ *
+ * which is false. The surface IS catalogued -- the agent almost certainly got
+ * that id from `list_surfaces` or `get_subnet_surfaces` moments earlier -- it
+ * simply is not something you can call. Telling an agent its id does not exist
+ * sends it hunting for a different id, and there isn't one. Measured across
+ * every probe-enabled surface: 208 of 313 failures were this, and all 208 were
+ * docs/dashboard/website/repo/openapi/sdk/example kinds.
+ *
+ * So: look the id up in the full registry, and if it is there, say what it
+ * actually is and what to do with it instead. Only a genuinely unknown id
+ * keeps `not_found`.
+ */
+async function uncallableSurfaceError(
+  ctx: McpCtx,
+  surfaceId: string,
+): Promise<Error> {
+  let known: Row | null = null;
+  try {
+    const registry = await loadOptionalArtifact(ctx, SURFACES_ARTIFACT);
+    const all = Array.isArray(registry?.surfaces) ? registry.surfaces : [];
+    known = findSurface(all as Row[], surfaceId);
+  } catch {
+    // Registry unreadable -- fall through to not_found rather than turning a
+    // bad id into an internal error.
+  }
+  if (known) {
+    const kind = typeof known.kind === "string" ? known.kind : null;
+    const url = typeof known.url === "string" ? known.url : null;
+    const link = url ? ` It is a link: ${url}.` : "";
+    // Two genuinely different reasons an id can be absent from the callable
+    // catalog, and saying the wrong one is its own bug. A docs page is not
+    // callable BY KIND. But a `subnet-api` can also be missing -- 10 such
+    // surfaces are advertised probe-enabled in the public registry yet absent
+    // from operational-surfaces.json (#8658) -- and telling someone that a
+    // subnet-api "is not a callable API" would be plainly false.
+    if (kind && OPERATIONAL_SURFACE_KINDS.includes(kind)) {
+      return toolError(
+        "not_callable",
+        `Surface "${surfaceId}" is a ${kind} surface, which is a callable ` +
+          `kind, but it is not in the operational catalog, so it is not ` +
+          `callable right now and is not being health-probed.${link} This is ` +
+          `a registry-side gap rather than a bad id; use list_subnet_apis or ` +
+          `get_subnet_surfaces to find this subnet's currently callable ones.`,
+      );
+    }
+    return toolError(
+      "not_callable",
+      `Surface "${surfaceId}" is catalogued but is ` +
+        `${kind ? `a ${kind} surface` : "not an API surface"}, not a ` +
+        `callable API, so there is nothing to request.${link} Only ` +
+        `${OPERATIONAL_SURFACE_KINDS.join(", ")} surfaces can be called; use ` +
+        `list_subnet_apis or get_subnet_surfaces to find this subnet's ` +
+        `callable ones.`,
+    );
+  }
+  return toolError(
+    "not_found",
+    `No catalogued surface with id, key, or deprecated id "${surfaceId}".`,
+  );
 }
 
 async function resolveArtifactSurfaceId(ctx: McpCtx, surfaceId: string) {
@@ -9794,10 +9875,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         }
         surface = await findCataloguedSurface(ctx, args.surface_id);
         if (!surface) {
-          throw toolError(
-            "not_found",
-            `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
-          );
+          throw await uncallableSurfaceError(ctx, args.surface_id);
         }
       } else if (Number.isInteger(args?.netuid)) {
         surface = primarySurfaceForNetuid(surfaces, args.netuid);
@@ -9894,10 +9972,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       }
       const surface = await findCataloguedSurface(ctx, args.surface_id);
       if (!surface) {
-        throw toolError(
-          "not_found",
-          `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
-        );
+        throw await uncallableSurfaceError(ctx, args.surface_id);
       }
       const hasStringCredentialArg =
         typeof args?.credential === "string" && args.credential.length > 0;
