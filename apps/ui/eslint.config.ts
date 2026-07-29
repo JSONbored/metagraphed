@@ -63,8 +63,18 @@ const PRIMITIVE_STEER_RULES = [
     // detail-page panels (#6398), not drift; <Panel> has no glow variant to
     // migrate it to. A 2026-07-23 audit found the unscoped selector's false
     // positives outnumbered genuine hits roughly 3-to-1.
+    //
+    // Third tightening (2026-07-29, #8556): excludes `inline-flex` className
+    // values. Genuine card shells are block-level content surfaces; a div
+    // that lays itself out as an inline-flex row is a *control* shell (the
+    // /health interval segmented control, /status window toggle, the
+    // subnet-detail stake/unstake tablist) sharing the border/bg-card look
+    // without being a content panel -- wrapping those in <Panel> would be
+    // actively wrong, since Panel carries panel semantics and padding a
+    // control must not inherit. Same failure mode as the two tightenings
+    // above: the look-alike class cluster, not the element's actual role.
     selector:
-      "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/]",
+      "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/][value!=/\\binline-flex\\b/]",
     message:
       "Wrap card shells in <Panel> from '@/components/metagraphed/primitives' instead of re-authoring rounded/border/bg-card by hand.",
   },
