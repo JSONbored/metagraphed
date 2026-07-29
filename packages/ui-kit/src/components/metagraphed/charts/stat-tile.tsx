@@ -81,7 +81,7 @@ export function StatTile({
           without it flex would keep shrinking this column to fit the chart
           beside it rather than pushing the chart to the next line. */}
       <div className="min-w-[6rem] flex-1">
-        <div className="flex items-center gap-1 mg-type-micro text-ink-muted">
+        <div className="flex items-center gap-1 mg-type-caption text-ink-muted">
           {/* The eyebrow names the statistic -- clipping it mid-word is the
               one thing a KPI tile can't afford ("Take rate" became "Take
               rat…", "Avg validator trust" became "Avg vali…" in a 2-column
