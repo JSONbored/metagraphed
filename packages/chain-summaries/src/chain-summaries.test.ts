@@ -5,8 +5,7 @@ import {
   summarizeCall,
   summarizeEvent,
 } from "./chain-summaries";
-import { formatTao } from "./format";
-import { shortHash } from "./blocks";
+import { formatTao, shortHash } from "./format";
 
 // Every fixture below is a real decoded call_args/args shape captured live
 // from api.metagraph.sh during #8371's investigation, not synthesized --
@@ -63,7 +62,9 @@ describe("summarizeCall", () => {
       { name: "commit_reveal_version", value: 4 },
     ];
     expect(
-      summarizeCall("SubtensorModule", "commit_timelocked_weights", args, { signer: SIGNER }),
+      summarizeCall("SubtensorModule", "commit_timelocked_weights", args, {
+        signer: SIGNER,
+      }),
     ).toBe(
       `${label(SIGNER)} committed time-locked weights for SN126, revealing at round 30,790,038.`,
     );
@@ -86,10 +87,14 @@ describe("summarizeCall", () => {
       { name: "mecid", value: 0 },
     ];
     expect(
-      summarizeCall("SubtensorModule", "commit_mechanism_weights", args, { signer: SIGNER }),
+      summarizeCall("SubtensorModule", "commit_mechanism_weights", args, {
+        signer: SIGNER,
+      }),
     ).toBe(`${label(SIGNER)} committed weights for SN5.`);
     expect(
-      summarizeCall("SubtensorModule", "reveal_mechanism_weights", args, { signer: SIGNER }),
+      summarizeCall("SubtensorModule", "reveal_mechanism_weights", args, {
+        signer: SIGNER,
+      }),
     ).toBe(`${label(SIGNER)} revealed weights for SN5.`);
   });
 
@@ -114,9 +119,17 @@ describe("summarizeCall", () => {
   });
 
   it("set_mechanism_weights mirrors set_weights", () => {
-    const args = { netuid: 118, mecid: 0, dests: [1, 2], weights: [5, 5], version_key: 1 };
+    const args = {
+      netuid: 118,
+      mecid: 0,
+      dests: [1, 2],
+      weights: [5, 5],
+      version_key: 1,
+    };
     expect(
-      summarizeCall("SubtensorModule", "set_mechanism_weights", args, { signer: SIGNER }),
+      summarizeCall("SubtensorModule", "set_mechanism_weights", args, {
+        signer: SIGNER,
+      }),
     ).toBe(`${label(SIGNER)} set weights for SN118 across 2 neurons.`);
   });
 
@@ -186,9 +199,11 @@ describe("summarizeCall", () => {
       { name: "limit_price", value: 8472101 },
       { name: "allow_partial", value: true },
     ];
-    expect(summarizeCall("SubtensorModule", "add_stake_limit", args, { signer: SIGNER })).toBe(
-      `${label(SIGNER)} staked ${tao(1_000_000_000)} to ${label(HOTKEY)} on SN1.`,
-    );
+    expect(
+      summarizeCall("SubtensorModule", "add_stake_limit", args, {
+        signer: SIGNER,
+      }),
+    ).toBe(`${label(SIGNER)} staked ${tao(1_000_000_000)} to ${label(HOTKEY)} on SN1.`);
   });
 
   it("remove_stake -- real captured shape", () => {
@@ -197,19 +212,25 @@ describe("summarizeCall", () => {
       { name: "netuid", value: 62 },
       { name: "amount_unstaked", value: 126719638931 },
     ];
-    expect(summarizeCall("SubtensorModule", "remove_stake", args, { signer: SIGNER })).toBe(
-      `${label(SIGNER)} unstaked ${tao(126719638931)} from ${label(HOTKEY)} on SN62.`,
-    );
+    expect(
+      summarizeCall("SubtensorModule", "remove_stake", args, {
+        signer: SIGNER,
+      }),
+    ).toBe(`${label(SIGNER)} unstaked ${tao(126719638931)} from ${label(HOTKEY)} on SN62.`);
   });
 
   it("remove_stake_limit / remove_stake_full_limit share the same template", () => {
     const args = { hotkey: HOTKEY, netuid: 4, amount_unstaked: 500_000_000 };
     const expected = `${label(SIGNER)} unstaked ${tao(500_000_000)} from ${label(HOTKEY)} on SN4.`;
-    expect(summarizeCall("SubtensorModule", "remove_stake_limit", args, { signer: SIGNER })).toBe(
-      expected,
-    );
     expect(
-      summarizeCall("SubtensorModule", "remove_stake_full_limit", args, { signer: SIGNER }),
+      summarizeCall("SubtensorModule", "remove_stake_limit", args, {
+        signer: SIGNER,
+      }),
+    ).toBe(expected);
+    expect(
+      summarizeCall("SubtensorModule", "remove_stake_full_limit", args, {
+        signer: SIGNER,
+      }),
     ).toBe(expected);
   });
 
@@ -225,12 +246,16 @@ describe("summarizeCall", () => {
       { name: "value", value: 2571528859 },
     ];
     const expected = `${label(SIGNER)} transferred ${tao(2571528859)} to ${label(DEST)}.`;
-    expect(summarizeCall("Balances", "transfer_allow_death", args, { signer: SIGNER })).toBe(
-      expected,
-    );
-    expect(summarizeCall("Balances", "transfer_keep_alive", args, { signer: SIGNER })).toBe(
-      expected,
-    );
+    expect(
+      summarizeCall("Balances", "transfer_allow_death", args, {
+        signer: SIGNER,
+      }),
+    ).toBe(expected);
+    expect(
+      summarizeCall("Balances", "transfer_keep_alive", args, {
+        signer: SIGNER,
+      }),
+    ).toBe(expected);
   });
 
   it("Balances.transfer_all", () => {
@@ -265,7 +290,9 @@ describe("summarizeCall", () => {
         ],
       },
     ];
-    const result = summarizeCall("Utility", "batch_all", args, { signer: SIGNER });
+    const result = summarizeCall("Utility", "batch_all", args, {
+      signer: SIGNER,
+    });
     expect(result).toContain(`${label(SIGNER)} submitted a batch of 2 calls:`);
     expect(result).toContain("(+1 more)");
     // Nested netuid arrives as a hex string ("0x1b" = 27) -- confirms parseNetuidLike's hex path.
@@ -273,7 +300,9 @@ describe("summarizeCall", () => {
   });
 
   it("Utility.batch / force_batch share the batch template", () => {
-    const args = { calls: [{ call_module: "System", call_function: "remark", call_args: {} }] };
+    const args = {
+      calls: [{ call_module: "System", call_function: "remark", call_args: {} }],
+    };
     expect(summarizeCall("Utility", "batch", args, { signer: SIGNER })).toBe(
       `${label(SIGNER)} submitted a batch of 1 call: ${label(SIGNER)} submitted an on-chain remark.`,
     );
@@ -291,7 +320,13 @@ describe("summarizeCall", () => {
 
   it("Utility.batch_all with an unrecognized inner call still produces a sentence", () => {
     const args = {
-      calls: [{ call_module: "SomeWeirdPallet", call_function: "do_thing", call_args: {} }],
+      calls: [
+        {
+          call_module: "SomeWeirdPallet",
+          call_function: "do_thing",
+          call_args: {},
+        },
+      ],
     };
     expect(summarizeCall("Utility", "batch_all", args, { signer: SIGNER })).toBe(
       `${label(SIGNER)} submitted a batch of 1 call: SomeWeirdPallet.do_thing`,
@@ -382,12 +417,18 @@ describe("summarizeEvent", () => {
   });
 
   it("Balances.Deposit / Withdraw / Issued reuse the amount-only template", () => {
-    expect(summarizeEvent("Balances", "Deposit", { who: FROM_ACCT, amount: 500_000_000 })).toBe(
-      `${label(FROM_ACCT)} received a deposit of ${tao(500_000_000)}.`,
-    );
-    expect(summarizeEvent("Balances", "Withdraw", { who: FROM_ACCT, amount: 500_000_000 })).toBe(
-      `${label(FROM_ACCT)} withdrew ${tao(500_000_000)}.`,
-    );
+    expect(
+      summarizeEvent("Balances", "Deposit", {
+        who: FROM_ACCT,
+        amount: 500_000_000,
+      }),
+    ).toBe(`${label(FROM_ACCT)} received a deposit of ${tao(500_000_000)}.`);
+    expect(
+      summarizeEvent("Balances", "Withdraw", {
+        who: FROM_ACCT,
+        amount: 500_000_000,
+      }),
+    ).toBe(`${label(FROM_ACCT)} withdrew ${tao(500_000_000)}.`);
     expect(summarizeEvent("Balances", "Issued", { amount: 500_000_000 })).toBe(
       `Triggered the issuance of ${tao(500_000_000)}.`,
     );
@@ -395,7 +436,10 @@ describe("summarizeEvent", () => {
 
   it("Balances.Endowed -- real captured shape: {account, free_balance}, not {who, amount}", () => {
     expect(
-      summarizeEvent("Balances", "Endowed", { account: FROM_ACCT, free_balance: [500_000_000] }),
+      summarizeEvent("Balances", "Endowed", {
+        account: FROM_ACCT,
+        free_balance: [500_000_000],
+      }),
     ).toBe(`${label(FROM_ACCT)} was endowed with ${tao(500_000_000)}.`);
     expect(summarizeEvent("Balances", "Endowed", { account: FROM_ACCT })).toBeNull();
   });
@@ -456,9 +500,11 @@ describe("summarizeEvent", () => {
   });
 
   it("IncentiveAlphaEmittedToMiners / Commitments.Commitment stay keyed-object, unaffected by the positional fixes", () => {
-    expect(summarizeEvent("SubtensorModule", "IncentiveAlphaEmittedToMiners", { netuid: 5 })).toBe(
-      "Incentive alpha was emitted to miners on SN5.",
-    );
+    expect(
+      summarizeEvent("SubtensorModule", "IncentiveAlphaEmittedToMiners", {
+        netuid: 5,
+      }),
+    ).toBe("Incentive alpha was emitted to miners on SN5.");
     expect(summarizeEvent("Commitments", "Commitment", { netuid: 5 })).toBe(
       "A commitment was published for SN5.",
     );

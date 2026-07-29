@@ -16,6 +16,7 @@ import { decodePostgresCallArgs } from "./postgres-call-args.ts";
 import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.ts";
+import { summarizeCall } from "@jsonbored/chain-summaries";
 
 type D1Runner = (
   sql: string,
@@ -93,6 +94,11 @@ export interface ExtrinsicApi {
   fee_tao: number | null;
   tip_tao: number | null;
   observed_at: string | null;
+  /** Deterministic human-readable action sentence for this extrinsic's call
+   * (#8525), the same one the website's own extrinsic-detail page renders.
+   * `null` when no template matches call_module.call_function -- never a
+   * guessed or partially-templated sentence. */
+  summary: string | null;
 }
 
 // One D1 extrinsics row → a clean API extrinsic object. Null-safe on junk/sparse
@@ -187,6 +193,18 @@ export function formatExtrinsic(
     fee_tao: toTaoOrNull(row.fee_tao),
     tip_tao: toTaoOrNull(row.tip_tao),
     observed_at: toIso(row.observed_at),
+    // #8525: computed from the SAME fully-decoded call_args just built above
+    // (post decodePostgresCallArgs/normalizePostgresValue/decodeEthereumEvmCallArgs/
+    // decodeBTreeSetFields) -- summarizeCall must never see the still-JSON-encoded
+    // row.call_args string, only the normalized value every other consumer of
+    // this row already gets.
+    summary:
+      summarizeCall(
+        (row.call_module as string | null) ?? null,
+        (row.call_function as string | null) ?? null,
+        call_args,
+        { signer: (row.signer as string | null) ?? null },
+      ) ?? null,
   };
 }
 

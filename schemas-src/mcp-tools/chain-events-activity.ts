@@ -67,6 +67,10 @@ const ChainEventFeedItemSchema = z
     phase: z.unknown().optional(),
     extrinsic_index: z.int().nullable().optional(),
     observed_at: z.unknown().optional(),
+    // #8525: deterministic human-readable action sentence for this event's
+    // pallet.method, or null when no template matches -- never a
+    // guessed/partial sentence.
+    summary: z.string().nullable().optional(),
   })
   .passthrough();
 

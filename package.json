@@ -15,6 +15,7 @@
   },
   "workspaces": [
     "apps/ui",
+    "packages/chain-summaries",
     "packages/client",
     "packages/contract",
     "packages/ui-kit"
@@ -126,6 +127,7 @@
     "smoke:live": "node scripts/smoke-live-api.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
+    "pretypecheck": "npm run build --workspace=packages/chain-summaries",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run pipeline:check && npm run validate:docs",
     "test": "vitest run",
@@ -139,6 +141,7 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.2",
+    "@jsonbored/chain-summaries": "*",
     "@duckdb/node-api": "^1.5.4-r.1",
     "@noble/hashes": "^2.2.0",
     "@resvg/resvg-js": "^2.6.2",

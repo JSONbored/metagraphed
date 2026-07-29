@@ -50,12 +50,14 @@ export default tseslint.config(
       // this repo's root config has no TSX/JSX parser wired in and would just
       // error on syntax it can't parse, not meaningfully lint it.
       "apps/ui/**",
-      // packages/ui-kit has its own eslint.config.ts + tsconfig.json; packages/client
-      // has its own tsconfig.json. Linting either from here creates a multi-root
+      // packages/ui-kit and packages/chain-summaries each have their own
+      // eslint.config.ts + tsconfig.json; packages/client has its own
+      // tsconfig.json. Linting any of these from here creates a multi-root
       // tsconfig ambiguity for the TS parser (typescript-eslint can't tell which
       // tsconfig.json is authoritative for a file under two candidate roots).
       "packages/client/**",
       "packages/ui-kit/**",
+      "packages/chain-summaries/**",
       // wrangler-generated Env/runtime types (npm run types:workers) -- never
       // hand-edited; wrangler's own codegen ships its own eslint-disable
       // comments that this repo's config doesn't need to weigh in on.

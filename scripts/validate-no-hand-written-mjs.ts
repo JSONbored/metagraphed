@@ -28,6 +28,8 @@ const ALLOWLIST = new Set<string>([
   "packages/client/dist/index.js",
   "packages/ui-kit/dist/index.cjs",
   "packages/ui-kit/dist/index.js",
+  "packages/chain-summaries/dist/index.cjs",
+  "packages/chain-summaries/dist/index.js",
   // #8384: a browser-native service worker, served as-is from apps/ui/public/
   // via the Cloudflare Assets binding (no build/transpile step touches
   // public/ — see that file's own header comment). Service workers run
