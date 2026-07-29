@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -111,6 +111,7 @@ import {
   activityGroupSpanMinutes,
   type ActivityGroup,
 } from "@/lib/metagraphed/activity-aggregation";
+import { diffNewRows } from "@/lib/metagraphed/new-row-tracker";
 import type {
   AccountEvent,
   Candidate,
@@ -1331,9 +1332,25 @@ function EventKindCell({
  * before #8366) and for each individual member row revealed when a
  * collapsed group is expanded.
  */
-function ActivityEventRow({ ev, nested }: { ev: AccountEvent; nested?: boolean }) {
+function ActivityEventRow({
+  ev,
+  nested,
+  isNew,
+}: {
+  ev: AccountEvent;
+  nested?: boolean;
+  isNew?: boolean;
+}) {
   return (
-    <tr className={classNames("hover:bg-surface/40", nested && "bg-surface/20")}>
+    <tr
+      className={classNames(
+        "hover:bg-surface/40",
+        nested && "bg-surface/20",
+        // #8528: only top-level new rows fade in; nested (expanded-group child)
+        // rows never animate -- they only appear on user toggle, not stream arrival.
+        isNew && !nested && "mg-fade-in",
+      )}
+    >
       <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
         {ev.block_number != null ? (
           <Link
@@ -1382,15 +1399,17 @@ function ActivityEventRow({ ev, nested }: { ev: AccountEvent; nested?: boolean }
  */
 function ActivityGroupRow({
   group,
+  isNew,
   expanded,
   onToggle,
 }: {
   group: ActivityGroup;
+  isNew?: boolean;
   expanded: boolean;
   onToggle: () => void;
 }) {
   if (group.events.length === 1) {
-    return <ActivityEventRow ev={group.events[0]!} />;
+    return <ActivityEventRow ev={group.events[0]!} isNew={isNew} />;
   }
   const latest = group.events[0]!;
   const span = activityGroupSpanMinutes(group);
@@ -1399,7 +1418,7 @@ function ActivityGroupRow({
   return (
     <>
       <tr
-        className="cursor-pointer hover:bg-surface/40"
+        className={classNames("cursor-pointer hover:bg-surface/40", isNew && "mg-fade-in")}
         onClick={onToggle}
         aria-expanded={expanded}
       >
@@ -1475,6 +1494,19 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   // 100 events (subnetEventsQuery's own limit), cheap enough that memoizing
   // it would cost more bookkeeping than it saves.
   const groups = aggregateActivityEvents(events);
+  // #8528: fade-in only genuinely-new rows as the live stream delivers them --
+  // never on re-render/refetch/re-sort, and never the initial populated paint.
+  // Pure CSS (mg-fade-in, which already suppresses under prefers-reduced-motion)
+  // driven by mount; no per-row timers (#8365). The seen-set persists across
+  // renders in a ref; a group's stable identity is its anchor event's
+  // block/index + kind (the row `key` minus the array index).
+  const seenRowsRef = useRef<Set<string>>(new Set());
+  const primedRef = useRef(false);
+  const groupKeys = groups.map(
+    (g) => `${g.kind}-${g.events[0]!.block_number}-${g.events[0]!.event_index}`,
+  );
+  const { newKeys } = diffNewRows(groupKeys, seenRowsRef.current, primedRef.current);
+  primedRef.current = true;
   const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<number>>(new Set());
 
   // #8445: subscribe to the firehose's `account_events` topic (the only one
@@ -1551,6 +1583,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                 <ActivityGroupRow
                   key={`${group.kind}-${group.events[0]!.block_number}-${group.events[0]!.event_index}-${i}`}
                   group={group}
+                  isNew={newKeys.has(groupKeys[i]!)}
                   expanded={expandedGroups.has(i)}
                   onToggle={() =>
                     setExpandedGroups((prev) => {
