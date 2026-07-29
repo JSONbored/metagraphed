@@ -422,7 +422,9 @@ import {
   applyTieredRateLimit,
   tieredRateLimitHeaders,
   type TieredRateLimitConfig,
+  type TieredRateLimitResult,
 } from "./tiered-rate-limit.ts";
+import { buildTierPolicies } from "../src/api-tiers.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
@@ -430,9 +432,14 @@ import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 // SEPARATE Cloudflare Rate Limiting binding (DATA_RATE_LIMITER_KEYED,
 // wrangler.jsonc), never the same binding with a different number -- one
 // named binding is always one fixed limit/period pair.
-const DATA_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+// Exported for tests/api-tiers.test.ts, which pins every tier's advertised
+// limit against the wrangler.jsonc binding that actually enforces it.
+export const DATA_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   anonymous: { envVar: "DATA_RATE_LIMITER", limit: 60, windowSeconds: 60 },
   keyed: { envVar: "DATA_RATE_LIMITER_KEYED", limit: 300, windowSeconds: 60 },
+  // #8608: per-tier ceilings. `free` keeps DATA_RATE_LIMITER_KEYED's existing
+  // 300/min; community and paid get their own bindings (src/api-tiers.ts).
+  tiers: buildTierPolicies("DATA_RATE_LIMITER", 300),
   keyPrefix: "data",
 };
 
@@ -1758,7 +1765,11 @@ export async function handleRequest(
         "Too many data API requests from this client; slow down.",
         429,
         {},
-        tieredRateLimitHeaders(rateLimit.policy),
+        tieredRateLimitHeaders(
+          rateLimit.policy,
+          rateLimit.tier,
+          rateLimit.quota,
+        ),
       );
     }
     if (rateLimit.accountId) {
@@ -4864,6 +4875,8 @@ export const WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
     limit: 50,
     windowSeconds: 60,
   },
+  // #8608: per-tier ceilings (src/api-tiers.ts).
+  tiers: buildTierPolicies("WEBHOOK_SUBSCRIPTION_RATE_LIMITER", 50),
   keyPrefix: "webhook",
 };
 
@@ -4883,7 +4896,7 @@ async function webhookSubscriptionRateLimited(
       "Too many webhook subscription requests from this client; slow down.",
       429,
       {},
-      tieredRateLimitHeaders(rateLimit.policy),
+      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
     );
   }
   if (rateLimit.accountId) {
@@ -5205,17 +5218,22 @@ function aiUnavailableResponse() {
   );
 }
 
-function aiRateLimitedResponse(policy: TieredRateLimitConfig["anonymous"]) {
+function aiRateLimitedResponse(rateLimit: TieredRateLimitResult) {
   // Same standard rate-limit header set the webhook / alert-trigger 429s expose
   // (#6572), so an AI client can discover its quota, not just the retry delay.
   // #8521: headers now come from the tiered policy that actually rejected the
   // caller (anonymous 20/60s here), via the shared tieredRateLimitHeaders.
+  // #8608: takes the whole result, not just the policy, so a caller rejected
+  // by the DAILY quota is told the day's ceiling and its exact UTC-midnight
+  // reset -- and which tier it was measured against. /ask is the dearest
+  // family in src/route-cost-weights.ts (25 units a call), so it is the route
+  // most likely to exhaust a quota long before any per-minute limit.
   return errorResponse(
     "rate_limited",
     "Too many AI requests. Please retry shortly.",
     429,
     {},
-    tieredRateLimitHeaders(policy),
+    tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
   );
 }
 
@@ -5281,7 +5299,7 @@ async function handleSemanticSearchRequest(
     AI_TIERED_RATE_LIMIT,
   );
   if (!rateLimit.allowed) {
-    return aiRateLimitedResponse(rateLimit.policy);
+    return aiRateLimitedResponse(rateLimit);
   }
   if (rateLimit.accountId) {
     recordApiKeyUsage(env, ctx, rateLimit.accountId, "semantic-search");
@@ -5333,7 +5351,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
     AI_TIERED_RATE_LIMIT,
   );
   if (!rateLimit.allowed) {
-    return aiRateLimitedResponse(rateLimit.policy);
+    return aiRateLimitedResponse(rateLimit);
   }
   if (rateLimit.accountId) {
     recordApiKeyUsage(env, ctx, rateLimit.accountId, "ask");

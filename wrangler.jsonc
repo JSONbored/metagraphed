@@ -586,6 +586,96 @@
   // `period` must be 10 or 60. The Worker skips the check when this binding is
   // absent (local dev), so it only enforces on Cloudflare.
   "ratelimits": [
+    // #8608: the community and paid per-minute tiers. One named binding is one
+    // fixed limit/period pair, so each TIER needs its own binding -- three
+    // tiers sharing MCP_RATE_LIMITER_KEYED would have throttled all of them at
+    // 500/min while the 429 headers advertised 500/1500/5000, i.e. a paid
+    // caller capped at the free ceiling and told otherwise. The `free` tier
+    // deliberately reuses each family's existing _KEYED binding so nobody
+    // holding a key today loses headroom. Limits are derived from
+    // src/api-tiers.ts's multipliers (3x community, 10x paid) and pinned
+    // against this file by tests/api-tiers.test.ts. Same fail-open posture as
+    // every limiter here: absent binding -> tier is not enforced.
+    {
+      "name": "MCP_RATE_LIMITER_COMMUNITY",
+      "namespace_id": "1018",
+      "simple": {
+        "limit": 1500,
+        "period": 60,
+      },
+    },
+    {
+      "name": "MCP_RATE_LIMITER_PAID",
+      "namespace_id": "1019",
+      "simple": {
+        "limit": 5000,
+        "period": 60,
+      },
+    },
+    {
+      "name": "AI_RATE_LIMITER_COMMUNITY",
+      "namespace_id": "1020",
+      "simple": {
+        "limit": 300,
+        "period": 60,
+      },
+    },
+    {
+      "name": "AI_RATE_LIMITER_PAID",
+      "namespace_id": "1021",
+      "simple": {
+        "limit": 1000,
+        "period": 60,
+      },
+    },
+    {
+      "name": "DATA_RATE_LIMITER_COMMUNITY",
+      "namespace_id": "1022",
+      "simple": {
+        "limit": 900,
+        "period": 60,
+      },
+    },
+    {
+      "name": "DATA_RATE_LIMITER_PAID",
+      "namespace_id": "1023",
+      "simple": {
+        "limit": 3000,
+        "period": 60,
+      },
+    },
+    {
+      "name": "STATE_QUERY_RATE_LIMITER_COMMUNITY",
+      "namespace_id": "1024",
+      "simple": {
+        "limit": 300,
+        "period": 60,
+      },
+    },
+    {
+      "name": "STATE_QUERY_RATE_LIMITER_PAID",
+      "namespace_id": "1025",
+      "simple": {
+        "limit": 1000,
+        "period": 60,
+      },
+    },
+    {
+      "name": "WEBHOOK_SUBSCRIPTION_RATE_LIMITER_COMMUNITY",
+      "namespace_id": "1026",
+      "simple": {
+        "limit": 150,
+        "period": 60,
+      },
+    },
+    {
+      "name": "WEBHOOK_SUBSCRIPTION_RATE_LIMITER_PAID",
+      "namespace_id": "1027",
+      "simple": {
+        "limit": 500,
+        "period": 60,
+      },
+    },
     {
       "name": "RPC_RATE_LIMITER",
       "namespace_id": "1001",

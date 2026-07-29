@@ -34,6 +34,21 @@ function createFakeKv() {
 
 const VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
 
+function envWithTier(tier: string, overrides: Row = {}) {
+  return {
+    METAGRAPH_CONTROL: createFakeKv(),
+    API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+    DATA_API: {
+      fetch: async () =>
+        new Response(
+          JSON.stringify({ valid: true, code: "VALID", tier, accountId: "42" }),
+          { status: 200 },
+        ),
+    },
+    ...overrides,
+  } as unknown as Env;
+}
+
 function envWithKeyVerify(overrides: Row = {}) {
   return {
     METAGRAPH_CONTROL: createFakeKv(),
@@ -103,7 +118,8 @@ describe("applyTieredRateLimit", () => {
     assert.equal(result.allowed, true);
     assert.equal(result.policy, KEYED);
     assert.equal(result.accountId, "42");
-    assert.deepEqual(calls, [{ key: "test:42" }]);
+    // #8608: tier-scoped, so a tier change starts a fresh window.
+    assert.deepEqual(calls, [{ key: "test:free:42" }]);
   });
 
   test("an invalid/malformed key falls back to the anonymous tier, not a rejection", async () => {
@@ -220,10 +236,13 @@ describe("applyTieredRateLimit with the MCP surface config (#8520)", () => {
       MCP_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      MCP_TIERED_RATE_LIMIT.tiers?.free ?? MCP_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
     // keyed by accountId under the mcp: prefix, and the anon limiter is untouched.
-    assert.deepEqual(keyedCalls, [{ key: "mcp:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "mcp:free:42" }]);
   });
 
   test("a keyed MCP request fails open when MCP_RATE_LIMITER_KEYED is unprovisioned", async () => {
@@ -241,7 +260,10 @@ describe("applyTieredRateLimit with the MCP surface config (#8520)", () => {
       MCP_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, MCP_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      MCP_TIERED_RATE_LIMIT.tiers?.free ?? MCP_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -273,10 +295,13 @@ describe("applyTieredRateLimit with the AI search/ask surface config (#8521)", (
       AI_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      AI_TIERED_RATE_LIMIT.tiers?.free ?? AI_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
     // keyed by accountId under the ai: prefix, and the anon limiter is untouched.
-    assert.deepEqual(keyedCalls, [{ key: "ai:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "ai:free:42" }]);
   });
 
   test("the anonymous ceiling is unchanged -- 20/60s, keyed by ai:<ip> via AI_RATE_LIMITER (regression)", async () => {
@@ -324,7 +349,10 @@ describe("applyTieredRateLimit with the AI search/ask surface config (#8521)", (
       AI_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, AI_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      AI_TIERED_RATE_LIMIT.tiers?.free ?? AI_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -355,9 +383,13 @@ describe("applyTieredRateLimit with the state-query surface config (#8522)", () 
       STATE_QUERY_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      STATE_QUERY_TIERED_RATE_LIMIT.tiers?.free ??
+        STATE_QUERY_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
-    assert.deepEqual(keyedCalls, [{ key: "state:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "state:free:42" }]);
   });
 
   test("the anonymous ceiling is unchanged -- 20/60s, keyed by state:<ip> via STATE_QUERY_RATE_LIMITER (regression)", async () => {
@@ -404,7 +436,11 @@ describe("applyTieredRateLimit with the state-query surface config (#8522)", () 
       STATE_QUERY_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, STATE_QUERY_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      STATE_QUERY_TIERED_RATE_LIMIT.tiers?.free ??
+        STATE_QUERY_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -440,9 +476,13 @@ describe("applyTieredRateLimit with the webhook-subscription surface config (#85
       WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.tiers?.free ??
+        WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
-    assert.deepEqual(keyedCalls, [{ key: "webhook:42" }]);
+    assert.deepEqual(keyedCalls, [{ key: "webhook:free:42" }]);
   });
 
   test("the anonymous ceiling is unchanged -- 10/60s, keyed by webhook:<ip> via WEBHOOK_SUBSCRIPTION_RATE_LIMITER (regression)", async () => {
@@ -500,7 +540,11 @@ describe("applyTieredRateLimit with the webhook-subscription surface config (#85
       WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
     );
     assert.equal(result.allowed, true);
-    assert.equal(result.policy, WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed);
+    assert.deepEqual(
+      result.policy,
+      WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.tiers?.free ??
+        WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT.keyed,
+    );
     assert.equal(result.accountId, "42");
   });
 });
@@ -524,5 +568,549 @@ describe("tieredRateLimitHeaders", () => {
     const resetMs = Date.parse(headers["x-ratelimit-reset"]!);
     assert.ok(resetMs >= before + ANONYMOUS.windowSeconds * 1000);
     assert.ok(resetMs <= before + ANONYMOUS.windowSeconds * 1000 + 5000);
+  });
+});
+
+describe("per-tier ceilings (#8608)", () => {
+  // Before this, every valid key got the single `keyed` policy no matter what
+  // tier it was on -- validateApiKey resolved the tier and the result was
+  // thrown away, so a paid account and a free one were throttled identically
+  // and #6646 had nothing to attach a paid model to.
+  const CONFIG = {
+    anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
+    keyed: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+    tiers: {
+      free: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+      paid: { envVar: "KEYED", limit: 5000, windowSeconds: 60 },
+    },
+    keyPrefix: "t",
+  };
+
+  function limiterEnv(tier: string) {
+    const calls: unknown[] = [];
+    const env = envWithTier(tier, {
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: {
+        limit: async (arg: unknown) => {
+          calls.push(arg);
+          return { success: true };
+        },
+      },
+    });
+    return { env, calls };
+  }
+
+  const req = () =>
+    new Request("https://api.metagraph.sh/x", {
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+
+  test("a paid key gets the paid ceiling, not the generic keyed one", async () => {
+    const { env } = limiterEnv("paid");
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.policy.limit, 5000);
+    assert.equal(result.tier, "paid");
+  });
+
+  test("a free key keeps exactly the ceiling it has today — nobody loses headroom", async () => {
+    const { env } = limiterEnv("free");
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.policy.limit, 100);
+    assert.equal(result.policy.limit, CONFIG.keyed.limit);
+  });
+
+  test("an unpriced tier falls back to `keyed` rather than failing the request", async () => {
+    // An account on a tier this route has not priced yet must never become an
+    // outage for a paying caller.
+    const { env } = limiterEnv("enterprise-2027");
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.equal(result.policy.limit, CONFIG.keyed.limit);
+    assert.equal(result.tier, "enterprise-2027");
+  });
+
+  test("the limiter key is scoped by tier, so a tier change starts a fresh window", async () => {
+    // Otherwise a downgrade would inherit the old tier's partially-spent
+    // window (dodging the new lower ceiling), and an upgrade would stay
+    // throttled for the rest of it.
+    const paid = limiterEnv("paid");
+    await applyTieredRateLimit(req(), paid.env, CONFIG);
+    assert.deepEqual(paid.calls, [{ key: "t:paid:42" }]);
+
+    const free = limiterEnv("free");
+    await applyTieredRateLimit(req(), free.env, CONFIG);
+    assert.deepEqual(free.calls, [{ key: "t:free:42" }]);
+  });
+
+  test("anonymous is untouched by the tier table", async () => {
+    const calls: unknown[] = [];
+    const env = envWithTier("paid", {
+      ANON: {
+        limit: async (arg: unknown) => {
+          calls.push(arg);
+          return { success: true };
+        },
+      },
+    });
+    const result = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/x", {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }),
+      env,
+      CONFIG,
+    );
+    assert.equal(result.tier, "anonymous");
+    assert.equal(result.policy.limit, 10);
+    assert.deepEqual(calls, [{ key: "t:203.0.113.9" }]);
+  });
+
+  test("the 429 headers name the tier the caller was measured against", () => {
+    // Without it a 429 is unactionable: "you are on free, upgrade" and "you
+    // are on paid and genuinely over" look identical.
+    const headers = tieredRateLimitHeaders(CONFIG.tiers.paid, "paid");
+    assert.equal(headers["x-ratelimit-tier"], "paid");
+    assert.equal(headers["x-ratelimit-limit"], "5000");
+    // Omitted entirely when no tier is supplied — never rendered as "undefined".
+    assert.equal(
+      tieredRateLimitHeaders(CONFIG.anonymous)["x-ratelimit-tier"],
+      undefined,
+    );
+  });
+});
+
+describe("daily quotas (#8608)", () => {
+  // Cloudflare's Rate Limiting bindings only do 10s/60s periods, so the daily
+  // ceiling is counted in `api_quota_daily` on our own indexer box, reached
+  // over the DATA_API service binding (workers/data-api.ts's
+  // handleApiQuotaSpend). It is consulted ONLY for tiers that define
+  // dailyUnits, so the extra round trip lands on precisely the callers the
+  // quota is for.
+  const CONFIG = {
+    anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
+    keyed: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+    tiers: {
+      free: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+      paid: {
+        envVar: "KEYED",
+        limit: 5000,
+        windowSeconds: 60,
+        dailyUnits: 1000,
+      },
+    },
+    keyPrefix: "t",
+  };
+
+  function envWith(
+    tier: string,
+    quotaFetch?: (r: Request) => Promise<Response>,
+  ) {
+    const spends: unknown[] = [];
+    // DATA_API must ROUTE BY PATH, exactly like the real data-api Worker does
+    // -- the key-verify call and the quota spend both go down this one binding.
+    // A stub that ignores the path and answers every request with the verify
+    // payload is how the first cut of this suite hid a fail-CLOSED bug in
+    // spendDailyQuota: the verify body has no `allowed` field, `!undefined` is
+    // true, and every quota'd caller would have been 429'd by a store that
+    // never rejected anything.
+    const env = envWithTier(tier, {
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: true }) },
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          if (path === "/api/v1/internal/keys/quota") {
+            spends.push({
+              url: path,
+              token: request.headers.get("x-api-key-lookup-token"),
+              body: JSON.parse(await request.clone().text()),
+            });
+            if (!quotaFetch) return new Response("not found", { status: 404 });
+            return quotaFetch(request);
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier,
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    });
+    return { env, spends };
+  }
+
+  const req = (path = "/api/v1/subnets") =>
+    new Request(`https://api.metagraph.sh${path}`, {
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+
+  const ok = (body: Row) => async () =>
+    new Response(JSON.stringify(body), { status: 200 });
+
+  test("a tier with NO dailyUnits never touches the quota store", async () => {
+    // free must not pay the round trip, and today's keyed callers gain no cap.
+    const { env, spends } = envWith("free", ok({ allowed: true }));
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.deepEqual(spends, []);
+    assert.equal(result.quota, undefined);
+  });
+
+  test("spends the ROUTE'S cost, not one unit per request", async () => {
+    const { env, spends } = envWith(
+      "paid",
+      ok({
+        allowed: true,
+        used: 25,
+        limit: 1000,
+        remaining: 975,
+        resetAt: "x",
+      }),
+    );
+    await applyTieredRateLimit(req("/api/v1/ask"), env, CONFIG);
+    assert.deepEqual(spends, [
+      {
+        url: "/api/v1/internal/keys/quota",
+        // Authenticated with the same shared secret the usage counter uses --
+        // an unauthenticated spend would let anything reachable on the service
+        // binding zero an account's day.
+        token: "test-lookup-token",
+        body: { account_id: 42, cost: 25, limit: 1000 },
+      },
+    ]);
+  });
+
+  test("an over-quota caller is rejected even when the per-minute limiter would allow", async () => {
+    const { env } = envWith(
+      "paid",
+      ok({
+        allowed: false,
+        used: 1000,
+        limit: 1000,
+        remaining: 0,
+        resetAt: "2026-07-30T00:00:00.000Z",
+      }),
+    );
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, false);
+    assert.equal(result.quota?.remaining, 0);
+  });
+
+  // Every way the quota store can fail to deliver a verdict must fail OPEN.
+  // Same posture as every other checkpoint in this file: an unprovisioned
+  // deploy prerequisite, or a database having a moment, must never block a
+  // paying caller. Only an explicit `allowed: false` rejects.
+  const FAILS_OPEN: [string, () => Promise<Response>][] = [
+    // The route does not exist -- an un-deployed or rolled-back data-api.
+    [
+      "a 404 from the quota route",
+      async () => new Response("", { status: 404 }),
+    ],
+    // Hyperdrive down, so handleApiQuotaSpend's withAccountsSql 503s.
+    [
+      "a 503 (hyperdrive unavailable)",
+      async () => new Response("", { status: 503 }),
+    ],
+    // The shared secret rotated on one side but not the other.
+    ["a 401 (secret mismatch)", async () => new Response("", { status: 401 })],
+    // A 200 whose body is not a verdict. This is the subtle one: `!undefined`
+    // is true, so before the typeof guard in spendDailyQuota this rejected
+    // every quota'd request from a store that never said no.
+    ["a 200 with no `allowed` field", async () => Response.json({ ok: true })],
+    // `allowed` present but not a boolean -- same trap, one step further in.
+    [
+      "a 200 with a non-boolean `allowed`",
+      async () => Response.json({ allowed: "no" }),
+    ],
+    // Body claims JSON and isn't.
+    [
+      "a 200 with an unparseable body",
+      async () => new Response("<html>502</html>", { status: 200 }),
+    ],
+    // The binding itself throws.
+    [
+      "a binding that throws",
+      async () => {
+        throw new Error("data-api unreachable");
+      },
+    ],
+  ];
+
+  for (const [label, response] of FAILS_OPEN) {
+    test(`${label} fails OPEN`, async () => {
+      const { env } = envWith("paid", response);
+      const result = await applyTieredRateLimit(req(), env, CONFIG);
+      assert.equal(result.allowed, true);
+      assert.equal(result.quota, undefined, "and reports no quota headers");
+    });
+  }
+
+  test("a DATA_API binding that disappears after the key is cached fails OPEN", async () => {
+    // Realistic shape of the missing-binding case: the key lookup is cached in
+    // KV (API_KEY_LOOKUP_KV_TTL), so a later request still authenticates as
+    // `paid` even with no service binding left to ask about quota. The gate
+    // must let it through rather than 429 a paying caller over a config gap.
+    const { env } = envWith(
+      "paid",
+      ok({ allowed: false, used: 1e9, remaining: 0 }),
+    );
+    // Prime the cache while the binding is still there.
+    await applyTieredRateLimit(req(), env, CONFIG);
+    delete (env as unknown as Record<string, unknown>).DATA_API;
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.equal(result.quota, undefined);
+  });
+
+  test("a valid key with NO tier falls back to `keyed` rather than going unlimited", async () => {
+    // validateApiKey can return a null/absent tier -- an account row predating
+    // the column, or a lookup that answered without one. That must land on the
+    // `keyed` fallback policy (today's ceiling), not on a missing policy, and
+    // must be REPORTED as "keyed" so the 429 and the limiter key agree.
+    const limiterKeys: string[] = [];
+    const env = envWithTier(null as unknown as string, {
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: {
+        limit: async ({ key }: { key: string }) => {
+          limiterKeys.push(key);
+          return { success: true };
+        },
+      },
+    });
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.equal(result.tier, "keyed");
+    assert.equal(result.policy.envVar, CONFIG.keyed.envVar);
+    assert.equal(result.policy.limit, CONFIG.keyed.limit);
+    assert.deepEqual(limiterKeys, ["t:keyed:42"]);
+  });
+
+  test("a missing internal token skips the spend rather than sending it unauthenticated", async () => {
+    // The binding is present but the shared secret is not, so the spend could
+    // not be authenticated. Sending it anyway would only earn a 401; not
+    // sending it is the same fail-open trade every case above makes.
+    const { env, spends } = envWith("paid", ok({ allowed: false, used: 1e9 }));
+    delete (env as unknown as Record<string, unknown>)
+      .API_KEY_LOOKUP_INTERNAL_TOKEN;
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.deepEqual(spends, [], "no unauthenticated spend was attempted");
+  });
+
+  test("a quota rejection with units LEFT still reports the day, not the minute", async () => {
+    // The case a cost-weighted quota exists to create: 10 units remain and the
+    // call costs 25, so the quota rejects while `remaining` is still positive.
+    // Keying the header scope off `remaining <= 0` labelled this a per-minute
+    // rejection and told the caller to retry in 60s -- when the truth is "not
+    // until UTC midnight". The store's own verdict is the only correct signal.
+    const resetAt = "2026-07-30T00:00:00.000Z";
+    const headers = tieredRateLimitHeaders(CONFIG.tiers.paid, "paid", {
+      allowed: false,
+      used: 990,
+      limit: 1000,
+      remaining: 10,
+      resetAt,
+    });
+    assert.equal(headers["x-ratelimit-scope"], "daily-quota");
+    assert.equal(headers["x-ratelimit-limit"], "1000");
+    assert.equal(headers["x-ratelimit-reset"], resetAt);
+  });
+
+  test("an ALLOWED quota verdict does not hijack a per-minute rejection's headers", async () => {
+    // Under the quota but over the minute: the 429 is per-minute and must say
+    // so, even though a quota verdict rode along on the result.
+    const headers = tieredRateLimitHeaders(CONFIG.tiers.paid, "paid", {
+      allowed: true,
+      used: 100,
+      limit: 1000,
+      remaining: 900,
+      resetAt: "2026-07-30T00:00:00.000Z",
+    });
+    assert.equal(headers["x-ratelimit-scope"], "per-minute");
+    assert.equal(headers["x-ratelimit-limit"], "5000");
+    assert.equal(headers["retry-after"], "60");
+  });
+
+  test("a daily rejection reports the DAY's numbers and an exact reset", async () => {
+    const resetAt = "2026-07-30T00:00:00.000Z";
+    const headers = tieredRateLimitHeaders(CONFIG.tiers.paid, "paid", {
+      allowed: false,
+      used: 1000,
+      limit: 1000,
+      remaining: 0,
+      resetAt,
+    });
+    assert.equal(headers["x-ratelimit-scope"], "daily-quota");
+    assert.equal(headers["x-ratelimit-limit"], "1000");
+    assert.equal(headers["x-ratelimit-reset"], resetAt);
+    // Unlike the per-minute window, this reset is exact rather than an
+    // upper-bound approximation.
+    assert.notEqual(headers["x-ratelimit-policy"], "5000;w=60");
+  });
+
+  test("a per-minute rejection still reports the minute's numbers", async () => {
+    const headers = tieredRateLimitHeaders(CONFIG.tiers.paid, "paid");
+    assert.equal(headers["x-ratelimit-scope"], "per-minute");
+    assert.equal(headers["x-ratelimit-limit"], "5000");
+  });
+
+  test("the tier label is omitted, not stringified, when there is no tier", async () => {
+    // Anonymous callers have no tier, and `x-ratelimit-tier: undefined` would
+    // be worse than no header at all. Holds on both header branches.
+    const daily = tieredRateLimitHeaders(CONFIG.tiers.paid, undefined, {
+      allowed: false,
+      used: 1000,
+      limit: 1000,
+      remaining: 0,
+      resetAt: "2026-07-30T00:00:00.000Z",
+    });
+    assert.equal(daily["x-ratelimit-scope"], "daily-quota");
+    assert.ok(!("x-ratelimit-tier" in daily));
+    const minute = tieredRateLimitHeaders(CONFIG.anonymous);
+    assert.equal(minute["x-ratelimit-scope"], "per-minute");
+    assert.ok(!("x-ratelimit-tier" in minute));
+  });
+});
+
+describe("burst enforcement (#8608 acceptance)", () => {
+  // "load test demonstrates enforcement under burst" -- driven against the
+  // real accounting rather than a mocked boolean, so it proves the ceiling
+  // holds rather than that a stub returned false.
+  test("a 5,000-unit burst against a 1,000-unit day is cut off at exactly the limit", async () => {
+    const { applyQuotaSpend } = await import("../src/daily-quota.ts");
+    const now = Date.UTC(2026, 6, 29, 12);
+    let used = 0;
+    let allowed = 0;
+    let rejected = 0;
+    for (let i = 0; i < 5000; i += 1) {
+      const r = applyQuotaSpend(used, 1, 1000, now);
+      used = r.used;
+      if (r.allowed) allowed += 1;
+      else rejected += 1;
+    }
+    assert.equal(allowed, 1000, "exactly the ceiling gets through");
+    assert.equal(rejected, 4000);
+    assert.equal(used, 1000, "and the counter never exceeds it");
+  });
+
+  test("a burst of EXPENSIVE calls is cut off by cost, not by count", async () => {
+    const { applyQuotaSpend } = await import("../src/daily-quota.ts");
+    const now = Date.UTC(2026, 6, 29, 12);
+    let used = 0;
+    let allowed = 0;
+    for (let i = 0; i < 100; i += 1) {
+      const r = applyQuotaSpend(used, 25, 1000, now);
+      used = r.used;
+      if (r.allowed) allowed += 1;
+    }
+    // 1000 / 25 = 40 LLM-class calls, versus 1000 cached reads.
+    assert.equal(allowed, 40);
+    assert.equal(used, 1000);
+  });
+
+  test("a rejected spend leaves the counter untouched", async () => {
+    // The rule the SQL's `WHERE ... <= limit` conflict predicate implements:
+    // one oversized call must not drain what is left of the day.
+    const { applyQuotaSpend } = await import("../src/daily-quota.ts");
+    const now = Date.UTC(2026, 6, 29, 12);
+    const r = applyQuotaSpend(990, 25, 1000, now);
+    assert.equal(r.allowed, false);
+    assert.equal(r.used, 990, "nothing was spent");
+    assert.equal(r.remaining, 10, "and the remainder is still available");
+    // ...so a cheaper call still gets through afterwards.
+    assert.equal(applyQuotaSpend(r.used, 1, 1000, now).allowed, true);
+  });
+
+  test("a spend larger than the entire day is rejected from a cold start", async () => {
+    // No row exists yet, so the SQL's conflict guard never fires -- the
+    // handler's own `cost > limit` check is the only thing standing between
+    // this and a banked over-limit balance.
+    const { applyQuotaSpend } = await import("../src/daily-quota.ts");
+    const r = applyQuotaSpend(0, 5000, 1000, Date.UTC(2026, 6, 29, 12));
+    assert.equal(r.allowed, false);
+    assert.equal(r.used, 0);
+    assert.equal(r.remaining, 1000);
+  });
+
+  test("the reset instant is the next UTC midnight, exactly", async () => {
+    const { quotaResetAt, utcDayKey, msUntilUtcMidnight } =
+      await import("../src/daily-quota.ts");
+    const noon = Date.UTC(2026, 6, 29, 12, 30, 15, 500);
+    assert.equal(utcDayKey(noon), "2026-07-29");
+    assert.equal(quotaResetAt(noon), "2026-07-30T00:00:00.000Z");
+    assert.equal(
+      msUntilUtcMidnight(noon),
+      11 * 3600_000 + 29 * 60_000 + 44_500,
+    );
+    // Month/year rollovers are the case a naive +1 day gets wrong.
+    assert.equal(
+      quotaResetAt(Date.UTC(2026, 11, 31, 23, 59)),
+      "2027-01-01T00:00:00.000Z",
+    );
+  });
+});
+
+describe("tier lookup must not walk the prototype chain (#8687 review)", () => {
+  // `config.tiers?.[tier]` resolved inherited Object members for a tier named
+  // "constructor"/"toString"/"valueOf"/"__proto__". Those are truthy, so the
+  // `|| config.keyed` fallback never ran, the resulting object had no
+  // `envVar`, the limiter binding lookup missed -- and the request was allowed
+  // with NO rate limiting. A silent bypass, from a tier string that arrives
+  // over the key-validation response.
+  const CONFIG = {
+    anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
+    keyed: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+    tiers: { paid: { envVar: "KEYED", limit: 5000, windowSeconds: 60 } },
+    keyPrefix: "t",
+  };
+
+  for (const hostile of [
+    "constructor",
+    "toString",
+    "valueOf",
+    "__proto__",
+    "hasOwnProperty",
+  ]) {
+    test(`a tier named "${hostile}" falls back to keyed and is still limited`, async () => {
+      const calls: unknown[] = [];
+      const env = envWithTier(hostile, {
+        ANON: { limit: async () => ({ success: true }) },
+        KEYED: {
+          limit: async (arg: unknown) => {
+            calls.push(arg);
+            return { success: false };
+          },
+        },
+      });
+      const result = await applyTieredRateLimit(
+        new Request("https://api.metagraph.sh/x", {
+          headers: { authorization: `Bearer ${VALID_KEY}` },
+        }),
+        env,
+        CONFIG,
+      );
+      // The fallback policy is a real one, so a limiter actually runs...
+      assert.equal(result.policy.envVar, "KEYED");
+      assert.equal(calls.length, 1, "the limiter must have been consulted");
+      // ...and its verdict is honoured rather than silently allowing.
+      assert.equal(result.allowed, false);
+    });
+  }
+
+  test("a genuinely configured tier still resolves", async () => {
+    const env = envWithTier("paid", {
+      KEYED: { limit: async () => ({ success: true }) },
+    });
+    const result = await applyTieredRateLimit(
+      new Request("https://api.metagraph.sh/x", {
+        headers: { authorization: `Bearer ${VALID_KEY}` },
+      }),
+      env,
+      CONFIG,
+    );
+    assert.equal(result.policy.limit, 5000);
   });
 });

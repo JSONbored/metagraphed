@@ -98,7 +98,14 @@ describe("Worker runtime", () => {
         DATA_RATE_LIMITER_KEYED: {
           limit({ key }: { key: string }) {
             keyedLimiterCalls += 1;
-            assert.equal(key, "data:99");
+            // #8608 made the key TIER-scoped as well, so moving an account
+            // between tiers starts a fresh window on the new ceiling instead
+            // of inheriting the old tier's partly-spent one. The property
+            // #8386 actually guards is unchanged and still asserted here: the
+            // key is derived from the ACCOUNT ID, never from the client IP.
+            assert.equal(key, "data:free:99");
+            assert.ok(key.endsWith(":99"), "keyed by accountId");
+            assert.ok(!/\d+\.\d+\.\d+\.\d+/.test(key), "never keyed by IP");
             return Promise.resolve({ success: true });
           },
         },

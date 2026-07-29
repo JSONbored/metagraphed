@@ -197,6 +197,7 @@ import {
   tieredRateLimitHeaders,
   type TieredRateLimitConfig,
 } from "../workers/tiered-rate-limit.ts";
+import { buildTierPolicies } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
@@ -1759,7 +1760,17 @@ export const MAX_MCP_BATCH_LENGTH = 10;
 // number). Exported for the tiered-rate-limit regression tests.
 export const MCP_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
   anonymous: { envVar: "MCP_RATE_LIMITER", limit: 100, windowSeconds: 60 },
+  // Fallback for a valid key on a tier not priced below -- never an outage.
   keyed: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 500, windowSeconds: 60 },
+  // #8608: the ceilings as code, one entry per rpc_accounts.tier. Until now
+  // every key got the single `keyed` policy regardless of tier, so a paid
+  // account and a free one were throttled identically -- the tier was resolved
+  // by validateApiKey and then discarded.
+  //
+  // `free` reuses MCP_RATE_LIMITER_KEYED at its existing 500/min, so nobody
+  // holding a key today loses headroom. `community` and `paid` get bindings of
+  // their OWN -- see src/api-tiers.ts for why sharing one is not an option.
+  tiers: buildTierPolicies("MCP_RATE_LIMITER", 500),
   keyPrefix: "mcp",
 };
 
@@ -11993,7 +12004,7 @@ async function enforceMcpRateLimit(
         "Too many MCP requests from this client; slow down.",
       ),
       429,
-      tieredRateLimitHeaders(rateLimit.policy),
+      tieredRateLimitHeaders(rateLimit.policy, rateLimit.tier, rateLimit.quota),
     );
   }
   // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
