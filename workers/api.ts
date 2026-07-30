@@ -422,6 +422,12 @@ import {
 } from "./config.ts";
 import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
 import {
+  subnetNewsItems,
+  type ChainEventRow,
+  type HyperparamSnapshot,
+  type NewsItem,
+} from "../src/subnet-news.ts";
+import {
   applyTieredRateLimit,
   tieredRejectionResponse,
   type TieredRateLimitConfig,
@@ -611,6 +617,67 @@ export async function runUpgradeRadarScan(env: Env, ctx?: Ctx) {
     // A tick that cannot run is one stale capture, not an outage.
     return { ok: false, reason: "unreachable" };
   }
+}
+
+// #8704: per-subnet chain news for the subnet feed.
+//
+// Builds FRESH requests against the upstream paths rather than forwarding the
+// feed's own request. That distinction is the #8242/#8353 bug twice over: a
+// forwarded request carries a path DATA_API has no route for, and the failure
+// is silent -- it degrades to an empty result that looks exactly like "this
+// subnet has no news". Every fetch here names the path it wants.
+//
+// Each source is isolated: one tier being unavailable costs its own items and
+// nothing else, and a total failure yields [] so the feed still serves its
+// registry and incident items.
+const SUBNET_NEWS_SOURCE_LIMIT = 40;
+
+async function fetchDataApiJson(env: Env, path: string): Promise<Row | null> {
+  if (!env.DATA_API?.fetch) return null;
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(`https://api.metagraph.sh${path}`),
+    );
+    if (!upstream.ok) return null;
+    return (await upstream.json()) as Row;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveSubnetNewsForFeed(
+  env: Env,
+  netuid: number,
+): Promise<NewsItem[]> {
+  if (!Number.isInteger(netuid) || netuid < 0) return [];
+  const limit = SUBNET_NEWS_SOURCE_LIMIT;
+  const [hyperparams, ownership, lease] = await Promise.all([
+    fetchDataApiJson(
+      env,
+      `/api/v1/subnets/${netuid}/hyperparameters/history?limit=${limit}`,
+    ),
+    fetchDataApiJson(
+      env,
+      `/api/v1/subnets/${netuid}/ownership-history?limit=${limit}`,
+    ),
+    fetchDataApiJson(
+      env,
+      `/api/v1/subnets/${netuid}/lease/history?limit=${limit}`,
+    ),
+  ]);
+  // The hyperparameter tier returns newest-first; the differ needs ascending
+  // order to compare a row against the one before it in time.
+  const snapshots = Array.isArray(hyperparams?.entries)
+    ? [...(hyperparams.entries as HyperparamSnapshot[])].sort(
+        (a, b) => Number(a?.block_number) - Number(b?.block_number),
+      )
+    : [];
+  return subnetNewsItems({
+    netuid,
+    hyperparamSnapshots: snapshots,
+    ownershipRows: (ownership?.ownership_changes as ChainEventRow[]) ?? [],
+    leaseRows: (lease?.lease_events as ChainEventRow[]) ?? [],
+  });
 }
 
 const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
@@ -2229,6 +2296,7 @@ export async function handleRequest(
           // silently degraded to the empty stub the same way #8242's bug
           // did). See that function's own doc comment for the full mechanism.
           loadLiveIncidents: resolveGlobalIncidentsForFeed,
+          loadSubnetNews: resolveSubnetNewsForFeed,
         }),
       feedCachePath,
     );
