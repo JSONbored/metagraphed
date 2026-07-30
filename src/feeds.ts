@@ -11,6 +11,12 @@
 //   /api/v1/feeds/subnets/{netuid}[.rss|.atom|.json]
 // Format precedence: explicit .rss/.atom/.json suffix > Accept header > JSON Feed.
 //
+// #8704: the per-subnet feed also carries chain governance news — item tags
+// "chain" + "hyperparam" (a parameter moved) or "governance"+"ownership" /
+// "governance"+"lease", each plus "sn<netuid>". Every one of those items links
+// to the block or extrinsic that proves it; an item that cannot cite a primary
+// source is never constructed (see src/subnet-news.ts).
+//
 // Optional `?tag=<tag>` narrows a feed to items carrying that tag, so a single
 // feed URL can serve a focused subscription (e.g. ?tag=incident, ?tag=coverage,
 // ?tag=artifact). Item tags: registry items carry "registry" + one of
@@ -42,6 +48,7 @@ import {
 } from "../workers/http.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { loadUpgradeFeedItems } from "./upgrade-radar.ts";
+import type { NewsItem } from "./subnet-news.ts";
 
 // Exported so the MCP feed loader (src/feed-mcp.ts) builds identical item URLs
 // rather than keeping a second copy of the origin that could drift.
@@ -789,6 +796,28 @@ interface FeedRequestDeps {
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
   errorResponse?: (code: string, message: string, status: number) => Response;
   loadLiveIncidents?: (env: Env) => Promise<unknown>;
+  /**
+   * #8704: per-subnet chain news (hyperparameter, ownership and lease changes).
+   * Injected like loadLiveIncidents rather than read here, because the sources
+   * are Postgres-backed tiers the Worker reaches through its DATA_API binding,
+   * which this module deliberately knows nothing about.
+   */
+  loadSubnetNews?: (env: Env, netuid: number) => Promise<NewsItem[]>;
+}
+
+async function loadSubnetNewsData(
+  deps: FeedRequestDeps,
+  env: Env,
+  netuid: number,
+): Promise<NewsItem[]> {
+  if (typeof deps.loadSubnetNews !== "function") return [];
+  try {
+    const items = await deps.loadSubnetNews(env, netuid);
+    return Array.isArray(items) ? items : [];
+  } catch {
+    // A tier that cannot answer costs this feed its chain items, nothing more.
+    return [];
+  }
 }
 
 async function loadIncidentsData(
@@ -977,12 +1006,17 @@ export async function handleFeedRequest(
       readData(readArtifact, env, "/metagraph/changelog.json"),
       loadIncidentsData(deps, env),
     ]);
+    // #8704: chain news joins registry changes and incidents here. Failure is
+    // non-fatal and yields no items -- a Postgres blip must degrade the feed,
+    // never 500 it, exactly as the incident source already does.
+    const news = await loadSubnetNewsData(deps, env, target.netuid);
     items = [
       ...registryItems(changelog, target.netuid),
       ...incidentItems(incidents, target.netuid),
+      ...news,
     ];
     title = `metagraphed — subnet ${target.netuid} feed`;
-    description = `Registry changes and incidents for Bittensor subnet ${target.netuid}.`;
+    description = `Registry changes, incidents, and chain governance activity for Bittensor subnet ${target.netuid}.`;
     homeUrl = `${SITE_URL}/subnets/${target.netuid}`;
     updatedSource = (changelog as Record<string, unknown> | null)?.generated_at;
   }

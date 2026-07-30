@@ -610,3 +610,83 @@ describe("timestamp coercion edge cases", () => {
     expect(lease[0].id).toBe("chain:sn18:lease:8724813:0");
   });
 });
+
+describe("existing feed items are unaffected (#8658 parity rule)", () => {
+  it("the subnet feed's registry and incident items are byte-identical with and without news", async () => {
+    // #8704 adds a source to an established feed. Prove the existing items did
+    // not shift — same ids, same order among themselves, same bodies — rather
+    // than assuming an append is harmless.
+    const { handleFeedRequest } = await import("../src/feeds.ts");
+    const { mockEnv } = await import("./row-type.ts");
+    const CHANGELOG = {
+      generated_at: "2026-07-20T00:00:00.000Z",
+      subnets: {
+        added: [{ netuid: 18, name: "Zeus" }],
+        modified: [{ netuid: 18, name: "Zeus" }],
+      },
+    };
+    const readArtifact = async (_env: unknown, path: string) =>
+      path === "/metagraph/changelog.json"
+        ? { ok: true, data: CHANGELOG }
+        : { ok: false };
+
+    async function feedItems(withNews: boolean) {
+      const url = new URL(
+        "https://api.metagraph.sh/api/v1/feeds/subnets/18.json",
+      );
+      const res = await handleFeedRequest(new Request(url), mockEnv(), url, {
+        readArtifact,
+        loadLiveIncidents: async () => null,
+        ...(withNews
+          ? {
+              loadSubnetNews: async () =>
+                ownershipChangeItems(18, [OWNERSHIP_ROW]),
+            }
+          : {}),
+      } as never);
+      return (JSON.parse(await res.text()) as { items: { id: string }[] })
+        .items;
+    }
+
+    const before = await feedItems(false);
+    const after = await feedItems(true);
+    const newsIds = new Set(
+      ownershipChangeItems(18, [OWNERSHIP_ROW]).map((i) => i.id),
+    );
+    // Every pre-existing item survives, byte-identical.
+    expect(after.filter((i) => !newsIds.has(i.id))).toEqual(before);
+    // ...and the news item actually landed, so this is not passing vacuously.
+    expect(after.length).toBe(before.length + newsIds.size);
+  });
+
+  it("a failing news source degrades the feed instead of breaking it", async () => {
+    const { handleFeedRequest } = await import("../src/feeds.ts");
+    const { mockEnv } = await import("./row-type.ts");
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/feeds/subnets/18.json",
+    );
+    const res = await handleFeedRequest(new Request(url), mockEnv(), url, {
+      readArtifact: async () => ({ ok: false }),
+      loadLiveIncidents: async () => null,
+      loadSubnetNews: async () => {
+        throw new Error("postgres down");
+      },
+    } as never);
+    expect(res.status).toBe(200);
+    expect(JSON.parse(await res.text()).items).toEqual([]);
+  });
+
+  it("a news source returning a non-array is ignored", async () => {
+    const { handleFeedRequest } = await import("../src/feeds.ts");
+    const { mockEnv } = await import("./row-type.ts");
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/feeds/subnets/18.json",
+    );
+    const res = await handleFeedRequest(new Request(url), mockEnv(), url, {
+      readArtifact: async () => ({ ok: false }),
+      loadLiveIncidents: async () => null,
+      loadSubnetNews: async () => null,
+    } as never);
+    expect(res.status).toBe(200);
+  });
+});
