@@ -68,8 +68,17 @@ export function SectionAnchor({
     >
       <div className="mb-3 flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
+          {/* #8536: bare `flex items-center gap-1.5` was the exact overflow
+              fingerprint on /status|/settings|/explorer|/endpoints@375 — the
+              title+tooltip+copy cluster had no shrink/truncate contract, so a
+              long section title forced the row past the viewport. Mirror the
+              #8433 drift-chip pattern: min-w-0 + truncate on the title, keep
+              the full value on `title` when it's a string. */}
+          <div className="flex min-w-0 max-w-full items-center gap-1.5">
+            <h2
+              className="min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong"
+              title={typeof title === "string" ? title : undefined}
+            >
               {title}
             </h2>
             {info ? <InfoTooltip label={info} /> : null}
@@ -77,7 +86,7 @@ export function SectionAnchor({
               type="button"
               onClick={onCopy}
               aria-label={`Copy link to ${typeof title === "string" ? title : id} section`}
-              className="mg-anchor-btn inline-flex items-center justify-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded min-h-11 min-w-11 p-0.5"
+              className="mg-anchor-btn inline-flex shrink-0 items-center justify-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded min-h-11 min-w-11 p-0.5"
             >
               {copied ? (
                 <Check className="size-3.5 text-accent" />
