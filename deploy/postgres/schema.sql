@@ -1271,6 +1271,56 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_api_key_blocks_one_active_per_account
   ON api_key_blocks (account_id) WHERE unblocked_at IS NULL;
 
 -- ---------------------------------------------------------------------------
+-- All-traffic usage + cost rollup (#8597) -- the measurement ADR 0022's
+-- pricing decision is waiting on.
+--
+-- Distinct from api_key_usage_daily above, which it does NOT replace. That
+-- table is per-ACCOUNT and only ever sees requests that presented an API key;
+-- it powers the tenant dashboard. Keyless traffic is the overwhelming
+-- majority of this API's volume by design ("keyless stays the generous
+-- default") and is precisely the subject of "does the free tier cost too
+-- much" -- so a keyed-only counter cannot answer the question at all. This
+-- table counts EVERYTHING, with no account dimension.
+--
+-- ROUTE FAMILY IS THE ROUTE TEMPLATE, e.g. '/api/v1/subnets/{netuid}/events'.
+-- Bucketing by raw pathname would be a cardinality bomb (~130 live netuids,
+-- unbounded ss58 addresses); the template set is bounded by the size of
+-- API_ROUTES (~178) by construction. See src/usage-rollup.ts for why that
+-- beats a hand-maintained family map.
+--
+-- COST SHAPE is which bill the request lands on (ADR 0022's central claim):
+-- 'edge' (Cloudflare-metered, near-zero marginal), 'postgres' (the indexer
+-- box's FIXED capacity -- marginal cost is pool contention, not a per-request
+-- charge), 'r2-bulk' (storage + egress), 'ai' (real per-call cost). This is
+-- deliberately a different axis from the quota's cost WEIGHT: the weight says
+-- what to charge a caller, the shape says which of our costs it consumes. A
+-- rollup with counts but no shape cannot confirm or falsify the memo.
+--
+-- `day` is in the PK because a TimescaleDB hypertable partitioned on it
+-- requires the partition column in every unique constraint (same rule the
+-- blocks table documents above). No retention policy is set here on purpose:
+-- this is a small, bounded aggregate (~178 families x 4 shapes x 1 row/day)
+-- whose entire value is the long baseline a pricing decision needs.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS api_usage_rollup (
+  day            DATE NOT NULL,
+  route_family   TEXT NOT NULL,
+  cost_shape     TEXT NOT NULL,
+  request_count  BIGINT NOT NULL DEFAULT 0,
+  -- Of request_count, how many presented a valid API key. Keyed vs keyless is
+  -- the split the pricing question turns on, so it is a column rather than a
+  -- separate table or a second row per bucket.
+  keyed_count    BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, route_family, cost_shape)
+);
+-- The readout query: one day's or one window's families ordered by volume.
+CREATE INDEX IF NOT EXISTS idx_api_usage_rollup_day
+  ON api_usage_rollup (day DESC, request_count DESC);
+-- The "which cost shape dominates" query -- the one ADR 0022 actually needs.
+CREATE INDEX IF NOT EXISTS idx_api_usage_rollup_shape
+  ON api_usage_rollup (cost_shape, day DESC);
+
+-- ---------------------------------------------------------------------------
 -- Per-account daily quota counter (#8608), in COST units rather than requests
 -- (src/route-cost-weights.ts, following ADR 0022's four cost shapes -- a
 -- cached artifact read spends 1, an LLM-backed call 25).
