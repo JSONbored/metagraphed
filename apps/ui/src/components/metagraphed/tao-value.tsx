@@ -11,6 +11,10 @@ import { useValueUnit } from "@/lib/metagraphed/value-unit";
  * Layout:
  *  - inline (default): "τ 1.2345  ≈ $8.42"
  *  - stacked:          amount on top, USD as a muted line below
+ *
+ * Sub-unit amounts are not pre-rounded away: |amount| < 1 is passed through
+ * to formatNumber's significant-digit tier so dust like 0.000166248 renders
+ * as "τ 0.0001662" rather than "τ 0".
  */
 export function TaoValue({
   amount,
@@ -34,7 +38,9 @@ export function TaoValue({
     return <span className="mg-type-data text-ink-muted">—</span>;
   }
 
-  const tao = `τ ${formatNumber(Number(amount.toFixed(precision)))}`;
+  const displayAmount =
+    Math.abs(amount) >= 1 ? Number(amount.toFixed(precision)) : amount;
+  const tao = `τ ${formatNumber(displayAmount)}`;
   const usd = formatUsdApprox(amount, price);
 
   // Fall back to τ when USD is requested but unavailable.

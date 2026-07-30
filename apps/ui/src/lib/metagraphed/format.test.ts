@@ -6,6 +6,7 @@ import {
   formatRelative,
   relativeFromDiff,
   isStaleFreshness,
+  formatNumber,
   formatTao,
   formatUsdApprox,
   subnetAgeDays,
@@ -262,5 +263,57 @@ describe("formatSubnetAge", () => {
 
   it("thousands-separates large day counts via formatNumber", () => {
     expect(formatSubnetAge(1234)).toBe("1,234 days old");
+  });
+});
+
+describe("formatNumber (#8815)", () => {
+  it("returns fallback for nullish / non-finite", () => {
+    expect(formatNumber(undefined)).toBe("—");
+    expect(formatNumber(null)).toBe("—");
+    expect(formatNumber(Number.NaN)).toBe("—");
+    expect(formatNumber(Number.POSITIVE_INFINITY, "n/a")).toBe("n/a");
+  });
+
+  it("renders exact zero as 0", () => {
+    expect(formatNumber(0)).toBe("0");
+  });
+
+  it("keeps integers thousands-grouped with no decimal point", () => {
+    expect(formatNumber(1234)).toBe("1,234");
+    expect(formatNumber(8739335)).toBe("8,739,335");
+  });
+
+  it("allows up to 4 fraction digits for |n| >= 1", () => {
+    expect(formatNumber(1234.56789)).toBe("1,234.5679");
+    expect(formatNumber(1.2345)).toBe("1.2345");
+  });
+
+  it("keeps four significant digits for sub-unit dust so it never collapses to 0", () => {
+    expect(formatNumber(0.2985)).toBe("0.2985");
+    expect(formatNumber(0.000166248)).toBe("0.0001662");
+    expect(formatNumber(0.00003)).toBe("0.00003");
+    expect(formatNumber(0.000191022)).toBe("0.000191");
+    expect(formatNumber(0.000000001)).toBe("0.000000001");
+  });
+
+  it("preserves sign on sub-unit values", () => {
+    expect(formatNumber(-0.000166248)).toBe("-0.0001662");
+  });
+
+  it("never formats a finite non-zero as the string 0", () => {
+    for (const n of [0.000166248, 0.00003, 0.000191022, 0.2985, 1e-12, -1e-9]) {
+      expect(formatNumber(n)).not.toBe("0");
+    }
+  });
+});
+
+describe("formatUsdApprox (#8815)", () => {
+  it("does not flatten sub-cent USD to $0", () => {
+    expect(formatUsdApprox(0.000166248, 1)).not.toBe("$0");
+    expect(formatUsdApprox(0.000166248, 1)).toBe("$0.0001662");
+  });
+
+  it("keeps 2dp for dollar-scale amounts", () => {
+    expect(formatUsdApprox(2.345, 1)).toBe("$2.35");
   });
 });
