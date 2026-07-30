@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { safeExternalUrl } from "./external-link";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ExternalLink, safeExternalUrl } from "./external-link";
 
 describe("safeExternalUrl", () => {
   it("allows ordinary public http(s) URLs", () => {
@@ -43,5 +45,17 @@ describe("safeExternalUrl", () => {
     for (const href of unsafe) {
       expect(safeExternalUrl(href), href).toBeUndefined();
     }
+  });
+});
+
+describe("ExternalLink children wrapper (#8537)", () => {
+  it("puts min-w-0 and truncate on the children wrapper so long labels can shrink", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(ExternalLink, {
+        href: "https://example.com/docs",
+        children: "Start here: a very long primary app surface name",
+      }),
+    );
+    expect(markup).toMatch(/class="[^"]*\bmin-w-0\b[^"]*\btruncate\b[^"]*"/);
   });
 });

@@ -141,7 +141,7 @@ export function ExternalLink({
 
   const content = (
     <>
-      <span className="truncate">{children}</span>
+      <span className="min-w-0 truncate">{children}</span>
       {safeHref ? (
         <ExternalIcon className="size-3 shrink-0 text-ink-muted" />
       ) : null}
