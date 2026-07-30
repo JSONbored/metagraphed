@@ -124,7 +124,7 @@ export const Route = createFileRoute("/accounts/$ss58")({
         description="Bittensor addresses use the base58 alphabet (no 0, O, I, or l), are 46–49 characters long, and typically start with 5. Check for a truncated or wrong-chain address, then try again."
         action={{ label: "Back to accounts", href: "/accounts" }}
       />
-      <p className="mt-3 text-center text-[11px] text-ink-muted">
+      <p className="mt-3 text-center mg-type-caption text-ink-muted">
         Example:{" "}
         <span className="font-mono break-all text-ink-strong">
           5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY

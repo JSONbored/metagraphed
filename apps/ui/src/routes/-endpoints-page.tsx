@@ -360,7 +360,7 @@ function PoolsTable() {
                   <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
                   <td className="px-3 py-2 mg-type-caption">{p.region ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
-                  <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
+                  <td className="px-3 py-2 text-center mg-type-caption text-ink-muted">
                     {p.archive_capable ? "yes" : "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
@@ -525,7 +525,7 @@ function RpcEndpointsTable() {
                 <td className="px-3 py-2 text-center">
                   <HealthDot state={statusToHealth(e.status)} />
                 </td>
-                <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
+                <td className="px-3 py-2 text-center mg-type-caption text-ink-muted">
                   {e.archive_support == null ? "—" : e.archive_support ? "yes" : "no"}
                 </td>
                 <td className="px-3 py-2 text-right mg-type-data">

@@ -98,7 +98,7 @@ export function HealthPage() {
               <ActionBar>
                 <Link
                   to="/status"
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
                 >
                   Public status
                   <ArrowUpRight className="size-3" aria-hidden="true" />
@@ -316,7 +316,7 @@ function AutoRefreshControl({
   const pauseLabel = !enabled ? "Paused" : !visible ? "Tab hidden" : null;
 
   return (
-    <div className="inline-flex items-center rounded-full border border-border bg-card overflow-hidden text-[11px]">
+    <div className="inline-flex items-center rounded-full border border-border bg-card overflow-hidden mg-type-caption">
       <label className="sr-only" htmlFor="health-interval">
         Auto-refresh interval
       </label>
@@ -680,7 +680,7 @@ function Incidents({ interval }: { interval: number | false }) {
         />
       </Panel>
 
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+      <div className="flex flex-wrap items-center gap-1.5 mg-type-label">
         {FILTER_OPTIONS.map((opt) => (
           <button
             key={opt.value}
@@ -698,7 +698,7 @@ function Incidents({ interval }: { interval: number | false }) {
             )}
           >
             {opt.label}
-            <span className="text-[10px] tabular-nums opacity-80">{opt.count}</span>
+            <span className="mg-type-data-sm tabular-nums opacity-80">{opt.count}</span>
           </button>
         ))}
         <span className="ml-auto mg-type-data-sm text-ink-muted">
@@ -758,7 +758,7 @@ function Incidents({ interval }: { interval: number | false }) {
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="block w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
+              className="block w-full rounded-xl border border-border bg-card px-3 py-2.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors min-h-9"
             >
               {showAll ? "Show fewer" : `Show all ${groups.length} grouped incidents`}
             </button>

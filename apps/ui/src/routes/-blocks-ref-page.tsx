@@ -538,7 +538,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           subtitle="Curated events above are grouped by extrinsic; this table is the raw per-event stream — every pallet-level event in the block, decoded from the chain."
         >
           <details className="group rounded border border-border bg-card">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span>
                 {chainEventsQuery.isPending
                   ? "Loading raw events…"
@@ -624,7 +624,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           subtitle="Copy a ready-to-run request for this block."
         >
           <details className="group rounded border border-border bg-card">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span>API &amp; artifact URLs</span>
               <span className="mg-type-caption">
                 <span className="group-open:hidden">Show</span>
@@ -777,7 +777,7 @@ function GroupedEvents({
         <button
           type="button"
           onClick={() => setOpen(allOpen ? new Set() : new Set(groups.map((g) => g.key)))}
-          className="text-[11px] font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
+          className="mg-type-caption font-medium text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
         >
           {allOpen ? "Collapse all" : "Expand all"}
         </button>
