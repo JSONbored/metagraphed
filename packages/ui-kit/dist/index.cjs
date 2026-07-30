@@ -4340,6 +4340,7 @@ function SankeyMini({
   const viewH = vertical ? columnExtent : stackExtent;
   const px = (col, stack) => vertical ? stack : col;
   const py = (col, stack) => vertical ? col : stack;
+  const lastColumn = Math.max(...nodes.map((n) => n.column));
   const label = ariaLabel ?? `Stake flow diagram: ${links.map((l) => `${l.source} to ${l.target} ${formatValue(l.value)}`).join(", ")}`;
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "svg",
@@ -4418,9 +4419,9 @@ function SankeyMini({
                 stackSize >= MIN_LABEL_STACK_SIZE ? /* @__PURE__ */ jsxRuntime.jsx(
                   "text",
                   {
-                    x: vertical ? x + w / 2 : x + NODE_THICKNESS + 4,
+                    x: vertical ? x + w / 2 : node.column === lastColumn ? x - 4 : x + NODE_THICKNESS + 4,
                     y: vertical ? y - 4 : y + h / 2,
-                    textAnchor: vertical ? "middle" : "start",
+                    textAnchor: vertical ? "middle" : node.column === lastColumn ? "end" : "start",
                     dominantBaseline: vertical ? "auto" : "middle",
                     fill: "var(--ink-strong)",
                     className: "mg-type-data-sm",
