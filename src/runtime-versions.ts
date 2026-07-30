@@ -13,6 +13,17 @@
 // earliest block that DOES carry a reading, so a caller can tell "a version
 // active before this block is invisible here" instead of reading a short
 // transitions list as the network's whole runtime-upgrade history.
+//
+// That prefix-only disclosure was not enough, and said so honestly while
+// still misleading: readings exist at BOTH ends of mainnet and are missing
+// through the middle, so `coverage_from_block` reported 0 (genesis) while the
+// timeline was missing ~4,000,000 blocks of upgrades — 23 recorded
+// transitions against roughly 200 real ones. Verified against an archive node
+// 2026-07-30: this endpoint had spec 217 active from block 4,600,000 to
+// 8,599,188, while the chain ran spec 244 at block 5,000,000, 292 at
+// 6,000,000, 348 at 7,000,000, 393 at 8,000,000 and 422 at 8,480,000.
+// `coverage_complete`/`coverage_gaps` (see detectRuntimeCoverageGaps) expose
+// interior holes, which a single coverage floor structurally cannot.
 
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -73,6 +84,14 @@ export function formatRuntimeTransition(
 // as current. current_spec_version can itself still lag/mislead if the most
 // recent blocks failed to capture a reading (best-effort, see the module
 // docstring) — it is the latest KNOWN reading, not a live guarantee.
+export interface RuntimeCoverageGap {
+  after_spec_version: number;
+  before_spec_version: number;
+  after_block: number;
+  before_block: number;
+  block_span: number;
+}
+
 export interface RuntimeVersionHistory {
   schema_version: 1;
   transitions: RuntimeTransition[];
@@ -80,6 +99,50 @@ export interface RuntimeVersionHistory {
   current_spec_version: number | null;
   coverage_from_block: number | null;
   coverage_from_at: string | null;
+  coverage_complete: boolean;
+  coverage_gaps: RuntimeCoverageGap[];
+}
+
+// Largest block distance between two consecutive recorded transitions that is
+// still consistent with complete coverage. Deliberately generous: mainnet has
+// gone ~37k blocks (~5 days) between upgrades in normal operation, and quiet
+// stretches are real, so this only fires on distances no upgrade cadence
+// explains.
+//
+// Detection is by BLOCK DISTANCE, not by spec_version distance, because a
+// spec_version skip is NOT evidence of missing data — releases that never
+// reach mainnet leave real holes in the version sequence (mainnet went 424 →
+// 432 → 437, skipping 425-431 and 433-436, with no data missing). Block
+// distance has no such confound.
+export const MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN = 500_000;
+
+// Interior holes in the transition timeline. `coverage_from_block` alone
+// cannot express these: it reports the earliest block carrying a reading, so
+// a timeline that starts at genesis and then loses four million blocks in the
+// middle still advertises `coverage_from_block: 0` and reads as complete
+// history. That is exactly the live mainnet case — `blocks.spec_version` was
+// added by a nullable ALTER (migration 0017) and never back-filled, leaving
+// readings clustered at the two ends of the chain.
+export function detectRuntimeCoverageGaps(
+  transitions: RuntimeTransition[],
+  maxSpan: number = MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN,
+): RuntimeCoverageGap[] {
+  const gaps: RuntimeCoverageGap[] = [];
+  for (let i = 1; i < transitions.length; i += 1) {
+    const prev = transitions[i - 1];
+    const next = transitions[i];
+    const span = next.block_number - prev.block_number;
+    if (span > maxSpan) {
+      gaps.push({
+        after_spec_version: prev.spec_version,
+        before_spec_version: next.spec_version,
+        after_block: prev.block_number,
+        before_block: next.block_number,
+        block_span: span,
+      });
+    }
+  }
+  return gaps;
 }
 
 export function buildRuntimeVersionHistory(
@@ -91,6 +154,7 @@ export function buildRuntimeVersionHistory(
     .map(formatRuntimeTransition)
     .filter((entry): entry is RuntimeTransition => entry != null);
   const earliest = transitions[0] ?? null;
+  const coverageGaps = detectRuntimeCoverageGaps(transitions);
   return {
     schema_version: 1,
     transitions,
@@ -98,6 +162,8 @@ export function buildRuntimeVersionHistory(
     current_spec_version: toNonNegativeInt(latestRow?.spec_version),
     coverage_from_block: earliest?.block_number ?? null,
     coverage_from_at: earliest?.observed_at ?? null,
+    coverage_complete: coverageGaps.length === 0,
+    coverage_gaps: coverageGaps,
   };
 }
 

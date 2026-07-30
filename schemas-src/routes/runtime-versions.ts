@@ -18,6 +18,20 @@ const RuntimeVersionTransitionSchema = z
   })
   .strict();
 
+// An interior hole in the timeline: two consecutive recorded transitions too
+// far apart in block distance for any real upgrade cadence to explain, so
+// upgrades between them are missing rather than absent. Distinct from the
+// `coverage_from_block` floor, which can only describe a missing PREFIX.
+const RuntimeCoverageGapSchema = z
+  .object({
+    after_spec_version: z.int().min(0),
+    before_spec_version: z.int().min(0),
+    after_block: z.int().min(0),
+    before_block: z.int().min(0),
+    block_span: z.int().min(0),
+  })
+  .strict();
+
 export const RuntimeVersionsArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -26,6 +40,8 @@ export const RuntimeVersionsArtifactSchema = z
     current_spec_version: z.int().min(0).nullable(),
     coverage_from_block: z.int().min(0).nullable(),
     coverage_from_at: z.string().nullable(),
+    coverage_complete: z.boolean(),
+    coverage_gaps: z.array(RuntimeCoverageGapSchema),
   })
   .passthrough();
 export type RuntimeVersionsArtifact = z.infer<
