@@ -168,6 +168,10 @@ const COMPUTED_ARTIFACTS = new Set([
   "health-latest",
   "health-summary",
   "health-subnet",
+  // #8699: derived at request time from the router's own mainnet-only
+  // predicate, so there is deliberately no networks.json to validate here --
+  // its schema is exercised by validate-api's per-route response validation.
+  "network-capabilities",
 ]);
 
 const ajv = new Ajv2020({
