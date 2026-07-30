@@ -1,0 +1,65 @@
+---
+title: Limits and access
+description: Per-minute ceilings for every surface, the daily unit budget, what each tier gets, and how to move up one. Generated from the rate-limit config that enforces them.
+---
+
+All numbers on this page are generated from the configuration that enforces them. If a ceiling here disagrees with what you observe, that is a bug — please [open an issue](https://github.com/JSONbored/metagraphed/issues/new).
+
+Most of the API needs no key at all. A key raises your per-minute ceiling; a tier above `free` raises it further.
+
+## Per-minute ceilings
+
+Requests per minute, per surface. Each surface has its own burst profile — an LLM-backed `/ask` cannot absorb what a cached artifact read can — so the ceilings differ by surface, not just by tier.
+
+| Surface                   | What it covers                                                           | No key | Free | Community |  Paid |
+| ------------------------- | ------------------------------------------------------------------------ | -----: | ---: | --------: | ----: |
+| **REST API**              | Everything under `/api/v1` — registry, chain, and analytics reads.       |     60 |  300 |       900 | 3,000 |
+| **MCP server**            | Tool calls from an agent connected to the MCP endpoint.                  |    100 |  500 |     1,500 | 5,000 |
+| **AI search**             | `/api/v1/ask` and semantic search — LLM-backed, so the ceiling is lower. |     20 |  100 |       300 | 1,000 |
+| **State queries**         | Live chain reads proxied to an RPC node.                                 |     20 |  100 |       300 | 1,000 |
+| **Webhook subscriptions** | Creating and managing webhook subscriptions.                             |     10 |   50 |       150 |   500 |
+
+The tier columns are multiples of the keyed ceiling: `free` is 1×, `community` is 3×, `paid` is 10×. `free` is deliberately 1× — every key issued today is on `free`, and introducing tiers must not retroactively tighten anyone.
+
+## Daily budget
+
+The per-minute ceiling bounds bursts. The daily budget bounds volume, and unlike the per-minute limit it is **per account, shared across every surface** — one budget covering everything you do, rather than a separate allowance per surface that could be exhausted five separate times.
+
+It counts _cost units_, not requests: a cached artifact read costs less than an LLM-backed call. The budget resets at UTC midnight.
+
+| Tier        |    Daily budget |
+| ----------- | --------------: |
+| `free`      |        uncapped |
+| `community` |   250,000 units |
+| `paid`      | 2,000,000 units |
+
+`free` is uncapped daily on purpose, for the same reason its multiplier is 1×: a daily quota is a paid-model control, not a new restriction on people who already hold a key. The per-minute ceiling still applies.
+
+## Moving up a tier
+
+- **Free** — issue yourself a key. No application, no review.
+- **Community** — for people actively contributing to the registry: surface submissions that land, subnet enrichment, fixes. Ask in an issue or a PR you already have open; it is granted against a contribution record, not an application form.
+- **Paid** — [open an issue](https://github.com/JSONbored/metagraphed/issues/new) describing your workload and we will work out what you need.
+
+## When you hit a limit
+
+A rejected request returns **429** with headers describing what you hit:
+
+| Header                  | Meaning                                                                           |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `x-ratelimit-limit`     | The ceiling you hit                                                               |
+| `x-ratelimit-remaining` | Always `0` on a 429 — the limit was reached, by definition                        |
+| `x-ratelimit-reset`     | When capacity returns                                                             |
+| `x-ratelimit-policy`    | The limit and its window, as `limit;w=seconds`                                    |
+| `x-ratelimit-scope`     | `daily-quota` if you exhausted the day's budget, otherwise the per-minute limiter |
+| `x-ratelimit-tier`      | The tier the limit was applied at                                                 |
+| `retry-after`           | Seconds to wait                                                                   |
+
+Two things worth knowing about the values:
+
+- On a **per-minute** rejection, `x-ratelimit-reset` is an upper bound — now plus the window — not the exact window boundary. Cloudflare's rate-limiting primitive returns only allowed/blocked, so there is no exact reset instant to report. We would rather say so than fabricate precision.
+- On a **daily-quota** rejection, `x-ratelimit-reset` is exact: the next UTC midnight. Check `x-ratelimit-scope` before deciding how long to back off — retrying in 60 seconds against an exhausted daily budget will simply fail again.
+
+## Keys
+
+Keep a key out of client-side code and out of version control — anything shipped to a browser is public. If a key is exposed, issue a new one and revoke the old one; revocation takes effect immediately. Rotating on a schedule is reasonable, and rotating on exposure is not optional.
