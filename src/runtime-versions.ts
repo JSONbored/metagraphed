@@ -132,6 +132,14 @@ export function detectRuntimeCoverageGaps(
     const prev = transitions[i - 1];
     const next = transitions[i];
     const span = next.block_number - prev.block_number;
+    // Consecutive spec versions cannot bracket a missing transition: any
+    // hidden upgrade would have to be to a version strictly between them, and
+    // there is no integer between n and n+1. However far apart the blocks
+    // are, that interval is simply a quiet stretch — one long-running
+    // runtime, which is a fact about the chain, not a hole in our data.
+    // (Real case after the #8756 backfill: spec 141 → 142 sat 571,805 blocks
+    // apart and was reported as a gap purely on distance.)
+    if (next.spec_version === prev.spec_version + 1) continue;
     if (span > maxSpan) {
       gaps.push({
         after_spec_version: prev.spec_version,

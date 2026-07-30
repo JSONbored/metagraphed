@@ -288,25 +288,27 @@ describe("detectRuntimeCoverageGaps", () => {
   });
 
   test("a span exactly at the threshold is not a gap; one block over is", () => {
+    // Non-consecutive specs (1 -> 3): consecutive versions are exempt from
+    // distance checks entirely, so they cannot exercise the threshold.
     assert.deepEqual(
       detectRuntimeCoverageGaps([
         t(1, 0),
-        t(2, MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN),
+        t(3, MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN),
       ]),
       [],
     );
     assert.equal(
       detectRuntimeCoverageGaps([
         t(1, 0),
-        t(2, MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN + 1),
+        t(3, MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN + 1),
       ]).length,
       1,
     );
   });
 
   test("honours an explicit maxSpan override", () => {
-    assert.equal(detectRuntimeCoverageGaps([t(1, 0), t(2, 100)], 50).length, 1);
-    assert.deepEqual(detectRuntimeCoverageGaps([t(1, 0), t(2, 100)], 150), []);
+    assert.equal(detectRuntimeCoverageGaps([t(1, 0), t(3, 100)], 50).length, 1);
+    assert.deepEqual(detectRuntimeCoverageGaps([t(1, 0), t(3, 100)], 150), []);
   });
 
   test("empty and single-entry timelines have no gaps", () => {
@@ -340,5 +342,46 @@ describe("buildRuntimeVersionHistory coverage disclosure", () => {
     const out = buildRuntimeVersionHistory([]);
     assert.equal(out.coverage_complete, true);
     assert.deepEqual(out.coverage_gaps, []);
+  });
+});
+
+describe("detectRuntimeCoverageGaps — consecutive spec versions", () => {
+  const t = (spec_version: number, block_number: number) => ({
+    spec_version,
+    block_number,
+    observed_at: null,
+  });
+
+  test("consecutive versions are never a gap, however far apart the blocks", () => {
+    // The real post-backfill case: spec 141 -> 142, 571,805 blocks apart.
+    // No integer sits between 141 and 142, so nothing can be hidden there.
+    const gaps = detectRuntimeCoverageGaps([
+      t(141, 1_971_974),
+      t(142, 2_543_779),
+    ]);
+    assert.deepEqual(gaps, []);
+  });
+
+  test("a version SKIP over a long span is still reported", () => {
+    // 127 -> 133 skips five versions across ~597k blocks: either they never
+    // reached mainnet or our coverage is short, and the payload cannot tell
+    // those apart — so it stays flagged.
+    const gaps = detectRuntimeCoverageGaps([
+      t(127, 806_973),
+      t(133, 1_404_224),
+    ]);
+    assert.equal(gaps.length, 1);
+    assert.equal(gaps[0].after_spec_version, 127);
+    assert.equal(gaps[0].before_spec_version, 133);
+  });
+
+  test("a consecutive pair does not mask a real gap elsewhere in the list", () => {
+    const gaps = detectRuntimeCoverageGaps([
+      t(141, 1_971_974),
+      t(142, 2_543_779), // consecutive, skipped
+      t(150, 4_000_000), // skip + long span, reported
+    ]);
+    assert.equal(gaps.length, 1);
+    assert.equal(gaps[0].after_spec_version, 142);
   });
 });
