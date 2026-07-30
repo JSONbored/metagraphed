@@ -194,7 +194,7 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="block w-full rounded border border-border bg-card px-3 py-2 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+          className="block w-full rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
         >
           Show all {formatNumber(filtered.length)} memberships
         </button>
@@ -443,7 +443,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
                     <button
                       type="button"
                       onClick={open}
-                      className="inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Percent className="size-3" aria-hidden />
                       Manage take
@@ -594,7 +594,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
       <div className="mt-6">
         <Link
           to="/validators"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
         >
           ← All validators
         </Link>
