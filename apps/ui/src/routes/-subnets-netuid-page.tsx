@@ -28,7 +28,8 @@ import {
 } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState, Skeleton, RECOVERY } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton, StatUnavailable, RECOVERY } from "@/components/metagraphed/states";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
@@ -1180,11 +1181,19 @@ function ActivityPanel({ netuid }: { netuid: number }) {
 const TOP_CATEGORY_COUNT = 3;
 
 function ActivityEventRollup({ netuid }: { netuid: number }) {
-  const { data: summaryRes } = useQuery(subnetEventSummaryQuery(netuid));
-  const { data: axonRes } = useQuery(subnetAxonRemovalsQuery(netuid));
-  const summary = summaryRes?.data;
-  const axon = axonRes?.data;
-  if (!summary && !axon) return null;
+  const summaryResult = useQuery(subnetEventSummaryQuery(netuid));
+  const axonResult = useQuery(subnetAxonRemovalsQuery(netuid));
+  const summaryPhase = statPhase(summaryResult);
+  const axonPhase = statPhase(axonResult);
+  const summary = summaryResult.data?.data;
+  const axon = axonResult.data?.data;
+
+  // Both still pending with no data yet — wait. Once either settles (ready or
+  // error), render the strip so a dual failure shows four Unavailable tiles
+  // instead of vanishing (#8818).
+  if (summaryPhase === "pending" && axonPhase === "pending" && !summary && !axon) {
+    return null;
+  }
 
   const categories = summary?.categories ?? [];
   const topCategories = [...categories]
@@ -1195,34 +1204,58 @@ function ActivityEventRollup({ netuid }: { netuid: number }) {
   const totalTao = categories.reduce((sum, c) => sum + c.amount_tao, 0);
   const totalAlpha = categories.reduce((sum, c) => sum + c.alpha_amount, 0);
 
+  const summaryValue = (ready: ReactNode) =>
+    summaryPhase === "pending" ? (
+      <Skeleton className="h-5 w-12" />
+    ) : summaryPhase === "error" ? (
+      <StatUnavailable />
+    ) : (
+      ready
+    );
+
+  const axonValue =
+    axonPhase === "pending" ? (
+      <Skeleton className="h-5 w-12" />
+    ) : axonPhase === "error" ? (
+      <StatUnavailable />
+    ) : (
+      formatNumber(axon?.removals)
+    );
+
   return (
     <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatTile
         icon={Activity}
         eyebrow="Events"
-        value={formatNumber(summary?.total_events ?? 0)}
-        hint={summary ? `over ${summary.window}` : "—"}
+        value={summaryValue(formatNumber(summary?.total_events))}
+        hint={summaryPhase === "ready" && summary ? `over ${summary.window}` : "—"}
         tooltip="Total decoded chain events for this subnet in the window."
       />
       <StatTile
         icon={Layers}
         eyebrow="Kinds / categories"
-        value={`${formatNumber(summary?.kind_count ?? 0)} / ${formatNumber(summary?.category_count ?? 0)}`}
-        hint={topCategories || "—"}
+        value={summaryValue(
+          `${formatNumber(summary?.kind_count)} / ${formatNumber(summary?.category_count)}`,
+        )}
+        hint={summaryPhase === "ready" ? topCategories || "—" : "—"}
         tooltip="Distinct event kinds and categories seen, with the top categories by volume."
       />
       <StatTile
         icon={Coins}
         eyebrow="TAO / alpha moved"
-        value={`${taoCompact(totalTao)} τ`}
-        hint={`${taoCompact(totalAlpha)} α`}
+        value={summaryValue(`${taoCompact(totalTao)} τ`)}
+        hint={summaryPhase === "ready" ? `${taoCompact(totalAlpha)} α` : "—"}
         tooltip="Summed TAO and alpha amounts across all categorized events in the window."
       />
       <StatTile
         icon={UserMinus}
         eyebrow="Axon removals"
-        value={formatNumber(axon?.removals ?? 0)}
-        hint={axon ? `${formatNumber(axon.distinct_removers)} removers · ${axon.window}` : "—"}
+        value={axonValue}
+        hint={
+          axonPhase === "ready" && axon
+            ? `${formatNumber(axon.distinct_removers)} removers · ${axon.window}`
+            : "—"
+        }
         tooltip="AxonInfoRemoved events and distinct removing hotkeys over the window."
       />
     </div>
