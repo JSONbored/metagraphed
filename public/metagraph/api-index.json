@@ -1247,6 +1247,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "network-capabilities",
+      "path": "/metagraph/networks.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/NetworkCapabilitiesArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "runtime-versions",
       "path": "/metagraph/runtime.json",
       "retirement": null,
@@ -9216,6 +9225,25 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/networks.json",
+      "cache": "short",
+      "description": "List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers \"can I get chain data on testnet?\" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.",
+      "id": "network-capabilities",
+      "mainnet_only": false,
+      "method": "GET",
+      "networks": [
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
+      ],
+      "path": "/api/v1/networks",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/runtime.json",

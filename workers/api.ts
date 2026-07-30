@@ -421,6 +421,8 @@ import {
   WEBHOOK_TTL_SECONDS,
 } from "./config.ts";
 import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
+import { buildNetworksPayload } from "../src/network-capabilities.ts";
+import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
 import {
   subnetNewsItems,
   type ChainEventRow,
@@ -1960,6 +1962,34 @@ export async function handleRequest(
   // handler. Bare paths fall through to the full dispatch below unchanged, so
   // mainnet behaviour is byte-identical to before networks existed.
   const networkRoute = resolveNetworkPrefix(url);
+
+  // #8699: the capability matrix, answered here — after the prefix is resolved
+  // but BEFORE any network-scoped dispatch, the local gate, or the
+  // mainnet-only gate. This is the one route that must never 404 on any
+  // network, because it is how a caller learns what does 404; answering it
+  // downstream of any of those gates would break exactly the cases it exists
+  // for (/api/v1/local/networks, /api/v1/testnet/networks).
+  //
+  // Resolved from networkRoute.url, not `url`, so the prefixed and bare forms
+  // reach it identically. The document is the same on every network: it
+  // describes the whole matrix rather than one network's view, so an agent can
+  // plan a cross-network task from a single request.
+  if (networkRoute.url.pathname === "/api/v1/networks") {
+    return envelopeResponse(
+      request,
+      {
+        data: buildNetworksPayload({
+          routes: API_ROUTES,
+          networks: NETWORKS,
+          isMainnetOnly: isMainnetOnlyApiPath,
+          publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
+        }),
+        meta: { contract_version: contractVersion(env) },
+      },
+      "short",
+    );
+  }
+
   if (networkRoute.explicit) {
     if (networkRoute.network.isDefault) {
       url = networkRoute.url;
@@ -4079,6 +4109,10 @@ const NETWORKS = {
   local: { id: "local", chain: "local", prefix: "local", isDefault: false },
 };
 const DEFAULT_NETWORK = NETWORKS.mainnet;
+
+// #8699: exported for the get_networks MCP tool, so the agent-facing matrix is
+// built from the same map the router dispatches on.
+export const MCP_NETWORKS = NETWORKS;
 
 // `local` is a per-developer subtensor metagraphed cannot enumerate or host, so
 // instead of registry data /api/v1/local returns the setup pointer: point your

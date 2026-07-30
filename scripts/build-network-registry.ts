@@ -17,6 +17,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { buildEconomicsArtifact } from "./lib/economics-artifacts.ts";
+// #8699: the published-artifact list lives in src/ because the Worker imports
+// it at runtime and this module has a top-level await.
+import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
+void NETWORK_PUBLISHED_ARTIFACT_PATHS;
 import {
   artifactOutputPath,
   backfilledIdentityUrl,

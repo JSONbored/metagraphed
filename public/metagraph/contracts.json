@@ -1522,6 +1522,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "The per-network capability matrix (#8699): for each addressable network, which route families it serves, which it does not, and which are partial. Derived at request time from the router's own mainnet-only predicate — never hand-maintained, because a wrong capability matrix is worse than none: it makes an agent confidently plan a call that 404s. Served live at /api/v1/networks (no static file), and reachable under every network prefix including /api/v1/local/networks, since this is how a caller learns what does 404.",
+      "id": "network-capabilities",
+      "path": "/metagraph/networks.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/NetworkCapabilitiesArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "The spec-version transition timeline (#4316/3.1) — the earliest known block at each distinct runtime spec_version, ascending by block_number — computed live from the first-party blocks D1 tier at /api/v1/runtime (no static file).",
       "id": "runtime-versions",
       "path": "/metagraph/runtime.json",

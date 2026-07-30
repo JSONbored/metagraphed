@@ -17644,6 +17644,157 @@
         ],
         "type": "object"
       },
+      "NetworkCapabilitiesArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "default_network": {
+            "type": "string"
+          },
+          "network_count": {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "networks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "aliases": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "chain": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "is_default": {
+                  "type": "boolean"
+                },
+                "note": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "partial_families": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "example": {
+                        "type": "string"
+                      },
+                      "family": {
+                        "type": "string"
+                      },
+                      "route_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "family",
+                      "route_count",
+                      "example"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "served_families": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "example": {
+                        "type": "string"
+                      },
+                      "family": {
+                        "type": "string"
+                      },
+                      "route_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "family",
+                      "route_count",
+                      "example"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "serves_data": {
+                  "type": "boolean"
+                },
+                "unserved_families": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "example": {
+                        "type": "string"
+                      },
+                      "family": {
+                        "type": "string"
+                      },
+                      "route_count": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "family",
+                      "route_count",
+                      "example"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "chain",
+                "aliases",
+                "is_default",
+                "serves_data",
+                "served_families",
+                "unserved_families",
+                "partial_families",
+                "note"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "path_form": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "default_network",
+          "path_form",
+          "network_count",
+          "networks"
+        ],
+        "type": "object"
+      },
       "NetworkParametersArtifact": {
         "additionalProperties": {},
         "properties": {
@@ -40626,6 +40777,182 @@
         "tags": [
           "registry",
           "multi-network"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/networks": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "networkCapabilitiesByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "default_network": "example",
+                    "network_count": 1,
+                    "networks": [
+                      {
+                        "aliases": [
+                          "example"
+                        ],
+                        "chain": "example",
+                        "id": "example",
+                        "is_default": false,
+                        "note": "example",
+                        "partial_families": [
+                          {
+                            "example": "example",
+                            "family": "example",
+                            "route_count": 1
+                          }
+                        ],
+                        "served_families": [
+                          {
+                            "example": "example",
+                            "family": "example",
+                            "route_count": 1
+                          }
+                        ],
+                        "serves_data": false,
+                        "unserved_families": [
+                          {
+                            "example": "example",
+                            "family": "example",
+                            "route_count": 1
+                          }
+                        ]
+                      }
+                    ],
+                    "path_form": "example",
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NetworkCapabilitiesArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers \"can I get chain data on testnet?\" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.",
+        "tags": [
+          "operations"
         ],
         "x-metagraphed-networks": [
           "finney",
@@ -72425,6 +72752,165 @@
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
           "mainnet"
+        ]
+      }
+    },
+    "/api/v1/networks": {
+      "get": {
+        "operationId": "networkCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "default_network": "example",
+                    "network_count": 1,
+                    "networks": [
+                      {
+                        "aliases": [
+                          "example"
+                        ],
+                        "chain": "example",
+                        "id": "example",
+                        "is_default": false,
+                        "note": "example",
+                        "partial_families": [
+                          {
+                            "example": "example",
+                            "family": "example",
+                            "route_count": 1
+                          }
+                        ],
+                        "served_families": [
+                          {
+                            "example": "example",
+                            "family": "example",
+                            "route_count": 1
+                          }
+                        ],
+                        "serves_data": false,
+                        "unserved_families": [
+                          {
+                            "example": "example",
+                            "family": "example",
+                            "route_count": 1
+                          }
+                        ]
+                      }
+                    ],
+                    "path_form": "example",
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NetworkCapabilitiesArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers \"can I get chain data on testnet?\" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.",
+        "tags": [
+          "operations"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
