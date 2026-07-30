@@ -26,15 +26,14 @@ export function AboutPage() {
         title="Methodology & scope"
         description="An unofficial, public explorer and integration registry for Bittensor — blocks, subnets, validators, and accounts alongside the public interfaces each subnet exposes, all machine-readable for developers and AI agents."
         actions={
-          <a
+          <ExternalLink
             href={GITHUB_REPO}
-            target="_blank"
-            rel="noopener noreferrer"
+            bare
             className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2 text-sm font-medium text-paper hover:opacity-90 transition-opacity"
           >
             <Github className="size-3.5" /> View on GitHub
             <ArrowUpRight className="size-3.5" />
-          </a>
+          </ExternalLink>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -51,7 +50,7 @@ export function AboutPage() {
             </p>
           </Section>
           <Section title="What this is not">
-            <ul className="list-disc pl-5 space-y-1.5">
+            <ul className="list-disc pl-6 space-y-1.5">
               <li>
                 Not an OpenTensor or Bittensor Foundation product — an independent, unofficial
                 project.

@@ -1203,7 +1203,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           const compact = density === "compact";
           const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
           const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
-          const monoSize = compact ? "text-[11px]" : "mg-type-caption";
+          const monoSize = compact ? "mg-type-data" : "mg-type-caption";
           return (
             // #8248: bounded, internally-scrolling virtualized region -- this
             // div (not the page) is the sticky-header containing block and
@@ -1493,7 +1493,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                           </EntityHoverCard>
                           {/* #6643: age-in-days, estimated from the already-fetched
                         registered_at_block/block delta -- no new backend call. */}
-                          <div className="text-[10px] font-sans text-ink-muted/70 whitespace-nowrap">
+                          <div className="mg-type-caption font-sans text-ink-muted/70 whitespace-nowrap">
                             {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
                           </div>
                         </td>
@@ -2016,7 +2016,7 @@ function FinancialTrendCell({
         <div className="min-w-0">
           <div className={toneClass}>{displayValue == null ? "—" : fmtVal(displayValue)}</div>
           {usd != null || pct ? (
-            <div className="text-[10px] text-ink-muted/80 flex items-center justify-end gap-1">
+            <div className="mg-type-data-sm text-ink-muted/80 flex items-center justify-end gap-1">
               {usd != null ? <span>{fmtUsd(usd)}</span> : null}
               {pct ? (
                 <span className={toneClass} title={`${win} change`}>
@@ -2093,7 +2093,7 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         <span
           className={classNames(
             "font-mono tabular-nums text-ink w-6 text-right",
-            compact ? "text-[11px]" : "mg-type-caption",
+            compact ? "mg-type-data" : "mg-type-caption",
           )}
         >
           {count || "—"}
