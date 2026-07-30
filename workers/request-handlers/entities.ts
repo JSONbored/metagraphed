@@ -129,6 +129,7 @@ import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
+import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
@@ -5252,13 +5253,22 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const data =
+  const history =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildRuntimeVersionHistory> | null) ??
     buildRuntimeVersionHistory([]);
+  // #8702: the forward-looking half of the same question. `transitions` is
+  // where the runtime has BEEN (first-party block observations); `current` is
+  // where it IS and what is queued behind it (live chain reads + the captured
+  // release feed). Extending this route rather than adding a parallel one keeps
+  // one answer to "what runtime is the network on" — and the timeline is the
+  // natural place a caller already looks. Null-safe and independently cached,
+  // so a dead testnet RPC degrades `current.pending_upgrade` to "unknown"
+  // without touching the historical timeline at all.
+  const data = { ...history, current: await loadUpgradeRadar(env) };
   // CSV exports the row-shaped transition timeline -- the same three columns
   // the /runtime page's table renders (#6392). The rollup fields
   // (current_spec_version, coverage_from_block/at) describe the series rather

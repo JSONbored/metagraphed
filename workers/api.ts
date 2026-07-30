@@ -358,6 +358,7 @@ import {
   ACCOUNT_EVENTS_ROLLUP_CRON,
   BULK_TRENDS_PATH_PATTERN,
   ABUSE_SCAN_CRON,
+  UPGRADE_RADAR_CRON,
   EMBEDDING_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
@@ -419,6 +420,7 @@ import {
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
   WEBHOOK_TTL_SECONDS,
 } from "./config.ts";
+import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
 import {
   applyTieredRateLimit,
   tieredRejectionResponse,
@@ -574,6 +576,39 @@ export async function runAbuseScan(env: Env, ctx?: Ctx) {
     };
   } catch {
     // A scan that cannot run is not an outage -- it is one missed daily report.
+    return { ok: false, reason: "unreachable" };
+  }
+}
+
+// #8702: twice-hourly upgrade radar tick. Two jobs, in this order: refresh the
+// captured GitHub sources so the request path's KV read stays fresh, then
+// decide whether a NEW testnet soak deserves the ops channel.
+//
+// The once-per-spec-version guard lives in evaluateUpgradeRadarScan (which
+// persists the alerted version before returning), not here -- so this function
+// cannot double-fire even if it is invoked twice for the same tick, and the
+// guard is unit-testable without a transport. Emitting is all that is left.
+export async function runUpgradeRadarScan(env: Env, ctx?: Ctx) {
+  const startedAt = Date.now();
+  try {
+    const scan = await evaluateUpgradeRadarScan(env);
+    if (scan.alert) {
+      const pending = recordUsageEvent(env, {
+        route: "upgrade-radar",
+        ok: true,
+        durationMs: Date.now() - startedAt,
+      }).catch(() => false);
+      if (typeof ctx?.waitUntil === "function") ctx.waitUntil(pending);
+    }
+    return {
+      ok: true,
+      state: scan.state,
+      mainnet_spec_version: scan.mainnetSpec,
+      testnet_spec_version: scan.testnetSpec,
+      alerted: scan.alert,
+    };
+  } catch {
+    // A tick that cannot run is one stale capture, not an outage.
     return { ok: false, reason: "unreachable" };
   }
 }
@@ -981,6 +1016,10 @@ export async function handleScheduled(
     // watches the channel to ignore it. Nothing here blocks anybody -- it
     // notifies, and a human decides via the block route.
     return runAbuseScan(env, ctx);
+  }
+  if (cron === UPGRADE_RADAR_CRON) {
+    // #8702: capture GitHub's release/BIT state and report a new testnet soak.
+    return runUpgradeRadarScan(env, ctx);
   }
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
     // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,

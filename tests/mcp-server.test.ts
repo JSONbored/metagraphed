@@ -18521,6 +18521,61 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.equal(res.body.result.structuredContent.current_spec_version, 300);
   });
 
+  test("get_runtime carries the #8702 upgrade radar alongside the timeline", async () => {
+    // MCP parity: an agent asking about the runtime must be able to learn that
+    // an upgrade is in flight, not just where the runtime has been.
+    const store: Record<string, string> = {
+      "upgrade-radar:github-sources": JSON.stringify({
+        schema_version: 1,
+        captured_at: "2026-07-29T00:00:00.000Z",
+        releases: [
+          {
+            tag_name: "v440",
+            published_at: "2026-07-27T13:49:31Z",
+            prerelease: true,
+            draft: false,
+            html_url:
+              "https://github.com/RaoFoundation/subtensor/releases/tag/v440",
+          },
+        ],
+        bits: [],
+      }),
+    };
+    const env = {
+      METAGRAPH_CONTROL: {
+        get: async (key: string, options?: { type?: string }) => {
+          const raw = store[key];
+          if (raw == null) return null;
+          return options?.type === "json" ? JSON.parse(raw) : raw;
+        },
+        put: async () => {},
+      },
+    };
+    const restore = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => {
+      const target = String(url);
+      const spec = target.includes("test.finney") ? 440 : 439;
+      return Response.json({
+        jsonrpc: "2.0",
+        result: { specVersion: spec, specName: "node-subtensor" },
+        id: 1,
+      });
+    }) as typeof fetch;
+    try {
+      const res = await callTool("get_runtime", {}, { env });
+      const out = res.body.result.structuredContent;
+      // The historical half is untouched.
+      assert.deepEqual(out.transitions, []);
+      // The forward-looking half is present and derived.
+      assert.equal(out.current.pending_upgrade, "testnet_soaking");
+      assert.equal(out.current.mainnet.spec_version, 439);
+      assert.equal(out.current.testnet.spec_version, 440);
+      assert.equal(out.current.latest_release.tag, "v440");
+    } finally {
+      globalThis.fetch = restore;
+    }
+  });
+
   test("list_accounts returns a schema-stable empty leaderboard (neurons D1 write path retired)", async () => {
     const res = await callTool("list_accounts", {});
     const out = res.body.result.structuredContent;

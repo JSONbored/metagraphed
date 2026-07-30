@@ -22,8 +22,10 @@ import {
   incidentItems,
   parseSinceParam,
   registryItems,
+  SITE_URL,
   sortAndCap,
 } from "./feeds.ts";
+import { loadUpgradeFeedItems } from "./upgrade-radar.ts";
 import { loadChangelog } from "./changelog-mcp.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
@@ -31,7 +33,15 @@ import {
   GetFeedOutputSchema,
 } from "../schemas-src/mcp-tools/feed.ts";
 
-export const FEED_KINDS = ["registry", "incidents", "gaps", "subnet"];
+export const FEED_KINDS = [
+  "registry",
+  "incidents",
+  "gaps",
+  // #8702: Bittensor runtime upgrade activity -- releases, observed chain
+  // spec-version changes, and BIT documents.
+  "upgrades",
+  "subnet",
+];
 const ENRICHMENT_QUEUE_ARTIFACT = "/metagraph/review/enrichment-queue.json";
 
 export interface FeedMcpError extends Error {
@@ -202,6 +212,8 @@ export async function loadFeedItems(
     items = incidentItems(await deps.loadIncidents?.(ctx));
   } else if (kind === "gaps") {
     items = gapsItems(await loadGapsQueueForFeed(ctx, deps));
+  } else if (kind === "upgrades") {
+    items = await loadUpgradeFeedItems(ctx.env, { siteUrl: SITE_URL });
   } else {
     const [changelog, incidents] = await Promise.all([
       loadChangelogForFeed(ctx),
@@ -234,7 +246,8 @@ export async function loadFeedItems(
 
 export const GET_FEED_INSTRUCTIONS =
   'Use get_feed for "what changed" / changelog discovery -- registry changes, ' +
-  "operational incidents, coverage gaps, or one subnet's combined feed, each as " +
+  "operational incidents, coverage gaps, runtime upgrade activity, or one " +
+  "subnet's combined feed, each as " +
   "chronological items with an id/url/title/summary/timestamp/tags, filterable " +
   "by tag/since/until (mirrors the JSON Feed variant of GET /api/v1/feeds/*), ";
 
@@ -251,7 +264,11 @@ export const GET_FEED_MCP_TOOL = {
     '(1-50). Use this for incremental "what\'s new since I last checked" ' +
     "polling instead of re-fetching and diffing the full registry. Mirrors the " +
     "JSON Feed variant of GET /api/v1/feeds/registry, /api/v1/feeds/incidents, " +
-    "/api/v1/feeds/gaps, and /api/v1/feeds/subnets/{netuid}.",
+    "/api/v1/feeds/gaps, /api/v1/feeds/upgrades, and " +
+    "/api/v1/feeds/subnets/{netuid}. The `upgrades` kind carries Bittensor " +
+    "runtime upgrade activity -- subtensor releases, observed mainnet/testnet " +
+    "spec-version changes, and BIT documents -- and reports observed states " +
+    "only: no deploy date is predicted, because none is published.",
   inputSchema: z.toJSONSchema(GetFeedInputSchema, {
     target: "draft-2020-12",
   }),

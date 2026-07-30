@@ -31,6 +31,14 @@ interface Env {
   CHAIN_FIREHOSE_SYNC_SECRET?: string;
   FULLNODE_RPC_ORIGINS?: string;
   GITHUB_OAUTH_CLIENT_SECRET?: string;
+  /** #8702: authenticates the upgrade radar's twice-hourly GitHub reads
+   * (releases + BITs). Unauthenticated GitHub allows 60 requests/hour per IP
+   * against Cloudflare's SHARED egress addresses -- a budget we neither
+   * control nor have to ourselves -- so an unset token here is a real
+   * degradation, not a neutral default. Set via `wrangler secret put`; the
+   * radar still runs without it and simply reports null upstreams when
+   * GitHub throttles. */
+  GITHUB_TOKEN?: string;
   HEALTH_CHECKS_SYNC_SECRET?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;

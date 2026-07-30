@@ -22,6 +22,15 @@ export const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // it. Offset from the other daily crons so they do not contend for the same
 // Postgres pool.
 export const ABUSE_SCAN_CRON = "53 4 * * *";
+// #8702: runtime upgrade radar. Twice hourly, on odd minutes that collide with
+// nothing else above. The cadence is set by the GitHub side, not the chain
+// side: the Worker holds no GITHUB_TOKEN, so its API calls are unauthenticated
+// against a 60/hour per-IP limit on Cloudflare's shared egress. Capturing on a
+// fixed schedule pins us at 4 calls/hour no matter how much traffic the radar
+// route sees, which a request-path fetch could never guarantee. Two ticks an
+// hour is still far inside the upstream's 2-3 day release cadence and the
+// days-scale testnet soak this exists to catch.
+export const UPGRADE_RADAR_CRON = "7,37 * * * *";
 // Hourly account_events_daily rollup (#4832 gap-closure), moved off the
 // former rollup-account-events-daily.yml GitHub Actions workflow onto this
 // Worker-native cron -- offset from the top-of-hour prune (0) so the two

@@ -1281,6 +1281,7 @@ import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
+import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
@@ -7897,13 +7898,22 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     async handler(_args: unknown, ctx: McpCtx) {
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
       // table is dropped in production, so a D1 query here would always miss.
-      return (
-        (await tryPostgresTier(
+      const [history, current] = await Promise.all([
+        tryPostgresTier(
           ctx.env,
           new Request("https://d/api/v1/runtime"),
           "METAGRAPH_BLOCKS_SOURCE",
-        )) ?? buildRuntimeVersionHistory([])
-      );
+        ),
+        // #8702 parity: the same `current` block the REST route serves, from
+        // the same loader, so an agent asking "is an upgrade pending" gets the
+        // answer instead of only the historical timeline.
+        loadUpgradeRadar(ctx.env),
+      ]);
+      return {
+        ...((history as Record<string, unknown> | null) ??
+          buildRuntimeVersionHistory([])),
+        current,
+      };
     },
   },
   {
