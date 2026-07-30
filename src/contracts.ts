@@ -4976,11 +4976,6 @@ export function buildOpenApiArtifact(
     if (variantPath) {
       const base = paths[openApiPath][entry.method.toLowerCase()];
       paths[variantPath] = {
-        /* v8 ignore next -- defensive: merges into an existing variant path so a
-           second method on the same template cannot clobber the first. Every
-           route is GET today, and networkVariantPath is injective on path, so
-           nothing reaches the populated side; it exists so adding a POST twin
-           to an existing path stays correct rather than silently dropping one. */
         ...(paths[variantPath] || {}),
         [entry.method.toLowerCase()]: {
           ...base,
@@ -4997,6 +4992,12 @@ export function buildOpenApiArtifact(
                 "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
               schema: { type: "string", enum: DATA_NETWORK_ALIASES },
             },
+            /* v8 ignore next -- defensive: `base` is the operation built above
+               in this same loop, which always assigns `parameters` an array
+               literal (empty when the route has no path/query parameters), and
+               an empty array is truthy -- so the fallback is unreachable. It
+               stays because spreading an absent `parameters` would throw, not
+               degrade, if that construction ever became conditional. */
             ...(base.parameters || []),
           ],
         },
