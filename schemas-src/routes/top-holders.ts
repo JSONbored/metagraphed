@@ -34,9 +34,9 @@ const TopHoldersEntrySchema = z
     free_tao: z.number().min(0),
     delegated_tao: z.number().min(0),
     total_tao: z.number().min(0),
-    net_flow_7d: z.number(),
-    net_flow_30d: z.number(),
-    net_flow_90d: z.number(),
+    net_flow_7d: z.number().nullable(),
+    net_flow_30d: z.number().nullable(),
+    net_flow_90d: z.number().nullable(),
     last_updated: z.string().nullable(),
   })
   .strict();
