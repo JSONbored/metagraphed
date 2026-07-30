@@ -211,6 +211,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Block-production analytics summary, computed live from the blocks D1 tier at
   // /api/v1/blocks/summary — never a file.
   /^blocks\/summary\.json$/,
+  // Per-network capability matrix (#8699): derived at request time from the
+  // router's own mainnet-only predicate at /api/v1/networks — never a file.
+  /^networks\.json$/,
   // Spec-version transition timeline (#4316/3.1), computed live from the blocks
   // D1 tier at /api/v1/runtime — never a file.
   /^runtime\.json$/,
