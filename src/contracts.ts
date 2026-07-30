@@ -4961,6 +4961,11 @@ export function buildOpenApiArtifact(
     if (variantPath) {
       const base = paths[openApiPath][entry.method.toLowerCase()];
       paths[variantPath] = {
+        /* v8 ignore next -- defensive: merges into an existing variant path so a
+           second method on the same template cannot clobber the first. Every
+           route is GET today, and networkVariantPath is injective on path, so
+           nothing reaches the populated side; it exists so adding a POST twin
+           to an existing path stays correct rather than silently dropping one. */
         ...(paths[variantPath] || {}),
         [entry.method.toLowerCase()]: {
           ...base,
