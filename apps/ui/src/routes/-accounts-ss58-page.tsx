@@ -31,7 +31,13 @@ import { PriceAtTx } from "@/components/metagraphed/price-at-tx";
 import { AddressLabelEditor } from "@/components/metagraphed/address-label-editor";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  Skeleton,
+  StatUnavailable,
+  StaleBanner,
+} from "@/components/metagraphed/states";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
 import { SelectFilter, FilterChip } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
@@ -682,12 +688,19 @@ function AccountKpiBand({
             <StatTile
               icon={Boxes}
               eyebrow="Positions"
-              value={formatNumber(portfolio?.position_count ?? 0)}
-              hint={
-                portfolio
+              value={(() => {
+                const phase = statPhase(portfolioResult);
+                if (phase === "pending") return <Skeleton className="h-5 w-10" />;
+                if (phase === "error") return <StatUnavailable />;
+                return formatNumber(portfolio?.position_count);
+              })()}
+              hint={(() => {
+                const phase = statPhase(portfolioResult);
+                if (phase !== "ready") return null;
+                return portfolio
                   ? `across ${formatNumber(portfolio.subnet_count)} subnets`
-                  : "no positions"
-              }
+                  : "no positions";
+              })()}
               className={KPI_TILE}
             />
             <StatTile
