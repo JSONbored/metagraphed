@@ -12,7 +12,11 @@
           },
           {
             "type": "object",
-            "required": ["source", "summary", "aliases"],
+            "required": [
+              "source",
+              "summary",
+              "aliases"
+            ],
             "properties": {
               "source": {
                 "const": "generated-surface-rename-aliases"
@@ -54,7 +58,11 @@
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": ["deprecated_id", "surface_key", "current_id"],
+                  "required": [
+                    "deprecated_id",
+                    "surface_key",
+                    "current_id"
+                  ],
                   "properties": {
                     "deprecated_id": {
                       "type": "string"
@@ -66,14 +74,23 @@
                       "type": "string"
                     },
                     "netuid": {
-                      "type": ["integer", "null"],
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
                       "minimum": 0
                     },
                     "kind": {
-                      "type": ["string", "null"]
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "url": {
-                      "type": ["string", "null"]
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "additionalProperties": false
@@ -94,7 +111,11 @@
           },
           {
             "type": "object",
-            "required": ["surface_count", "kinds", "surfaces"],
+            "required": [
+              "surface_count",
+              "kinds",
+              "surfaces"
+            ],
             "properties": {
               "surface_count": {
                 "type": "integer",
@@ -110,7 +131,13 @@
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": ["surface_id", "netuid", "kind", "url", "probe"],
+                  "required": [
+                    "surface_id",
+                    "netuid",
+                    "kind",
+                    "url",
+                    "probe"
+                  ],
                   "properties": {
                     "surface_id": {
                       "type": "string"
@@ -145,7 +172,10 @@
                     },
                     "probe": {
                       "type": "object",
-                      "required": ["method", "expect"],
+                      "required": [
+                        "method",
+                        "expect"
+                      ],
                       "properties": {
                         "method": {
                           "type": "string"
@@ -154,7 +184,10 @@
                           "type": "string"
                         },
                         "timeout_ms": {
-                          "type": ["integer", "null"]
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
                         }
                       },
                       "additionalProperties": true
@@ -167,40 +200,6 @@
             "additionalProperties": true
           }
         ]
-      },
-      "AgentReadinessStatus": {
-        "type": "object",
-        "description": "Agent-facing readiness status and blocker taxonomy for one subnet.",
-        "required": ["status", "blocker_level", "blockers", "missing_fields"],
-        "additionalProperties": false,
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "callable",
-              "base-layer",
-              "candidate",
-              "needs-evidence",
-              "blocked"
-            ]
-          },
-          "blocker_level": {
-            "type": "string",
-            "enum": ["none", "hard-blocked", "needs-review", "missing-data"]
-          },
-          "blockers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AgentReadinessBlocker"
-            }
-          },
-          "missing_fields": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
       }
     }
   }

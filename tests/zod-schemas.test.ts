@@ -11,6 +11,7 @@ import { describe, test, vi, afterEach } from "vitest";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { generateOpenApiZodComponents } from "../scripts/generate-openapi-zod-components.ts";
 import { SubnetsResponseSchema } from "../schemas-src/routes/subnets.ts";
 import { SubnetDetailResponseSchema } from "../schemas-src/routes/subnet-detail.ts";
 import { HealthResponseSchema } from "../schemas-src/routes/health.ts";
@@ -307,6 +308,7 @@ import {
   AgentCatalogArtifactSchema,
   AgentCatalogSubnetArtifactSchema,
   AgentResourcesArtifactSchema,
+  AgentReadinessStatusSchema,
 } from "../schemas-src/routes/agent-catalog.ts";
 import {
   buildContractsArtifact,
@@ -4583,4 +4585,32 @@ describe("batch 9 (#8063) route artifact schemas parse real builder output", () 
     const result = SubnetEvidenceArtifactSchema.safeParse({});
     assert.equal(result.success, false);
   });
+});
+
+describe("AgentReadinessStatus Zod owner (#8827)", () => {
+  test("parses a live-overlay payload including readiness_verified", () => {
+    const parsed = AgentReadinessStatusSchema.parse({
+      status: "callable",
+      blocker_level: "none",
+      blockers: [],
+      missing_fields: [],
+      readiness_verified: true,
+    });
+    assert.equal(parsed.readiness_verified, true);
+  });
+
+  test(
+    "OpenAPI component carries the hand-edited description after the Zod overlay",
+    () => {
+      const components = generateOpenApiZodComponents();
+      const schema = components.AgentReadinessStatus;
+      assert.ok(schema);
+      assert.equal(typeof schema.description, "string");
+      assert.ok(
+        (schema.description as string).length > 0,
+        "AgentReadinessStatus must publish a non-empty description",
+      );
+    },
+    30_000,
+  );
 });

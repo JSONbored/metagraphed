@@ -68,7 +68,10 @@ export const SubnetYieldHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(SubnetYieldHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup.",
+  );
 export type SubnetYieldHistoryArtifact = z.infer<
   typeof SubnetYieldHistoryArtifactSchema
 >;
