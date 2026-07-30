@@ -1,7 +1,9 @@
 # ADR 0022 — Paid-tier decision memo: cost model, three options, recommendation
 
-- **Status:** Proposed
-- **Date:** 2026-07-28
+- **Status:** Accepted — **Option (b), product-scoped pricing**
+- **Date:** 2026-07-28 (proposed) · 2026-07-30 (accepted)
+- **Decision:** the maintainer selected Option (b) on 2026-07-30. See
+  "Decision" immediately below the Recommendation.
 - **Relates to:** #8388 (this memo), #6646 (design-spike this memo fulfills),
   ADR 0020 (self-serve API key issuance — the identity/metering layer this
   memo assumes exists), ADR 0006/0014 (storage/infra tiering this memo's
@@ -210,6 +212,40 @@ product to have a viable addressable market at all, Option (c) becomes the
 right choice by default — it costs almost nothing to run and provides a
 revenue signal before betting engineering time on either (a) or (b).
 
+## Decision (2026-07-30)
+
+**Option (b) is accepted.** Archive/snapshot access and bulk export are the paid
+product. **The API stays free at every tier** — no capability is moved behind a
+paywall, and the keyless base keeps its current generosity.
+
+What this settles, so it does not get re-litigated:
+
+- **There is no paid API tier.** The `free` / `community` / `paid` tiers in
+  `src/api-tiers.ts` remain _rate-limit_ tiers, not price points. A higher tier
+  is granted (to contributors, partners, or on request), never sold.
+- **Nothing already free becomes paid.** ADR 0003's agent-adoption thesis and
+  the keyless promise are unaffected — which was the main reason to prefer (b).
+- **The paid surface is archive/bulk**: R2-backed dataset pulls and deep-history
+  export, where the cost is genuinely storage and egress rather than metered
+  edge.
+
+Still open, and deliberately not decided here:
+
+- **Price points and quantities.** #8597 (merged 2026-07-30) now records
+  all-traffic volume by route family and cost shape, including the
+  `keyless_share` this memo could not measure. The first month of that data is
+  what the numbers should be set from — see "What would flip this
+  recommendation" above, which this decision does not close: if the measured
+  cost driver turns out to be raw edge request count after all, Option (a)
+  should be revisited rather than defended.
+- **Billing vendor.** Unchanged from the memo's scope exclusion.
+
+Implementation consequence for issues already filed: **#8610's scope changes.**
+It was written assuming Option (a) ("paid tier limits + pricing" on the API).
+Under (b) it becomes a _limits and access_ page — what each rate-limit tier
+allows, how to get a higher one, and what the paid archive/export product is —
+with no API price list.
+
 ## Consequences
 
 - No code or infrastructure change ships with this ADR — it is the
@@ -227,9 +263,9 @@ revenue signal before betting engineering time on either (a) or (b).
 
 ## Open questions
 
-- **Pricing/quantity for whichever option is chosen** — genuinely a
-  business call requiring the real cost numbers above, not something an
-  engineering-only pass through this memo can responsibly guess at.
+- ~~**Pricing/quantity for whichever option is chosen**~~ — the OPTION is now
+  decided (see Decision above); the price points remain open and are now
+  measurable rather than guessable, via #8597's rollup.
 - **Billing vendor** (Stripe vs. alternatives) if (a) or (b) is chosen —
   out of scope for this memo per the issue's own instruction.
 - **Whether (b)'s archive/export product and (a)'s API tier are mutually
