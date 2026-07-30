@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import { openApiExampleValue } from "./openapi-example-value.ts";
 import {
   canonicalSubnetYieldHistoryCachePath,
   handleSubnetYieldHistory,
@@ -41,7 +42,7 @@ describe("subnet yield history OpenAPI CSV contract", () => {
       ].content["text/csv"];
     assert.equal(csvContent.schema.type, "string");
     assert.equal(
-      csvContent.example.split("\r\n")[0],
+      openApiExampleValue(openapi, csvContent).split("\r\n")[0],
       "snapshot_date,neuron_count,validator_count,yield_count,subnet_yield,mean_yield,median_yield,p25_yield,p75_yield,p90_yield",
     );
   });

@@ -74,6 +74,41 @@ function compileResponseValidator(responseSchema: unknown): ValidateFunction {
   return validator;
 }
 
+// Resolve a media type's worked example to its value.
+//
+// Examples are hoisted into `components.examples` and referenced (#8763), so
+// the value is a `$ref` hop away rather than inline. Both shapes are read: the
+// hoisted `examples` map is what the generator emits today, and the inline
+// `example` fallback keeps this gate honest against a hand-written or older
+// document rather than reporting "missing example" for one.
+function resolveExample(media: Record<string, unknown> | undefined): {
+  value?: unknown;
+  error?: string;
+} {
+  if (!media) return { error: "missing 200 application/json content" };
+  const examples = media.examples as Record<string, unknown> | undefined;
+  if (examples) {
+    const names = Object.keys(examples);
+    if (names.length !== 1) {
+      return {
+        error: `expected exactly one worked example, found ${names.length}`,
+      };
+    }
+    const entry = examples[names[0] as string] as Record<string, unknown>;
+    const ref = entry?.$ref;
+    if (typeof ref !== "string") {
+      return { value: entry?.value };
+    }
+    const name = ref.replace("#/components/examples/", "");
+    const target = (
+      openapi.components?.examples as Record<string, { value?: unknown }>
+    )?.[name];
+    if (!target) return { error: `example $ref does not resolve: ${ref}` };
+    return { value: target.value };
+  }
+  return { value: media.example };
+}
+
 const errors: string[] = [];
 let validated = 0;
 
@@ -85,7 +120,12 @@ for (const route of API_ROUTES) {
     errors.push(`${route.path}: missing 200 response schema`);
     continue;
   }
-  const example = media?.example;
+  const resolved = resolveExample(media);
+  if (resolved.error) {
+    errors.push(`${route.path}: ${resolved.error}`);
+    continue;
+  }
+  const example = resolved.value;
   if (example === undefined) {
     errors.push(
       `${route.path}: missing a worked response example (every operation must ship one)`,

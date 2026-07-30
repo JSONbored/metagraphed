@@ -4993,6 +4993,153 @@ export function buildApiIndexArtifact(
   };
 }
 
+/** The 200 response schema for a route: the success envelope, narrowed to the
+ *  route's own artifact component. Shared by the example registry below and the
+ *  path emitter, so the example a route ships is sampled from exactly the schema
+ *  that route advertises — not a second, separately-built copy of it. */
+function openApiResponseSchemaForRoute(entry: (typeof API_ROUTES)[number]) {
+  return {
+    allOf: [
+      { $ref: "#/components/schemas/SuccessEnvelope" },
+      {
+        type: "object",
+        properties: {
+          data: {
+            $ref: `#/components/schemas/${schemaRefForArtifactPath(entry.artifact_path)}`,
+          },
+        },
+      },
+    ],
+  };
+}
+
+// ── worked examples live in components.examples, not inline (#8763) ─────────
+//
+// Every operation ships a deterministic, schema-valid worked response example.
+// Those examples are POINTED AT rather than inlined: each distinct one is
+// written once into `components.examples`, and every media type that shows it
+// carries `examples: { <name>: { $ref } }` instead of its own `example:` copy.
+//
+// WHY. An example is a PURE FUNCTION of the response schema
+// (openApiExampleForRoute -> sampleFromSchema), so any two routes wrapping the
+// same artifact component sample byte-identically — and a network-addressed
+// variant (#8698) is an exact second copy of its base route's whole operation.
+// Inlining meant serializing the same blob once per route that showed it: 335
+// media types carrying 211 distinct examples, ~94 KB of duplicate JSON in a
+// document we ask clients to download.
+//
+// `examples` is also the shape OpenAPI 3.1 prefers — singular `example` is
+// deprecated — so this moves toward the standard rather than away from it, and
+// it is the branch fumadocs-openapi's response renderer checks FIRST (it
+// resolves each entry through its own `$ref` resolver before reading `.value`).
+//
+// NAMING. A JSON example is named for the artifact component it demonstrates
+// (`CoverageArtifactResponse` for `CoverageArtifact`) because that is what it
+// is — the sample of that schema — which keeps the name stable for exactly as
+// long as the component is. Two components that happen to sample identically
+// deliberately keep two entries: collapsing them would file `RpcPoolsArtifact`'s
+// example under `EndpointPoolsArtifactResponse` and make the document lie about
+// what the reader is looking at, to save 3 KB. A CSV example has no schema to
+// be named after (`type: string` is the whole schema), so those group by
+// content and take the alphabetically-first operationId in the group —
+// alphabetical rather than route order, so adding a route can never silently
+// rename an entry that already shipped.
+const OPENAPI_EXAMPLES_REF_PREFIX = "#/components/examples/";
+
+/** The `examples` map a media type carries in place of an inline `example`. */
+function exampleRef(name: string) {
+  return { [name]: { $ref: `${OPENAPI_EXAMPLES_REF_PREFIX}${name}` } };
+}
+
+type OpenApiExampleRegistry = {
+  /** The `components.examples` block: one entry per distinct worked example. */
+  examples: Row;
+  /** Route id -> the `components.examples` key holding its JSON example. */
+  jsonNameByRouteId: Map<string, string>;
+  /** Route id -> the `components.examples` key holding its CSV example. */
+  csvNameByRouteId: Map<string, string>;
+};
+
+/**
+ * Build the hoisted example set for every route, before any path is emitted.
+ *
+ * Two passes rather than one because a CSV example cannot be named until its
+ * whole content group is known — the name is the alphabetically-first
+ * operationId that shows it, which is not knowable while still walking routes.
+ *
+ * `routes` is injectable so the collision guard below can be exercised: it is
+ * reachable (see the guard's own comment), and a test proves it fires rather
+ * than the code merely asserting it never will.
+ */
+export function buildOpenApiExampleRegistry(
+  componentSchemas: Row,
+  routes: readonly (typeof API_ROUTES)[number][] = API_ROUTES,
+): OpenApiExampleRegistry {
+  const examples: Row = {};
+  const jsonNameByRouteId = new Map<string, string>();
+  const csvNameByRouteId = new Map<string, string>();
+  const csvOperationIdsByContent = new Map<string, string[]>();
+  const csvContentByRouteId = new Map<string, string>();
+
+  for (const entry of routes) {
+    const name = `${schemaRefForArtifactPath(entry.artifact_path)}Response`;
+    const value = openApiExampleForRoute(
+      entry,
+      openApiResponseSchemaForRoute(entry),
+      componentSchemas,
+    );
+    const existing = examples[name] as { value: unknown } | undefined;
+    // One component, one worked example. The sampler is deterministic, so two
+    // routes on the same component disagreeing means the example stopped being
+    // a function of the schema — a silent contract bug that would otherwise
+    // surface as one route's example quietly overwriting another's.
+    //
+    // Reachable, not theoretical: openApiExampleForRoute overrides the sampled
+    // value for `fixture-detail`, so a second route added on that same artifact
+    // path would produce two different values under one name. Failing loudly
+    // beats silently publishing whichever route was walked last.
+    if (existing && JSON.stringify(existing.value) !== JSON.stringify(value)) {
+      throw new Error(
+        `OpenAPI example collision: ${name} was generated with two different values (route ${entry.id})`,
+      );
+    }
+    examples[name] = { value };
+    jsonNameByRouteId.set(entry.id, name);
+
+    if (!entry.csv_response) {
+      continue;
+    }
+    const csv = csvExampleForRoute(entry);
+    const operationIds = csvOperationIdsByContent.get(csv);
+    if (operationIds) {
+      operationIds.push(openApiOperationId(entry.id));
+    } else {
+      csvOperationIdsByContent.set(csv, [openApiOperationId(entry.id)]);
+    }
+    csvContentByRouteId.set(entry.id, csv);
+  }
+
+  const csvNameByContent = new Map<string, string>();
+  for (const [csv, operationIds] of csvOperationIdsByContent) {
+    const first = [...operationIds].sort()[0] as string;
+    const name = `${first.charAt(0).toUpperCase()}${first.slice(1)}Csv`;
+    csvNameByContent.set(csv, name);
+    examples[name] = { value: csv };
+  }
+  for (const [routeId, csv] of csvContentByRouteId) {
+    csvNameByRouteId.set(routeId, csvNameByContent.get(csv) as string);
+  }
+
+  return { examples, jsonNameByRouteId, csvNameByRouteId };
+}
+
+/** The operationId for a route id — the same camelCase form every path emits. */
+function openApiOperationId(routeId: string) {
+  return routeId.replace(/[^a-z0-9]+([a-z0-9])/gi, (_, character: string) =>
+    character.toUpperCase(),
+  );
+}
+
 export function buildOpenApiArtifact(
   generatedAt: string,
   componentSchemas: Row | null,
@@ -5003,39 +5150,30 @@ export function buildOpenApiArtifact(
     );
   }
 
+  const exampleRegistry = buildOpenApiExampleRegistry(componentSchemas);
+
   const paths: Row = {};
   for (const entry of API_ROUTES) {
     const openApiPath = entry.path;
-    const responseSchema = {
-      allOf: [
-        { $ref: "#/components/schemas/SuccessEnvelope" },
-        {
-          type: "object",
-          properties: {
-            data: {
-              $ref: `#/components/schemas/${schemaRefForArtifactPath(entry.artifact_path)}`,
-            },
-          },
-        },
-      ],
-    };
+    const responseSchema = openApiResponseSchemaForRoute(entry);
     const successContent = {
       "application/json": {
         schema: responseSchema,
         // Deterministic worked example (schema-valid, no live data) so
         // Swagger UI + agents see a concrete response shape. Generated
-        // from the schema; enforced by validate-openapi-examples.
-        example: openApiExampleForRoute(
-          entry,
-          responseSchema,
-          componentSchemas,
+        // from the schema and hoisted into components.examples (see above);
+        // enforced by validate-openapi-examples.
+        examples: exampleRef(
+          exampleRegistry.jsonNameByRouteId.get(entry.id) as string,
         ),
       },
       ...(entry.csv_response
         ? {
             "text/csv": {
               schema: { type: "string" },
-              example: csvExampleForRoute(entry),
+              examples: exampleRef(
+                exampleRegistry.csvNameByRouteId.get(entry.id) as string,
+              ),
             },
           }
         : {}),
@@ -5054,10 +5192,7 @@ export function buildOpenApiArtifact(
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
         ...networkExtension,
-        operationId: entry.id.replace(
-          /[^a-z0-9]+([a-z0-9])/gi,
-          (_, character) => character.toUpperCase(),
-        ),
+        operationId: openApiOperationId(entry.id),
         summary: entry.description,
         tags: entry.tags,
         parameters: [
@@ -5297,6 +5432,10 @@ export function buildOpenApiArtifact(
         CacheControl: { schema: { type: "string" } },
         ContractVersion: { schema: { type: "string" } },
       },
+      // Every worked response example, once each — referenced by the media
+      // types above rather than repeated into them. See the naming note on
+      // buildOpenApiExampleRegistry.
+      examples: exampleRegistry.examples,
     },
     "x-metagraphed": {
       schema_version: SCHEMA_VERSION,
