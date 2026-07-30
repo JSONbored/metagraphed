@@ -7404,8 +7404,16 @@ export interface components {
             [key: string]: unknown;
         };
         RuntimeVersionsArtifact: {
+            coverage_complete: boolean;
             coverage_from_at: string | null;
             coverage_from_block: number | null;
+            coverage_gaps: {
+                after_block: number;
+                after_spec_version: number;
+                before_block: number;
+                before_spec_version: number;
+                block_span: number;
+            }[];
             current_spec_version: number | null;
             schema_version: number;
             transition_count: number;
@@ -25570,8 +25578,18 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "coverage_complete": false,
                      *         "coverage_from_at": "2026-06-01T00:00:00.000Z",
                      *         "coverage_from_block": 5000000,
+                     *         "coverage_gaps": [
+                     *           {
+                     *             "after_block": 5000000,
+                     *             "after_spec_version": 1,
+                     *             "before_block": 5000000,
+                     *             "before_spec_version": 1,
+                     *             "block_span": 5000000
+                     *           }
+                     *         ],
                      *         "current_spec_version": 1,
                      *         "schema_version": 1,
                      *         "transition_count": 1,

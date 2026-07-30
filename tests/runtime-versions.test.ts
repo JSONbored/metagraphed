@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
 import {
+  MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN,
   buildRuntimeVersionHistory,
+  detectRuntimeCoverageGaps,
   formatRuntimeTransition,
   loadRuntimeVersionHistory,
 } from "../src/runtime-versions.ts";
@@ -223,5 +225,120 @@ describe("GET /api/v1/runtime via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 404);
+  });
+});
+
+describe("detectRuntimeCoverageGaps", () => {
+  const t = (spec_version: number, block_number: number) => ({
+    spec_version,
+    block_number,
+    observed_at: null,
+  });
+
+  test("no gaps for a dense timeline", () => {
+    const gaps = detectRuntimeCoverageGaps([
+      t(437, 8_679_056),
+      t(438, 8_686_925),
+      t(439, 8_713_025),
+      t(440, 8_713_793),
+    ]);
+    assert.deepEqual(gaps, []);
+  });
+
+  test("a spec_version skip is NOT a gap when blocks are close", () => {
+    // Mainnet really did go 424 -> 432 -> 437: those releases never reached
+    // mainnet, so the version sequence has holes with no data missing.
+    const gaps = detectRuntimeCoverageGaps([
+      t(424, 8_599_188),
+      t(432, 8_636_190),
+      t(437, 8_679_056),
+    ]);
+    assert.deepEqual(gaps, []);
+  });
+
+  test("flags the live 4M-block hole between spec 217 and 424", () => {
+    const gaps = detectRuntimeCoverageGaps([
+      t(217, 4_600_000),
+      t(424, 8_599_188),
+      t(432, 8_636_190),
+    ]);
+    assert.equal(gaps.length, 1);
+    assert.deepEqual(gaps[0], {
+      after_spec_version: 217,
+      before_spec_version: 424,
+      after_block: 4_600_000,
+      before_block: 8_599_188,
+      block_span: 3_999_188,
+    });
+  });
+
+  test("reports every interior hole, not just the first", () => {
+    // Dense pair at the head, then two wide holes: only the wide ones count.
+    const gaps = detectRuntimeCoverageGaps([
+      t(101, 0),
+      t(102, 561),
+      t(217, 4_600_000),
+      t(424, 8_599_188),
+    ]);
+    assert.equal(gaps.length, 2);
+    assert.deepEqual(
+      gaps.map((g) => g.after_spec_version),
+      [102, 217],
+    );
+  });
+
+  test("a span exactly at the threshold is not a gap; one block over is", () => {
+    assert.deepEqual(
+      detectRuntimeCoverageGaps([
+        t(1, 0),
+        t(2, MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN),
+      ]),
+      [],
+    );
+    assert.equal(
+      detectRuntimeCoverageGaps([
+        t(1, 0),
+        t(2, MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN + 1),
+      ]).length,
+      1,
+    );
+  });
+
+  test("honours an explicit maxSpan override", () => {
+    assert.equal(detectRuntimeCoverageGaps([t(1, 0), t(2, 100)], 50).length, 1);
+    assert.deepEqual(detectRuntimeCoverageGaps([t(1, 0), t(2, 100)], 150), []);
+  });
+
+  test("empty and single-entry timelines have no gaps", () => {
+    assert.deepEqual(detectRuntimeCoverageGaps([]), []);
+    assert.deepEqual(detectRuntimeCoverageGaps([t(440, 8_713_793)]), []);
+  });
+});
+
+describe("buildRuntimeVersionHistory coverage disclosure", () => {
+  test("coverage_complete is false and gaps are surfaced for a holey timeline", () => {
+    const out = buildRuntimeVersionHistory([
+      { spec_version: 101, block_number: 0, observed_at: 1 },
+      { spec_version: 424, block_number: 8_599_188, observed_at: 2 },
+    ]);
+    assert.equal(out.coverage_complete, false);
+    assert.equal(out.coverage_gaps.length, 1);
+    // The bug this guards: a genesis-anchored floor reads as full history.
+    assert.equal(out.coverage_from_block, 0);
+  });
+
+  test("coverage_complete is true for a dense timeline", () => {
+    const out = buildRuntimeVersionHistory([
+      { spec_version: 439, block_number: 8_713_025, observed_at: 1 },
+      { spec_version: 440, block_number: 8_713_793, observed_at: 2 },
+    ]);
+    assert.equal(out.coverage_complete, true);
+    assert.deepEqual(out.coverage_gaps, []);
+  });
+
+  test("an empty timeline is complete-by-vacuity with no gaps", () => {
+    const out = buildRuntimeVersionHistory([]);
+    assert.equal(out.coverage_complete, true);
+    assert.deepEqual(out.coverage_gaps, []);
   });
 });

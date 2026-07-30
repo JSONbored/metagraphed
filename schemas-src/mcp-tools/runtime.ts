@@ -70,6 +70,22 @@ export const GetRuntimeOutputSchema = z
     current_spec_version: z.int().nullable().optional(),
     coverage_from_block: z.int().nullable().optional(),
     coverage_from_at: z.string().nullable().optional(),
+    // False when the timeline has interior holes — an agent must not read a
+    // short transitions list as the network's whole upgrade history.
+    coverage_complete: z.boolean().optional(),
+    coverage_gaps: z
+      .array(
+        z
+          .object({
+            after_spec_version: z.int().min(0),
+            before_spec_version: z.int().min(0),
+            after_block: z.int().min(0),
+            before_block: z.int().min(0),
+            block_span: z.int().min(0),
+          })
+          .passthrough(),
+      )
+      .optional(),
     transitions: z.array(RuntimeTransitionSchema),
     current: UpgradeRadarSchema.optional(),
   })

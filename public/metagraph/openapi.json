@@ -21933,6 +21933,9 @@
       "RuntimeVersionsArtifact": {
         "additionalProperties": {},
         "properties": {
+          "coverage_complete": {
+            "type": "boolean"
+          },
           "coverage_from_at": {
             "anyOf": [
               {
@@ -21954,6 +21957,47 @@
                 "type": "null"
               }
             ]
+          },
+          "coverage_gaps": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "after_block": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "after_spec_version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "before_block": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "before_spec_version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "block_span": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "after_spec_version",
+                "before_spec_version",
+                "after_block",
+                "before_block",
+                "block_span"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "current_spec_version": {
             "anyOf": [
@@ -22018,7 +22062,9 @@
           "transition_count",
           "current_spec_version",
           "coverage_from_block",
-          "coverage_from_at"
+          "coverage_from_at",
+          "coverage_complete",
+          "coverage_gaps"
         ],
         "type": "object"
       },
@@ -57888,8 +57934,18 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "coverage_complete": false,
                     "coverage_from_at": "2026-06-01T00:00:00.000Z",
                     "coverage_from_block": 5000000,
+                    "coverage_gaps": [
+                      {
+                        "after_block": 5000000,
+                        "after_spec_version": 1,
+                        "before_block": 5000000,
+                        "before_spec_version": 1,
+                        "block_span": 5000000
+                      }
+                    ],
                     "current_spec_version": 1,
                     "schema_version": 1,
                     "transition_count": 1,
