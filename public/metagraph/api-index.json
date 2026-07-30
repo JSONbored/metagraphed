@@ -1743,6 +1743,330 @@
   ],
   "base_path": "/api/v1",
   "contract_version": "2026-07-03.2",
+  "feeds": [
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
+      "description": "The site-wide \"what changed\" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-registry",
+      "kind": "registry",
+      "method": "GET",
+      "path": "/api/v1/feeds/registry",
+      "path_parameters": [],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
+      "description": "Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-incidents",
+      "kind": "incidents",
+      "method": "GET",
+      "path": "/api/v1/feeds/incidents",
+      "path_parameters": [],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
+      "description": "Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-gaps",
+      "kind": "gaps",
+      "method": "GET",
+      "path": "/api/v1/feeds/gaps",
+      "path_parameters": [],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
+      "description": "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-upgrades",
+      "kind": "upgrades",
+      "method": "GET",
+      "path": "/api/v1/feeds/upgrades",
+      "path_parameters": [],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
+      "description": "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-watch",
+      "kind": "watch",
+      "method": "GET",
+      "path": "/api/v1/feeds/watch",
+      "path_parameters": [],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
+          "name": "ids",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
+      "description": "One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-subnet",
+      "kind": "subnet",
+      "method": "GET",
+      "path": "/api/v1/feeds/subnets/{netuid}",
+      "path_parameters": [
+        {
+          "description": "Subnet netuid.",
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "openapi_url": "/api/v1/openapi.json",
   "primary_domain": "api.metagraph.sh",

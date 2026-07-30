@@ -3,6 +3,7 @@ import { createRootRouteWithContext } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 import { NotFoundComponent, ErrorComponent, RootShell, RootComponent } from "./-root-views";
+import { registryFeedLinks } from "@/lib/metagraphed/feed-links";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => {
@@ -38,6 +39,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
         { rel: "apple-touch-icon", href: "/apple-touch-icon-180x180.png" },
         { rel: "manifest", href: "/site.webmanifest" },
+        // #8703: feed autodiscovery. Without these, a reader handed
+        // metagraph.sh finds nothing -- the feeds have existed since #741 and
+        // no page ever pointed at them.
+        ...registryFeedLinks(),
       ],
     };
   },

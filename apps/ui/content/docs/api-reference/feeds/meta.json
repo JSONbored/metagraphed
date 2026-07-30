@@ -1,0 +1,29 @@
+{
+  "title": "Feeds",
+  "pages": [
+    "feed-gaps",
+    "feed-gaps-atom",
+    "feed-gaps-json",
+    "feed-gaps-rss",
+    "feed-incidents",
+    "feed-incidents-atom",
+    "feed-incidents-json",
+    "feed-incidents-rss",
+    "feed-registry",
+    "feed-registry-atom",
+    "feed-registry-json",
+    "feed-registry-rss",
+    "feed-subnet",
+    "feed-subnet-atom",
+    "feed-subnet-json",
+    "feed-subnet-rss",
+    "feed-upgrades",
+    "feed-upgrades-atom",
+    "feed-upgrades-json",
+    "feed-upgrades-rss",
+    "feed-watch",
+    "feed-watch-atom",
+    "feed-watch-json",
+    "feed-watch-rss"
+  ]
+}

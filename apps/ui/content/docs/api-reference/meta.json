@@ -13,6 +13,7 @@
     "endpoints",
     "evidence",
     "extrinsics",
+    "feeds",
     "health",
     "operations",
     "profiles",
