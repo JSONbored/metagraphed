@@ -962,6 +962,187 @@ test("internal key usage: still returns 200 when the write itself fails (best-ef
   assert.equal(res.status, 200);
 });
 
+// --- tenant usage dashboard (#8609) -----------------------------------------
+
+test("usage increment: a rejected request increments rejected_count, NOT request_count", async () => {
+  // A 429 was never served, so counting it as usage would overstate what the
+  // tenant consumed and make the dashboard disagree with the enforcement
+  // layer -- which is exactly what #8609's acceptance bar forbids.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  const res = await fetchRoute(
+    req("/api/v1/internal/keys/usage", {
+      method: "POST",
+      headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+      body: { account_id: 7, route: "chain-events", rejected: true },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const call = sqlCalls.find((c) =>
+    /INSERT INTO api_key_usage_daily/.test(c.text),
+  );
+  assert.ok(call, "issued the upsert");
+  // request_count 0, rejected_count 1 for a rejection.
+  assert.ok(call!.values.includes(0));
+  assert.ok(
+    /rejected_count =\s*\n?\s*api_key_usage_daily\.rejected_count \+ EXCLUDED\.rejected_count/.test(
+      call!.text,
+    ),
+  );
+});
+
+test("usage increment: only a literal true counts as rejected", async () => {
+  // A malformed flag must never silently erase real usage.
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
+  for (const rejected of ["true", 1, {}, null, undefined]) {
+    sqlCalls.length = 0;
+    await fetchRoute(
+      req("/api/v1/internal/keys/usage", {
+        method: "POST",
+        headers: { "x-api-key-lookup-token": LOOKUP_TOKEN },
+        body: { account_id: 7, route: "mcp", rejected },
+      }),
+      env,
+    );
+    const call = sqlCalls.find((c) =>
+      /INSERT INTO api_key_usage_daily/.test(c.text),
+    );
+    assert.ok(
+      call!.values.includes(1),
+      `counted as a success for ${String(rejected)}`,
+    );
+  }
+});
+
+test("keys usage: quota headroom comes from the ENFORCEMENT table, not re-derived", async () => {
+  // The acceptance bar is that these numbers agree with the enforcement
+  // layer's counters. api_key_usage_daily counts REQUESTS while the quota
+  // counts COST UNITS, so re-deriving from usage would disagree by
+  // construction.
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [
+    [
+      {
+        day: "2026-07-30",
+        route: "mcp",
+        request_count: "40",
+        rejected_count: "3",
+      },
+    ],
+    [{ units_spent: "250" }],
+    [{ tier: "paid" }],
+  ];
+  const res = await fetchRoute(
+    req("/api/v1/keys/usage", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.ok(sqlCalls.some((c) => /FROM api_quota_daily/.test(c.text)));
+  assert.equal(body.tier, "paid");
+  const quota = body.quota as Row;
+  // BIGINT arrives as a string (#8607) -- coerced, not concatenated.
+  assert.strictEqual(quota.units_spent, 250);
+  assert.strictEqual(quota.remaining, 2_000_000 - 250);
+  assert.match(String(quota.resets_at), /T00:00:00\.000Z$/);
+  assert.equal(body.rejected_total, 3);
+});
+
+test("keys usage: an uncapped tier reports NO quota rather than zero", async () => {
+  // free is uncapped by design. Reporting 0 or Infinity would both read as
+  // "you are at your limit".
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [
+    [
+      {
+        day: "2026-07-30",
+        route: "mcp",
+        request_count: "5",
+        rejected_count: "0",
+      },
+    ],
+    [],
+    [{ tier: "free" }],
+  ];
+  const res = await fetchRoute(
+    req("/api/v1/keys/usage", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.equal(body.tier, "free");
+  assert.equal(body.quota, null);
+});
+
+test("keys usage: an un-migrated null rejected_count reads as 0, never NaN", async () => {
+  // The column is new; existing rows predate it. A NaN would poison every
+  // total downstream and render as "NaN requests rate-limited".
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [
+    [
+      {
+        day: "2026-07-30",
+        route: "mcp",
+        request_count: "5",
+        rejected_count: null,
+      },
+    ],
+    [],
+    [{ tier: "free" }],
+  ];
+  const res = await fetchRoute(
+    req("/api/v1/keys/usage", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  const body = (await res.json()) as Row;
+  assert.strictEqual(body.rejected_total, 0);
+  assert.strictEqual((body.days as Row[])[0].rejected, 0);
+});
+
+test("keys usage: ?format=csv exports the tenant's own rows, uncacheable", async () => {
+  const env = baseEnv();
+  const token = await sessionToken(7, "5Abc");
+  mockQueue.current = [
+    [
+      {
+        day: "2026-07-30",
+        route: "mcp",
+        request_count: "12",
+        rejected_count: "2",
+      },
+    ],
+    [],
+    [{ tier: "free" }],
+  ];
+  const res = await fetchRoute(
+    req("/api/v1/keys/usage?format=csv", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type") || "", /text\/csv/);
+  assert.match(res.headers.get("content-disposition") || "", /attachment/);
+  // A tenant's own usage must never sit in a shared cache.
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  const csv = await res.text();
+  assert.match(csv, /day,count,rejected/);
+  assert.match(csv, /2026-07-30,12,2/);
+});
+
+test("keys usage: CSV export is still session-gated", async () => {
+  const res = await fetchRoute(req("/api/v1/keys/usage?format=csv"), baseEnv());
+  assert.equal(res.status, 401);
+});
+
 // --- POST /api/v1/internal/keys/quota (#8608) -------------------------------
 
 const quotaReq = (body: unknown, token: string | null = LOOKUP_TOKEN) =>
@@ -1860,9 +2041,12 @@ test("keys usage: 200 aggregates by day and top routes, scoped to the session's 
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.window_days, 7);
+  // #8609 added `rejected` alongside `count`. The counts themselves are
+  // unchanged, which is the property this test has always guarded: the
+  // per-day aggregation must not shift when the shape grows.
   assert.deepEqual(body.days, [
-    { day: "2026-07-20", count: 7 },
-    { day: "2026-07-19", count: 3 },
+    { day: "2026-07-20", count: 7, rejected: 0 },
+    { day: "2026-07-19", count: 3, rejected: 0 },
   ]);
   assert.equal(body.top_routes[0].route, "chain-events");
   assert.equal(body.top_routes[0].count, 8);

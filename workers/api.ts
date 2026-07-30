@@ -501,6 +501,10 @@ export function recordApiKeyUsage(
   ctx: Ctx | undefined,
   accountId: string,
   route: string,
+  // #8609: a REJECTED request increments rejected_count instead of
+  // request_count, so the tenant dashboard can show "you were throttled N
+  // times" without those attempts inflating the usage they are billed against.
+  rejected = false,
 ): void {
   if (!env.DATA_API?.fetch || !env.API_KEY_LOOKUP_INTERNAL_TOKEN) return;
   const pending = env.DATA_API.fetch(
@@ -510,7 +514,11 @@ export function recordApiKeyUsage(
         [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ account_id: Number(accountId), route }),
+      body: JSON.stringify({
+        account_id: Number(accountId),
+        route,
+        rejected,
+      }),
     }),
   ).catch(() => {});
   if (typeof ctx?.waitUntil === "function") {
@@ -1898,6 +1906,21 @@ export async function handleRequest(
       env,
       DATA_TIERED_RATE_LIMIT,
     );
+    // #8609: recorded for BOTH outcomes, BEFORE the rejection return, with the
+    // flag derived from the gate's own verdict -- so a 429 lands in
+    // rejected_count instead of request_count. Recording after the return would
+    // mean throttled requests were never counted at all, which is the gap this
+    // issue exists to close. One call rather than a duplicate block at each
+    // rejection site: the call site already has everything it needs.
+    if (rateLimit.accountId) {
+      recordApiKeyUsage(
+        env,
+        ctx,
+        rateLimit.accountId,
+        "chain-events",
+        !rateLimit.allowed,
+      );
+    }
     if (!rateLimit.allowed) {
       // #8611: a blocked account gets 403 + reason code, not a 429 that
       // invites the retry storm a block exists to stop.
@@ -1912,9 +1935,6 @@ export async function handleRequest(
         {},
         rejection.headers,
       );
-    }
-    if (rateLimit.accountId) {
-      recordApiKeyUsage(env, ctx, rateLimit.accountId, "chain-events");
     }
     return handleChainEventsProxy(request, env, url, ctx);
   }
@@ -5031,6 +5051,17 @@ async function webhookSubscriptionRateLimited(
     env,
     WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
   );
+  // #8609: recorded before the rejection return so a throttled request is
+  // counted as a rejection rather than not counted at all.
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(
+      env,
+      ctx,
+      rateLimit.accountId,
+      "webhook-subscription",
+      !rateLimit.allowed,
+    );
+  }
   if (!rateLimit.allowed) {
     const rejection = tieredRejectionResponse(rateLimit, {
       code: "webhook_subscription_rate_limited",
@@ -5044,9 +5075,6 @@ async function webhookSubscriptionRateLimited(
       {},
       rejection.headers,
     );
-  }
-  if (rateLimit.accountId) {
-    recordApiKeyUsage(env, ctx, rateLimit.accountId, "webhook-subscription");
   }
   return null;
 }

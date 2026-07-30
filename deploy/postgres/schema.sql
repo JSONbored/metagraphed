@@ -1228,6 +1228,18 @@ CREATE TABLE IF NOT EXISTS api_key_usage_daily (
 CREATE INDEX IF NOT EXISTS idx_api_key_usage_daily_account_day
   ON api_key_usage_daily (account_id, day DESC);
 
+-- #8609: rejections, counted alongside successes on the SAME row rather than in
+-- a second table. A tenant asking "am I hitting my limit" needs both numbers
+-- side by side, and a 429 is bounded by definition (it IS the rate limit), so
+-- this cannot outgrow the successes column it sits next to.
+--
+-- Deliberately NOT folded into request_count: a rejected request was never
+-- served, so counting it as usage would overstate what the tenant consumed and
+-- make the dashboard disagree with the enforcement layer's own counters --
+-- which is precisely what this issue's acceptance bar forbids.
+ALTER TABLE api_key_usage_daily
+  ADD COLUMN IF NOT EXISTS rejected_count BIGINT NOT NULL DEFAULT 0;
+
 -- ---------------------------------------------------------------------------
 -- Key-level blocklist (#8611). Distinct from api_keys.revoked_at, which is the
 -- OWNER's own "I am done with this key" action and is permanent per key.

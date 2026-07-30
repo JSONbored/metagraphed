@@ -137,6 +137,83 @@ describe("Worker runtime", () => {
     assert.equal(usageIncrementCalls, 1);
   });
 
+  test("#8609: a KEYED request that is rate-limited records a REJECTION, not usage", async () => {
+    // A 429 was never served. Counting it as usage would overstate what the
+    // tenant consumed and make the dashboard disagree with the enforcement
+    // layer's own counters -- the exact thing #8609's acceptance bar forbids.
+    const usageBodies: Record<string, unknown>[] = [];
+    const waited: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events", {
+        headers: {
+          "cf-connecting-ip": "203.0.113.9",
+          authorization: "Bearer mg_aValidOpaqueUnkeyGeneratedSuffix",
+        },
+      }),
+      {
+        ...env,
+        API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+        DATA_RATE_LIMITER: { limit: () => Promise.resolve({ success: true }) },
+        DATA_RATE_LIMITER_KEYED: {
+          limit: () => Promise.resolve({ success: false }),
+        },
+        DATA_API: {
+          async fetch(request: Request) {
+            const path = new URL(request.url).pathname;
+            if (path === "/api/v1/internal/keys/verify") {
+              return new Response(
+                JSON.stringify({ valid: true, tier: "free", accountId: "99" }),
+                { status: 200 },
+              );
+            }
+            if (path === "/api/v1/internal/keys/usage") {
+              usageBodies.push(
+                (await request.clone().json()) as Record<string, unknown>,
+              );
+            }
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+      } as unknown as Env,
+      ctx,
+    );
+    assert.equal(response.status, 429);
+    await Promise.all(waited);
+    const usage = usageBodies.find((b) => b.route === "chain-events");
+    assert.ok(usage, "recorded against the account");
+    assert.equal(usage!.rejected, true, "recorded as a REJECTION");
+    assert.equal(usage!.account_id, 99);
+  });
+
+  test("#8609: an ANONYMOUS rate-limited request records nothing", async () => {
+    // There is no account to attribute it to, and inventing one would put
+    // keyless traffic into a per-tenant table.
+    const usageCalls: unknown[] = [];
+    const waited: Promise<unknown>[] = [];
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events", {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }),
+      {
+        ...env,
+        API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+        DATA_RATE_LIMITER: { limit: () => Promise.resolve({ success: false }) },
+        DATA_API: {
+          async fetch(request: Request) {
+            const path = new URL(request.url).pathname;
+            if (path === "/api/v1/internal/keys/usage") usageCalls.push(1);
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+      } as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => waited.push(p) },
+    );
+    assert.equal(response.status, 429);
+    await Promise.all(waited);
+    assert.deepEqual(usageCalls, []);
+  });
+
   test("recordApiKeyUsage: no-ops when the DATA_API binding is absent", () => {
     const waited: Promise<unknown>[] = [];
     recordApiKeyUsage(
