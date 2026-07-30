@@ -259,7 +259,7 @@ function GapsKpiStrip() {
         viz={
           <div className="flex items-center gap-2">
             <MiniRadial value={avgComp != null ? avgComp / 100 : 0} size={20} stroke={3} />
-            <span className="font-mono text-[9.5px] text-ink-muted truncate">
+            <span className="mg-type-data-sm text-ink-muted truncate">
               {above75} ≥75% · {below50} &lt;50%
             </span>
           </div>
@@ -806,7 +806,7 @@ function GapRow({
                     />
                     <span>SN{gap.netuid}</span>
                     {subnet?.name ? (
-                      <span className="font-display text-[11px] text-ink normal-case tracking-normal">
+                      <span className="font-display mg-type-caption text-ink normal-case tracking-normal">
                         · {subnet.name}
                       </span>
                     ) : null}
@@ -829,7 +829,7 @@ function GapRow({
                     <ExternalLink
                       key={s.href}
                       href={s.href}
-                      className="text-[10px] normal-case tracking-normal"
+                      className="mg-type-caption normal-case tracking-normal"
                     >
                       {s.label}
                     </ExternalLink>
@@ -857,14 +857,12 @@ function GapRow({
                   open
                 </Link>
               ) : null}
-              <a
+              <ExternalLink
                 href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-caption text-ink-muted hover:text-accent hover:border-accent/40"
               >
                 file
-              </a>
+              </ExternalLink>
             </div>
           </div>
         </Panel>
@@ -905,12 +903,12 @@ function FilterSelect({
   options: readonly string[];
 }) {
   return (
-    <label className="inline-flex items-center gap-1.5 text-[11px] text-ink-muted">
+    <label className="inline-flex items-center gap-1.5 mg-type-caption text-ink-muted">
       <span className="mg-type-caption">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-ink focus:outline-none focus:border-accent/50"
+        className="rounded-full border border-border bg-card px-2.5 py-1 mg-type-caption text-ink focus:outline-none focus:border-accent/50"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -1232,7 +1230,7 @@ function GapPriorityList() {
           )}
           <span className="flex-1 mg-type-caption-lg text-ink truncate">{r.name ?? "—"}</span>
           <CurationChip level={r.curation_level} />
-          <span className="hidden sm:block max-w-[240px] truncate text-[11px] text-ink-muted">
+          <span className="hidden sm:block max-w-[240px] truncate mg-type-caption text-ink-muted">
             {r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
           </span>
           {r.priority_score != null ? (

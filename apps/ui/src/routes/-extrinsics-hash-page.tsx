@@ -381,7 +381,10 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                     <span className="mg-type-data text-ink-muted">
                       #{formatNumber(e.block_number ?? 0)}
                     </span>
-                    <TimeAgo at={e.observed_at} className="ml-auto text-[11px] text-ink-muted" />
+                    <TimeAgo
+                      at={e.observed_at}
+                      className="ml-auto mg-type-caption text-ink-muted"
+                    />
                   </Link>
                 </li>
               ))}
@@ -463,7 +466,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       <div className="mt-6">
         <Link
           to="/chain/extrinsics"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
         >
           ← All extrinsics
         </Link>

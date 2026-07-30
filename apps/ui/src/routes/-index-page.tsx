@@ -18,7 +18,7 @@ import {
   CopyButton,
   ClaudeIcon,
   OpenAIIcon,
-  safeExternalUrl,
+  ExternalLink,
   ScrollReveal,
   Sparkline,
 } from "@jsonbored/ui-kit";
@@ -315,14 +315,12 @@ export function OverviewPage() {
                 <Link to="/apis/schemas" className="text-accent-text hover:underline">
                   API reference →
                 </Link>
-                <a
-                  href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
+                <ExternalLink
+                  href={`${API_BASE}/api/v1/openapi.json`}
                   className="text-ink-muted hover:text-ink-strong"
-                  target="_blank"
-                  rel="noreferrer"
                 >
                   OpenAPI spec
-                </a>
+                </ExternalLink>
               </div>
             </Panel>
           </section>
@@ -424,6 +422,7 @@ function HomeHero() {
   return (
     <section className="mg-hero-slab relative overflow-hidden px-4 py-12 sm:px-6 md:py-20">
       <div className="relative z-[var(--mg-z-sticky)] mx-auto flex max-w-4xl flex-col items-center text-center">
+        {/* eslint-disable-next-line no-restricted-syntax -- display-size hero heading (30/40/48px responsive); the mg-type-* scale tops out at caption-lg (13px) with no display tier, so there is no matching token (#8717 req 2 exception) */}
         <h1 className="mg-fade-in mt-2 font-display text-[30px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.08] text-ink-strong">
           <span className="block">Bittensor,</span>
           <span className="block text-accent">de-mystified.</span>
@@ -435,6 +434,7 @@ function HomeHero() {
 
         {/* Unified search field: query trigger on the left, mint Search button flush right. */}
         <div className="mg-fade-in mg-fade-in-delay-2 mt-8 w-full max-w-2xl">
+          {/* eslint-disable-next-line no-restricted-syntax -- not a card shell: this is the search field's flush query-trigger + Search-button row (items-stretch, overflow-hidden, rounded-2xl, focus-within/hover border states); <Panel> hardcodes `rounded border` and can't express this composite input geometry (#8717 req 2 exception) */}
           <div className="mg-focus-ring flex items-stretch overflow-hidden rounded-2xl border border-border bg-card transition-colors focus-within:border-accent/60 hover:border-accent/40">
             <button
               type="button"
@@ -531,22 +531,20 @@ function HomeForAgentsModule() {
           {mcp.tools.length} tools · {mcp.transport} · no key
         </span>
         <div className="flex flex-wrap gap-2">
-          <a
+          <ExternalLink
             href={CLAUDE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            bare
             className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 mg-type-data font-medium text-accent hover:bg-accent/15"
           >
             <ClaudeIcon className="size-3.5" aria-hidden /> Open in Claude
-          </a>
-          <a
+          </ExternalLink>
+          <ExternalLink
             href={CHATGPT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            bare
             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 mg-type-data font-medium text-ink-strong hover:border-ink/30"
           >
             <OpenAIIcon className="size-3.5" aria-hidden /> Open in ChatGPT
-          </a>
+          </ExternalLink>
         </div>
       </div>
       <div className="mt-3">

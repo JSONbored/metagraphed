@@ -134,6 +134,7 @@ export function NotFoundComponent() {
                   placeholder="e.g. 7, 74, or a keyword"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  // eslint-disable-next-line no-restricted-syntax -- pl-9 (36px) clears the absolutely-positioned search icon at left-3+size; 36px is off the 4pt subset and has no --mg-space-* token (scale jumps 32→48), so snapping to either would misalign the icon (#8717 req 2 exception)
                   className="min-h-10 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-ink-strong placeholder:text-ink-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
@@ -144,7 +145,7 @@ export function NotFoundComponent() {
                 Go <ArrowRight className="size-4" />
               </button>
             </div>
-            <p className="mt-1 text-[11px] text-ink-muted">
+            <p className="mt-1 mg-type-caption text-ink-muted">
               Enter a netuid (0–1024) to deep-link to its profile, or any keyword to search the
               registry.
             </p>
@@ -166,7 +167,9 @@ export function NotFoundComponent() {
                       <span className="block truncate font-mono mg-type-caption text-ink-strong">
                         {ex.label}
                       </span>
-                      <span className="block truncate text-[11px] text-ink-muted">{ex.note}</span>
+                      <span className="block truncate mg-type-caption text-ink-muted">
+                        {ex.note}
+                      </span>
                     </span>
                     <ArrowRight aria-hidden className="size-3.5 text-ink-muted" />
                   </Link>
