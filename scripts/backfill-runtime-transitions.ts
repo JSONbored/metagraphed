@@ -625,16 +625,21 @@ async function main(): Promise<void> {
     // MISS an existing row whose observed_at disagrees with chain truth and
     // insert a duplicate block_number beside it. The reconcile stance is that
     // chain truth replaces whatever is there, including a wrong observed_at.
+    // `observed_at` is epoch MILLISECONDS (bigint), not a timestamp — Kanel
+    // brands it as a string, which reads like a date column and is not one.
+    // Confirmed by src/runtime-versions.ts's toIso(ms) on the read side, and
+    // by Postgres rejecting an ISO string with `invalid input syntax for type
+    // bigint` on the first --write attempt. Writing an ISO string here would
+    // have been a silent data-type corruption if the column were text.
     let applied = 0;
     for (const p of plan) {
       if (p.action === "in_sync") continue;
       const r = p.row;
-      const observedAt = new Date(r.observed_at_ms).toISOString();
       await sql.begin(async (tx) => {
         await tx`DELETE FROM blocks WHERE block_number = ${r.block_number}`;
         await tx`
           INSERT INTO blocks (block_number, observed_at, block_hash, parent_hash, extrinsic_count, event_count, spec_version)
-          VALUES (${r.block_number}, ${observedAt}, ${r.block_hash}, ${r.parent_hash}, ${r.extrinsic_count}, ${r.event_count}, ${r.spec_version})`;
+          VALUES (${r.block_number}, ${r.observed_at_ms}, ${r.block_hash}, ${r.parent_hash}, ${r.extrinsic_count}, ${r.event_count}, ${r.spec_version})`;
       });
       applied += 1;
     }
