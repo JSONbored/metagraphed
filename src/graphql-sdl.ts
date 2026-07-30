@@ -1214,10 +1214,11 @@ export const SDL = /* GraphQL */ `
     days: [ChainActivityDay!]!
   }
 
-  "One UTC day's fee/tip aggregate: extrinsic count, total/avg/median fee and tip in TAO (avg/median are null on a zero-extrinsic day)."
+  "One UTC day's fee/tip aggregate: extrinsic count, total/avg/median fee and tip in TAO. extrinsic_count includes unsigned inherents; avg/median are computed over signed_extrinsic_count and are null on a day with no signed extrinsics."
   type ChainFeesDay {
     day: String!
     extrinsic_count: Int!
+    signed_extrinsic_count: Int!
     total_fee_tao: Float
     avg_fee_tao: Float
     median_fee_tao: Float

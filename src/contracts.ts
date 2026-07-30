@@ -1779,7 +1779,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
-    "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+    "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file). Averages and medians are over signed extrinsics only; extrinsic_count counts every extrinsic including unsigned inherents.",
     "ChainFeesArtifact",
     COMPUTED_LIVE,
   ),
@@ -4128,7 +4128,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/fees",
     "/metagraph/chain/fees.json",
-    "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+    "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians, computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator behind avg/median. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
     "short",
     ["chain", "analytics"],
     {
@@ -5825,7 +5825,7 @@ function csvExampleForRoute(entry: (typeof API_ROUTES)[number]) {
   }
   if (entry.id === "chain-fees") {
     return [
-      "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
+      "day,extrinsic_count,signed_extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
       "2026-07-01,15000,42.5,0.002833,0.0025,0,0,0",
     ].join("\r\n");
   }

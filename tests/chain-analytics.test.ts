@@ -1399,19 +1399,21 @@ test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
 
 // ---- fees (#1988) builder + handler ---------------------------------------
 
-test("buildChainFees computes per-day averages + null avg on a zero-extrinsic day", () => {
+test("buildChainFees computes per-day averages + null avg on a zero-signed-extrinsic day", () => {
   const out = buildChainFees({
     window: "7d",
     dailyRows: [
       {
         day: "2026-06-25",
         extrinsic_count: 100,
+        signed_extrinsic_count: 100,
         total_fee_tao: 1.0,
         total_tip_tao: 0.5,
       },
       {
         day: "2026-06-26",
-        extrinsic_count: 0,
+        extrinsic_count: 5, // all-inherent day: extrinsics exist but none signed
+        signed_extrinsic_count: 0,
         total_fee_tao: 0,
         total_tip_tao: 0,
       },
@@ -1448,10 +1450,43 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
   assert.equal(d25.avg_tip_tao, 0.005);
   assert.equal(d25.median_tip_tao, 0.001);
   const d26 = out.daily.find((d) => d.day === "2026-06-26")!;
-  assert.equal(d26.avg_fee_tao, null); // zero extrinsics → null, never NaN
+  assert.equal(d26.extrinsic_count, 5); // extrinsic_count still counts inherents
+  assert.equal(d26.signed_extrinsic_count, 0);
+  assert.equal(d26.avg_fee_tao, null); // zero signed extrinsics → null, never NaN
   assert.equal(d26.median_fee_tao, null);
+  assert.equal(d26.avg_tip_tao, null);
   assert.equal(d26.median_tip_tao, null);
   assert.equal(out.top_fee_payers[0].signer, "5Pay");
+});
+
+test("buildChainFees computes averages over signed extrinsics only on a majority-inherent day", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 100, // 90 unsigned inherents + 10 signed
+        signed_extrinsic_count: 10,
+        total_fee_tao: 1.0,
+        total_tip_tao: 0.5,
+      },
+    ],
+    medianRows: [
+      {
+        day: "2026-06-25",
+        median_fee_tao: 0.09, // computed over the 10 signed rows only
+        median_tip_tao: 0.04,
+      },
+    ],
+  });
+  const d25 = out.daily[0];
+  // dividing by extrinsic_count (100) would give 0.01 -- diluted by inherents.
+  assert.equal(d25.avg_fee_tao, 0.1); // 1.0/10, not 1.0/100
+  assert.equal(d25.avg_tip_tao, 0.05); // 0.5/10, not 0.5/100
+  assert.equal(d25.median_fee_tao, 0.09);
+  assert.equal(d25.median_tip_tao, 0.04);
+  assert.equal(d25.extrinsic_count, 100);
+  assert.equal(d25.signed_extrinsic_count, 10);
 });
 
 test("buildChainFees reports malformed median rows as null, not JSON numbers", () => {
@@ -1461,6 +1496,7 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
       {
         day: "2026-06-25",
         extrinsic_count: 2,
+        signed_extrinsic_count: 2,
         total_fee_tao: 1,
         total_tip_tao: 1,
       },
