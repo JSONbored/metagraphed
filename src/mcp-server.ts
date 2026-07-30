@@ -843,7 +843,10 @@ import {
   GetCoverageDepthInputSchema,
   GetCoverageDepthOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
-import { GetFeedInputSchema } from "../schemas-src/mcp-tools/feed.ts";
+import {
+  FEED_KINDS,
+  GetFeedInputSchema,
+} from "../schemas-src/mcp-tools/feed.ts";
 import { GetAdapterInputSchema } from "../schemas-src/mcp-tools/get-adapter.ts";
 import {
   GetAgentCatalogInputSchema,
@@ -3190,11 +3193,43 @@ function withoutSchemaMeta(schema: Row): Row {
  * actually validate against, while leaving Zod parsing (and the inferred TS
  * input type) untouched.
  */
-function requireAnyOf(
+export function requireAnyOf(
   schema: Record<string, unknown>,
   keys: string[],
 ): Record<string, unknown> {
   return { ...schema, anyOf: keys.map((key) => ({ required: [key] })) };
+}
+
+/**
+ * Encode get_feed's kind↔netuid dependency in the published JSON Schema (#8829).
+ *
+ * Runtime `resolveNetuid` already requires `netuid` when `kind === "subnet"` and
+ * forbids it otherwise, but Zod publishes `netuid` as plain `.optional()`, so a
+ * validating client cannot see the rule. Same patch shape as `requireAnyOf`:
+ * overlay `anyOf` on an already-emitted schema object; leave the Zod schema and
+ * its inferred TS input type untouched (z.toJSONSchema drops `.refine()`).
+ *
+ * Non-subnet kinds are derived from `feedKinds` (FEED_KINDS minus `"subnet"`) so
+ * a new kind does not drift the published enum.
+ */
+export function requireFeedNetuidDependency(
+  schema: Record<string, unknown>,
+  feedKinds: readonly string[],
+): Record<string, unknown> {
+  const nonSubnetKinds = feedKinds.filter((kind) => kind !== "subnet");
+  return {
+    ...schema,
+    anyOf: [
+      {
+        properties: { kind: { const: "subnet" } },
+        required: ["kind", "netuid"],
+      },
+      {
+        properties: { kind: { enum: [...nonSubnetKinds] } },
+        not: { required: ["netuid"] },
+      },
+    ],
+  };
 }
 
 export const MCP_TOOLS: McpToolDefinition[] = [
@@ -9190,6 +9225,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_FEED_MCP_TOOL,
+    inputSchema: requireFeedNetuidDependency(
+      GET_FEED_MCP_TOOL.inputSchema as Record<string, unknown>,
+      FEED_KINDS,
+    ),
     async handler(args: z.infer<typeof GetFeedInputSchema>, ctx: McpCtx) {
       return loadFeedItems(asMcpLoaderCtx(ctx), args, {
         // Same cross-subnet incident ledger + wiring get_global_incidents uses
