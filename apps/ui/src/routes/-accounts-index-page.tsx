@@ -62,7 +62,7 @@ export function AccountsPage() {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
-              className="w-full rounded border border-border bg-card py-2.5 pl-9 pr-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/60 focus:border-ink/30 focus:outline-none min-h-11"
+              className="w-full rounded border border-border bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-ink-strong placeholder:text-ink-muted/60 focus:border-ink/30 focus:outline-none min-h-11"
             />
           </div>
           <button

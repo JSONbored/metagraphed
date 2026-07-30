@@ -329,7 +329,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           <div className="mt-6">
             <Link
               to="/subnets"
-              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
             >
               ← All subnets
             </Link>
@@ -896,7 +896,7 @@ function IdentityHistoryList({ netuid }: { netuid: number }) {
             <p className="mt-1 text-xs text-ink-muted">{entry.description}</p>
           ) : null}
           {entry.subnet_url || entry.github_repo || entry.discord ? (
-            <div className="mt-1.5 flex flex-wrap gap-3 text-[11px]">
+            <div className="mt-1.5 flex flex-wrap gap-3 mg-type-caption">
               {entry.subnet_url ? (
                 <ExternalLink href={entry.subnet_url} className="text-accent-text hover:underline">
                   website
@@ -1311,14 +1311,14 @@ function EventKindCell({
         className="inline-block size-2 shrink-0 rounded-full"
         style={{ background: EVENT_KIND_CATEGORY_DOT[category] }}
       />
-      <span className="truncate text-[11px] text-ink-strong">{label}</span>
+      <span className="truncate mg-type-caption text-ink-strong">{label}</span>
       {grouped ? (
         <span className="mg-type-caption-lg text-ink-muted">
           × {count}
           {spanMinutes != null ? ` · last ${spanMinutes}m` : ""}
         </span>
       ) : null}
-      <span className="inline-flex items-center rounded border border-border bg-surface/40 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+      <span className="inline-flex items-center rounded border border-border bg-surface/40 px-1.5 py-0.5 mg-type-caption font-medium text-ink-muted">
         {categoryLabel}
       </span>
     </span>
@@ -2042,7 +2042,7 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
       subtitle="Unverified leads from public sources. Always labeled."
       info="Discovered automatically and not yet reviewed by a maintainer. Submit corrections via GitHub."
     >
-      <div className="mb-2 rounded border border-dashed border-ink-subtle bg-paper px-3 py-2 text-[11px] text-ink-muted flex items-start gap-2">
+      <div className="mb-2 rounded border border-dashed border-ink-subtle bg-paper px-3 py-2 mg-type-caption text-ink-muted flex items-start gap-2">
         <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
         <span>
           Candidates are discovered automatically and have not been verified by a maintainer. Submit
@@ -2115,7 +2115,7 @@ function GapsList({ netuid }: { netuid: number }) {
           ))}
         </ul>
       ) : null}
-      <div className="border-t border-border pt-2 text-[11px] text-ink-muted">
+      <div className="border-t border-border pt-2 mg-type-caption text-ink-muted">
         Help close these gaps by opening a PR against the public registry repo.
       </div>
     </Panel>

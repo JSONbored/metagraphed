@@ -202,12 +202,12 @@ function SchemasHero() {
           { label: "Contracts", value: contractsCount },
           { label: "Subnets covered", value: subnets },
         ].map((k) => (
-          <div key={k.label} className="rounded-md border border-border bg-card px-3 py-2.5">
+          <Panel key={k.label} as="div" flush className="px-3 py-2.5">
             <div className="mg-label">{k.label}</div>
             <div className="mt-0.5 mg-type-data text-ink-strong">
               <AnimatedNumber value={k.value} />
             </div>
-          </div>
+          </Panel>
         ))}
       </div>
     </>
@@ -264,7 +264,7 @@ function ContractsList() {
               </div>
               {c.path && artifactUrl ? (
                 <div className="mt-3">
-                  <ExternalLink href={artifactUrl} className="text-[11px]">
+                  <ExternalLink href={artifactUrl} className="mg-type-caption">
                     {c.path}
                   </ExternalLink>
                 </div>
@@ -554,12 +554,12 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
               <button
                 type="button"
                 onClick={() => copy(artifactUrl)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-[11px] text-ink hover:border-accent/40 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 mg-type-caption text-ink hover:border-accent/40 transition-colors"
               >
                 {copied ? <Check className="size-3 text-health-ok" /> : <Copy className="size-3" />}
                 {copied ? "copied" : "copy url"}
               </button>
-              <ExternalLink href={artifactUrl} className="text-[11px]">
+              <ExternalLink href={artifactUrl} className="mg-type-caption">
                 open
               </ExternalLink>
             </div>

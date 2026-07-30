@@ -357,7 +357,7 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
         })}
       </ul>
       {compact && grouped.length > visible.length ? (
-        <div className="mt-2 text-[11px] text-ink-muted">
+        <div className="mt-2 mg-type-caption text-ink-muted">
           + {grouped.length - visible.length} more — open the Subnets served tab.
         </div>
       ) : null}
