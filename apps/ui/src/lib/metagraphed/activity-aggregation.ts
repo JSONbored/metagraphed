@@ -57,6 +57,22 @@ export function aggregateActivityEvents(
   return groups;
 }
 
+/**
+ * Single group identity for both React row keys and expand/collapse state
+ * (#8817). Derived solely from the group's anchor event (`events[0]`) and
+ * kind so a live prepend that shifts array indices does not move a row's
+ * identity — an index-keyed Set collapses the wrong row on the next
+ * firehose frame.
+ */
+export function activityGroupKey(group: ActivityGroup): string {
+  const anchor = group.events[0];
+  const kind = group.kind ?? "∅";
+  const block = anchor?.block_number ?? "∅";
+  const index = anchor?.event_index ?? "∅";
+  const observed = anchor?.observed_at ?? "∅";
+  return `${kind}-${block}-${index}-${observed}`;
+}
+
 function withinWindow(
   anchor: AccountEvent | undefined,
   ev: AccountEvent,

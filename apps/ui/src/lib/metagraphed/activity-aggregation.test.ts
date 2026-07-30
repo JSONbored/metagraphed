@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTIVITY_AGGREGATION_WINDOW_MS,
+  activityGroupKey,
   activityGroupSpanMinutes,
   aggregateActivityEvents,
 } from "./activity-aggregation";
@@ -8,10 +9,14 @@ import type { AccountEvent } from "./types";
 
 // Newest-first, matching this app's convention -- `t` is minutes before a
 // fixed reference instant, so smaller `t` is newer and appears earlier.
-function ev(kind: string | null, t: number, extra: Partial<AccountEvent> = {}): AccountEvent {
+function ev(
+  kind: string | null,
+  t: number,
+  extra: Partial<AccountEvent> = {},
+): AccountEvent {
   return {
-    block_number: null,
-    event_index: null,
+    block_number: 1_000_000 - t,
+    event_index: t,
     event_kind: kind,
     observed_at: new Date(Date.UTC(2026, 0, 1, 0, 0, 0) - t * 60_000).toISOString(),
     ...extra,
@@ -113,5 +118,67 @@ describe("activityGroupSpanMinutes", () => {
       events: [ev("WeightsSet", 0), ev("WeightsSet", 5, { observed_at: undefined })],
     };
     expect(activityGroupSpanMinutes(group)).toBeNull();
+  });
+});
+
+describe("activityGroupKey (#8817)", () => {
+  it("keeps a group's key stable across a prepend that shifts its array index", () => {
+    const base = [
+      ev("StakeAdded", 1),
+      ev("StakeAdded", 2),
+      ev("WeightsSet", 5),
+    ];
+    const before = aggregateActivityEvents(base);
+    expect(before.length).toBeGreaterThanOrEqual(2);
+    const targetIndex = before.length - 1;
+    const targetKey = activityGroupKey(before[targetIndex]!);
+
+    const after = aggregateActivityEvents([ev("NeuronRegistered", 0), ...base]);
+    const newIndex = after.findIndex((g) => activityGroupKey(g) === targetKey);
+    expect(newIndex).toBeGreaterThan(targetIndex);
+    expect(activityGroupKey(after[newIndex]!)).toBe(targetKey);
+  });
+
+  it("never collides two groups in one list, including nullish fields", () => {
+    // Construct groups directly so nullish identity fields are under test
+    // without depending on aggregateActivityEvents' undated-event rules.
+    const groups = [
+      {
+        kind: "WeightsSet",
+        events: [
+          {
+            block_number: null,
+            event_index: null,
+            event_kind: "WeightsSet",
+            observed_at: null,
+          },
+        ],
+      },
+      {
+        kind: "StakeAdded",
+        events: [
+          {
+            block_number: null,
+            event_index: null,
+            event_kind: "StakeAdded",
+            observed_at: null,
+          },
+        ],
+      },
+      {
+        kind: null,
+        events: [
+          {
+            block_number: null,
+            event_index: null,
+            event_kind: null,
+            observed_at: undefined,
+          },
+        ],
+      },
+    ];
+    const keys = groups.map(activityGroupKey);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys.every((k) => k.includes("∅"))).toBe(true);
   });
 });

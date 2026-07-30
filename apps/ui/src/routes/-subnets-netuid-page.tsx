@@ -108,6 +108,7 @@ import {
 } from "@/lib/metagraphed/event-kinds";
 import {
   aggregateActivityEvents,
+  activityGroupKey,
   activityGroupSpanMinutes,
   type ActivityGroup,
 } from "@/lib/metagraphed/activity-aggregation";
@@ -1498,16 +1499,19 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   // never on re-render/refetch/re-sort, and never the initial populated paint.
   // Pure CSS (mg-fade-in, which already suppresses under prefers-reduced-motion)
   // driven by mount; no per-row timers (#8365). The seen-set persists across
-  // renders in a ref; a group's stable identity is its anchor event's
-  // block/index + kind (the row `key` minus the array index).
+  // renders in a ref; a group's stable identity is activityGroupKey (#8817).
   const seenRowsRef = useRef<Set<string>>(new Set());
   const primedRef = useRef(false);
-  const groupKeys = groups.map(
-    (g) => `${g.kind}-${g.events[0]!.block_number}-${g.events[0]!.event_index}`,
-  );
+  const groupKeys = groups.map(activityGroupKey);
+  const groupKeySet = new Set(groupKeys);
   const { newKeys } = diffNewRows(groupKeys, seenRowsRef.current, primedRef.current);
   primedRef.current = true;
-  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<number>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(new Set());
+  // #8817: derive the rendered open-set so keys that rolled off the capped
+  // list (or left via a kind filter) drop without a setState on every refetch.
+  const expandedVisible = new Set(
+    [...expandedGroups].filter((key) => groupKeySet.has(key)),
+  );
 
   // #8445: subscribe to the firehose's `account_events` topic (the only one
   // that carries `netuid` on the payload -- `chain_events` doesn't) so a new
@@ -1579,22 +1583,27 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {groups.map((group, i) => (
-                <ActivityGroupRow
-                  key={`${group.kind}-${group.events[0]!.block_number}-${group.events[0]!.event_index}-${i}`}
-                  group={group}
-                  isNew={newKeys.has(groupKeys[i]!)}
-                  expanded={expandedGroups.has(i)}
-                  onToggle={() =>
-                    setExpandedGroups((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(i)) next.delete(i);
-                      else next.add(i);
-                      return next;
-                    })
-                  }
-                />
-              ))}
+              {groups.map((group, i) => {
+                const key = groupKeys[i]!;
+                return (
+                  <ActivityGroupRow
+                    key={key}
+                    group={group}
+                    isNew={newKeys.has(key)}
+                    expanded={expandedVisible.has(key)}
+                    onToggle={() =>
+                      setExpandedGroups((prev) => {
+                        const next = new Set(
+                          [...prev].filter((k) => groupKeySet.has(k)),
+                        );
+                        if (next.has(key)) next.delete(key);
+                        else next.add(key);
+                        return next;
+                      })
+                    }
+                  />
+                );
+              })}
             </tbody>
           </table>
         </ResponsiveTable>
