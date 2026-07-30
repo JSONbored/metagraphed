@@ -3,10 +3,13 @@ import { describe, test } from "vitest";
 
 import {
   assertValidOptions,
+  createArchiveClient,
   decodeBlockTimestampMs,
   decodeCompactU64,
+  fetchBoundaryRow,
   findSpecTransitions,
   parseArgs,
+  parseSeedRows,
   reconcileAction,
   type BoundaryRow,
 } from "../scripts/backfill-runtime-transitions.ts";
@@ -284,5 +287,156 @@ describe("parseArgs / assertValidOptions", () => {
       () => assertValidOptions(parseArgs(["--from", "-1"])),
       /non-negative/,
     );
+  });
+});
+
+describe("createArchiveClient retry", () => {
+  const okResponse = (result: unknown) =>
+    new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  test("retries rate-limit errors with backoff and then succeeds", async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const client = createArchiveClient(
+      "https://x.invalid",
+      async () => {
+        calls += 1;
+        if (calls < 3) {
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              error: { message: "Historical work rate limit exceeded" },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        return okResponse("0xabc");
+      },
+      async (ms) => {
+        waits.push(ms);
+      },
+    );
+    assert.equal(await client.call("chain_getBlockHash", [1]), "0xabc");
+    assert.equal(calls, 3);
+    assert.equal(waits.length, 2);
+  });
+
+  test("a permanent JSON-RPC error is thrown immediately, no retries", async () => {
+    let calls = 0;
+    const client = createArchiveClient(
+      "https://x.invalid",
+      async () => {
+        calls += 1;
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            error: { message: "Method not found" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      },
+      async () => {},
+    );
+    await assert.rejects(
+      () => client.call("state_bogus", []),
+      /Method not found/,
+    );
+    assert.equal(calls, 1);
+  });
+
+  test("gives up after the attempt cap and surfaces the last error", async () => {
+    let calls = 0;
+    const client = createArchiveClient(
+      "https://x.invalid",
+      async () => {
+        calls += 1;
+        return new Response("busy", { status: 503 });
+      },
+      async () => {},
+    );
+    await assert.rejects(() => client.call("chain_getHeader", []), /HTTP 503/);
+    assert.equal(calls, 6);
+  });
+});
+
+describe("fetchBoundaryRow genesis handling", () => {
+  const GENESIS_HASH = `0x${"aa".repeat(32)}`;
+  const BLOCK1_HASH = `0x${"bb".repeat(32)}`;
+  // Real inherent fixture (block 1,000,000) reused as block 1's timestamp.
+  const BLOCK1_INHERENT = "0x280402000b810da3cb8901";
+
+  function fakeClient(responses: Record<string, (params: unknown[]) => unknown>) {
+    return {
+      async call(method: string, params: unknown[]) {
+        const fn = responses[method];
+        if (!fn) throw new Error(`unexpected ${method}`);
+        return fn(params);
+      },
+    };
+  }
+
+  test("genesis (no extrinsics) takes block 1's timestamp instead of failing", async () => {
+    const client = fakeClient({
+      chain_getBlockHash: (p) => ((p[0] as number) === 0 ? GENESIS_HASH : BLOCK1_HASH),
+      chain_getBlock: (p) =>
+        p[0] === GENESIS_HASH
+          ? { block: { header: { parentHash: `0x${"00".repeat(32)}` }, extrinsics: [] } }
+          : { block: { header: { parentHash: GENESIS_HASH }, extrinsics: [BLOCK1_INHERENT] } },
+      state_getStorage: () => null,
+    });
+    const row = await fetchBoundaryRow(client, { block_number: 0, spec_version: 101 });
+    assert.equal(row.block_hash, GENESIS_HASH);
+    assert.equal(row.extrinsic_count, 0);
+    assert.equal(new Date(row.observed_at_ms).toISOString().slice(0, 7), "2023-08");
+  });
+
+  test("a NON-genesis block missing its inherent is still a hard refusal", async () => {
+    const client = fakeClient({
+      chain_getBlockHash: () => BLOCK1_HASH,
+      chain_getBlock: () => ({
+        block: { header: { parentHash: GENESIS_HASH }, extrinsics: [] },
+      }),
+      state_getStorage: () => null,
+    });
+    await assert.rejects(
+      () => fetchBoundaryRow(client, { block_number: 500, spec_version: 101 }),
+      /refusing to write a row with a fabricated observed_at/,
+    );
+  });
+});
+
+describe("parseSeedRows", () => {
+  const good = {
+    block_number: 8_486_593,
+    spec_version: 423,
+    block_hash: `0x${"ab".repeat(32)}`,
+    parent_hash: `0x${"cd".repeat(32)}`,
+    extrinsic_count: 17,
+    event_count: 120,
+    observed_at_ms: 1_750_000_000_000,
+  };
+
+  test("round-trips a valid file", () => {
+    const rows = parseSeedRows(JSON.stringify([good, { ...good, block_number: 1, event_count: null }]));
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].spec_version, 423);
+    assert.equal(rows[1].event_count, null);
+  });
+
+  test("a seed file is not trusted: malformed rows are rejected, not coerced", () => {
+    for (const bad of [
+      { ...good, block_hash: "0xshort" },
+      { ...good, spec_version: -1 },
+      { ...good, observed_at_ms: 0 },
+      { ...good, extrinsic_count: 1.5 },
+    ]) {
+      assert.throws(() => parseSeedRows(JSON.stringify([bad])), /malformed/);
+    }
+    assert.throws(() => parseSeedRows(JSON.stringify({})), /JSON array/);
   });
 });
