@@ -120,6 +120,7 @@ const ChainFeeDaySchema = z
   .object({
     day: z.string(),
     extrinsic_count: z.int().min(0),
+    signed_extrinsic_count: z.int().min(0),
     total_fee_tao: z.number().min(0),
     avg_fee_tao: z.number().min(0).nullable(),
     median_fee_tao: z.number().min(0).nullable(),

@@ -1775,6 +1775,7 @@ describe("batch 6 (#8060) route artifact schemas parse real builder output", () 
         {
           day: "2026-06-25",
           extrinsic_count: 100,
+          signed_extrinsic_count: 90,
           total_fee_tao: 1.0,
           total_tip_tao: 0.5,
         },

@@ -4736,6 +4736,7 @@ describe("MCP get_chain_fees", () => {
               {
                 day: new Date().toISOString().slice(0, 10),
                 extrinsic_count: 20,
+                signed_extrinsic_count: 15,
                 total_fee_tao: 8,
                 avg_fee_tao: 0.4,
                 median_fee_tao: 0.4,
@@ -4764,6 +4765,7 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.window, "7d");
     assert.equal(out.day_count, 1);
     assert.equal(out.daily[0].extrinsic_count, 20);
+    assert.equal(out.daily[0].signed_extrinsic_count, 15);
     assert.equal(out.daily[0].median_fee_tao, 0.4);
     assert.equal(out.daily[0].median_tip_tao, 0.05);
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);

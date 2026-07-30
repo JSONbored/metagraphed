@@ -8335,6 +8335,7 @@ test("GET /api/v1/chain/fees: default window, no call_module", async () => {
       {
         day: "2026-07-10",
         extrinsic_count: 10,
+        signed_extrinsic_count: 8,
         total_fee_tao: 1,
         total_tip_tao: 0.1,
       },
@@ -8353,7 +8354,10 @@ test("GET /api/v1/chain/fees: default window, no call_module", async () => {
   const res = await req("/api/v1/chain/fees?window=7d");
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
+  expect(body.daily[0].extrinsic_count).toBe(10);
+  expect(body.daily[0].signed_extrinsic_count).toBe(8);
   expect(body.daily[0].median_fee_tao).toBe(0.1);
+  expect(body.daily[0].avg_fee_tao).toBe(0.125); // 1/8, not 1/10
   expect(body.top_fee_payers[0].signer).toBe("5Payer");
 });
 
@@ -8366,6 +8370,7 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
       {
         day: "2026-07-10",
         extrinsic_count: 4,
+        signed_extrinsic_count: 4,
         total_fee_tao: 2,
         total_tip_tao: 0,
       },
@@ -8386,6 +8391,74 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
   );
   expect(res.status).toBe(200);
   expect(queryText()).toContain("call_module = ");
+});
+
+test("GET /api/v1/chain/fees: median query filters to signed extrinsics and drops COALESCE on the ordering expressions", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [
+      {
+        day: "2026-07-10",
+        extrinsic_count: 10,
+        signed_extrinsic_count: 4,
+        total_fee_tao: 1,
+        total_tip_tao: 0.1,
+      },
+    ],
+    [
+      {
+        signer: "5Payer",
+        total_fee_tao: 1,
+        total_tip_tao: 0.1,
+        extrinsic_count: 4,
+      },
+    ],
+    [{ day: "2026-07-10", median_fee_tao: 0.2, median_tip_tao: 0.02 }],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/fees?window=7d");
+  expect(res.status).toBe(200);
+  const medianCall = sqlCalls.find((c) => c.text.includes("PERCENTILE_CONT"));
+  expect(medianCall!.text).toContain("signer IS NOT NULL");
+  expect(medianCall!.text).not.toContain("COALESCE(fee_tao");
+  expect(medianCall!.text).not.toContain("COALESCE(tip_tao");
+  const dailyCall = sqlCalls.find((c) =>
+    c.text.includes("signed_extrinsic_count"),
+  );
+  expect(dailyCall!.text).toContain(
+    "COUNT(*) FILTER (WHERE signer IS NOT NULL)",
+  );
+});
+
+test("GET /api/v1/chain/fees: a day with only unsigned inherents yields null avg/median but keeps extrinsic_count", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [
+      {
+        day: "2026-07-10",
+        extrinsic_count: 6,
+        signed_extrinsic_count: 0,
+        total_fee_tao: 0,
+        total_tip_tao: 0,
+      },
+    ],
+    [],
+    [],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/fees?window=7d");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.daily[0].extrinsic_count).toBe(6);
+  expect(body.daily[0].signed_extrinsic_count).toBe(0);
+  expect(body.daily[0].avg_fee_tao).toBeNull();
+  expect(body.daily[0].avg_tip_tao).toBeNull();
+  expect(body.daily[0].median_fee_tao).toBeNull();
+  expect(body.daily[0].median_tip_tao).toBeNull();
 });
 
 // #4832 gap-closure: health-tracking read routes. All 5 read from
