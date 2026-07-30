@@ -1,6 +1,6 @@
 # ADR 0022 — Paid-tier decision memo: cost model, three options, recommendation
 
-- **Status:** Accepted — **Option (b) extended: data API free; self-hosted surfaces (fullnode RPC + archive/bulk) paid**
+- **Status:** Accepted — **Option (b) extended: data API free; the self-hosted surfaces (fullnode RPC, bulk export, archive snapshots) paid**
 - **Date:** 2026-07-28 (proposed) · 2026-07-30 (accepted)
 - **Decision:** the maintainer selected Option (b) on 2026-07-30, then amended it
   the same day once a **missing cost shape** (the self-hosted fullnode RPC node)
@@ -226,8 +226,48 @@ surfaces are the paid products.**
   edge data API. No capability moves behind a paywall. ADR 0003's
   agent-adoption thesis is untouched, which was the main reason to prefer (b)
   over a flat API multiplier.
-- **Paid:** archive/snapshot + bulk export, **and gated fullnode RPC** —
-  specifically `author_submitExtrinsic` and high-volume access.
+- **Paid:** three surfaces, all of them things we self-host and pay for:
+  1. **Gated fullnode RPC** — specifically `author_submitExtrinsic` and
+     high-volume access.
+  2. **Bulk export** of our own derived datasets.
+  3. **Archive-node chain snapshots** — see below; the strongest of the three.
+
+### Archive-node snapshots (added 2026-07-30)
+
+A restorable snapshot of the **synced archive chain database**, so a buyer can
+stand up their own Bittensor archive node in hours instead of syncing from
+genesis. Distinct from (2): that exports _our derived data_; this is the raw
+chain DB.
+
+Why this is the best-shaped product of the three:
+
+- **The cost to the buyer of not having it is weeks.** metagraphed-infra's own
+  backup script states it plainly: a full genesis resync is "weeks, not hours".
+  That is the value being sold, and it is unusually legible.
+- **Nobody publishes free public archive snapshots.** There is no free
+  substitute to compete with, unlike almost every other surface here.
+- **Our marginal distribution cost is ~zero, and uniquely so.** This memo already
+  notes R2 has **no egress fee** — the one place that fact is a decisive
+  advantage rather than a footnote. Shipping a multi-TB snapshot costs us
+  storage and operations; a competitor doing the same on S3 pays egress on every
+  copy. The economics only work for us.
+- **We already pay the storage.** The archive volume is backed up weekly to R2
+  today (metagraphed-infra#94, restic, content-defined-chunking dedup).
+
+What it is **not** yet, and what stands between here and a product:
+
+- Those restic backups are **not a consumable snapshot**. They are encrypted
+  under `RESTIC_PASSWORD` and in restic's own repository format — a disaster-
+  recovery artifact for us, not something a customer can drop into their node.
+  A product needs a separate plain, restorable export, which is additional R2
+  storage on top of the backup that already exists.
+- The archive node must be **at tip and verified** before any snapshot is worth
+  selling. Sync state is tracked separately.
+- Snapshot cadence, retention, and integrity/provenance (a published checksum at
+  minimum) are unresolved.
+
+This is a **long-run** product, recorded here so the option is not lost, not a
+commitment to build it now.
 
 ### Why this was amended within hours of being recorded
 
