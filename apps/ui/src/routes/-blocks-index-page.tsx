@@ -504,7 +504,7 @@ function BlocksTable() {
                       </Link>
                       {gapSec != null ? (
                         <div
-                          className={classNames("mt-0.5 text-[10px]", gapTone)}
+                          className={classNames("mt-0.5 mg-type-data-sm", gapTone)}
                           title="Seconds since previous block"
                         >
                           +{humaniseSeconds(gapSec)}
