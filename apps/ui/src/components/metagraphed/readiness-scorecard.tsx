@@ -67,19 +67,18 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
       {cta?.url ? (
         <ExternalLink
           href={cta.url}
-          // ExternalLink already provides the flex context via its base
-          // `inline-flex`; a `flex` override here loses the cascade to it and is
-          // a no-op. The missing piece was a width bound -- an unconstrained
-          // (shrink-to-fit) anchor never triggers the inner `truncate`, so the
-          // CTA overflowed the card (#6903). `w-full` constrains it to the card
-          // width, engaging the existing truncate chain.
-          className="mt-3 w-full items-center gap-2 rounded-md border border-accent/30 bg-accent-surface px-3 py-2 text-sm"
+          // ExternalLink's root is inline-flex; wrap icon+label in a real flex
+          // row with min-w-0 so the inner truncate span can shrink against it
+          // (#8537). w-full keeps the anchor bounded to the card (#6903).
+          className="mt-3 w-full min-w-0 items-center gap-2 rounded-md border border-accent/30 bg-accent-surface px-3 py-2 text-sm no-underline hover:decoration-transparent"
         >
-          <ArrowRight className="size-4 shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 truncate">
-            <span className="font-medium text-ink-strong">Start here:</span>{" "}
-            {cta.name ?? cta.kind ?? "Primary API"}
-            {cta.provider ? <span className="text-ink-muted"> · {cta.provider}</span> : null}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <ArrowRight className="size-4 shrink-0 text-accent" />
+            <span className="min-w-0 flex-1 truncate">
+              <span className="font-medium text-ink-strong">Start here:</span>{" "}
+              {cta.name ?? cta.kind ?? "Primary API"}
+              {cta.provider ? <span className="text-ink-muted"> · {cta.provider}</span> : null}
+            </span>
           </span>
         </ExternalLink>
       ) : null}
