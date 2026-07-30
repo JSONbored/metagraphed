@@ -40,7 +40,11 @@
 //   --database-url URL   Postgres connection string (default: $DATABASE_URL)
 //   --from BLOCK         first block to search from (default: 0)
 //   --to BLOCK           last block to search to (default: current chain head)
-//   --out PATH           also write the discovered transitions as JSON
+//   --out PATH           also write the discovered boundary rows as JSON
+//   --seed PATH          skip discovery: load boundary rows from a prior
+//                        --out file (discovery is ~15 min; the reconcile is
+//                        seconds — this lets one discovery serve both the
+//                        dry-run and the --write pass)
 //   --write              apply the upserts; default is a dry run that reports
 //                        what would change and touches nothing
 import path from "node:path";
@@ -71,6 +75,7 @@ export interface BackfillOptions {
   from: number;
   to: number | null;
   out: string | null;
+  seed: string | null;
   write: boolean;
 }
 
@@ -83,6 +88,7 @@ export function parseArgs(argv: string[]): BackfillOptions {
     from: 0,
     to: null,
     out: null,
+    seed: null,
     write: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -92,6 +98,7 @@ export function parseArgs(argv: string[]): BackfillOptions {
     else if (arg === "--from") opts.from = Number(argv[++i]);
     else if (arg === "--to") opts.to = Number(argv[++i]);
     else if (arg === "--out") opts.out = argv[++i];
+    else if (arg === "--seed") opts.seed = argv[++i];
     else if (arg === "--write") opts.write = true;
     else throw new Error(`unrecognized argument: ${arg}`);
   }
@@ -258,32 +265,112 @@ export async function findSpecTransitions(
   return boundaries;
 }
 
+// A seed file is still input from outside the process — validate every row's
+// shape and ranges before treating it as chain truth. Same trust posture as
+// the RPC responses.
+export function parseSeedRows(text: string): BoundaryRow[] {
+  const parsed: unknown = JSON.parse(text);
+  if (!Array.isArray(parsed)) throw new Error("seed file must be a JSON array");
+  return parsed.map((row, i) => {
+    const r = row as Record<string, unknown>;
+    const blockNumber = Number(r.block_number);
+    const specVersion = Number(r.spec_version);
+    const extrinsicCount = Number(r.extrinsic_count);
+    const observedAtMs = Number(r.observed_at_ms);
+    const eventCount = r.event_count === null ? null : Number(r.event_count);
+    if (
+      !Number.isInteger(blockNumber) ||
+      blockNumber < 0 ||
+      !Number.isInteger(specVersion) ||
+      specVersion < 0 ||
+      !Number.isInteger(extrinsicCount) ||
+      extrinsicCount < 0 ||
+      (eventCount !== null &&
+        (!Number.isInteger(eventCount) || eventCount < 0)) ||
+      !Number.isSafeInteger(observedAtMs) ||
+      observedAtMs <= 0 ||
+      typeof r.block_hash !== "string" ||
+      !/^0x[0-9a-fA-F]{64}$/.test(r.block_hash) ||
+      typeof r.parent_hash !== "string" ||
+      !/^0x[0-9a-fA-F]{64}$/.test(r.parent_hash)
+    ) {
+      throw new Error(`seed row ${i} is malformed: ${JSON.stringify(row)}`);
+    }
+    return {
+      block_number: blockNumber,
+      spec_version: specVersion,
+      block_hash: r.block_hash,
+      parent_hash: r.parent_hash,
+      extrinsic_count: extrinsicCount,
+      event_count: eventCount,
+      observed_at_ms: observedAtMs,
+    };
+  });
+}
+
 interface ArchiveClient {
   call(method: string, params: unknown[]): Promise<unknown>;
 }
 
+// A transient failure worth retrying: rate limiting (the public archive
+// throttles "historical work" aggressively — hit for real on the first
+// full-range run), 5xx/429, and network-level fetch failures. A JSON-RPC
+// error that is NOT rate limiting (unknown method, missing block) is
+// permanent and re-thrown immediately — retrying a wrong request only burns
+// the rate budget the retryable calls need.
+export function isRetryableRpcError(message: string): boolean {
+  return /rate limit|429|timeout|timed out|ECONNRESET|fetch failed|50[234]|too many/i.test(
+    message,
+  );
+}
+
+const RETRY_MAX_ATTEMPTS = 6;
+const RETRY_BASE_MS = 1_000;
+const RETRY_CAP_MS = 30_000;
+
 export function createArchiveClient(
   archiveUrl: string,
   fetchImpl: typeof fetch = fetch,
+  sleep: (ms: number) => Promise<void> = (ms) =>
+    new Promise((r) => setTimeout(r, ms)),
 ): ArchiveClient {
+  const once = async (method: string, params: unknown[]): Promise<unknown> => {
+    const resp = await fetchImpl(archiveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    if (!resp.ok) throw new Error(`${method} failed: HTTP ${resp.status}`);
+    const body = (await resp.json()) as {
+      result?: unknown;
+      error?: { message?: string };
+    };
+    if (body.error) {
+      throw new Error(`${method} failed: ${body.error.message ?? "rpc error"}`);
+    }
+    return body.result;
+  };
   return {
     async call(method: string, params: unknown[]): Promise<unknown> {
-      const resp = await fetchImpl(archiveUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-      });
-      if (!resp.ok) throw new Error(`${method} failed: HTTP ${resp.status}`);
-      const body = (await resp.json()) as {
-        result?: unknown;
-        error?: { message?: string };
-      };
-      if (body.error) {
-        throw new Error(
-          `${method} failed: ${body.error.message ?? "rpc error"}`,
-        );
+      let lastError: Error = new Error("unreachable");
+      for (let attempt = 0; attempt < RETRY_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          return await once(method, params);
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          if (!isRetryableRpcError(lastError.message)) throw lastError;
+          if (attempt === RETRY_MAX_ATTEMPTS - 1) break;
+          // Exponential backoff with full jitter, capped — the standard
+          // shape for a shared rate-limited upstream.
+          const ceiling = Math.min(RETRY_CAP_MS, RETRY_BASE_MS * 2 ** attempt);
+          const wait = Math.floor(Math.random() * ceiling);
+          console.warn(
+            `retryable RPC failure (attempt ${attempt + 1}/${RETRY_MAX_ATTEMPTS}), backing off ${wait}ms: ${lastError.message}`,
+          );
+          await sleep(wait);
+        }
       }
-      return body.result;
+      throw lastError;
     },
   };
 }
@@ -321,9 +408,27 @@ export async function fetchBoundaryRow(
       `malformed block body at height ${transition.block_number}`,
     );
   }
-  const observedAtMs = decodeBlockTimestampMs(
+  let observedAtMs = decodeBlockTimestampMs(
     typeof extrinsics[0] === "string" ? extrinsics[0] : null,
   );
+  // The genesis block carries no extrinsics, so it has no timestamp inherent
+  // to decode (hit for real on the first full-range run). Block 1's moment is
+  // the chain's own first recorded time — at most one block interval of
+  // imprecision, still chain-derived, still reproducible. Only height 0 gets
+  // this treatment: any OTHER block missing its inherent is malformed data
+  // and stays a hard refusal.
+  if (observedAtMs == null && transition.block_number === 0) {
+    const firstHash = await client.call("chain_getBlockHash", [1]);
+    if (typeof firstHash === "string" && firstHash !== "") {
+      const firstBlock = (await client.call("chain_getBlock", [firstHash])) as {
+        block?: { extrinsics?: unknown[] };
+      } | null;
+      const firstInherent = firstBlock?.block?.extrinsics?.[0];
+      observedAtMs = decodeBlockTimestampMs(
+        typeof firstInherent === "string" ? firstInherent : null,
+      );
+    }
+  }
   if (observedAtMs == null) {
     throw new Error(
       `could not decode the timestamp inherent at height ${transition.block_number} -- refusing to write a row with a fabricated observed_at`,
@@ -419,18 +524,26 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(
-    `searching for runtime transitions in [${opts.from}, ${toBlock}] via ${opts.archiveUrl}`,
-  );
-  const started = Date.now();
-  const transitions = await findSpecTransitions(opts.from, toBlock, readSpec);
-  console.log(
-    `found ${transitions.length} transitions in ${((Date.now() - started) / 1000).toFixed(1)}s; fetching boundary rows`,
-  );
-
-  const rows: BoundaryRow[] = [];
-  for (const t of transitions) {
-    rows.push(await fetchBoundaryRow(client, t));
+  let rows: BoundaryRow[];
+  if (opts.seed) {
+    const { readFileSync } = await import("node:fs");
+    rows = parseSeedRows(readFileSync(opts.seed, "utf8"));
+    console.log(
+      `loaded ${rows.length} boundary rows from ${opts.seed} (discovery skipped)`,
+    );
+  } else {
+    console.log(
+      `searching for runtime transitions in [${opts.from}, ${toBlock}] via ${opts.archiveUrl}`,
+    );
+    const started = Date.now();
+    const transitions = await findSpecTransitions(opts.from, toBlock, readSpec);
+    console.log(
+      `found ${transitions.length} transitions in ${((Date.now() - started) / 1000).toFixed(1)}s; fetching boundary rows`,
+    );
+    rows = [];
+    for (const t of transitions) {
+      rows.push(await fetchBoundaryRow(client, t));
+    }
   }
   for (const r of rows) {
     console.log(
