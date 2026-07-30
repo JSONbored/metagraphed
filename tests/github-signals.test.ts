@@ -84,6 +84,7 @@ describe("githubSignalsForSubnet", () => {
         last_push_at: "2026-07-01T00:00:00Z",
         stars: 250,
         commits_weekly: [{ week: "2026-06-28T00:00:00.000Z", count: 12 }],
+        releases: null,
         unreachable: false,
         captured_at: "2026-07-15T00:00:00Z",
       },
@@ -95,6 +96,7 @@ describe("githubSignalsForSubnet", () => {
         last_push_at: "2026-05-01T00:00:00Z",
         stars: 10,
         commits_weekly: null,
+        releases: null,
         unreachable: true,
         captured_at: "2026-06-01T00:00:00Z",
       },
@@ -106,6 +108,7 @@ describe("githubSignalsForSubnet", () => {
     github_last_push_at: null,
     github_stars: null,
     github_commits_weekly: null,
+    github_releases: null,
     github_unreachable: false,
   };
 
@@ -120,6 +123,7 @@ describe("githubSignalsForSubnet", () => {
     assert.deepEqual(result, {
       github_languages: { Rust: 900_000, Python: 1_000 },
       github_last_push_at: "2026-07-01T00:00:00Z",
+      github_releases: null,
       github_stars: 250,
       github_commits_weekly: [{ week: "2026-06-28T00:00:00.000Z", count: 12 }],
       github_unreachable: false,
@@ -148,6 +152,7 @@ describe("githubSignalsForSubnet", () => {
     assert.deepEqual(result, {
       github_languages: null,
       github_last_push_at: "2026-05-01T00:00:00Z",
+      github_releases: null,
       github_stars: 10,
       github_commits_weekly: null,
       github_unreachable: true,
@@ -219,6 +224,7 @@ describe("fetchRepoSignals", () => {
     languages: { Rust: 1 },
     stars: 99,
     commits_weekly: [{ week: "2026-05-25T00:00:00.000Z", count: 3 }],
+    releases: null,
     unreachable: false,
     captured_at: new Date().toISOString(),
   };

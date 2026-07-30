@@ -21,9 +21,9 @@
 //    quiet-channel rule, applied to feeds instead of alerts.
 //
 // 3. DEDUPE BY IDENTITY, NOT BY OBSERVATION. Ids are keyed on the thing that
-//    happened — (kind, netuid, block, param) — never on the poll that saw it,
-//    so re-reading the same rows yields byte-identical items and a reader does
-//    not see the same change twice.
+//    happened — (kind, netuid, block, param) or (kind, netuid, tag) — never on
+//    the poll that saw it, so re-reading the same rows yields byte-identical
+//    items and a reader does not see the same change twice.
 //
 // ── WHAT THE REAL DATA FORCED (captured 2026-07-30, not read off a schema) ───
 //
@@ -77,6 +77,10 @@ export const NEWS_CAPS: Readonly<Record<string, number>> = {
   "hyperparam-change": 12,
   "ownership-change": 5,
   "lease-event": 5,
+  // A release cadence of a few a week is normal for an active subnet repo, so
+  // this is generous enough to be useful and small enough that a repo tagging
+  // every commit cannot take the feed over.
+  release: 8,
 };
 
 function toIso(value: unknown): string | null {
@@ -406,6 +410,73 @@ export function leaseEventItems(
   return items;
 }
 
+// ── releases ────────────────────────────────────────────────────────────────
+
+/** One captured release, as stored by scripts/github-signals.ts (#8704). */
+export interface SubnetRelease {
+  tag: string;
+  name: string | null;
+  published_at: string;
+  url: string;
+  prerelease: boolean;
+}
+
+/**
+ * Feed items for a subnet repo's GitHub releases.
+ *
+ * The URL is the release's own `html_url` as captured, never rebuilt from an
+ * owner/repo pair: `macrocosm-os/prompting` serves releases whose html_url
+ * points at `macrocosm-os/apex`, so a constructed URL would 404. Because the
+ * captured URL is the only link, a release without one is dropped by newsItem
+ * rather than published uncited.
+ *
+ * The title uses the TAG, not the release name. Real names include
+ * `"v1.2.0 / 2023-08-28"` (opentensor/validators) — a name that already
+ * embeds a date would read as a doubled date next to the item's own timestamp.
+ * The name goes in the summary, where the redundancy is harmless.
+ */
+export function releaseItems(
+  netuid: number,
+  releases: readonly SubnetRelease[] | null | undefined,
+  options: { cap?: number } = {},
+): NewsItem[] {
+  const cap = options.cap ?? NEWS_CAPS.release;
+  if (!Array.isArray(releases)) return [];
+  const sorted = [...releases].sort((a, b) =>
+    String(b?.published_at ?? "").localeCompare(String(a?.published_at ?? "")),
+  );
+  const items: NewsItem[] = [];
+  const seen = new Set<string>();
+  for (const release of sorted) {
+    if (items.length >= cap) break;
+    const tag = typeof release?.tag === "string" ? release.tag.trim() : "";
+    if (!tag) continue;
+    // Dedupe on the tag: a repo can move a tag, and re-capturing must not
+    // produce a second item for the same release.
+    if (seen.has(tag)) continue;
+    const name =
+      typeof release?.name === "string" && release.name.trim() !== ""
+        ? release.name.trim()
+        : null;
+    const proposed = release?.prerelease === true;
+    const item = newsItem({
+      id: `chain:sn${netuid}:release:${tag}`,
+      url: typeof release?.url === "string" ? release.url : "",
+      title: `Subnet ${netuid} released ${tag}${proposed ? " (pre-release)" : ""}`,
+      summary:
+        `${name && name !== tag ? `${name} — ` : ""}` +
+        `Release ${tag} published on GitHub for subnet ${netuid}'s source repository.`,
+      timestamp: toIso(release?.published_at),
+      tags: [NEWS_TAG, "release", `sn${netuid}`],
+    });
+    if (item) {
+      seen.add(tag);
+      items.push(item);
+    }
+  }
+  return items;
+}
+
 /**
  * All chain news for one subnet, capped per lane and newest-first.
  *
@@ -417,11 +488,13 @@ export function subnetNewsItems(input: {
   hyperparamSnapshots?: readonly HyperparamSnapshot[] | null;
   ownershipRows?: readonly ChainEventRow[] | null;
   leaseRows?: readonly ChainEventRow[] | null;
+  releases?: readonly SubnetRelease[] | null;
 }): NewsItem[] {
   const { netuid } = input;
   return [
     ...hyperparamChangeItems(netuid, input.hyperparamSnapshots),
     ...ownershipChangeItems(netuid, input.ownershipRows),
     ...leaseEventItems(netuid, input.leaseRows),
+    ...releaseItems(netuid, input.releases),
   ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }

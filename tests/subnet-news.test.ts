@@ -690,3 +690,161 @@ describe("existing feed items are unaffected (#8658 parity rule)", () => {
     expect(res.status).toBe(200);
   });
 });
+
+// Real subnet-repo releases, captured 2026-07-30:
+//   gh api repos/macrocosm-os/prompting/releases?per_page=2
+//   gh api repos/opentensor/validators/releases?per_page=2
+//   gh api repos/404-Repo/404-gen-subnet/releases   -> [] (no releases at all)
+const SUBNET_RELEASES = [
+  {
+    tag: "v3.0.6",
+    name: "v3.0.6",
+    published_at: "2025-09-11T00:00:30Z",
+    // Queried as macrocosm-os/prompting; GitHub serves apex. A constructed
+    // URL would 404.
+    url: "https://github.com/macrocosm-os/apex/releases/tag/v3.0.6",
+    prerelease: false,
+  },
+  {
+    tag: "v3.0.5",
+    name: "v3.0.5",
+    published_at: "2025-09-05T16:08:22Z",
+    url: "https://github.com/macrocosm-os/apex/releases/tag/v3.0.5",
+    prerelease: false,
+  },
+];
+
+// Real name format from opentensor/validators — the name embeds its own date.
+const DATED_NAME_RELEASE = {
+  tag: "v1.2.0",
+  name: "v1.2.0 / 2023-08-28",
+  published_at: "2023-08-28T16:30:12Z",
+  url: "https://github.com/opentensor/validators/releases/tag/v1.2.0",
+  prerelease: false,
+};
+
+describe("releaseItems (#8704 part 2)", () => {
+  it("uses the captured html_url, which may point at a renamed repo", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    const items = releaseItems(1, SUBNET_RELEASES);
+    // Queried repo was `prompting`; the real link is `apex`.
+    expect(items[0].url).toBe(
+      "https://github.com/macrocosm-os/apex/releases/tag/v3.0.6",
+    );
+  });
+
+  it("titles by tag, not by a name that already carries a date", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    const [item] = releaseItems(1, [DATED_NAME_RELEASE]);
+    // "v1.2.0 / 2023-08-28" beside the item's own timestamp reads as a
+    // doubled date; the name belongs in the summary.
+    expect(item.title).toBe("Subnet 1 released v1.2.0");
+    expect(item.summary).toContain("v1.2.0 / 2023-08-28");
+  });
+
+  it("does not repeat a name that is just the tag", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    const [item] = releaseItems(1, SUBNET_RELEASES);
+    expect(item.summary.startsWith("Release v3.0.6")).toBe(true);
+  });
+
+  it("flags a pre-release without hiding it", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    const [item] = releaseItems(1, [
+      { ...SUBNET_RELEASES[0], prerelease: true },
+    ]);
+    expect(item.title).toBe("Subnet 1 released v3.0.6 (pre-release)");
+  });
+
+  it("orders newest first and is byte-stable", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    const items = releaseItems(1, [...SUBNET_RELEASES].reverse());
+    expect(items.map((i) => i.id)).toEqual([
+      "chain:sn1:release:v3.0.6",
+      "chain:sn1:release:v3.0.5",
+    ]);
+    expect(releaseItems(1, SUBNET_RELEASES)).toEqual(items);
+  });
+
+  it("dedupes a repeated tag", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    expect(
+      releaseItems(1, [SUBNET_RELEASES[0], { ...SUBNET_RELEASES[0] }]),
+    ).toHaveLength(1);
+  });
+
+  it("distinguishes no releases from no capture", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    // [] is the common case — most subnet repos publish no releases at all.
+    expect(releaseItems(1, [])).toEqual([]);
+    // null means we could not ask; both yield no items, but the caller's
+    // stored value keeps the distinction.
+    expect(releaseItems(1, null)).toEqual([]);
+    expect(releaseItems(1, undefined)).toEqual([]);
+  });
+
+  it("drops a release it cannot link, date, or tag", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    expect(releaseItems(1, [{ ...SUBNET_RELEASES[0], url: "" }])).toEqual([]);
+    expect(
+      releaseItems(1, [{ ...SUBNET_RELEASES[0], published_at: "" }]),
+    ).toEqual([]);
+    expect(releaseItems(1, [{ ...SUBNET_RELEASES[0], tag: "  " }])).toEqual([]);
+    expect(
+      releaseItems(1, [{ ...SUBNET_RELEASES[0], url: 7 as never }]),
+    ).toEqual([]);
+  });
+
+  it("tolerates a null entry and a missing published_at while sorting", async () => {
+    // The sort touches every entry before any is validated, so a null row or a
+    // dateless one must not throw there.
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    const items = releaseItems(1, [
+      null as never,
+      { ...SUBNET_RELEASES[0], published_at: undefined as never },
+      SUBNET_RELEASES[1],
+    ]);
+    expect(items.map((i) => i.id)).toEqual(["chain:sn1:release:v3.0.5"]);
+  });
+
+  it("handles a missing or blank name", async () => {
+    const { releaseItems } = await import("../src/subnet-news.ts");
+    for (const name of [null, "", "   ", 7 as never]) {
+      const [item] = releaseItems(1, [{ ...SUBNET_RELEASES[0], name }]);
+      expect(item.summary.startsWith("Release v3.0.6")).toBe(true);
+    }
+  });
+
+  it("caps a repo that tags every commit", async () => {
+    const { releaseItems, NEWS_CAPS } = await import("../src/subnet-news.ts");
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      ...SUBNET_RELEASES[0],
+      tag: `v9.0.${i}`,
+      published_at: new Date(Date.UTC(2026, 0, 1, i)).toISOString(),
+    }));
+    const items = releaseItems(1, many);
+    expect(items).toHaveLength(NEWS_CAPS.release);
+    // Newest kept.
+    expect(items[0].id).toBe("chain:sn1:release:v9.0.39");
+  });
+
+  it("joins the merged feed without starving the other lanes", async () => {
+    const { subnetNewsItems, NEWS_CAPS } =
+      await import("../src/subnet-news.ts");
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      ...SUBNET_RELEASES[0],
+      tag: `v9.0.${i}`,
+      published_at: new Date(Date.UTC(2026, 0, 1, i)).toISOString(),
+    }));
+    const items = subnetNewsItems({
+      netuid: 18,
+      ownershipRows: [OWNERSHIP_ROW],
+      releases: many,
+    });
+    expect(items.some((i) => i.id.startsWith("chain:sn18:owner:"))).toBe(true);
+    expect(items.filter((i) => i.id.includes(":release:"))).toHaveLength(
+      NEWS_CAPS.release,
+    );
+    for (const item of items) expect(() => new URL(item.url)).not.toThrow();
+  });
+});

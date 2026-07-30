@@ -24560,6 +24560,53 @@
               }
             ]
           },
+          "github_releases": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "prerelease": {
+                      "type": "boolean"
+                    },
+                    "published_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "tag": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tag",
+                    "name",
+                    "published_at",
+                    "url",
+                    "prerelease"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "github_stars": {
             "anyOf": [
               {
@@ -27228,6 +27275,53 @@
               }
             ]
           },
+          "github_releases": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "prerelease": {
+                      "type": "boolean"
+                    },
+                    "published_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "tag": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tag",
+                    "name",
+                    "published_at",
+                    "url",
+                    "prerelease"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "github_stars": {
             "anyOf": [
               {
@@ -29002,6 +29096,53 @@
                 "format": "date-time",
                 "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                 "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "github_releases": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "prerelease": {
+                      "type": "boolean"
+                    },
+                    "published_at": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "tag": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tag",
+                    "name",
+                    "published_at",
+                    "url",
+                    "prerelease"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -59748,6 +59889,15 @@
                       ],
                       "github_languages": {},
                       "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_releases": [
+                        {
+                          "name": "Example Subnet",
+                          "prerelease": false,
+                          "published_at": "2026-06-01T00:00:00.000Z",
+                          "tag": "example",
+                          "url": "https://api.metagraph.sh/example"
+                        }
+                      ],
                       "github_stars": 1,
                       "github_unreachable": false,
                       "lifecycle": "active",
@@ -65116,6 +65266,15 @@
                       ],
                       "github_languages": {},
                       "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_releases": [
+                        {
+                          "name": "Example Subnet",
+                          "prerelease": false,
+                          "published_at": "2026-06-01T00:00:00.000Z",
+                          "tag": "example",
+                          "url": "https://api.metagraph.sh/example"
+                        }
+                      ],
                       "github_stars": 1,
                       "github_unreachable": false,
                       "identity_evidence": {
@@ -65956,6 +66115,15 @@
                       ],
                       "github_languages": {},
                       "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_releases": [
+                        {
+                          "name": "Example Subnet",
+                          "prerelease": false,
+                          "published_at": "2026-06-01T00:00:00.000Z",
+                          "tag": "example",
+                          "url": "https://api.metagraph.sh/example"
+                        }
+                      ],
                       "github_stars": 1,
                       "github_unreachable": false,
                       "identity_evidence": {
@@ -66105,6 +66273,15 @@
                       ],
                       "github_languages": {},
                       "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                      "github_releases": [
+                        {
+                          "name": "Example Subnet",
+                          "prerelease": false,
+                          "published_at": "2026-06-01T00:00:00.000Z",
+                          "tag": "example",
+                          "url": "https://api.metagraph.sh/example"
+                        }
+                      ],
                       "github_stars": 1,
                       "github_unreachable": false,
                       "lifecycle": "active",

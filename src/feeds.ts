@@ -13,7 +13,8 @@
 //
 // #8704: the per-subnet feed also carries chain governance news — item tags
 // "chain" + "hyperparam" (a parameter moved) or "governance"+"ownership" /
-// "governance"+"lease", each plus "sn<netuid>". Every one of those items links
+// "governance"+"lease", or "release" (the subnet's source repo published one),
+// each plus "sn<netuid>". Every one of those items links
 // to the block or extrinsic that proves it; an item that cannot cite a primary
 // source is never constructed (see src/subnet-news.ts).
 //

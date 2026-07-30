@@ -114,6 +114,8 @@ export interface GithubSignalEntry {
   last_push_at: string | null;
   stars: number | null;
   commits_weekly: CommitWeek[] | null;
+  /** #8704: null when never captured, [] when the repo publishes none. */
+  releases: RepoRelease[] | null;
   unreachable: boolean;
   captured_at: string | null;
 }
@@ -145,6 +147,11 @@ export async function loadGithubSignals(): Promise<
           commits_weekly: Array.isArray(entry.commits_weekly)
             ? (entry.commits_weekly as CommitWeek[])
             : null,
+          // Absent (a signals file written before #8704) reads as null --
+          // "not captured" -- not as an empty release list.
+          releases: Array.isArray(entry.releases)
+            ? (entry.releases as RepoRelease[])
+            : null,
           unreachable: entry.unreachable === true,
           captured_at: (entry.captured_at as string | undefined) || null,
         },
@@ -173,6 +180,9 @@ export function githubSignalsForSubnet(
       github_last_push_at: null,
       github_stars: null,
       github_commits_weekly: null,
+      // #8704: null, not [] -- a subnet with no resolvable source repo was
+      // never asked, which is not the same as a repo that publishes nothing.
+      github_releases: null,
       github_unreachable: false,
     };
   }
@@ -184,6 +194,8 @@ export function githubSignalsForSubnet(
     github_last_push_at: signals?.last_push_at ?? null,
     github_stars: signals?.stars ?? null,
     github_commits_weekly: signals?.commits_weekly ?? null,
+    // #8704: feeds the `release` item kind on the per-subnet feed.
+    github_releases: signals?.releases ?? null,
     github_unreachable: signals?.unreachable ?? false,
   };
 }
@@ -226,6 +238,22 @@ async function fetchJson(url: string): Promise<Row> {
   return { ok: true, body: await res.json() };
 }
 
+/**
+ * One published release, reduced to what a feed item needs (#8704).
+ *
+ * `url` is GitHub's own `html_url`, never constructed: `macrocosm-os/prompting`
+ * serves releases whose html_url points at `macrocosm-os/apex`, so a URL built
+ * from the queried repo name would 404. Same redirect hazard the upgrade radar
+ * hit with opentensor/subtensor -> RaoFoundation.
+ */
+export interface RepoRelease {
+  tag: string;
+  name: string | null;
+  published_at: string;
+  url: string;
+  prerelease: boolean;
+}
+
 export interface RepoSignal {
   owner: string;
   repo: string;
@@ -233,11 +261,21 @@ export interface RepoSignal {
   languages: Row | null;
   stars: number | null;
   commits_weekly: CommitWeek[] | null;
+  /**
+   * Published releases, newest first. An EMPTY ARRAY is the common case and
+   * means "this repo publishes no releases" -- most subnet repos do not use
+   * them at all (404-Repo/404-gen-subnet, for one). Null means we could not
+   * ask, which is a different thing and is preserved as such.
+   */
+  releases: RepoRelease[] | null;
   unreachable: boolean;
   captured_at: string | null;
 }
 
 const COMMIT_WEEKS_SHOWN = 13; // ~90 days
+// Enough to cover a busy repo's recent history without paging; the feed caps
+// well below this anyway.
+const RELEASES_CAPTURED = 10;
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 // The last 52 weeks of commit activity, pre-bucketed by GitHub -- one call,
@@ -275,14 +313,56 @@ export async function fetchCommitActivity(
 // still within the 30-day retention window, or drops the repo from this run's
 // output entirely when it doesn't -- never throws, so one bad repo can't
 // abort the whole run.
+/**
+ * The repo's published releases (#8704).
+ *
+ * REST, matching this module's own documented rationale for preferring it over
+ * GraphQL. Drafts are excluded (unpublished, maintainer-only); prereleases are
+ * KEPT and flagged, because for many subnet repos a prerelease is the release.
+ *
+ * Returns null when GitHub could not be asked, and [] when the repo genuinely
+ * publishes nothing — a distinction the caller preserves rather than
+ * collapsing, so "no releases" never reads as "capture failed".
+ */
+export async function fetchReleases(
+  owner: string,
+  repo: string,
+): Promise<RepoRelease[] | null> {
+  const res = await fetchJson(
+    `https://api.github.com/repos/${owner}/${repo}/releases?per_page=${RELEASES_CAPTURED}`,
+  );
+  if (!res.ok || !Array.isArray(res.body)) return null;
+  const releases: RepoRelease[] = [];
+  for (const entry of res.body as Row[]) {
+    if (!entry || typeof entry !== "object") continue;
+    if (entry.draft === true) continue;
+    const tag = typeof entry.tag_name === "string" ? entry.tag_name.trim() : "";
+    const publishedAt =
+      typeof entry.published_at === "string" ? entry.published_at : "";
+    const url = typeof entry.html_url === "string" ? entry.html_url : "";
+    // A release we cannot date or link cannot become a feed item, so it is
+    // not captured either -- storing it would just defer the drop.
+    if (!tag || !publishedAt || !url) continue;
+    releases.push({
+      tag,
+      name: typeof entry.name === "string" && entry.name ? entry.name : null,
+      published_at: publishedAt,
+      url,
+      prerelease: entry.prerelease === true,
+    });
+  }
+  return releases;
+}
+
 export async function fetchRepoSignals(
   { owner, repo }: GithubRepoRef,
   previousEntry: RepoSignal | undefined,
 ): Promise<RepoSignal | null> {
-  const [metaRes, langRes, commitsWeekly] = await Promise.all([
+  const [metaRes, langRes, commitsWeekly, releases] = await Promise.all([
     fetchJson(`https://api.github.com/repos/${owner}/${repo}`),
     fetchJson(`https://api.github.com/repos/${owner}/${repo}/languages`),
     fetchCommitActivity(owner, repo),
+    fetchReleases(owner, repo),
   ]);
   if (!metaRes.ok) {
     if (
@@ -302,6 +382,7 @@ export async function fetchRepoSignals(
     languages: langRes.ok ? (langRes.body as Row) : null,
     stars: (metaBody.stargazers_count as number | undefined) ?? null,
     commits_weekly: commitsWeekly,
+    releases,
     unreachable: false,
     captured_at: buildTimestamp(),
   };

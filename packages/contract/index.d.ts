@@ -7855,6 +7855,14 @@ export interface components {
                 [key: string]: number;
             } | null;
             github_last_push_at?: string | null;
+            github_releases?: {
+                name: string | null;
+                prerelease: boolean;
+                /** Format: date-time */
+                published_at: string;
+                tag: string;
+                url: string;
+            }[] | null;
             github_stars?: number | null;
             github_unreachable?: boolean;
             /** @enum {string} */
@@ -8251,6 +8259,14 @@ export interface components {
                 [key: string]: number;
             } | null;
             github_last_push_at?: string | null;
+            github_releases?: {
+                name: string | null;
+                prerelease: boolean;
+                /** Format: date-time */
+                published_at: string;
+                tag: string;
+                url: string;
+            }[] | null;
             github_stars?: number | null;
             github_unreachable?: boolean;
             integration_readiness?: number;
@@ -8551,6 +8567,14 @@ export interface components {
                 [key: string]: number;
             } | null;
             github_last_push_at?: string | null;
+            github_releases?: {
+                name: string | null;
+                prerelease: boolean;
+                /** Format: date-time */
+                published_at: string;
+                tag: string;
+                url: string;
+            }[] | null;
             github_stars?: number | null;
             github_unreachable?: boolean;
             identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
@@ -26751,6 +26775,15 @@ export interface operations {
                      *           ],
                      *           "github_languages": {},
                      *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_releases": [
+                     *             {
+                     *               "name": "Example Subnet",
+                     *               "prerelease": false,
+                     *               "published_at": "2026-06-01T00:00:00.000Z",
+                     *               "tag": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
+                     *           ],
                      *           "github_stars": 1,
                      *           "github_unreachable": false,
                      *           "lifecycle": "active",
@@ -30489,6 +30522,15 @@ export interface operations {
                      *           ],
                      *           "github_languages": {},
                      *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_releases": [
+                     *             {
+                     *               "name": "Example Subnet",
+                     *               "prerelease": false,
+                     *               "published_at": "2026-06-01T00:00:00.000Z",
+                     *               "tag": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
+                     *           ],
                      *           "github_stars": 1,
                      *           "github_unreachable": false,
                      *           "identity_evidence": {
@@ -31197,6 +31239,15 @@ export interface operations {
                      *           ],
                      *           "github_languages": {},
                      *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_releases": [
+                     *             {
+                     *               "name": "Example Subnet",
+                     *               "prerelease": false,
+                     *               "published_at": "2026-06-01T00:00:00.000Z",
+                     *               "tag": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
+                     *           ],
                      *           "github_stars": 1,
                      *           "github_unreachable": false,
                      *           "identity_evidence": {
@@ -31346,6 +31397,15 @@ export interface operations {
                      *           ],
                      *           "github_languages": {},
                      *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
+                     *           "github_releases": [
+                     *             {
+                     *               "name": "Example Subnet",
+                     *               "prerelease": false,
+                     *               "published_at": "2026-06-01T00:00:00.000Z",
+                     *               "tag": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
+                     *           ],
                      *           "github_stars": 1,
                      *           "github_unreachable": false,
                      *           "lifecycle": "active",
