@@ -231,6 +231,62 @@ describe("loadFeedItems branch dispatch", () => {
     assert.equal(deps.loadIncidents.mock.calls.length, 1);
   });
 
+  test("upgrades: reads the radar KV and does not consult the incident ledger", async () => {
+    // #8702 MCP parity -- the same items the REST /api/v1/feeds/upgrades
+    // route serves, reached through get_feed instead.
+    const { deps } = makeCtxDeps();
+    const store: Record<string, string> = {
+      "upgrade-radar:github-sources": JSON.stringify({
+        schema_version: 1,
+        captured_at: "2026-07-29T00:00:00.000Z",
+        releases: [
+          {
+            tag_name: "v440",
+            published_at: "2026-07-27T13:49:31Z",
+            prerelease: true,
+            draft: false,
+            html_url:
+              "https://github.com/RaoFoundation/subtensor/releases/tag/v440",
+          },
+        ],
+        bits: [],
+      }),
+    };
+    const ctx = {
+      env: mockEnv({
+        METAGRAPH_CONTROL: {
+          get: async (key: string, options?: { type?: string }) => {
+            const raw = store[key];
+            if (raw == null) return null;
+            return options?.type === "json" ? JSON.parse(raw) : raw;
+          },
+          put: async () => {},
+        },
+      }),
+      readArtifact: vi.fn(async () => ({ ok: false })),
+    };
+    const res = await loadFeedItems(
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
+      { kind: "upgrades" },
+      deps,
+    );
+    assert.equal(res.kind, "upgrades");
+    assert.equal(res.netuid, null);
+    assert.equal(res.returned, 1);
+    assert.equal(res.items[0].id, "upgrade:release:v440");
+    assert.equal(deps.loadIncidents.mock.calls.length, 0);
+  });
+
+  test("upgrades: returns nothing, not an error, before the first capture", async () => {
+    const { ctx, deps } = makeCtxDeps();
+    const res = await loadFeedItems(
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
+      { kind: "upgrades" },
+      deps,
+    );
+    assert.deepEqual(res.items, []);
+  });
+
   test("forwards the raw since/until args into the returned filters descriptor", async () => {
     const { ctx, deps } = makeCtxDeps();
     const res = await loadFeedItems(

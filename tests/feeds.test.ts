@@ -1789,3 +1789,133 @@ describe("feeds — Worker dispatch integration", () => {
     assert.ok(body.meta.contract_version);
   });
 });
+
+// #8702: the upgrades feed, and the upgrade items merged into the registry
+// feed. Items come from KV only (the cron captures them), so these drive a KV
+// double rather than an artifact reader.
+describe("upgrade feed (#8702)", () => {
+  const SOURCES = {
+    schema_version: 1,
+    captured_at: "2026-07-29T00:00:00.000Z",
+    releases: [
+      {
+        tag_name: "v440",
+        name: "Runtime 440 (proposed)",
+        published_at: "2026-07-27T13:49:31Z",
+        prerelease: true,
+        draft: false,
+        html_url:
+          "https://github.com/RaoFoundation/subtensor/releases/tag/v440",
+      },
+    ],
+    bits: [],
+  };
+  const LEDGER = [
+    {
+      network: "testnet",
+      spec_version: 440,
+      observed_at: "2026-07-27T14:00:00.000Z",
+    },
+  ];
+
+  function envWithRadar() {
+    const store: Record<string, string> = {
+      "upgrade-radar:github-sources": JSON.stringify(SOURCES),
+      "upgrade-radar:transitions": JSON.stringify(LEDGER),
+    };
+    return mockEnv({
+      METAGRAPH_CONTROL: {
+        get: async (key: string, options?: { type?: string }) => {
+          const raw = store[key];
+          if (raw == null) return null;
+          return options?.type === "json" ? JSON.parse(raw) : raw;
+        },
+        put: async () => {},
+      },
+    });
+  }
+
+  async function upgradeFeed(pathname: string, env = envWithRadar()) {
+    const url = new URL(`https://api.metagraph.sh${pathname}`);
+    const res = await handleFeedRequest(new Request(url), env, url, {
+      readArtifact: async () => ({ ok: false }),
+      loadLiveIncidents: async () => null,
+    } as Row);
+    return { res, text: await res.text() };
+  }
+
+  test("/api/v1/feeds/upgrades serves release + transition items", async () => {
+    const { res, text } = await upgradeFeed("/api/v1/feeds/upgrades.json");
+    assert.equal(res.status, 200);
+    const body = JSON.parse(text);
+    assert.equal(body.items.length, 2);
+    const ids = body.items.map((i: FeedItem) => i.id).sort();
+    assert.deepEqual(ids, ["upgrade:release:v440", "upgrade:testnet:spec:440"]);
+    // Every item links to a real absolute URL a reader can follow.
+    for (const item of body.items) assert.doesNotThrow(() => new URL(item.url));
+  });
+
+  test("the feed promises no deploy dates", async () => {
+    const { text } = await upgradeFeed("/api/v1/feeds/upgrades.json");
+    const lowered = text.toLowerCase();
+    // Word-boundary matching, not substring: "eta" is inside "metagraph" on
+    // every single line of this document.
+    for (const banned of [
+      /\beta\b/,
+      /\bexpected\b/,
+      /\bforecast/,
+      /\bpredict/,
+      /\bestimate/,
+    ]) {
+      assert.equal(banned.test(lowered), false, `leaked ${banned}`);
+    }
+  });
+
+  test("?tag=upgrade narrows the registry feed to upgrade items", async () => {
+    const { text: all } = await upgradeFeed("/api/v1/feeds/registry.json");
+    const { text: tagged } = await upgradeFeed(
+      "/api/v1/feeds/registry.json?tag=upgrade",
+    );
+    const allItems = JSON.parse(all).items;
+    const taggedItems = JSON.parse(tagged).items;
+    // Merged into the site-wide feed, and isolable from it.
+    assert.ok(taggedItems.length > 0);
+    assert.ok(allItems.length >= taggedItems.length);
+    for (const item of taggedItems) {
+      assert.ok(item.tags.includes("upgrade"));
+    }
+  });
+
+  test("the feed is served, not errored, before the first capture", async () => {
+    const { res, text } = await upgradeFeed(
+      "/api/v1/feeds/upgrades.json",
+      mockEnv(),
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(text).items, []);
+  });
+
+  test("upgrades is a recognized feed path in every format", async () => {
+    assert.deepEqual(parseFeedPath("/api/v1/feeds/upgrades"), {
+      kind: "upgrades",
+    });
+    assert.deepEqual(parseFeedPath("/api/v1/feeds/upgrades.rss"), {
+      kind: "upgrades",
+    });
+    assert.deepEqual(parseFeedPath("/api/v1/feeds/upgrades.atom"), {
+      kind: "upgrades",
+    });
+  });
+
+  test("renders as valid-looking RSS and Atom", async () => {
+    for (const [ext, marker] of [
+      [".rss", "<rss"],
+      [".atom", "<feed"],
+    ]) {
+      const { res, text } = await upgradeFeed(`/api/v1/feeds/upgrades${ext}`);
+      assert.equal(res.status, 200);
+      assert.ok(text.includes(marker), `${ext} missing ${marker}`);
+      assert.ok(text.includes("Runtime 440 released (proposed)"));
+    }
+  });
+});

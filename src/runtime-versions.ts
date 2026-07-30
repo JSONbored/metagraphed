@@ -73,10 +73,19 @@ export function formatRuntimeTransition(
 // as current. current_spec_version can itself still lag/mislead if the most
 // recent blocks failed to capture a reading (best-effort, see the module
 // docstring) — it is the latest KNOWN reading, not a live guarantee.
+export interface RuntimeVersionHistory {
+  schema_version: 1;
+  transitions: RuntimeTransition[];
+  transition_count: number;
+  current_spec_version: number | null;
+  coverage_from_block: number | null;
+  coverage_from_at: string | null;
+}
+
 export function buildRuntimeVersionHistory(
   rows: Row[] | null | undefined,
   latestRow: Row | null = null,
-): Row {
+): RuntimeVersionHistory {
   const list = Array.isArray(rows) ? rows : [];
   const transitions = list
     .map(formatRuntimeTransition)
@@ -114,7 +123,9 @@ const RUNTIME_LATEST_SQL =
 // Site-wide spec-version transition timeline — shared by the REST route.
 // Cold/empty D1 (or a store with no spec_version reading yet) yields the
 // schema-stable empty shape, never throws.
-export async function loadRuntimeVersionHistory(d1: D1Runner): Promise<Row> {
+export async function loadRuntimeVersionHistory(
+  d1: D1Runner,
+): Promise<RuntimeVersionHistory> {
   const rows = await d1(RUNTIME_TRANSITIONS_SQL, []);
   const latestRows = await d1(RUNTIME_LATEST_SQL, []);
   return buildRuntimeVersionHistory(rows, latestRows[0] ?? null);

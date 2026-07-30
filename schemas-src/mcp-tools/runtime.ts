@@ -20,6 +20,49 @@ const RuntimeTransitionSchema = z
   })
   .passthrough();
 
+// #8702 upgrade radar. Every field is independently nullable because each
+// comes from its own upstream: a testnet RPC outage blanks the testnet reading
+// and nothing else. `pending_upgrade` carries "unknown" as a real value rather
+// than degrading to "none" -- "no upgrade pending" and "we could not tell" are
+// opposite answers, and a consumer must be able to tell them apart.
+//
+// There is deliberately no ETA/expected-date field anywhere in this shape: the
+// foundation publishes no deploy schedule, so any predicted date would be a
+// guess presented as data. See src/upgrade-radar.ts.
+const ChainReadingSchema = z
+  .object({
+    network: z.string(),
+    spec_version: z.int().nullable(),
+    observed_at: z.string().nullable(),
+  })
+  .passthrough();
+
+const ReleaseRecordSchema = z
+  .object({
+    tag: z.string(),
+    spec_version: z.int(),
+    published_at: z.string().nullable(),
+    url: z.string().nullable(),
+    name: z.string().nullable(),
+    prerelease: z.boolean(),
+  })
+  .passthrough();
+
+const UpgradeRadarSchema = z
+  .object({
+    mainnet: ChainReadingSchema,
+    testnet: ChainReadingSchema,
+    latest_release: ReleaseRecordSchema.nullable(),
+    pending_upgrade: z.enum([
+      "none",
+      "testnet_soaking",
+      "released_undeployed",
+      "unknown",
+    ]),
+    versions_behind: z.int().nullable(),
+  })
+  .passthrough();
+
 export const GetRuntimeOutputSchema = z
   .object({
     schema_version: z.int().optional(),
@@ -28,6 +71,7 @@ export const GetRuntimeOutputSchema = z
     coverage_from_block: z.int().nullable().optional(),
     coverage_from_at: z.string().nullable().optional(),
     transitions: z.array(RuntimeTransitionSchema),
+    current: UpgradeRadarSchema.optional(),
   })
   .passthrough();
 export type GetRuntimeOutput = z.infer<typeof GetRuntimeOutputSchema>;

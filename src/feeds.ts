@@ -41,8 +41,11 @@ import {
   weakEtag,
 } from "../workers/http.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
+import { loadUpgradeFeedItems } from "./upgrade-radar.ts";
 
-const SITE_URL = "https://metagraph.sh";
+// Exported so the MCP feed loader (src/feed-mcp.ts) builds identical item URLs
+// rather than keeping a second copy of the origin that could drift.
+export const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
 export const FEED_MAX_ITEMS = 50;
 const FEED_CACHE_SECONDS = 600;
@@ -669,7 +672,10 @@ export type FeedTarget =
   | { kind: "subnet"; netuid: number }
   // #8376: no netuid/ids here -- ids live in the query string, not the path,
   // parsed alongside since/until/limit in handleFeedRequest.
-  | { kind: "watch" };
+  | { kind: "watch" }
+  // #8702: runtime upgrade lifecycle -- GitHub releases, observed chain
+  // transitions, and BIT documents. Path-only, no params of its own.
+  | { kind: "upgrades" };
 
 // Parse `/api/v1/feeds/...` into { kind, netuid } or null for an unknown feed.
 export function parseFeedPath(pathname: string): FeedTarget | null {
@@ -681,6 +687,7 @@ export function parseFeedPath(pathname: string): FeedTarget | null {
   if (rest === "incidents") return { kind: "incidents" };
   if (rest === "gaps") return { kind: "gaps" };
   if (rest === "watch") return { kind: "watch" };
+  if (rest === "upgrades") return { kind: "upgrades" };
   const subnet = /^subnets\/(\d+)$/.exec(rest);
   if (subnet) return { kind: "subnet", netuid: Number(subnet[1]) };
   return null;
@@ -814,7 +821,7 @@ export async function handleFeedRequest(
   if (!target || typeof readArtifact !== "function") {
     return fail(
       "feed_not_found",
-      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/subnets/{netuid}, /api/v1/feeds/watch (each as .rss/.atom/.json or via Accept).",
+      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/upgrades, /api/v1/feeds/subnets/{netuid}, /api/v1/feeds/watch (each as .rss/.atom/.json or via Accept).",
       404,
     );
   }
@@ -904,10 +911,17 @@ export async function handleFeedRequest(
       env,
       "/metagraph/changelog.json",
     );
-    items = registryItems(changelog);
+    // #8702 folds the upgrade items into the site-wide "what changed" feed as
+    // well as serving them standalone, so a subscriber who already follows this
+    // feed learns about a runtime upgrade without adding a second URL -- and so
+    // `?tag=upgrade` narrows this feed to exactly them.
+    items = [
+      ...registryItems(changelog),
+      ...(await loadUpgradeFeedItems(env, { siteUrl: SITE_URL })),
+    ];
     title = "metagraphed — registry changes";
     description =
-      "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry.";
+      "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry, plus Bittensor runtime upgrade activity.";
     updatedSource = (changelog as Record<string, unknown> | null)?.generated_at;
   } else if (target.kind === "incidents") {
     const incidents = await loadIncidentsData(deps, env);
@@ -929,6 +943,13 @@ export async function handleFeedRequest(
     homeUrl = `${SITE_URL}/gaps`;
     updatedSource = (enrichmentQueue as Record<string, unknown> | null)
       ?.generated_at;
+  } else if (target.kind === "upgrades") {
+    items = await loadUpgradeFeedItems(env, { siteUrl: SITE_URL });
+    title = "metagraphed — runtime upgrades";
+    description =
+      "Bittensor runtime upgrade activity: subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Observed states only: the foundation publishes no deploy schedule, so this feed reports what has happened and never when something will.";
+    homeUrl = `${SITE_URL}/runtime`;
+    updatedSource = items[0]?.timestamp;
   } else if (target.kind === "watch") {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),

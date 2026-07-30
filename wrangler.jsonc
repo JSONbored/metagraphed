@@ -585,6 +585,10 @@
       "17 * * * *",
       "37 3 * * *",
       "53 4 * * *",
+      // 7,37 = twice-hourly runtime upgrade radar (#8702) -- see
+      // UPGRADE_RADAR_CRON in workers/config.ts for why the cadence is fixed
+      // by GitHub's unauthenticated rate limit rather than by the chain.
+      "7,37 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
