@@ -1,7 +1,21 @@
-// Small formatting + UI helpers
+/**
+ * Format a generic number for UI display. Nullish / non-finite → fallback.
+ * Tiering mirrors formatTao's magnitude rule so dust never collapses to "0":
+ *  - exactly 0 → "0"
+ *  - |n| ≥ 1 → grouped, up to 4 fraction digits ("1,234.5679")
+ *  - 0 < |n| < 1 → up to 4 significant digits ("0.0001662")
+ * Sign is preserved. Integers stay thousands-grouped with no decimal point.
+ */
 export function formatNumber(n: number | undefined | null, fallback = "—"): string {
   if (n === undefined || n === null || !Number.isFinite(n)) return fallback;
-  return new Intl.NumberFormat("en-US").format(n);
+  if (n === 0) return "0";
+  const magnitude = Math.abs(n);
+  if (magnitude >= 1) {
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(n);
+  }
+  return new Intl.NumberFormat("en-US", {
+    maximumSignificantDigits: 4,
+  }).format(n);
 }
 
 /**
@@ -29,7 +43,8 @@ export function formatTao(v?: number | null): string {
  * Approximate USD for a τ amount at the live client-side TAO price (#8373).
  * Convenience conversion only — not historical price-at-tx. Returns null when
  * either input is missing/non-finite so callers can omit the secondary line.
- * Precision mirrors TaoValue: 2dp for ≥$1, 4dp for dust.
+ * Precision mirrors TaoValue / formatNumber: 2dp for ≥$1; sub-dollar amounts
+ * keep significant digits so dust never collapses to "$0".
  */
 export function formatUsdApprox(
   tao: number | null | undefined,
@@ -38,7 +53,10 @@ export function formatUsdApprox(
   if (tao == null || !Number.isFinite(tao)) return null;
   if (priceUsd == null || !Number.isFinite(priceUsd)) return null;
   const usd = tao * priceUsd;
-  return `$${formatNumber(Number(usd.toFixed(Math.abs(usd) >= 1 ? 2 : 4)))}`;
+  if (Math.abs(usd) >= 1) {
+    return `$${formatNumber(Number(usd.toFixed(2)))}`;
+  }
+  return `$${formatNumber(usd)}`;
 }
 
 /**
