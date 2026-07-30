@@ -6518,6 +6518,7 @@ const rootValue = {
       daily: (data.daily ?? []).map((d: Row) => ({
         day: d.day,
         extrinsic_count: d.extrinsic_count ?? 0,
+        signed_extrinsic_count: d.signed_extrinsic_count ?? 0,
         total_fee_tao: d.total_fee_tao ?? null,
         avg_fee_tao: d.avg_fee_tao ?? null,
         median_fee_tao: d.median_fee_tao ?? null,
