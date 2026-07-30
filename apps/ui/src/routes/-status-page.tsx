@@ -203,7 +203,7 @@ function RecentIncidents() {
           {summary?.incident_count === 1 ? "" : "s"} · {window} · across {affected}{" "}
           {affected === 1 ? "surface" : "surfaces"}
         </div>
-        <div className="ml-auto inline-flex items-center overflow-hidden rounded-md border border-border bg-card text-[11px]">
+        <div className="ml-auto inline-flex items-center overflow-hidden rounded-md border border-border bg-card mg-type-label">
           {WINDOWS.map((w) => (
             <button
               key={w}
