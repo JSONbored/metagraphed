@@ -19,6 +19,7 @@ import {
 import { API_ROUTES } from "../src/contracts.ts";
 import { handleRequest, isMainnetOnlyApiPath } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
 
 const NETWORKS = {
   mainnet: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
@@ -49,6 +50,7 @@ function matrix() {
     routes: API_ROUTES,
     networks: NETWORKS,
     isMainnetOnly: isMainnetOnlyApiPath,
+    publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
   });
 }
 
@@ -151,51 +153,81 @@ describe("the matrix matches what the router actually does", () => {
 });
 
 describe("the matrix is derived, not copied", () => {
-  test("changing the predicate changes the output", () => {
-    // Property 3, the issue's derivation proof. If this list were
-    // hand-maintained, swapping the predicate would change nothing.
-    const everythingServed = buildNetworkCapabilities({
+  test("availability needs BOTH conditions, and each one moves the output", () => {
+    // A route serves off mainnet only when it is not mainnet-only AND its
+    // artifact is published for that network. Relaxing either condition
+    // changes the matrix, which is what proves neither is a decoration.
+    const real = testnetEntry();
+
+    // Relax the predicate alone: still bounded by what the build publishes,
+    // so it cannot suddenly claim everything.
+    const noPredicate = buildNetworkCapabilities({
       routes: API_ROUTES,
       networks: NETWORKS,
       isMainnetOnly: () => false,
+      publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
     }).find((network) => network.id === "testnet");
-    const nothingServed = buildNetworkCapabilities({
-      routes: API_ROUTES,
-      networks: NETWORKS,
-      isMainnetOnly: () => true,
-    }).find((network) => network.id === "testnet");
-
-    assert.equal(everythingServed?.unserved_families.length, 0);
-    assert.ok((everythingServed?.served_families.length ?? 0) > 0);
-    assert.equal(nothingServed?.served_families.length, 0);
-    assert.ok((nothingServed?.unserved_families.length ?? 0) > 0);
-
-    // ...and neither extreme equals the real matrix, so the real one is
-    // genuinely reading the predicate.
-    const real = testnetEntry();
-    assert.notEqual(
-      real.served_families.length,
-      everythingServed?.served_families.length,
+    assert.ok(
+      (noPredicate?.served_families.length ?? 0) < API_ROUTES.length,
+      "dropping the predicate must not make every route serve — publication still gates it",
     );
-    assert.notEqual(real.served_families.length, 0);
-  });
 
-  test("adding a route to the mainnet-only set moves it out of served", () => {
-    const pinned = "/api/v1/coverage";
-    const before = buildNetworkCapabilities({
+    // Relax publication alone: the predicate still withholds mainnet-only
+    // families, so the two conditions are independent.
+    const everythingPublished = buildNetworkCapabilities({
       routes: API_ROUTES,
       networks: NETWORKS,
       isMainnetOnly: isMainnetOnlyApiPath,
-    }).find((n) => n.id === "testnet");
-    const after = buildNetworkCapabilities({
+      publishedArtifacts: API_ROUTES.map((route) => route.artifact_path),
+    }).find((network) => network.id === "testnet");
+    assert.ok(
+      (everythingPublished?.served_families.length ?? 0) >
+        (real.served_families.length ?? 0),
+      "publishing everything must widen the served set",
+    );
+    assert.ok(
+      (everythingPublished?.unserved_families.length ?? 0) > 0,
+      "mainnet-only families must stay unserved even when everything is published",
+    );
+
+    // Publish nothing: nothing serves, whatever the predicate says.
+    const nothingPublished = buildNetworkCapabilities({
       routes: API_ROUTES,
       networks: NETWORKS,
-      isMainnetOnly: (path) =>
-        path === pinned || isMainnetOnlyApiPath(concretePath(path)),
-    }).find((n) => n.id === "testnet");
-    // `coverage` is a single-route family, so pinning it flips the family.
-    assert.ok(before?.served_families.some((f) => f.family === "coverage"));
-    assert.ok(!after?.served_families.some((f) => f.family === "coverage"));
+      isMainnetOnly: () => false,
+      publishedArtifacts: [],
+    }).find((network) => network.id === "testnet");
+    assert.equal(nothingPublished?.served_families.length, 0);
+  });
+
+  test("the served set matches what the build actually writes", () => {
+    // The verified testnet surface, cross-checked against production on
+    // 2026-07-30: subnets, coverage and economics return 200; every other
+    // family 404s.
+    const entry = testnetEntry();
+    const served = new Set(entry.served_families.map((f) => f.family));
+    const partial = new Set(entry.partial_families.map((f) => f.family));
+
+    // coverage is a whole family, fully served.
+    assert.ok(served.has("coverage"));
+    // `networks` is the matrix route itself — computed live, answered before
+    // every gate, so it is guaranteed on all networks.
+    assert.ok(served.has("networks"));
+
+    // `subnets` and `economics` are PARTIAL, not served. /api/v1/subnets,
+    // /api/v1/subnets/{netuid} and /api/v1/economics are published for
+    // testnet, but the health/metagraph/history sub-routes and
+    // /api/v1/economics/trends are mainnet-only. Reporting either family as
+    // simply "served" is the confident-404 this route exists to prevent.
+    for (const family of ["subnets", "economics"]) {
+      assert.ok(partial.has(family), `${family} must be reported as partial`);
+      assert.ok(!served.has(family), `${family} must not be reported served`);
+    }
+
+    // Nothing curated leaks in.
+    for (const family of ["surfaces", "profiles", "endpoints", "providers"]) {
+      assert.ok(!served.has(family), `${family} must not be reported served`);
+    }
   });
 });
 

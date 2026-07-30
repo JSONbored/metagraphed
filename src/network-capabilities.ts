@@ -107,7 +107,7 @@ function familiesOf(routes: readonly RouteLike[]): RouteFamily[] {
  * which is what the derivation test exploits.
  */
 export function buildNetworkCapabilities(input: {
-  routes: readonly RouteLike[];
+  routes: readonly (RouteLike & { artifact_path?: string })[];
   networks: Readonly<
     Record<
       string,
@@ -115,11 +115,22 @@ export function buildNetworkCapabilities(input: {
     >
   >;
   isMainnetOnly: (path: string) => boolean;
+  /**
+   * Artifact paths the build publishes for non-default networks.
+   *
+   * The second half of the availability rule. Without it the matrix
+   * over-promises: a route can be perfectly network-addressable and still 404
+   * because nothing ever wrote its testnet artifact.
+   */
+  publishedArtifacts: readonly string[];
   localNote?: string;
 }): NetworkCapability[] {
   const { routes, networks, isMainnetOnly } = input;
-  const mainnetOnly = routes.filter((route) => isMainnetOnly(route.path));
-  const universal = routes.filter((route) => !isMainnetOnly(route.path));
+  const published = new Set(input.publishedArtifacts);
+  const servesOffMainnet = (route: RouteLike & { artifact_path?: string }) =>
+    !isMainnetOnly(route.path) && published.has(route.artifact_path ?? "");
+  const mainnetOnly = routes.filter((route) => !servesOffMainnet(route));
+  const universal = routes.filter(servesOffMainnet);
 
   // Aliases collapse onto their canonical id: `finney` and `mainnet` are one
   // network reported once, with both spellings listed.
@@ -211,7 +222,7 @@ export function buildNetworkCapabilities(input: {
 
 /** The response body for GET /api/v1/networks. */
 export function buildNetworksPayload(input: {
-  routes: readonly RouteLike[];
+  routes: readonly (RouteLike & { artifact_path?: string })[];
   networks: Readonly<
     Record<
       string,
@@ -219,6 +230,7 @@ export function buildNetworksPayload(input: {
     >
   >;
   isMainnetOnly: (path: string) => boolean;
+  publishedArtifacts: readonly string[];
 }): {
   schema_version: 1;
   default_network: string;

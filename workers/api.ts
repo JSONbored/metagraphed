@@ -422,6 +422,7 @@ import {
 } from "./config.ts";
 import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
 import { buildNetworksPayload } from "../src/network-capabilities.ts";
+import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
 import {
   subnetNewsItems,
   type ChainEventRow,
@@ -1981,6 +1982,7 @@ export async function handleRequest(
           routes: API_ROUTES,
           networks: NETWORKS,
           isMainnetOnly: isMainnetOnlyApiPath,
+          publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
         }),
         meta: { contract_version: contractVersion(env) },
       },

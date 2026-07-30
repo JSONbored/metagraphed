@@ -7,6 +7,8 @@
     "changelog-by-network",
     "freshness",
     "freshness-by-network",
+    "network-capabilities",
+    "network-capabilities-by-network",
     "source-health",
     "source-health-by-network",
     "source-snapshots",
