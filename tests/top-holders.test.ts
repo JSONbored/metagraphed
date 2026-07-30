@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildTopHoldersList,
+  compareTopHoldersSort,
   TOP_HOLDERS_SORTS,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
@@ -202,11 +203,25 @@ describe("buildTopHoldersList", () => {
     ]);
   });
 
-  test("net_flow_7d/30d/90d default to 0 when the flow rollup has no row for this account", () => {
+  test("net_flow_7d/30d/90d are null when the flow rollup has no row for this account (#8807)", () => {
     const data = buildTopHoldersList([ROW]) as Row;
+    assert.equal(data.accounts[0].net_flow_7d, null);
+    assert.equal(data.accounts[0].net_flow_30d, null);
+    assert.equal(data.accounts[0].net_flow_90d, null);
+  });
+
+  test("a genuine zero net_flow_7d is preserved when the account has flow rows but none in the last 7 days (#8807)", () => {
+    const data = buildTopHoldersList([
+      {
+        ...ROW,
+        net_flow_7d: 0,
+        net_flow_30d: 12.5,
+        net_flow_90d: 40,
+      },
+    ]) as Row;
     assert.equal(data.accounts[0].net_flow_7d, 0);
-    assert.equal(data.accounts[0].net_flow_30d, 0);
-    assert.equal(data.accounts[0].net_flow_90d, 0);
+    assert.equal(data.accounts[0].net_flow_30d, 12.5);
+    assert.equal(data.accounts[0].net_flow_90d, 40);
   });
 
   test("a negative net flow (net outflow) is preserved, not clamped to 0", () => {
@@ -218,11 +233,11 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].net_flow_90d, -1);
   });
 
-  test("a non-finite net flow value falls back to 0", () => {
+  test("a non-finite net flow value becomes null, not 0 (#8807)", () => {
     const data = buildTopHoldersList([
       { ...ROW, net_flow_30d: "not-a-number" },
     ]) as Row;
-    assert.equal(data.accounts[0].net_flow_30d, 0);
+    assert.equal(data.accounts[0].net_flow_30d, null);
   });
 
   test("sorts by net_flow_30d when requested, biggest net inflow first", () => {
@@ -240,6 +255,85 @@ describe("buildTopHoldersList", () => {
     ) as Row;
     assert.equal(data.accounts[0].ss58, "5BigInflow");
     assert.equal(data.accounts[1].ss58, "5Outflow");
+  });
+
+  test("null net_flow_7d sorts after a real negative outflow (#8807)", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5Unknown", free_tao: 0, delegated_tao: 0 },
+        { ss58: "5Outflow", free_tao: 0, delegated_tao: 0, net_flow_7d: -5 },
+      ],
+      { sort: "net_flow_7d" },
+    ) as Row;
+    assert.deepEqual(
+      (data.accounts as Row[]).map((a: Row) => a.ss58),
+      ["5Outflow", "5Unknown"],
+    );
+  });
+
+  test("two null net_flow_7d rows tiebreak by ss58 (#8807)", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5B", free_tao: 0, delegated_tao: 0 },
+        { ss58: "5A", free_tao: 0, delegated_tao: 0 },
+      ],
+      { sort: "net_flow_7d" },
+    ) as Row;
+    assert.deepEqual(
+      (data.accounts as Row[]).map((a: Row) => a.ss58),
+      ["5A", "5B"],
+    );
+  });
+
+  test("equal net_flow_7d values tiebreak by ss58 (#8807 coverage)", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5B", free_tao: 0, delegated_tao: 0, net_flow_7d: 10 },
+        { ss58: "5A", free_tao: 0, delegated_tao: 0, net_flow_7d: 10 },
+        { ss58: "5C", free_tao: 0, delegated_tao: 0, net_flow_7d: 20 },
+      ],
+      { sort: "net_flow_7d" },
+    ) as Row;
+    assert.deepEqual(
+      (data.accounts as Row[]).map((a: Row) => a.ss58),
+      ["5C", "5A", "5B"],
+    );
+  });
+
+  test("undefined net_flow is null, distinct from a genuine zero (#8807)", () => {
+    const data = buildTopHoldersList([
+      { ...ROW, net_flow_7d: undefined, net_flow_30d: 0 },
+    ]) as Row;
+    assert.equal(data.accounts[0].net_flow_7d, null);
+    assert.equal(data.accounts[0].net_flow_30d, 0);
+  });
+});
+
+describe("compareTopHoldersSort", () => {
+  const num = {
+    ss58: "5Num",
+    free_tao: 0,
+    delegated_tao: 0,
+    total_tao: 0,
+    net_flow_7d: -5,
+    net_flow_30d: null,
+    net_flow_90d: null,
+    last_updated: null,
+  };
+  const missing = {
+    ss58: "5Null",
+    free_tao: 0,
+    delegated_tao: 0,
+    total_tao: 0,
+    net_flow_7d: null,
+    net_flow_30d: null,
+    net_flow_90d: null,
+    last_updated: null,
+  };
+
+  test("number vs null and null vs number both place null last (#8807)", () => {
+    assert.equal(compareTopHoldersSort(num, missing, "net_flow_7d"), -1);
+    assert.equal(compareTopHoldersSort(missing, num, "net_flow_7d"), 1);
   });
 });
 
