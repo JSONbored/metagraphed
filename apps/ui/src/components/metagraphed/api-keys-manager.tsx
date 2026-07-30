@@ -24,8 +24,19 @@ interface ApiKeyMinted {
 
 interface ApiKeyUsage {
   window_days: number;
-  days: { day: string; count: number }[];
-  top_routes: { route: string; count: number }[];
+  tier: string | null;
+  // #8609: null when the tier has no daily cap. `free` is uncapped by design,
+  // and rendering 0 or Infinity for it would both read as "you are at your
+  // limit" — so the absence is modelled explicitly rather than defaulted.
+  quota: {
+    units_spent: number;
+    daily_units: number;
+    remaining: number;
+    resets_at: string;
+  } | null;
+  days: { day: string; count: number; rejected: number }[];
+  top_routes: { route: string; count: number; rejected: number }[];
+  rejected_total: number;
 }
 
 // #8611. Mirrors GET /api/v1/keys/status. Deliberately has no `note` field:
@@ -310,7 +321,7 @@ function ApiKeysPanel({
         ))}
       </div>
 
-      {activeKeys.length > 0 ? <UsageDashboard usage={usageQuery.data} /> : null}
+      {activeKeys.length > 0 ? <UsageDashboard usage={usageQuery.data} token={token} /> : null}
     </div>
   );
 }
@@ -323,15 +334,114 @@ function ApiKeysPanel({
  * requests yet) -- there's nothing meaningful to show either way, and an
  * empty-chart placeholder would just be noise under the key list above it.
  */
-function UsageDashboard({ usage }: { usage: ApiKeyUsage | undefined }) {
+/**
+ * Download the tenant's own usage as CSV (#8609).
+ *
+ * A fetch + blob rather than a plain `<a download href=...>`, because the route
+ * authenticates with an `Authorization: Bearer` header and an anchor cannot set
+ * one. The obvious workaround -- putting the session token in the query string
+ * -- would leak a live credential into browser history, any intermediary's
+ * access logs, and the Referer header of whatever the user visits next. A
+ * short-lived object URL keeps it in memory and is revoked immediately.
+ */
+async function exportUsageCsv(token: string) {
+  const res = await fetch("/api/v1/keys/usage?format=csv", {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = `metagraphed-usage-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
+}
+
+function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; token: string }) {
   if (!usage || usage.days.length === 0) return null;
   const chronological = [...usage.days].reverse();
+  const quota = usage.quota;
+  // Percent of the day's cost-unit budget consumed. Clamped at 100 because the
+  // quota rejects a spend that would exceed the limit rather than letting it
+  // overshoot, so a bar past 100% would depict something that cannot happen.
+  const usedPct = quota
+    ? Math.min(100, Math.round((quota.units_spent / quota.daily_units) * 100))
+    : 0;
 
   return (
     <div className="space-y-3 border-t border-border pt-4">
-      <p className="mg-type-caption font-medium text-ink-strong">
-        Usage, last {usage.window_days}d
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="mg-type-caption font-medium text-ink-strong">
+          Usage, last {usage.window_days}d
+        </p>
+        <button
+          type="button"
+          onClick={() => void exportUsageCsv(token)}
+          className="mg-type-caption text-ink-muted underline hover:text-ink-strong"
+        >
+          Export CSV
+        </button>
+      </div>
+
+      {quota ? (
+        <div className="space-y-1">
+          <div className="flex items-baseline justify-between gap-2 mg-type-caption">
+            <span className="text-ink-muted">Daily quota</span>
+            <span className="font-mono text-ink-strong">
+              {quota.units_spent.toLocaleString()} / {quota.daily_units.toLocaleString()} units
+            </span>
+          </div>
+          <div
+            className="h-1.5 w-full overflow-hidden rounded bg-border"
+            role="meter"
+            aria-valuenow={usedPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Daily quota consumed"
+          >
+            <div
+              className={
+                usedPct >= 90
+                  ? "h-full bg-health-down"
+                  : usedPct >= 70
+                    ? "h-full bg-health-warn"
+                    : "h-full bg-accent"
+              }
+              style={{ width: `${usedPct}%` }}
+            />
+          </div>
+          <p className="mg-type-caption text-ink-subtle">
+            {quota.remaining.toLocaleString()} units left · resets{" "}
+            {new Date(quota.resets_at).toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+              // The quota resets at 00:00 UTC and the label says UTC, so the
+              // time must be rendered in UTC too. Without this the browser
+              // formats in LOCAL time and the pair reads as a flat lie --
+              // "resets 5:00 PM UTC" for a midnight-UTC reset.
+              timeZone: "UTC",
+            })}{" "}
+            UTC
+          </p>
+        </div>
+      ) : (
+        <p className="mg-type-caption text-ink-subtle">
+          No daily quota on the <span className="font-mono">{usage.tier ?? "free"}</span> tier —
+          only the per-minute limit applies.
+        </p>
+      )}
+
+      {usage.rejected_total > 0 ? (
+        <p className="mg-type-caption text-health-warn">
+          {usage.rejected_total.toLocaleString()} request
+          {usage.rejected_total === 1 ? " was" : "s were"} rate-limited in this window. Rate-limited
+          requests are not counted against your quota.
+        </p>
+      ) : null}
+
       <BarMini
         data={chronological.map((d) => ({
           label: new Date(d.day).toLocaleDateString(undefined, { month: "short", day: "numeric" }),

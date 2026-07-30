@@ -118,6 +118,10 @@ type ApiKeyUsageRecorder = (
   ctx: EdgeCacheCtx | undefined,
   accountId: string,
   route: string,
+  // #8609: optional so the injected no-op default and any caller that only
+  // records successes stay valid -- widening this must not force every
+  // call site to care about rejections.
+  rejected?: boolean,
 ) => void;
 
 /* v8 ignore start */
@@ -527,6 +531,17 @@ export async function handleRpcProxyRequest(
       env,
       STATE_QUERY_TIERED_RATE_LIMIT,
     );
+    // #8609: recorded before the rejection return so a throttled request is
+    // counted as a rejection rather than not counted at all.
+    if (rateLimit.accountId) {
+      recordApiKeyUsage(
+        env,
+        ctx,
+        rateLimit.accountId,
+        "rpc-state-query",
+        !rateLimit.allowed,
+      );
+    }
     if (!rateLimit.allowed) {
       const rejection = tieredRejectionResponse(rateLimit, {
         code: "rpc_state_query_rate_limited",
@@ -540,9 +555,6 @@ export async function handleRpcProxyRequest(
         {},
         rejection.headers,
       );
-    }
-    if (rateLimit.accountId) {
-      recordApiKeyUsage(env, ctx, rateLimit.accountId, "rpc-state-query");
     }
 
     const validated = validateStateQueryParams(rpcBody.method, rpcBody.params);

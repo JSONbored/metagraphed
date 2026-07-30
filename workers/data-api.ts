@@ -547,7 +547,13 @@ import {
   revokeUnkeyKey,
 } from "../src/unkey-client.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
-import { applyQuotaSpend, utcDayKey } from "../src/daily-quota.ts";
+import {
+  applyQuotaSpend,
+  quotaResetAt,
+  utcDayKey,
+} from "../src/daily-quota.ts";
+import { TIER_DAILY_UNITS } from "../src/api-tiers.ts";
+import { csvRequested, csvResponse } from "./csv.ts";
 import {
   BLOCK_REASON_CODES,
   isBlockReasonCode,
@@ -5336,6 +5342,10 @@ async function handleApiKeyUsageIncrement(request: Request, env: Env) {
   if (error) return error;
   const accountId = Number(body?.account_id);
   const route = typeof body?.route === "string" ? body.route.slice(0, 128) : "";
+  // #8609: a REJECTED request increments rejected_count instead of
+  // request_count. Only a literal true counts -- anything else is a success,
+  // so a malformed flag can never silently erase real usage.
+  const rejected = body?.rejected === true;
   if (!Number.isFinite(accountId) || !route) {
     return writeJson({ error: "provide account_id and route" }, 400);
   }
@@ -5343,10 +5353,18 @@ async function handleApiKeyUsageIncrement(request: Request, env: Env) {
     await withAccountsSql(env, async (sql: postgres.Sql) => {
       const day = new Date().toISOString().slice(0, 10);
       await sql`
-        INSERT INTO api_key_usage_daily (account_id, day, route, request_count)
-        VALUES (${accountId}, ${day}, ${route}, 1)
+        INSERT INTO api_key_usage_daily
+          (account_id, day, route, request_count, rejected_count)
+        VALUES (
+          ${accountId}, ${day}, ${route},
+          ${rejected ? 0 : 1}, ${rejected ? 1 : 0}
+        )
         ON CONFLICT (account_id, day, route)
-        DO UPDATE SET request_count = api_key_usage_daily.request_count + 1`;
+        DO UPDATE SET
+          request_count =
+            api_key_usage_daily.request_count + EXCLUDED.request_count,
+          rejected_count =
+            api_key_usage_daily.rejected_count + EXCLUDED.rejected_count`;
     });
   } catch {
     // Best-effort counter -- never surfaces a failure to the caller (see
@@ -5773,7 +5791,7 @@ async function handleAccountKeyStatus(request: Request, env: Env) {
   });
 }
 
-async function handleAccountKeyUsage(request: Request, env: Env) {
+async function handleAccountKeyUsage(request: Request, env: Env, url: URL) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
@@ -5786,28 +5804,92 @@ async function handleAccountKeyUsage(request: Request, env: Env) {
       .toISOString()
       .slice(0, 10);
     const rows = await sql`
-      SELECT day, route, request_count
+      SELECT day, route, request_count, rejected_count
       FROM api_key_usage_daily
       WHERE account_id = ${session.accountId} AND day >= ${since}
       ORDER BY day DESC`;
-    const byDay = new Map<string, number>();
-    const byRoute = new Map<string, number>();
+    const byDay = new Map<string, { count: number; rejected: number }>();
+    const byRoute = new Map<string, { count: number; rejected: number }>();
     for (const row of rows) {
-      byDay.set(row.day, (byDay.get(row.day) ?? 0) + Number(row.request_count));
-      byRoute.set(
-        row.route,
-        (byRoute.get(row.route) ?? 0) + Number(row.request_count),
+      const count = Number(row.request_count);
+      // rejected_count is BIGINT -> a STRING from postgres.js (#8607's trap),
+      // and the column is new, so an un-migrated row yields null. Both coerce
+      // to 0 rather than NaN, which would poison every total downstream.
+      const rejected = Number(row.rejected_count ?? 0) || 0;
+      const day = byDay.get(row.day) ?? { count: 0, rejected: 0 };
+      day.count += count;
+      day.rejected += rejected;
+      byDay.set(row.day, day);
+      const route = byRoute.get(row.route) ?? { count: 0, rejected: 0 };
+      route.count += count;
+      route.rejected += rejected;
+      byRoute.set(row.route, route);
+    }
+
+    // #8609: quota headroom read from api_quota_daily -- the SAME table the
+    // enforcement gate writes (#8608). The issue's acceptance bar is that the
+    // dashboard's numbers AGREE with the enforcement layer's counters, so this
+    // deliberately reads the enforcement store rather than re-deriving a
+    // parallel total from api_key_usage_daily, which counts requests while the
+    // quota counts COST UNITS and would disagree by construction.
+    const today = new Date().toISOString().slice(0, 10);
+    const [quotaRow] = await sql`
+      SELECT units_spent FROM api_quota_daily
+      WHERE account_id = ${session.accountId} AND day = ${today}`;
+    const unitsSpent = Number(quotaRow?.units_spent ?? 0) || 0;
+    // The tier is NOT on the session token -- it is server-side state that can
+    // change without re-issuing a key (#8608), so reading it from the session
+    // would show a stale ceiling after a promotion. rpc_accounts.tier is the
+    // same column the gate's own key lookup resolves against.
+    const [accountRow] = await sql`
+      SELECT tier FROM rpc_accounts WHERE id = ${session.accountId}`;
+    const tier = typeof accountRow?.tier === "string" ? accountRow.tier : null;
+    // The account's own tier ceiling, from the same config the gate enforces.
+    // Absent when the tier has no daily cap (free is uncapped by design), in
+    // which case there is no headroom to report -- reporting 0 or Infinity
+    // would both read as "you are at your limit".
+    const dailyUnits = TIER_DAILY_UNITS[tier ?? ""];
+    const days = [...byDay.entries()]
+      .map(([day, v]) => ({ day, count: v.count, rejected: v.rejected }))
+      .sort((a, b) => b.day.localeCompare(a.day));
+    const topRoutes = [...byRoute.entries()]
+      .map(([route, v]) => ({ route, count: v.count, rejected: v.rejected }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // ?format=csv exports the tenant's OWN rows -- the issue's export
+    // deliverable. Day-grained, because that is the grain the tenant can
+    // reconcile against their own logs.
+    if (csvRequested(url, request)) {
+      return csvResponse(
+        days,
+        `metagraphed-usage-${today}`,
+        "short",
+        request,
+        ["day", "count", "rejected"],
+        // A tenant's own usage is private and changes continuously, so it must
+        // never sit in a shared cache the way public artifact exports do.
+        // csvResponse has no "no-store" profile, so the header is set here
+        // explicitly rather than picking the least-wrong shared profile.
+        { "cache-control": "no-store", "x-robots-tag": "noindex" },
       );
     }
+
     return writeJson({
       window_days: USAGE_DASHBOARD_WINDOW_DAYS,
-      days: [...byDay.entries()]
-        .map(([day, count]) => ({ day, count }))
-        .sort((a, b) => b.day.localeCompare(a.day)),
-      top_routes: [...byRoute.entries()]
-        .map(([route, count]) => ({ route, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10),
+      tier,
+      quota:
+        dailyUnits === undefined
+          ? null
+          : {
+              units_spent: unitsSpent,
+              daily_units: dailyUnits,
+              remaining: Math.max(0, dailyUnits - unitsSpent),
+              resets_at: quotaResetAt(Date.now()),
+            },
+      days,
+      top_routes: topRoutes,
+      rejected_total: days.reduce((sum, d) => sum + d.rejected, 0),
     });
   });
 }
@@ -5823,7 +5905,7 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
     return handleAccountKeysList(request, env);
   }
   if (keyId === "usage" && request.method === "GET") {
-    return handleAccountKeyUsage(request, env);
+    return handleAccountKeyUsage(request, env, url);
   }
   if (keyId === "status" && request.method === "GET") {
     return handleAccountKeyStatus(request, env);

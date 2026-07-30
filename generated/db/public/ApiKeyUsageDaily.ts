@@ -18,6 +18,8 @@ export default interface ApiKeyUsageDaily {
   route: ApiKeyUsageDailyRoute;
 
   request_count: string;
+
+  rejected_count: string;
 }
 
 /** Represents the initializer for the table public.api_key_usage_daily */
@@ -30,6 +32,9 @@ export interface ApiKeyUsageDailyInitializer {
 
   /** Default value: 0 */
   request_count?: string;
+
+  /** Default value: 0 */
+  rejected_count?: string;
 }
 
 /** Represents the mutator for the table public.api_key_usage_daily */
@@ -41,4 +46,6 @@ export interface ApiKeyUsageDailyMutator {
   route?: ApiKeyUsageDailyRoute;
 
   request_count?: string;
+
+  rejected_count?: string;
 }
