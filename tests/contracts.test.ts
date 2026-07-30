@@ -4,6 +4,7 @@ import addFormatsPlugin from "ajv-formats";
 import { describe, test } from "vitest";
 import {
   API_ROUTES,
+  FEED_ROUTES,
   API_QUERY_COLLECTIONS,
   ARTIFACT_STATUS_LIVE,
   ARTIFACT_STATUS_RETIRED,
@@ -22,6 +23,17 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import type { Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
+// #8703: feeds are their own registry (FEED_ROUTES) because they serve feed
+// documents rather than the artifact envelope, so the OpenAPI document holds
+// API_ROUTES plus each feed family's bare path and its three format suffixes.
+// Counted rather than skipped: an exact total still catches a path appearing in
+// OpenAPI that no registry claims.
+const FEED_OPENAPI_PATH_COUNT = FEED_ROUTES.reduce(
+  (total, entry) => total + 1 + entry.formats.length,
+  0,
+);
+const EXPECTED_OPENAPI_PATHS = API_ROUTES.length + FEED_OPENAPI_PATH_COUNT;
 
 describe("artifact lifecycle status (#6358)", () => {
   // The catalog advertised health-latest/health-summary/health-subnet as
@@ -239,7 +251,7 @@ describe("public contract registry", () => {
     );
     assert.equal(openapi.openapi, "3.1.0");
     assert.equal(openapi.info.version, CONTRACT_VERSION);
-    assert.equal(Object.keys(openapi.paths).length, API_ROUTES.length);
+    assert.equal(Object.keys(openapi.paths).length, EXPECTED_OPENAPI_PATHS);
     // FixtureArtifact is Zod-generated (types-epic B batch 8, #8062) via
     // ArtifactBaseSchema.extend({...}) -- like every other Zod-generated
     // artifact since batch 1, that flattens into a single `object` schema
