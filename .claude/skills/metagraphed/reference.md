@@ -498,7 +498,9 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   file no longer exists in git). The card is served dynamically by `mcpServerCardResponse` in
   `workers/request-handlers/discovery.ts`.
 - **New `/api/v1` route or artifact** trips hidden gates depending on whether it's committed
-  (DUAL_PATTERNS), live-only D1 (R2_ONLY_PATTERNS + COMPUTED_ARTIFACTS), or `/.well-known`
+  (DUAL_PATTERNS), live-only D1 (R2_ONLY_PATTERNS, plus `COMPUTED_LIVE` on the route's own
+  `artifact()` entry in `src/contracts.ts` when it writes no static file — `validate:schemas`
+  derives its skip set from that flag and otherwise expects a file on disk), or `/.well-known`
   worker-computed. Mirror an existing route end-to-end; the build's derived-artifact freshness gate
   fails if a committed `public/metagraph/*` is stale. It also trips gates the "new route" framing
   above doesn't cover, caught live 2026-07-18 shipping two routes with none of these:

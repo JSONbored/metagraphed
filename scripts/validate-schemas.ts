@@ -2,7 +2,7 @@ import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { PUBLIC_ARTIFACTS } from "../src/contracts.ts";
+import { PUBLIC_ARTIFACTS, isComputedArtifact } from "../src/contracts.ts";
 import {
   listJsonFiles,
   listJsonFilesRecursive,
@@ -31,148 +31,6 @@ const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 // in lib.ts.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
-
-// Artifacts whose schema describes a live-computed API response with no static
-// file on disk (served from D1/KV). Their schema is exercised by validate-api's
-// per-route response validation, not by validating files here.
-const COMPUTED_ARTIFACTS = new Set([
-  // #8318: served live from the self_health_* Postgres tier, no static file.
-  "self-health",
-  "health-trends",
-  "health-trends-bulk",
-  "health-percentiles",
-  "health-incidents",
-  "subnet-trajectory",
-  "subnet-concentration",
-  "subnet-concentration-history",
-  "subnet-performance",
-  "subnet-performance-history",
-  "subnet-idle-stake",
-  "subnet-turnover",
-  "subnet-stake-flow",
-  "subnet-alpha-volume",
-  "subnet-ohlc",
-  "subnet-ownership-history",
-  "subnet-conviction",
-  "subnet-lease",
-  "subnet-lease-history",
-  "subnet-stake-quote",
-  "subnet-weights",
-  "subnet-weight-setters",
-  "subnet-serving",
-  "subnet-prometheus",
-  "subnet-stake-moves",
-  "subnet-stake-transfers",
-  "subnet-registrations",
-  "subnet-axon-removals",
-  "subnet-deregistrations",
-  "subnet-movers",
-  "subnet-yield",
-  "subnet-yield-history",
-  "global-validators",
-  "accounts-list",
-  "top-holders",
-  "validator-detail",
-  "validator-nominators",
-  "validator-history",
-  "subnet-uptime",
-  "subnet-metagraph",
-  "subnet-neuron",
-  "subnet-hyperparameters",
-  "subnet-hyperparameters-history",
-  "subnet-validators",
-  "subnet-events",
-  "subnet-event-summary",
-  "subnet-neuron-history",
-  "subnet-history",
-  "subnet-identity-history",
-  "account-summary",
-  "account-entities",
-  "account-events",
-  "account-history",
-  "account-extrinsics",
-  "account-transfers",
-  "account-counterparties",
-  "account-stake-flow",
-  "account-stake-moves",
-  "account-weight-setters",
-  "account-registrations",
-  "account-serving",
-  "account-axon-removals",
-  "account-prometheus",
-  "account-deregistrations",
-  "account-subnets",
-  "account-portfolio",
-  "account-positions",
-  "account-subnet-position-history",
-  "account-balance",
-  "account-root-claim",
-  "account-children",
-  "account-parents",
-  "account-identity",
-  "account-identity-history",
-  "sudo-key",
-  "network-parameters",
-  "randomness",
-  "evm-address-mapping",
-  "subnet-recycled",
-  "subnet-burn",
-  "blocks-feed",
-  "blocks-summary",
-  "block-detail",
-  "block-extrinsics",
-  "block-events",
-  "extrinsics-feed",
-  "extrinsic-detail",
-  "sudo-calls",
-  "governance-config-changes",
-  "runtime-versions",
-  "chain-activity",
-  "chain-calls",
-  "chain-signers",
-  "chain-fees",
-  "chain-transfers",
-  "chain-transfer-pairs",
-  "chain-stake-flow",
-  "chain-alpha-volume",
-  "chain-weights",
-  "chain-weight-setters",
-  "chain-serving",
-  "chain-prometheus",
-  "chain-axon-removals",
-  "chain-registrations",
-  "chain-deregistrations",
-  "chain-stake-moves",
-  "chain-stake-transfers",
-  "chain-concentration",
-  "chain-performance",
-  "chain-idle-stake",
-  "chain-identity-history",
-  "chain-yield",
-  "chain-turnover",
-  // Postgres-backed all-events tier (ADR 0013): served live by the data Worker,
-  // never written as files.
-  "chain-events-feed",
-  "chain-events-stats",
-  "block-chain-events",
-  // Network-wide economics time series (#1307): aggregated live from D1.
-  "economics-trends",
-  "registry-leaderboards",
-  "compare",
-  "compare-validators",
-  "domains",
-  "domain-summary",
-  "rpc-usage",
-  "global-incidents",
-  // Live-only operational health (served from KV/D1, no static file on disk).
-  "health-latest",
-  "health-summary",
-  "health-subnet",
-  // #8699: derived at request time from the router's own mainnet-only
-  // predicate, so there is deliberately no networks.json to validate here --
-  // its schema is exercised by validate-api's per-route response validation.
-  "network-capabilities",
-]);
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -373,7 +231,11 @@ console.log("JSON Schema validation passed.");
 async function artifactValidationTargets(): Promise<Row[]> {
   const targets: Row[] = [];
   for (const artifact of PUBLIC_ARTIFACTS) {
-    if (!artifact.schema_ref || COMPUTED_ARTIFACTS.has(artifact.id)) {
+    // A live-computed artifact writes no file, so there is nothing here to
+    // validate against its schema — validate-api's per-route response
+    // validation exercises that schema instead. Derived from the entry's own
+    // `computed` flag in src/contracts.ts, never a second list here.
+    if (!artifact.schema_ref || isComputedArtifact(artifact.id)) {
       continue;
     }
 
@@ -410,8 +272,24 @@ async function artifactValidationTargets(): Promise<Row[]> {
       continue;
     }
 
+    const filePath = artifactFilePath(artifact.path);
+    // The artifact says it is file-backed but the build produced no file. Report
+    // that as itself instead of letting readJson() below die on a bare
+    // `ENOENT ... public/metagraph/<x>.json`, which names neither the artifact
+    // nor the one-line fix -- the failure mode that cost a full CI cycle when
+    // /api/v1/networks was added as a computed route (#8761).
+    if (!existsSync(filePath)) {
+      errors.push(
+        `artifact:${artifact.id}: no file at ${path.relative(repoRoot, filePath)}. ` +
+          `Run \`npm run build\` if it should be generated; if this route is ` +
+          `computed live and writes no file, pass COMPUTED_LIVE to its ` +
+          `artifact() entry in src/contracts.ts.`,
+      );
+      continue;
+    }
+
     targets.push({
-      file_path: artifactFilePath(artifact.path),
+      file_path: filePath,
       label: artifact.id,
       schema_ref: artifact.schema_ref,
     });
