@@ -2475,8 +2475,15 @@ function SectionAnchor({
       children: [
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
-            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1.5", children: [
-              /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "font-display text-sm font-semibold uppercase tracking-wider text-ink-strong", children: title }),
+            /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex min-w-0 max-w-full items-center gap-1.5", children: [
+              /* @__PURE__ */ jsxRuntime.jsx(
+                "h2",
+                {
+                  className: "min-w-0 truncate font-display text-sm font-semibold uppercase tracking-wider text-ink-strong",
+                  title: typeof title === "string" ? title : void 0,
+                  children: title
+                }
+              ),
               info ? /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: info }) : null,
               /* @__PURE__ */ jsxRuntime.jsx(
                 "button",
@@ -2484,7 +2491,7 @@ function SectionAnchor({
                   type: "button",
                   onClick: onCopy,
                   "aria-label": `Copy link to ${typeof title === "string" ? title : id} section`,
-                  className: "mg-anchor-btn inline-flex items-center justify-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded min-h-11 min-w-11 p-0.5",
+                  className: "mg-anchor-btn inline-flex shrink-0 items-center justify-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded min-h-11 min-w-11 p-0.5",
                   children: copied ? /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Check, { className: "size-3.5 text-accent" }) : /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Link2, { className: "size-3.5" })
                 }
               )

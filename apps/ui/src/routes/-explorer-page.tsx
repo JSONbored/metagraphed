@@ -2075,7 +2075,11 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
             </p>
           ) : null}
         </div>
-        <div className="flex items-center gap-1.5" role="group" aria-label="Sort transfer pairs by">
+        <div
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5"
+          role="group"
+          aria-label="Sort transfer pairs by"
+        >
           {(["volume", "count"] as const).map((s) => (
             <button
               key={s}
