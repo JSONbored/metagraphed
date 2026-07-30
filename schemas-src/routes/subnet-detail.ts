@@ -372,6 +372,22 @@ export const SubnetDetailSchema = z
     // #8379: true when the last capture attempt failed and this is retained
     // last-good data (dropped from the artifact entirely, not flagged, once
     // stale beyond 30d) -- see registry/generated/github-signals.json.
+    // #8704: the subnet repo's published releases, feeding the `release` item
+    // kind on /api/v1/feeds/subnets/{netuid}. Null means the repo was never
+    // asked (no resolvable source repo, or not yet captured); [] means it
+    // publishes no releases, which is the common case for subnet repos.
+    github_releases: z
+      .array(
+        z.object({
+          tag: z.string(),
+          name: z.string().nullable(),
+          published_at: z.iso.datetime(),
+          url: z.string(),
+          prerelease: z.boolean(),
+        }),
+      )
+      .nullable()
+      .optional(),
     github_unreachable: z.boolean().optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
     // Genuinely open shape in the source contract (additionalProperties:

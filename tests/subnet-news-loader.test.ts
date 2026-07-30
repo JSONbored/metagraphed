@@ -107,6 +107,80 @@ describe("resolveSubnetNewsForFeed", () => {
     assert.ok(!items.some((i) => i.id.includes(":hyperparam:")));
   });
 
+  test("turns the record's github_releases into release items", async () => {
+    // #8704 part 2: releases ride on the subnet's served record, captured by
+    // scripts/github-signals.ts — no GitHub call from the request path.
+    const { resolveSubnetNewsForFeed } = await import("../workers/api.ts");
+    const env = dataApiEnv({
+      "/api/v1/subnets/18/hyperparameters/history": { entries: [] },
+      "/api/v1/subnets/18/ownership-history": { ownership_changes: [] },
+      "/api/v1/subnets/18/lease/history": { lease_events: [] },
+    });
+    const items = await resolveSubnetNewsForFeed(env as never, 18, {
+      readArtifact: async (_env: unknown, path: string) => {
+        assert.equal(path, "/metagraph/subnets/18.json");
+        return {
+          ok: true,
+          data: {
+            netuid: 18,
+            github_releases: [
+              {
+                tag: "v3.0.6",
+                name: "v3.0.6",
+                published_at: "2025-09-11T00:00:30Z",
+                url: "https://github.com/macrocosm-os/apex/releases/tag/v3.0.6",
+                prerelease: false,
+              },
+            ],
+          },
+        };
+      },
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].id, "chain:sn18:release:v3.0.6");
+    // The captured html_url points at the RENAMED repo (prompting -> apex).
+    assert.equal(
+      items[0].url,
+      "https://github.com/macrocosm-os/apex/releases/tag/v3.0.6",
+    );
+  });
+
+  test("a record without github_releases yields no release items", async () => {
+    const { resolveSubnetNewsForFeed } = await import("../workers/api.ts");
+    const env = dataApiEnv({
+      "/api/v1/subnets/18/hyperparameters/history": { entries: [] },
+      "/api/v1/subnets/18/ownership-history": { ownership_changes: [] },
+      "/api/v1/subnets/18/lease/history": { lease_events: [] },
+    });
+    assert.deepEqual(
+      await resolveSubnetNewsForFeed(env as never, 18, {
+        readArtifact: async () => ({ ok: true, data: { netuid: 18 } }),
+      }),
+      [],
+    );
+  });
+
+  test("an unreadable record costs only the release items", async () => {
+    const { resolveSubnetNewsForFeed } = await import("../workers/api.ts");
+    const env = dataApiEnv({
+      "/api/v1/subnets/18/hyperparameters/history": { entries: [] },
+      "/api/v1/subnets/18/ownership-history": OWNERSHIP,
+      "/api/v1/subnets/18/lease/history": { lease_events: [] },
+    });
+    for (const read of [
+      async () => {
+        throw new Error("r2 down");
+      },
+      async () => ({ ok: false }),
+    ]) {
+      const items = await resolveSubnetNewsForFeed(env as never, 18, {
+        readArtifact: read as never,
+      });
+      assert.ok(items.some((i) => i.id.startsWith("chain:sn18:owner:")));
+      assert.ok(!items.some((i) => i.id.includes(":release:")));
+    }
+  });
+
   test("no DATA_API binding yields no items rather than throwing", async () => {
     const { resolveSubnetNewsForFeed } = await import("../workers/api.ts");
     assert.deepEqual(

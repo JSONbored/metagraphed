@@ -426,6 +426,7 @@ import {
   type ChainEventRow,
   type HyperparamSnapshot,
   type NewsItem,
+  type SubnetRelease,
 } from "../src/subnet-news.ts";
 import {
   applyTieredRateLimit,
@@ -645,13 +646,37 @@ async function fetchDataApiJson(env: Env, path: string): Promise<Row | null> {
   }
 }
 
+// The subnet record carries github_releases (scripts/github-signals.ts). Read
+// from the served artifact rather than DATA_API: it is the same file the
+// subnet page already reads, so this adds no query to the indexer box.
+type ArtifactReader = (env: Env, path: string) => Promise<Row>;
+
+async function readSubnetProfileForNews(
+  env: Env,
+  netuid: number,
+  read: ArtifactReader,
+): Promise<Row | null> {
+  try {
+    const result = await read(env, `/metagraph/subnets/${netuid}.json`);
+    return result?.ok ? ((result.data ?? null) as Row | null) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveSubnetNewsForFeed(
   env: Env,
   netuid: number,
+  // Injected rather than closed over, matching writeSubnetSnapshot's own
+  // deps-injection: mocking workers/storage.ts wholesale breaks this module's
+  // initialization order, and a seam is cheaper than a mock anyway.
+  deps: { readArtifact?: ArtifactReader } = {},
 ): Promise<NewsItem[]> {
+  const readArtifactFn = (deps.readArtifact ??
+    (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
   if (!Number.isInteger(netuid) || netuid < 0) return [];
   const limit = SUBNET_NEWS_SOURCE_LIMIT;
-  const [hyperparams, ownership, lease] = await Promise.all([
+  const [hyperparams, ownership, lease, profile] = await Promise.all([
     fetchDataApiJson(
       env,
       `/api/v1/subnets/${netuid}/hyperparameters/history?limit=${limit}`,
@@ -664,6 +689,10 @@ export async function resolveSubnetNewsForFeed(
       env,
       `/api/v1/subnets/${netuid}/lease/history?limit=${limit}`,
     ),
+    // #8704 part 2: releases ride along on the subnet's own record, captured
+    // by scripts/github-signals.ts. No new GitHub call from the request path —
+    // same reasoning as the upgrade radar's, and the data is already here.
+    readSubnetProfileForNews(env, netuid, readArtifactFn),
   ]);
   // The hyperparameter tier returns newest-first; the differ needs ascending
   // order to compare a row against the one before it in time.
@@ -677,6 +706,7 @@ export async function resolveSubnetNewsForFeed(
     hyperparamSnapshots: snapshots,
     ownershipRows: (ownership?.ownership_changes as ChainEventRow[]) ?? [],
     leaseRows: (lease?.lease_events as ChainEventRow[]) ?? [],
+    releases: (profile?.github_releases as SubnetRelease[] | null) ?? null,
   });
 }
 
