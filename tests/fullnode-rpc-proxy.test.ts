@@ -60,11 +60,22 @@ function makeValidatedKeyEnv(overrides: Row = {}) {
 
 function req(
   path: string,
-  { method = "POST", body }: { method?: string; body?: unknown } = {},
+  {
+    method = "POST",
+    body,
+    headers = {},
+  }: {
+    method?: string;
+    body?: unknown;
+    // #8607: the harness previously hardcoded its headers and silently dropped
+    // any the caller passed, so a header-auth test could never actually send
+    // one -- it failed looking like an app bug.
+    headers?: Record<string, string>;
+  } = {},
 ) {
   return new Request(`https://d${path}`, {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
@@ -722,4 +733,72 @@ describe("dispatch from workers/api.ts's handleRequest", () => {
     const body = (await res.json()) as Row;
     assert.equal(body.result, "ok");
   });
+});
+
+// --- #8607 hygiene review: header auth ---------------------------------------
+//
+// ADR 0021 chose `?authorization=` to match taostats' convention so existing
+// WSS-client code could repoint here cheaply. That reasoning is real but
+// WSS-specific -- browsers cannot set headers on a WebSocket handshake. On this
+// HTTP path it means a LIVE API KEY in the URL, and therefore in edge access
+// logs, any intermediary's logs, and browser history.
+//
+// The header is now accepted and preferred. These pin that the change is purely
+// additive: no existing caller breaks.
+
+test("#8607: accepts the API key via the Authorization header", async () => {
+  const { env, key } = makeValidatedKeyEnv();
+  const res = await call(
+    "/rpc/v1/fullnode",
+    {
+      method: "POST",
+      headers: { authorization: key },
+      body: { jsonrpc: "2.0", id: 1, method: "chain_getHeader", params: [] },
+    },
+    env,
+  );
+  assert.notEqual(res.status, 401, "the header alone authenticates");
+});
+
+test("#8607: the query param still works, so no existing caller breaks", async () => {
+  const { env, key } = makeValidatedKeyEnv();
+  const res = await call(
+    `/rpc/v1/fullnode?authorization=${key}`,
+    {
+      method: "POST",
+      body: { jsonrpc: "2.0", id: 1, method: "chain_getHeader", params: [] },
+    },
+    env,
+  );
+  assert.notEqual(res.status, 401, "back-compat preserved");
+});
+
+test("#8607: the header WINS over a query param, so a stale URL cannot override it", async () => {
+  // A caller migrating off the query param may leave a stale key in a saved
+  // URL. Preferring the header means the credential they actually intend is
+  // the one used, rather than a forgotten one in a bookmark.
+  const { env, key } = makeValidatedKeyEnv();
+  const res = await call(
+    "/rpc/v1/fullnode?authorization=mg_staleKeyLeftInAnOldBookmark",
+    {
+      method: "POST",
+      headers: { authorization: key },
+      body: { jsonrpc: "2.0", id: 1, method: "chain_getHeader", params: [] },
+    },
+    env,
+  );
+  assert.notEqual(res.status, 401);
+});
+
+test("#8607: neither header nor query param is still a 401", async () => {
+  const { env } = makeValidatedKeyEnv();
+  const res = await call(
+    "/rpc/v1/fullnode",
+    {
+      method: "POST",
+      body: { jsonrpc: "2.0", id: 1, method: "chain_getHeader", params: [] },
+    },
+    env,
+  );
+  assert.equal(res.status, 401);
 });
