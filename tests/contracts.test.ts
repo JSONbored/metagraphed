@@ -5,6 +5,7 @@ import { describe, test } from "vitest";
 import {
   API_ROUTES,
   FEED_ROUTES,
+  networkVariantPath,
   API_QUERY_COLLECTIONS,
   ARTIFACT_STATUS_LIVE,
   ARTIFACT_STATUS_RETIRED,
@@ -33,7 +34,12 @@ const FEED_OPENAPI_PATH_COUNT = FEED_ROUTES.reduce(
   (total, entry) => total + 1 + entry.formats.length,
   0,
 );
-const EXPECTED_OPENAPI_PATHS = API_ROUTES.length + FEED_OPENAPI_PATH_COUNT;
+// #8698: every route that is not mainnet-only also gets a /{network}/ twin.
+const NETWORK_VARIANT_COUNT = API_ROUTES.filter(
+  (route) => networkVariantPath(route.path) != null,
+).length;
+const EXPECTED_OPENAPI_PATHS =
+  API_ROUTES.length + FEED_OPENAPI_PATH_COUNT + NETWORK_VARIANT_COUNT;
 
 describe("artifact lifecycle status (#6358)", () => {
   // The catalog advertised health-latest/health-summary/health-subnet as

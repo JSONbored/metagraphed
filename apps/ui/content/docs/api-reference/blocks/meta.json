@@ -2,9 +2,13 @@
   "title": "Blocks",
   "pages": [
     "block-chain-events",
+    "block-chain-events-by-network",
     "block-detail",
+    "block-detail-by-network",
     "block-events",
+    "block-events-by-network",
     "block-extrinsics",
+    "block-extrinsics-by-network",
     "blocks-feed",
     "blocks-summary",
     "runtime-versions"

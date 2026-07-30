@@ -3716,7 +3716,11 @@ export async function handleRequest(
 // Dynamic routes backed by mainnet-only D1/AI/curated data — not partitioned per
 // network, so they 404 under a /{network}/ prefix rather than silently serving
 // mainnet data. Mirrors the special-cased branches in handleRequest.
-function isMainnetOnlyApiPath(pathname: string) {
+// Exported (#8698) so the contract's `mainnet_only` annotation can be PROVEN
+// against the router's real behaviour instead of restated. tests/
+// network-addressing.test.ts asserts every API_ROUTES entry's flag equals this
+// predicate's verdict, so adding a route here without annotating it fails CI.
+export function isMainnetOnlyApiPath(pathname: string) {
   return (
     pathname === "/api/v1/events" ||
     pathname === "/api/v1/ask" ||

@@ -2,7 +2,9 @@
   "title": "RPC",
   "pages": [
     "rpc-endpoints",
+    "rpc-endpoints-by-network",
     "rpc-pools",
+    "rpc-pools-by-network",
     "rpc-usage"
   ]
 }

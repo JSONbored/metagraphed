@@ -2,8 +2,12 @@
   "title": "Endpoints",
   "pages": [
     "endpoint-incidents",
+    "endpoint-incidents-by-network",
     "endpoint-pools",
+    "endpoint-pools-by-network",
     "endpoints",
-    "subnet-endpoints"
+    "endpoints-by-network",
+    "subnet-endpoints",
+    "subnet-endpoints-by-network"
   ]
 }

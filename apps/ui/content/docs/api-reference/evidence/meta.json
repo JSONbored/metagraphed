@@ -2,6 +2,8 @@
   "title": "Evidence",
   "pages": [
     "evidence",
-    "subnet-evidence"
+    "evidence-by-network",
+    "subnet-evidence",
+    "subnet-evidence-by-network"
   ]
 }

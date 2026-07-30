@@ -1,6 +1,7 @@
 {
   "title": "API DX",
   "pages": [
-    "agent-resources"
+    "agent-resources",
+    "agent-resources-by-network"
   ]
 }

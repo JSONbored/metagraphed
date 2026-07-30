@@ -2453,6 +2453,25 @@
   ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Metagraphed public backend artifact contract",
+  "networks": {
+    "aliases": [
+      "finney",
+      "local",
+      "mainnet",
+      "test",
+      "testnet"
+    ],
+    "data_aliases": [
+      "finney",
+      "mainnet",
+      "test",
+      "testnet"
+    ],
+    "default": "mainnet",
+    "mainnet_only_route_count": 102,
+    "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
+    "path_form": "/api/v1/{network}/..."
+  },
   "notes": [
     "Native Bittensor chain data is canonical for active subnet existence.",
     "Curated overlays are canonical for public interface metadata.",
