@@ -852,6 +852,23 @@ jobs:
             exit 1
           fi
 
+      # Same drift-check shape again, and here it IS the acceptance criterion:
+      # #8610 asks that "every enforced limit on the page matches tier config as
+      # code". content/docs/limits.mdx is generated from the five live
+      # *_TIERED_RATE_LIMIT objects, and tests/api-tiers.test.ts already binds
+      # those to the Cloudflare bindings in wrangler.jsonc -- so this step
+      # closes the chain page -> config -> binding. A ceiling raised without
+      # regenerating would leave callers planning against a number we no longer
+      # enforce.
+      - name: Build limits docs (drift check)
+        working-directory: apps/ui
+        run: |
+          node scripts/generate-limits-docs.ts
+          if ! git diff --exit-code -- content/docs/limits.mdx; then
+            echo "::error::apps/ui/content/docs/limits.mdx is stale -- run 'node scripts/generate-limits-docs.ts' (from apps/ui) and commit the result."
+            exit 1
+          fi
+
       - name: Typecheck packages/ui-kit
         run: npm run typecheck --workspace=packages/ui-kit
 
