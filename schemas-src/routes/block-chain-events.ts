@@ -26,7 +26,10 @@ const ChainEventSchema = z
     event_index: z.int().nullable(),
     pallet: z.string().nullable(),
     method: z.string().nullable(),
-    args: z.record(z.string(), z.unknown()).nullable().optional(),
+    args: z
+      .union([z.record(z.string(), z.unknown()), z.array(z.unknown())])
+      .nullable()
+      .optional(),
     phase: z.string().nullable().optional(),
     extrinsic_index: z.int().nullable().optional(),
     observed_at: z.int().nullable().optional(),
