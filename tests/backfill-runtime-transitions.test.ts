@@ -370,7 +370,9 @@ describe("fetchBoundaryRow genesis handling", () => {
   // Real inherent fixture (block 1,000,000) reused as block 1's timestamp.
   const BLOCK1_INHERENT = "0x280402000b810da3cb8901";
 
-  function fakeClient(responses: Record<string, (params: unknown[]) => unknown>) {
+  function fakeClient(
+    responses: Record<string, (params: unknown[]) => unknown>,
+  ) {
     return {
       async call(method: string, params: unknown[]) {
         const fn = responses[method];
@@ -382,17 +384,34 @@ describe("fetchBoundaryRow genesis handling", () => {
 
   test("genesis (no extrinsics) takes block 1's timestamp instead of failing", async () => {
     const client = fakeClient({
-      chain_getBlockHash: (p) => ((p[0] as number) === 0 ? GENESIS_HASH : BLOCK1_HASH),
+      chain_getBlockHash: (p) =>
+        (p[0] as number) === 0 ? GENESIS_HASH : BLOCK1_HASH,
       chain_getBlock: (p) =>
         p[0] === GENESIS_HASH
-          ? { block: { header: { parentHash: `0x${"00".repeat(32)}` }, extrinsics: [] } }
-          : { block: { header: { parentHash: GENESIS_HASH }, extrinsics: [BLOCK1_INHERENT] } },
+          ? {
+              block: {
+                header: { parentHash: `0x${"00".repeat(32)}` },
+                extrinsics: [],
+              },
+            }
+          : {
+              block: {
+                header: { parentHash: GENESIS_HASH },
+                extrinsics: [BLOCK1_INHERENT],
+              },
+            },
       state_getStorage: () => null,
     });
-    const row = await fetchBoundaryRow(client, { block_number: 0, spec_version: 101 });
+    const row = await fetchBoundaryRow(client, {
+      block_number: 0,
+      spec_version: 101,
+    });
     assert.equal(row.block_hash, GENESIS_HASH);
     assert.equal(row.extrinsic_count, 0);
-    assert.equal(new Date(row.observed_at_ms).toISOString().slice(0, 7), "2023-08");
+    assert.equal(
+      new Date(row.observed_at_ms).toISOString().slice(0, 7),
+      "2023-08",
+    );
   });
 
   test("a NON-genesis block missing its inherent is still a hard refusal", async () => {
@@ -422,7 +441,9 @@ describe("parseSeedRows", () => {
   };
 
   test("round-trips a valid file", () => {
-    const rows = parseSeedRows(JSON.stringify([good, { ...good, block_number: 1, event_count: null }]));
+    const rows = parseSeedRows(
+      JSON.stringify([good, { ...good, block_number: 1, event_count: null }]),
+    );
     assert.equal(rows.length, 2);
     assert.equal(rows[0].spec_version, 423);
     assert.equal(rows[1].event_count, null);
