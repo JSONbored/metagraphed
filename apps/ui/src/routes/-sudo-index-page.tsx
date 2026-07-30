@@ -4,7 +4,9 @@ import { TimeAgo } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
+import { StatUnavailable } from "@/components/metagraphed/states";
 import { sudoCallsQuery, sudoKeyQuery } from "@/lib/metagraphed/queries";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { GovernanceSearch } from "./chain.governance";
 
@@ -31,6 +33,7 @@ export function sudoQueryParams(search: GovernanceSearch): Record<string, string
  */
 export function SudoKeyCard() {
   const keyResult = useQuery(sudoKeyQuery());
+  const phase = statPhase(keyResult);
   const hotkey = keyResult.data?.data.hotkey;
   const queriedAt = keyResult.data?.data.queried_at;
 
@@ -39,18 +42,22 @@ export function SudoKeyCard() {
       <div className="mg-label">Current Sudo key</div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="font-mono mg-type-data text-ink-strong">
-          {keyResult.isPending ? (
+          {phase === "pending" ? (
             <span className="text-ink-muted">…</span>
+          ) : phase === "error" ? (
+            <StatUnavailable />
           ) : hotkey ? (
             <AddressDisplay ss58={hotkey} fallback={<>{hotkey}</>} keep={8} linkToAccount={false} />
           ) : (
-            <span>Unset</span>
+            <span title="Root key has been renounced on-chain">Unset</span>
           )}
         </span>
-        {queriedAt ? (
+        {phase === "ready" && queriedAt ? (
           <span className="mg-type-caption text-ink-muted">
             queried <TimeAgo at={queriedAt} />
           </span>
+        ) : phase === "ready" && !hotkey ? (
+          <span className="mg-type-caption text-ink-muted">root key renounced</span>
         ) : null}
       </div>
     </Panel>
