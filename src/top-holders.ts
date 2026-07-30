@@ -47,9 +47,12 @@ function numberOrZero(value: unknown): number {
 
 // Net flow can be genuinely negative (net outflow) -- numberOrZero's >= 0
 // guard would silently clamp a real outflow to 0, which is wrong here.
-function numberOrZeroSigned(value: unknown): number {
+// Missing rollup data must stay null (never coerce to 0) so sort keys can
+// distinguish "confirmed zero movers" from "no flow row in the window".
+function numberOrNullSigned(value: unknown): number | null {
+  if (value == null) return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 interface TopHoldersEntry {
@@ -57,9 +60,9 @@ interface TopHoldersEntry {
   free_tao: number;
   delegated_tao: number;
   total_tao: number;
-  net_flow_7d: number;
-  net_flow_30d: number;
-  net_flow_90d: number;
+  net_flow_7d: number | null;
+  net_flow_30d: number | null;
+  net_flow_90d: number | null;
   last_updated: string | null;
   [key: string]: unknown;
 }
@@ -72,13 +75,30 @@ function buildTopHoldersEntry(row: Row): TopHoldersEntry {
     free_tao: freeTao,
     delegated_tao: delegatedTao,
     total_tao: freeTao + delegatedTao,
-    net_flow_7d: numberOrZeroSigned(row?.net_flow_7d),
-    net_flow_30d: numberOrZeroSigned(row?.net_flow_30d),
-    net_flow_90d: numberOrZeroSigned(row?.net_flow_90d),
+    net_flow_7d: numberOrNullSigned(row?.net_flow_7d),
+    net_flow_30d: numberOrNullSigned(row?.net_flow_30d),
+    net_flow_90d: numberOrNullSigned(row?.net_flow_90d),
     last_updated: toIso(
       row?.captured_at == null ? null : Number(row.captured_at),
     ),
   };
+}
+
+function compareTopHoldersSort(
+  a: TopHoldersEntry,
+  b: TopHoldersEntry,
+  sortKey: string,
+): number {
+  const aVal = a[sortKey];
+  const bVal = b[sortKey];
+  // net_flow_* are number | null; other sort keys are always number.
+  // typeof null === "object", so this places nulls (and any non-number) last.
+  const aNull = typeof aVal !== "number";
+  const bNull = typeof bVal !== "number";
+  if (aNull && bNull) return a.ss58.localeCompare(b.ss58);
+  if (aNull) return 1;
+  if (bNull) return -1;
+  return (bVal as number) - (aVal as number) || a.ss58.localeCompare(b.ss58);
 }
 
 /** Shapes raw (ss58, free_tao, delegated_tao, captured_at) rows -- one per
@@ -113,11 +133,7 @@ export function buildTopHoldersList(
       }
       return buildTopHoldersEntry(row);
     })
-    .sort(
-      (a, b) =>
-        (b[normalizedSort] as number) - (a[normalizedSort] as number) ||
-        a.ss58.localeCompare(b.ss58),
-    );
+    .sort((a, b) => compareTopHoldersSort(a, b, normalizedSort));
 
   return {
     schema_version: 1,

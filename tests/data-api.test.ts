@@ -2801,6 +2801,29 @@ test("GET /api/v1/accounts/top-holders joins wallet_flow_daily and shapes the ne
   expect(body.accounts[0].net_flow_90d).toBe(900);
   expect(queryText()).toContain("LEFT JOIN");
   expect(queryText()).toContain("FROM wallet_flow_daily");
+  expect(queryText()).not.toContain("COALESCE(f.net_flow_7d");
+  expect(queryText()).not.toContain("COALESCE(f.net_flow_30d");
+  expect(queryText()).not.toContain("COALESCE(f.net_flow_90d");
+});
+
+test("GET /api/v1/accounts/top-holders leaves missing net_flow columns as null (#8807)", async () => {
+  mockRows.current = [
+    {
+      ss58: "5Whale1",
+      free_tao: 1000.5,
+      delegated_tao: 250.25,
+      net_flow_7d: null,
+      net_flow_30d: null,
+      net_flow_90d: null,
+      captured_at: 1750000000000,
+    },
+  ];
+  const res = await req("/api/v1/accounts/top-holders");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.accounts[0].net_flow_7d).toBeNull();
+  expect(body.accounts[0].net_flow_30d).toBeNull();
+  expect(body.accounts[0].net_flow_90d).toBeNull();
 });
 
 test("GET /api/v1/accounts/top-holders respects an explicit sort/limit", async () => {
