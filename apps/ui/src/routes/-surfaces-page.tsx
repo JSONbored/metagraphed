@@ -468,6 +468,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
             href={s.url}
             authRequired={s.auth_required}
             publicSafe={s.public_safe ?? true}
+            className="min-w-0 max-w-full"
           >
             {s.url}
           </ExternalLink>
