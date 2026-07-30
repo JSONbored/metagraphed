@@ -2,6 +2,8 @@
   "title": "Search",
   "pages": [
     "search",
-    "search-index"
+    "search-by-network",
+    "search-index",
+    "search-index-by-network"
   ]
 }

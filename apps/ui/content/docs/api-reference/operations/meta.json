@@ -2,9 +2,16 @@
   "title": "Operations",
   "pages": [
     "build",
+    "build-by-network",
     "changelog",
+    "changelog-by-network",
     "freshness",
+    "freshness-by-network",
+    "network-capabilities",
+    "network-capabilities-by-network",
     "source-health",
-    "source-snapshots"
+    "source-health-by-network",
+    "source-snapshots",
+    "source-snapshots-by-network"
   ]
 }

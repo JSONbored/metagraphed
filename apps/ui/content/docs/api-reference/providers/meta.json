@@ -2,7 +2,10 @@
   "title": "Providers",
   "pages": [
     "provider-detail",
+    "provider-detail-by-network",
     "provider-endpoints",
-    "providers"
+    "provider-endpoints-by-network",
+    "providers",
+    "providers-by-network"
   ]
 }

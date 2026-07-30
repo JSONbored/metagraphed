@@ -2,6 +2,8 @@
   "title": "Adapters",
   "pages": [
     "adapter",
-    "review-adapter-candidates"
+    "adapter-by-network",
+    "review-adapter-candidates",
+    "review-adapter-candidates-by-network"
   ]
 }

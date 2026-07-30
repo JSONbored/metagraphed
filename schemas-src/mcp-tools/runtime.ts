@@ -91,3 +91,41 @@ export const GetRuntimeOutputSchema = z
   })
   .passthrough();
 export type GetRuntimeOutput = z.infer<typeof GetRuntimeOutputSchema>;
+
+// #8699: the per-network capability matrix, for agents planning cross-network
+// work. Mirrors the REST payload exactly.
+export const GetNetworksInputSchema = z.object({}).strict();
+export type GetNetworksInput = z.infer<typeof GetNetworksInputSchema>;
+
+const NetworkRouteFamilySchema = z
+  .object({
+    family: z.string(),
+    route_count: z.int(),
+    example: z.string(),
+  })
+  .passthrough();
+
+export const GetNetworksOutputSchema = z
+  .object({
+    schema_version: z.int().optional(),
+    default_network: z.string(),
+    path_form: z.string().optional(),
+    network_count: z.int(),
+    networks: z.array(
+      z
+        .object({
+          id: z.string(),
+          chain: z.string(),
+          aliases: z.array(z.string()),
+          is_default: z.boolean(),
+          serves_data: z.boolean(),
+          served_families: z.array(NetworkRouteFamilySchema),
+          unserved_families: z.array(NetworkRouteFamilySchema),
+          partial_families: z.array(NetworkRouteFamilySchema),
+          note: z.string().nullable(),
+        })
+        .passthrough(),
+    ),
+  })
+  .passthrough();
+export type GetNetworksOutput = z.infer<typeof GetNetworksOutputSchema>;

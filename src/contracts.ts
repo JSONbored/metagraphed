@@ -1548,6 +1548,12 @@ export const PUBLIC_ARTIFACTS = [
     "ExtrinsicsFeedArtifact",
   ),
   artifact(
+    "network-capabilities",
+    "/metagraph/networks.json",
+    "The per-network capability matrix (#8699): for each addressable network, which route families it serves, which it does not, and which are partial. Derived at request time from the router's own mainnet-only predicate — never hand-maintained, because a wrong capability matrix is worse than none: it makes an agent confidently plan a call that 404s. Served live at /api/v1/networks (no static file), and reachable under every network prefix including /api/v1/local/networks, since this is how a caller learns what does 404.",
+    "NetworkCapabilitiesArtifact",
+  ),
+  artifact(
     "runtime-versions",
     "/metagraph/runtime.json",
     "The spec-version transition timeline (#4316/3.1) — the earliest known block at each distinct runtime spec_version, ascending by block_number — computed live from the first-party blocks D1 tier at /api/v1/runtime (no static file).",
@@ -3656,6 +3662,15 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "network-capabilities",
+    "GET",
+    "/api/v1/networks",
+    "/metagraph/networks.json",
+    'List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers "can I get chain data on testnet?" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.',
+    "short",
+    ["operations"],
+  ),
+  route(
     "runtime-versions",
     "GET",
     "/api/v1/runtime",
@@ -4524,6 +4539,18 @@ export const FEED_ROUTES = [
   ),
 ];
 
+/** The network dimension, shared by the contract artifact and the API index. */
+function networkContractBlock() {
+  return {
+    aliases: NETWORK_ALIASES,
+    data_aliases: DATA_NETWORK_ALIASES,
+    default: "mainnet",
+    path_form: "/api/v1/{network}/...",
+    note: "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
+    mainnet_only_route_count: MAINNET_ONLY_ROUTE_PATHS.length,
+  };
+}
+
 /** The feed entries shared by the contract artifact and the API index. */
 function feedContractEntries() {
   return FEED_ROUTES.map((entry) => ({
@@ -4544,6 +4571,170 @@ function feedContractEntries() {
     query_parameters: entry.query_parameters,
   }));
 }
+
+// ── network addressing (#8698) ──────────────────────────────────────────────
+//
+// Multi-network addressing has worked since it shipped — `/api/v1/testnet/...`
+// serves testnet data — and openapi.json said nothing about it, so anyone
+// generating a typed client from our published spec got one that could not
+// address testnet and had no way to learn it existed.
+//
+// THE ALIAS LIST IS THE ROUTER'S. `NETWORK_ALIASES` below is consumed by both
+// the spec generator here and workers/api.ts's own NETWORKS map, and
+// tests/network-addressing.test.ts asserts they agree — so adding a network
+// without updating the spec fails CI rather than shipping a spec that lies.
+//
+// WHY A PATH PARAMETER AND NOT A SERVER VARIABLE. Both are legal OpenAPI and
+// the issue allows either. Our network segment sits INSIDE the path
+// (`/api/v1/testnet/coverage`), while every path in this document already
+// carries its own `/api/v1` prefix. Expressing it as a server variable would
+// mean moving `/api/v1` out of all 178 paths and into `servers` — a breaking
+// reshape of the whole document, and one that also changes every existing
+// generated client's method paths. The `{network}` variant is additive: the
+// mainnet paths keep their exact current form, and a client that wants testnet
+// gets a second, explicitly-enumerated operation.
+const NETWORK_ALIASES = ["finney", "local", "mainnet", "test", "testnet"];
+
+// Aliases that address hosted registry DATA. `local` is deliberately excluded:
+// it is a per-developer subtensor we cannot enumerate or host, and
+// /api/v1/local/... returns a setup pointer rather than registry data.
+// Advertising it here would tell a generated client it can fetch subnets from
+// it, which is false. It stays served, and documented in prose, but it is not
+// offered as a data-bearing target.
+const DATA_NETWORK_ALIASES = ["finney", "mainnet", "test", "testnet"];
+
+/**
+ * Route templates served on mainnet only.
+ *
+ * DERIVED, NOT HAND-WRITTEN: produced by running workers/api.ts's own
+ * isMainnetOnlyApiPath over every API_ROUTES template, and held to that by
+ * tests/network-addressing.test.ts, which fails when the two disagree in
+ * either direction. A hand-copied version of this list was wrong by 77 entries
+ * on the first attempt, which is exactly why it is proven rather than trusted.
+ *
+ * 102 of 178 routes: most of the API is mainnet-only today, because we do not
+ * index testnet chain data (#8700 is the issue that would change that).
+ */
+export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
+  "/api/v1/accounts",
+  "/api/v1/accounts/{ss58}",
+  "/api/v1/accounts/{ss58}/axon-removals",
+  "/api/v1/accounts/{ss58}/balance",
+  "/api/v1/accounts/{ss58}/children",
+  "/api/v1/accounts/{ss58}/counterparties",
+  "/api/v1/accounts/{ss58}/deregistrations",
+  "/api/v1/accounts/{ss58}/entities",
+  "/api/v1/accounts/{ss58}/events",
+  "/api/v1/accounts/{ss58}/extrinsics",
+  "/api/v1/accounts/{ss58}/history",
+  "/api/v1/accounts/{ss58}/identity",
+  "/api/v1/accounts/{ss58}/identity-history",
+  "/api/v1/accounts/{ss58}/parents",
+  "/api/v1/accounts/{ss58}/portfolio",
+  "/api/v1/accounts/{ss58}/positions",
+  "/api/v1/accounts/{ss58}/prometheus",
+  "/api/v1/accounts/{ss58}/registrations",
+  "/api/v1/accounts/{ss58}/root-claim",
+  "/api/v1/accounts/{ss58}/serving",
+  "/api/v1/accounts/{ss58}/stake-flow",
+  "/api/v1/accounts/{ss58}/stake-moves",
+  "/api/v1/accounts/{ss58}/subnets",
+  "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
+  "/api/v1/accounts/{ss58}/transfers",
+  "/api/v1/accounts/{ss58}/weight-setters",
+  "/api/v1/blocks",
+  "/api/v1/blocks/summary",
+  "/api/v1/chain/activity",
+  "/api/v1/chain/alpha-volume",
+  "/api/v1/chain/axon-removals",
+  "/api/v1/chain/calls",
+  "/api/v1/chain/concentration",
+  "/api/v1/chain/deregistrations",
+  "/api/v1/chain/fees",
+  "/api/v1/chain/identity-history",
+  "/api/v1/chain/idle-stake",
+  "/api/v1/chain/performance",
+  "/api/v1/chain/prometheus",
+  "/api/v1/chain/registrations",
+  "/api/v1/chain/serving",
+  "/api/v1/chain/signers",
+  "/api/v1/chain/stake-flow",
+  "/api/v1/chain/stake-moves",
+  "/api/v1/chain/stake-transfers",
+  "/api/v1/chain/transfer-pairs",
+  "/api/v1/chain/transfers",
+  "/api/v1/chain/turnover",
+  "/api/v1/chain/weights",
+  "/api/v1/chain/weights/setters",
+  "/api/v1/chain/yield",
+  "/api/v1/compare",
+  "/api/v1/compare/validators",
+  "/api/v1/domains",
+  "/api/v1/domains/{tag}/summary",
+  "/api/v1/economics/trends",
+  "/api/v1/evm/address/{h160}",
+  "/api/v1/extrinsics",
+  "/api/v1/governance/config-changes",
+  "/api/v1/health",
+  "/api/v1/health/trends",
+  "/api/v1/incidents",
+  "/api/v1/network/parameters",
+  "/api/v1/network/randomness",
+  "/api/v1/registry/leaderboards",
+  "/api/v1/rpc/usage",
+  "/api/v1/runtime",
+  "/api/v1/self-health",
+  "/api/v1/subnets/movers",
+  "/api/v1/subnets/{netuid}/burn",
+  "/api/v1/subnets/{netuid}/concentration",
+  "/api/v1/subnets/{netuid}/concentration/history",
+  "/api/v1/subnets/{netuid}/events",
+  "/api/v1/subnets/{netuid}/health",
+  "/api/v1/subnets/{netuid}/health/incidents",
+  "/api/v1/subnets/{netuid}/health/percentiles",
+  "/api/v1/subnets/{netuid}/health/trends",
+  "/api/v1/subnets/{netuid}/history",
+  "/api/v1/subnets/{netuid}/hyperparameters",
+  "/api/v1/subnets/{netuid}/identity-history",
+  "/api/v1/subnets/{netuid}/idle-stake",
+  "/api/v1/subnets/{netuid}/lease",
+  "/api/v1/subnets/{netuid}/metagraph",
+  "/api/v1/subnets/{netuid}/ohlc",
+  "/api/v1/subnets/{netuid}/performance",
+  "/api/v1/subnets/{netuid}/performance/history",
+  "/api/v1/subnets/{netuid}/recycled",
+  "/api/v1/subnets/{netuid}/stake-flow",
+  "/api/v1/subnets/{netuid}/stake-quote",
+  "/api/v1/subnets/{netuid}/trajectory",
+  "/api/v1/subnets/{netuid}/turnover",
+  "/api/v1/subnets/{netuid}/uptime",
+  "/api/v1/subnets/{netuid}/validators",
+  "/api/v1/subnets/{netuid}/volume",
+  "/api/v1/subnets/{netuid}/yield",
+  "/api/v1/subnets/{netuid}/yield/history",
+  "/api/v1/sudo",
+  "/api/v1/sudo/key",
+  "/api/v1/validators",
+  "/api/v1/validators/{hotkey}",
+  "/api/v1/validators/{hotkey}/history",
+  "/api/v1/validators/{hotkey}/nominators",
+];
+
+const MAINNET_ONLY_ROUTE_SET = new Set(MAINNET_ONLY_ROUTE_PATHS);
+
+/** Is this route template mainnet-only? */
+export function isMainnetOnlyRouteTemplate(path: string): boolean {
+  return MAINNET_ONLY_ROUTE_SET.has(path);
+}
+
+/** The network-addressable form of a template, or null when there is none. */
+export function networkVariantPath(path: string): string | null {
+  if (!path.startsWith("/api/v1")) return null;
+  if (isMainnetOnlyRouteTemplate(path)) return null;
+  return `/api/v1/{network}${path.slice("/api/v1".length)}`;
+}
+
+export { NETWORK_ALIASES, DATA_NETWORK_ALIASES };
 
 export function buildContractsArtifact(generatedAt: string) {
   return {
@@ -4584,6 +4775,11 @@ export function buildContractsArtifact(generatedAt: string) {
     // stored artifact wrapped in the success envelope, and an agent that
     // treated one like the other would parse XML as JSON.
     feeds: feedContractEntries(),
+    // #8698: the network dimension belongs in BOTH machine-readable surfaces —
+    // this contract (what MCP agents read) and the API index (what route
+    // consumers read). They are generated from the same constants, so they
+    // cannot disagree.
+    networks: networkContractBlock(),
   };
 }
 
@@ -4610,6 +4806,10 @@ export function buildApiIndexArtifact(
     // #8703: the same feed entries the contract artifact carries, so the
     // agent-facing index and the contract cannot describe different feeds.
     feeds: feedContractEntries(),
+    // #8698: the network dimension, so an MCP agent reading this contract
+    // learns testnet exists and which routes it covers — the same facts the
+    // OpenAPI document now carries, for the consumer that reads JSON instead.
+    networks: networkContractBlock(),
     routes: API_ROUTES.map((entry) => ({
       artifact_path: entry.artifact_path,
       cache: entry.cache,
@@ -4621,6 +4821,12 @@ export function buildApiIndexArtifact(
       query_collection: entry.query_collection,
       query_filter_names: entry.query_filter_names,
       query_parameters: entry.query_parameters || [],
+      // #8698: per-route, so a consumer does not have to cross-reference a
+      // separate list to know whether a route answers on testnet.
+      mainnet_only: isMainnetOnlyRouteTemplate(entry.path),
+      networks: isMainnetOnlyRouteTemplate(entry.path)
+        ? ["mainnet"]
+        : DATA_NETWORK_ALIASES,
     })),
     artifact_contracts: contractsArtifact.artifacts.map((entry) => ({
       id: entry.id,
@@ -4683,9 +4889,20 @@ export function buildOpenApiArtifact(
           }
         : {}),
     };
+    // #8698: a consumer must be able to tell from the SPEC ALONE that a route
+    // does not exist on testnet, without issuing a request and reading a 404.
+    const mainnetOnly = isMainnetOnlyRouteTemplate(entry.path);
+    const networkExtension = mainnetOnly
+      ? {
+          "x-metagraphed-networks": ["mainnet"],
+          "x-metagraphed-mainnet-only": true,
+        }
+      : { "x-metagraphed-networks": DATA_NETWORK_ALIASES };
+
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
+        ...networkExtension,
         operationId: entry.id.replace(
           /[^a-z0-9]+([a-z0-9])/gi,
           (_, character) => character.toUpperCase(),
@@ -4750,6 +4967,42 @@ export function buildOpenApiArtifact(
         },
       },
     };
+
+    // #8698: the network-addressable twin. Same operation, one extra required
+    // path parameter whose enum comes from the router's own alias set — so a
+    // generated client can call GET /api/v1/testnet/coverage, which it
+    // previously had no way to even discover.
+    const variantPath = networkVariantPath(entry.path);
+    if (variantPath) {
+      const base = paths[openApiPath][entry.method.toLowerCase()];
+      paths[variantPath] = {
+        ...(paths[variantPath] || {}),
+        [entry.method.toLowerCase()]: {
+          ...base,
+          operationId: `${base.operationId}ByNetwork`,
+          summary: `${entry.description}`,
+          description:
+            "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+          parameters: [
+            {
+              name: "network",
+              in: "path",
+              required: true,
+              description:
+                "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+              schema: { type: "string", enum: DATA_NETWORK_ALIASES },
+            },
+            /* v8 ignore next -- defensive: `base` is the operation built above
+               in this same loop, which always assigns `parameters` an array
+               literal (empty when the route has no path/query parameters), and
+               an empty array is truthy -- so the fallback is unreachable. It
+               stays because spreading an absent `parameters` would throw, not
+               degrade, if that construction ever became conditional. */
+            ...(base.parameters || []),
+          ],
+        },
+      };
+    }
   }
 
   // #8703: the feed routes, modeled as their own paths.

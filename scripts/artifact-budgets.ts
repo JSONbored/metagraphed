@@ -27,7 +27,19 @@ export const ARTIFACT_SIZE_BUDGETS: ArtifactBudget[] = [
   budget("health/history/*.json", 650_000, 1_250_000),
   budget("search.json", 750_000, 2_000_000),
   budget("search-index.json", 1_500_000, 3_000_000),
-  budget("openapi.json", 1_800_000, 2_500_000),
+  // #8698 documented the network-addressed form of every network-scoped route,
+  // taking the spec from 202 to 278 paths and openapi.json from 2,198,245 to
+  // 2,836,062 bytes -- past the old 2,500,000 fail ceiling. There was no way to
+  // land it under that ceiling: 76 new paths cost ~638KB pretty-printed against
+  // ~302KB of headroom, and even de-duplicating the by-network examples (each is
+  // byte-identical to its base route's) only recovers ~180KB. Since
+  // validate:artifact-budgets has no partial-failure path, leaving this ceiling
+  // in place would fail publish-cloudflare.yml outright and freeze the live site
+  // on stale artifacts -- the METAGRAPHED-9/A outage above, reopened. Raised with
+  // real headroom for the route families still to come (testnet indexing, #8700)
+  // rather than just enough to clear today, while staying low enough that a
+  // runaway spec (a generator bug, not deliberate route growth) still fails.
+  budget("openapi.json", 3_000_000, 4_500_000),
   // Per-surface schema snapshots now embed the full upstream OpenAPI document.
   budget("schemas/*.json", 1_500_000, 5_000_000),
   budget("profiles.json", 700_000, 1_000_000),

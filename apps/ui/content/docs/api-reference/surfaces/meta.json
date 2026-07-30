@@ -2,6 +2,8 @@
   "title": "Surfaces",
   "pages": [
     "subnet-surfaces",
-    "surfaces"
+    "subnet-surfaces-by-network",
+    "surfaces",
+    "surfaces-by-network"
   ]
 }

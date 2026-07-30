@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   API_ROUTES,
   FEED_ROUTES,
+  networkVariantPath,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
 } from "../src/contracts.ts";
@@ -151,10 +152,22 @@ for (const feedPath of FEED_OPENAPI_ROUTES) {
   );
 }
 
-const expectedRoutes = API_ROUTES.length + FEED_OPENAPI_ROUTES.length;
+// #8698: plus one /{network}/ twin per network-addressable route.
+const NETWORK_VARIANT_PATHS = API_ROUTES.map((route) =>
+  networkVariantPath(route.path),
+).filter((path): path is string => path != null);
+for (const variantPath of NETWORK_VARIANT_PATHS) {
+  check(
+    documentedRoutes.has(`GET ${variantPath}`),
+    `OpenAPI is missing network variant GET ${variantPath}`,
+  );
+}
+
+const expectedRoutes =
+  API_ROUTES.length + FEED_OPENAPI_ROUTES.length + NETWORK_VARIANT_PATHS.length;
 assert.equal(documentedRoutes.size, expectedRoutes);
 console.log(
-  `OpenAPI validation passed for ${API_ROUTES.length} route(s) + ${FEED_OPENAPI_ROUTES.length} feed route(s).`,
+  `OpenAPI validation passed for ${API_ROUTES.length} route(s) + ${FEED_OPENAPI_ROUTES.length} feed route(s) + ${NETWORK_VARIANT_PATHS.length} network variant(s).`,
 );
 
 function check(condition: unknown, message: string): void {

@@ -213,6 +213,7 @@ import {
 } from "./routes/blocks.ts";
 import { BlocksSummaryArtifactSchema } from "./routes/blocks-summary.ts";
 import { RuntimeVersionsArtifactSchema } from "./routes/runtime-versions.ts";
+import { NetworkCapabilitiesArtifactSchema } from "./routes/network-capabilities.ts";
 import {
   ExtrinsicsFeedArtifactSchema,
   ExtrinsicDetailArtifactSchema,
@@ -536,6 +537,7 @@ register(BlocksFeedArtifactSchema, "BlocksFeedArtifact");
 register(BlockDetailArtifactSchema, "BlockDetailArtifact");
 register(BlocksSummaryArtifactSchema, "BlocksSummaryArtifact");
 register(RuntimeVersionsArtifactSchema, "RuntimeVersionsArtifact");
+register(NetworkCapabilitiesArtifactSchema, "NetworkCapabilitiesArtifact");
 register(ExtrinsicsFeedArtifactSchema, "ExtrinsicsFeedArtifact");
 register(ExtrinsicDetailArtifactSchema, "ExtrinsicDetailArtifact");
 register(BlockExtrinsicsArtifactSchema, "BlockExtrinsicsArtifact");
@@ -854,6 +856,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "BlockDetailArtifact",
   "BlocksSummaryArtifact",
   "RuntimeVersionsArtifact",
+  "NetworkCapabilitiesArtifact",
   "ExtrinsicsFeedArtifact",
   "ExtrinsicDetailArtifact",
   "BlockExtrinsicsArtifact",
