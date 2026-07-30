@@ -224,7 +224,22 @@ export async function handleFullnodeRpcProxyRequest(
     }
   }
 
-  const rawKey = url.searchParams.get("authorization") || "";
+  // #8607 (hygiene review): the Authorization HEADER is accepted and PREFERRED;
+  // the ?authorization= query param stays supported for back-compat.
+  //
+  // ADR 0021 chose the query param to match taostats' convention so existing
+  // WSS-client code could point here with minimal changes. That rationale is
+  // real but specific to WSS -- browsers cannot set headers on a WebSocket
+  // handshake. It does not apply to this HTTP path, where a query param puts a
+  // LIVE API KEY into the URL and therefore into edge access logs, any
+  // intermediary's logs, and browser history if it is ever called from one.
+  //
+  // Accepting the header is purely additive: no existing caller breaks, and
+  // the common HTTP case gets to stop leaking its credential.
+  const rawKey =
+    request.headers.get("authorization") ||
+    url.searchParams.get("authorization") ||
+    "";
   const auth = await validateApiKey(env, rawKey);
   if (!auth.ok) {
     // No accountId to attribute an event to yet -- an unauthenticated guess
@@ -234,7 +249,7 @@ export async function handleFullnodeRpcProxyRequest(
       "fullnode_rpc_unauthorized",
       auth.code === "key_revoked"
         ? "This API key has been revoked."
-        : "Provide a valid API key via ?authorization=.",
+        : "Provide a valid API key via the Authorization header (preferred) or ?authorization=.",
       401,
     );
   }

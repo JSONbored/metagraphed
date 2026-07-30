@@ -105,18 +105,19 @@ Returns the full `mg_...` key exactly once — store it yourself; it's never sho
 **5. Call the gated proxy**
 
 ```bash tab="cURL"
-curl -s 'https://api.metagraph.sh/rpc/v1/fullnode?authorization=YOUR_KEY' \
+curl -s 'https://api.metagraph.sh/rpc/v1/fullnode' \
   -X POST -H 'content-type: application/json' \
+  -H 'authorization: YOUR_KEY' \
   -d '{"jsonrpc":"2.0","id":1,"method":"chain_getHeader","params":[]}'
 ```
 
-The key travels as an `?authorization=` query parameter, not a header — matching the convention several hosted-RPC providers already use, so existing WSS-shaped client code needs minimal changes to point here.
+Send the key in the `authorization` **header**. A `?authorization=YOUR_KEY` query parameter is also accepted — matching the convention several hosted-RPC providers use, so existing WSS-shaped client code can point here unchanged — but prefer the header on HTTP: a key in a URL ends up in access logs, proxy logs, and browser history. If both are present the header wins.
 
-| What         | Value                                        | Notes                                                                              |
-| ------------ | -------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Endpoint     | `POST /rpc/v1/fullnode`                      | Isolated from the public `/rpc/v1/{network}` pool — no shared failover state.      |
-| Method scope | Safe read methods + `author_submitExtrinsic` | Every other `author_`/`sudo_`/`payment_`/`contracts_`/`state_call` call is denied. |
-| Key delivery | `?authorization=` query parameter            | Not an `Authorization` header.                                                     |
+| What         | Value                                                    | Notes                                                                                 |
+| ------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Endpoint     | `POST /rpc/v1/fullnode`                                  | Isolated from the public `/rpc/v1/{network}` pool — no shared failover state.         |
+| Method scope | Safe read methods + `author_submitExtrinsic`             | Every other `author_`/`sudo_`/`payment_`/`contracts_`/`state_call` call is denied.    |
+| Key delivery | `authorization` header (preferred), or `?authorization=` | Header wins if both are sent. The query param stays supported for WSS-shaped clients. |
 
 ## Limits
 
