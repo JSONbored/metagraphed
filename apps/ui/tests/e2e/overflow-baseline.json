@@ -83,9 +83,7 @@
   "/providers@768": [],
   "/providers@1024": [],
   "/providers@1280": [],
-  "/apis@375": [
-    "A:inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong hover:decoration-ink"
-  ],
+  "/apis@375": [],
   "/apis@768": [],
   "/apis@1024": [],
   "/apis@1280": []
