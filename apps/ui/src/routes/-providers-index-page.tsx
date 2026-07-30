@@ -626,7 +626,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       {p.notes}
                     </p>
                   ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
                     {webHost ? (
                       <span className="inline-flex items-center gap-1 min-w-0">
                         <Globe className="size-3 shrink-0" />
