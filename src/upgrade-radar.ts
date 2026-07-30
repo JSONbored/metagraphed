@@ -553,9 +553,16 @@ export const BITS_CONTENTS_URL =
 /** A captured GitHub snapshot, as persisted in KV by the cron. */
 export interface UpgradeRadarSources {
   schema_version: 1;
+  /** When this refresh ran -- NOT necessarily when each half was fetched. */
   captured_at: string;
   releases: unknown[];
   bits: unknown[];
+  /**
+   * Upstreams whose data is carried over from an earlier tick because the
+   * fetch failed. Empty on a fully successful capture. Optional so a snapshot
+   * written before this field existed still reads back cleanly.
+   */
+  stale_upstreams?: string[];
 }
 
 /**
@@ -645,11 +652,26 @@ export async function refreshUpgradeRadarSources(
     fetchJson(env, BITS_CONTENTS_URL, UPGRADE_RADAR_GITHUB_TIMEOUT_MS),
   ]);
   if (!Array.isArray(releases) && !Array.isArray(bits)) return null;
+  // A HALF THAT FAILED CARRIES FORWARD; it does not become []. The two
+  // upstreams fail independently, and defaulting the failed one to an empty
+  // array would silently destroy good captured data on a transient blip --
+  // blanking `latest_release` (which degrades pending_upgrade to "unknown")
+  // or dropping every known BIT. That is the same "could not ask" vs "there
+  // is nothing" distinction derivePendingUpgrade is built around, applied to
+  // the capture rather than the derivation.
+  const previous = await readUpgradeRadarSources(env);
+  const stale: string[] = [];
+  if (!Array.isArray(releases)) stale.push("releases");
+  if (!Array.isArray(bits)) stale.push("bits");
   const snapshot: UpgradeRadarSources = {
     schema_version: 1,
     captured_at: new Date().toISOString(),
-    releases: Array.isArray(releases) ? releases : [],
-    bits: Array.isArray(bits) ? bits : [],
+    releases: Array.isArray(releases) ? releases : (previous?.releases ?? []),
+    bits: Array.isArray(bits) ? bits : (previous?.bits ?? []),
+    // Which halves are carried over from an earlier tick. `captured_at` is the
+    // time of THIS refresh attempt, so without this a consumer could not tell
+    // a fresh capture from one holding week-old releases.
+    stale_upstreams: stale,
   };
   const kv = env?.METAGRAPH_CONTROL;
   if (kv?.put) {

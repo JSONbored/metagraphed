@@ -190,24 +190,88 @@ describe("refreshUpgradeRadarSources", () => {
     }
   });
 
-  it("keeps the half that succeeded when either upstream fails", async () => {
-    // Both directions: the two upstreams are independent, and a rate limit or
-    // outage hits whichever one it hits.
+  it("carries a failed half forward instead of blanking it", async () => {
+    // THE BUG THIS LOCKS DOWN: defaulting the failed upstream to [] silently
+    // destroyed good captured data on a transient single-upstream blip --
+    // blanking latest_release (degrading pending_upgrade to "unknown") or
+    // dropping every known BIT. An earlier version of this test asserted the
+    // broken behaviour, which is exactly why it survived review.
+    const kv = makeKv({
+      [UPGRADE_RADAR_SOURCES_KEY]: JSON.stringify({
+        schema_version: 1,
+        captured_at: "2026-07-29T00:00:00.000Z",
+        releases: RELEASES,
+        bits: BITS,
+      }),
+    });
+
+    // BITs upstream fails: releases refresh, BITs carry over.
     stubFetch({
       [SUBTENSOR_RELEASES_URL]: { body: RELEASES },
       [BITS_CONTENTS_URL]: { status: 403, body: null },
     });
-    const bitsDown = await refreshUpgradeRadarSources(makeEnv(makeKv()));
+    const bitsDown = await refreshUpgradeRadarSources(makeEnv(kv));
     expect(bitsDown?.releases).toHaveLength(1);
-    expect(bitsDown?.bits).toEqual([]);
+    expect(bitsDown?.bits).toHaveLength(1);
+    expect(bitsDown?.stale_upstreams).toEqual(["bits"]);
 
+    // Releases upstream fails: BITs refresh, releases carry over.
     stubFetch({
       [SUBTENSOR_RELEASES_URL]: { throws: true },
       [BITS_CONTENTS_URL]: { body: BITS },
     });
-    const releasesDown = await refreshUpgradeRadarSources(makeEnv(makeKv()));
-    expect(releasesDown?.releases).toEqual([]);
+    const releasesDown = await refreshUpgradeRadarSources(makeEnv(kv));
+    expect(releasesDown?.releases).toHaveLength(1);
     expect(releasesDown?.bits).toHaveLength(1);
+    expect(releasesDown?.stale_upstreams).toEqual(["releases"]);
+  });
+
+  it("reports no stale upstreams on a clean capture", async () => {
+    stubFetch({
+      [SUBTENSOR_RELEASES_URL]: { body: RELEASES },
+      [BITS_CONTENTS_URL]: { body: BITS },
+    });
+    const snapshot = await refreshUpgradeRadarSources(makeEnv(makeKv()));
+    expect(snapshot?.stale_upstreams).toEqual([]);
+  });
+
+  it("writes an empty half only when there is no earlier value to keep", async () => {
+    // Cold KV plus one dead upstream: [] is the only honest value here, and
+    // the stale marker still says which half is missing.
+    stubFetch({
+      [SUBTENSOR_RELEASES_URL]: { body: RELEASES },
+      [BITS_CONTENTS_URL]: { throws: true },
+    });
+    const cold = await refreshUpgradeRadarSources(makeEnv(makeKv()));
+    expect(cold?.bits).toEqual([]);
+    expect(cold?.stale_upstreams).toEqual(["bits"]);
+
+    // ...and the mirror, so neither half's fallback goes unexercised.
+    stubFetch({
+      [SUBTENSOR_RELEASES_URL]: { throws: true },
+      [BITS_CONTENTS_URL]: { body: BITS },
+    });
+    const coldReleases = await refreshUpgradeRadarSources(makeEnv(makeKv()));
+    expect(coldReleases?.releases).toEqual([]);
+    expect(coldReleases?.stale_upstreams).toEqual(["releases"]);
+  });
+
+  it("does not let a failed half survive a later successful one", async () => {
+    // Carrying forward must not become sticky: once the upstream recovers,
+    // the fresh value wins and the stale marker clears.
+    const kv = makeKv();
+    stubFetch({
+      [SUBTENSOR_RELEASES_URL]: { body: RELEASES },
+      [BITS_CONTENTS_URL]: { throws: true },
+    });
+    await refreshUpgradeRadarSources(makeEnv(kv));
+    stubFetch({
+      [SUBTENSOR_RELEASES_URL]: { body: RELEASES },
+      [BITS_CONTENTS_URL]: { body: BITS },
+    });
+    const recovered = await refreshUpgradeRadarSources(makeEnv(kv));
+    expect(recovered?.bits).toHaveLength(1);
+    expect(recovered?.stale_upstreams).toEqual([]);
   });
 
   it("does not overwrite a good snapshot when GitHub is fully down", async () => {
