@@ -1,7 +1,10 @@
 # ADR 0022 — Paid-tier decision memo: cost model, three options, recommendation
 
-- **Status:** Proposed
-- **Date:** 2026-07-28
+- **Status:** Accepted — **Option (b) extended: data API free; the self-hosted surfaces (fullnode RPC, bulk export, archive snapshots) paid**
+- **Date:** 2026-07-28 (proposed) · 2026-07-30 (accepted)
+- **Decision:** the maintainer selected Option (b) on 2026-07-30, then amended it
+  the same day once a **missing cost shape** (the self-hosted fullnode RPC node)
+  was found. See "Decision" below the Recommendation.
 - **Relates to:** #8388 (this memo), #6646 (design-spike this memo fulfills),
   ADR 0020 (self-serve API key issuance — the identity/metering layer this
   memo assumes exists), ADR 0006/0014 (storage/infra tiering this memo's
@@ -43,6 +46,10 @@ This matters more than any single dollar figure, because it changes what
 | **Postgres-tier / deep-history** (`/api/v1/chain-events*`, ownership-history, conviction, lease/history — the exact routes #8386 wired tiered limiting into) | `metagraphed-data-api` Worker → Hyperdrive → the **self-hosted indexer box's** Postgres instance | **Fixed capacity, not per-request billed.** The box (ADR 0014: "the real, permanent core, not a Railway stopgap") is a flat monthly hosting cost (🔶 order-of-magnitude a dedicated/VPS box in this class runs $20–150/mo depending on spec — maintainer to confirm the actual bill) regardless of request volume, up to its connection-pool/CPU ceiling. The real cost of a heavy caller here isn't "$X per request" — it's **connection-pool contention** crowding out other callers, which is exactly why #8386 tiered this specific route family first. |
 | **AI / semantic search** (`/ask`, `/search/semantic`)                                                                                                        | Workers AI + Vectorize                                                                           | **Metered with a hard ceiling already in place.** ADR 0003: Vectorize's ~1.4M stored dimensions sit inside the 10M free allowance; `/ask`'s `AI_RATE_LIMITER` (20/60s) is deliberately the tightest limiter in the codebase because LLM inference is the one route family with a real, immediate per-call cost even at Workers AI's free-model pricing.                                                                                                                                                                                                     |
 | **Archive / bulk export** (raw R2 artifacts, `/datasets/*`, full-history pulls)                                                                              | R2 direct                                                                                        | **Storage + egress, the one tier with genuine bandwidth cost.** 🔶 R2 has no egress fee to the internet (Cloudflare's actual differentiator vs. S3) but does charge for storage (~$0.015/GB-month list price) and Class A/B operations — a bulk exporter pulling the full historical dataset repeatedly is the closest thing this platform has to a caller who costs real, scaling money.                                                                                                                                                                   |
+
+| **Gated fullnode RPC** (`POST /rpc/v1/fullnode` — safe reads **plus `author_submitExtrinsic`**) | The **first-party self-hosted subtensor node** (#4965, `fullnode-rpc.metagraph.sh` behind a Cloudflare Tunnel; `roles/subtensor-fullnode` + `roles/subtensor-archive` in metagraphed-infra) | **Fixed monthly self-hosted cost, plus the largest operational burden of any tier.** A synced Bittensor fullnode is a VPS, a continuously-growing chain database, and bandwidth — and unlike the Postgres box it is a **write path to the chain**, since this is the only tier granting transaction broadcast. 🔶 maintainer to confirm the actual bill. |
+
+**Added 2026-07-30 (amendment).** This row was **missing from the original memo**, and its absence materially shaped the recommendation below — see the Decision section.
 
 **The takeaway that should drive pricing design**: the routes people would
 most want a paid tier _for_ (deep-history, bulk archive) are exactly the
@@ -210,6 +217,108 @@ product to have a viable addressable market at all, Option (c) becomes the
 right choice by default — it costs almost nothing to run and provides a
 revenue signal before betting engineering time on either (a) or (b).
 
+## Decision (2026-07-30, amended same day)
+
+**Option (b), extended: the data API stays free — and the two SELF-HOSTED
+surfaces are the paid products.**
+
+- **Free at every tier, permanently:** the keyless base and the whole cached/
+  edge data API. No capability moves behind a paywall. ADR 0003's
+  agent-adoption thesis is untouched, which was the main reason to prefer (b)
+  over a flat API multiplier.
+- **Paid:** three surfaces, all of them things we self-host and pay for:
+  1. **Gated fullnode RPC** — specifically `author_submitExtrinsic` and
+     high-volume access.
+  2. **Bulk export** of our own derived datasets.
+  3. **Archive-node chain snapshots** — see below; the strongest of the three.
+
+### Archive-node snapshots (added 2026-07-30)
+
+A restorable snapshot of the **synced archive chain database**, so a buyer can
+stand up their own Bittensor archive node in hours instead of syncing from
+genesis. Distinct from (2): that exports _our derived data_; this is the raw
+chain DB.
+
+Why this is the best-shaped product of the three:
+
+- **The cost to the buyer of not having it is weeks.** metagraphed-infra's own
+  backup script states it plainly: a full genesis resync is "weeks, not hours".
+  That is the value being sold, and it is unusually legible.
+- **Nobody publishes free public archive snapshots.** There is no free
+  substitute to compete with, unlike almost every other surface here.
+- **Our marginal distribution cost is ~zero, and uniquely so.** This memo already
+  notes R2 has **no egress fee** — the one place that fact is a decisive
+  advantage rather than a footnote. Shipping a multi-TB snapshot costs us
+  storage and operations; a competitor doing the same on S3 pays egress on every
+  copy. The economics only work for us.
+- **We already pay the storage.** The archive volume is backed up weekly to R2
+  today (metagraphed-infra#94, restic, content-defined-chunking dedup).
+
+What it is **not** yet, and what stands between here and a product:
+
+- Those restic backups are **not a consumable snapshot**. They are encrypted
+  under `RESTIC_PASSWORD` and in restic's own repository format — a disaster-
+  recovery artifact for us, not something a customer can drop into their node.
+  A product needs a separate plain, restorable export, which is additional R2
+  storage on top of the backup that already exists.
+- The archive node must be **at tip and verified** before any snapshot is worth
+  selling. Sync state is tracked separately.
+- Snapshot cadence, retention, and integrity/provenance (a published checksum at
+  minimum) are unresolved.
+
+This is a **long-run** product, recorded here so the option is not lost, not a
+commitment to build it now.
+
+### Why this was amended within hours of being recorded
+
+The memo's cost model enumerated four cost shapes and **omitted the fullnode
+RPC node entirely**. That omission is not cosmetic: it is the one surface that
+is simultaneously
+
+1. a **fixed monthly bill we already pay** for hardware we run ourselves,
+2. the capability hosted-RPC providers actually **charge for** (transaction
+   broadcast), and
+3. served **free** today at 300 req/min on the `free` tier, wallet-gated only.
+
+So "the API stays free" — read off a table the fullnode was not in — silently
+meant "we give away access to nodes we pay for monthly, including the write
+path to the chain." Meanwhile the product (b) originally named as THE paid
+surface, bulk archive, is the one this very memo notes has **no R2 egress fee**;
+its real cost is storage at ~$0.015/GB-month plus operations. The original
+decision therefore monetised the cheaper self-hosted burden and gave away the
+dearer one, purely because the dearer one was never in the option set.
+
+The principle of (b) survives that correction. The scope of "free" does not.
+
+### What this settles
+
+- **There is still no paid tier on the DATA API.** The `free` / `community` /
+  `paid` entries in `src/api-tiers.ts` remain _rate-limit_ tiers, granted, never
+  sold. **`paid` is a misnomer under this decision and should be renamed** (the
+  fullnode gate's own `free` / `gittensor-partner` / `unlimited` naming is the
+  better precedent).
+- **Nothing already free on the data API becomes paid.**
+- **Fullnode RPC gets a paid dimension.** Free-tier _read_ access should stay
+  generous; broadcast and high volume are the paid surface. Exact split is an
+  implementation decision, not settled here.
+
+### Still open, deliberately
+
+- **Price points.** #8597 (merged 2026-07-30) now measures all-traffic volume by
+  route family and cost shape, including the `keyless_share` this memo could not
+  observe. Set numbers from that, not from guesses.
+- **The real fullnode bill.** Still 🔶 — needed before pricing it.
+- **Billing vendor.** Unchanged scope exclusion.
+- The memo's own _"what would flip this"_ clause still stands and is **not**
+  closed by this decision.
+
+### Implementation consequences
+
+- **#8610** is a _limits and access_ page, not an API price list: what each
+  rate-limit tier allows, how to get a higher one (granted, not bought), and
+  what the paid surfaces are.
+- A follow-up issue is needed for the paid fullnode tier itself.
+
 ## Consequences
 
 - No code or infrastructure change ships with this ADR — it is the
@@ -227,9 +336,9 @@ revenue signal before betting engineering time on either (a) or (b).
 
 ## Open questions
 
-- **Pricing/quantity for whichever option is chosen** — genuinely a
-  business call requiring the real cost numbers above, not something an
-  engineering-only pass through this memo can responsibly guess at.
+- ~~**Pricing/quantity for whichever option is chosen**~~ — the OPTION is now
+  decided (see Decision above); the price points remain open and are now
+  measurable rather than guessable, via #8597's rollup.
 - **Billing vendor** (Stripe vs. alternatives) if (a) or (b) is chosen —
   out of scope for this memo per the issue's own instruction.
 - **Whether (b)'s archive/export product and (a)'s API tier are mutually
