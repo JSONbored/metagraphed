@@ -14,6 +14,10 @@ import {
 } from "../src/subnet-identity-history.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { AnyFn, Row } from "./row-type.ts";
+import {
+  REALIZED_RETURN_BASELINE_TOLERANCE_DAYS,
+  realizedBaselineLowerBound,
+} from "../workers/data-api.ts";
 
 const sqlCalls = vi.hoisted((): Row[] => []);
 const sqlBeginOptions = vi.hoisted((): unknown[] => []);
@@ -2328,6 +2332,92 @@ test("GET /api/v1/validators/:hotkey carries realized_return_* scoped to that ho
   expect(body.realized_return_1m).toBe(0); // (1500-1500)/1500 -- confirmed zero
   // The detail route scopes the baseline scan to the requested hotkey.
   expect(queryText()).toMatch(/AND hotkey = \?/);
+});
+
+test("GET /api/v1/validators baseline SQL is two-sided for every realized-return window (#8837)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "1000",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  // Normal in-window baselines — ratio still publishes when a row is in range.
+  realizedBaselineState.queue = [
+    [{ hotkey: "5Hot", baseline_stake_tao: 800 }],
+    [{ hotkey: "5Hot", baseline_stake_tao: 500 }],
+    [{ hotkey: "5Hot", baseline_stake_tao: 400 }],
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  const v = body.validators.find((x: Row) => x.hotkey === "5Hot");
+  expect(v.realized_return_1d).toBe(0.25);
+
+  const baselineCalls = sqlCalls.filter((call) =>
+    /AS baseline_stake_tao\b/.test(call.text),
+  );
+  // One call per window (d1/d7/d30), each carrying both bounds.
+  expect(baselineCalls.length).toBe(3);
+  for (const call of baselineCalls) {
+    expect(call.text).toMatch(/snapshot_date <=/);
+    expect(call.text).toMatch(/snapshot_date >=/);
+    // Bound values: cutoff and lower (and possibly hotkey on the detail route).
+    const dates = (call.values as unknown[]).filter(
+      (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v),
+    );
+    expect(dates.length).toBeGreaterThanOrEqual(2);
+    const [cutoff, lower] = dates;
+    expect(lower).toBe(realizedBaselineLowerBound(cutoff as string));
+    // Boundary: lower is exactly tolerance days before cutoff.
+    const cutoffMs = Date.parse(`${cutoff}T00:00:00.000Z`);
+    const lowerMs = Date.parse(`${lower}T00:00:00.000Z`);
+    expect((cutoffMs - lowerMs) / (24 * 60 * 60 * 1000)).toBe(
+      REALIZED_RETURN_BASELINE_TOLERANCE_DAYS,
+    );
+  }
+});
+
+test("GET /api/v1/validators yields null realized_return_1d when the baseline queue is empty (permit-gap / out-of-tolerance) (#8837)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "5000",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  // No permitted row inside the two-sided window → worker returns [] for d1.
+  // Previously a one-sided query would have returned a 45-day-old 500 TAO
+  // baseline and published (5000-500)/500 = 9.0 as a "1-day" return.
+  realizedBaselineState.queue = [[], [], []];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  const v = body.validators.find((x: Row) => x.hotkey === "5Hot");
+  expect(v.realized_return_1d).toBeNull();
+  expect(v.realized_return_1w).toBeNull();
+  expect(v.realized_return_1m).toBeNull();
+  expect(v.realized_return_1d).not.toBe(9);
+});
+
+test("realizedBaselineLowerBound is cutoff minus REALIZED_RETURN_BASELINE_TOLERANCE_DAYS (#8837)", () => {
+  expect(REALIZED_RETURN_BASELINE_TOLERANCE_DAYS).toBe(2);
+  expect(realizedBaselineLowerBound("2026-07-30")).toBe("2026-07-28");
+  // Boundary: a row dated exactly at lower is in range; one day older is not
+  // (asserted via the arithmetic the SQL binds — lower is inclusive).
+  expect(realizedBaselineLowerBound("2026-07-24")).toBe("2026-07-22");
 });
 
 const IDENTITY_ROW = {

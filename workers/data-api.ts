@@ -3457,14 +3457,32 @@ async function loadSubnetTempos(sql: postgres.TransactionSql, env: Env) {
 // same way windowCutoffDate does.
 const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
 
+// How many calendar days older than the window cutoff a permitted
+// neuron_daily snapshot may still serve as a realized-return baseline (#8837).
+// neuron_daily is written once per UTC day by the rollup cron; 2 days tolerates
+// one missed write plus one partial/lagged day without spanning a multi-week
+// validator_permit gap (which previously produced e.g. +900% "1-day" returns
+// from a 45-day-old baseline). Applied uniformly to d1/d7/d30.
+export const REALIZED_RETURN_BASELINE_TOLERANCE_DAYS = 2;
+
+/** Oldest YYYY-MM-DD still accepted as a baseline for the given cutoff (#8837). */
+export function realizedBaselineLowerBound(cutoff: string): string {
+  return new Date(
+    Date.parse(`${cutoff}T00:00:00.000Z`) -
+      REALIZED_RETURN_BASELINE_TOLERANCE_DAYS * ANALYTICS_DAY_MS,
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 // Per-hotkey baseline total_stake_tao ~1d/1w/1m back from the neuron_daily
-// rollup, for the realized_return_* fields (#7228). For each window it takes
-// each hotkey's newest snapshot on-or-before (today − N days) and sums that
-// day's stake across every subnet membership (rao-precision is re-applied in
-// the builder); a hotkey whose oldest snapshot is newer than that cutoff is
-// simply absent, so its realized return for that window resolves to null ("no
-// figure", not "zero"). Same savepoint-isolated-failure shape as
-// loadSubnetTempos above: a neuron_daily read failure degrades every
+// rollup, for the realized_return_* fields (#7228 / #8837). For each window it
+// takes each hotkey's newest *permitted* snapshot on-or-before (today − N days)
+// that is still within REALIZED_RETURN_BASELINE_TOLERANCE_DAYS of that cutoff
+// (two-sided window). A hotkey with no permitted row in that range is absent,
+// so its realized return for that window resolves to null ("no figure", not
+// "zero") — matching the GraphQL contract. Same savepoint-isolated-failure
+// shape as loadSubnetTempos above: a neuron_daily read failure degrades every
 // realized_return_* to null rather than failing /api/v1/validators or
 // /api/v1/validators/:hotkey, or rolling back the enclosing transaction's
 // other queries. `hotkey` scopes the scan to the single-validator detail route.
@@ -3481,6 +3499,7 @@ async function loadRealizedStakeBaselines(
           const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
             .toISOString()
             .slice(0, 10);
+          const lower = realizedBaselineLowerBound(cutoff);
           type BaselineRow = {
             hotkey: NeuronDaily["hotkey"];
             baseline_stake_tao: string | null;
@@ -3492,6 +3511,7 @@ async function loadRealizedStakeBaselines(
               FROM neuron_daily
               WHERE validator_permit = TRUE AND hotkey = ${hotkey}
                 AND snapshot_date <= ${cutoff}
+                AND snapshot_date >= ${lower}
               GROUP BY hotkey, snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
@@ -3500,7 +3520,9 @@ async function loadRealizedStakeBaselines(
             WITH daily AS (
               SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
               FROM neuron_daily
-              WHERE validator_permit = TRUE AND snapshot_date <= ${cutoff}
+              WHERE validator_permit = TRUE
+                AND snapshot_date <= ${cutoff}
+                AND snapshot_date >= ${lower}
               GROUP BY hotkey, snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
