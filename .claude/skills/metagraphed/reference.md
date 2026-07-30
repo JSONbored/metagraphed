@@ -527,10 +527,11 @@ api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs
   matching prose entry in `docs/backend-artifact-contracts.md` (mirror an existing bullet like the
   `subnet-burn` one) for every artifact path — easy to miss since nothing else in the schema/route
   wiring references this file. **Two more registrations, both caught live 2026-07-30 on a
-  computed artifact (metagraphed#8761 shipped missing both):** `scripts/validate-schemas.ts`'s
-  `COMPUTED_ARTIFACTS` set — a live-computed artifact NOT listed there is expected to exist as a
-  file, and validate:schemas dies with a bare `ENOENT: ... public/metagraph/<x>.json` that names
-  neither the cause nor the list to edit; and `src/artifact-storage.ts`'s `R2_ONLY_PATTERNS` — an
+  computed artifact (metagraphed#8761 shipped missing both):** pass `COMPUTED_LIVE` as
+  `artifact()`'s 5th argument (metagraphed#8773 replaced `validate-schemas.ts`'s hand-maintained
+  `COMPUTED_ARTIFACTS` Set with this structural flag) — a live-computed artifact without it is
+  expected to exist as a file, and validate:schemas dies with a bare `ENOENT: ...
+public/metagraph/<x>.json` that names neither the cause nor the fix; and `src/artifact-storage.ts`'s `R2_ONLY_PATTERNS` — an
   artifact matching no explicit R2-only or dual pattern falls through to the default-git tier, which
   `tests/artifact-tiering-explicit.test.ts` fails as the #998 mis-tiering landmine. Adding the
   `R2_ONLY_PATTERNS` entry also flips `storage_tier` in `contracts.json`/`api-index.json`, so
