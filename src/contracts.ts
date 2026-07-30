@@ -1548,6 +1548,12 @@ export const PUBLIC_ARTIFACTS = [
     "ExtrinsicsFeedArtifact",
   ),
   artifact(
+    "network-capabilities",
+    "/metagraph/networks.json",
+    "The per-network capability matrix (#8699): for each addressable network, which route families it serves, which it does not, and which are partial. Derived at request time from the router's own mainnet-only predicate — never hand-maintained, because a wrong capability matrix is worse than none: it makes an agent confidently plan a call that 404s. Served live at /api/v1/networks (no static file), and reachable under every network prefix including /api/v1/local/networks, since this is how a caller learns what does 404.",
+    "NetworkCapabilitiesArtifact",
+  ),
+  artifact(
     "runtime-versions",
     "/metagraph/runtime.json",
     "The spec-version transition timeline (#4316/3.1) — the earliest known block at each distinct runtime spec_version, ascending by block_number — computed live from the first-party blocks D1 tier at /api/v1/runtime (no static file).",
@@ -3654,6 +3660,15 @@ export const API_ROUTES = [
       { name: "to", schema: { type: "integer", minimum: 0 } },
     ]),
     [],
+  ),
+  route(
+    "network-capabilities",
+    "GET",
+    "/api/v1/networks",
+    "/metagraph/networks.json",
+    'List every addressable network and what it actually serves. For each network: its canonical id, chain name, every accepted alias, and the route families it serves, does not serve, or serves partially. Answers "can I get chain data on testnet?" without making a request that fails. Reachable under every network prefix (/api/v1/networks, /api/v1/testnet/networks, /api/v1/local/networks) and identical on all of them — it is the one route that never 404s on any network, because it is how you find out what does.',
+    "short",
+    ["operations"],
   ),
   route(
     "runtime-versions",

@@ -1055,6 +1055,26 @@ const checks: [string, (body: Row) => void][] = [
     },
   ],
   [
+    // #8699: the capability matrix. Asserted on the SHAPE an agent plans
+    // against — every network reports three family lists, and mainnet reports
+    // nothing unserved.
+    "/api/v1/networks",
+    (body) => {
+      assert.equal(typeof body.data.default_network, "string");
+      assert.equal(Array.isArray(body.data.networks), true);
+      assert.ok(body.data.networks.length > 0);
+      for (const network of body.data.networks as Row[]) {
+        assert.equal(Array.isArray(network.served_families), true);
+        assert.equal(Array.isArray(network.unserved_families), true);
+        assert.equal(Array.isArray(network.partial_families), true);
+        assert.equal(Array.isArray(network.aliases), true);
+      }
+      const mainnet = body.data.networks.find((n: Row) => n.is_default);
+      assert.ok(mainnet, "no default network reported");
+      assert.deepEqual(mainnet.unserved_families, []);
+    },
+  ],
+  [
     "/api/v1/runtime",
     (body) => {
       assert.equal(Array.isArray(body.data.transitions), true);

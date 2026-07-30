@@ -685,6 +685,8 @@ import {
   GetRandomnessStatusOutputSchema,
 } from "../schemas-src/mcp-tools/network-live.ts";
 import {
+  GetNetworksInputSchema,
+  GetNetworksOutputSchema,
   GetRuntimeInputSchema,
   GetRuntimeOutputSchema,
 } from "../schemas-src/mcp-tools/runtime.ts";
@@ -1282,6 +1284,12 @@ import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
+import { buildNetworksPayload } from "./network-capabilities.ts";
+// #8699: the router's own network map and mainnet-only predicate. Imported
+// rather than restated so the MCP tool and the REST route cannot disagree
+// about what testnet serves -- a wrong capability matrix is worse than none.
+import { isMainnetOnlyApiPath, MCP_NETWORKS } from "../workers/api.ts";
+import { API_ROUTES as MCP_API_ROUTES } from "./contracts.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
@@ -7883,6 +7891,30 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_networks",
+    title: "List addressable networks and what each one serves",
+    description:
+      "List every network this API can address — mainnet, testnet, local — with " +
+      "its canonical id, chain name, every accepted alias, and the route families " +
+      "it serves, does not serve, or serves only partially. Use this BEFORE " +
+      "planning a multi-step task against a non-mainnet network: it answers " +
+      '"can I get chain data on testnet?" without issuing a request that 404s. ' +
+      "The served/unserved split is derived from the router's own routing rules, " +
+      "not a hand-maintained list. Mirrors GET /api/v1/networks.",
+    inputSchema: z.toJSONSchema(GetNetworksInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler() {
+      // Pure derivation over the route table — no artifact read, no upstream,
+      // so this tool cannot fail or return stale data.
+      return buildNetworksPayload({
+        routes: MCP_API_ROUTES,
+        networks: MCP_NETWORKS,
+        isMainnetOnly: isMainnetOnlyApiPath,
+      });
+    },
+  },
+  {
     name: "get_runtime",
     title: "Get the runtime spec-version transition timeline",
     description:
@@ -10816,6 +10848,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       target: "draft-2020-12",
     },
   ),
+  get_networks: z.toJSONSchema(GetNetworksOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_runtime: z.toJSONSchema(GetRuntimeOutputSchema, {
     target: "draft-2020-12",
   }),
