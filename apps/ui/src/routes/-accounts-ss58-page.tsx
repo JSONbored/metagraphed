@@ -513,7 +513,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <div className="mt-6">
         <Link
           to="/accounts"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 mg-type-caption font-medium hover:border-ink/30"
         >
           ← Account lookup
         </Link>
@@ -609,7 +609,7 @@ function AccountKpiBand({
       <button
         type="button"
         onClick={onRetryBalance}
-        className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-[11px] font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 mg-type-caption font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
       >
         <RefreshCw className="size-3" /> Retry
       </button>
@@ -1813,7 +1813,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">—</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-[11px]">
+                    <td className="whitespace-nowrap px-4 py-4 mg-type-caption">
                       <span
                         className={
                           tie.role === "gained_ownership"
@@ -2287,7 +2287,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
           <p className="mt-2 text-sm text-ink-muted">{identity.description}</p>
         ) : null}
         {identity.url || identity.github || identity.discord || identity.image ? (
-          <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
+          <div className="mt-3 flex flex-wrap gap-3 mg-type-caption">
             {identity.url ? (
               <ExternalLink href={identity.url} className="text-accent-text hover:underline">
                 <Globe className="size-3.5 shrink-0" aria-hidden /> website
@@ -2934,7 +2934,7 @@ function AccountFootprintSection({
                 </span>
               )}
             </div>
-            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 mg-type-data-sm">
               <dt className="mg-type-caption text-ink-muted">UID</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {r.uid != null ? formatNumber(r.uid) : "—"}
