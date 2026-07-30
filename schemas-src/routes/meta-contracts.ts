@@ -78,6 +78,11 @@ const ApiRouteSchema = z
     public: z.literal(true),
     query_collection: z.string().nullable().optional(),
     query_filter_names: z.array(z.string()).optional(),
+    // #8698: whether this route answers on networks other than mainnet, and
+    // which. Optional so a consumer pinned to an older contract still
+    // validates against this schema.
+    mainnet_only: z.boolean().optional(),
+    networks: z.array(z.string()).optional(),
     query_parameters: z.array(ApiQueryParameterSchema),
   })
   .strict();

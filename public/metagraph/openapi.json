@@ -4960,9 +4960,18 @@
                 "id": {
                   "type": "string"
                 },
+                "mainnet_only": {
+                  "type": "boolean"
+                },
                 "method": {
                   "const": "GET",
                   "type": "string"
+                },
+                "networks": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 },
                 "path": {
                   "pattern": "^\\/api\\/v1",

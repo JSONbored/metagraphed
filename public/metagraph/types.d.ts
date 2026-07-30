@@ -5864,8 +5864,10 @@ export interface components {
                 cache: "short" | "standard" | "static";
                 description: string;
                 id: string;
+                mainnet_only?: boolean;
                 /** @constant */
                 method: "GET";
+                networks?: string[];
                 path: string;
                 /** @constant */
                 public: true;
