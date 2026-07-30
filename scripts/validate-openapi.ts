@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import {
   API_ROUTES,
+  FEED_ROUTES,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
 } from "../src/contracts.ts";
@@ -134,8 +135,27 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-assert.equal(documentedRoutes.size, API_ROUTES.length);
-console.log(`OpenAPI validation passed for ${API_ROUTES.length} route(s).`);
+// #8703: feeds are their own registry (they serve feed documents, not the
+// artifact envelope -- see FEED_ROUTES' own comment in src/contracts.ts), so
+// the document holds API_ROUTES plus each feed family's bare path and its three
+// format suffixes. Counted rather than skipped: an exact total is what catches
+// a path appearing in OpenAPI that no registry claims.
+const FEED_OPENAPI_ROUTES = FEED_ROUTES.flatMap((entry) => [
+  entry.path,
+  ...entry.formats.map((format) => `${entry.path}.${format}`),
+]);
+for (const feedPath of FEED_OPENAPI_ROUTES) {
+  check(
+    documentedRoutes.has(`GET ${feedPath}`),
+    `OpenAPI is missing feed route GET ${feedPath}`,
+  );
+}
+
+const expectedRoutes = API_ROUTES.length + FEED_OPENAPI_ROUTES.length;
+assert.equal(documentedRoutes.size, expectedRoutes);
+console.log(
+  `OpenAPI validation passed for ${API_ROUTES.length} route(s) + ${FEED_OPENAPI_ROUTES.length} feed route(s).`,
+);
 
 function check(condition: unknown, message: string): void {
   if (!condition) {

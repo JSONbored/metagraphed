@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   API_ROUTES,
+  FEED_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   buildApiIndexArtifact,
@@ -18,6 +19,17 @@ import {
 } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import type { Row } from "./row-type.ts";
+
+// #8703: feeds are their own registry (FEED_ROUTES) because they serve feed
+// documents rather than the artifact envelope, so the OpenAPI document holds
+// API_ROUTES plus each feed family's bare path and its three format suffixes.
+// Counted rather than skipped: an exact total still catches a path appearing in
+// OpenAPI that no registry claims.
+const FEED_OPENAPI_PATH_COUNT = FEED_ROUTES.reduce(
+  (total, entry) => total + 1 + entry.formats.length,
+  0,
+);
+const EXPECTED_OPENAPI_PATHS = API_ROUTES.length + FEED_OPENAPI_PATH_COUNT;
 
 describe("contracts — route ⇄ artifact mapping invariants", () => {
   test("every API route's artifact_path resolves to a public artifact contract", async () => {
@@ -31,7 +43,7 @@ describe("contracts — route ⇄ artifact mapping invariants", () => {
       generatedAt,
       await loadOpenApiComponentSchemas(generatedAt),
     );
-    assert.equal(Object.keys(openapi.paths).length, API_ROUTES.length);
+    assert.equal(Object.keys(openapi.paths).length, EXPECTED_OPENAPI_PATHS);
     for (const route of API_ROUTES) {
       const op = (openapi.paths as Record<string, Record<string, Row>>)[
         route.path

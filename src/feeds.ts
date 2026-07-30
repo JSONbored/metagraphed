@@ -665,17 +665,45 @@ export function resolveFeedFormat(
   return "json";
 }
 
-export type FeedTarget =
-  | { kind: "registry" }
-  | { kind: "incidents" }
-  | { kind: "gaps" }
-  | { kind: "subnet"; netuid: number }
-  // #8376: no netuid/ids here -- ids live in the query string, not the path,
-  // parsed alongside since/until/limit in handleFeedRequest.
-  | { kind: "watch" }
+/**
+ * The unparameterized feed families, as literal path segments.
+ *
+ * #8703 made this a real list rather than a chain of `if (rest === "...")`
+ * comparisons, because it is now the single source of truth two other things
+ * derive from: parseFeedPath below, and tests/feed-contract.test.ts, which
+ * fails when a family here has no entry in contracts.ts' FEED_ROUTES. That
+ * guard is the whole point -- the feed system shipped in #741 with SIX live
+ * families and zero contract entries, and nothing detected it for a year.
+ * Adding a seventh feed now means adding it here, which immediately fails the
+ * contract test until it is documented too.
+ */
+export const FEED_PATH_SEGMENTS = [
+  "registry",
+  "incidents",
+  "gaps",
+  // #8376: no netuid/ids in the path -- ids live in the query string, parsed
+  // alongside since/until/limit in handleFeedRequest.
+  "watch",
   // #8702: runtime upgrade lifecycle -- GitHub releases, observed chain
-  // transitions, and BIT documents. Path-only, no params of its own.
-  | { kind: "upgrades" };
+  // transitions, and BIT documents.
+  "upgrades",
+] as const;
+
+/** Every feed kind, including the parameterized per-subnet one. */
+export const FEED_TARGET_KINDS = [...FEED_PATH_SEGMENTS, "subnet"] as const;
+
+export type FeedTargetKind = (typeof FEED_TARGET_KINDS)[number];
+
+// Distributed over the segment literals rather than written as a single
+// `{ kind: "registry" | "incidents" | ... }` member, so the union stays a
+// DISCRIMINATED one: handleFeedRequest narrows by elimination down its
+// if/else chain, and a lumped member can never be excluded that way.
+type UnparameterizedFeedTarget = {
+  [Kind in (typeof FEED_PATH_SEGMENTS)[number]]: { kind: Kind };
+}[(typeof FEED_PATH_SEGMENTS)[number]];
+
+export type FeedTarget =
+  UnparameterizedFeedTarget | { kind: "subnet"; netuid: number };
 
 // Parse `/api/v1/feeds/...` into { kind, netuid } or null for an unknown feed.
 export function parseFeedPath(pathname: string): FeedTarget | null {
@@ -683,11 +711,8 @@ export function parseFeedPath(pathname: string): FeedTarget | null {
     .replace(/^\/api\/v1\/feeds\/?/, "")
     .replace(/\.(rss|atom|json)$/, "")
     .replace(/\/$/, "");
-  if (rest === "registry") return { kind: "registry" };
-  if (rest === "incidents") return { kind: "incidents" };
-  if (rest === "gaps") return { kind: "gaps" };
-  if (rest === "watch") return { kind: "watch" };
-  if (rest === "upgrades") return { kind: "upgrades" };
+  const segment = FEED_PATH_SEGMENTS.find((candidate) => candidate === rest);
+  if (segment) return { kind: segment };
   const subnet = /^subnets\/(\d+)$/.exec(rest);
   if (subnet) return { kind: "subnet", netuid: Number(subnet[1]) };
   return null;

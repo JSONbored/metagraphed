@@ -6,6 +6,7 @@ import { formatTao } from "@/lib/metagraphed/format";
 import { logoHostFrom, ogImageMeta } from "@/lib/metagraphed/og-card";
 import { entityNotFoundMeta, isMissingEntityError } from "@/lib/metagraphed/entity-not-found-meta";
 import { SubnetDetailPage } from "./-subnets-netuid-page";
+import { subnetFeedLinks } from "@/lib/metagraphed/feed-links";
 
 export type SearchParams = {
   tab?: string;
@@ -144,6 +145,12 @@ export const Route = createFileRoute("/subnets/$netuid")({
           ],
         }),
       ],
+      // #8703: this subnet's own feed, so pasting the page URL into a reader
+      // resolves it. Deliberately only on the resolved path -- both
+      // entityNotFoundMeta branches above return without links, since
+      // advertising a feed for a netuid that is not a subnet would hand readers
+      // a permanently empty subscription.
+      links: subnetFeedLinks(params.netuid),
     };
   },
   component: SubnetDetailPage,

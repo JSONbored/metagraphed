@@ -10,7 +10,11 @@ import {
   stripJsonComments,
 } from "./lib.ts";
 import { promises as fs } from "node:fs";
-import { CONTRACT_VERSION } from "../src/contracts.ts";
+import {
+  CONTRACT_VERSION,
+  FEED_CONTENT_TYPES_BY_FORMAT,
+  FEED_ROUTES,
+} from "../src/contracts.ts";
 
 // The OpenAPI document read below is generated JSON, deep-traversed only to
 // compare against a freshly-rebuilt copy or report a route path -- never
@@ -111,9 +115,28 @@ check(
   "generated/metagraphed-client.ts is stale. Run npm run build.",
 );
 
+// #8703: feed routes answer a different response contract -- an RSS/Atom/JSON
+// Feed document, never the success envelope -- so the envelope assertion below
+// cannot apply to them. They are NOT simply exempted: the loop after this one
+// holds them to their own contract instead, so a feed route that silently
+// started returning an envelope (or lost its media types) still fails here.
+//
+// Derived from FEED_ROUTES rather than pattern-matched on "/feeds/", so a route
+// that merely looks feed-shaped cannot opt itself out of envelope validation.
+const FEED_OPENAPI_PATHS = new Set(
+  FEED_ROUTES.flatMap((entry) => [
+    entry.path,
+    ...entry.formats.map((format) => `${entry.path}.${format}`),
+  ]),
+);
+const FEED_MEDIA_TYPES = new Set<string>(
+  Object.values(FEED_CONTENT_TYPES_BY_FORMAT),
+);
+
 for (const [routePath, methods] of Object.entries(
   (currentOpenApi.paths as Row | undefined) || {},
 )) {
+  if (FEED_OPENAPI_PATHS.has(routePath)) continue;
   const operation = methods.get;
   const dataRef =
     operation?.responses?.["200"]?.content?.["application/json"]?.schema
@@ -128,6 +151,30 @@ for (const [routePath, methods] of Object.entries(
       `OpenAPI route ${routePath} must not fall back to ${dataRef}.`,
     );
   }
+}
+
+// #8703: the feed routes' own contract. Every path FEED_ROUTES declares must
+// exist in OpenAPI, serve at least one real feed media type, and never claim
+// application/json for its 200 -- a generated client that believed that would
+// parse an RSS document as JSON.
+for (const routePath of FEED_OPENAPI_PATHS) {
+  const operation = ((currentOpenApi.paths as Row | undefined) || {})[routePath]
+    ?.get;
+  check(
+    Boolean(operation),
+    `Feed route ${routePath} is declared in FEED_ROUTES but missing from OpenAPI. Run npm run build.`,
+  );
+  if (!operation) continue;
+  const content = operation.responses?.["200"]?.content || {};
+  const mediaTypes = Object.keys(content);
+  check(
+    mediaTypes.some((mediaType) => FEED_MEDIA_TYPES.has(mediaType)),
+    `Feed route ${routePath} declares no feed media type (got: ${mediaTypes.join(", ") || "none"}).`,
+  );
+  check(
+    !mediaTypes.includes("application/json"),
+    `Feed route ${routePath} claims application/json; feeds serve application/feed+json, not the API envelope.`,
+  );
 }
 
 if (errors.length > 0) {

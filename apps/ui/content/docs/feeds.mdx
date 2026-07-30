@@ -1,9 +1,9 @@
 ---
 title: Feeds
-description: Subscribe to registry changes, incidents, and coverage gaps as RSS 2.0, Atom 1.0, or JSON Feed — computed at request time from artifacts already served. Read-only, no API key.
+description: Subscribe to registry changes, incidents, coverage gaps, and Bittensor runtime upgrades as RSS 2.0, Atom 1.0, or JSON Feed — computed at request time from artifacts already served. Read-only, no API key.
 ---
 
-Five GET feeds, all content-negotiated. Point any reader, crawler, or agent at a URL below.
+Six GET feeds, all content-negotiated. Point any reader, crawler, or agent at a URL below — or just hand your reader a page on this site, which now advertises the right feed itself (see [Autodiscovery](#autodiscovery)).
 
 ```
 GET https://api.metagraph.sh/api/v1/feeds/registry
@@ -16,6 +16,7 @@ GET https://api.metagraph.sh/api/v1/feeds/registry
 | `/api/v1/feeds/registry`         | Registry changes from the 6h changelog deltas — subnets, artifacts, and coverage. | `registry` + one of `subnet`/`artifact`/`coverage` + the change verb (`added`/`removed`/`renamed`/`modified`) |
 | `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.      | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
 | `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.            | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
+| `/api/v1/feeds/upgrades`         | Bittensor runtime upgrades — releases, observed chain spec-version changes, BITs. | `chain`, `upgrade`, and one of `release`/`mainnet`/`testnet`/`bit`                                            |
 | `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                    | the same tags as the feed each item came from                                                                 |
 | `/api/v1/feeds/watch?ids=`       | Registry changes + incidents for a set of watched entities, named in the URL.     | the same tags as the feed each item came from                                                                 |
 
@@ -42,6 +43,46 @@ GET https://api.metagraph.sh/api/v1/feeds/watch.json?ids=s1,s7,s74
 </Callout>
 
 Only `subnet` ids currently resolve to items — registry changes and incidents, exactly like `/api/v1/feeds/subnets/{netuid}`, merged across every watched subnet. `validator`/`account` ids are accepted and counted toward the 50-id cap (so a URL built from a mixed watchlist never silently exceeds it), but there is no change-tracking data source for either yet; the feed's own `description` field says plainly how many of the requested ids produced nothing, rather than staying silent about the gap. More than 50 ids in one URL is a `413`.
+
+## Runtime upgrades
+
+Subtensor runtime upgrades reach mainnet with no on-chain warning — they are sudo-applied, and the Scheduler queue is empty — so the only observable signal is off-chain: a GitHub release, then a testnet deploy, then mainnet. `/api/v1/feeds/upgrades` carries all three.
+
+```
+GET https://api.metagraph.sh/api/v1/feeds/upgrades.rss
+```
+
+Items link to their primary source: a release item to the GitHub release, a chain item to the [runtime timeline](/docs/api-reference/blocks/runtime-versions). Chain items say the change was **detected** at that time rather than applied — the radar polls twice an hour, so it cannot pin the upgrade instant.
+
+**No dates are predicted here.** The foundation publishes no deploy schedule, so this feed reports what has happened and never when something will. If you need the current state rather than the history, `GET /api/v1/runtime` returns a `current` block with the live mainnet and testnet spec versions and a `pending_upgrade` of `none`, `testnet_soaking`, `released_undeployed`, or `unknown`.
+
+The same items also appear in `/api/v1/feeds/registry`, so `?tag=upgrade` narrows that feed to them alone.
+
+## Autodiscovery
+
+Pages on this site advertise their feed in the document head, so a reader can find it from the page URL alone — paste `https://metagraph.sh/subnets/8` into any feed reader and it resolves that subnet's feed without you hunting for it.
+
+| Page                | Advertises                       |
+| ------------------- | -------------------------------- |
+| Any page            | `/api/v1/feeds/registry`         |
+| `/subnets/{netuid}` | `/api/v1/feeds/subnets/{netuid}` |
+
+Both are offered as RSS and Atom:
+
+```html
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  href="https://api.metagraph.sh/api/v1/feeds/registry.rss"
+/>
+<link
+  rel="alternate"
+  type="application/atom+xml"
+  href="https://api.metagraph.sh/api/v1/feeds/registry.atom"
+/>
+```
+
+JSON Feed is not advertised for autodiscovery — readers probe for RSS and Atom — but it is served at the same paths with a `.json` suffix, and every feed is described in the [OpenAPI contract](/docs/api-reference) and in `GET /api/v1/contracts` under `feeds`.
 
 ## Formats
 

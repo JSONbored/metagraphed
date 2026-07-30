@@ -4377,6 +4377,174 @@ export const API_ROUTES = [
   ),
 ];
 
+// ── feed routes (#8703) ─────────────────────────────────────────────────────
+//
+// The feed system (src/feeds.ts, #741) shipped complete and undocumented: no
+// contract entry, no OpenAPI path, no autodiscovery tag. We built distribution
+// infrastructure and then did not distribute it.
+//
+// WHY THIS IS A SEPARATE REGISTRY AND NOT MORE API_ROUTES ENTRIES. API_ROUTES
+// is the ARTIFACT-BACKED route table: workers/api.ts derives its dispatcher
+// from it (each entry resolves to an `artifact_path` it serves and wraps in the
+// success envelope), and validate-api.ts asserts `checks.length ===
+// API_ROUTES.length` over exactly that. Feeds are neither — they are rendered
+// live from artifacts by a dedicated handler, and they emit RSS/Atom/JSON Feed
+// documents with NO envelope at all. Adding them to API_ROUTES would register
+// phantom artifact paths in the dispatcher and break the validator's invariant,
+// to describe routes it cannot actually check. So they get their own list,
+// surfaced in the contract artifact under `feeds` and in OpenAPI as their own
+// paths.
+//
+// EVERY FAMILY src/feeds.ts SERVES MUST APPEAR HERE. tests/feed-contract.test.ts
+// derives the expected set from parseFeedPath itself and fails if one is
+// missing, so a future seventh feed cannot ship undocumented the way the first
+// six did. That test is why this list is six entries and not the four the issue
+// asked for: `watch` was already live and unlisted, and `upgrades` landed in
+// #8702.
+
+/** The three feed serializations, as content types. */
+export const FEED_CONTENT_TYPES_BY_FORMAT = {
+  rss: "application/rss+xml",
+  atom: "application/atom+xml",
+  json: "application/feed+json",
+} as const;
+
+/** Query parameters every feed family accepts. */
+const FEED_COMMON_PARAMETERS = [
+  {
+    name: "tag",
+    description:
+      "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+    schema: { type: "string" },
+  },
+  {
+    name: "since",
+    description:
+      "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+    schema: { type: "string" },
+  },
+  {
+    name: "until",
+    description:
+      "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+    schema: { type: "string" },
+  },
+  {
+    name: "limit",
+    description: "Maximum items to return (1-50). Defaults to 50.",
+    schema: { type: "integer", minimum: 1, maximum: 50 },
+  },
+];
+
+function feedRoute(
+  id: string,
+  kind: string,
+  pathValue: string,
+  description: string,
+  extra: {
+    pathParameters?: Row[];
+    queryParameters?: Row[];
+  } = {},
+) {
+  return {
+    id,
+    // The FeedTarget kind parseFeedPath resolves this path to. The derived
+    // contract test matches on this, not on the path string, so a path rename
+    // cannot silently orphan an entry.
+    kind,
+    method: "GET",
+    path: pathValue,
+    description,
+    cache: "medium",
+    tags: ["feeds"],
+    formats: ["rss", "atom", "json"],
+    path_parameters: extra.pathParameters ?? [],
+    query_parameters: [
+      ...FEED_COMMON_PARAMETERS,
+      ...(extra.queryParameters ?? []),
+    ],
+  };
+}
+
+export const FEED_ROUTES = [
+  feedRoute(
+    "feed-registry",
+    "registry",
+    "/api/v1/feeds/registry",
+    'The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.',
+  ),
+  feedRoute(
+    "feed-incidents",
+    "incidents",
+    "/api/v1/feeds/incidents",
+    "Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.",
+  ),
+  feedRoute(
+    "feed-gaps",
+    "gaps",
+    "/api/v1/feeds/gaps",
+    "Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.",
+  ),
+  feedRoute(
+    "feed-upgrades",
+    "upgrades",
+    "/api/v1/feeds/upgrades",
+    "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+  ),
+  feedRoute(
+    "feed-watch",
+    "watch",
+    "/api/v1/feeds/watch",
+    "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
+    {
+      queryParameters: [
+        {
+          name: "ids",
+          description:
+            "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
+          schema: { type: "string" },
+        },
+      ],
+    },
+  ),
+  feedRoute(
+    "feed-subnet",
+    "subnet",
+    "/api/v1/feeds/subnets/{netuid}",
+    "One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.",
+    {
+      pathParameters: [
+        {
+          name: "netuid",
+          description: "Subnet netuid.",
+          schema: { type: "integer", minimum: 0 },
+        },
+      ],
+    },
+  ),
+];
+
+/** The feed entries shared by the contract artifact and the API index. */
+function feedContractEntries() {
+  return FEED_ROUTES.map((entry) => ({
+    id: entry.id,
+    kind: entry.kind,
+    method: entry.method,
+    path: entry.path,
+    description: entry.description,
+    formats: entry.formats,
+    content_types: entry.formats.map(
+      (format) =>
+        FEED_CONTENT_TYPES_BY_FORMAT[
+          format as keyof typeof FEED_CONTENT_TYPES_BY_FORMAT
+        ],
+    ),
+    public: true,
+    path_parameters: entry.path_parameters,
+    query_parameters: entry.query_parameters,
+  }));
+}
+
 export function buildContractsArtifact(generatedAt: string) {
   return {
     schema_version: SCHEMA_VERSION,
@@ -4410,6 +4578,12 @@ export function buildContractsArtifact(generatedAt: string) {
       status: entry.status,
       retirement: entry.retirement,
     })),
+    // #8703: the feed system, in the machine-readable contract for the first
+    // time. Deliberately its own key rather than folded in with the artifact
+    // list -- a feed is rendered live and emits RSS/Atom/JSON Feed, not a
+    // stored artifact wrapped in the success envelope, and an agent that
+    // treated one like the other would parse XML as JSON.
+    feeds: feedContractEntries(),
   };
 }
 
@@ -4433,6 +4607,9 @@ export function buildApiIndexArtifact(
       notes:
         "Worker API routes wrap canonical /metagraph artifacts without changing artifact truth.",
     },
+    // #8703: the same feed entries the contract artifact carries, so the
+    // agent-facing index and the contract cannot describe different feeds.
+    feeds: feedContractEntries(),
     routes: API_ROUTES.map((entry) => ({
       artifact_path: entry.artifact_path,
       cache: entry.cache,
@@ -4573,6 +4750,105 @@ export function buildOpenApiArtifact(
         },
       },
     };
+  }
+
+  // #8703: the feed routes, modeled as their own paths.
+  //
+  // HOW THESE ARE MODELED, AND WHY. A feed response is NOT the success envelope
+  // every API_ROUTES entry returns -- it is an RSS/Atom/JSON Feed document. So
+  // these paths deliberately do not reference SuccessEnvelope, and their 200
+  // content is the real media type with a `string` schema. OpenAPI 3.1 has no
+  // way to describe an XML document's grammar short of inlining a schema that
+  // would be fiction, and claiming `application/json` for an RSS body would be
+  // worse than saying less: a generated client would parse XML as JSON.
+  //
+  // Each family emits FOUR paths: the bare path, which content-negotiates all
+  // three serializations via `Accept`, plus one path per `.rss`/`.atom`/`.json`
+  // suffix pinned to exactly one media type. Both are real, and the suffix form
+  // is what feed readers actually request -- documenting only the negotiated
+  // path would hide the URLs users paste, and documenting only the suffixes
+  // would hide that `Accept` works at all.
+  for (const feed of FEED_ROUTES) {
+    const parameters = [
+      ...feed.path_parameters.map((parameter) => ({
+        ...parameter,
+        in: "path",
+        required: true,
+      })),
+      ...feed.query_parameters.map((parameter) => ({
+        ...parameter,
+        in: "query",
+        required: false,
+      })),
+    ];
+    const feedResponses = (contentTypes: readonly string[]) => ({
+      200: {
+        description:
+          "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+        headers: apiResponseHeaders(),
+        content: Object.fromEntries(
+          contentTypes.map((contentType) => [
+            contentType,
+            { schema: { type: "string" } },
+          ]),
+        ),
+      },
+      304: {
+        description: "ETag matched and the cached feed is still valid.",
+      },
+      400: {
+        description:
+          "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them.",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorEnvelope" },
+          },
+        },
+      },
+    });
+
+    const allContentTypes = feed.formats.map(
+      (format) =>
+        FEED_CONTENT_TYPES_BY_FORMAT[
+          format as keyof typeof FEED_CONTENT_TYPES_BY_FORMAT
+        ],
+    );
+    const operationId = (suffix: string) =>
+      `${feed.id}${suffix}`.replace(/[^a-z0-9]+([a-z0-9])/gi, (_, character) =>
+        character.toUpperCase(),
+      );
+
+    paths[feed.path] = {
+      ...(paths[feed.path] || {}),
+      get: {
+        operationId: operationId(""),
+        summary: feed.description,
+        description:
+          "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        tags: feed.tags,
+        parameters,
+        responses: feedResponses(allContentTypes),
+      },
+    };
+
+    for (const format of feed.formats) {
+      const contentType =
+        FEED_CONTENT_TYPES_BY_FORMAT[
+          format as keyof typeof FEED_CONTENT_TYPES_BY_FORMAT
+        ];
+      const suffixPath = `${feed.path}.${format}`;
+      paths[suffixPath] = {
+        ...(paths[suffixPath] || {}),
+        get: {
+          operationId: operationId(`-${format}`),
+          summary: `${feed.description}`,
+          description: `Always returns \`${contentType}\`, regardless of \`Accept\`.`,
+          tags: feed.tags,
+          parameters,
+          responses: feedResponses([contentType]),
+        },
+      };
+    }
   }
 
   return {

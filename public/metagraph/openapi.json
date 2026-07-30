@@ -48783,6 +48783,2206 @@
         ]
       }
     },
+    "/api/v1/feeds/gaps": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedGaps",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/gaps.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedGapsAtom",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/gaps.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedGapsJson",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/gaps.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedGapsRss",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Ranked subnet enrichment targets: missing surfaces, contributor lanes, and the recommended next action for each. The contributor-facing view of registry coverage debt.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/incidents": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedIncidents",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/incidents.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedIncidentsAtom",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/incidents.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedIncidentsJson",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/incidents.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedIncidentsRss",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Operational incidents across Bittensor subnet surfaces — probe-detected downtime only, never hand-authored. Same three serializations and window/tag filters as the registry feed.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/registry": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedRegistry",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "The site-wide \"what changed\" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/registry.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedRegistryAtom",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "The site-wide \"what changed\" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/registry.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedRegistryJson",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "The site-wide \"what changed\" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/registry.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedRegistryRss",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "The site-wide \"what changed\" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 — append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/subnets/{netuid}": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedSubnet",
+        "parameters": [
+          {
+            "description": "Subnet netuid.",
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/subnets/{netuid}.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedSubnetAtom",
+        "parameters": [
+          {
+            "description": "Subnet netuid.",
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/subnets/{netuid}.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedSubnetJson",
+        "parameters": [
+          {
+            "description": "Subnet netuid.",
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/subnets/{netuid}.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedSubnetRss",
+        "parameters": [
+          {
+            "description": "Subnet netuid.",
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "One subnet's combined feed: its registry changes and its surface incidents, merged chronologically. The per-subnet counterpart to the registry and incidents feeds.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/upgrades": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedUpgrades",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/upgrades.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedUpgradesAtom",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/upgrades.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedUpgradesJson",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/upgrades.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedUpgradesRss",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/watch": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedWatch",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/watch.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedWatchAtom",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/watch.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedWatchJson",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/watch.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedWatchRss",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
     "/api/v1/fixtures": {
       "get": {
         "operationId": "fixtures",
