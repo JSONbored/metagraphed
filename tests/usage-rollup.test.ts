@@ -245,6 +245,9 @@ describe("observations and folding", () => {
 });
 
 describe("recordUsageRollup posts every API request (#8597)", () => {
+  // #8823: an observation is buffered, not written, until a flush trigger
+  // fires. These tests are about WHAT gets recorded, so they flush explicitly;
+  // the batching behaviour itself is the separate describe below.
   const envWith = (over: Record<string, unknown> = {}) => {
     const posts: { url: string; token: string | null; body: unknown }[] = [];
     const env = {
@@ -268,15 +271,15 @@ describe("recordUsageRollup posts every API request (#8597)", () => {
     // The entire reason this rollup exists. If keyless were dropped here, the
     // readout would answer the pricing question with the same blind spot the
     // issue was filed to remove.
-    const { recordUsageRollup } = await import("../workers/api.ts");
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
     const { env, posts } = envWith();
     const waited: Promise<unknown>[] = [];
-    recordUsageRollup(
-      env,
-      { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,
-      "/api/v1/subnets/64",
-      false,
-    );
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => waited.push(p),
+    } as never;
+    recordUsageRollup(env, ctx, "/api/v1/subnets/64", false);
+    flushUsageRollup(env, ctx);
     await Promise.all(waited);
     assert.equal(posts.length, 1);
     assert.equal(posts[0].url, "/api/v1/internal/usage-rollup");
@@ -288,15 +291,15 @@ describe("recordUsageRollup posts every API request (#8597)", () => {
   });
 
   test("marks a keyed request as keyed", async () => {
-    const { recordUsageRollup } = await import("../workers/api.ts");
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
     const { env, posts } = envWith();
     const waited: Promise<unknown>[] = [];
-    recordUsageRollup(
-      env,
-      { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,
-      "/api/v1/subnets",
-      true,
-    );
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => waited.push(p),
+    } as never;
+    recordUsageRollup(env, ctx, "/api/v1/subnets", true);
+    flushUsageRollup(env, ctx);
     await Promise.all(waited);
     const bucket = (posts[0].body as { buckets: Row[] }).buckets[0];
     assert.equal(bucket.keyed_count, 1);
@@ -315,7 +318,8 @@ describe("recordUsageRollup posts every API request (#8597)", () => {
   });
 
   test("a failing DATA_API cannot reject — it must never fail a response", async () => {
-    const { recordUsageRollup } = await import("../workers/api.ts");
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
     const env = {
       API_KEY_LOOKUP_INTERNAL_TOKEN: "tok",
       DATA_API: {
@@ -325,20 +329,239 @@ describe("recordUsageRollup posts every API request (#8597)", () => {
       },
     } as unknown as Env;
     const waited: Promise<unknown>[] = [];
-    recordUsageRollup(
-      env,
-      { waitUntil: (p: Promise<unknown>) => waited.push(p) } as never,
-      "/api/v1/subnets",
-      false,
-    );
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => waited.push(p),
+    } as never;
+    recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+    flushUsageRollup(env, ctx);
     // Resolves, never rejects — an unhandled rejection here would surface on
     // the real request.
     await Promise.all(waited);
   });
 
   test("works without an ExecutionContext", async () => {
-    const { recordUsageRollup } = await import("../workers/api.ts");
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
     const { env } = envWith();
     recordUsageRollup(env, undefined, "/api/v1/subnets", false);
+    flushUsageRollup(env, undefined);
+  });
+});
+
+// #8823: the write path used to be 1:1 with requests. `foldObservations` was
+// handed a single-element array per request, so N requests meant N DATA_API
+// subrequests, N postgres() clients, and N upserts -- and every unmatched path
+// collapses to the SAME (day, "unmatched", "edge") row, so an unauthenticated
+// flood of 404s serialised on one row lock against a self-hosted database.
+// Observations are now buffered in the isolate and flushed in batches. See
+// docs/adr/0026-usage-rollup-write-path.md.
+describe("recordUsageRollup batches its writes (#8823)", () => {
+  function harness() {
+    const posts: { buckets: Row[] }[] = [];
+    const waited: Promise<unknown>[] = [];
+    const env = {
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "tok",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          posts.push(
+            JSON.parse(await request.clone().text()) as { buckets: Row[] },
+          );
+          return Response.json({ ok: true });
+        },
+      },
+    } as unknown as Env;
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => waited.push(p),
+    } as never;
+    return { env, ctx, posts, waited };
+  }
+
+  // Mirrors USAGE_ROLLUP_FLUSH_COUNT in workers/api.ts. Asserted below against
+  // the module's own buffer size so a change there fails here loudly rather
+  // than silently weakening this test.
+  const FLUSH_COUNT = 64;
+
+  test("N requests produce ceil(N / 64) writes, not N", async () => {
+    const { recordUsageRollup, usageRollupBufferSize, flushUsageRollup } =
+      await import("../workers/api.ts");
+    const { env, ctx, posts, waited } = harness();
+    flushUsageRollup(env, ctx); // drain anything a sibling test left buffered
+    posts.length = 0;
+
+    for (let i = 0; i < FLUSH_COUNT - 1; i += 1) {
+      recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+    }
+    assert.equal(usageRollupBufferSize(), FLUSH_COUNT - 1);
+    assert.equal(
+      posts.length,
+      0,
+      "nothing is written below the flush threshold",
+    );
+
+    // The 64th observation trips the count trigger.
+    recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+    await Promise.all(waited);
+    assert.equal(posts.length, 1, "64 requests => exactly ONE subrequest");
+    assert.equal(
+      usageRollupBufferSize(),
+      0,
+      "the buffer is drained, not copied",
+    );
+
+    // ...and the batch is ONE bucket carrying all 64, not 64 buckets: the
+    // upsert contends for the (day, family, shape) row once, not 64 times.
+    assert.equal(posts[0].buckets.length, 1);
+    assert.equal(posts[0].buckets[0].request_count, FLUSH_COUNT);
+
+    // 64 more => a second write, and no more than that.
+    for (let i = 0; i < FLUSH_COUNT; i += 1) {
+      recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+    }
+    await Promise.all(waited);
+    assert.equal(posts.length, 2, "128 requests => 2 subrequests, not 128");
+    flushUsageRollup(env, ctx);
+  });
+
+  test("an unmatched-path flood folds into ONE bucket per batch", async () => {
+    // The abuse case the issue is really about: `/api/v1/<random>` 404s all
+    // map to (day, "unmatched", "edge"), which is why they used to serialise
+    // on a single row lock. Every distinct junk path in one batch now costs
+    // one bucket, so the row is touched once per flush.
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
+    const { env, ctx, posts, waited } = harness();
+    flushUsageRollup(env, ctx);
+    posts.length = 0;
+
+    for (let i = 0; i < FLUSH_COUNT; i += 1) {
+      recordUsageRollup(env, ctx, `/api/v1/${i}-scanner-probe-${i}`, false);
+    }
+    await Promise.all(waited);
+    assert.equal(posts.length, 1, "64 junk 404s => ONE subrequest");
+    assert.equal(
+      posts[0].buckets.length,
+      1,
+      "64 DISTINCT junk paths => ONE bucket, not 64 rows",
+    );
+    assert.equal(posts[0].buckets[0].family, UNMATCHED_FAMILY);
+    assert.equal(posts[0].buckets[0].request_count, FLUSH_COUNT);
+    flushUsageRollup(env, ctx);
+  });
+
+  test("keyed and keyless in one batch stay distinguishable", async () => {
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
+    const { env, ctx, posts, waited } = harness();
+    flushUsageRollup(env, ctx);
+    posts.length = 0;
+
+    for (let i = 0; i < FLUSH_COUNT; i += 1) {
+      recordUsageRollup(env, ctx, "/api/v1/subnets", i % 4 === 0);
+    }
+    await Promise.all(waited);
+    assert.equal(posts.length, 1);
+    // request_count/keyed_count keep their exact meaning across the change --
+    // batched, never sampled or scaled (ADR 0026).
+    assert.equal(posts[0].buckets[0].request_count, FLUSH_COUNT);
+    assert.equal(posts[0].buckets[0].keyed_count, FLUSH_COUNT / 4);
+    flushUsageRollup(env, ctx);
+  });
+
+  test("distinct families in one batch become distinct buckets, still one write", async () => {
+    const { recordUsageRollup, flushUsageRollup } =
+      await import("../workers/api.ts");
+    const { env, ctx, posts, waited } = harness();
+    flushUsageRollup(env, ctx);
+    posts.length = 0;
+
+    for (let i = 0; i < FLUSH_COUNT / 2; i += 1) {
+      recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+      recordUsageRollup(env, ctx, "/api/v1/nonexistent-path", false);
+    }
+    await Promise.all(waited);
+    assert.equal(posts.length, 1, "one subrequest covers both families");
+    assert.equal(posts[0].buckets.length, 2);
+    assert.deepEqual(
+      posts[0].buckets.map((bucket: Row) => bucket.request_count),
+      [FLUSH_COUNT / 2, FLUSH_COUNT / 2],
+    );
+    flushUsageRollup(env, ctx);
+  });
+
+  test("the age trigger flushes a partial buffer once a later request arrives", async () => {
+    // Workers has no timer that runs outside a request, so the 10s age bound
+    // can only be evaluated when the NEXT observation arrives. That is the
+    // design, not a gap: a flush is affordable exactly when there is a request
+    // whose waitUntil can carry it.
+    const { recordUsageRollup, flushUsageRollup, usageRollupBufferSize } =
+      await import("../workers/api.ts");
+    const { env, ctx, posts, waited } = harness();
+    flushUsageRollup(env, ctx);
+    posts.length = 0;
+
+    const realNow = Date.now;
+    try {
+      let clock = 1_800_000_000_000;
+      Date.now = () => clock;
+      recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+      assert.equal(usageRollupBufferSize(), 1);
+      assert.equal(
+        posts.length,
+        0,
+        "one observation is well below the count trigger",
+      );
+
+      clock += 10_001; // past USAGE_ROLLUP_FLUSH_AGE_MS
+      recordUsageRollup(env, ctx, "/api/v1/subnets", false);
+      await Promise.all(waited);
+      assert.equal(
+        posts.length,
+        1,
+        "the age trigger fired on the next request",
+      );
+      assert.equal(posts[0].buckets[0].request_count, 2);
+      assert.equal(usageRollupBufferSize(), 0);
+    } finally {
+      Date.now = realNow;
+      flushUsageRollup(env, ctx);
+    }
+  });
+
+  test("handleRequest drives the same batching end-to-end, 404s included", async () => {
+    const { handleRequest, flushUsageRollup, usageRollupBufferSize } =
+      await import("../workers/api.ts");
+    const { env, ctx, posts, waited } = harness();
+    flushUsageRollup(env, ctx);
+    posts.length = 0;
+
+    // Real requests through the router: an unmatched /api/v1 path, which is
+    // both the worst case for the old write path and the one that reaches the
+    // generic 404 without passing any rate limiter.
+    for (let i = 0; i < FLUSH_COUNT; i += 1) {
+      await handleRequest(
+        new Request(`https://api.metagraph.sh/api/v1/no-such-route-${i}`),
+        env,
+        ctx,
+      );
+    }
+    await Promise.all(waited);
+    assert.equal(
+      posts.length,
+      1,
+      `${FLUSH_COUNT} requests through handleRequest => 1 usage-rollup subrequest`,
+    );
+    assert.equal(posts[0].buckets[0].request_count, FLUSH_COUNT);
+    assert.equal(usageRollupBufferSize(), 0);
+
+    // An OPTIONS preflight is still not counted (it returns before the hook).
+    await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets", {
+        method: "OPTIONS",
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(usageRollupBufferSize(), 0);
+    flushUsageRollup(env, ctx);
   });
 });

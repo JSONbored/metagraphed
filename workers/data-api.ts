@@ -5595,12 +5595,19 @@ async function handleApiQuotaSpend(request: Request, env: Env) {
 // recording that traffic happened is a strictly smaller capability than
 // verifying a key.
 //
-// BATCHED on purpose. The caller coalesces a request's observations before
-// sending (src/usage-rollup.ts's foldObservations), so a burst of requests to
-// one family becomes one upsert rather than one per request. Fire-and-forget
-// from the caller's side, so this always returns 200 even on a swallowed write
-// error -- a usage-rollup miss must never affect the request that triggered it,
-// and there is nothing for the caller to react to either way.
+// BATCHED on purpose -- and, since #8823, actually batched. This comment used
+// to claim the caller coalesced "a request's observations", which described
+// nothing: workers/api.ts handed foldObservations a single-element array per
+// request, so a burst of N requests to one family really was N subrequests and
+// N upserts contending on one row. The caller now buffers observations in the
+// isolate (USAGE_ROLLUP_FLUSH_COUNT / _AGE_MS) and folds the whole batch, so a
+// burst arrives here as one POST carrying one bucket per (day, family, shape).
+// Every bucket in a batch is still upserted individually inside one
+// withAccountsSql call, so one Postgres client serves the whole batch.
+// Fire-and-forget from the caller's side, so this always returns 200 even on a
+// swallowed write error -- a usage-rollup miss must never affect the request
+// that triggered it, and there is nothing for the caller to react to either
+// way.
 async function handleUsageRollupIncrement(request: Request, env: Env) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
