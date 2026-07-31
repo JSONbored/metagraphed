@@ -2803,6 +2803,36 @@ test("GET /api/v1/accounts/top-holders joins wallet_flow_daily and shapes the ne
   expect(queryText()).toContain("FROM wallet_flow_daily");
 });
 
+test("GET /api/v1/accounts/top-holders no longer COALESCEs a missing net-flow row to 0 (#8807)", async () => {
+  mockRows.current = [];
+  await req("/api/v1/accounts/top-holders");
+  expect(queryText()).not.toContain("COALESCE(f.net_flow_7d");
+  expect(queryText()).not.toContain("COALESCE(f.net_flow_30d");
+  expect(queryText()).not.toContain("COALESCE(f.net_flow_90d");
+  // free_tao/delegated_tao keep their own COALESCE -- out of scope, unchanged.
+  expect(queryText()).toContain("COALESCE(b.free_tao, 0)");
+  expect(queryText()).toContain("COALESCE(d.delegated_tao, 0)");
+});
+
+test("GET /api/v1/accounts/top-holders passes a missing wallet_flow_daily row through as null", async () => {
+  mockRows.current = [
+    {
+      ss58: "5NoFlowData",
+      free_tao: 100,
+      delegated_tao: 0,
+      net_flow_7d: null,
+      net_flow_30d: null,
+      net_flow_90d: null,
+      captured_at: 1750000000000,
+    },
+  ];
+  const res = await req("/api/v1/accounts/top-holders");
+  const body = (await res.json()) as Row;
+  expect(body.accounts[0].net_flow_7d).toBe(null);
+  expect(body.accounts[0].net_flow_30d).toBe(null);
+  expect(body.accounts[0].net_flow_90d).toBe(null);
+});
+
 test("GET /api/v1/accounts/top-holders respects an explicit sort/limit", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/accounts/top-holders?sort=free_tao&limit=5");

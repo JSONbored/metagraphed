@@ -49,7 +49,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value.
+         * Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows always sort last regardless of the active sort key's direction.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["topHoldersByNetwork"];
@@ -2010,7 +2010,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value. */
+        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows always sort last regardless of the active sort key's direction. */
         get: operations["topHolders"];
         put?: never;
         post?: never;
@@ -10745,9 +10745,9 @@ export interface components {
                 delegated_tao: number;
                 free_tao: number;
                 last_updated: string | null;
-                net_flow_30d: number;
-                net_flow_7d: number;
-                net_flow_90d: number;
+                net_flow_30d: number | null;
+                net_flow_7d: number | null;
+                net_flow_90d: number | null;
                 ss58: string;
                 total_tao: number;
             }[];

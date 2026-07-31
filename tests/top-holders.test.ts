@@ -202,11 +202,18 @@ describe("buildTopHoldersList", () => {
     ]);
   });
 
-  test("net_flow_7d/30d/90d default to 0 when the flow rollup has no row for this account", () => {
+  test("net_flow_7d/30d/90d resolve to null, not 0, when the flow rollup has no row for this account", () => {
     const data = buildTopHoldersList([ROW]) as Row;
+    assert.equal(data.accounts[0].net_flow_7d, null);
+    assert.equal(data.accounts[0].net_flow_30d, null);
+    assert.equal(data.accounts[0].net_flow_90d, null);
+  });
+
+  test("a genuine zero net flow (rollup rows exist, but none in this window) is preserved, not collapsed to null", () => {
+    const data = buildTopHoldersList([
+      { ...ROW, net_flow_7d: 0, net_flow_30d: -1000, net_flow_90d: -1 },
+    ]) as Row;
     assert.equal(data.accounts[0].net_flow_7d, 0);
-    assert.equal(data.accounts[0].net_flow_30d, 0);
-    assert.equal(data.accounts[0].net_flow_90d, 0);
   });
 
   test("a negative net flow (net outflow) is preserved, not clamped to 0", () => {
@@ -218,11 +225,11 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].net_flow_90d, -1);
   });
 
-  test("a non-finite net flow value falls back to 0", () => {
+  test("a non-finite net flow value falls back to null", () => {
     const data = buildTopHoldersList([
       { ...ROW, net_flow_30d: "not-a-number" },
     ]) as Row;
-    assert.equal(data.accounts[0].net_flow_30d, 0);
+    assert.equal(data.accounts[0].net_flow_30d, null);
   });
 
   test("sorts by net_flow_30d when requested, biggest net inflow first", () => {
@@ -240,6 +247,46 @@ describe("buildTopHoldersList", () => {
     ) as Row;
     assert.equal(data.accounts[0].ss58, "5BigInflow");
     assert.equal(data.accounts[1].ss58, "5Outflow");
+  });
+
+  test("sorting by a null-valued flow key places a real negative number above null", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5NoData", free_tao: 0, delegated_tao: 0 },
+        { ss58: "5Outflow", free_tao: 0, delegated_tao: 0, net_flow_7d: -5 },
+      ],
+      { sort: "net_flow_7d" },
+    ) as Row;
+    assert.equal(data.accounts[0].ss58, "5Outflow");
+    assert.equal(data.accounts[0].net_flow_7d, -5);
+    assert.equal(data.accounts[1].ss58, "5NoData");
+    assert.equal(data.accounts[1].net_flow_7d, null);
+  });
+
+  test("sorting by a null-valued flow key places a real negative number above null, reverse input order", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5Outflow", free_tao: 0, delegated_tao: 0, net_flow_7d: -5 },
+        { ss58: "5NoData", free_tao: 0, delegated_tao: 0 },
+      ],
+      { sort: "net_flow_7d" },
+    ) as Row;
+    assert.equal(data.accounts[0].ss58, "5Outflow");
+    assert.equal(data.accounts[1].ss58, "5NoData");
+  });
+
+  test("two null-valued rows on the sort key tiebreak by ss58", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5Zebra", free_tao: 0, delegated_tao: 0 },
+        { ss58: "5Apple", free_tao: 0, delegated_tao: 0 },
+      ],
+      { sort: "net_flow_7d" },
+    ) as Row;
+    assert.deepEqual(
+      (data.accounts as Row[]).map((a: Row) => a.ss58),
+      ["5Apple", "5Zebra"],
+    );
   });
 });
 

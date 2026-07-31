@@ -6819,9 +6819,9 @@ async function dispatchDataApiRequest(
               ss58: string;
               free_tao: string;
               delegated_tao: string;
-              net_flow_7d: string;
-              net_flow_30d: string;
-              net_flow_90d: string;
+              net_flow_7d: string | null;
+              net_flow_30d: string | null;
+              net_flow_90d: string | null;
               captured_at: string | null;
             }[]
           >`
@@ -6829,9 +6829,9 @@ async function dispatchDataApiRequest(
             COALESCE(b.ss58, d.coldkey) AS ss58,
             COALESCE(b.free_tao, 0) AS free_tao,
             COALESCE(d.delegated_tao, 0) AS delegated_tao,
-            COALESCE(f.net_flow_7d, 0) AS net_flow_7d,
-            COALESCE(f.net_flow_30d, 0) AS net_flow_30d,
-            COALESCE(f.net_flow_90d, 0) AS net_flow_90d,
+            f.net_flow_7d AS net_flow_7d,
+            f.net_flow_30d AS net_flow_30d,
+            f.net_flow_90d AS net_flow_90d,
             b.captured_at
           FROM account_balances b
           FULL OUTER JOIN (

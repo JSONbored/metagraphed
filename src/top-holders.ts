@@ -46,10 +46,14 @@ function numberOrZero(value: unknown): number {
 }
 
 // Net flow can be genuinely negative (net outflow) -- numberOrZero's >= 0
-// guard would silently clamp a real outflow to 0, which is wrong here.
-function numberOrZeroSigned(value: unknown): number {
+// guard would silently clamp a real outflow to 0, which is wrong here. And
+// unlike free_tao/delegated_tao, a missing rollup row means "no data", not
+// "zero" -- so null (not 0) passes through, and a real signed number is
+// preserved as-is.
+function numberOrNullSigned(value: unknown): number | null {
+  if (value == null) return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 interface TopHoldersEntry {
@@ -57,9 +61,9 @@ interface TopHoldersEntry {
   free_tao: number;
   delegated_tao: number;
   total_tao: number;
-  net_flow_7d: number;
-  net_flow_30d: number;
-  net_flow_90d: number;
+  net_flow_7d: number | null;
+  net_flow_30d: number | null;
+  net_flow_90d: number | null;
   last_updated: string | null;
   [key: string]: unknown;
 }
@@ -72,9 +76,9 @@ function buildTopHoldersEntry(row: Row): TopHoldersEntry {
     free_tao: freeTao,
     delegated_tao: delegatedTao,
     total_tao: freeTao + delegatedTao,
-    net_flow_7d: numberOrZeroSigned(row?.net_flow_7d),
-    net_flow_30d: numberOrZeroSigned(row?.net_flow_30d),
-    net_flow_90d: numberOrZeroSigned(row?.net_flow_90d),
+    net_flow_7d: numberOrNullSigned(row?.net_flow_7d),
+    net_flow_30d: numberOrNullSigned(row?.net_flow_30d),
+    net_flow_90d: numberOrNullSigned(row?.net_flow_90d),
     last_updated: toIso(
       row?.captured_at == null ? null : Number(row.captured_at),
     ),
@@ -113,11 +117,17 @@ export function buildTopHoldersList(
       }
       return buildTopHoldersEntry(row);
     })
-    .sort(
-      (a, b) =>
-        (b[normalizedSort] as number) - (a[normalizedSort] as number) ||
-        a.ss58.localeCompare(b.ss58),
-    );
+    .sort((a, b) => {
+      const aValue = a[normalizedSort] as number | null;
+      const bValue = b[normalizedSort] as number | null;
+      // null sorts strictly last regardless of the other side's sign --
+      // arithmetic subtraction would coerce null to 0 and rank it as a
+      // confirmed zero, which is exactly the defect this issue fixes.
+      if (aValue == null && bValue == null) return a.ss58.localeCompare(b.ss58);
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+      return bValue - aValue || a.ss58.localeCompare(b.ss58);
+    });
 
   return {
     schema_version: 1,
