@@ -6923,6 +6923,117 @@ describe("MCP call_rpc", () => {
     }
   });
 
+  // #8834: upstream 4xx is streamed verbatim (not errorResponse()), so
+  // call_rpc must not dereference payload.error.code on a non-envelope body.
+  test("rpc_upstream_error for a 403 body with message but no error object", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ message: "Forbidden" }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rpc_upstream_error/);
+      assert.match(
+        res.body.result.content[0].text,
+        /HTTP 403: Forbidden/,
+      );
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "rpc_upstream_error",
+      );
+      assert.ok(res.body.result.structuredContent.error.code.length > 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("rpc_upstream_error for a 404 body whose error field is a string", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ error: "not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rpc_upstream_error/);
+      assert.match(res.body.result.content[0].text, /HTTP 404: not found/);
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "rpc_upstream_error",
+      );
+      assert.ok(res.body.result.structuredContent.error.code.length > 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("propagates a well-formed error envelope from a 400 proxy response", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "rpc_method_blocked", message: "method denied" },
+        }),
+        {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rpc_method_blocked/);
+      assert.match(res.body.result.content[0].text, /method denied/);
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "rpc_method_blocked",
+      );
+      assert.ok(res.body.result.structuredContent.error.code.length > 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("substitutes a non-undefined message when error.message is missing", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ error: { code: "x" } }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /^x:/);
+      assert.doesNotMatch(res.body.result.content[0].text, /undefined/);
+      assert.equal(res.body.result.structuredContent.error.code, "x");
+      assert.ok(res.body.result.structuredContent.error.code.length > 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("advertises a call_rpc-shaped outputSchema and the result validates against it", async () => {
     const ajv = new Ajv2020({ strict: false });
     const def = listToolDefinitions().find((t) => t.name === "call_rpc");

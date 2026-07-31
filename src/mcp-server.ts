@@ -9388,12 +9388,40 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         );
       }
       if (!response.ok) {
-        // handleRpcProxyRequest's every error path goes through workers/http.ts's
-        // errorResponse(), which always populates error.code/error.message -- no
-        // "malformed error body" case exists to guess a fallback for.
+        // An upstream 4xx is classified fatal
+        // (workers/request-handlers/rpc-proxy.ts classifyUpstreamAttempt) and
+        // forwarded verbatim by streamRpcResponse without passing through
+        // errorResponse(), so a non-envelope body is reachable and must be
+        // handled — mirror the non-JSON guard above with a specific fallback.
+        const row =
+          payload && typeof payload === "object"
+            ? (payload as Row)
+            : null;
+        const err = row?.error;
+        if (err && typeof err === "object" && !Array.isArray(err)) {
+          const codeRaw = (err as Row).code;
+          const messageRaw = (err as Row).message;
+          const code =
+            codeRaw != null && String(codeRaw).trim() !== ""
+              ? String(codeRaw)
+              : "rpc_upstream_error";
+          const message =
+            messageRaw != null && String(messageRaw).trim() !== ""
+              ? String(messageRaw)
+              : `The RPC upstream returned HTTP ${response.status}.`;
+          throw toolError(code, message);
+        }
+        const upstreamText =
+          typeof row?.message === "string" && row.message.trim()
+            ? row.message.trim()
+            : typeof err === "string" && err.trim()
+              ? err.trim()
+              : "";
         throw toolError(
-          (payload as Row).error.code,
-          (payload as Row).error.message,
+          "rpc_upstream_error",
+          upstreamText
+            ? `The RPC upstream returned HTTP ${response.status}: ${upstreamText}.`
+            : `The RPC upstream returned HTTP ${response.status}.`,
         );
       }
       return {
