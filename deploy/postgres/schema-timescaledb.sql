@@ -8,10 +8,23 @@
 -- schema without it.
 --
 -- Compressed hypertables for the time-series tiers. Integer-time hypertables
--- on observed_at (epoch ms): chunk interval = 1 day = 86_400_000 ms. Daily
--- tables partition on their DATE column. Compression on chunks older than
--- 7 days (~10-20x on chain data); cold partitions are exported to R2 Parquet
--- (see deploy/README.md).
+-- on observed_at (epoch ms). Daily tables partition on their DATE column.
+-- Compression on chunks older than 7 days (~10-20x on chain data); cold
+-- partitions are exported to R2 Parquet (see deploy/README.md).
+--
+-- The four CHAIN tables use 30-day chunks (2_592_000_000 ms), not the 1-day
+-- interval the observability tables use. They hold the full backfilled chain
+-- history -- ~3.2 years and growing -- so at 1 day they accumulate ~1,180
+-- chunks each. That is a write-path problem, not a storage one: the indexer's
+-- flush() does INSERT ... SELECT FROM a temp table, whose runtime values the
+-- planner cannot chunk-prune, so every flush takes locks proportional to the
+-- chunk count. Measured live 2026-07-31 at 1-day chunks: concurrent backfill
+-- flushes stuck 7-13 minutes on LockManager/relation locks with throughput at
+-- ~0; at 30 days the same workload runs with zero lock waits.
+--
+-- chunk_time_interval only applies to chunks created AFTER it is set, so an
+-- existing deployment also needs set_chunk_time_interval() -- see
+-- migrations/0045_widen_chain_hypertable_chunk_interval.sql.
 --
 -- Decided in JSO-2054/#2518 (option (a): Postgres/TimescaleDB, no co-located
 -- columnar engine). Requires the composite PKs in schema.sql (block_number,
@@ -22,10 +35,10 @@
 
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
-SELECT create_hypertable('blocks',         'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('extrinsics',     'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('account_events', 'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('chain_events',   'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
+SELECT create_hypertable('blocks',         'observed_at', chunk_time_interval => 2592000000, migrate_data => true, if_not_exists => true);
+SELECT create_hypertable('extrinsics',     'observed_at', chunk_time_interval => 2592000000, migrate_data => true, if_not_exists => true);
+SELECT create_hypertable('account_events', 'observed_at', chunk_time_interval => 2592000000, migrate_data => true, if_not_exists => true);
+SELECT create_hypertable('chain_events',   'observed_at', chunk_time_interval => 2592000000, migrate_data => true, if_not_exists => true);
 SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval => INTERVAL '30 days', migrate_data => true, if_not_exists => true);
 -- Written every 15 minutes (~150-200 surfaces/run, wrangler.jsonc
 -- "*/15 * * * *") with the shortest retention of anything here -- D1 keeps
