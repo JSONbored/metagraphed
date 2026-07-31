@@ -17,7 +17,7 @@ import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { statPhase } from "@/lib/metagraphed/stat-phase";
-import { exitTotals, type PositionQuoteState } from "@/lib/metagraphed/position-totals";
+import { exitTotals, quotePhase, type PositionQuoteState } from "@/lib/metagraphed/position-totals";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
 
 /** One row of the portfolio, unified across the hotkey-owned and delegated feeds. */
@@ -127,12 +127,15 @@ export function YourPositionsPanel({ address }: { address: string }) {
   // #8819: exit is never padded with a position's un-slipped spot value when its AMM quote is
   // pending or errored -- see exitTotals' own doc comment for why. quoteStates mirrors quotes
   // index-for-index; root positions' phase is derived too but exitTotals ignores it (a root
-  // position has no AMM and is always included at spot, per its own isRoot check).
+  // position has no AMM and is always included at spot, per its own isRoot check). quotePhase
+  // turns an unknown-price position's permanently-disabled query (never `enabled`, so
+  // statPhase would report "pending" forever) into "error" instead, so the tile can't get
+  // stuck rendering a skeleton indefinitely.
   const totals = useMemo(() => {
-    const quoteStates: PositionQuoteState[] = positions.map((_p, i) => {
+    const quoteStates: PositionQuoteState[] = positions.map((p, i) => {
       const out = quotes[i]?.data?.data?.expected_out;
       return {
-        phase: statPhase(quotes[i] ?? { isPending: false, isError: false }),
+        phase: quotePhase(p, statPhase(quotes[i] ?? { isPending: false, isError: false })),
         expectedOut: typeof out === "number" ? out : null,
       };
     });

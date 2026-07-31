@@ -30,6 +30,25 @@ export interface ExitTotals {
  * realizable value (#8819). A root position has no AMM (1:1 by definition) and is always included at
  * its spot value regardless of its quoteState -- it is never counted as excluded.
  */
+/**
+ * A non-root position with no positive alpha amount (`buildUnifiedPositions`
+ * leaves `alpha` null when a subnet's price is unknown) never has its exit
+ * quote enabled -- `your-positions-panel.tsx`'s `useQueries` sets
+ * `enabled: Boolean(p.alpha && p.alpha > 0)`, and TanStack Query leaves a
+ * disabled query's `isPending` permanently true, so `statPhase()` on it would
+ * report "pending" forever. Treat it as "error" (unavailable) instead -- it
+ * can never resolve, matching `exitTaoFor`'s own per-row `null` for this
+ * case -- so the "Simulated exit" tile can't get stuck rendering a skeleton
+ * indefinitely.
+ */
+export function quotePhase(
+  position: Pick<PositionSpot, "isRoot"> & { alpha: number | null },
+  queryPhase: "pending" | "error" | "ready",
+): "pending" | "error" | "ready" {
+  if (!position.isRoot && !(position.alpha && position.alpha > 0)) return "error";
+  return queryPhase;
+}
+
 export function exitTotals(
   positions: readonly PositionSpot[],
   quoteStates: readonly PositionQuoteState[],

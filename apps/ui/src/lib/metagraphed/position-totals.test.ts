@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exitTotals } from "./position-totals";
+import { exitTotals, quotePhase } from "./position-totals";
 
 describe("exitTotals", () => {
   // #8819: this is the regression test for the bug -- exit must never fall back to a position's
@@ -72,5 +72,28 @@ describe("exitTotals", () => {
     expect(totals.spot).toBe(130);
     expect(totals.root).toBe(100);
     expect(totals.alpha).toBe(30);
+  });
+});
+
+describe("quotePhase", () => {
+  // Regression: a non-root position with an unknown/non-positive alpha price never has its
+  // quote query `enabled` (your-positions-panel.tsx), so TanStack Query leaves it `isPending`
+  // forever and statPhase() would report "pending" indefinitely -- quotePhase must turn that
+  // into "error" so the aggregate tile can't get stuck rendering a skeleton forever.
+  it("reports 'error' for a non-root position with no positive alpha, regardless of query phase", () => {
+    expect(quotePhase({ isRoot: false, alpha: null }, "pending")).toBe("error");
+    expect(quotePhase({ isRoot: false, alpha: 0 }, "pending")).toBe("error");
+    expect(quotePhase({ isRoot: false, alpha: -1 }, "pending")).toBe("error");
+  });
+
+  it("passes the query phase through unchanged for a quotable non-root position", () => {
+    expect(quotePhase({ isRoot: false, alpha: 5 }, "pending")).toBe("pending");
+    expect(quotePhase({ isRoot: false, alpha: 5 }, "error")).toBe("error");
+    expect(quotePhase({ isRoot: false, alpha: 5 }, "ready")).toBe("ready");
+  });
+
+  it("passes the query phase through unchanged for a root position (no alpha, but not unquotable)", () => {
+    expect(quotePhase({ isRoot: true, alpha: null }, "pending")).toBe("pending");
+    expect(quotePhase({ isRoot: true, alpha: null }, "ready")).toBe("ready");
   });
 });
