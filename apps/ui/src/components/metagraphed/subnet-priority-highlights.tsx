@@ -3,8 +3,13 @@ import { AlertTriangle, Coins, Radio, Timer } from "lucide-react";
 import { subnetHealthQuery, subnetProfileQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { useHydrated } from "@/hooks/use-hydrated";
-
-type Tone = "warn" | "down" | "ok" | "accent" | "default";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
+import {
+  curationTileState,
+  operationalTileState,
+  type TileTone as Tone,
+} from "@/lib/metagraphed/subnet-health-tile";
+import { Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 
 const TONE: Record<Tone, string> = {
   warn: "border-health-warn/40 bg-health-warn/5",
@@ -32,7 +37,7 @@ function Tile({
 }: {
   icon: React.ComponentType<{ className?: string }>;
   eyebrow: string;
-  value: string;
+  value: React.ReactNode;
   hint?: string;
   href: string;
   tone?: Tone;
@@ -89,22 +94,22 @@ function ageLabel(iso?: string | null): string {
  */
 export function SubnetPriorityHighlights({ netuid }: { netuid: number }) {
   const hydrated = useHydrated();
-  const { data: healthResult } = useQuery(subnetHealthQuery(netuid));
-  const { data: profileResult } = useQuery(subnetProfileQuery(netuid));
+  const healthResult = useQuery(subnetHealthQuery(netuid));
+  const profileResult = useQuery(subnetProfileQuery(netuid));
 
-  const health = healthResult?.data ?? {};
-  const down = (health as { down?: number }).down ?? 0;
-  const warn = (health as { warn?: number }).warn ?? 0;
-  const incidents = down + warn;
-  const incidentTone: Tone = down > 0 ? "down" : warn > 0 ? "warn" : "ok";
+  const health = healthResult.data?.data;
+  const operational = operationalTileState({
+    phase: statPhase(healthResult),
+    down: health?.down,
+    warn: health?.warn,
+    total: health?.total,
+  });
 
-  const profile = profileResult?.data;
-  const curation = profile?.curation_level ?? "candidate-discovered";
-  const isAdapter = curation === "adapter-backed";
-  const curationLabel = curation
-    .split("-")
-    .map((w) => w[0]?.toUpperCase() + w.slice(1))
-    .join(" ");
+  const profile = profileResult.data?.data;
+  const curation = curationTileState({
+    phase: statPhase(profileResult),
+    curationLevel: profile?.curation_level ?? null,
+  });
 
   // #8363: this tile names the registry's own curation review, not surface
   // verification -- a distinct concept from the masthead's data-snapshot
@@ -135,10 +140,18 @@ export function SubnetPriorityHighlights({ netuid }: { netuid: number }) {
       <Tile
         icon={AlertTriangle}
         eyebrow="Operational"
-        value={incidents > 0 ? `${incidents} open` : "Healthy"}
-        hint={incidents > 0 ? `${down} down · ${warn} degraded` : "All probed surfaces up"}
+        value={
+          operational.phase === "pending" ? (
+            <Skeleton className="h-5 w-16" />
+          ) : operational.phase === "error" ? (
+            <StatUnavailable />
+          ) : (
+            operational.value
+          )
+        }
+        hint={operational.hint}
         href="#operational"
-        tone={incidentTone}
+        tone={operational.tone}
       />
       <Tile
         icon={Timer}
@@ -151,10 +164,18 @@ export function SubnetPriorityHighlights({ netuid }: { netuid: number }) {
       <Tile
         icon={Radio}
         eyebrow="Curation"
-        value={curationLabel}
-        hint={isAdapter ? "Deep integration — adapter-backed" : "Registry curation level"}
+        value={
+          curation.phase === "pending" ? (
+            <Skeleton className="h-5 w-16" />
+          ) : curation.phase === "error" ? (
+            <StatUnavailable />
+          ) : (
+            curation.value
+          )
+        }
+        hint={curation.hint}
         href="#profile"
-        tone={isAdapter ? "accent" : "default"}
+        tone={curation.tone}
       />
     </div>
   );
