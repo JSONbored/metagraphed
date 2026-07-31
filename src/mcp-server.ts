@@ -427,6 +427,7 @@ import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.ts";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
+  FEED_KINDS,
   GET_FEED_INSTRUCTIONS,
   GET_FEED_MCP_TOOL,
   GET_FEED_OUTPUT_SCHEMA,
@@ -3195,6 +3196,37 @@ function requireAnyOf(
   keys: string[],
 ): Record<string, unknown> {
   return { ...schema, anyOf: keys.map((key) => ({ required: [key] })) };
+}
+
+/**
+ * Encode get_feed's conditional `netuid` dependency in the published JSON Schema
+ * (#8829).
+ *
+ * Runtime `resolveNetuid` requires `netuid` when kind is `subnet` and forbids it
+ * otherwise -- but both are `.optional()` in Zod, so z.toJSONSchema alone leaves
+ * that invisible. Same approach as `requireAnyOf`: patch `anyOf` onto the already
+ * emitted schema so validating clients reject `{ kind: "subnet" }` and
+ * `{ kind: "registry", netuid: 64 }` locally, without changing Zod parsing or the
+ * inferred TS input type. Non-subnet kinds are derived from `FEED_KINDS` so a
+ * new kind is picked up automatically.
+ */
+export function requireFeedNetuidDependency(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  const nonSubnetKinds = FEED_KINDS.filter((kind) => kind !== "subnet");
+  return {
+    ...schema,
+    anyOf: [
+      {
+        properties: { kind: { const: "subnet" } },
+        required: ["kind", "netuid"],
+      },
+      {
+        properties: { kind: { enum: [...nonSubnetKinds] } },
+        not: { required: ["netuid"] },
+      },
+    ],
+  };
 }
 
 export const MCP_TOOLS: McpToolDefinition[] = [
@@ -9190,6 +9222,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_FEED_MCP_TOOL,
+    inputSchema: requireFeedNetuidDependency(
+      GET_FEED_MCP_TOOL.inputSchema as Record<string, unknown>,
+    ),
     async handler(args: z.infer<typeof GetFeedInputSchema>, ctx: McpCtx) {
       return loadFeedItems(asMcpLoaderCtx(ctx), args, {
         // Same cross-subnet incident ledger + wiring get_global_incidents uses
