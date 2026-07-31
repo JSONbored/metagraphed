@@ -19,19 +19,24 @@ import { resetModuleState } from "../../src/module-state-registry.ts";
 afterAll(() => {
   resetModuleState();
   // Timers are the other process-lifetime global that `isolate: false` turns
-  // into a cross-file channel, and the sharpest one: ten files install
-  // vi.useFakeTimers(), and if any of them fails to restore -- an assertion
-  // throwing past an inline vi.useRealTimers() is enough -- every LATER file in
-  // that worker inherits a clock nobody advances. Anything awaiting a real
-  // setTimeout then hangs until the test timeout, no matter how short the sleep
-  // it asked for. That is what timed out the two deliverChangeEvent retry tests
-  // (a 1ms backoff hung for the full 30s), and which file it lands on depends
-  // on how vitest happens to shard files across workers.
+  // into a cross-file channel: ten files install vi.useFakeTimers(), and if any
+  // of them fails to restore -- an assertion throwing past an inline
+  // vi.useRealTimers() is enough -- every LATER file in that worker inherits a
+  // clock nobody advances, and anything awaiting a real setTimeout hangs until
+  // its timeout no matter how short a sleep it asked for.
+  //
+  // This is a defensive invariant, NOT the fix for the deliverChangeEvent retry
+  // timeouts it was first written for. That hypothesis was wrong: this guard
+  // reports zero leaks across a full green run, so no file was leaking a fake
+  // clock and something else stopped those timers from firing. The webhook
+  // tests were fixed by injecting a sleepFn instead. Kept because the failure
+  // mode is real, silent, and expensive to diagnose from the far end -- the
+  // warning below turns it into an attributable error instead of a mystery
+  // 30s timeout in an unrelated file.
   //
   // Unconditional: vi.useRealTimers() is a no-op when timers are already real.
-  // Reported before restoring, because a leak is a bug in the file that leaked
-  // and silently papering over it is how it stays unfound -- the restore keeps
-  // the suite green, this line says who to fix.
+  // Reported before restoring, because the restore is what keeps the suite
+  // green and would otherwise hide the file that needs fixing.
   if (vi.isFakeTimers()) {
     console.warn(
       "reset-module-state: a test file finished with FAKE timers still " +
