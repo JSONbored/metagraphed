@@ -301,6 +301,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/chain/emission-pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none.
+         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["emissionPipelineByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/changelog": {
         parameters: {
             query?: never;
@@ -2352,6 +2372,23 @@ export interface paths {
         };
         /** Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronDeregistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainDeregistrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/emission-pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none. */
+        get: operations["emissionPipeline"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7289,6 +7326,69 @@ export interface components {
             }[];
             schema_version: number;
             window: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        EmissionPipelineArtifact: {
+            aggregate: {
+                disabled_count: number;
+                eligible_count: number;
+                excess_tao: number;
+                liquidity_fraction: number | null;
+                tao_in_emission: number;
+                tao_total: number;
+                total_final_share: number;
+            };
+            block_emission_halvings: number | null;
+            block_emission_tao: number | null;
+            chain_state: {
+                block: number;
+                block_hash: string;
+                emission_bar_quantile: number | null;
+                emission_gate_bar: number | null;
+                emission_gate_exponent: number | null;
+                total_issuance_tao: number;
+            };
+            contract_version?: string;
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    storage: string | null;
+                };
+            };
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            subnets: {
+                alpha_in_emission: number | null;
+                alpha_out_emission: number | null;
+                distance_to_bar: number | null;
+                emission_enabled: boolean;
+                emission_share: number | null;
+                excess_tao: number | null;
+                final_share: number | null;
+                gate_delta: number | null;
+                gated_share: number | null;
+                ineligible_reason: ("root" | "never_emitted" | "subtoken_disabled" | "registration_closed") | null;
+                liquidity_fraction: number | null;
+                miner_burned: number;
+                netuid: number;
+                tao_in_emission: number | null;
+                tao_total: number | null;
+                weighted_share: number | null;
+            }[];
+            verification: {
+                aggregate_tolerance_rao: string;
+                checks: {
+                    detail: string;
+                    name: string;
+                    ok: boolean;
+                }[];
+                subnet_share_tolerance: number;
+                verified: boolean;
+            };
         } & {
             [key: string]: unknown;
         };
@@ -12922,6 +13022,170 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainEventsStatsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    emissionPipelineByNetwork: {
+        parameters: {
+            query?: {
+                netuid?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "aggregate": {
+                     *           "disabled_count": 1,
+                     *           "eligible_count": 1,
+                     *           "excess_tao": 0.5,
+                     *           "liquidity_fraction": 0.5,
+                     *           "tao_in_emission": 0.5,
+                     *           "tao_total": 0.5,
+                     *           "total_final_share": 0.5
+                     *         },
+                     *         "block_emission_halvings": 5000000,
+                     *         "block_emission_tao": 5000000,
+                     *         "chain_state": {
+                     *           "block": 5000000,
+                     *           "block_hash": "example",
+                     *           "emission_bar_quantile": 0.5,
+                     *           "emission_gate_bar": 0.5,
+                     *           "emission_gate_exponent": 1,
+                     *           "total_issuance_tao": 0.5
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "alpha_in_emission": 0.5,
+                     *             "alpha_out_emission": 0.5,
+                     *             "distance_to_bar": 0.5,
+                     *             "emission_enabled": false,
+                     *             "emission_share": 0.5,
+                     *             "excess_tao": 0.5,
+                     *             "final_share": 0.5,
+                     *             "gate_delta": 0.5,
+                     *             "gated_share": 0.5,
+                     *             "ineligible_reason": "root",
+                     *             "liquidity_fraction": 0.5,
+                     *             "miner_burned": 0.5,
+                     *             "netuid": 7,
+                     *             "tao_in_emission": 0.5,
+                     *             "tao_total": 0.5,
+                     *             "weighted_share": 0.5
+                     *           }
+                     *         ],
+                     *         "verification": {
+                     *           "aggregate_tolerance_rao": "example",
+                     *           "checks": [
+                     *             {
+                     *               "detail": "example",
+                     *               "name": "Example Subnet",
+                     *               "ok": true
+                     *             }
+                     *           ],
+                     *           "subnet_share_tolerance": 0.5,
+                     *           "verified": false
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EmissionPipelineArtifact"];
                     };
                 };
             };
@@ -28532,6 +28796,167 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    emissionPipeline: {
+        parameters: {
+            query?: {
+                netuid?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "aggregate": {
+                     *           "disabled_count": 1,
+                     *           "eligible_count": 1,
+                     *           "excess_tao": 0.5,
+                     *           "liquidity_fraction": 0.5,
+                     *           "tao_in_emission": 0.5,
+                     *           "tao_total": 0.5,
+                     *           "total_final_share": 0.5
+                     *         },
+                     *         "block_emission_halvings": 5000000,
+                     *         "block_emission_tao": 5000000,
+                     *         "chain_state": {
+                     *           "block": 5000000,
+                     *           "block_hash": "example",
+                     *           "emission_bar_quantile": 0.5,
+                     *           "emission_gate_bar": 0.5,
+                     *           "emission_gate_exponent": 1,
+                     *           "total_issuance_tao": 0.5
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "alpha_in_emission": 0.5,
+                     *             "alpha_out_emission": 0.5,
+                     *             "distance_to_bar": 0.5,
+                     *             "emission_enabled": false,
+                     *             "emission_share": 0.5,
+                     *             "excess_tao": 0.5,
+                     *             "final_share": 0.5,
+                     *             "gate_delta": 0.5,
+                     *             "gated_share": 0.5,
+                     *             "ineligible_reason": "root",
+                     *             "liquidity_fraction": 0.5,
+                     *             "miner_burned": 0.5,
+                     *             "netuid": 7,
+                     *             "tao_in_emission": 0.5,
+                     *             "tao_total": 0.5,
+                     *             "weighted_share": 0.5
+                     *           }
+                     *         ],
+                     *         "verification": {
+                     *           "aggregate_tolerance_rao": "example",
+                     *           "checks": [
+                     *             {
+                     *               "detail": "example",
+                     *               "name": "Example Subnet",
+                     *               "ok": true
+                     *             }
+                     *           ],
+                     *           "subnet_share_tolerance": 0.5,
+                     *           "verified": false
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EmissionPipelineArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

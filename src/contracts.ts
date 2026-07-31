@@ -897,6 +897,13 @@ export const PUBLIC_ARTIFACTS = [
     "EconomicsArtifact",
   ),
   artifact(
+    "emission-pipeline",
+    "/metagraph/chain/emission-pipeline.json",
+    "The v440 emission pipeline decomposed per subnet (#8744), served live at /api/v1/chain/emission-pipeline (no static file): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (gate_delta), distance to the bar measured against the WEIGHTED share, and the TAO split -- SubnetTaoInEmission (pool liquidity injection) vs SubnetExcessTao (chain buys), their total, and liquidity_fraction. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE HERE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition, so each field carries its kind and source in `field_sources`, all values are pinned to `chain_state.block`, and the four pipeline identities are evaluated on the rows being served -- `verification.verified` false means the response is not defensible and should not be used. The TAO channels are point samples at that block; measured across 14 consecutive blocks they move a few rao and liquidity_fraction varies by ~1e-5, so there is no rollup. Returns 503 rather than a body when the capture carries no pinned block.",
+    "EmissionPipelineArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "economics-trends",
     "/metagraph/economics/trends.json",
     "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
@@ -2242,6 +2249,19 @@ export const API_ROUTES = [
     "standard",
     ["subnets"],
     csvListQuery("economics"),
+  ),
+  route(
+    "emission-pipeline",
+    "GET",
+    "/api/v1/chain/emission-pipeline",
+    "/metagraph/chain/emission-pipeline.json",
+    "Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none.",
+    "short",
+    ["subnets", "analytics"],
+    {
+      parameters: [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+    },
+    [],
   ),
   route(
     "economics-trends",

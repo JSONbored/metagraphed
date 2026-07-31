@@ -300,6 +300,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "The v440 emission pipeline decomposed per subnet (#8744), served live at /api/v1/chain/emission-pipeline (no static file): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (gate_delta), distance to the bar measured against the WEIGHTED share, and the TAO split -- SubnetTaoInEmission (pool liquidity injection) vs SubnetExcessTao (chain buys), their total, and liquidity_fraction. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE HERE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition, so each field carries its kind and source in `field_sources`, all values are pinned to `chain_state.block`, and the four pipeline identities are evaluated on the rows being served -- `verification.verified` false means the response is not defensible and should not be used. The TAO channels are point samples at that block; measured across 14 consecutive blocks they move a few rao and liquidity_fraction varies by ~1e-5, so there is no rollup. Returns 503 rather than a body when the capture carries no pinned block.",
+      "id": "emission-pipeline",
+      "path": "/metagraph/chain/emission-pipeline.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/EmissionPipelineArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
       "id": "economics-trends",
       "path": "/metagraph/economics/trends.json",
