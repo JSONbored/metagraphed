@@ -138,7 +138,7 @@
       "owner": "404-Repo",
       "releases": [],
       "repo": "404-gen-subnet",
-      "stars": 8,
+      "stars": 9,
       "unreachable": false
     },
     {
@@ -202,7 +202,7 @@
         "Python": 2404324,
         "Shell": 668
       },
-      "last_push_at": "2026-07-30T11:50:41Z",
+      "last_push_at": "2026-07-31T09:10:39Z",
       "owner": "AffineFoundation",
       "releases": [],
       "repo": "affine-cortex",
@@ -2126,7 +2126,7 @@
         "Python": 3238627,
         "Shell": 125056
       },
-      "last_push_at": "2026-07-30T19:30:02Z",
+      "last_push_at": "2026-07-31T09:01:30Z",
       "owner": "Datura-ai",
       "releases": [
         {
@@ -2341,7 +2341,7 @@
         "Python": 822695,
         "Shell": 11638
       },
-      "last_push_at": "2026-07-22T13:27:15Z",
+      "last_push_at": "2026-07-31T09:10:46Z",
       "owner": "Desearch-ai",
       "releases": [
         {
@@ -2400,67 +2400,14 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "commits_weekly": [
-        {
-          "count": 0,
-          "week": "2026-05-03T00:00:00.000Z"
-        },
-        {
-          "count": 0,
-          "week": "2026-05-10T00:00:00.000Z"
-        },
-        {
-          "count": 0,
-          "week": "2026-05-17T00:00:00.000Z"
-        },
-        {
-          "count": 0,
-          "week": "2026-05-24T00:00:00.000Z"
-        },
-        {
-          "count": 0,
-          "week": "2026-05-31T00:00:00.000Z"
-        },
-        {
-          "count": 0,
-          "week": "2026-06-07T00:00:00.000Z"
-        },
-        {
-          "count": 15,
-          "week": "2026-06-14T00:00:00.000Z"
-        },
-        {
-          "count": 1,
-          "week": "2026-06-21T00:00:00.000Z"
-        },
-        {
-          "count": 2,
-          "week": "2026-06-28T00:00:00.000Z"
-        },
-        {
-          "count": 7,
-          "week": "2026-07-05T00:00:00.000Z"
-        },
-        {
-          "count": 12,
-          "week": "2026-07-12T00:00:00.000Z"
-        },
-        {
-          "count": 7,
-          "week": "2026-07-19T00:00:00.000Z"
-        },
-        {
-          "count": 0,
-          "week": "2026-07-26T00:00:00.000Z"
-        }
-      ],
+      "commits_weekly": null,
       "languages": {
         "Dockerfile": 2368,
         "HTML": 25424,
         "Python": 157729,
         "Rust": 189209
       },
-      "last_push_at": "2026-07-30T09:46:04Z",
+      "last_push_at": "2026-07-31T09:23:05Z",
       "owner": "ditto-assistant",
       "releases": [],
       "repo": "dittobench-starter-kit",
@@ -2519,7 +2466,7 @@
           "week": "2026-07-19T00:00:00.000Z"
         },
         {
-          "count": 16,
+          "count": 17,
           "week": "2026-07-26T00:00:00.000Z"
         }
       ],
@@ -2529,11 +2476,11 @@
         "JavaScript": 219983,
         "Python": 6695627,
         "Rust": 37169,
-        "Shell": 297477,
+        "Shell": 302250,
         "Solidity": 1203482,
         "TypeScript": 3080299
       },
-      "last_push_at": "2026-07-29T19:27:19Z",
+      "last_push_at": "2026-07-31T00:52:39Z",
       "owner": "Djinn-Inc",
       "releases": [
         {
@@ -2703,18 +2650,18 @@
           "week": "2026-07-19T00:00:00.000Z"
         },
         {
-          "count": 13,
+          "count": 15,
           "week": "2026-07-26T00:00:00.000Z"
         }
       ],
       "languages": {
         "Dockerfile": 767,
-        "Python": 1278352,
+        "Python": 1283254,
         "Rust": 485426,
         "Shell": 1350,
         "TypeScript": 428
       },
-      "last_push_at": "2026-07-30T21:39:00Z",
+      "last_push_at": "2026-07-31T03:26:53Z",
       "owner": "entrius",
       "releases": [],
       "repo": "allways",
@@ -3812,7 +3759,7 @@
         }
       ],
       "repo": "subnet-2",
-      "stars": 2364,
+      "stars": 2363,
       "unreachable": false
     },
     {
@@ -4021,69 +3968,16 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "commits_weekly": [
-        {
-          "count": 13,
-          "week": "2026-05-03T00:00:00.000Z"
-        },
-        {
-          "count": 51,
-          "week": "2026-05-10T00:00:00.000Z"
-        },
-        {
-          "count": 49,
-          "week": "2026-05-17T00:00:00.000Z"
-        },
-        {
-          "count": 30,
-          "week": "2026-05-24T00:00:00.000Z"
-        },
-        {
-          "count": 27,
-          "week": "2026-05-31T00:00:00.000Z"
-        },
-        {
-          "count": 12,
-          "week": "2026-06-07T00:00:00.000Z"
-        },
-        {
-          "count": 15,
-          "week": "2026-06-14T00:00:00.000Z"
-        },
-        {
-          "count": 164,
-          "week": "2026-06-21T00:00:00.000Z"
-        },
-        {
-          "count": 168,
-          "week": "2026-06-28T00:00:00.000Z"
-        },
-        {
-          "count": 200,
-          "week": "2026-07-05T00:00:00.000Z"
-        },
-        {
-          "count": 210,
-          "week": "2026-07-12T00:00:00.000Z"
-        },
-        {
-          "count": 307,
-          "week": "2026-07-19T00:00:00.000Z"
-        },
-        {
-          "count": 122,
-          "week": "2026-07-26T00:00:00.000Z"
-        }
-      ],
+      "commits_weekly": null,
       "languages": {
         "Dockerfile": 6273,
         "Jupyter Notebook": 44692,
         "Makefile": 1439,
         "PLpgSQL": 1204565,
-        "Python": 23994684,
-        "Shell": 302289
+        "Python": 24127153,
+        "Shell": 309708
       },
-      "last_push_at": "2026-07-30T15:53:45Z",
+      "last_push_at": "2026-07-31T08:35:33Z",
       "owner": "leadpoet",
       "releases": [],
       "repo": "leadpoet",
@@ -4158,7 +4052,60 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "commits_weekly": null,
+      "commits_weekly": [
+        {
+          "count": 4,
+          "week": "2026-05-03T00:00:00.000Z"
+        },
+        {
+          "count": 5,
+          "week": "2026-05-10T00:00:00.000Z"
+        },
+        {
+          "count": 1,
+          "week": "2026-05-17T00:00:00.000Z"
+        },
+        {
+          "count": 3,
+          "week": "2026-05-24T00:00:00.000Z"
+        },
+        {
+          "count": 3,
+          "week": "2026-05-31T00:00:00.000Z"
+        },
+        {
+          "count": 2,
+          "week": "2026-06-07T00:00:00.000Z"
+        },
+        {
+          "count": 4,
+          "week": "2026-06-14T00:00:00.000Z"
+        },
+        {
+          "count": 8,
+          "week": "2026-06-21T00:00:00.000Z"
+        },
+        {
+          "count": 0,
+          "week": "2026-06-28T00:00:00.000Z"
+        },
+        {
+          "count": 6,
+          "week": "2026-07-05T00:00:00.000Z"
+        },
+        {
+          "count": 3,
+          "week": "2026-07-12T00:00:00.000Z"
+        },
+        {
+          "count": 3,
+          "week": "2026-07-19T00:00:00.000Z"
+        },
+        {
+          "count": 1,
+          "week": "2026-07-26T00:00:00.000Z"
+        }
+      ],
       "languages": {
         "Dockerfile": 4990,
         "Python": 570864,
@@ -4876,16 +4823,16 @@
           "week": "2026-07-19T00:00:00.000Z"
         },
         {
-          "count": 4,
+          "count": 5,
           "week": "2026-07-26T00:00:00.000Z"
         }
       ],
       "languages": {
         "JavaScript": 1351,
-        "Python": 560146,
+        "Python": 566835,
         "Shell": 188173
       },
-      "last_push_at": "2026-07-30T06:41:53Z",
+      "last_push_at": "2026-07-31T03:28:57Z",
       "owner": "minos-protocol",
       "releases": [
         {
@@ -5935,7 +5882,7 @@
         }
       ],
       "repo": "templar",
-      "stars": 157,
+      "stars": 158,
       "unreachable": false
     },
     {
@@ -6172,7 +6119,7 @@
         "Solidity": 63236,
         "TypeScript": 1948065
       },
-      "last_push_at": "2026-07-30T21:09:05Z",
+      "last_push_at": "2026-07-31T01:48:21Z",
       "owner": "opentensor",
       "releases": [
         {
@@ -6615,7 +6562,7 @@
         "TeX": 11028,
         "Tree-sitter Query": 31104
       },
-      "last_push_at": "2026-07-30T19:44:27Z",
+      "last_push_at": "2026-07-31T06:43:48Z",
       "owner": "PlatformNetwork",
       "releases": [
         {
@@ -7517,19 +7464,26 @@
           "week": "2026-07-19T00:00:00.000Z"
         },
         {
-          "count": 27,
+          "count": 50,
           "week": "2026-07-26T00:00:00.000Z"
         }
       ],
       "languages": {
         "Makefile": 6527,
         "Mako": 704,
-        "Python": 1564050,
+        "Python": 1590800,
         "Shell": 2451
       },
-      "last_push_at": "2026-07-30T20:32:08Z",
+      "last_push_at": "2026-07-31T05:36:39Z",
       "owner": "ridgesai",
       "releases": [
+        {
+          "name": "v0.2.3",
+          "prerelease": false,
+          "published_at": "2026-07-30T22:43:47Z",
+          "tag": "v0.2.3",
+          "url": "https://github.com/ridgesai/ridges/releases/tag/v0.2.3"
+        },
         {
           "name": "v0.2.2",
           "prerelease": false,
@@ -7567,7 +7521,7 @@
         }
       ],
       "repo": "ridges",
-      "stars": 86,
+      "stars": 87,
       "unreachable": false
     },
     {
@@ -8303,17 +8257,17 @@
           "week": "2026-07-19T00:00:00.000Z"
         },
         {
-          "count": 25,
+          "count": 28,
           "week": "2026-07-26T00:00:00.000Z"
         }
       ],
       "languages": {
         "Cap'n Proto": 437,
-        "Dockerfile": 1048,
-        "Python": 2609684,
+        "Dockerfile": 1169,
+        "Python": 2612635,
         "Shell": 17538
       },
-      "last_push_at": "2026-07-30T21:30:10Z",
+      "last_push_at": "2026-07-30T22:49:42Z",
       "owner": "swarm-subnet",
       "releases": [],
       "repo": "swarm",
@@ -8460,7 +8414,7 @@
         }
       ],
       "repo": "synth-subnet",
-      "stars": 95,
+      "stars": 96,
       "unreachable": false
     },
     {
@@ -8788,7 +8742,7 @@
           "week": "2026-07-19T00:00:00.000Z"
         },
         {
-          "count": 3,
+          "count": 6,
           "week": "2026-07-26T00:00:00.000Z"
         }
       ],
@@ -8796,11 +8750,11 @@
         "CSS": 1404,
         "HTML": 368,
         "JavaScript": 4257,
-        "Python": 6089678,
+        "Python": 6091934,
         "Shell": 13682,
         "TypeScript": 70279
       },
-      "last_push_at": "2026-07-30T19:36:39Z",
+      "last_push_at": "2026-07-31T09:21:33Z",
       "owner": "taoshidev",
       "releases": [],
       "repo": "vanta-network",
@@ -9627,7 +9581,7 @@
       "owner": "trajectoryRL",
       "releases": [],
       "repo": "trajectoryRL",
-      "stars": 22,
+      "stars": 23,
       "unreachable": false
     },
     {
