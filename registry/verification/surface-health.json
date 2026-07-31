@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T07:18:49.337Z",
+  "generated_at": "2026-07-31T07:27:45.392Z",
   "notes": "Per-surface probe evidence from the live cron prober, snapshotted for deterministic Git review. Consumed by scripts/lib.ts flattenSurfaces to derive machine verification; see src/surface-verification.ts for the bar.",
   "schema_version": 1,
   "source": "live-cron-prober",
@@ -9,276 +9,276 @@
   "surfaces": {
     "allways-api-health": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "allways-crown": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "allways-crown-history": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9975
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9977
     },
     "allways-crown-rate-history": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
       "uptime_ratio": 0.9992
     },
     "allways-crown-time": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
       "uptime_ratio": 0.9992
     },
     "allways-events": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
       "uptime_ratio": 0.9992
     },
     "allways-events-latest": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "allways-history-rate": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9984
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9985
     },
     "allways-miners": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "allways-miners-leaderboard": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "allways-miners-reliability": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "allways-network-halt-state": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9984
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9985
     },
     "allways-network-overview": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "allways-network-scoring-state": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9984
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9985
     },
     "allways-network-stats": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
       "uptime_ratio": 0.9992
     },
     "allways-protocol-chain-state": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "allways-protocol-constants": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "allways-reservations": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
       "uptime_ratio": 0.9992
     },
     "allways-reservations-active": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9975
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9977
     },
     "allways-sse": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "allways-swaps-active": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9984
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9985
     },
     "allways-swaps-count": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1215,
-      "uptime_ratio": 0.9984
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1311,
+      "uptime_ratio": 0.9985
     },
     "gittensor-master-repositories": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9945
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9948
     },
     "gittensory-contribution-interface": {
       "classification": null,
       "day_count": 6,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 466,
       "uptime_ratio": 0.9871
     },
     "gittensory-mcp-compatibility": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.994
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9945
     },
     "gittensory-public-stats": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9854
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9842
     },
     "metagraphed-fullnode-rpc": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1380,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1476,
       "uptime_ratio": 1
     },
     "metagraphed-fullnode-wss": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1380,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1476,
       "uptime_ratio": 1
     },
     "onfinality-finney-rpc": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9706
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9358
     },
     "onfinality-finney-wss": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9957
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.996
     },
     "opentensor-archive-rpc": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "opentensor-archive-wss": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "opentensor-finney-rpc": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "opentensor-finney-wss": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "opentensor-lite-rpc": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "opentensor-lite-wss": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-1-apex-healthcheck": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
-      "uptime_ratio": 0.9986
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
+      "uptime_ratio": 0.9988
     },
     "sn-1-apex-healthcheck-ready": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1214,
-      "uptime_ratio": 0.9934
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1310,
+      "uptime_ratio": 0.9939
     },
     "sn-1-apex-metrics": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1214,
-      "uptime_ratio": 0.9967
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1310,
+      "uptime_ratio": 0.9969
     },
     "sn-10-taofi-api": {
       "classification": null,
@@ -289,4103 +289,4103 @@
     },
     "sn-100-joinbase-validators-public": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9934
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.987
     },
     "sn-100-platform-network-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9669
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9636
     },
     "sn-100-platform-v1-weights-latest": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.9565
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.9503
     },
     "sn-101-eni-min-compute": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1334,
-      "uptime_ratio": 0.9948
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1430,
+      "uptime_ratio": 0.9951
     },
     "sn-101-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.6406
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.6536
     },
     "sn-102-connito-blocks-until-next-phase": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9967
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9969
     },
     "sn-102-connito-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-102-connito-init-peer-id": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9942
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9946
     },
     "sn-102-connito-phase-get-phase": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-102-connito-phase-status": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-102-connito-validator-whitelist": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9934
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9939
     },
     "sn-103-djinn-delegates": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-103-djinn-genius-leaderboard": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.994
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9945
     },
     "sn-103-djinn-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-103-djinn-min-compute-spec": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-103-djinn-miners-discover": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-103-djinn-network-config": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-103-djinn-network-matrix": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-103-djinn-network-status": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9751
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9739
     },
     "sn-103-djinn-sports": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-103-djinn-validators-discover": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-104-taomarketcap-subnet-snapshot": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.6092
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.6261
     },
     "sn-105-beam-health": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 751,
-      "uptime_ratio": 0.9947
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 847,
+      "uptime_ratio": 0.9953
     },
     "sn-105-beam-orchestrator-relays": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-105-beam-routing-orchestrators": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 0.9992
     },
     "sn-105-beam-validators-orchestrators": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-105-beam-worker-capacity": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 0.9992
     },
     "sn-106-nodexo-bundled-subnet-config": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1333,
-      "uptime_ratio": 0.9932
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1429,
+      "uptime_ratio": 0.9937
     },
     "sn-106-nodexo-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9649
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9572
     },
     "sn-106-nodexo-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-106-nodexo-subnetconfig-abi": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1333,
-      "uptime_ratio": 0.997
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1429,
+      "uptime_ratio": 0.9972
     },
     "sn-107-minos-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-107-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.5701
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.5923
     },
     "sn-108-talkhead-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9983
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9984
     },
     "sn-108-talkhead-min-compute-spec": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.994
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9945
     },
     "sn-109-academia-archives": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-109-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.5421
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.5632
     },
     "sn-11-trajectoryrl-miners": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-11-trajectoryrl-subnet-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1207,
-      "uptime_ratio": 0.9975
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1303,
+      "uptime_ratio": 0.9977
     },
     "sn-110-green-compute-billing-bonus-rates-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9109
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9177
     },
     "sn-110-green-compute-healthz": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9109
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9177
     },
     "sn-110-green-compute-metrics": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9109
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9177
     },
     "sn-110-green-compute-models": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-110-green-compute-readyz": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9109
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9177
     },
     "sn-110-website-link-www-green-compute-com-data-artifact-10": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-110-website-link-www-green-compute-com-data-artifact-9": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-111-oneoneone-generic-synapse-protocol": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-111-oneoneone-node-validator-config": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-111-oneoneone-python-subnet-config": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9923
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9929
     },
     "sn-111-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.5081
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.5295
     },
     "sn-112-minotaur-apps-list": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-112-minotaur-chains": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9015
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9082
     },
     "sn-112-minotaur-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9957
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.996
     },
     "sn-112-minotaur-network-reference": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-113-tensorusd-agent-api-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-113-tensorusd-llms-txt": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-113-tensorusd-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-113-tensorusd-vault-abi": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-114-soma-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-114-soma-mcp": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9896
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9902
     },
     "sn-115-hashichain-intro-logo": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-115-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.4715
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.4965
     },
     "sn-116-taolend-contract-constants": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-116-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.4588
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.4847
     },
     "sn-118-ditto-memory-cases": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9957
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.996
     },
     "sn-118-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.4359
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.4611
     },
     "sn-118-website-link-heyditto-ai-data-artifact-3": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-119-taomarketcap-subnet-snapshot": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.4027
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.4242
     },
     "sn-12-compute-horde-grafana-dashboard-subnet": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.971
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.9694
     },
     "sn-12-compute-horde-grafana-org": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.9666
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.9618
     },
     "sn-12-compute-horde-grafana-search": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.9724
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.972
     },
     "sn-12-computehorde-collateral-abi": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1206,
-      "uptime_ratio": 0.995
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1302,
+      "uptime_ratio": 0.9954
     },
     "sn-120-affine-config": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-120-affine-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-120-affine-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-120-affine-scores-latest": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9983
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9985
     },
     "sn-120-affine-scores-weights-latest": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9992
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9923
     },
     "sn-121-sundae-bar-categories-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-121-sundae-bar-llms-txt": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1338,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1434,
       "uptime_ratio": 1
     },
     "sn-121-sundae-bar-products-api": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1338,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1434,
       "uptime_ratio": 1
     },
     "sn-121-sundae-bar-sbc9-eval-dataset": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9614
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.8884
     },
     "sn-121-sundae-bar-skill-categories-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-121-sundae-bar-skill-creators-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-121-sundae-bar-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-122-bitrecs-amazon-fashion-sample": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.994
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9945
     },
     "sn-122-bitrecs-llms-txt": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-history-incentive": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-snap-breakouts": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-snap-clusters": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-snap-meta": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-snap-metagraph": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-snap-miners": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 1
     },
     "sn-123-mantis-dashboard-snap-participation": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 1
     },
     "sn-123-mantis-datalog-archive": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-123-mantis-price-feed": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-123-taomarketcap-candle-chart": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.4225
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.4371
     },
     "sn-124-swarm-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-124-swarm-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9992
     },
     "sn-124-swarm-kings-diagnostics": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 0
     },
     "sn-124-swarm-leaderboard-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9983
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9984
     },
     "sn-124-swarm-min-compute": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9914
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9921
     },
     "sn-125-eightball-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-125-eightball-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 0
     },
     "sn-126-poker44-benchmark-releases": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9854
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9865
     },
     "sn-126-poker44-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9871
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9881
     },
     "sn-126-poker44-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9854
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9865
     },
     "sn-127-astrid-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-127-astrid-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9983
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9984
     },
     "sn-128-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.3976
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.4132
     },
     "sn-13-data-universe-desirability-defaults": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-14-cacheon-data-artifact": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-14-cacheon-eval-job": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9736
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9755
     },
     "sn-14-cacheon-eval-progress": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9736
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9755
     },
     "sn-14-cacheon-evaluations": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9752
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.977
     },
     "sn-14-cacheon-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.981
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9821
     },
     "sn-14-cacheon-validator-logs": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-15-oro-current-suite-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 1
     },
     "sn-15-oro-data-artifact": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 1
     },
     "sn-15-oro-evaluations-pending": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-15-oro-evaluations-running": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-15-oro-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
-      "uptime_ratio": 0.9983
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
+      "uptime_ratio": 0.9985
     },
     "sn-15-oro-health-deep": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 0.9992
     },
     "sn-15-oro-public-inference-models": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1323,
-      "uptime_ratio": 0.9985
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1419,
+      "uptime_ratio": 0.9986
     },
     "sn-15-oro-public-top-history": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1323,
-      "uptime_ratio": 0.9977
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1419,
+      "uptime_ratio": 0.9979
     },
     "sn-15-oro-races-current-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 0.9992
     },
     "sn-15-oro-races-history-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 1
     },
     "sn-15-oro-shoppingbench-sft": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
-      "uptime_ratio": 0.9826
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
+      "uptime_ratio": 0.9823
     },
     "sn-15-oro-shoppingbench-traces": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
-      "uptime_ratio": 0.9826
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
+      "uptime_ratio": 0.9823
     },
     "sn-15-oro-subnet-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 0.9992
     },
     "sn-15-oro-subnet-api-api-oroagents-com": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1205,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1301,
       "uptime_ratio": 0.9992
     },
     "sn-15-oro-top-miner-payout": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 0.9992
     },
     "sn-15-oro-validators": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 0.9992
     },
     "sn-16-bitads-min-compute": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1204,
-      "uptime_ratio": 0.9958
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1300,
+      "uptime_ratio": 0.9962
     },
     "sn-16-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1204,
-      "uptime_ratio": 0.9992
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1300,
+      "uptime_ratio": 0.9977
     },
     "sn-17-404-gen-competition-config": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1308,
-      "uptime_ratio": 0.9962
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1404,
+      "uptime_ratio": 0.9964
     },
     "sn-17-404-gen-competition-state": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
-      "uptime_ratio": 0.9967
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
+      "uptime_ratio": 0.9969
     },
     "sn-17-404-gen-data-artifact": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
-      "uptime_ratio": 0.9825
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
+      "uptime_ratio": 0.9823
     },
     "sn-17-404-gen-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
       "uptime_ratio": 1
     },
     "sn-17-404-gen-leader": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
-      "uptime_ratio": 0.9958
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
+      "uptime_ratio": 0.9962
     },
     "sn-18-zeus-data-artifact": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
-      "uptime_ratio": 0.995
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
+      "uptime_ratio": 0.9954
     },
     "sn-18-zeus-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
       "uptime_ratio": 1
     },
     "sn-18-zeus-ready": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-18-zeus-subnet-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1203,
-      "uptime_ratio": 0.9975
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1299,
+      "uptime_ratio": 0.9977
     },
     "sn-19-blockmachine-data-artifact": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1202,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1298,
       "uptime_ratio": 1
     },
     "sn-19-blockmachine-data-artifact-api-blockmachine-io": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1202,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1298,
       "uptime_ratio": 0.9992
     },
     "sn-19-blockmachine-epochs-catalog": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1202,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1298,
       "uptime_ratio": 0.9992
     },
     "sn-19-blockmachine-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1202,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1298,
       "uptime_ratio": 1
     },
     "sn-19-blockmachine-ready": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9983
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9985
     },
     "sn-19-blockmachine-subnet-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1202,
-      "uptime_ratio": 0.7454
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1298,
+      "uptime_ratio": 0.7643
     },
     "sn-2-dsperse-circuit-list": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1214,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1310,
       "uptime_ratio": 1
     },
     "sn-2-dsperse-component-list": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1214,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1310,
       "uptime_ratio": 1
     },
     "sn-2-dsperse-model-list": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1214,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1310,
       "uptime_ratio": 1
     },
     "sn-2-inference-labs-subnet-api": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
-      "uptime_ratio": 0.9957
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
+      "uptime_ratio": 0.9962
     },
     "sn-20-groundlayer-og-card-image": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1201,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1297,
       "uptime_ratio": 1
     },
     "sn-20-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1201,
-      "uptime_ratio": 0.9983
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1297,
+      "uptime_ratio": 0.9977
     },
     "sn-21-adtao-training-episodes": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1200,
-      "uptime_ratio": 0.9933
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1296,
+      "uptime_ratio": 0.9938
     },
     "sn-21-adtao-validator-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-22-desearch-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1200,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1296,
       "uptime_ratio": 0.9992
     },
     "sn-22-desearch-benchmark-questions": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1200,
-      "uptime_ratio": 0.98
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1296,
+      "uptime_ratio": 0.9799
     },
     "sn-22-desearch-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1200,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1296,
       "uptime_ratio": 0.9992
     },
     "sn-22-desearch-search-evals": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1200,
-      "uptime_ratio": 0.9858
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1296,
+      "uptime_ratio": 0.9838
     },
     "sn-23-trishool-api-root": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-23-trishool-submission-schema": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1199,
-      "uptime_ratio": 0.9942
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1295,
+      "uptime_ratio": 0.9946
     },
     "sn-24-quasar-base-model": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9884
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9879
     },
     "sn-24-quasar-incentive-protocol": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1303,
-      "uptime_ratio": 0.9946
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1399,
+      "uptime_ratio": 0.995
     },
     "sn-24-quasar-launch-teacher": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9871
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9879
     },
     "sn-24-quasar-training-corpus": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1198,
-      "uptime_ratio": 0.985
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1294,
+      "uptime_ratio": 0.983
     },
     "sn-24-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1198,
-      "uptime_ratio": 1
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1294,
+      "uptime_ratio": 0.9992
     },
     "sn-24-website-link-silxinc-com-data-artifact-3": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-25-macrocosm-os-macrobench-benchmark-dataset": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9853
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9855
     },
     "sn-25-mainframe-pdb-file-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-26-perturb-data-artifact": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9957
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.996
     },
     "sn-26-perturb-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9951
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9954
     },
     "sn-27-nodexo-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1194,
-      "uptime_ratio": 0.9925
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1290,
+      "uptime_ratio": 0.993
     },
     "sn-27-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1194,
-      "uptime_ratio": 0.9992
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1290,
+      "uptime_ratio": 0.9984
     },
     "sn-28-gm-envoy-config": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1193,
-      "uptime_ratio": 0.9941
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1289,
+      "uptime_ratio": 0.9946
     },
     "sn-28-gm-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1193,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1289,
       "uptime_ratio": 0.9992
     },
     "sn-28-gm-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1193,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1289,
+      "uptime_ratio": 0.9984
     },
     "sn-29-coldint-competitions-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9927
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9931
     },
     "sn-29-coldint-fineweb-dataset": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9865
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9861
     },
     "sn-29-coldint-min-compute": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1193,
-      "uptime_ratio": 0.9925
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1289,
+      "uptime_ratio": 0.993
     },
     "sn-3-templar-grafana-datasources": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-3-templar-grafana-frontend-settings": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9984
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9986
     },
     "sn-3-templar-grafana-org": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9984
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9986
     },
     "sn-3-templar-grafana-plugins": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9984
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9986
     },
     "sn-3-templar-grafana-search": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-3-templar-health": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
-      "uptime_ratio": 0.9986
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
+      "uptime_ratio": 0.9988
     },
     "sn-3-templar-min-compute-spec": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9945
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9948
     },
     "sn-30-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.9992
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.9984
     },
     "sn-32-its-ai-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1192,
-      "uptime_ratio": 0.9815
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1288,
+      "uptime_ratio": 0.9806
     },
     "sn-32-itsai-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "sn-33-readyai-hf-dataset": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9878
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9873
     },
     "sn-33-readyai-llms-data-repo": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-33-readyai-organic-query-results": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1192,
-      "uptime_ratio": 0.9815
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1288,
+      "uptime_ratio": 0.9806
     },
     "sn-33-readyai-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1192,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1288,
+      "uptime_ratio": 0.9946
     },
     "sn-34-bitmind-bm-real-dataset": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1191,
-      "uptime_ratio": 0.9782
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1287,
+      "uptime_ratio": 0.9775
     },
     "sn-34-bitmind-data-artifact": {
       "classification": null,
       "day_count": 6,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 442,
       "uptime_ratio": 1
     },
     "sn-34-bitmind-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 1
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9988
     },
     "sn-34-gasstation-datasets": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1191,
-      "uptime_ratio": 0.9824
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1287,
+      "uptime_ratio": 0.9798
     },
     "sn-35-cartha-deregistered-hotkeys": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9967
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9969
     },
     "sn-35-cartha-parent-vaults": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9942
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9931
     },
     "sn-35-oxmarkets-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
-      "uptime_ratio": 0.9975
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
+      "uptime_ratio": 0.9977
     },
     "sn-35-oxmarkets-lp-stats": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
-      "uptime_ratio": 0.9975
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
+      "uptime_ratio": 0.9969
     },
     "sn-35-oxmarkets-pools": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
-      "uptime_ratio": 0.9874
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
+      "uptime_ratio": 0.9876
     },
     "sn-36-eirel-dashboard-families-api": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1313,
-      "uptime_ratio": 0.9992
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1409,
+      "uptime_ratio": 0.9993
     },
     "sn-36-eirel-dashboard-overview": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 0.9992
     },
     "sn-36-eirel-dashboard-runs": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 0.9992
     },
     "sn-36-eirel-env-windows": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-healthz": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-metagraph-status": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-metrics": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 0
     },
     "sn-36-eirel-runs": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-36-eirel-runs-current-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-submissions-queued": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-weights": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-workflow-composition-registry": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-workflow-corpus": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-36-eirel-workflow-specs": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1190,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1286,
       "uptime_ratio": 1
     },
     "sn-37-aurelius-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.9907
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.9914
     },
     "sn-37-aurelius-deposit-address-verify": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.5467
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.5058
     },
     "sn-37-aurelius-health-live": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.5467
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.5058
     },
     "sn-37-aurelius-health-ready": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.5467
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.5058
     },
     "sn-37-aurelius-scenario-schema": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.9933
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.9938
     },
     "sn-37-aurelius-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.5467
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.5058
     },
     "sn-37-aurelius-work-token-designated-address": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.5467
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.5058
     },
     "sn-38-chronogpt-models": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.9748
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.9712
     },
     "sn-38-chronoinstruct-sft-dataset": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.984
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.9844
     },
     "sn-38-taomarketcap-subnet-snapshot": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1189,
-      "uptime_ratio": 0.9992
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1285,
+      "uptime_ratio": 0.9984
     },
     "sn-39-basilica-docs-llms-full-txt": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1188,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1284,
       "uptime_ratio": 1
     },
     "sn-39-basilica-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1188,
-      "uptime_ratio": 0.9992
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1284,
+      "uptime_ratio": 0.9984
     },
     "sn-39-one-covenant-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1188,
-      "uptime_ratio": 0.9941
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1284,
+      "uptime_ratio": 0.9945
     },
     "sn-4-targon-healthz-api": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-4-targon-miner-stats-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-4-targon-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9957
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.996
     },
     "sn-4-targon-version-api": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1211,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1307,
       "uptime_ratio": 0.9992
     },
     "sn-40-chunking-protocol": {
       "classification": null,
       "day_count": 3,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 116,
       "uptime_ratio": 1
     },
     "sn-40-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1188,
-      "uptime_ratio": 0.9975
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1284,
+      "uptime_ratio": 0.9969
     },
     "sn-41-almanac-markets-list": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1187,
-      "uptime_ratio": 0.9832
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1283,
+      "uptime_ratio": 0.9805
     },
     "sn-41-almanac-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1187,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1283,
+      "uptime_ratio": 0.9969
     },
     "sn-42-gopher-tiktok-transcription-dataset": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.9815
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.9805
     },
     "sn-42-gopher-webscrape-example": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.9823
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.9821
     },
     "sn-42-gopher-x-trending-topics": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.9823
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.9797
     },
     "sn-43-graphite-ai-coverage-stats": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.8676
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.8705
     },
     "sn-43-graphite-ai-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.984
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.9828
     },
     "sn-43-graphite-ai-subnet-api": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
-      "uptime_ratio": 0.2344
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
+      "uptime_ratio": 0.275
     },
     "sn-43-graphite-graph-data": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.5388
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.5413
     },
     "sn-43-graphite-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.3499
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.3596
     },
     "sn-43-graphite-min-compute": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1186,
-      "uptime_ratio": 0.9958
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1282,
+      "uptime_ratio": 0.9961
     },
     "sn-43-graphite-miners-stats-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.3748
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.3811
     },
     "sn-44-score-min-compute-spec": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.9969
     },
     "sn-44-score-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.9156
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.9141
     },
     "sn-45-alpharidge-dashboard-articles-sources": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.9755
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.9758
     },
     "sn-45-alpharidge-dashboard-assets": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.9932
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.9922
     },
     "sn-45-alpharidge-dashboard-events": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-45-alpharidge-dashboard-events-trending": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-45-alpharidge-dashboard-miner-dispatch": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-45-alpharidge-dashboard-miners": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.6017
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.6315
     },
     "sn-45-alpharidge-dashboard-narratives": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-45-alpharidge-dashboard-narratives-trending": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-45-alpharidge-dashboard-preview": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.7046
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.7104
     },
     "sn-45-alpharidge-dashboard-sentiment": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
       "uptime_ratio": 0.9992
     },
     "sn-45-alpharidge-dashboard-validators": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.0869
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.0804
     },
     "sn-45-alpharidge-price-tao-usd": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-45-talisman-dashboard-stats": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
+      "uptime_ratio": 0.9984
     },
     "sn-45-talisman-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1185,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1281,
       "uptime_ratio": 1
     },
     "sn-46-zipcode-api-dashboard-auth-validation-set": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 1
     },
     "sn-46-zipcode-api-docs": {
       "classification": null,
-      "day_count": 8,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 607,
+      "day_count": 9,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 703,
       "uptime_ratio": 1
     },
     "sn-46-zipcode-api-geocode": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 704,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 800,
       "uptime_ratio": 0
     },
     "sn-46-zipcode-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1184,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1280,
       "uptime_ratio": 1
     },
     "sn-46-zipcode-emissions-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1184,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1280,
       "uptime_ratio": 1
     },
     "sn-46-zipcode-real-estate-validation-set": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1209,
-      "uptime_ratio": 0.268
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1305,
+      "uptime_ratio": 0.272
     },
     "sn-46-zipcode-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1184,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1280,
       "uptime_ratio": 1
     },
     "sn-47-evolai-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0
     },
     "sn-47-evolai-universal-qa-dataset": {
       "classification": null,
       "day_count": 6,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 449,
       "uptime_ratio": 0.0512
     },
     "sn-47-evolai-validator-config": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1300,
-      "uptime_ratio": 0.9969
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1396,
+      "uptime_ratio": 0.9971
     },
     "sn-48-quantum-compute-health-api": {
       "classification": null,
       "day_count": 3,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 192,
       "uptime_ratio": 1
     },
     "sn-48-quantum-compute-min-compute-spec": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1183,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1279,
+      "uptime_ratio": 0.9953
     },
     "sn-49-nepher-active-tournament-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9984
     },
     "sn-49-nepher-active-tournament-id-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9975
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9977
     },
     "sn-49-nepher-active-tournament-ids-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 0.9992
     },
     "sn-49-nepher-common-config": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9941
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9945
     },
     "sn-49-nepher-current-block-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 0.9992
     },
     "sn-49-nepher-evaluations-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9984
     },
     "sn-49-nepher-robotics-data-artifact": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-49-nepher-tournament-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 0.9992
     },
     "sn-49-nepher-tournament-pricing": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9984
     },
     "sn-49-nepher-tournament-readiness": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 0.9992
     },
     "sn-49-nepher-tournaments-list-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9984
     },
     "sn-5-hone-projects-json": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-5-hone-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-50-synth-meta-leaderboard": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
-      "uptime_ratio": 0.9941
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
+      "uptime_ratio": 0.9937
     },
     "sn-50-synth-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-50-synth-validation-scores": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-executor-stats": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-51-lium-executors": {
       "classification": null,
-      "day_count": 8,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 607,
+      "day_count": 9,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 703,
       "uptime_ratio": 1
     },
     "sn-51-lium-executors-count": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-executors-total-count": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-io-machines-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-51-lium-latest-set-weights": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-machines-capacity-api": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1339,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1435,
       "uptime_ratio": 0.9993
     },
     "sn-51-lium-reclaims-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-51-lium-revenue-for-validators": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-root": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-51-lium-shared-config": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-51-lium-templates": {
       "classification": null,
-      "day_count": 8,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 607,
+      "day_count": 9,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 703,
       "uptime_ratio": 1
     },
     "sn-51-lium-watchtower-digest": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1182,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1278,
       "uptime_ratio": 1
     },
     "sn-52-dojo-humanfeedback-dpo": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1181,
-      "uptime_ratio": 0.978
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1277,
+      "uptime_ratio": 0.9734
     },
     "sn-52-dojo-synthetic-sft-dataset": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1181,
-      "uptime_ratio": 0.9788
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1277,
+      "uptime_ratio": 0.9765
     },
     "sn-52-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1181,
-      "uptime_ratio": 1
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1277,
+      "uptime_ratio": 0.9984
     },
     "sn-53-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1180,
-      "uptime_ratio": 0.9992
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1276,
+      "uptime_ratio": 0.9984
     },
     "sn-54-yanez-compliance-miners-list": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1180,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1276,
+      "uptime_ratio": 0.9953
     },
     "sn-54-yanez-compliance-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1180,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1276,
+      "uptime_ratio": 0.9969
     },
     "sn-54-yanez-miners-stats-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9959
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9954
     },
     "sn-54-yanez-miners-stats-index": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9942
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9931
     },
     "sn-55-niome-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1179,
-      "uptime_ratio": 0.9152
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1275,
+      "uptime_ratio": 0.9129
     },
     "sn-55-niome-tasks-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9326
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9306
     },
     "sn-56-gradients-auditing-tasks-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1178,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1274,
       "uptime_ratio": 0.9992
     },
     "sn-56-gradients-challenger-review-config": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1178,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1274,
+      "uptime_ratio": 0.9969
     },
     "sn-56-gradients-data-artifact": {
       "classification": null,
       "day_count": 6,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 455,
       "uptime_ratio": 0.989
     },
     "sn-56-gradients-healthz": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1178,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1274,
       "uptime_ratio": 1
     },
     "sn-56-gradients-last-boss-battle": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9957
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9954
     },
     "sn-56-gradients-latest-tournament-weights": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9951
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9954
     },
     "sn-56-gradients-models": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-56-gradients-scores-url": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 0.9992
     },
     "sn-56-gradients-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1178,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1274,
       "uptime_ratio": 0.9992
     },
     "sn-56-gradients-tournament-fees-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1178,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1274,
       "uptime_ratio": 0.9992
     },
     "sn-56-gradients-tournament-latest-details": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1178,
-      "uptime_ratio": 0.9168
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1274,
+      "uptime_ratio": 0.9231
     },
     "sn-56-gradients-weight-projection-static": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9945
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9948
     },
     "sn-57-sparket-leaderboard": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-57-sparket-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-58-handshake58-data-artifact": {
       "classification": null,
       "day_count": 6,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 456,
       "uptime_ratio": 1
     },
     "sn-58-handshake58-directory-providers": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.8488
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.7864
     },
     "sn-58-handshake58-provider-directory-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.8879
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.8386
     },
     "sn-58-handshake58-skills-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.8879
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.8386
     },
     "sn-58-handshake58-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.8879
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.8386
     },
     "sn-59-babelbit-debug-network": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9992
     },
     "sn-59-babelbit-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
       "uptime_ratio": 1
     },
     "sn-59-babelbit-min-compute-spec": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9923
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9929
     },
     "sn-59-babelbit-service-info": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 0.9992
     },
     "sn-6-numinous-api-health": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9988
     },
     "sn-6-numinous-data-artifact": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9969
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9971
     },
     "sn-6-numinous-leaderboard": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-60-bitsec-agents-count": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9967
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9972
     },
     "sn-60-bitsec-agents-evaluation-status": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9974
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9969
     },
     "sn-60-bitsec-agents-list": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9932
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9937
     },
     "sn-60-bitsec-agents-top": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9969
     },
     "sn-60-bitsec-agents-top-with-burn": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9984
     },
     "sn-60-bitsec-ai-known-solutions": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9915
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9921
     },
     "sn-60-bitsec-ai-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9969
     },
     "sn-60-bitsec-analytics-validators": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9961
     },
     "sn-60-bitsec-jobs-leaderboard": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9961
     },
     "sn-60-bitsec-jobs-leaderboard-old": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 0
     },
     "sn-60-bitsec-jobs-runs-active": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9969
     },
     "sn-60-bitsec-jobs-stats": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9969
     },
     "sn-60-bitsec-projects-list": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9961
     },
     "sn-60-bitsec-projects-sets": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1176,
-      "uptime_ratio": 0.9974
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1272,
+      "uptime_ratio": 0.9976
     },
     "sn-61-redteam-active-challenges": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.9932
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.9937
     },
     "sn-61-redteam-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 1
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.9992
     },
     "sn-62-ridges-benchmark-agents": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-62-ridges-connected-validators": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
       "uptime_ratio": 1
     },
     "sn-62-ridges-eval-pricing": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
       "uptime_ratio": 1
     },
     "sn-62-ridges-evaluation-sets": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.914
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.919
     },
     "sn-62-ridges-evaluation-sets-problems": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.7532
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.7585
     },
     "sn-62-ridges-latest-set-info": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.4911
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.4894
     },
     "sn-62-ridges-network-statistics": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.3013
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.2935
     },
     "sn-62-ridges-perfectly-solved-over-time": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.0834
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.0787
     },
     "sn-62-ridges-problem-statistics": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
-      "uptime_ratio": 0.0043
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
+      "uptime_ratio": 0.0047
     },
     "sn-62-ridges-scoring-screener-info": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 0
     },
     "sn-62-ridges-scoring-weights": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.0015
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.0013
     },
     "sn-62-ridges-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
       "uptime_ratio": 0
     },
     "sn-62-ridges-top-scores-over-time": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1175,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1271,
       "uptime_ratio": 0
     },
     "sn-63-enigma-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9992
     },
     "sn-63-enigma-min-compute-spec": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9953
     },
     "sn-63-enigma-validator-constants": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1308,
-      "uptime_ratio": 0.9908
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1404,
+      "uptime_ratio": 0.9915
     },
     "sn-64-chutes-affine-available": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9968
     },
     "sn-64-chutes-audit-log": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-bounties-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9968
     },
     "sn-64-chutes-chutes-miner-means": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9918
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9929
     },
     "sn-64-chutes-daily-revenue-summary": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9966
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9968
     },
     "sn-64-chutes-data-artifact": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.7397
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.7542
     },
     "sn-64-chutes-data-artifact-api-chutes-ai": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.7391
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.7536
     },
     "sn-64-chutes-data-artifact-api-chutes-ai-2": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.7361
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.7507
     },
     "sn-64-chutes-diffusion-stats": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-fmv-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
       "uptime_ratio": 1
     },
     "sn-64-chutes-instances-compute-history-csv": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-instances-reconciliation-csv": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-invocations-exports-recent": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 0
     },
     "sn-64-chutes-invocations-usage": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-llm-stats-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.994
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9945
     },
     "sn-64-chutes-miner-metagraph": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-miner-metrics": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
       "uptime_ratio": 0
     },
     "sn-64-chutes-miner-scores-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9953
     },
     "sn-64-chutes-miner-stats-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9953
     },
     "sn-64-chutes-node-availability": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-payments-list": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-ping": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
       "uptime_ratio": 1
     },
     "sn-64-chutes-pricing-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9969
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9971
     },
     "sn-64-chutes-rolling-updates": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-64-chutes-supported-gpus": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9953
     },
     "sn-64-chutes-tao-payment-totals-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-tee-measurements": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-chutes-user-growth": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9961
     },
     "sn-64-website-link-chutes-ai-data-artifact-5": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-64-website-link-chutes-ai-data-artifact-6": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-65-taofu-labs-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9984
     },
     "sn-65-tpn-min-compute-spec": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9953
     },
     "sn-65-tpn-version": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.9992
     },
     "sn-66-ninja-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 1
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9992
     },
     "sn-66-unarbos-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1173,
-      "uptime_ratio": 0.8142
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1269,
+      "uptime_ratio": 0.7526
     },
     "sn-67-harnyx-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1172,
-      "uptime_ratio": 0.9932
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1268,
+      "uptime_ratio": 0.9937
     },
     "sn-67-harnyx-healthz-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1172,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1268,
+      "uptime_ratio": 0.9984
     },
     "sn-68-nova-competition-config": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1326,
-      "uptime_ratio": 0.9932
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1422,
+      "uptime_ratio": 0.9937
     },
     "sn-68-nova-mol-rxn-db": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9761
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9708
     },
     "sn-68-nova-proteins": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9744
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9708
     },
     "sn-68-nova-savi-2020-dataset": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9778
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9747
     },
     "sn-68-nova-score-share-molecules": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9949
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9937
     },
     "sn-68-submission-archive": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9778
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9732
     },
     "sn-68-website-link-www-metanova-labs-ai-data-artifact-4": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-69-ain-api-briefs": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-disputes-list": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-funding-list": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-health": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-public-articles": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-public-leaderboard": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-public-stats": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-ready": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.2561
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.3568
     },
     "sn-69-ain-api-registry-outlets": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-reporting-export": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-validator-briefs-v2": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-api-validator-registry-v3": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-69-ain-min-compute": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1172,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1268,
+      "uptime_ratio": 0.9961
     },
     "sn-69-herald-outlet-registry-seed": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1172,
-      "uptime_ratio": 0.9915
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1268,
+      "uptime_ratio": 0.9921
     },
     "sn-69-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.9992
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.9984
     },
     "sn-7-allways-data-artifact": {
       "classification": null,
       "day_count": 7,
-      "last_ok": "2026-07-30T07:00:39.549Z",
+      "last_ok": "2026-07-31T07:00:19.226Z",
       "samples": 512,
       "uptime_ratio": 0.998
     },
     "sn-7-allways-history-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9982
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9983
     },
     "sn-7-allways-history-state-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-7-allways-og-image": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.9985
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.9987
     },
     "sn-7-allways-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-7-allways-treasury": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 1
     },
     "sn-7-allways-treasury-churn": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 1
     },
     "sn-7-allways-treasury-routers": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
       "uptime_ratio": 1
     },
     "sn-70-nexisgen-latest-total-score": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0
     },
     "sn-70-nexisgen-validator-api-healthz": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0
     },
     "sn-70-website-link-nexisgen-ai-data-artifact-5": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9602
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9624
     },
     "sn-71-leadpoet-geo-cities": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9959
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9962
     },
     "sn-71-leadpoet-geo-countries": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9957
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9961
     },
     "sn-71-leadpoet-geo-states": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9959
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9962
     },
     "sn-71-leadpoet-health-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9969
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9971
     },
     "sn-72-natix-huggingface": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9847
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9815
     },
     "sn-72-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.9108
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.9089
     },
     "sn-73-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.887
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.8837
     },
     "sn-74-gittensor-configurations-general": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9992
     },
     "sn-74-gittensor-dash-commits": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-dash-prices": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-dash-prices-history": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-data-artifact": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-data-artifact-api-gittensor-io": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-74-gittensor-data-artifact-api-gittensor-io-2": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-data-artifact-api-gittensor-io-3": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-74-gittensor-data-artifact-api-gittensor-io-4": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-data-artifact-api-gittensor-io-5": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-language-weights": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
-      "uptime_ratio": 0.9923
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
+      "uptime_ratio": 0.9929
     },
     "sn-74-gittensor-lines-hist-trend": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-lines-total": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-repos-commits": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1171,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1267,
       "uptime_ratio": 1
     },
     "sn-74-gittensor-subnet-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-75-hippius-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
       "uptime_ratio": 0.9889
     },
     "sn-75-hippius-model-formats-data-artifact": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9984
     },
     "sn-75-hippius-models-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9992
     },
     "sn-75-hippius-registry-plans": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9992
     },
     "sn-75-hippius-storage-control-health": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9992
     },
     "sn-75-hippius-tao-price": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9992
     },
     "sn-75-hippius-vm-flavors": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9992
     },
     "sn-76-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.8522
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.85
     },
     "sn-77-liquidity-all-addresses": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9991
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9992
     },
     "sn-77-liquidity-all-holders": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
       "uptime_ratio": 1
     },
     "sn-77-liquidity-all-miners": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
       "uptime_ratio": 1
     },
     "sn-77-liquidity-all-votes": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
       "uptime_ratio": 1
     },
     "sn-77-liquidity-positions": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9974
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9976
     },
     "sn-77-liquidity-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
       "uptime_ratio": 1
     },
     "sn-77-liquidity-weights": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1170,
-      "uptime_ratio": 0.9385
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1266,
+      "uptime_ratio": 0.9431
     },
     "sn-78-vocence-llms-txt": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1169,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1265,
       "uptime_ratio": 1
     },
     "sn-78-vocence-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1169,
-      "uptime_ratio": 0.9983
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1265,
+      "uptime_ratio": 0.9984
     },
     "sn-79-mvtrx-paper": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-8-vanta-model-parameters": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9945
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9948
     },
     "sn-8-vanta-slippage-estimates": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9957
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.996
     },
     "sn-80-dogelayer-chain-types": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1169,
-      "uptime_ratio": 0.9932
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1265,
+      "uptime_ratio": 0.9937
     },
     "sn-80-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.8114
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.8107
     },
     "sn-83-cliqueai-min-compute": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1169,
-      "uptime_ratio": 0.9932
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1265,
+      "uptime_ratio": 0.9937
     },
     "sn-83-cliqueai-protocol": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1307,
-      "uptime_ratio": 0.9939
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1403,
+      "uptime_ratio": 0.9943
     },
     "sn-83-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.7774
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.7761
     },
     "sn-84-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.7417
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.7423
     },
     "sn-85-vidaio-video-samples": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9969
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9971
     },
     "sn-86-taomarketcap-subnet-snapshot": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.7137
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.7109
     },
     "sn-88-investing-assets": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9596
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9595
     },
     "sn-88-investing-days-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9577
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9578
     },
     "sn-88-investing-dist-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1168,
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1264,
       "uptime_ratio": 0
     },
     "sn-88-investing-pnl-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1168,
-      "uptime_ratio": 0.9358
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1264,
+      "uptime_ratio": 0.9343
     },
     "sn-88-investing-ratio": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9535
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9508
     },
     "sn-89-infinitehash-miner-constants": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1305,
-      "uptime_ratio": 0.9946
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1401,
+      "uptime_ratio": 0.995
     },
     "sn-89-infinitehash-runtime-version": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9976
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9977
     },
     "sn-89-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.6585
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.6583
     },
     "sn-9-iota-healthcheck": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 711,
-      "uptime_ratio": 0.9902
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 807,
+      "uptime_ratio": 0.9913
     },
     "sn-9-iota-metrics": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1208,
-      "uptime_ratio": 0.9934
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1304,
+      "uptime_ratio": 0.9939
     },
     "sn-9-iota-profiler-status": {
       "classification": null,
-      "day_count": 8,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 607,
-      "uptime_ratio": 0.9885
+      "day_count": 9,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 703,
+      "uptime_ratio": 0.99
     },
     "sn-9-iota-run-info": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1208,
-      "uptime_ratio": 0.9934
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1304,
+      "uptime_ratio": 0.9939
     },
     "sn-90-degenbrain-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.988
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9889
     },
     "sn-90-degenbrain-market-breakdown": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.988
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9889
     },
     "sn-90-degenbrain-resolutions-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9871
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9881
     },
     "sn-90-degenbrain-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.988
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9889
     },
     "sn-90-degenbrain-subnet-api-api-subnet90-com": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9889
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9897
     },
     "sn-90-degenbrain-test-next-chunk": {
       "classification": null,
-      "day_count": 10,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 689,
-      "uptime_ratio": 0.9942
+      "day_count": 11,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 785,
+      "uptime_ratio": 0.9949
     },
     "sn-91-bitstarter-updates-health-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 1
     },
     "sn-92-taomarketcap-subnet-api": {
       "classification": null,
-      "day_count": 15,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1177,
-      "uptime_ratio": 0.6185
+      "day_count": 16,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1273,
+      "uptime_ratio": 0.6237
     },
     "sn-93-bitcast-api-health": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9942
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9946
     },
     "sn-93-bitcast-api-health-database": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9931
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9929
     },
     "sn-93-bitcast-api-health-ready": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-93-bitcast-briefs-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-93-bitcast-get-api-v2-admin-competitor-platforms": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9967
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9972
     },
     "sn-93-bitcast-get-api-v2-admin-orgs": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9902
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9901
     },
     "sn-93-bitcast-get-api-v2-admin-watchlist": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9935
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9944
     },
     "sn-93-bitcast-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9991
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9984
     },
     "sn-93-bitcast-min-compute-spec": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-93-bitcast-validator-briefs": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-93-bitcast-validator-pools": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.996
     },
     "sn-93-bitcast-validator-x-briefs": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-94-alveus-labs-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9897
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9145
     },
     "sn-94-bitsota-capacitor-abi": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1332,
-      "uptime_ratio": 0.9947
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1428,
+      "uptime_ratio": 0.9951
     },
     "sn-94-bitsota-claims-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9914
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9364
     },
     "sn-94-bitsota-dashboard-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9908
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9358
     },
     "sn-94-bitsota-disclaimer-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.992
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.937
     },
     "sn-94-bitsota-healthz": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9889
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9137
     },
     "sn-94-bitsota-idea-rewards": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9889
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9137
     },
     "sn-94-bitsota-onchain-status": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9901
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9173
     },
     "sn-94-bitsota-peer-evaluations": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9893
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9165
     },
     "sn-94-bitsota-problem-config": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1332,
-      "uptime_ratio": 0.994
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1428,
+      "uptime_ratio": 0.9944
     },
     "sn-94-bitsota-readyz": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9897
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9145
     },
     "sn-94-bitsota-reward-snapshot": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9906
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9153
     },
     "sn-94-bitsota-verifications": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9884
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9158
     },
     "sn-94-bitsota-work-items": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9901
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9173
     },
     "sn-95-actual-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 1
     },
     "sn-95-actual-llms-txt": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1336,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1432,
       "uptime_ratio": 1
     },
     "sn-95-actual-model-registry": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0.9994
     },
     "sn-95-actual-model-registry-index": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1336,
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1432,
       "uptime_ratio": 1
     },
     "sn-96-verathos-api-api-conversations": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
       "uptime_ratio": 1
     },
     "sn-96-verathos-api-install-sh": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.9869
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.9887
     },
     "sn-96-verathos-capacity-audit-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.97
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9683
     },
     "sn-96-verathos-dashboard-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-96-verathos-dashboard-timeseries": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.994
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9945
     },
     "sn-96-verathos-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-96-verathos-data-artifact-verathos-ai": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-96-verathos-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.8989
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.8535
     },
     "sn-96-verathos-models-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9112
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.8699
     },
     "sn-96-verathos-models-status": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-96-verathos-network-stats": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.8645
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.8155
     },
     "sn-96-verathos-price-quote": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.8423
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.7886
     },
     "sn-96-verathos-protocol-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9949
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9952
     },
     "sn-96-verathos-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 0
     },
     "sn-96-verathos-subnet-config": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.994
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9945
     },
     "sn-96-verathos-supply-info": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.8273
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.7741
     },
     "sn-96-verathos-supply-max": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 0
     },
     "sn-96-verathos-supply-total": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
       "uptime_ratio": 0
     },
     "sn-96-verathos-usage-timeseries": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.8098
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.7585
     },
     "sn-96-verathos-v1-miner-debug-help": {
       "classification": null,
-      "day_count": 9,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 613,
-      "uptime_ratio": 0.6737
+      "day_count": 10,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 709,
+      "uptime_ratio": 0.598
     },
     "sn-97-albedo-data-artifact": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.958
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9612
     },
     "sn-97-albedo-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.6015
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.6318
     },
     "sn-97-albedo-subnet-api": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.6015
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.6318
     },
     "sn-98-forevermoney-liquidity-manager-abi": {
       "classification": null,
-      "day_count": 17,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1316,
-      "uptime_ratio": 0.9947
+      "day_count": 18,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1412,
+      "uptime_ratio": 0.995
     },
     "sn-98-forevermoney-min-compute-spec": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
-      "uptime_ratio": 0.9969
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
+      "uptime_ratio": 0.9971
     },
     "sn-98-forevermoney-vaults-tvl-api": {
       "classification": null,
-      "day_count": 20,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1633,
+      "day_count": 21,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1729,
       "uptime_ratio": 0
     },
     "sn-99-leoma-blacklist": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-99-leoma-blacklist-miners": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9974
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9976
     },
     "sn-99-leoma-health": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9983
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9984
     },
     "sn-99-leoma-miners-list": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9975
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9977
     },
     "sn-99-leoma-samples-list": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9967
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9969
     },
     "sn-99-leoma-scores": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-99-leoma-scores-rank": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-99-leoma-scores-stats": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     },
     "sn-99-leoma-scores-validators": {
       "classification": null,
-      "day_count": 16,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1210,
-      "uptime_ratio": 0.9975
+      "day_count": 17,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1306,
+      "uptime_ratio": 0.9977
     },
     "sn-99-leoma-tasks-latest": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9983
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9984
     },
     "sn-99-leoma-weights": {
       "classification": null,
-      "day_count": 14,
-      "last_ok": "2026-07-30T07:00:39.549Z",
-      "samples": 1167,
-      "uptime_ratio": 0.9966
+      "day_count": 15,
+      "last_ok": "2026-07-31T07:00:19.226Z",
+      "samples": 1263,
+      "uptime_ratio": 0.9968
     }
   },
   "unverified_reasons": {
     "observed on N of N required days": 8,
-    "uptime N below N": 164
+    "uptime N below N": 169
   },
-  "verified_count": 453
+  "verified_count": 448
 }
