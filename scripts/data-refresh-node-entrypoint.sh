@@ -55,7 +55,7 @@ if [ "$STEP" = "registry-sync-fast" ]; then
   # transient miss here is never a real data-loss risk, only a latency one.
   #
   # FULL clone/fetch, not --depth 1 like the other two jobs: sync-registry-
-  # to-postgres.mjs diffs `git diff base..head` between the last-synced SHA
+  # to-postgres.ts diffs `git diff base..head` between the last-synced SHA
   # and the current one, which can be several commits back by the time this
   # runs -- a shallow clone wouldn't have that history locally and the diff
   # would fail with an unknown-revision error. ~58MB packed for this repo,
