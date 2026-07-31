@@ -1,4 +1,5 @@
 import { Suspense, useMemo, useState } from "react";
+import type { StatusSearch } from "@/routes/status";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -51,7 +52,7 @@ export function HealthHistoryDrilldown() {
   const defaultDate = (latest ?? new Date().toISOString()).slice(0, 10);
   // #3977: URL-backed so a picked date survives reload + is shareable. An empty
   // `date` param means "most recent", so we omit it from the URL in that case.
-  const search = useSearch({ from: "/status" });
+  const search = useSearch({ from: "/status" }) as StatusSearch;
   const navigate = useNavigate({ from: "/status" });
   const date = search.date || defaultDate;
   const setDate = (next: string) =>
@@ -90,7 +91,7 @@ function HealthHistoryBody({ date }: { date: string }) {
   const summary = res.data.summary;
   // #3977: the table's kind/status filters + sort are URL-backed alongside the
   // date so the whole drill-down state is shareable and reload-stable.
-  const search = useSearch({ from: "/status" });
+  const search = useSearch({ from: "/status" }) as StatusSearch;
   const navigate = useNavigate({ from: "/status" });
   const kind = search.kind;
   const status = search.status;
@@ -102,10 +103,15 @@ function HealthHistoryBody({ date }: { date: string }) {
   const onSort = (field: string) => {
     const f = field as SurfaceSortField;
     navigate({
-      search: (prev) =>
-        f === prev.sort
+      search: (previous) => {
+        // #8628: a search middleware collapses `prev` to `{}` in the reducer's
+        // type. validateSearch still applies every default when parsing, so
+        // the value really does carry all fields at runtime.
+        const prev = previous as StatusSearch;
+        return f === prev.sort
           ? { ...prev, order: prev.order === "asc" ? "desc" : "asc" }
-          : { ...prev, sort: f, order: "asc" },
+          : { ...prev, sort: f, order: "asc" };
+      },
     });
   };
 

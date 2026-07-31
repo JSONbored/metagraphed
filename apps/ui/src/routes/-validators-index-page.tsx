@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import type { ValidatorsSearch } from "./validators.index";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMemo, useRef, useState } from "react";
@@ -48,7 +49,7 @@ export const ALL_VALIDATORS_LIMIT = 2000;
 const CONCENTRATION_TOP_N = 10;
 
 export function ValidatorsPage() {
-  const search = useSearch({ from: "/validators/" });
+  const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
   const navigate = useNavigate({ from: "/validators/" });
   const density = search.density ?? "comfortable";
   // Mirror the sibling ranked-list pages (subnets/blocks/surfaces): export the
@@ -102,7 +103,7 @@ function ValidatorsDirectory({
   density: Density;
   onDensityChange: (d: Density) => void;
 }) {
-  const search = useSearch({ from: "/validators/" });
+  const search = useSearch({ from: "/validators/" }) as ValidatorsSearch;
   const navigate = useNavigate({ from: "/validators/" });
   const sort = search.sort || "total_stake_tao";
   const order = search.order ?? "desc";
