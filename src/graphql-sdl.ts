@@ -3500,6 +3500,10 @@ export const SDL = /* GraphQL */ `
     total_issuance_tao: Float
     block_emission_tao: Float
     block_emission_halvings: Int
+    emission_gate_bar: Float
+    emission_bar_quantile: Float
+    emission_gate_exponent: Float
+    emission_gate_exponent_effective: Float
     queried_at: String!
   }
 

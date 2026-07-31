@@ -22,6 +22,12 @@ export const GetNetworkParametersOutputSchema = z
     total_issuance_tao: z.number().nullable(),
     block_emission_tao: z.number().nullable(),
     block_emission_halvings: z.int().nullable(),
+    // #8742: raw vs effective — the exponent's storage item is unset, and
+    // absent means the runtime default (3), never 0.
+    emission_gate_bar: z.number().nullable(),
+    emission_bar_quantile: z.number().nullable(),
+    emission_gate_exponent: z.number().nullable(),
+    emission_gate_exponent_effective: z.number().nullable(),
     queried_at: z.string().nullable(),
   })
   .passthrough();

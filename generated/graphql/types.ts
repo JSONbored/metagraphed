@@ -2161,6 +2161,10 @@ export type NetworkParameters = {
   __typename?: 'NetworkParameters';
   block_emission_halvings?: Maybe<Scalars['Int']['output']>;
   block_emission_tao?: Maybe<Scalars['Float']['output']>;
+  emission_bar_quantile?: Maybe<Scalars['Float']['output']>;
+  emission_gate_bar?: Maybe<Scalars['Float']['output']>;
+  emission_gate_exponent?: Maybe<Scalars['Float']['output']>;
+  emission_gate_exponent_effective?: Maybe<Scalars['Float']['output']>;
   pending_childkey_cooldown_blocks?: Maybe<Scalars['Int']['output']>;
   queried_at: Scalars['String']['output'];
   schema_version: Scalars['Int']['output'];
@@ -7756,6 +7760,10 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 export type NetworkParametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NetworkParameters'] = ResolversParentTypes['NetworkParameters']> = ResolversObject<{
   block_emission_halvings?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   block_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_bar_quantile?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_bar?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_exponent?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_exponent_effective?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   pending_childkey_cooldown_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
