@@ -1676,11 +1676,15 @@ async fn run() -> Result<()> {
     let rpc_url = std::env::var("EVENTS_RPC_URL")
         .unwrap_or_else(|_| "wss://archive.chain.opentensor.ai:443".to_string());
     let rpc_url_log = redact_rpc_url(&rpc_url);
-    let client = Arc::new(ChainClient::connect(rpc_url.clone()).await?);
-    eprintln!("main: connect_chain returned, api ready");
+    // Deliberately NOT built for the backfill path: the backfill assembles its
+    // client from one shared raw rpc client further down, and a process must
+    // only ever build ONE http client (see connect_chain_from_rpc's doc
+    // comment) -- so live/verify build theirs inside their own branches.
 
     // VERIFY mode: decode the given blocks, print canonical JSON, exit (no DB).
     if let Ok(list) = std::env::var("VERIFY_BLOCKS") {
+        let client = Arc::new(ChainClient::connect(rpc_url.clone()).await?);
+        eprintln!("main: connect_chain returned, api ready");
         let head = client
             .call(|api| async move { Ok(api.at_current_block().await?.block_number()) })
             .await?;
@@ -1700,22 +1704,121 @@ async fn run() -> Result<()> {
         return Ok(());
     }
 
+    // DISCOVER-ONLY mode: probe [BACKFILL_FROM, BACKFILL_TO]'s runtime-version
+    // segments once and write them to the given path, then exit -- run by
+    // entrypoint.sh BEFORE spawning shards so N shards don't each redo the
+    // same multi-minute probe of overlapping history (which also made a fresh
+    // launch look wedged: discovery emits little output and used to run
+    // per-shard, sequentially, concurrently with 7 siblings). No DB needed.
+    if let Ok(out_path) = std::env::var("BACKFILL_DISCOVER_TO_FILE") {
+        let rpc = backfill_rs::build_rpc_client(&rpc_url).await?;
+        let head_header: serde_json::Value = rpc
+            .request("chain_getHeader", subxt::rpcs::rpc_params![])
+            .await
+            .context("chain_getHeader")?;
+        let head = u64::from_str_radix(
+            head_header["number"]
+                .as_str()
+                .context("chain_getHeader: no number")?
+                .trim_start_matches("0x"),
+            16,
+        )
+        .context("parse head number")?;
+        let to = env_u64("BACKFILL_TO").unwrap_or(head).min(head);
+        let from = env_u64("BACKFILL_FROM").unwrap_or(1);
+        eprintln!("discover-only: probing spec ranges for #{from}..#{to} (head={head})");
+        let t0 = std::time::Instant::now();
+        let ranges = backfill_rs::discover_spec_ranges(&rpc, from, to)
+            .await
+            .context("discover spec ranges")?;
+        eprintln!(
+            "discover-only: {} segments in {:.1}s: {}",
+            ranges.len(),
+            t0.elapsed().as_secs_f64(),
+            ranges
+                .iter()
+                .map(|(s, e, v, _)| format!("[{s},{e})=v{v}"))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        // Atomic write: shards must never read a half-written file.
+        let tmp = format!("{out_path}.tmp");
+        std::fs::write(&tmp, backfill_rs::spec_ranges_to_json(&ranges))?;
+        std::fs::rename(&tmp, &out_path)?;
+        return Ok(());
+    }
+
     let db_url = std::env::var("DATABASE_URL").context("DATABASE_URL required")?;
     let mut pg = connect_pg(&db_url).await?;
 
     // LIVE mode: follow the head forward (replaces the Python index-chain.py).
     if std::env::var("INDEX_MODE").as_deref() == Ok("live") {
-        eprintln!("main: entering run_live");
+        let client = Arc::new(ChainClient::connect(rpc_url.clone()).await?);
+        eprintln!("main: connect_chain returned, api ready; entering run_live");
         return run_live(&client, &mut pg).await;
     }
 
-    eprintln!("main: calling api.at_current_block()");
-    let head = client
-        .call(|api| async move { Ok(api.at_current_block().await?.block_number()) })
-        .await?;
-    eprintln!("main: at_current_block returned head={head}");
+    // The backfill's chain client is built from ONE raw rpc client used for
+    // everything: head probe, spec-range discovery, then the OnlineClient
+    // itself. Do NOT build a second client in this process -- see
+    // connect_chain_from_rpc's doc comment (a second HttpClient's first
+    // request was observed to hang indefinitely). The plain `client` built at
+    // the top of run() is deliberately left unused from here on.
+    let rpc = backfill_rs::build_rpc_client(&rpc_url).await?;
+    eprintln!("main: probing head via chain_getHeader");
+    let head_header: serde_json::Value = rpc
+        .request("chain_getHeader", subxt::rpcs::rpc_params![])
+        .await
+        .context("chain_getHeader")?;
+    let head = u64::from_str_radix(
+        head_header["number"]
+            .as_str()
+            .context("chain_getHeader: no number")?
+            .trim_start_matches("0x"),
+        16,
+    )
+    .context("parse head number")?;
+    eprintln!("main: head={head}");
     let to = env_u64("BACKFILL_TO").unwrap_or(head);
     let from = env_u64("BACKFILL_FROM").unwrap_or_else(|| to.saturating_sub(365 * BLOCKS_PER_DAY));
+
+    // Runtime-version segments for the range: load the launcher's shared
+    // discovery file when present (BACKFILL_SPEC_FILE, written by the
+    // discover-once step below), else probe here. Baked into the client's
+    // config this removes the per-block Core_version wasm call from
+    // at_block() entirely (the dominant historical per-block cost; see
+    // discover_spec_ranges' own doc comment).
+    let t_spec = std::time::Instant::now();
+    let spec_ranges = match std::env::var("BACKFILL_SPEC_FILE") {
+        Ok(path) => backfill_rs::spec_ranges_from_json(
+            &std::fs::read_to_string(&path)
+                .with_context(|| format!("read BACKFILL_SPEC_FILE {path}"))?,
+        )?,
+        Err(_) => backfill_rs::discover_spec_ranges(&rpc, from, to.min(head))
+            .await
+            .context("discover spec ranges")?,
+    };
+    eprintln!(
+        "spec ranges for #{from}..#{} ({} segments, {:.1}s): {}",
+        to.min(head),
+        spec_ranges.len(),
+        t_spec.elapsed().as_secs_f64(),
+        spec_ranges
+            .iter()
+            .map(|(s, e, v, _)| format!("[{s},{e})=v{v}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    // Shift by one block before handing the map to subxt: a block is decoded
+    // with the runtime that ENCODED it, not the one reported at its own hash.
+    // See shift_spec_ranges_for_event_decoding -- without this, every
+    // runtime-upgrade boundary block fails to decode and wedges its chunk.
+    let decode_ranges = backfill_rs::shift_spec_ranges_for_event_decoding(&spec_ranges);
+    let api = backfill_rs::connect_chain_from_rpc(rpc, &decode_ranges)
+        .await
+        .context("connect from rpc with spec ranges")?;
+    let client = Arc::new(ChainClient::from_parts(rpc_url.clone(), decode_ranges, api));
+
     let concurrency = env_u64("BACKFILL_CONCURRENCY").unwrap_or(12) as usize;
     let chunk = env_u64("BACKFILL_CHUNK").unwrap_or(2000);
     let progress_path =

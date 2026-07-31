@@ -928,30 +928,60 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Every firehose trigger carries the SAME `WHEN` age gate. The firehose
+-- broadcasts LIVE chain activity to subscribers; a historical backfill
+-- replaying old blocks through it has no consumer and must not pay for it.
+--
+-- This is a throughput cliff, not a nicety. enqueue_chain_firehose() runs FOR
+-- EACH ROW and, per row, does a DELETE ... WHERE created_at < now() - 1 hour
+-- plus an ORDER BY id DESC OFFSET 4999 ... DELETE over chain_firehose_outbox
+-- before inserting. Affordable at live rate (a few rows per 12s block);
+-- ruinous for a backfill inserting millions. Measured on meta-indexer-01
+-- 2026-07-31 via EXPLAIN ANALYZE of the indexer's own flush statement:
+-- inserting 500 rows into `blocks` took 63,242ms, of which the insert was
+-- 13ms and the trigger was 63,228ms -- 99.98% of runtime, ~126ms per row.
+-- With this gate the identical statement runs in 13.5ms (~4,700x).
+--
+-- A WHEN clause is evaluated by the executor WITHOUT entering the function
+-- body, so skipped rows cost essentially nothing.
+--
+-- 10 minutes of slack (600000 ms), not a tight bound: live-follow can
+-- legitimately lag the head briefly (reconnects, restarts) and those rows
+-- must still reach the firehose. observed_at is epoch ms (see the hypertable
+-- comments in schema-timescaledb.sql), hence the extract(epoch)*1000 form.
 DROP TRIGGER IF EXISTS trg_blocks_firehose ON blocks;
 CREATE TRIGGER trg_blocks_firehose
   AFTER INSERT ON blocks
-  FOR EACH ROW EXECUTE FUNCTION enqueue_chain_firehose('blocks');
+  FOR EACH ROW
+  WHEN (NEW.observed_at > (extract(epoch from now()) * 1000)::bigint - 600000)
+  EXECUTE FUNCTION enqueue_chain_firehose('blocks');
 
 DROP TRIGGER IF EXISTS trg_extrinsics_firehose ON extrinsics;
 CREATE TRIGGER trg_extrinsics_firehose
   AFTER INSERT ON extrinsics
-  FOR EACH ROW EXECUTE FUNCTION enqueue_chain_firehose('extrinsics');
+  FOR EACH ROW
+  WHEN (NEW.observed_at > (extract(epoch from now()) * 1000)::bigint - 600000)
+  EXECUTE FUNCTION enqueue_chain_firehose('extrinsics');
 
 DROP TRIGGER IF EXISTS trg_chain_events_firehose ON chain_events;
 CREATE TRIGGER trg_chain_events_firehose
   AFTER INSERT ON chain_events
-  FOR EACH ROW EXECUTE FUNCTION enqueue_chain_firehose('chain_events');
+  FOR EACH ROW
+  WHEN (NEW.observed_at > (extract(epoch from now()) * 1000)::bigint - 600000)
+  EXECUTE FUNCTION enqueue_chain_firehose('chain_events');
 
 -- #4984 prerequisite (see enqueue_chain_firehose()'s account_events branch
 -- above). account_events is ALSO a TimescaleDB hypertable
 -- (schema-timescaledb.sql), so this trigger fires on its per-time-range
 -- chunk exactly like the three above -- TG_ARGV[0] carries the logical name
 -- for the same reason.
+-- Same age gate as the three above -- see their comment for the measurement.
 DROP TRIGGER IF EXISTS trg_account_events_firehose ON account_events;
 CREATE TRIGGER trg_account_events_firehose
   AFTER INSERT ON account_events
-  FOR EACH ROW EXECUTE FUNCTION enqueue_chain_firehose('account_events');
+  FOR EACH ROW
+  WHEN (NEW.observed_at > (extract(epoch from now()) * 1000)::bigint - 600000)
+  EXECUTE FUNCTION enqueue_chain_firehose('account_events');
 
 -- ---------------------------------------------------------------------------
 -- Chain alert triggers (#4984, ADR 0015) -- user-defined "notify me when X
