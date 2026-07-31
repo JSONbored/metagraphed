@@ -4,6 +4,10 @@ import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { generateClientSource } from "./generate-client.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
 import {
+  removeInlinedOpenApiSpec,
+  writeInlinedOpenApiSpec,
+} from "./openapi-inline-examples.ts";
+import {
   readJson,
   repoRoot,
   stableStringify,
@@ -74,11 +78,17 @@ if (!openApiMatches) {
   failWithErrors();
 }
 
+// Regenerate through the SAME inlined projection generate-types.ts writes from
+// (#8763) — openapi-typescript cannot read the hoisted components.examples map,
+// so reading the published document directly here would rebuild types with every
+// `@example` JSDoc block missing and report the committed, correct copies as
+// stale. One shared module, so "current" means the same thing in both places.
+const { specPath: inlinedSpecPath } = await writeInlinedOpenApiSpec();
 const typegen = spawnSync(
   process.execPath,
   [
     path.join(repoRoot, "node_modules/openapi-typescript/bin/cli.js"),
-    "public/metagraph/openapi.json",
+    inlinedSpecPath,
   ],
   {
     cwd: repoRoot,
@@ -89,6 +99,7 @@ const typegen = spawnSync(
     maxBuffer: 32 * 1024 * 1024,
   },
 );
+await removeInlinedOpenApiSpec(inlinedSpecPath);
 if (typegen.status !== 0) {
   process.stdout.write(typegen.stdout || "");
   process.stderr.write(typegen.stderr || "");

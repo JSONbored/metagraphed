@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import { openApiExampleValue } from "./openapi-example-value.ts";
 import {
   handleSubnetIdentityHistory,
   handleAccountIdentityHistory,
@@ -55,14 +56,20 @@ describe("identity-history OpenAPI CSV contract", () => {
         "200"
       ].content["text/csv"];
     assert.equal(subnetCsv.schema.type, "string");
-    assert.equal(subnetCsv.example.split("\r\n")[0], SUBNET_CSV_HEADER);
+    assert.equal(
+      openApiExampleValue(openapi, subnetCsv).split("\r\n")[0],
+      SUBNET_CSV_HEADER,
+    );
 
     const accountCsv =
       openapi.paths["/api/v1/accounts/{ss58}/identity-history"].get.responses[
         "200"
       ].content["text/csv"];
     assert.equal(accountCsv.schema.type, "string");
-    assert.equal(accountCsv.example.split("\r\n")[0], ACCOUNT_CSV_HEADER);
+    assert.equal(
+      openApiExampleValue(openapi, accountCsv).split("\r\n")[0],
+      ACCOUNT_CSV_HEADER,
+    );
   });
 });
 

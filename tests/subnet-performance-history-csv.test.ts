@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import { openApiExampleValue } from "./openapi-example-value.ts";
 import {
   canonicalSubnetPerformanceHistoryCachePath,
   handleSubnetPerformanceHistory,
@@ -41,7 +42,10 @@ describe("subnet performance history OpenAPI CSV contract", () => {
       openapi.paths["/api/v1/subnets/{netuid}/performance/history"].get
         .responses["200"].content["text/csv"];
     assert.equal(csvContent.schema.type, "string");
-    assert.equal(csvContent.example.split("\r\n")[0], CSV_HEADER);
+    assert.equal(
+      openApiExampleValue(openapi, csvContent).split("\r\n")[0],
+      CSV_HEADER,
+    );
   });
 });
 

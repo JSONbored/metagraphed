@@ -2,17 +2,24 @@ import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import {
+  removeInlinedOpenApiSpec,
+  writeInlinedOpenApiSpec,
+} from "./openapi-inline-examples.ts";
 
 const outputPaths = [
   path.join(repoRoot, "packages/contract/index.d.ts"),
   path.join(repoRoot, "public/metagraph/types.d.ts"),
 ];
+// Regenerate through the same inlined projection generate-types.ts writes from
+// (#8763). openapi-typescript cannot read the hoisted components.examples map,
+// so reading the published document directly here would rebuild the types with
+// every `@example` JSDoc block missing and call the committed, correct copies
+// stale.
+const { specPath } = await writeInlinedOpenApiSpec();
 const result = spawnSync(
   process.execPath,
-  [
-    path.join(repoRoot, "node_modules/openapi-typescript/bin/cli.js"),
-    "public/metagraph/openapi.json",
-  ],
+  [path.join(repoRoot, "node_modules/openapi-typescript/bin/cli.js"), specPath],
   {
     cwd: repoRoot,
     encoding: "utf8",
@@ -22,6 +29,7 @@ const result = spawnSync(
     maxBuffer: 32 * 1024 * 1024,
   },
 );
+await removeInlinedOpenApiSpec(specPath);
 
 if (result.status !== 0) {
   process.stdout.write(result.stdout || "");

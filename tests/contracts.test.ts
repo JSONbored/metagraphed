@@ -21,6 +21,7 @@ import {
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
 import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import { openApiExampleValue } from "./openapi-example-value.ts";
 import type { Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
@@ -300,9 +301,15 @@ describe("public contract registry", () => {
     );
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
 
-    const fixtureExample =
+    // Examples are hoisted into components.examples and referenced by $ref
+    // (#8763) — openApiExampleValue follows the pointer. The hoisting mechanism
+    // itself is asserted in tests/openapi-examples.test.ts; this test is about
+    // the fixture route's example content.
+    const fixtureExample = openApiExampleValue(
+      openapi,
       openapi.paths["/api/v1/fixtures/{surface_id}"].get.responses["200"]
-        .content["application/json"].example;
+        .content["application/json"],
+    );
     assert.equal(fixtureExample.data.surface_id, "7:subnet-api:new_v2");
     assert.equal(fixtureExample.data.response.status, 200);
     assert.deepEqual(fixtureExample.data.response.body, { ok: true });
@@ -357,7 +364,10 @@ describe("public contract registry", () => {
       const csvContent =
         openapi.paths[path].get.responses["200"].content["text/csv"];
       assert.equal(csvContent.schema.type, "string");
-      assert.equal(csvContent.example.split("\r\n")[0], expectedHeader);
+      assert.equal(
+        openApiExampleValue(openapi, csvContent).split("\r\n")[0],
+        expectedHeader,
+      );
     }
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
