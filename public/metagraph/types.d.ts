@@ -5942,9 +5942,9 @@ export interface components {
             block_number: number;
             count: number;
             events: {
-                args?: {
+                args?: ({
                     [key: string]: unknown;
-                } | null;
+                } | unknown[]) | null;
                 block_number?: number | null;
                 event_index: number | null;
                 extrinsic_index?: number | null;
@@ -6343,9 +6343,9 @@ export interface components {
         ChainEventsFeedArtifact: {
             count: number;
             events: {
-                args?: {
+                args?: ({
                     [key: string]: unknown;
-                } | null;
+                } | unknown[]) | null;
                 block_number: number | null;
                 event_index: number | null;
                 extrinsic_index?: number | null;
