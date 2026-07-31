@@ -107,6 +107,7 @@ test("GET /accounts/{ss58} is schema-stable when D1 is cold (never 404)", async 
   assert.equal(body.data.activity.tx_count, 0);
   assert.equal(body.data.activity.last_tx_at, null);
   assert.deepEqual(body.data.activity.modules_called, []);
+  assert.equal(body.data.activity.modules_called_capped, false);
 });
 
 test("GET /accounts/{ss58}/extrinsics rejects an unsupported query param", async () => {

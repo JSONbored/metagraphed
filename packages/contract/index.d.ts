@@ -5547,6 +5547,7 @@ export interface components {
                     call_module: string | null;
                     count: number;
                 }[];
+                modules_called_capped: boolean;
                 total_fee_tao: number | null;
                 tx_count: number;
             };
@@ -22789,6 +22790,7 @@ export interface operations {
                      *               "count": 1
                      *             }
                      *           ],
+                     *           "modules_called_capped": false,
                      *           "total_fee_tao": 0.5,
                      *           "tx_count": 1
                      *         },

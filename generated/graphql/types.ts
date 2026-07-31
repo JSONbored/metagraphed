@@ -14,12 +14,13 @@ export type Scalars = {
   JSON: { input: unknown; output: unknown; }
 };
 
-/** Signing-activity aggregate from the extrinsics tier, matched by signer only -- an account queried by a key that did not sign returns tx_count 0, other fields null/empty. */
+/** Signing-activity aggregate from the extrinsics tier, matched by signer only. tx_count / total_fee_tao / last_tx_* are all-time over every extrinsic this address has signed; modules_called is the pallet mix over the newest 1000 only, with modules_called_capped true when that window is incomplete. An account queried by a key that did not sign returns tx_count 0, modules_called_capped false, other fields null/empty. */
 export type AccountActivity = {
   __typename?: 'AccountActivity';
   last_tx_at?: Maybe<Scalars['String']['output']>;
   last_tx_block?: Maybe<Scalars['Int']['output']>;
   modules_called: Array<AccountModuleCall>;
+  modules_called_capped: Scalars['Boolean']['output'];
   total_fee_tao?: Maybe<Scalars['Float']['output']>;
   tx_count: Scalars['Int']['output'];
 };
@@ -6024,6 +6025,7 @@ export type AccountActivityResolvers<ContextType = GqlContext, ParentType extend
   last_tx_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   last_tx_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   modules_called?: Resolver<Array<ResolversTypes['AccountModuleCall']>, ParentType, ContextType>;
+  modules_called_capped?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   total_fee_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tx_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;

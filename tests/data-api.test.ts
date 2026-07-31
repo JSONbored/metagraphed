@@ -1433,11 +1433,54 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from two merged
   expect(body.recent_events.length).toBe(2);
   expect(body.activity.tx_count).toBe(3);
   expect(body.activity.modules_called[0].call_module).toBe("SubtensorModule");
+  expect(body.activity.modules_called_capped).toBe(false);
   const text = queryText();
   expect(text).toContain("FROM account_events WHERE hotkey =");
   expect(text).toContain("FROM account_events WHERE coldkey =");
   expect(text).toContain("hotkey IS NULL OR hotkey <>");
   expect(text).not.toContain("WHERE (hotkey =");
+  // #8822: activity aggregates are all-time — no LIMIT 1000 subquery over
+  // extrinsics for tx_count / total_fee_tao.
+  expect(text).toMatch(
+    /SELECT COUNT\(\*\) AS tx_count[\s\S]*FROM extrinsics WHERE signer =/,
+  );
+  expect(text).not.toMatch(
+    /FROM \(SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer =[\s\S]*LIMIT 1000\) sub/,
+  );
+});
+
+test("GET /api/v1/accounts/:ss58 activity SQL has no capped LIMIT subquery for tx_count (#8822)", async () => {
+  mockQueue.current = [
+    [], // SET
+    [], // SET LOCAL statement_timeout
+    [], // hotkeyScanRows
+    [], // coldkeyScanRows
+    [], // regRows
+    [
+      {
+        tx_count: "1001",
+        last_tx_block: 8586300,
+        last_tx_at: "1783600000000",
+        total_fee_tao: "1.0",
+      },
+    ],
+    [{ call_module: "SubtensorModule", count: "10" }],
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.activity.tx_count).toBe(1001);
+  expect(body.activity.modules_called_capped).toBe(true);
+  const activitySql = sqlCalls
+    .map((c) => c.text)
+    .find(
+      (t) => /AS tx_count/.test(t) && /FROM extrinsics WHERE signer =/.test(t),
+    );
+  expect(activitySql).toBeTruthy();
+  expect(activitySql!).not.toMatch(/LIMIT\s+1000/);
+  expect(activitySql!).toMatch(
+    /SELECT COUNT\(\*\) AS tx_count, MAX\(block_number\) AS last_tx_block, MAX\(observed_at\) AS last_tx_at, SUM\(fee_tao\) AS total_fee_tao\s+FROM extrinsics WHERE signer =/,
+  );
 });
 
 test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {
