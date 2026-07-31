@@ -12,9 +12,10 @@ _openapi:
     contents:
       - content: 'Fetch the per-domain rollup overview: every domain/capability tag in
           the existing 14-tag taxonomy, each with its member subnet count, total
-          stake, total emission share, and within-domain emission concentration.
-          Computed live from the subnets index + economics tier (no static
-          file). The aggregation layer over the existing ?domain= filter on
+          stake, total emission share (the sum of the stage-1 price shares, not
+          TAO received), and within-domain emission concentration. Computed live
+          from the subnets index + economics tier (no static file). The
+          aggregation layer over the existing ?domain= filter on
           /api/v1/subnets.'
 ---
 
