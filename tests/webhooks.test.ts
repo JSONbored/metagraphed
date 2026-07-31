@@ -338,6 +338,14 @@ describe("deliverChangeEvent", () => {
       event,
       fetchFn,
       now,
+      // Real backoff (exercises the default sleepFn), but 1ms rather than the
+      // 500ms default. These two tests were the only ones in the suite that
+      // slept on a real timer, and the only ones that timed out at 30s once the
+      // artifact builds joined the parallel pass -- a pending timer only fires
+      // when the worker's event loop runs, so the shorter the wait, the smaller
+      // the window a saturated box can stall it in. The backoff SCHEDULE is
+      // asserted separately below with an injected sleepFn.
+      backoffBaseMs: 1,
     });
     assert.equal(res.status, "delivered");
     assert.equal(res.attempts, 2);
@@ -386,6 +394,7 @@ describe("deliverChangeEvent", () => {
       fetchFn,
       now,
       maxAttempts: 3,
+      backoffBaseMs: 1, // see "retries 5xx then succeeds"
     });
     assert.equal(res.status, "failed");
     assert.equal(res.attempts, 3);
