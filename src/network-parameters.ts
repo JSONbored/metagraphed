@@ -50,13 +50,13 @@ const PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY =
 // under the same SubtensorModule prefix -- and all SIXTEEN bytes, not eight,
 // which is why they cannot go through fetchStorageU64 below.
 // twox128("SubtensorModule") ++ twox128("EmissionGateBar").
-const EMISSION_GATE_BAR_STORAGE_KEY =
+export const EMISSION_GATE_BAR_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf05557c9b0d2964cc73e7519676c3cc4d5df9";
 // twox128("SubtensorModule") ++ twox128("EmissionBarQuantile").
-const EMISSION_BAR_QUANTILE_STORAGE_KEY =
+export const EMISSION_BAR_QUANTILE_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf0555a772007dde2ed63e0f21b5f9d7f16650";
 // twox128("SubtensorModule") ++ twox128("EmissionGateExponent").
-const EMISSION_GATE_EXPONENT_STORAGE_KEY =
+export const EMISSION_GATE_EXPONENT_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf055588c70e8dd0cf4af3aeb977ba2eee1df4";
 
 /**
@@ -70,12 +70,12 @@ const EMISSION_GATE_EXPONENT_STORAGE_KEY =
  */
 export const DEFAULT_EMISSION_GATE_EXPONENT = 3;
 
-const TOTAL_ISSUANCE_STORAGE_KEY =
+export const TOTAL_ISSUANCE_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf055557c875e4cff74148e4628f264b974c80";
 
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // BigInt. Returns null for anything else (malformed/short/absent result).
-function decodeLeU64(hex: unknown): bigint | null {
+export function decodeLeU64(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
     return null;
   }
@@ -144,7 +144,7 @@ async function fetchStorageU64(
  * perfectly good 16-byte value is exactly how these three parameters would
  * have read as "unavailable" forever.
  */
-function decodeLeU128(hex: unknown): bigint | null {
+export function decodeLeU128(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{32}$/.test(hex)) {
     return null;
   }
@@ -156,7 +156,7 @@ function decodeLeU128(hex: unknown): bigint | null {
 }
 
 /** U64F64 (64 integer bits + 64 fraction bits) as a float. */
-function u64f64U128ToFloat(bits: bigint): number {
+export function u64f64U128ToFloat(bits: bigint): number {
   // Split in BigInt space before dividing -- Number(bits) / 2**64 routes the
   // numerator through double rounding first. Same reasoning as
   // src/subnet-conviction.ts's u64f64BitsToFloat.

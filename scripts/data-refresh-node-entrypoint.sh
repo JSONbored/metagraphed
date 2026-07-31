@@ -174,8 +174,21 @@ case "$STEP" in
     echo "entrypoint: reconciling neurons against a fresh chain snapshot"
     exec node scripts/reconcile-neurons.ts
     ;;
+  emission-gate-sample)
+    # #8748 + #8750. A STEP here rather than its own image/role: this is pure
+    # Node + one RPC endpoint + Postgres, exactly what this runner already
+    # provides, and the job writes nothing unless a value actually moved.
+    #
+    # EMISSION_SAMPLER_RPC_URL must point at a node AT CHAIN TIP -- the
+    # fullnode, not the archive node, which is still syncing and would report
+    # months-old gate parameters as if they were current.
+    : "${DATABASE_URL:?DATABASE_URL env var required for the emission-gate-sample step}"
+    : "${EMISSION_SAMPLER_RPC_URL:?EMISSION_SAMPLER_RPC_URL env var required for the emission-gate-sample step}"
+    echo "entrypoint: sampling emission-gate parameters + dormant flow-path watch"
+    exec node scripts/sample-emission-gate.ts
+    ;;
   *)
-    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons)" >&2
+    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons|emission-gate-sample)" >&2
     exit 1
     ;;
 esac
