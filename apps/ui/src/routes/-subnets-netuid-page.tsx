@@ -108,6 +108,7 @@ import {
 } from "@/lib/metagraphed/event-kinds";
 import {
   aggregateActivityEvents,
+  activityGroupKey,
   activityGroupSpanMinutes,
   type ActivityGroup,
 } from "@/lib/metagraphed/activity-aggregation";
@@ -1502,12 +1503,21 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   // block/index + kind (the row `key` minus the array index).
   const seenRowsRef = useRef<Set<string>>(new Set());
   const primedRef = useRef(false);
-  const groupKeys = groups.map(
-    (g) => `${g.kind}-${g.events[0]!.block_number}-${g.events[0]!.event_index}`,
-  );
+  // #8817: one content-derived identity per group (activityGroupKey), used for
+  // BOTH the React key and the expand/collapse open-set, so a prepended live
+  // event -- which shifts every group's array index -- never moves a row's
+  // identity out from under the open-set.
+  const groupKeys = groups.map(activityGroupKey);
   const { newKeys } = diffNewRows(groupKeys, seenRowsRef.current, primedRef.current);
   primedRef.current = true;
-  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<number>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(new Set());
+  // #8817 (Req 3): the list is capped at 100 and rolls continuously, so a
+  // string-keyed set would grow without bound as groups age out. Derive the
+  // rendered open-set by intersecting with the keys currently on screen -- no
+  // state write on the common render path; stale keys (aged-out groups, or the
+  // groups a kind-filter change dropped) simply fall away.
+  const currentKeys = new Set(groupKeys);
+  const renderedExpanded = new Set([...expandedGroups].filter((key) => currentKeys.has(key)));
 
   // #8445: subscribe to the firehose's `account_events` topic (the only one
   // that carries `netuid` on the payload -- `chain_events` doesn't) so a new
@@ -1579,22 +1589,28 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {groups.map((group, i) => (
-                <ActivityGroupRow
-                  key={`${group.kind}-${group.events[0]!.block_number}-${group.events[0]!.event_index}-${i}`}
-                  group={group}
-                  isNew={newKeys.has(groupKeys[i]!)}
-                  expanded={expandedGroups.has(i)}
-                  onToggle={() =>
-                    setExpandedGroups((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(i)) next.delete(i);
-                      else next.add(i);
-                      return next;
-                    })
-                  }
-                />
-              ))}
+              {groups.map((group, i) => {
+                const key = groupKeys[i]!;
+                return (
+                  <ActivityGroupRow
+                    key={key}
+                    group={group}
+                    isNew={newKeys.has(key)}
+                    expanded={renderedExpanded.has(key)}
+                    onToggle={() =>
+                      setExpandedGroups((prev) => {
+                        // Prune to the keys currently on screen while we're
+                        // already rebuilding the set, so it can't grow past the
+                        // visible groups (#8817 Req 3).
+                        const next = new Set([...prev].filter((k) => currentKeys.has(k)));
+                        if (next.has(key)) next.delete(key);
+                        else next.add(key);
+                        return next;
+                      })
+                    }
+                  />
+                );
+              })}
             </tbody>
           </table>
         </ResponsiveTable>

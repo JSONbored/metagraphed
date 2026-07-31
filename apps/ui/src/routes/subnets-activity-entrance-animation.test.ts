@@ -37,3 +37,25 @@ describe("subnet-activity entrance animation wiring (#8528)", () => {
     expect(source).toContain('isNew && !nested && "mg-fade-in"');
   });
 });
+
+// #8817: the expand/collapse open-set must be keyed by the content-derived
+// activityGroupKey, not by array index -- a prepended live event shifts every
+// group's index, so an index-keyed set collapses the open row and springs a
+// different one open.
+describe("subnet-activity expand/collapse identity wiring (#8817)", () => {
+  it("keys the open-set by string identity, never by array index", () => {
+    expect(source).not.toMatch(/useState<ReadonlySet<number>>/);
+    expect(source).toMatch(/useState<ReadonlySet<string>>/);
+  });
+
+  it("does not read expand state by index", () => {
+    expect(source).not.toContain("expandedGroups.has(i)");
+  });
+
+  it("derives group identity from the single activityGroupKey helper", () => {
+    expect(source).toContain("activityGroupKey");
+    // The row key and the state key come from the same helper -- no second,
+    // index-suffixed identity string beside it.
+    expect(source).not.toMatch(/\$\{group\.kind\}-\$\{group\.events\[0\]!\.block_number\}/);
+  });
+});
