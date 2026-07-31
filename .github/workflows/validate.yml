@@ -117,6 +117,7 @@ jobs:
       run_migrations_validation: ${{ steps.filter.outputs.run_migrations_validation }}
       run_db_types_validation: ${{ steps.filter.outputs.run_db_types_validation }}
       run_ui_validation: ${{ steps.filter.outputs.run_ui_validation }}
+      run_ui_e2e: ${{ steps.filter.outputs.run_ui_e2e }}
       run_python_validation: ${{ steps.filter.outputs.run_python_validation }}
     steps:
       - name: Checkout
@@ -140,6 +141,7 @@ jobs:
               echo "run_migrations_validation=true"
               echo "run_db_types_validation=true"
               echo "run_ui_validation=true"
+              echo "run_ui_e2e=true"
               echo "run_python_validation=true"
             } >> "$GITHUB_OUTPUT"
             echo "Not a pull_request event (${{ github.event_name }}) -- full validation runs."
@@ -161,6 +163,7 @@ jobs:
               echo "run_migrations_validation=true"
               echo "run_db_types_validation=true"
               echo "run_ui_validation=true"
+              echo "run_ui_e2e=true"
               echo "run_python_validation=true"
             } >> "$GITHUB_OUTPUT"
             echo "No changed files detected -- full validation runs."
@@ -200,6 +203,21 @@ jobs:
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+          # The Playwright overflow check renders pages in a browser, so only a
+          # change that can alter RENDERED OUTPUT can alter its result (#8929).
+          # packages/contract is types-only -- its whole published surface is
+          # index.d.ts ("files": ["index.d.ts"], no "main"), and TypeScript types
+          # are erased at runtime -- so a contract-only diff cannot move a pixel.
+          # It still needs the rest of the ui job (typecheck, the committed-dist
+          # drift checks), just not 240s of browser work. Same for
+          # chain-summaries/ui-kit-only diffs, which have their own suites here.
+          # packages/client IS included: its committed dist is real runtime code
+          # apps/ui executes, so it can change what renders.
+          if grep -qE '^apps/ui/|^packages/client/' changed-files.txt; then
+            echo "run_ui_e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_ui_e2e=false" >> "$GITHUB_OUTPUT"
           fi
           # Same-shape flag for the python job: the Python SDK's hermetic suite reads only python/**,
           # so a PR with zero changes there cannot affect its result.
@@ -950,12 +968,14 @@ jobs:
       # the only input that changes which binary is downloaded -- an unrelated
       # dependency bump must not evict a still-correct browser.
       - name: Resolve Playwright version
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         id: playwright-version
         working-directory: apps/ui
         run: |
           echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -973,6 +993,7 @@ jobs:
       # the cached binary unable to launch on a runner image whose preinstalled
       # libraries have since drifted.
       - name: Install Playwright Chromium
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         working-directory: apps/ui
         run: |
           if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
@@ -986,6 +1007,7 @@ jobs:
       # in the known baseline, so this doesn't block on the existing tracked
       # overflow backlog (#3930, #3931, #3985, etc.).
       - name: Responsive overflow check (e2e)
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         run: npm run test:e2e --workspace=apps/ui
 
       # LOVABLE_SANDBOX force-enables Nitro's cloudflare-module preset outside
