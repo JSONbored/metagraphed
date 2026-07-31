@@ -11,6 +11,7 @@ import {
 } from "../workers/api.ts";
 import workerDefault from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
+import { tieredRejectionResponse } from "../workers/tiered-rate-limit.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.ts";
 import * as workerConfig from "../workers/config.ts";
 import { type AnyFn, type Row } from "./row-type.ts";
@@ -3322,6 +3323,100 @@ describe("Access-Control-Expose-Headers", () => {
     );
     assert.match(res.headers.get("content-type"), /text\/event-stream/);
     assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  // #8813: rate-limit headers added by tiered-rate-limit must be readable
+  // cross-origin (named in Access-Control-Expose-Headers).
+  test("exposes the four rate-limit headers added by the tiered limiter", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    const value = expose(res)!;
+    for (const name of [
+      "x-ratelimit-reset",
+      "x-ratelimit-scope",
+      "x-ratelimit-tier",
+      "x-api-key-block-reason",
+    ]) {
+      assert.match(value, new RegExp(`(?:^|, )${name}(?:,|$)`));
+    }
+  });
+
+  test("still exposes the previously-named CORS-readable headers", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    const value = expose(res)!;
+    for (const name of [
+      "retry-after",
+      "x-ratelimit-limit",
+      "x-ratelimit-remaining",
+      "x-ratelimit-policy",
+      "etag",
+      "link",
+      "mcp-session-id",
+    ]) {
+      assert.match(value, new RegExp(`(?:^|, )${name}(?:,|$)`));
+    }
+  });
+
+  test("every header tieredRejectionResponse emits is CORS-exposed", () => {
+    const policy = { limit: 60, windowSeconds: 60 };
+    const blocked = tieredRejectionResponse(
+      {
+        allowed: false,
+        policy,
+        tier: "free",
+        accountId: "1",
+        block: {
+          blocked: true,
+          reasonCode: "abuse_manual",
+          message: "Blocked.",
+        },
+      },
+      { code: "rate_limited", message: "x" },
+    )!;
+    const perMinute = tieredRejectionResponse(
+      {
+        allowed: false,
+        policy,
+        tier: "paid",
+        accountId: "1",
+      },
+      { code: "rate_limited", message: "Too many requests." },
+    )!;
+    const daily = tieredRejectionResponse(
+      {
+        allowed: false,
+        policy,
+        tier: "free",
+        accountId: "1",
+        quota: {
+          allowed: false,
+          used: 1000,
+          limit: 1000,
+          remaining: 0,
+          resetAt: "2026-08-01T00:00:00.000Z",
+        },
+      },
+      { code: "rate_limited", message: "Daily quota exhausted." },
+    )!;
+
+    const exposed = new Set(
+      EXPOSED_RESPONSE_HEADERS_VALUE.split(",").map((s) => s.trim()),
+    );
+    for (const rejection of [blocked, perMinute, daily]) {
+      for (const header of Object.keys(rejection.headers)) {
+        assert.ok(
+          exposed.has(header.toLowerCase()),
+          `rejection header ${header} missing from Access-Control-Expose-Headers`,
+        );
+      }
+    }
   });
 });
 
