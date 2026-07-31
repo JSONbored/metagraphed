@@ -8456,6 +8456,169 @@ describe("list_subnets", () => {
     assert.equal(res.body.result.isError, true);
   });
 
+  // #8804: `network` was passed straight into networkArtifactPath, whose
+  // "anything that isn't finney" branch reads /metagraph/testnet/. Any
+  // unrecognised string -- including "mainnet", which get_networks itself
+  // advertises as the canonical id -- therefore served the TESTNET registry
+  // with nothing in the response to reveal the substitution. The pre-existing
+  // "devnet" test above only passed by accident of a missing fixture: it
+  // asserted an artifact_not_found, not a validation error.
+  describe("network argument validation (#8804)", () => {
+    // Records every artifact path the handler asks for, so a test can assert a
+    // rejected network never even attempted a testnet read.
+    function tracingDeps(artifacts: Row = {}) {
+      const base = makeDeps(artifacts);
+      const paths: string[] = [];
+      return {
+        paths,
+        deps: {
+          ...base,
+          readArtifact(env: unknown, path: string) {
+            paths.push(path);
+            return base.readArtifact(env, path);
+          },
+        },
+      };
+    }
+
+    const networkArtifacts = {
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 7, slug: "allways", name: "MAINNET Allways" }],
+      },
+      "/metagraph/testnet/subnets.json": {
+        subnets: [{ netuid: 7, slug: "sn-7", name: "TESTNET seven" }],
+      },
+      "/metagraph/subnets/1.json": {
+        schema_version: 1,
+        subnet: { netuid: 1, slug: "apex", name: "MAINNET Apex" },
+      },
+      "/metagraph/testnet/subnets/1.json": {
+        schema_version: 1,
+        subnet: { netuid: 1, slug: "sn-1", name: "TESTNET one" },
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: { with_economics_count: 1 },
+        subnets: [{ netuid: 1, open_slots: 3 }],
+      },
+    };
+
+    // Every one of these is a value the testnet branch used to accept. The
+    // first two are the realistic ones: get_networks publishes `mainnet` as the
+    // canonical id and `local` as an addressable network.
+    for (const network of ["mainnet", "testnet", "local", "TEST", "FINNEY"]) {
+      test(`list_subnets rejects network:${JSON.stringify(network)} without reading a testnet artifact`, async () => {
+        const { paths, deps: tracing } = tracingDeps(networkArtifacts);
+        const res = await callTool(
+          "list_subnets",
+          { network },
+          { deps: tracing },
+        );
+        assert.equal(res.body.result.isError, true);
+        assert.match(
+          res.body.result.content[0].text,
+          /must be one of: finney, test/,
+        );
+        assert.deepEqual(
+          paths.filter((path) => path.startsWith("/metagraph/testnet/")),
+          [],
+          "a rejected network must never reach the testnet artifact key",
+        );
+      });
+
+      test(`get_subnet_detail rejects network:${JSON.stringify(network)} without reading a testnet artifact`, async () => {
+        const { paths, deps: tracing } = tracingDeps(networkArtifacts);
+        const res = await callTool(
+          "get_subnet_detail",
+          { netuid: 1, network },
+          { deps: tracing },
+        );
+        assert.equal(res.body.result.isError, true);
+        assert.match(
+          res.body.result.content[0].text,
+          /must be one of: finney, test/,
+        );
+        assert.deepEqual(
+          paths.filter((path) => path.startsWith("/metagraph/testnet/")),
+          [],
+        );
+      });
+    }
+
+    test("a non-string network is rejected, not coerced", async () => {
+      for (const network of [0, true, [], {}]) {
+        const { paths, deps: tracing } = tracingDeps(networkArtifacts);
+        const res = await callTool(
+          "list_subnets",
+          { network },
+          { deps: tracing },
+        );
+        assert.equal(
+          res.body.result.isError,
+          true,
+          `network:${JSON.stringify(network)} must be rejected`,
+        );
+        assert.deepEqual(
+          paths.filter((path) => path.startsWith("/metagraph/testnet/")),
+          [],
+        );
+      }
+    });
+
+    test("network:test still reaches the testnet artifacts", async () => {
+      const { paths, deps: tracing } = tracingDeps(networkArtifacts);
+      const listed = await callTool(
+        "list_subnets",
+        { network: "test" },
+        { deps: tracing },
+      );
+      assert.equal(
+        listed.body.result.structuredContent.subnets[0].title,
+        "TESTNET seven",
+      );
+      const detail = await callTool(
+        "get_subnet_detail",
+        { netuid: 1, network: "test" },
+        { deps: tracing },
+      );
+      const out = detail.body.result.structuredContent;
+      assert.equal(out.subnet.name, "TESTNET one");
+      // The mainnet live-economics overlay stays off a testnet record.
+      assert.equal("economics" in out, false);
+      assert.deepEqual(paths, [
+        "/metagraph/testnet/subnets.json",
+        "/metagraph/testnet/subnets/1.json",
+      ]);
+    });
+
+    test("an empty-string network means finney, matching every other enum arg", async () => {
+      const { paths, deps: tracing } = tracingDeps(networkArtifacts);
+      const listed = await callTool(
+        "list_subnets",
+        { network: "" },
+        { deps: tracing },
+      );
+      assert.equal(
+        listed.body.result.structuredContent.subnets[0].title,
+        "MAINNET Allways",
+      );
+      const detail = await callTool(
+        "get_subnet_detail",
+        { netuid: 1, network: null },
+        { deps: tracing },
+      );
+      // Mainnet keeps its live-economics overlay.
+      assert.equal(
+        detail.body.result.structuredContent.subnet.name,
+        "MAINNET Apex",
+      );
+      assert.deepEqual(
+        paths.filter((path) => path.startsWith("/metagraph/testnet/")),
+        [],
+      );
+    });
+  });
+
   test("paginates the full registry and reports next_cursor", async () => {
     const res = await callTool("list_subnets", { limit: 2 }, { deps });
     const out = res.body.result.structuredContent;

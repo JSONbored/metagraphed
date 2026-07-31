@@ -44,6 +44,7 @@ import {
   ListSubnetsInputSchema,
   ListSubnetsOutputSchema,
 } from "../schemas-src/mcp-tools/list-subnets.ts";
+import { McpNetworkSchema } from "../schemas-src/shared.ts";
 import {
   GetSubnetInputSchema,
   GetSubnetOutputSchema,
@@ -1822,6 +1823,14 @@ function toolError(code: string, message: string) {
   return error;
 }
 
+// The published `network` enum, read from the schema the tools declare rather
+// than hand-copied, so the runtime guard and the advertised inputSchema cannot
+// drift apart (#8804 — they had). Every handler taking `network` must resolve
+// it through optionalEnum against this list BEFORE it reaches
+// networkArtifactPath, whose non-finney branch is otherwise reachable by any
+// unvalidated string off the wire.
+const MCP_NETWORK_VALUES = McpNetworkSchema.options;
+
 // #8228: rewrite a mainnet artifact path for the requested chain network.
 // Mirrors the Worker's own /metagraph/{prefix}/… partitioning (see
 // NETWORK_KEY_PREFIXES in src/artifact-storage.ts): finney is the unprefixed
@@ -3076,16 +3085,23 @@ const COVERAGE_DEPTH_TIERS = [
 ];
 const COVERAGE_DEPTH_SEVERITIES = ["hard", "missing-data", "needs-review"];
 
-function optionalEnum(args: Row, key: string, allowed: readonly string[]) {
+// Generic in the member type so a caller passing a `readonly ["a","b"]` gets
+// back `"a" | "b" | null` rather than a bare string -- the guard already proves
+// membership, so the narrowing is free and saves every call site a cast.
+function optionalEnum<T extends string>(
+  args: Row,
+  key: string,
+  allowed: readonly T[],
+): T | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string" || !allowed.includes(value)) {
+  if (typeof value !== "string" || !allowed.includes(value as T)) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be one of: ${allowed.join(", ")}.`,
     );
   }
-  return value;
+  return value as T;
 }
 
 function optionalGapCode(args: Row) {
@@ -3293,9 +3309,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       target: "draft-2020-12",
     }),
     async handler(args: z.infer<typeof ListSubnetsInputSchema>, ctx: McpCtx) {
+      // Validated, not trusted: an unrecognised string used to take
+      // networkArtifactPath's testnet branch and silently serve the testnet
+      // registry (#8804). optionalEnum returns null for absent/empty.
+      const network = optionalEnum(args, "network", MCP_NETWORK_VALUES);
       const index = await loadArtifactData(
         ctx,
-        networkArtifactPath("/metagraph/subnets.json", args?.network),
+        networkArtifactPath("/metagraph/subnets.json", network ?? undefined),
       );
       const all = Array.isArray(index.subnets) ? index.subnets : [];
       // Categorical inclusion (status/subnet_type/domain) and exclusion
@@ -3449,9 +3469,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
+      // See list_subnets: `network` is unvalidated JSON off the wire, and an
+      // unrecognised value used to serve a TESTNET record with the mainnet
+      // economics overlay silently dropped below (#8804).
+      const network = optionalEnum(args, "network", MCP_NETWORK_VALUES);
       const detail = await loadArtifactData(
         ctx,
-        networkArtifactPath(`/metagraph/subnets/${netuid}.json`, args?.network),
+        networkArtifactPath(
+          `/metagraph/subnets/${netuid}.json`,
+          network ?? undefined,
+        ),
       );
       // Same live-economics overlay /api/v1/subnets/{netuid} attaches (#1308):
       // one call carries validator/miner counts, registration, stake, and
@@ -3460,7 +3487,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // record would report mainnet numbers against a testnet subnet (the
       // exact leak tests/network-routing.test.ts guards on the REST side).
       // Testnet carries its own chain economics inside `subnet.economics`.
-      if (args?.network && args.network !== "finney") return detail;
+      if (network && network !== "finney") return detail;
       const { economics } = await loadSubnetEconomics(ctx, netuid);
       return economics ? { ...detail, economics } : detail;
     },
@@ -8058,7 +8085,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "planning a multi-step task against a non-mainnet network: it answers " +
       '"can I get chain data on testnet?" without issuing a request that 404s. ' +
       "The served/unserved split is derived from the router's own routing rules, " +
-      "not a hand-maintained list. Mirrors GET /api/v1/networks.",
+      "not a hand-maintained list. Mirrors GET /api/v1/networks. NOTE: the ids " +
+      "and aliases listed here are REST URL-path segments (/api/v1/testnet/...). " +
+      "An MCP tool's `network` ARGUMENT takes the chain name — `finney` or " +
+      "`test` — the same spelling call_rpc uses; `mainnet`/`testnet`/`local` are " +
+      "rejected there. Only list_subnets and get_subnet_detail take `network` at " +
+      "all; `local` is a per-developer chain with no hosted data on any surface.",
     inputSchema: z.toJSONSchema(GetNetworksInputSchema, {
       target: "draft-2020-12",
     }),
