@@ -893,7 +893,7 @@ const checks: [string, (body: Row) => void][] = [
       );
       assert.equal(Array.isArray(body.data.positions), true);
       assert.equal(typeof body.data.position_count, "number");
-      assert.equal(typeof body.data.total_stake_tao, "number");
+      assert.equal(typeof body.data.total_stake_alpha, "number");
     },
   ],
   [
