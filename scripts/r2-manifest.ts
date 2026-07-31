@@ -89,19 +89,44 @@ const compactManifest: CompactManifest | Row = write
 const validationManifest: FullManifest | CompactManifest | Row =
   fullManifest || compactManifest;
 
+// Staleness compare: the committed compact manifest vs one rebuilt from the
+// CURRENT R2 staging tree. This only means anything when both came from the
+// same build, which is true in CI (validate.yml runs `r2:manifest` --write at
+// the "Generate R2 manifest" step, long before it dry-runs at "Validate R2
+// manifest") and is NEVER true in a contributor tree: public/metagraph/
+// r2-manifest.json is the publish pipeline's lockfile, deliberately excluded
+// from the derived-artifact freshness gate and auto-reverted by the build, so a
+// local dist/ tree legitimately holds a different artifact set (observed: 2261
+// local vs 2320 committed).
+//
+// It was fatal everywhere, which made `npm run check` -- which runs
+// r2:manifest:dry-run via pipeline:check -- IMPOSSIBLE to get green locally.
+// That is worse than no gate: a check that can never pass trains you to skim
+// its output, and a real failure hides in the noise (#8915 -- exactly how a
+// genuine validate:openapi-examples failure was missed and shipped to CI).
+//
+// So it stays fatal under CI, where the invariant genuinely holds, and degrades
+// to a warning outside it. No CI behaviour changes.
 if (!write && fullManifest) {
   const expectedManifest = buildCompactManifest(fullManifest);
   if (stableStringify(compactManifest) !== stableStringify(expectedManifest)) {
-    console.error(
-      stableStringify({
-        error: "r2 compact manifest is stale",
-        expected_artifact_count: expectedManifest.artifact_count,
-        actual_artifact_count: compactManifest.artifact_count,
-        expected_full_artifact_count: expectedManifest.full_artifact_count,
-        actual_full_artifact_count: compactManifest.full_artifact_count,
-      }),
+    const detail = stableStringify({
+      error: "r2 compact manifest is stale",
+      expected_artifact_count: expectedManifest.artifact_count,
+      actual_artifact_count: compactManifest.artifact_count,
+      expected_full_artifact_count: expectedManifest.full_artifact_count,
+      actual_full_artifact_count: compactManifest.full_artifact_count,
+    });
+    if (process.env.CI) {
+      console.error(detail);
+      process.exit(1);
+    }
+    console.warn(detail);
+    console.warn(
+      "note: not a failure outside CI -- public/metagraph/r2-manifest.json is " +
+        "the publish pipeline's lockfile, so a local build's artifact set is " +
+        "expected to differ. Never commit it; the build auto-reverts it.",
     );
-    process.exit(1);
   }
 }
 
