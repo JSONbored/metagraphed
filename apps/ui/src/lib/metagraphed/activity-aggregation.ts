@@ -69,6 +69,27 @@ function withinWindow(
 }
 
 /**
+ * #8817: the single group identity, used for BOTH the React `key` prop and the
+ * expand/collapse open-set. Derived from the group's anchor (events[0], the
+ * newest member) and its kind so it is STABLE across a prepend: the list is
+ * newest-first and rebuilds on every live frame, so a fresh event shifts every
+ * group's array index by +1 -- an index-keyed open-set then collapses the row
+ * the user opened and springs a different one open. A content-derived key does
+ * not move when the array does, so the expanded row survives an arbitrary
+ * number of prepended events and any kind-filter change. Every nullish
+ * component gets an explicit placeholder so two distinct groups can never
+ * collide on a shared "undefined".
+ */
+export function activityGroupKey(group: ActivityGroup): string {
+  const anchor = group.events[0];
+  const kind = group.kind ?? anchor?.event_kind ?? "null";
+  const block = anchor?.block_number ?? "null";
+  const index = anchor?.event_index ?? "null";
+  const observedAt = anchor?.observed_at ?? "null";
+  return `${kind}-${block}-${index}-${observedAt}`;
+}
+
+/**
  * "last 12m" / "last 3m" style span label for a group's own header row --
  * the issue's own worked example format. A single-event group has no span
  * to report (its own timestamp already renders via TimeAgo), so this

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTIVITY_AGGREGATION_WINDOW_MS,
+  activityGroupKey,
   activityGroupSpanMinutes,
   aggregateActivityEvents,
 } from "./activity-aggregation";
@@ -113,5 +114,51 @@ describe("activityGroupSpanMinutes", () => {
       events: [ev("WeightsSet", 0), ev("WeightsSet", 5, { observed_at: undefined })],
     };
     expect(activityGroupSpanMinutes(group)).toBeNull();
+  });
+});
+
+describe("activityGroupKey (#8817)", () => {
+  it("stays stable when a different-kind event prepends and shifts the group's array index", () => {
+    // Newest-first fixture; distinct block/index so groups are distinguishable.
+    const before = aggregateActivityEvents([
+      ev("StakeAdded", 0, { block_number: 10, event_index: 0 }),
+      ev("WeightsSet", 5, { block_number: 9, event_index: 1 }),
+      ev("StakeRemoved", 10, { block_number: 8, event_index: 2 }),
+    ]);
+    const tracked = before[1]!; // the WeightsSet group
+    const keyBefore = activityGroupKey(tracked);
+    const indexBefore = before.indexOf(tracked);
+
+    // A newly-observed, different-kind event prepends at index 0, shifting
+    // every existing group's index by +1.
+    const after = aggregateActivityEvents([
+      ev("Transfer", -1, { block_number: 11, event_index: 0 }),
+      ev("StakeAdded", 0, { block_number: 10, event_index: 0 }),
+      ev("WeightsSet", 5, { block_number: 9, event_index: 1 }),
+      ev("StakeRemoved", 10, { block_number: 8, event_index: 2 }),
+    ]);
+    const trackedAfter = after.find((g) => activityGroupKey(g) === keyBefore)!;
+    const indexAfter = after.indexOf(trackedAfter);
+
+    // Same identity, higher index -- the exact invariant an index-keyed
+    // open-set violated.
+    expect(activityGroupKey(trackedAfter)).toBe(keyBefore);
+    expect(indexAfter).toBeGreaterThan(indexBefore);
+  });
+
+  it("never collides two distinct groups, including when block/index/observed_at are null", () => {
+    const groups = aggregateActivityEvents([
+      ev("StakeAdded", 0, { block_number: null, event_index: null }),
+      ev("WeightsSet", 5, { block_number: null, event_index: null }),
+      ev("StakeRemoved", 10, {
+        block_number: null,
+        event_index: null,
+        observed_at: undefined,
+      }),
+    ]);
+    const keys = groups.map(activityGroupKey);
+    expect(new Set(keys).size).toBe(keys.length);
+    // The null components render as an explicit placeholder, never "undefined".
+    expect(keys.every((k) => !k.includes("undefined"))).toBe(true);
   });
 });
