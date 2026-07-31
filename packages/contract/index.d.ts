@@ -5945,7 +5945,7 @@ export interface components {
                 args?: ({
                     [key: string]: unknown;
                 } | unknown[]) | null;
-                block_number: number | null;
+                block_number?: number | null;
                 event_index: number | null;
                 extrinsic_index?: number | null;
                 method: string | null;
