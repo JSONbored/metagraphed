@@ -44,7 +44,21 @@ import {
 } from "../src/network-parameters.ts";
 import { blockEmissionForIssuance } from "../src/block-emission.ts";
 
-const RPC_URL = process.env.EMISSION_SAMPLER_RPC_URL ?? "http://127.0.0.1:9944";
+// Required, with no committed default. scan:public-safety bans private and
+// loopback URLs anywhere in the repo, and a baked-in 127.0.0.1 would be wrong
+// for every host but one anyway. The entrypoint already fails closed on it
+// (`: "${EMISSION_SAMPLER_RPC_URL:?...}"`), so this only makes a direct
+// invocation say the same thing instead of quietly dialling localhost.
+function requiredRpcUrl(): string {
+  const url = process.env.EMISSION_SAMPLER_RPC_URL;
+  if (url) return url;
+  console.error(
+    "EMISSION_SAMPLER_RPC_URL is required: the RPC endpoint of a node AT CHAIN TIP.",
+  );
+  process.exit(1);
+}
+
+const RPC_URL = requiredRpcUrl();
 const RPC_TIMEOUT_MS = Number(
   process.env.EMISSION_SAMPLER_RPC_TIMEOUT_MS ?? 15_000,
 );
