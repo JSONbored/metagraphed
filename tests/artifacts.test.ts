@@ -64,7 +64,15 @@ const artifactDirectoryPath = (relativePath: string) =>
 const publicMetagraphRoot = sandbox.publicMetagraphRoot;
 const r2StagingRoot = sandbox.r2StagingRoot;
 
-const SUPPORT_ARTIFACT_PATHS = ["public/metagraph/r2-manifest.json"];
+// Sandbox-rooted, NOT relative. A bare relative path resolves against
+// process.cwd() — the real repo — so restoreSupportArtifacts would truncate and
+// rewrite the committed public/metagraph/r2-manifest.json while the rest of the
+// suite runs. writeFileSync is not atomic, so any of the eight other test files
+// that read that manifest could observe it empty or half-written. Rooting it in
+// the sandbox is the point of #8937: the build writes only its own tree.
+const SUPPORT_ARTIFACT_PATHS = [
+  path.join(sandbox.root, "public/metagraph/r2-manifest.json"),
+];
 
 function runNode(script: string) {
   execFileSync(process.execPath, [script], {
@@ -394,7 +402,14 @@ test("registry validation rejects tampered per-subnet artifacts", () => {
 
 test("artifact build does not preserve forged endpoint index health", () => {
   const endpointsPath = artifactFilePath("endpoints.json");
-  const cachePath = ".cache/metagraphed/health/latest.json";
+  // Sandbox-rooted for the same reason as SUPPORT_ARTIFACT_PATHS. Relative, it
+  // pointed at the real repo, which also made the setup a no-op against its own
+  // purpose: the build reads the SANDBOX's .cache, so clearing the real one
+  // never removed the health cache the rebuild would actually consult.
+  const cachePath = path.join(
+    sandbox.root,
+    ".cache/metagraphed/health/latest.json",
+  );
   const original = readFileSync(endpointsPath, "utf8");
   const originalCache = existsSync(cachePath)
     ? readFileSync(cachePath, "utf8")
@@ -759,8 +774,13 @@ test("committed R2 manifest does not use fallback history keys", () => {
 test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
   const timestamp = "2026-06-08T12:34:56.789Z";
   const expectedRunPrefix = "runs/2026-06-08T12-34-56-789Z/";
+  // Read from the sandbox, which is also where the finally block writes it back
+  // (below). Relative, this read came from the real repo, so the "restore" wrote
+  // the real tree's bytes into the sandbox rather than the sandbox's own prior
+  // state — a mismatch that only stayed invisible because the sandbox starts as
+  // a byte copy of the repo.
   const originalManifest = readFileSync(
-    "public/metagraph/r2-manifest.json",
+    path.join(sandbox.publicMetagraphRoot, "r2-manifest.json"),
     "utf8",
   );
   const backupDir = mkdtempSync(`${tmpdir()}/metagraphed-r2-manifest-`);

@@ -12,10 +12,22 @@
 // .test.ts) and rely on that wiring for every test in the file. Resetting per
 // test would clobber them. Per file is the exact granularity the shared module
 // registry needs — a file's mutations must not outlive the file.
-import { afterAll } from "vitest";
+import { afterAll, vi } from "vitest";
 
 import { resetModuleState } from "../../src/module-state-registry.ts";
 
 afterAll(() => {
   resetModuleState();
+  // Timers are the other process-lifetime global that `isolate: false` turns
+  // into a cross-file channel, and the sharpest one: ten files install
+  // vi.useFakeTimers(), and if any of them fails to restore -- an assertion
+  // throwing past an inline vi.useRealTimers() is enough -- every LATER file in
+  // that worker inherits a clock nobody advances. Anything awaiting a real
+  // setTimeout then hangs until the test timeout, no matter how short the sleep
+  // it asked for. That is what timed out the two deliverChangeEvent retry tests
+  // (a 1ms backoff hung for the full 30s), and which file it lands on depends
+  // on how vitest happens to shard files across workers.
+  //
+  // Unconditional: vi.useRealTimers() is a no-op when timers are already real.
+  vi.useRealTimers();
 });
