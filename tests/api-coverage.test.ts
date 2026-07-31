@@ -436,6 +436,101 @@ describe("handleRequest routing edges", () => {
     );
   });
 
+  test("OPTIONS preflight on /api/v1/keys allows authorization and key CRUD methods (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/keys", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, GET, DELETE, OPTIONS",
+    );
+    assert.match(
+      res.headers.get("access-control-allow-headers") ?? "",
+      /\bauthorization\b/,
+    );
+  });
+
+  test("OPTIONS preflight on /api/v1/keys/{prefix} inherits the keys method set (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/keys/mg_abc", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, GET, DELETE, OPTIONS",
+    );
+  });
+
+  test("OPTIONS preflight on /api/v1/auth/wallet/challenge advertises POST (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/auth/wallet/challenge", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
+  test("OPTIONS preflight on /api/v1/auth/wallet/verify advertises POST (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/auth/wallet/verify", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
+  test("OPTIONS preflight on /api/v1/watch/challenges advertises POST (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/watch/challenges", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
+  test("OPTIONS preflight on /api/v1/watch/tokens advertises POST (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/watch/tokens", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
+  test("OPTIONS preflight on an unlisted api path keeps the GET/HEAD default (#8806)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "GET, HEAD, OPTIONS",
+    );
+  });
+
   test("falls through to ASSETS for a non-api path", async () => {
     let assetCalled = false;
     const env = {

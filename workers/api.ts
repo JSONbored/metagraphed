@@ -5945,11 +5945,22 @@ function corsPreflight(request: Request) {
     methods = "GET, POST, DELETE, OPTIONS";
   } else if (url.pathname === "/api/v1/ask") {
     methods = "POST, OPTIONS";
+  } else if (url.pathname.startsWith("/api/v1/keys")) {
+    // Create (POST), list (GET), revoke (DELETE) — matches handleAccountKeysProxy.
+    methods = "POST, GET, DELETE, OPTIONS";
+  } else if (url.pathname === "/api/v1/auth/wallet/challenge") {
+    methods = "POST, OPTIONS";
+  } else if (url.pathname === "/api/v1/auth/wallet/verify") {
+    methods = "POST, OPTIONS";
+  } else if (url.pathname === "/api/v1/watch/challenges") {
+    methods = "POST, OPTIONS";
+  } else if (url.pathname === "/api/v1/watch/tokens") {
+    methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
   headers.set(
     "access-control-allow-headers",
-    `content-type, if-none-match, mcp-session-id, mcp-protocol-version, ` +
+    `content-type, if-none-match, authorization, mcp-session-id, mcp-protocol-version, ` +
       `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}, ` +
       `${ALERT_TRIGGER_CREATE_TOKEN_HEADER}, ${ALERT_TRIGGER_OWNER_TOKEN_HEADER}`,
   );
