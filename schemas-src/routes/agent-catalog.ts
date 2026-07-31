@@ -54,7 +54,10 @@ export const AgentReadinessStatusSchema = z
     // overlayCatalogDetail) -- never present in the static build.
     readiness_verified: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Agent-facing readiness status and blocker taxonomy for one subnet.",
+  );
 
 const AgentServiceHealthSchema = z
   .object({

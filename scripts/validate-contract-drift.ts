@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { generateClientSource } from "./generate-client.ts";
+import { generateOpenApiZodComponents } from "./generate-openapi-zod-components.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
 import {
   removeInlinedOpenApiSpec,
@@ -59,6 +60,22 @@ const expectedBundle = await buildApiComponentBundle();
 check(
   stableStringify(currentBundle) === stableStringify(expectedBundle),
   "schemas/api-components.schema.json is stale. Run npm run schemas:bundle.",
+);
+
+// scripts/openapi-components.ts overlays the Zod-owned components over the
+// hand-edited bundle -- a name defined on both sides means the hand-edited
+// copy is silently discarded rather than published, so the two key sets must
+// be disjoint (#8827).
+const handEditedComponentNames = Object.keys(
+  (expectedBundle.components as Row).schemas as Row,
+);
+const zodComponentNames = new Set(Object.keys(generateOpenApiZodComponents()));
+const shadowedComponentNames = handEditedComponentNames.filter((name) =>
+  zodComponentNames.has(name),
+);
+check(
+  shadowedComponentNames.length === 0,
+  `Component name(s) defined in BOTH the hand-edited bundle and schemas-src, so the hand-edited copy is silently discarded by scripts/openapi-components.ts: ${shadowedComponentNames.join(", ")}. Delete the hand-edited key.`,
 );
 
 const currentOpenApi = await readJson(

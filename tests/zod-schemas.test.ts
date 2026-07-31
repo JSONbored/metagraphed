@@ -307,7 +307,9 @@ import {
   AgentCatalogArtifactSchema,
   AgentCatalogSubnetArtifactSchema,
   AgentResourcesArtifactSchema,
+  AgentReadinessStatusSchema,
 } from "../schemas-src/routes/agent-catalog.ts";
+import { generateOpenApiZodComponents } from "../scripts/generate-openapi-zod-components.ts";
 import {
   buildContractsArtifact,
   buildApiIndexArtifact,
@@ -4583,5 +4585,34 @@ describe("batch 9 (#8063) route artifact schemas parse real builder output", () 
   test("subnet-evidence: SubnetEvidenceArtifactSchema.parse({}) fails (not a vacuous passthrough)", () => {
     const result = SubnetEvidenceArtifactSchema.safeParse({});
     assert.equal(result.success, false);
+  });
+});
+
+// #8827: schemas/components/04-surfaces.schema.json's hand-edited
+// AgentReadinessStatus (additionalProperties: false, no readiness_verified)
+// used to shadow this Zod-owned copy in the merged component bundle -- the
+// hand-edited key is deleted now, but this guards the field the deleted copy
+// would have rejected, and that the carried-over description still ships.
+describe("agent-readiness-status: hand-edited copy no longer shadows the Zod owner (#8827)", () => {
+  test("AgentReadinessStatusSchema.parse(...) accepts readiness_verified", () => {
+    const parsed = AgentReadinessStatusSchema.parse({
+      status: "callable",
+      blocker_level: "none",
+      blockers: [],
+      missing_fields: [],
+      readiness_verified: true,
+    });
+    assert.equal(parsed.readiness_verified, true);
+  });
+
+  test("emitted AgentReadinessStatus OpenAPI component carries a non-empty description", () => {
+    const components = generateOpenApiZodComponents();
+    const description = (
+      components.AgentReadinessStatus as { description?: string }
+    ).description;
+    assert.equal(
+      description,
+      "Agent-facing readiness status and blocker taxonomy for one subnet.",
+    );
   });
 });
