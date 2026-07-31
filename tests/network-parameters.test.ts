@@ -42,6 +42,18 @@ const GOLDEN_COOLDOWN_BLOCKS = 7200;
 // from the schema — 11,180,872,732,340,983 rao (11,180,872.73 TAO), which puts
 // the network one halving in at 0.5 TAO/block.
 const GOLDEN_TOTAL_ISSUANCE_RAW = "0xf7727dcbf1b82700";
+// #8742: captured from finney the same way. Both are SIXTEEN bytes (U64F64
+// u128), which decodeLeU64 rejects outright — the trap the issue named.
+const GATE_BAR_KEY =
+  "0x658faa385070e074c85bf6b568cf05557c9b0d2964cc73e7519676c3cc4d5df9";
+const BAR_QUANTILE_KEY =
+  "0x658faa385070e074c85bf6b568cf0555a772007dde2ed63e0f21b5f9d7f16650";
+const GATE_EXPONENT_KEY =
+  "0x658faa385070e074c85bf6b568cf055588c70e8dd0cf4af3aeb977ba2eee1df4";
+const GOLDEN_GATE_BAR_RAW = "0xf552a5fa90c449020000000000000000";
+const GOLDEN_GATE_BAR = 0.008938107867512188;
+const GOLDEN_BAR_QUANTILE_RAW = "0x00000000000000c00000000000000000";
+const GOLDEN_BAR_QUANTILE = 0.75;
 const GOLDEN_TOTAL_ISSUANCE_TAO = 11180872.732340982;
 const GOLDEN_BLOCK_EMISSION_TAO = 0.5;
 const GOLDEN_BLOCK_EMISSION_HALVINGS = 1;
@@ -68,10 +80,19 @@ function goldenFetchStub() {
       [STAKE_THRESHOLD_KEY]: GOLDEN_STAKE_THRESHOLD_RAW,
       [COOLDOWN_KEY]: GOLDEN_COOLDOWN_RAW,
       [TOTAL_ISSUANCE_KEY]: GOLDEN_TOTAL_ISSUANCE_RAW,
+      [GATE_BAR_KEY]: GOLDEN_GATE_BAR_RAW,
+      [BAR_QUANTILE_KEY]: GOLDEN_BAR_QUANTILE_RAW,
     };
     return {
       ok: true,
-      json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
+      // EmissionGateExponent is genuinely UNSET on chain, so the stub returns
+      // a real null for it rather than omitting the key — that is the state
+      // the effective-value logic has to handle.
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result: key === GATE_EXPONENT_KEY ? null : byKey[key],
+      }),
     };
   };
 }
@@ -99,7 +120,7 @@ describe("loadNetworkParameters", () => {
     });
   });
 
-  test("queries all four storage keys", async () => {
+  test("queries all seven storage keys", async () => {
     const seenKeys = new Set();
     await withFetchStub(
       async (_url: unknown, init: Row) => {
@@ -115,9 +136,58 @@ describe("loadNetworkParameters", () => {
         assert.ok(seenKeys.has(STAKE_THRESHOLD_KEY));
         assert.ok(seenKeys.has(COOLDOWN_KEY));
         assert.ok(seenKeys.has(TOTAL_ISSUANCE_KEY));
-        assert.equal(seenKeys.size, 4);
+        assert.ok(seenKeys.has(GATE_BAR_KEY));
+        assert.ok(seenKeys.has(BAR_QUANTILE_KEY));
+        assert.ok(seenKeys.has(GATE_EXPONENT_KEY));
+        assert.equal(seenKeys.size, 7);
       },
     );
+  });
+
+  // #8742 trap 1: these three are 16-byte U64F64 values. decodeLeU64 rejects
+  // anything but 16 HEX chars, so routing them through it would have returned
+  // null for all three, forever, and looked like an RPC problem.
+  test("decodes the 128-bit gate parameters", async () => {
+    await withFetchStub(goldenFetchStub(), async () => {
+      const data = await loadNetworkParameters(mockEnv());
+      assert.equal(data.emission_gate_bar, GOLDEN_GATE_BAR);
+      assert.equal(data.emission_bar_quantile, GOLDEN_BAR_QUANTILE);
+    });
+  });
+
+  // #8742 trap 2: absent means "use the runtime default", NOT zero. h = 0
+  // makes the Hill gate 1/(1+1) = 0.5 for every subnet — a plausible-looking
+  // answer that would misreport all 128 at once.
+  test("serves the unset exponent as null, with the runtime default beside it", async () => {
+    await withFetchStub(goldenFetchStub(), async () => {
+      const data = await loadNetworkParameters(mockEnv());
+      assert.equal(data.emission_gate_exponent, null);
+      assert.equal(data.emission_gate_exponent_effective, 3);
+      // The two must not be collapsed: raw null and effective 0 are different
+      // claims, and only one of them is true.
+      assert.notEqual(data.emission_gate_exponent_effective, 0);
+    });
+  });
+
+  // An unset item is a SUCCESSFUL read. Treating it as a partial failure would
+  // pin this whole response to the 10s negative TTL for as long as the item
+  // stays unset — which is indefinitely.
+  test("an unset exponent still positive-caches with the full TTL", async () => {
+    let putOptions: Row | undefined;
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get() {
+          return null;
+        },
+        async put(_key: string, _value: string, options: Row) {
+          putOptions = options;
+        },
+      },
+    } as unknown as Env;
+    await withFetchStub(goldenFetchStub(), async () => {
+      await loadNetworkParameters(env);
+      assert.equal(putOptions!.expirationTtl, NETWORK_PARAMETERS_KV_TTL);
+    });
   });
 
   test("a genuinely unset storage result (raw null) reads as a real 0, not a failure", async () => {
@@ -302,7 +372,7 @@ describe("loadNetworkParameters", () => {
       },
       async () => {
         await loadNetworkParameters(mockEnv());
-        assert.equal(seenSignals.length, 4);
+        assert.equal(seenSignals.length, 7);
         for (const signal of seenSignals) {
           assert.ok(signal);
           assert.equal(typeof signal.aborted, "boolean");

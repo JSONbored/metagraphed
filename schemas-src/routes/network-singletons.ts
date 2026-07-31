@@ -42,6 +42,15 @@ export const NetworkParametersArtifactSchema = z
     total_issuance_tao: z.number().nullable().optional(),
     block_emission_tao: z.number().nullable().optional(),
     block_emission_halvings: z.int().nullable().optional(),
+    // #8742: the spec-440 emission gate. `emission_gate_exponent` is the value
+    // AS STORED and is currently null — the item is unset on chain, and absent
+    // means "use the runtime default", not zero. h = 0 would make the Hill
+    // gate 0.5 for every subnet, so the effective value is served beside the
+    // raw one rather than collapsed into it.
+    emission_gate_bar: z.number().nullable().optional(),
+    emission_bar_quantile: z.number().nullable().optional(),
+    emission_gate_exponent: z.number().nullable().optional(),
+    emission_gate_exponent_effective: z.number().nullable().optional(),
     queried_at: z.string().nullable().optional(),
   })
   .passthrough();
