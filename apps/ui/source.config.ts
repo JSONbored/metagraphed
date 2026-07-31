@@ -1,6 +1,20 @@
 import { remarkLLMs } from "fumadocs-core/mdx-plugins/remark-llms";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 
+// #8705: the weekly digests, generated into content/news/** from
+// registry/generated/digests.json by scripts/generate-digest-pages.ts. Its own
+// collection rather than a subtree of `docs` because it is a different product
+// surface with its own URL space (/news/sn8/2026-w31) and its own sidebar --
+// folding it into the docs tree would put "Subnet 104 — 2026-W29" in the API
+// reference nav.
+//
+// No `lastModified`: these pages are immutable once written (the store is
+// append-only), so a git-derived modified date would only ever restate the
+// generation date already on the page.
+export const news = defineDocs({
+  dir: "content/news",
+});
+
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {

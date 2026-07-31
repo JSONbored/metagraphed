@@ -51,6 +51,7 @@ import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
 import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
+import { Route as NewsSplatRouteImport } from './routes/news.$'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
@@ -272,6 +273,11 @@ const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
   path: '/graphql/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsSplatRoute = NewsSplatRouteImport.update({
+  id: '/news/$',
+  path: '/news/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
   id: '/providers/',
   path: '/providers/',
@@ -359,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
+  '/news/$': typeof NewsSplatRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
@@ -411,6 +418,7 @@ export interface FileRoutesByTo {
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
+  '/news/$': typeof NewsSplatRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
@@ -466,6 +474,7 @@ export interface FileRoutesById {
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
+  '/news/$': typeof NewsSplatRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
@@ -522,6 +531,7 @@ export interface FileRouteTypes {
     | '/docs/llms.txt'
     | '/extrinsics/$hash'
     | '/graphql/explorer'
+    | '/news/$'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/tools/ss58'
@@ -574,6 +584,7 @@ export interface FileRouteTypes {
     | '/docs/llms.txt'
     | '/extrinsics/$hash'
     | '/graphql/explorer'
+    | '/news/$'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/tools/ss58'
@@ -628,6 +639,7 @@ export interface FileRouteTypes {
     | '/docs/llms.txt'
     | '/extrinsics/$hash'
     | '/graphql/explorer'
+    | '/news/$'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/tools/ss58'
@@ -674,6 +686,7 @@ export interface RootRouteChildren {
   DocsLlmsDottxtRoute: typeof DocsLlmsDottxtRoute
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
   GraphqlExplorerRoute: typeof GraphqlExplorerRoute
+  NewsSplatRoute: typeof NewsSplatRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
   ToolsSs58Route: typeof ToolsSs58Route
@@ -987,6 +1000,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GraphqlExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/$': {
+      id: '/news/$'
+      path: '/news/$'
+      fullPath: '/news/$'
+      preLoaderRoute: typeof NewsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/providers/': {
       id: '/providers/'
       path: '/providers'
@@ -1125,6 +1145,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsLlmsDottxtRoute: DocsLlmsDottxtRoute,
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,
   GraphqlExplorerRoute: GraphqlExplorerRoute,
+  NewsSplatRoute: NewsSplatRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
   ToolsSs58Route: ToolsSs58Route,
