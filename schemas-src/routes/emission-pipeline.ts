@@ -3,7 +3,7 @@
 // Shape mirrors src/emission-decomposition.ts's EmissionDecomposition exactly;
 // the module is the source of truth and this is its contract projection.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { successEnvelopeSchema } from "../envelope.ts";
 import { ChainStateSchema } from "../shared.ts";
 
 /** A fraction of block emission. Null where stage 0 excluded the subnet. */
@@ -59,7 +59,18 @@ export const EmissionIdentityCheckSchema = z
   })
   .strict();
 
-export const EmissionPipelineArtifactSchema = ArtifactBaseSchema.extend({
+// The decomposition's own fields, split out from the artifact schema so the
+// get_emission_pipeline MCP tool can mirror the REST contract field for field
+// instead of re-declaring it (schemas-src/mcp-tools/get-emission-pipeline.ts).
+// The MCP tool returns the projection alone, with none of ArtifactBase's
+// envelope fields, so it needs the body without the extend -- and a second
+// hand-kept copy of a 7-field shape is exactly how tri-surface parity rots.
+export const EMISSION_PIPELINE_BODY = {
+  // The artifact's own version, declared here rather than inherited from
+  // ArtifactBaseSchema: this route is COMPUTED_LIVE with no static file, so it
+  // has no `generated_at` to give -- same shape EconomicsTrendsArtifact and
+  // CompareArtifact take for the same reason.
+  schema_version: z.int(),
   chain_state: ChainStateSchema,
   block_emission_tao: z.number().nullable(),
   block_emission_halvings: z.int().min(0).nullable(),
@@ -99,7 +110,11 @@ export const EmissionPipelineArtifactSchema = ArtifactBaseSchema.extend({
       })
       .strict(),
   ),
-});
+} as const;
+
+export const EmissionPipelineArtifactSchema = z
+  .object(EMISSION_PIPELINE_BODY)
+  .passthrough();
 export type EmissionPipelineArtifact = z.infer<
   typeof EmissionPipelineArtifactSchema
 >;

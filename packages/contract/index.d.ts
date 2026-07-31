@@ -7349,7 +7349,6 @@ export interface components {
                 emission_gate_exponent: number | null;
                 total_issuance_tao: number;
             };
-            contract_version?: string;
             field_sources: {
                 [key: string]: {
                     /** @enum {string} */
@@ -7357,10 +7356,7 @@ export interface components {
                     storage: string | null;
                 };
             };
-            generated_at: string;
-            notes?: string | string[];
-            /** @constant */
-            schema_version: 1;
+            schema_version: number;
             subnets: {
                 alpha_in_emission: number | null;
                 alpha_out_emission: number | null;
@@ -13115,15 +13111,12 @@ export interface operations {
                      *           "emission_gate_exponent": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
-                     *         "contract_version": "2026-06-29.1",
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
                      *             "storage": "example"
                      *           }
                      *         },
-                     *         "generated_at": "2026-06-01T00:00:00.000Z",
-                     *         "notes": "Example description.",
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {
@@ -28885,15 +28878,12 @@ export interface operations {
                      *           "emission_gate_exponent": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
-                     *         "contract_version": "2026-06-29.1",
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
                      *             "storage": "example"
                      *           }
                      *         },
-                     *         "generated_at": "2026-06-01T00:00:00.000Z",
-                     *         "notes": "Example description.",
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {

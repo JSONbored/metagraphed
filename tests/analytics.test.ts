@@ -1879,6 +1879,46 @@ describe("emission-pipeline route", () => {
     assert.equal(body.error.code, "emission_pipeline_unavailable");
   });
 
+  // The live KV tier is preferred but not required: with it cold, the route
+  // decomposes the committed R2 artifact rather than 503ing on a tier miss.
+  function envWithArtifactOnly(economics: Row | null) {
+    return {
+      ...envWithEconomics(null),
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (key !== "latest/economics.json" || !economics) return null;
+          return {
+            async json() {
+              return economics;
+            },
+          };
+        },
+      },
+    } as unknown as Row;
+  }
+
+  test("falls back to the committed artifact when the live tier is cold", async () => {
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
+      envWithArtifactOnly({
+        chain_state: CHAIN_STATE,
+        subnets: SUBNETS,
+      } as Row),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_state.block, 8_740_436);
+    assert.equal(body.data.subnets.length, 2);
+  });
+
+  test("503s when both economics tiers are cold", async () => {
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
+      envWithArtifactOnly(null),
+    );
+    assert.equal(status, 503);
+    assert.equal(body.error.code, "emission_pipeline_unavailable");
+  });
+
   test("rejects an unsupported or malformed query param", async () => {
     const env = envWithEconomics({
       chain_state: CHAIN_STATE,

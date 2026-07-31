@@ -4369,15 +4369,12 @@
               "emission_gate_exponent": 1,
               "total_issuance_tao": 0.5
             },
-            "contract_version": "2026-06-29.1",
             "field_sources": {
               "example": {
                 "kind": "measured",
                 "storage": "example"
               }
             },
-            "generated_at": "2026-06-01T00:00:00.000Z",
-            "notes": "Example description.",
             "schema_version": 1,
             "subnets": [
               {
@@ -24489,9 +24486,6 @@
             ],
             "type": "object"
           },
-          "contract_version": {
-            "type": "string"
-          },
           "field_sources": {
             "additionalProperties": {
               "additionalProperties": false,
@@ -24525,25 +24519,10 @@
             },
             "type": "object"
           },
-          "generated_at": {
-            "type": "string"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            ]
-          },
           "schema_version": {
-            "const": 1,
-            "type": "number"
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
           },
           "subnets": {
             "items": {
@@ -24770,7 +24749,6 @@
           }
         },
         "required": [
-          "generated_at",
           "schema_version",
           "chain_state",
           "block_emission_tao",

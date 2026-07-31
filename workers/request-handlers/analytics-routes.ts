@@ -32,11 +32,11 @@ import {
 } from "../../src/neuron-history.ts";
 import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
-  buildEmissionDecomposition,
-  EMISSION_FIELD_SOURCES,
-  type DecompositionChainState,
-  type EconomicsPipelineRow,
-} from "../../src/emission-decomposition.ts";
+  EMISSION_PIPELINE_UNAVAILABLE_CODE,
+  EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  projectEmissionPipeline,
+  resolveEmissionPipelineEconomics,
+} from "../../src/emission-pipeline-surface.ts";
 import { economicsCurrentKvReader } from "./analytics.ts";
 import {
   COMPARE_DIMENSIONS,
@@ -1072,16 +1072,15 @@ export async function handleCompareValidators(
 
 // GET /api/v1/chain/emission-pipeline (#8744) — the v440 decomposition.
 //
-// Reads the economics tier the same way /api/v1/economics does (live KV blob
-// first, committed R2 artifact as a real fallback so this can never 404) and
-// hands its per-subnet pipeline inputs plus chain_state to
-// buildEmissionDecomposition.
+// Tier resolution and the projection itself both live in
+// src/emission-pipeline-surface.ts, shared verbatim with the GraphQL field and
+// the get_emission_pipeline MCP tool, so the three surfaces cannot drift. All
+// that is left here is REST's own idiom: query-param validation, the 503, and
+// the envelope.
 //
-// A response WITHOUT chain_state is not served as a decomposition. Every share
-// here is reconstructed from inputs pinned to one block; without knowing which
-// block, the numbers are unverifiable and ADR 0023 decision 5 says provenance
-// is a contract, not a nice-to-have. A degraded capture gets an explicit 503
-// naming the reason rather than a plausible-looking body.
+// A response WITHOUT chain_state is not served as a decomposition — see that
+// module's EMISSION_PIPELINE_UNAVAILABLE_MESSAGE for why a degraded capture
+// gets an explicit 503 rather than a plausible-looking body.
 export async function handleEmissionPipeline(
   request: Request,
   env: Env,
@@ -1094,63 +1093,30 @@ export async function handleEmissionPipeline(
     "netuid",
   );
   if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
-  const netuid = netuidResult.value;
 
-  const live = await resolveLiveEconomics({
-    readHealthKv: economicsCurrentKvReader(),
+  const economics = await resolveEmissionPipelineEconomics({
     env,
+    readHealthKv: economicsCurrentKvReader(),
     contractVersion: contractVersion(env),
+    readArtifact: async () => {
+      const artifact = await readArtifact(env, "/metagraph/economics.json");
+      return artifact.ok ? artifact.data : null;
+    },
   });
-  let economics = live?.data as Record<string, unknown> | undefined;
-  if (!economics) {
-    const artifact = await readArtifact(env, "/metagraph/economics.json");
-    economics = artifact.ok
-      ? (artifact.data as Record<string, unknown>)
-      : undefined;
-  }
 
-  const chainState = economics?.chain_state as
-    DecompositionChainState | undefined;
-  if (!economics || !chainState) {
+  const data = projectEmissionPipeline(economics, netuidResult.value);
+  if (!data) {
     return errorResponse(
-      "emission_pipeline_unavailable",
-      "The emission decomposition needs the block its inputs were pinned to, " +
-        "and the current economics capture carries none. Every share here is " +
-        "reconstructed; without the block it cannot be verified, so nothing " +
-        "is served rather than something unverifiable.",
+      EMISSION_PIPELINE_UNAVAILABLE_CODE,
+      EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
       503,
     );
   }
 
-  const rows = (
-    Array.isArray(economics.subnets) ? (economics.subnets as unknown[]) : []
-  ).map((row) => row as EconomicsPipelineRow);
-
-  const decomposition = buildEmissionDecomposition({
-    subnets: rows,
-    chainState,
-  });
-
-  const data =
-    netuid === null
-      ? decomposition
-      : {
-          ...decomposition,
-          subnets: decomposition.subnets.filter(
-            (subnet) => subnet.netuid === netuid,
-          ),
-        };
-
   return await envelopeResponse(
     request,
     {
-      data: {
-        ...data,
-        // ADR 0023 decision 3: reconstructed fields are labelled as
-        // reconstructed IN THE CONTRACT, not only in prose a client never
-        // reads. Shipped in-band so a consumer cannot miss it.
-        field_sources: EMISSION_FIELD_SOURCES,
-      },
+      data,
       meta: await analyticsMeta(env, "/metagraph/economics.json", null),
     },
     "short",

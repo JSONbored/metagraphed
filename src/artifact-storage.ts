@@ -248,6 +248,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Network-wide cross-subnet capital flow, computed live from the account_events
   // stake stream at /api/v1/chain/stake-flow — never a file.
   /^chain\/stake-flow\.json$/,
+  // The v440 emission decomposition (#8744): reconstructed live from the
+  // economics tier's pinned per-subnet inputs at /api/v1/chain/emission-pipeline
+  // — never a file. A committed copy would be worse than none here, since every
+  // share in it is only interpretable against the block it was pinned to.
+  /^chain\/emission-pipeline\.json$/,
   // Network-wide rolling 24h buy/sell alpha-volume leaderboard, computed live from the
   // account_events stake stream at /api/v1/chain/alpha-volume — never a file.
   /^chain\/alpha-volume\.json$/,
