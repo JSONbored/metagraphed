@@ -519,6 +519,48 @@ CREATE TABLE IF NOT EXISTS subnet_emission_enabled_history (
 CREATE INDEX IF NOT EXISTS subnet_emission_enabled_history_netuid_observed_idx
   ON subnet_emission_enabled_history (netuid, observed_at DESC);
 
+-- Dormant TAO-flow emission path watch (#8750, migration 0048).
+--
+-- v440 ships a SECOND, fully-written emission-share implementation
+-- (`get_shares_flow`, from TAO FLOW EMAs rather than price EMAs). It is
+-- `#[allow(dead_code)]`; the live path is `get_shares_price_ema`. Switching it
+-- on changes the gate's input from price to demand flow and moves every
+-- published emission number at once -- with no governance pallet (#8697) there
+-- is no proposal or vote to see it coming.
+--
+-- Provisioned and partially warm: the raw accumulator (`SubnetTaoFlow`) is
+-- written continuously by live stake/swap code, while `SubnetEmaTaoFlow` is set
+-- on 124 of 128 subnets and every one frozen at exactly block 8,466,530 -- a
+-- path that ran and was switched off, staged rather than abandoned.
+--
+-- Append-on-change: zero rows is the CORRECT steady state and means the price
+-- path is still live, not that the monitor is broken. `SubnetTaoFlow` is
+-- deliberately not watched -- it moves with ordinary staking/swapping and
+-- carries no signal.
+CREATE TABLE IF NOT EXISTS emission_flow_watch (
+  id               BIGSERIAL PRIMARY KEY,
+  item             TEXT     NOT NULL,
+  netuid           INTEGER,
+  is_set           BOOLEAN  NOT NULL,
+  ema_block        BIGINT,
+  block_number     BIGINT,
+  observed_at      BIGINT   NOT NULL,
+  predates_capture BOOLEAN  NOT NULL DEFAULT FALSE,
+  CONSTRAINT emission_flow_watch_item_check
+    CHECK (item IN (
+      'net_tao_flow_enabled', 'flow_norm_exponent', 'tao_flow_cutoff',
+      'flow_ema_smoothing_factor', 'subnet_ema_tao_flow'
+    )),
+  CONSTRAINT emission_flow_watch_shape_check
+    CHECK (
+      (item = 'subnet_ema_tao_flow' AND netuid IS NOT NULL AND ema_block IS NOT NULL)
+      OR (item <> 'subnet_ema_tao_flow' AND netuid IS NULL AND ema_block IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS emission_flow_watch_item_observed_idx
+  ON emission_flow_watch (item, observed_at DESC);
+
 -- Historical hyperparameter change tracking (#4832 gap-closure; mirrors D1
 -- migrations/0037_subnet_hyperparams_history.sql). Append-only, diffed by
 -- hyperparams_hash on each sync; live-forward only, same as the D1 table.
