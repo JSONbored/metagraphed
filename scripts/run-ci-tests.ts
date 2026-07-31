@@ -28,30 +28,22 @@ import { repoRoot } from "./lib.ts";
 // NOT vitest `projects` (one invocation, auto-merged coverage), which looks
 // like the natural fit: the artifact-writer pass needs fileParallelism false
 // while these two need it true, which a single invocation cannot express, and
-// excluding the writers via project globs would make
-// `vitest run tests/artifacts.test` match nothing at all -- silently disabling
-// them. They stay a separate invocation (test:ci:artifacts), unchanged.
+// project globs would make `vitest run tests/artifacts.test` match nothing at
+// all -- silently disabling it.
+//
+// #8937 removed the third pass: the filesystem-mutating tests each build into
+// their own repo-data copy (tests/helpers/repo-sandbox.ts) instead of the one
+// shared tree, so they parallelize with everything else and test:ci:artifacts
+// is gone.
 
 /** Detects any API that manipulates the module registry for its own file. */
 const MODULE_MOCKING = /\bvi\.(mock|doMock|unmock|resetModules)\s*\(/;
-
-// The five filesystem-mutating files, run serially by test:ci:artifacts. Kept
-// here so both passes exclude them from one definition -- see vitest.config.ts
-// for why they cannot run alongside the readers.
-const ARTIFACT_WRITERS = [
-  "artifacts.test.ts",
-  "discovery-artifacts.test.ts",
-  "public-safety.test.ts",
-  "validate-error-messages.test.ts",
-  "refresh-build-summary.test.ts",
-];
 
 const testsDir = path.join(repoRoot, "tests");
 const testFiles = readdirSync(testsDir).filter((name) =>
   name.endsWith(".test.ts"),
 );
 const mockingFiles = testFiles
-  .filter((name) => !ARTIFACT_WRITERS.includes(name))
   .filter((name) =>
     MODULE_MOCKING.test(readFileSync(path.join(testsDir, name), "utf8")),
   )
@@ -120,13 +112,13 @@ function runPass(label: string, args: string[], suffix: string): void {
 
 // Pass 1 -- the bulk, one shared module registry per worker.
 runPass(
-  `shared registry (${testFiles.length - mockingFiles.length - ARTIFACT_WRITERS.length} files)`,
+  `shared registry (${testFiles.length - mockingFiles.length} files)`,
   [
     ...BASE,
     "--coverage",
     "--isolate=false",
     ...NO_PER_PASS_THRESHOLDS,
-    ...excludeArgs([...ARTIFACT_WRITERS, ...mockingFiles]),
+    ...excludeArgs(mockingFiles),
   ],
   "",
 );
@@ -148,5 +140,5 @@ runPass(
 
 console.log(
   `\nrun-ci-tests: both passes green (${mockingFiles.length} isolated, ` +
-    `${testFiles.length - mockingFiles.length - ARTIFACT_WRITERS.length} shared).`,
+    `${testFiles.length - mockingFiles.length} shared).`,
 );

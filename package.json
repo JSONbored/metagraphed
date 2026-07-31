@@ -135,7 +135,6 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ci": "node scripts/run-ci-tests.ts",
-    "test:ci:artifacts": "vitest run tests/artifacts.test tests/discovery-artifacts.test tests/public-safety.test tests/validate-error-messages.test tests/refresh-build-summary.test",
     "curation:brief": "node scripts/curation-brief.ts",
     "curation:stale-notes": "node scripts/stale-gap-notes.ts",
     "curation:identity-divergence": "node scripts/identity-field-divergence.ts",

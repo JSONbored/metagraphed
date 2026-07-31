@@ -7,9 +7,16 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   normalizePublicHttpUrl,
-  repoRoot,
 } from "../scripts/lib.ts";
+import { createRepoSandbox } from "./helpers/repo-sandbox.ts";
 import type { Row } from "./row-type.ts";
+
+// The scanner WALKS the repo (scripts/, deploy/, apps/, public/, …), so this
+// needs a full working-tree copy, not just the data dirs. Everything this file
+// plants now lands in that copy: it no longer mutates the shared tree, so it no
+// longer needs the serial pass (#8937). ~1.6s to clone.
+const sandbox = createRepoSandbox("public-safety", { scope: "full" });
+const repoRoot = sandbox.root;
 
 // ONE scan for the whole file (#8908). Every planted-fixture test below used to
 // write its fixture, spawn its own `node scripts/scan-public-safety.ts`, and
@@ -107,8 +114,9 @@ function rootCase(relative: string, lines: string | string[]): ScanCase {
 function runScanOutput() {
   try {
     execFileSync("node", ["scripts/scan-public-safety.ts"], {
-      cwd: repoRoot,
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
+      env: sandbox.env,
     });
     return "";
   } catch (err) {
@@ -133,6 +141,9 @@ afterAll(async () => {
   for (const dir of plantedDirs) {
     await fs.rm(dir, { recursive: true, force: true });
   }
+  // Everything above lives inside the sandbox anyway; dropping the whole tree
+  // is what actually reclaims it.
+  sandbox.cleanup();
 });
 
 describe("public URL safety checks", () => {
