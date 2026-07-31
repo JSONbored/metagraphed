@@ -74,6 +74,17 @@ export type PartnershipMetadata = z.infer<typeof PartnershipMetadataSchema>;
 export const SubnetEconomicsSchema = z
   .object({
     alpha_fdv_tao: z.number().nullable(),
+    // --- v440 emission pipeline (#8743) ---------------------------------
+    // Optional, not required: a refresh whose node could not serve
+    // state_queryStorageAt publishes the rest of the economics block rather
+    // than nothing, so these keys are absent on a degraded run and null only
+    // when the value itself is genuinely unknown.
+    //
+    // Alpha into the pool and alpha to participants. alpha_out_emission is
+    // NOT a constant 1.0 -- it is a per-subnet halving curve that reads 1.0
+    // today only because no subnet has crossed its first threshold.
+    alpha_in_emission: z.number().nullable().optional(),
+    alpha_out_emission: z.number().nullable().optional(),
     alpha_in_pool: z.number().nullable(),
     alpha_market_cap_tao: z.number().nullable(),
     alpha_out_pool: z.number().nullable(),
@@ -84,11 +95,24 @@ export const SubnetEconomicsSchema = z
     alpha_price_tao: z.number().nullable(),
     block: z.int().min(0).nullable().optional(),
     emission_share: z.number().min(0).max(1).nullable(),
+    // Stage 5. DEFAULTS TO TRUE on chain: absent storage is enabled and 0x00
+    // is disabled, so 57 of 127 subnets are enabled with no entry at all.
+    emission_enabled: z.boolean().nullable().optional(),
+    // Stage 7: TAO the chain bought on this subnet's behalf.
+    excess_tao: z.number().nullable().optional(),
+    // Stage 0 eligibility. The block a subnet first emitted at, or null if it
+    // never has.
+    first_emission_block: z.int().min(0).nullable().optional(),
     max_stake_tao: z.number().nullable(),
     max_uids: z.int().min(0),
     max_validators: z.int().min(0),
     miner_count: z.int().min(0),
     miner_readiness: z.int().min(0).max(100).nullable().optional(),
+    // Stage 2. A FRACTION IN [0, 1], not an amount -- MinerBurned is U96F32
+    // (divide by 2^32, never by 1e9). Verified across all 127 subnets: every
+    // non-zero value lands in (0, 1] with a maximum of exactly 1.0, which a
+    // misscaled amount would not.
+    miner_burned_fraction: z.number().min(0).max(1).nullable().optional(),
     name: z.string(),
     netuid: z.int().min(0),
     open_slots: z.int().min(0).nullable().optional(),
@@ -98,6 +122,13 @@ export const SubnetEconomicsSchema = z
     registration_cost_tao: z.number().nullable(),
     slug: z.string(),
     subnet_volume_tao: z.number().nullable(),
+    // Stage 0 eligibility.
+    subtoken_enabled: z.boolean().nullable().optional(),
+    // Stage 8: TAO injected into this subnet's own pool. Per-block,
+    // reservoir-smoothed and cap-limited, so a point sample is noisy by
+    // construction -- the daily rollup is the reportable figure. Its sum with
+    // excess_tao across subnets equals the issuance-derived block emission.
+    tao_in_emission_tao: z.number().nullable().optional(),
     tao_in_pool_tao: z.number().nullable(),
     total_stake_tao: z.number().nullable(),
     validator_count: z.int().min(0),

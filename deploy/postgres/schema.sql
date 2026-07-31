@@ -393,6 +393,19 @@ CREATE TABLE IF NOT EXISTS subnet_snapshots (
   alpha_in_pool      NUMERIC,
   alpha_out_pool     NUMERIC,
   subnet_volume_tao  NUMERIC,
+  -- v440 emission-pipeline inputs (#8743, migration 0050). Nullable: NULL
+  -- means "not captured" (a refresh whose node could not serve
+  -- state_queryStorageAt), never zero. emission_enabled/subtoken_enabled hold
+  -- the DECODED chain boolean -- SubnetEmissionEnabled defaults to TRUE on
+  -- chain, so key presence is not the signal and no column DEFAULT is set.
+  tao_in_emission_tao   NUMERIC,
+  excess_tao            NUMERIC,
+  alpha_in_emission     NUMERIC,
+  alpha_out_emission    NUMERIC,
+  miner_burned_fraction NUMERIC,
+  emission_enabled      BOOLEAN,
+  subtoken_enabled      BOOLEAN,
+  first_emission_block  BIGINT,
   PRIMARY KEY (netuid, snapshot_date)
 );
 CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date

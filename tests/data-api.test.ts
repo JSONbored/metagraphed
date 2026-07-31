@@ -8694,6 +8694,18 @@ function snapshotRow(overrides = {}) {
     alpha_in_pool: 2956464.98,
     alpha_out_pool: 2257199.02,
     subnet_volume_tao: 798027.45,
+    // #8743 v440 pipeline inputs. Present on the shared helper so the
+    // happy-path upsert exercises the SET side of every new guard; the
+    // "defaults every optional field to null" test below still covers the
+    // absent side with its own minimal row.
+    tao_in_emission_tao: 0.001185079,
+    excess_tao: 0.001106056,
+    alpha_in_emission: 0.150157337,
+    alpha_out_emission: 1,
+    miner_burned_fraction: 0.10682435240596533,
+    emission_enabled: true,
+    subtoken_enabled: true,
+    first_emission_block: 5228683,
     captured_at: 1780000000000,
     ...overrides,
   };
@@ -8852,6 +8864,56 @@ test("subnet-snapshot-sync defaults every optional field to null when absent", a
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, rows_written: 1 });
+});
+
+test("subnet-snapshot-sync writes emission_enabled=false rather than dropping it", async () => {
+  // The one that a Number.isFinite guard would have silently NULLed. 46 of
+  // 127 subnets have emission explicitly disabled, so `false` is the single
+  // most consequential value on this column -- routing the booleans through
+  // the numeric guard used by every other field would have written NULL for
+  // the entire network.
+  const res = await postSubnetSnapshot(
+    [
+      snapshotRow({
+        emission_enabled: false,
+        subtoken_enabled: false,
+        tao_in_emission_tao: 0,
+        excess_tao: 0,
+      }),
+    ],
+    { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true, rows_written: 1 });
+  const insert = sqlCalls.find((call) =>
+    /INSERT INTO subnet_snapshots\b/.test(String(call.text)),
+  )!;
+  // Zero is a real measurement on both TAO channels -- a disabled subnet
+  // genuinely receives nothing -- so neither may arrive as null.
+  expect(insert.values).toContain(false);
+  expect(insert.values).toContain(0);
+  expect(String(insert.text)).toMatch(/emission_enabled/);
+});
+
+test("subnet-snapshot-sync nulls a non-boolean emission flag", async () => {
+  const res = await postSubnetSnapshot(
+    [
+      snapshotRow({
+        emission_enabled: "yes",
+        subtoken_enabled: 1,
+        miner_burned_fraction: "0.5",
+        first_emission_block: null,
+      }),
+    ],
+    { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true, rows_written: 1 });
+  const insert = sqlCalls.find((call) =>
+    /INSERT INTO subnet_snapshots\b/.test(String(call.text)),
+  )!;
+  expect(insert.values).not.toContain("yes");
+  expect(insert.values).not.toContain("0.5");
 });
 
 test("subnet-snapshot-sync maps a DB failure to a clean 502 instead of throwing", async () => {

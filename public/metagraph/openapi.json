@@ -7661,8 +7661,10 @@
             "contract_version": "2026-06-29.1",
             "economics": {
               "alpha_fdv_tao": 0.5,
+              "alpha_in_emission": 0.5,
               "alpha_in_pool": 0.5,
               "alpha_market_cap_tao": 0.5,
+              "alpha_out_emission": 0.5,
               "alpha_out_pool": 0.5,
               "alpha_price_change_1d": 0.5,
               "alpha_price_change_1h": 0.5,
@@ -7670,10 +7672,14 @@
               "alpha_price_change_7d": 0.5,
               "alpha_price_tao": 0.5,
               "block": 5000000,
+              "emission_enabled": false,
               "emission_share": 0.5,
+              "excess_tao": 0.5,
+              "first_emission_block": 5000000,
               "max_stake_tao": 0.5,
               "max_uids": 1,
               "max_validators": 1,
+              "miner_burned_fraction": 0.5,
               "miner_count": 1,
               "miner_readiness": 1,
               "name": "Example Subnet",
@@ -7685,6 +7691,8 @@
               "registration_cost_tao": 0.5,
               "slug": "example-subnet",
               "subnet_volume_tao": 0.5,
+              "subtoken_enabled": false,
+              "tao_in_emission_tao": 0.5,
               "tao_in_pool_tao": 0.5,
               "total_stake_tao": 0.5,
               "validator_count": 1
@@ -23623,6 +23631,16 @@
                     }
                   ]
                 },
+                "alpha_in_emission": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "alpha_in_pool": {
                   "anyOf": [
                     {
@@ -23634,6 +23652,16 @@
                   ]
                 },
                 "alpha_market_cap_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_out_emission": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -23715,12 +23743,44 @@
                     }
                   ]
                 },
+                "emission_enabled": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "emission_share": {
                   "anyOf": [
                     {
                       "maximum": 1,
                       "minimum": 0,
                       "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "excess_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "first_emission_block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
                     },
                     {
                       "type": "null"
@@ -23746,6 +23806,18 @@
                   "maximum": 9007199254740991,
                   "minimum": 0,
                   "type": "integer"
+                },
+                "miner_burned_fraction": {
+                  "anyOf": [
+                    {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "miner_count": {
                   "maximum": 9007199254740991,
@@ -23821,6 +23893,26 @@
                   "type": "string"
                 },
                 "subnet_volume_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "subtoken_enabled": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tao_in_emission_tao": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -35892,6 +35984,16 @@
                   }
                 ]
               },
+              "alpha_in_emission": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "alpha_in_pool": {
                 "anyOf": [
                   {
@@ -35903,6 +36005,16 @@
                 ]
               },
               "alpha_market_cap_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_out_emission": {
                 "anyOf": [
                   {
                     "type": "number"
@@ -35984,12 +36096,44 @@
                   }
                 ]
               },
+              "emission_enabled": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "emission_share": {
                 "anyOf": [
                   {
                     "maximum": 1,
                     "minimum": 0,
                     "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "excess_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "first_emission_block": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
                   },
                   {
                     "type": "null"
@@ -36015,6 +36159,18 @@
                 "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
+              },
+              "miner_burned_fraction": {
+                "anyOf": [
+                  {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "miner_count": {
                 "maximum": 9007199254740991,
@@ -36090,6 +36246,26 @@
                 "type": "string"
               },
               "subnet_volume_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "subtoken_enabled": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tao_in_emission_tao": {
                 "anyOf": [
                   {
                     "type": "number"

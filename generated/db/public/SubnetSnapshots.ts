@@ -42,6 +42,22 @@ export default interface SubnetSnapshots {
   alpha_out_pool: string | null;
 
   subnet_volume_tao: string | null;
+
+  tao_in_emission_tao: string | null;
+
+  excess_tao: string | null;
+
+  alpha_in_emission: string | null;
+
+  alpha_out_emission: string | null;
+
+  miner_burned_fraction: string | null;
+
+  emission_enabled: boolean | null;
+
+  subtoken_enabled: boolean | null;
+
+  first_emission_block: string | null;
 }
 
 /** Represents the initializer for the table public.subnet_snapshots */
@@ -79,6 +95,22 @@ export interface SubnetSnapshotsInitializer {
   alpha_out_pool?: string | null;
 
   subnet_volume_tao?: string | null;
+
+  tao_in_emission_tao?: string | null;
+
+  excess_tao?: string | null;
+
+  alpha_in_emission?: string | null;
+
+  alpha_out_emission?: string | null;
+
+  miner_burned_fraction?: string | null;
+
+  emission_enabled?: boolean | null;
+
+  subtoken_enabled?: boolean | null;
+
+  first_emission_block?: string | null;
 }
 
 /** Represents the mutator for the table public.subnet_snapshots */
@@ -116,4 +148,20 @@ export interface SubnetSnapshotsMutator {
   alpha_out_pool?: string | null;
 
   subnet_volume_tao?: string | null;
+
+  tao_in_emission_tao?: string | null;
+
+  excess_tao?: string | null;
+
+  alpha_in_emission?: string | null;
+
+  alpha_out_emission?: string | null;
+
+  miner_burned_fraction?: string | null;
+
+  emission_enabled?: boolean | null;
+
+  subtoken_enabled?: boolean | null;
+
+  first_emission_block?: string | null;
 }

@@ -916,6 +916,19 @@ export async function syncSubnetSnapshotToPostgres(
         alpha_in_pool: econ.alpha_in_pool ?? null,
         alpha_out_pool: econ.alpha_out_pool ?? null,
         subnet_volume_tao: econ.subnet_volume_tao ?? null,
+        // #8743 v440 pipeline inputs. `?? null` rather than `|| null`
+        // throughout: zero is a real measurement on both TAO channels (a
+        // disabled subnet genuinely receives nothing) and `false` is a real
+        // value for both flags, so `||` would erase the very rows worth
+        // recording.
+        tao_in_emission_tao: econ.tao_in_emission_tao ?? null,
+        excess_tao: econ.excess_tao ?? null,
+        alpha_in_emission: econ.alpha_in_emission ?? null,
+        alpha_out_emission: econ.alpha_out_emission ?? null,
+        miner_burned_fraction: econ.miner_burned_fraction ?? null,
+        emission_enabled: econ.emission_enabled ?? null,
+        subtoken_enabled: econ.subtoken_enabled ?? null,
+        first_emission_block: econ.first_emission_block ?? null,
         captured_at: capturedAt,
       };
     });

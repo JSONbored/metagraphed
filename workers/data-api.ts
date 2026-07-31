@@ -3037,6 +3037,31 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
     candidate_count: Number.isFinite(row.candidate_count)
       ? row.candidate_count
       : null,
+    // #8743 v440 pipeline inputs. The two booleans cannot go through
+    // Number.isFinite like every numeric column above -- `false` is a real,
+    // meaningful value here (46 subnets have emission explicitly disabled),
+    // so they are guarded on type instead. Running them through the numeric
+    // guard would have written NULL for every subnet on the network.
+    tao_in_emission_tao: Number.isFinite(row.tao_in_emission_tao)
+      ? row.tao_in_emission_tao
+      : null,
+    excess_tao: Number.isFinite(row.excess_tao) ? row.excess_tao : null,
+    alpha_in_emission: Number.isFinite(row.alpha_in_emission)
+      ? row.alpha_in_emission
+      : null,
+    alpha_out_emission: Number.isFinite(row.alpha_out_emission)
+      ? row.alpha_out_emission
+      : null,
+    miner_burned_fraction: Number.isFinite(row.miner_burned_fraction)
+      ? row.miner_burned_fraction
+      : null,
+    emission_enabled:
+      typeof row.emission_enabled === "boolean" ? row.emission_enabled : null,
+    subtoken_enabled:
+      typeof row.subtoken_enabled === "boolean" ? row.subtoken_enabled : null,
+    first_emission_block: Number.isFinite(row.first_emission_block)
+      ? row.first_emission_block
+      : null,
     validator_count: Number.isFinite(row.validator_count)
       ? row.validator_count
       : null,
@@ -3089,6 +3114,14 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
           "alpha_in_pool",
           "alpha_out_pool",
           "subnet_volume_tao",
+          "tao_in_emission_tao",
+          "excess_tao",
+          "alpha_in_emission",
+          "alpha_out_emission",
+          "miner_burned_fraction",
+          "emission_enabled",
+          "subtoken_enabled",
+          "first_emission_block",
           "captured_at",
         )}
         ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
@@ -3100,7 +3133,15 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
           tao_in_pool_tao = COALESCE(subnet_snapshots.tao_in_pool_tao, excluded.tao_in_pool_tao),
           alpha_in_pool = COALESCE(subnet_snapshots.alpha_in_pool, excluded.alpha_in_pool),
           alpha_out_pool = COALESCE(subnet_snapshots.alpha_out_pool, excluded.alpha_out_pool),
-          subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao)`;
+          subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao),
+          tao_in_emission_tao = COALESCE(subnet_snapshots.tao_in_emission_tao, excluded.tao_in_emission_tao),
+          excess_tao = COALESCE(subnet_snapshots.excess_tao, excluded.excess_tao),
+          alpha_in_emission = COALESCE(subnet_snapshots.alpha_in_emission, excluded.alpha_in_emission),
+          alpha_out_emission = COALESCE(subnet_snapshots.alpha_out_emission, excluded.alpha_out_emission),
+          miner_burned_fraction = COALESCE(subnet_snapshots.miner_burned_fraction, excluded.miner_burned_fraction),
+          emission_enabled = COALESCE(subnet_snapshots.emission_enabled, excluded.emission_enabled),
+          subtoken_enabled = COALESCE(subnet_snapshots.subtoken_enabled, excluded.subtoken_enabled),
+          first_emission_block = COALESCE(subnet_snapshots.first_emission_block, excluded.first_emission_block)`;
         return writeJson({ ok: true, rows_written: snapshotRows.length });
       },
     );
