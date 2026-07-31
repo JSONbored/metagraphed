@@ -464,13 +464,15 @@ const REALIZED_RETURN_FIELDS: Array<[string, string]> = [
 // One window's realized return on staked capital (#7228): the rao-exact
 // fractional change between a validator's current total stake (`currentStakeRao`,
 // already summed across every subnet membership in rao-BigInt space) and its
-// total stake at the neuron_daily snapshot ~N days ago (`baselineStakeTao`, the
-// summed baseline the worker passes in). Unlike apy_estimate (a forward-looking
+// total stake at the newest permitted neuron_daily snapshot within a few days
+// of the ~N-days-ago target date (`baselineStakeTao`, the summed baseline the
+// worker passes in; the worker bounds that lookback so a stale far-older
+// snapshot can never stand in, #8837). Unlike apy_estimate (a forward-looking
 // annualized projection from one epoch's emission rate), this is backward-
 // looking over an actually-elapsed window -- it captures both emission-driven
 // compounding and net delegation flow, since a two-snapshot comparison cannot
-// separate them. Null (never 0) when no neuron_daily row exists far enough back
-// (baselineStakeTao null) or the baseline stake is non-positive (a return is
+// separate them. Null (never 0) when the worker found no permitted snapshot in
+// that bounded window (baselineStakeTao null) or the baseline stake is non-positive (a return is
 // undefined with nothing staked) -- "no realized figure" vs. "confirmed zero
 // return", mirroring finalizeApy's null-never-fabricated convention.
 function realizedReturn(
