@@ -919,12 +919,43 @@ jobs:
       - name: Test
         run: npm test --workspace=apps/ui
 
+      # Cache the downloaded browser binary across runs (#8910): the install
+      # step below measured 65s (11% of this job), and re-downloading the same
+      # Chromium build on every PR is the bulk of it. Keyed on the resolved
+      # @playwright/test version rather than the lockfile hash, since that is
+      # the only input that changes which binary is downloaded -- an unrelated
+      # dependency bump must not evict a still-correct browser.
+      - name: Resolve Playwright version
+        id: playwright-version
+        working-directory: apps/ui
+        run: |
+          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
       # Uses the @playwright/test devDependency already installed by `npm ci`
       # above (not a fresh npx fetch) -- installs just its matching browser
       # binary, no separate version to keep in sync.
+      #
+      # The OS-level dependencies `--with-deps` installs live in system paths,
+      # NOT in the cached ~/.cache/ms-playwright, so they must be (re)installed
+      # on a cache hit too -- `install-deps` does exactly that without
+      # re-downloading the browser. Skipping it entirely on a hit would leave
+      # the cached binary unable to launch on a runner image whose preinstalled
+      # libraries have since drifted.
       - name: Install Playwright Chromium
         working-directory: apps/ui
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       # Baseline-diff, not zero-tolerance -- see responsive-overflow.spec.ts.
       # Fails only on a NEW element escaping the viewport that isn't already
