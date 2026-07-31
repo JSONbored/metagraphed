@@ -67,7 +67,8 @@ export const ListEndpointsInputSchema = z
     sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
     order: z.enum(["asc", "desc"]).optional(),
     fields: z.string().optional(),
-    limit: z.int().min(1).optional(),
+    // Ceiling matches workers/request-params.ts:21 (`MAX_LIMIT`).
+    limit: z.int().min(1).max(1000).optional(),
     cursor: z.int().min(0).optional(),
   })
   .strict();

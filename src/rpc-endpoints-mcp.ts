@@ -88,10 +88,19 @@ function optionalRangeBound(
   return value;
 }
 
-function clampLimit(value: unknown, fallback: number, max: number): number {
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
+function resolveLimit(value: unknown): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > 1000
+  ) {
+    throw rpcEndpointsMcpError(
+      "invalid_params",
+      "limit must be an integer between 1 and 1000.",
+    );
+  }
+  return value;
 }
 
 function resolveFieldsProjection(
@@ -196,7 +205,7 @@ export function rpcEndpointsQueryUrl(
   const maxScore = optionalRangeBound(args, "max_score");
   if (maxScore !== null) url.searchParams.set("max_score", String(maxScore));
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampLimit(args.limit, 50, 1000)));
+    url.searchParams.set("limit", String(resolveLimit(args.limit)));
   }
   const cursor = resolveCursor(args);
   if (cursor !== null) url.searchParams.set("cursor", String(cursor));
