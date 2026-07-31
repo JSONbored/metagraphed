@@ -138,6 +138,8 @@ const GlobalIncidentEntrySchema = z
   .object({
     started_at: z.int(),
     ended_at: z.int(),
+    // Observed failed-probe span (ended_at - started_at) plus one probe cadence
+    // (PROBE_CADENCE_MS) so downtime is not systematically short by ~15 min.
     duration_ms: z.int().min(0),
     // Bucket (b): formatGlobalIncidents() always sets failed_samples --
     // tightened from optional to required.
@@ -154,6 +156,8 @@ const GlobalIncidentSurfaceSchema = z
     // downtime_ms (the sum of this surface's own incident durations) --
     // tightened from optional to required.
     downtime_ms: z.int().min(0),
+    transient_failure_count: z.int().min(0),
+    transient_failed_samples: z.int().min(0),
     incidents: z.array(GlobalIncidentEntrySchema),
   })
   .passthrough();
@@ -164,6 +168,7 @@ export const GlobalIncidentsArtifactSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
+    min_incident_samples: z.int().min(1),
     summary: z
       .object({
         incident_count: z.int().min(0),
@@ -260,6 +265,8 @@ const HealthIncidentEntrySchema = z
   .object({
     started_at: z.int(),
     ended_at: z.int(),
+    // Observed failed-probe span (ended_at - started_at) plus one probe cadence
+    // (PROBE_CADENCE_MS) so downtime is not systematically short by ~15 min.
     duration_ms: z.int().min(0),
     failed_samples: z.int().min(0),
   })
@@ -272,6 +279,8 @@ const HealthIncidentSurfaceSchema = z
     uptime_ratio: z.number().nullable(),
     incident_count: z.int().min(0),
     downtime_ms: z.int().min(0),
+    transient_failure_count: z.int().min(0),
+    transient_failed_samples: z.int().min(0),
     incidents: z.array(HealthIncidentEntrySchema),
   })
   .passthrough();
@@ -283,6 +292,7 @@ export const HealthIncidentsArtifactSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
+    min_incident_samples: z.int().min(1),
     surfaces: z.array(HealthIncidentSurfaceSchema),
   })
   .passthrough();

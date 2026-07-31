@@ -32,6 +32,8 @@ const GetSubnetHealthIncidentsSurfaceSchema = z
     uptime_ratio: z.number().nullable().optional(),
     incident_count: z.int().optional(),
     downtime_ms: z.int().optional(),
+    transient_failure_count: z.int().min(0).optional(),
+    transient_failed_samples: z.int().min(0).optional(),
     incidents: z.array(GetSubnetHealthIncidentSchema).optional(),
   })
   .passthrough();
@@ -43,6 +45,7 @@ export const GetSubnetHealthIncidentsOutputSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string().nullable().optional(),
+    min_incident_samples: z.int().min(1).optional(),
     surfaces: z.array(GetSubnetHealthIncidentsSurfaceSchema),
   })
   .passthrough();

@@ -21,6 +21,8 @@ import {
   subnetBadgeStatus,
   summarizeRows,
   utcWindowCutoffDay,
+  PROBE_CADENCE_MS,
+  MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -3082,17 +3084,18 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
     }) as Row;
     assert.equal(out.summary.incident_count, 3);
     assert.equal(out.summary.affected_surface_count, 2);
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
     assert.equal(out.surfaces[0].netuid, 7); // sorted by netuid
     const sn7 = out.surfaces.find((s: Row) => s.netuid === 7);
     assert.equal(sn7.incident_count, 2);
-    assert.equal(sn7.downtime_ms, 10000); // 4000 + 6000
+    assert.equal(sn7.downtime_ms, 10000 + 2 * PROBE_CADENCE_MS); // spans + cadence each
+    assert.equal(sn7.transient_failure_count, 0);
   });
 
   test("empty rows -> empty ledger; caps at maxIncidents", () => {
-    assert.deepEqual(
-      (formatGlobalIncidents({ incidentRows: [] }) as Row).surfaces,
-      [],
-    );
+    const empty = formatGlobalIncidents({ incidentRows: [] }) as Row;
+    assert.deepEqual(empty.surfaces, []);
+    assert.equal(empty.min_incident_samples, MIN_INCIDENT_SAMPLES);
     const capped = formatGlobalIncidents({
       maxIncidents: 1,
       incidentRows: [
@@ -3113,6 +3116,24 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
       ],
     }) as Row;
     assert.equal(capped.summary.incident_count, 1);
+  });
+
+  test("transient-only surfaces appear with incident_count 0", () => {
+    const out = formatGlobalIncidents({
+      incidentRows: [],
+      transientRows: [
+        {
+          netuid: 3,
+          surface_id: "flap",
+          transient_failure_count: 1,
+          transient_failed_samples: 1,
+        },
+      ],
+    }) as Row;
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].incident_count, 0);
+    assert.equal(out.surfaces[0].transient_failure_count, 1);
+    assert.equal(out.surfaces[0].transient_failed_samples, 1);
   });
 });
 

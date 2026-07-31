@@ -35,6 +35,7 @@ export const GetGlobalIncidentsOutputSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string().nullable().optional(),
+    min_incident_samples: z.int().min(1).optional(),
     summary: OpenObjectSchema,
     surfaces: OpenObjectArraySchema,
     total: z.int().optional(),

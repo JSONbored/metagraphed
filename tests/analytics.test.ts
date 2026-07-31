@@ -7,6 +7,8 @@ import {
   formatTrajectory,
   loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
+  PROBE_CADENCE_MS,
+  MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.ts";
 import {
   syncSubnetSnapshotToPostgres,
@@ -95,8 +97,99 @@ describe("formatIncidents", () => {
     assert.equal(surface.uptime_ratio, 0.96);
     assert.equal(surface.incident_count, 2);
     assert.equal(surface.incidents[0].failed_samples, 3);
-    assert.equal(surface.incidents[0].duration_ms, 240000);
-    assert.equal(surface.downtime_ms, 240000 + 120000);
+    assert.equal(surface.incidents[0].duration_ms, 240000 + PROBE_CADENCE_MS);
+    assert.equal(
+      surface.downtime_ms,
+      240000 + PROBE_CADENCE_MS + 120000 + PROBE_CADENCE_MS,
+    );
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
+    assert.equal(surface.transient_failure_count, 0);
+    assert.equal(surface.transient_failed_samples, 0);
+  });
+  test("12:15/12:30/12:45 fail island duration exceeds observed 30m span (#8824)", () => {
+    // 12:00 ok / 12:15,12:30,12:45 fail / 13:00 ok — observed span 30m;
+    // A1 adds one probe cadence so duration_ms > 30m.
+    const t12_15 = Date.parse("2026-07-01T12:15:00.000Z");
+    const t12_45 = Date.parse("2026-07-01T12:45:00.000Z");
+    const out = formatIncidents({
+      netuid: 7,
+      slaRows: [{ surface_id: "x", total: 5, ok_count: 2 }],
+      incidentRows: [
+        {
+          surface_id: "x",
+          started_at: t12_15,
+          ended_at: t12_45,
+          failed_samples: 3,
+        },
+      ],
+    }) as Row;
+    assert.ok(out.surfaces[0].incidents[0].duration_ms > 30 * 60 * 1000);
+    assert.equal(
+      out.surfaces[0].incidents[0].duration_ms,
+      30 * 60 * 1000 + PROBE_CADENCE_MS,
+    );
+  });
+  test("single-probe flaps report incident_count 0 with transient_failure_count > 0", () => {
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "y", total: 100, ok_count: 98 }],
+      incidentRows: [],
+      transientRows: [
+        {
+          surface_id: "y",
+          transient_failure_count: 2,
+          transient_failed_samples: 2,
+        },
+      ],
+    }) as Row;
+    const surface = out.surfaces[0];
+    assert.equal(surface.incident_count, 0);
+    assert.equal(surface.downtime_ms, 0);
+    assert.ok((surface.uptime_ratio as number) < 1);
+    assert.ok((surface.transient_failure_count as number) > 0);
+    assert.equal(surface.transient_failed_samples, 2);
+  });
+  test("failed samples reconcile: qualifying incident + two single-probe flaps", () => {
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "z", total: 100, ok_count: 95 }],
+      incidentRows: [
+        {
+          surface_id: "z",
+          started_at: 1_000,
+          ended_at: 1_000 + 15 * 60 * 1000,
+          failed_samples: 3,
+        },
+      ],
+      transientRows: [
+        {
+          surface_id: "z",
+          transient_failure_count: 2,
+          transient_failed_samples: 2,
+        },
+      ],
+    }) as Row;
+    const surface = out.surfaces[0];
+    const failedFromUptime =
+      surface.samples -
+      Math.round((surface.uptime_ratio as number) * surface.samples);
+    const accounted =
+      (surface.incidents as Row[]).reduce(
+        (sum: number, i: Row) => sum + (i.failed_samples as number),
+        0,
+      ) + (surface.transient_failed_samples as number);
+    assert.equal(failedFromUptime, 5);
+    assert.equal(accounted, 5);
+  });
+  test("cold path emits min_incident_samples and transient zeros", () => {
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [],
+      incidentRows: [],
+      transientRows: [],
+    }) as Row;
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
+    assert.deepEqual(out.surfaces, []);
   });
   test("surface with no incidents has zero incidents", () => {
     const out = formatIncidents({
@@ -106,6 +199,8 @@ describe("formatIncidents", () => {
     }) as Row;
     assert.equal(out.surfaces[0].incident_count, 0);
     assert.equal(out.surfaces[0].uptime_ratio, 1);
+    assert.equal(out.surfaces[0].transient_failure_count, 0);
+    assert.equal(out.surfaces[0].transient_failed_samples, 0);
   });
   test("zero-sample surface yields null uptime", () => {
     const out = formatIncidents({

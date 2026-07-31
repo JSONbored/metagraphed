@@ -412,6 +412,10 @@ export function mergeFreshness(
 
 // --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
 
+// Health prober cadence (`*/15 * * * *` in wrangler.jsonc). Incident duration
+// arithmetic and INCIDENT_GAP_MS both depend on this fact.
+export const PROBE_CADENCE_MS = 15 * 60 * 1000;
+
 // A gap larger than this between consecutive failing checks ends one incident and
 // starts another. Must exceed the probe cadence (15 min) so consecutive failed
 // probes group into a single incident; 30 min = cadence + one missed-run buffer.
@@ -426,6 +430,14 @@ export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 // only sustained misses (MinSignedPerWindow) count as downtime. At 2 (≥ ~4 min
 // sustained) the ledger reflects real dips, not prober flapping.
 export const MIN_INCIDENT_SAMPLES = 2;
+
+// Observed failed-probe span (endedAt - startedAt) understates true downtime by
+// roughly one probe interval on average (outage began before the first fail and
+// ended after the last). A1: add PROBE_CADENCE_MS so duration is never optimistic
+// relative to the observed span, and a single-sample island cannot yield 0.
+export function incidentDurationMs(startedAt: number, endedAt: number): number {
+  return Math.max(0, endedAt - startedAt) + PROBE_CADENCE_MS;
+}
 
 // #8814: the YYYY-MM-DD of the OLDEST day in a window of exactly `days`
 // calendar days ending on (and including) the UTC day of `nowMs`. A native
@@ -770,6 +782,9 @@ export function formatRpcUsage({
 // SLA + downtime incidents per surface. `slaRows`: [{ surface_id, surface_key?,
 // total, ok_count }]. `incidentRows`: [{ surface_id, surface_key?, started_at, ended_at,
 // failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL).
+// `transientRows`: [{ surface_id, surface_key?, transient_failure_count,
+// transient_failed_samples }] — islands below MIN_INCIDENT_SAMPLES from the same
+// CTE. `duration_ms` = observed failed span + PROBE_CADENCE_MS (A1).
 // `maxIncidents` is a per-surface defensive API cap so one flapping endpoint
 // cannot monopolize the budget and starve sibling surfaces on the same subnet.
 export function formatIncidents({
@@ -778,6 +793,7 @@ export function formatIncidents({
   observedAt,
   slaRows,
   incidentRows,
+  transientRows,
   maxIncidents,
 }: {
   netuid?: unknown;
@@ -785,6 +801,7 @@ export function formatIncidents({
   observedAt?: unknown;
   slaRows?: Row[];
   incidentRows?: Row[];
+  transientRows?: Row[];
   maxIncidents?: unknown;
 }): Row {
   const incidentLimit = Number.isInteger(maxIncidents)
@@ -805,18 +822,38 @@ export function formatIncidents({
     list.push({
       started_at: startedAt,
       ended_at: endedAt,
-      duration_ms: endedAt - startedAt,
+      // Observed MIN/MAX(checked_at) over failed probes, plus one probe cadence
+      // so duration is not systematically short by ~PROBE_CADENCE_MS.
+      duration_ms: incidentDurationMs(startedAt, endedAt),
       failed_samples: Number(row.failed_samples) || 0,
     });
     acceptedBySurface.set(key, accepted + 1);
     incidentsBySurface.set(key, list);
   }
 
+  const transientBySurface = new Map<
+    unknown,
+    { transient_failure_count: number; transient_failed_samples: number }
+  >();
+  for (const row of transientRows || []) {
+    const key = surfaceLookupKey(row);
+    if (!key) continue;
+    transientBySurface.set(key, {
+      transient_failure_count: Number(row.transient_failure_count) || 0,
+      transient_failed_samples: Number(row.transient_failed_samples) || 0,
+    });
+  }
+
   const surfaces = (slaRows || [])
     .map((row) => {
       const total = Number(row.total) || 0;
       const okCount = Number(row.ok_count) || 0;
-      const incidents = incidentsBySurface.get(surfaceLookupKey(row)) || [];
+      const key = surfaceLookupKey(row);
+      const incidents = incidentsBySurface.get(key) || [];
+      const transient = transientBySurface.get(key) || {
+        transient_failure_count: 0,
+        transient_failed_samples: 0,
+      };
       const downtimeMs = incidents.reduce(
         (sum, i) => sum + (i.duration_ms as number),
         0,
@@ -826,7 +863,10 @@ export function formatIncidents({
         samples: total,
         uptime_ratio: total ? displayUptimeRatio(okCount / total) : null,
         incident_count: incidents.length,
+        // Sum of per-incident duration_ms (observed span + PROBE_CADENCE_MS each).
         downtime_ms: downtimeMs,
+        transient_failure_count: transient.transient_failure_count,
+        transient_failed_samples: transient.transient_failed_samples,
         incidents,
       };
     })
@@ -840,24 +880,27 @@ export function formatIncidents({
     window: window || null,
     observed_at: observedAt || null,
     source: "live-cron-prober",
+    min_incident_samples: MIN_INCIDENT_SAMPLES,
     surfaces,
   };
 }
 
 // Global, cross-subnet incident ledger from the same gap-island grouping as
-// formatIncidents, but keyed by netuid + stable surface identity and listing ONLY surfaces
-// that had an incident in the window (a "what's been down lately" feed, not a
-// full SLA table). `incidentRows`: [{ netuid, surface_id, started_at, ended_at,
-// failed_samples }], already capped + ordered by the SQL.
+// formatIncidents, keyed by netuid + stable surface identity. Surfaces with
+// qualifying incidents and/or sub-threshold flaps are listed. `incidentRows`:
+// [{ netuid, surface_id, started_at, ended_at, failed_samples }], already capped
+// + ordered by the SQL. `transientRows`: same shape as formatIncidents.
 export function formatGlobalIncidents({
   window,
   observedAt,
   incidentRows,
+  transientRows,
   maxIncidents,
 }: {
   window?: unknown;
   observedAt?: unknown;
   incidentRows?: Row[];
+  transientRows?: Row[];
   maxIncidents?: unknown;
 }): Row {
   const incidentLimit = Number.isInteger(maxIncidents)
@@ -865,7 +908,13 @@ export function formatGlobalIncidents({
     : Infinity;
   const bySurface = new Map<
     string,
-    { netuid: number; surface_id: unknown; incidents: Row[] }
+    {
+      netuid: number;
+      surface_id: unknown;
+      incidents: Row[];
+      transient_failure_count: number;
+      transient_failed_samples: number;
+    }
   >();
   let acceptedIncidents = 0;
   for (const row of incidentRows || []) {
@@ -878,17 +927,35 @@ export function formatGlobalIncidents({
       netuid,
       surface_id: row.surface_id,
       incidents: [],
+      transient_failure_count: 0,
+      transient_failed_samples: 0,
     };
     const startedAt = Number(row.started_at);
     const endedAt = Number(row.ended_at);
     entry.incidents.push({
       started_at: startedAt,
       ended_at: endedAt,
-      duration_ms: endedAt - startedAt,
+      duration_ms: incidentDurationMs(startedAt, endedAt),
       failed_samples: Number(row.failed_samples) || 0,
     });
     bySurface.set(key, entry);
     acceptedIncidents += 1;
+  }
+
+  for (const row of transientRows || []) {
+    const netuid = Number(row.netuid);
+    const key = `${netuid}/${surfaceLookupKey(row)}`;
+    const entry = bySurface.get(key) || {
+      netuid,
+      surface_id: row.surface_id,
+      incidents: [],
+      transient_failure_count: 0,
+      transient_failed_samples: 0,
+    };
+    entry.transient_failure_count = Number(row.transient_failure_count) || 0;
+    entry.transient_failed_samples = Number(row.transient_failed_samples) || 0;
+    if (row.surface_id != null) entry.surface_id = row.surface_id;
+    bySurface.set(key, entry);
   }
 
   const surfaces = [...bySurface.values()]
@@ -900,6 +967,8 @@ export function formatGlobalIncidents({
         (sum, i) => sum + (i.duration_ms as number),
         0,
       ),
+      transient_failure_count: entry.transient_failure_count,
+      transient_failed_samples: entry.transient_failed_samples,
       incidents: entry.incidents,
     }))
     .sort(
@@ -913,6 +982,7 @@ export function formatGlobalIncidents({
     window: window || null,
     observed_at: observedAt || null,
     source: "live-cron-prober",
+    min_incident_samples: MIN_INCIDENT_SAMPLES,
     summary: {
       incident_count: acceptedIncidents,
       affected_surface_count: surfaces.length,

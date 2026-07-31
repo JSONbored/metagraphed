@@ -8990,6 +8990,41 @@ async function dispatchDataApiRequest(
           ) ranked
           WHERE rn <= ${MAX_INCIDENT_ROWS}
           ORDER BY surface_id, started_at`;
+          // Same island CTE as above; aggregate islands below MIN_INCIDENT_SAMPLES
+          // so uptime_ratio < 1 with incident_count 0 is explained in-payload.
+          const transientRows = await sql<
+            {
+              surface_id: string;
+              surface_key: string;
+              transient_failure_count: string;
+              transient_failed_samples: string;
+            }[]
+          >`
+          WITH checks AS (
+            SELECT COALESCE(surface_key, surface_id) AS surface_key,
+                   surface_id, checked_at, ok,
+                   checked_at - LAG(checked_at)
+                     OVER (PARTITION BY COALESCE(surface_key, surface_id) ORDER BY checked_at) AS gap
+            FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}
+          ),
+          grouped AS (
+            SELECT surface_key, surface_id, checked_at, ok,
+                   SUM(CASE WHEN ok OR gap IS NULL OR gap > ${INCIDENT_GAP_MS} THEN 1 ELSE 0 END)
+                     OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
+            FROM checks
+          ),
+          islands AS (
+            SELECT MAX(surface_id) AS surface_id, surface_key,
+                   COUNT(*) AS failed_samples
+            FROM grouped WHERE NOT ok
+            GROUP BY surface_key, grp
+          )
+          SELECT MAX(surface_id) AS surface_id, surface_key,
+                 COUNT(*) AS transient_failure_count,
+                 COALESCE(SUM(failed_samples), 0) AS transient_failed_samples
+          FROM islands
+          WHERE failed_samples < ${MIN_INCIDENT_SAMPLES}
+          GROUP BY surface_key`;
           const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}`;
@@ -9004,6 +9039,7 @@ async function dispatchDataApiRequest(
               observedAt: latestObservedIso(freshRows, "newest_observed"),
               slaRows,
               incidentRows,
+              transientRows,
               maxIncidents: MAX_INCIDENT_ROWS,
             }),
           );
@@ -9058,6 +9094,45 @@ async function dispatchDataApiRequest(
           HAVING COUNT(*) >= ${MIN_INCIDENT_SAMPLES}
           ORDER BY started_at DESC
           LIMIT ${MAX_INCIDENT_ROWS}`;
+          const transientRows = await sql<
+            {
+              netuid: SurfaceChecks["netuid"];
+              surface_id: string;
+              surface_key: string;
+              transient_failure_count: string;
+              transient_failed_samples: string;
+            }[]
+          >`
+          WITH recent_checks AS (
+            SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key,
+                   surface_id, checked_at, ok
+            FROM surface_checks WHERE checked_at >= ${since}
+            ORDER BY checked_at DESC LIMIT ${MAX_GLOBAL_INCIDENT_SOURCE_ROWS}
+          ),
+          checks AS (
+            SELECT netuid, surface_key, surface_id, checked_at, ok,
+                   checked_at - LAG(checked_at)
+                     OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS gap
+            FROM recent_checks
+          ),
+          grouped AS (
+            SELECT netuid, surface_key, surface_id, checked_at, ok,
+                   SUM(CASE WHEN ok OR gap IS NULL OR gap > ${INCIDENT_GAP_MS} THEN 1 ELSE 0 END)
+                     OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
+            FROM checks
+          ),
+          islands AS (
+            SELECT netuid, MAX(surface_id) AS surface_id, surface_key,
+                   COUNT(*) AS failed_samples
+            FROM grouped WHERE NOT ok
+            GROUP BY netuid, surface_key, grp
+          )
+          SELECT netuid, MAX(surface_id) AS surface_id, surface_key,
+                 COUNT(*) AS transient_failure_count,
+                 COALESCE(SUM(failed_samples), 0) AS transient_failed_samples
+          FROM islands
+          WHERE failed_samples < ${MIN_INCIDENT_SAMPLES}
+          GROUP BY netuid, surface_key`;
           const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE checked_at >= ${since}`;
@@ -9070,6 +9145,7 @@ async function dispatchDataApiRequest(
               ),
               observedAt: latestObservedIso(freshRows, "newest_observed"),
               incidentRows,
+              transientRows,
               maxIncidents: MAX_INCIDENT_ROWS,
             }),
           );

@@ -7717,6 +7717,7 @@ export interface components {
         };
         GenericArtifact: components["schemas"]["ArtifactBase"];
         GlobalIncidentsArtifact: {
+            min_incident_samples: number;
             observed_at?: string | null;
             schema_version: number;
             source: string;
@@ -7739,6 +7740,8 @@ export interface components {
                 })[];
                 netuid: number;
                 surface_id: string;
+                transient_failed_samples: number;
+                transient_failure_count: number;
             } & {
                 [key: string]: unknown;
             })[];
@@ -7844,6 +7847,7 @@ export interface components {
             [key: string]: unknown;
         };
         HealthIncidentsArtifact: {
+            min_incident_samples: number;
             netuid: number;
             observed_at?: string | null;
             schema_version: number;
@@ -7861,6 +7865,8 @@ export interface components {
                 })[];
                 samples: number;
                 surface_id: string;
+                transient_failed_samples: number;
+                transient_failure_count: number;
                 uptime_ratio: number | null;
             } & {
                 [key: string]: unknown;
@@ -35620,6 +35626,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "min_incident_samples": 1,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "source": "live-cron-prober",
@@ -35640,7 +35647,9 @@ export interface operations {
                      *               }
                      *             ],
                      *             "netuid": 7,
-                     *             "surface_id": "example"
+                     *             "surface_id": "example",
+                     *             "transient_failed_samples": 1,
+                     *             "transient_failure_count": 1
                      *           }
                      *         ],
                      *         "window": "30d"
@@ -41984,6 +41993,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "min_incident_samples": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -42002,6 +42012,8 @@ export interface operations {
                      *             ],
                      *             "samples": 1,
                      *             "surface_id": "example",
+                     *             "transient_failed_samples": 1,
+                     *             "transient_failure_count": 1,
                      *             "uptime_ratio": 0.9966
                      *           }
                      *         ],

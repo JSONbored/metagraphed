@@ -8530,6 +8530,7 @@ test("GET /api/v1/subnets/:netuid/health/incidents: SLA rollup + gap-island inci
         failed_samples: 3,
       },
     ],
+    [], // transientRows
     [{ newest_observed: "1780000600000" }],
   ];
   const res = await req("/api/v1/subnets/7/health/incidents?window=7d");
@@ -8537,14 +8538,17 @@ test("GET /api/v1/subnets/:netuid/health/incidents: SLA rollup + gap-island inci
   const body = (await res.json()) as Row;
   expect(body.surfaces[0].incident_count).toBe(1);
   expect(body.surfaces[0].incidents[0].failed_samples).toBe(3);
+  expect(body.min_incident_samples).toBe(2);
+  expect(body.surfaces[0].transient_failure_count).toBe(0);
 });
 
 test("GET /api/v1/subnets/:netuid/health/incidents on a cold store returns surfaces:[]", async () => {
-  mockQueue.current = [[], [], [], []];
+  mockQueue.current = [[], [], [], [], []];
   const res = await req("/api/v1/subnets/7/health/incidents");
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.surfaces).toEqual([]);
+  expect(body.min_incident_samples).toBe(2);
 });
 
 test("GET /api/v1/incidents: global gap-island ledger across every subnet", async () => {
@@ -8560,6 +8564,7 @@ test("GET /api/v1/incidents: global gap-island ledger across every subnet", asyn
         failed_samples: 2,
       },
     ],
+    [], // transientRows
     [{ newest_observed: "1780000600000" }],
   ];
   const res = await req("/api/v1/incidents?window=7d");
@@ -8567,15 +8572,17 @@ test("GET /api/v1/incidents: global gap-island ledger across every subnet", asyn
   const body = (await res.json()) as Row;
   expect(body.surfaces[0].netuid).toBe(7);
   expect(body.summary.incident_count).toBe(1);
+  expect(body.min_incident_samples).toBe(2);
 });
 
 test("GET /api/v1/incidents on a cold store returns a schema-stable empty ledger", async () => {
-  mockQueue.current = [[], [], []];
+  mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/incidents");
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.summary.incident_count).toBe(0);
   expect(body.surfaces).toEqual([]);
+  expect(body.min_incident_samples).toBe(2);
 });
 
 test("GET /api/v1/subnets/:netuid/uptime: aggregates surface_uptime_daily by day", async () => {
