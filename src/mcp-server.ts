@@ -9431,12 +9431,47 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         );
       }
       if (!response.ok) {
-        // handleRpcProxyRequest's every error path goes through workers/http.ts's
-        // errorResponse(), which always populates error.code/error.message -- no
-        // "malformed error body" case exists to guess a fallback for.
+        // Most error paths go through workers/http.ts's errorResponse() and
+        // carry a well-formed { error: { code, message } } envelope. But an
+        // upstream 4xx (non-429) is classified "fatal"
+        // (workers/request-handlers/rpc-proxy.ts:972) and forwarded VERBATIM by
+        // streamRpcResponse (:1013-1027, reached at :1248) without passing
+        // through errorResponse() -- so `payload` here can be the third-party
+        // node's own body, which need not be a JSON-RPC error envelope. Narrow
+        // before dereferencing, and fall back to a message that still names the
+        // HTTP status (and the upstream text when there is one) rather than
+        // throwing a TypeError or emitting `undefined: undefined`.
+        const errorEnvelope =
+          payload && typeof payload === "object"
+            ? (payload as Row).error
+            : undefined;
+        if (errorEnvelope && typeof errorEnvelope === "object") {
+          const env = errorEnvelope as Row;
+          const code =
+            typeof env.code === "string" && env.code
+              ? env.code
+              : "rpc_upstream_error";
+          const message =
+            typeof env.message === "string" && env.message
+              ? env.message
+              : `The RPC upstream returned HTTP ${response.status}.`;
+          throw toolError(code, message);
+        }
+        // Not an envelope: name the status, and the upstream's own text when it
+        // is a usable string (e.g. `{ "error": "not found" }` or a bare body).
+        const upstreamText =
+          payload &&
+          typeof payload === "object" &&
+          typeof (payload as Row).error === "string"
+            ? ((payload as Row).error as string)
+            : typeof payload === "string" && payload
+              ? payload
+              : "";
         throw toolError(
-          (payload as Row).error.code,
-          (payload as Row).error.message,
+          "rpc_upstream_error",
+          upstreamText
+            ? `The RPC upstream returned HTTP ${response.status}: ${upstreamText}.`
+            : `The RPC upstream returned HTTP ${response.status}.`,
         );
       }
       return {

@@ -6923,6 +6923,110 @@ describe("MCP call_rpc", () => {
     }
   });
 
+  // #8834: an upstream 4xx (non-429) is classified fatal and forwarded verbatim
+  // by streamRpcResponse, so `payload` can be the third-party node's own body,
+  // which need not be a JSON-RPC error envelope. The guard must never throw a
+  // TypeError or emit `undefined: undefined`, and must always surface a
+  // non-empty error code naming the HTTP status.
+  async function callRpcWith4xx(
+    body: string,
+    contentType = "application/json",
+  ) {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(body, {
+        status: 403,
+        headers: { "content-type": contentType },
+      });
+    try {
+      return await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  test("a 4xx with only a `message` (no error object) surfaces rpc_upstream_error naming the status", async () => {
+    const res = await callRpcWith4xx(JSON.stringify({ message: "Forbidden" }));
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /rpc_upstream_error/);
+    assert.match(text, /403/);
+    assert.doesNotMatch(text, /undefined/);
+    assert.ok(res.body.result.structuredContent.error.code);
+  });
+
+  test("a 4xx with a string `error` (not an object) names the status and the upstream text, not undefined", async () => {
+    const res = await callRpcWith4xx(JSON.stringify({ error: "not found" }));
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /rpc_upstream_error/);
+    assert.match(text, /403/);
+    assert.match(text, /not found/);
+    assert.doesNotMatch(text, /undefined/);
+    assert.ok(res.body.result.structuredContent.error.code);
+  });
+
+  test("a 4xx with a well-formed error envelope is unchanged: same code and message", async () => {
+    const res = await callRpcWith4xx(
+      JSON.stringify({ error: { code: "boom_code", message: "boom message" } }),
+    );
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /boom_code/);
+    assert.match(text, /boom message/);
+    assert.equal(res.body.result.structuredContent.error.code, "boom_code");
+  });
+
+  test("a 4xx error envelope with a code but no message substitutes a non-undefined message", async () => {
+    const res = await callRpcWith4xx(JSON.stringify({ error: { code: "x" } }));
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /\bx\b/);
+    assert.match(text, /403/);
+    assert.doesNotMatch(text, /undefined/);
+    assert.ok(res.body.result.structuredContent.error.code);
+  });
+
+  test("a 4xx error envelope with a message but no code falls back to a non-empty rpc_upstream_error code", async () => {
+    const res = await callRpcWith4xx(
+      JSON.stringify({ error: { message: "only a message" } }),
+    );
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /rpc_upstream_error/);
+    assert.match(text, /only a message/);
+    assert.doesNotMatch(text, /undefined/);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "rpc_upstream_error",
+    );
+  });
+
+  test("a 4xx whose JSON body is a bare string names the status and that string", async () => {
+    const res = await callRpcWith4xx(JSON.stringify("upstream boom"));
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /rpc_upstream_error/);
+    assert.match(text, /403/);
+    assert.match(text, /upstream boom/);
+    assert.doesNotMatch(text, /undefined/);
+    assert.ok(res.body.result.structuredContent.error.code);
+  });
+
+  test("a 4xx whose JSON body is null falls back to a status-only message", async () => {
+    const res = await callRpcWith4xx(JSON.stringify(null));
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /rpc_upstream_error/);
+    assert.match(text, /403/);
+    assert.doesNotMatch(text, /undefined/);
+    assert.ok(res.body.result.structuredContent.error.code);
+  });
+
   test("advertises a call_rpc-shaped outputSchema and the result validates against it", async () => {
     const ajv = new Ajv2020({ strict: false });
     const def = listToolDefinitions().find((t) => t.name === "call_rpc");
