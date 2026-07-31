@@ -293,6 +293,7 @@ import {
   formatRpcUsage,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
+  utcWindowCutoffDay,
 } from "../src/health-serving.ts";
 import {
   buildEconomicsTrends,
@@ -8765,9 +8766,7 @@ async function dispatchDataApiRequest(
           const maxWindowDays = Math.max(
             ...Object.values(HEALTH_TREND_WINDOWS),
           );
-          const cutoffDay = new Date(now - maxWindowDays * ANALYTICS_DAY_MS)
-            .toISOString()
-            .slice(0, 10);
+          const cutoffDay = utcWindowCutoffDay(now, maxWindowDays);
           const rows = await sql`
           SELECT netuid, day::text AS date, SUM(samples) AS total, SUM(ok_count) AS ok_count,
                  SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END) AS latency_samples,
@@ -8782,9 +8781,7 @@ async function dispatchDataApiRequest(
           FROM surface_uptime_daily WHERE day >= ${cutoffDay}::date`;
           const windows: Record<string, Row[]> = {};
           for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-            const windowCutoff = new Date(now - days * ANALYTICS_DAY_MS)
-              .toISOString()
-              .slice(0, 10);
+            const windowCutoff = utcWindowCutoffDay(now, days);
             windows[label] = rows.filter(
               (row) => String(row.date) >= windowCutoff,
             );
@@ -9080,9 +9077,7 @@ async function dispatchDataApiRequest(
           const days = Object.hasOwn(UPTIME_WINDOWS, windowParam)
             ? UPTIME_WINDOWS[windowParam]
             : UPTIME_WINDOWS["90d"];
-          const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
-            .toISOString()
-            .slice(0, 10);
+          const cutoff = utcWindowCutoffDay(Date.now(), days);
           // A malformed min_samples ("abc", "-1", "1.5") degrades to "no
           // filter" rather than sending NaN/an invalid value to Postgres --
           // same graceful-fallback treatment as windowParam above, not a
@@ -10501,10 +10496,15 @@ async function dispatchDataApiRequest(
         // never), and a join would silently drop a component whose raw ticks
         // have aged out but whose daily history is intact.
         if (url.pathname === "/api/v1/self-health") {
+          // #8814: derive the 90-day floor in the Worker (UTC), inclusive of
+          // exactly 90 calendar days -- the former `CURRENT_DATE - INTERVAL
+          // '90 days'` >= filter spanned 91 days and keyed off the DB server's
+          // CURRENT_DATE timezone rather than UTC like the sibling routes.
+          const cutoff = utcWindowCutoffDay(Date.now(), 90);
           const daily = await sql<SelfHealthDailyRow[]>`
           SELECT day::text AS day, component, checks, ok_count
           FROM self_health_daily
-          WHERE day >= (CURRENT_DATE - INTERVAL '90 days')
+          WHERE day >= ${cutoff}::date
           ORDER BY component, day`;
           // DISTINCT ON gives the newest row per component in one pass.
           const latest = await sql<SelfHealthLatestRow[]>`

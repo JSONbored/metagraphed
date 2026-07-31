@@ -427,6 +427,23 @@ export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 // sustained) the ledger reflects real dips, not prober flapping.
 export const MIN_INCIDENT_SAMPLES = 2;
 
+// #8814: the YYYY-MM-DD of the OLDEST day in a window of exactly `days`
+// calendar days ending on (and including) the UTC day of `nowMs`. A native
+// DATE column filtered `>= this` yields exactly `days` distinct dates -- for
+// days=7 at 2026-07-30T14:00:00Z it returns "2026-07-24" (07-24 … 07-30 = 7
+// days). The former `new Date(nowMs - days*DAY_MS).toISOString().slice(0,10)`
+// returned "2026-07-23" and so a `>=` filter served 8 days for a "7d" label.
+// Pure -- `nowMs` is explicit -- so it is unit-testable without mocking the
+// clock, and it derives the day in UTC rather than the DB server's timezone.
+export function utcWindowCutoffDay(nowMs: number, days: number): string {
+  const d = new Date(nowMs);
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - (days - 1)),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 function round4(value: unknown): number | null {
   return value == null ? null : Number(Number(value).toFixed(4));
 }

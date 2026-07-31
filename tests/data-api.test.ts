@@ -2676,8 +2676,12 @@ test("GET /api/v1/self-health serves the scoped verdict and per-component 90d se
   expect((api.days as Row[]).map((d) => d.uptime_ratio)).toEqual([1, 0.5]);
   expect(api.uptime_90d).toBe(0.75);
   // Windowed to 90 days, and reading the rollup rather than the raw table.
+  // #8814: the 90-day floor is now a Worker-computed UTC cutoff bound as a
+  // param (`WHERE day >= $n::date`), not an inline `CURRENT_DATE - INTERVAL
+  // '90 days'` that keyed off the DB server's timezone and spanned 91 days.
   expect(queryText()).toContain("FROM self_health_daily");
-  expect(queryText()).toContain("90 days");
+  expect(queryText()).toContain("WHERE day >= ");
+  expect(queryText()).toContain("::date");
   // DISTINCT ON gives the newest tick per component in one pass.
   expect(queryText()).toContain("DISTINCT ON (component)");
 });
