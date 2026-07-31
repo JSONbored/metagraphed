@@ -2271,6 +2271,11 @@ test("GET /api/v1/validators carries realized_return_* from the neuron_daily bas
   // The baseline scan is anchored on validator_permit rows from neuron_daily.
   expect(queryText()).toMatch(/FROM neuron_daily/);
   expect(queryText()).toMatch(/AS baseline_stake_tao/);
+  // #8837: the window is now bounded on BOTH ends -- an upper bound (<= cutoff)
+  // AND a lower bound (>= cutoff − tolerance), so a stale far-older permitted
+  // snapshot can never stand in as the baseline for a fresh window.
+  expect(queryText()).toMatch(/snapshot_date <= /);
+  expect(queryText()).toMatch(/snapshot_date >= .*::date - /);
 });
 
 test("GET /api/v1/validators degrades realized_return_* to null when the neuron_daily baseline query fails (#7228)", async () => {

@@ -3457,12 +3457,23 @@ async function loadSubnetTempos(sql: postgres.TransactionSql, env: Env) {
 // same way windowCutoffDate does.
 const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
 
+// #8837: a permitted snapshot may serve as a window's baseline only when it
+// lands within this many days of that window's target date (today − N days).
+// neuron_daily writes one snapshot per validator per UTC day, so a tolerance
+// of 2 lets a window fall back to the prior day when a single day's snapshot
+// is missing or late, while rejecting anything older -- so a "1-day return"
+// can never be computed against a week-old baseline (the stale-baseline bug
+// this closes). Applied uniformly to all three REALIZED_RETURN_WINDOWS.
+export const REALIZED_RETURN_BASELINE_TOLERANCE_DAYS = 2;
+
 // Per-hotkey baseline total_stake_tao ~1d/1w/1m back from the neuron_daily
 // rollup, for the realized_return_* fields (#7228). For each window it takes
-// each hotkey's newest snapshot on-or-before (today − N days) and sums that
-// day's stake across every subnet membership (rao-precision is re-applied in
-// the builder); a hotkey whose oldest snapshot is newer than that cutoff is
-// simply absent, so its realized return for that window resolves to null ("no
+// each hotkey's newest permitted snapshot within
+// REALIZED_RETURN_BASELINE_TOLERANCE_DAYS of that window's target date
+// (today − N days) and sums that day's stake across every subnet membership
+// (rao-precision is re-applied in the builder); a hotkey with no permitted
+// snapshot in that range -- too old (#8837) or none at all -- is simply
+// absent, so its realized return for that window resolves to null ("no
 // figure", not "zero"). Same savepoint-isolated-failure shape as
 // loadSubnetTempos above: a neuron_daily read failure degrades every
 // realized_return_* to null rather than failing /api/v1/validators or
@@ -3492,6 +3503,7 @@ async function loadRealizedStakeBaselines(
               FROM neuron_daily
               WHERE validator_permit = TRUE AND hotkey = ${hotkey}
                 AND snapshot_date <= ${cutoff}
+                AND snapshot_date >= ${cutoff}::date - ${REALIZED_RETURN_BASELINE_TOLERANCE_DAYS}
               GROUP BY hotkey, snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
@@ -3501,6 +3513,7 @@ async function loadRealizedStakeBaselines(
               SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
               FROM neuron_daily
               WHERE validator_permit = TRUE AND snapshot_date <= ${cutoff}
+                AND snapshot_date >= ${cutoff}::date - ${REALIZED_RETURN_BASELINE_TOLERANCE_DAYS}
               GROUP BY hotkey, snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao

@@ -5279,11 +5279,11 @@ export type Validator = {
   hotkey: Scalars['String']['output'];
   max_validator_trust?: Maybe<Scalars['Float']['output']>;
   nominator_count?: Maybe<Scalars['Int']['output']>;
-  /** Realized 1-day return on staked capital: the fractional change in total_stake_tao vs the neuron_daily snapshot ~1 day ago. Backward-looking over an elapsed window (captures compounding + net delegation flow), unlike the forward-looking apy_estimate; null when no rollup row exists that far back. Mirrors realized_return_1d in the REST/MCP shape (#7228). */
+  /** Realized 1-day return on staked capital: the fractional change in total_stake_tao vs the newest permitted neuron_daily snapshot within 2 days of the ~1-day-ago target date. Backward-looking over an elapsed window (captures compounding + net delegation flow), unlike the forward-looking apy_estimate; null when no permitted snapshot lands in that range (never computed against a stale far-older baseline, #8837). Mirrors realized_return_1d in the REST/MCP shape (#7228). */
   realized_return_1d?: Maybe<Scalars['Float']['output']>;
-  /** Realized 30-day return on staked capital vs the neuron_daily snapshot ~1 month ago; null when no rollup row exists that far back (#7228). */
+  /** Realized 30-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-month-ago target date; null when no permitted snapshot lands in that range (#7228, #8837). */
   realized_return_1m?: Maybe<Scalars['Float']['output']>;
-  /** Realized 7-day return on staked capital vs the neuron_daily snapshot ~1 week ago; null when no rollup row exists that far back (#7228). */
+  /** Realized 7-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-week-ago target date; null when no permitted snapshot lands in that range (#7228, #8837). */
   realized_return_1w?: Maybe<Scalars['Float']['output']>;
   root_stake_tao?: Maybe<Scalars['Float']['output']>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
