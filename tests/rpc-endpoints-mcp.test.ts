@@ -116,20 +116,29 @@ describe("rpc-endpoints-mcp (#7886, #7893)", () => {
     const url = rpcEndpointsQueryUrl({
       fields: " id,score ",
       cursor: 5,
-      limit: 2000,
+      limit: 1000,
     });
     assert.equal(url.searchParams.get("fields"), "id,score");
     assert.equal(url.searchParams.get("cursor"), "5");
     assert.equal(url.searchParams.get("limit"), "1000");
   });
 
-  test("rpcEndpointsQueryUrl clamps a non-positive limit to the default", () => {
-    const url = rpcEndpointsQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
-    const nanUrl = rpcEndpointsQueryUrl({ limit: Number.NaN });
-    assert.equal(nanUrl.searchParams.get("limit"), "50");
-    const strUrl = rpcEndpointsQueryUrl({ limit: "lots" });
-    assert.equal(strUrl.searchParams.get("limit"), "50");
+  test("rpcEndpointsQueryUrl rejects an out-of-range or non-integer limit (#8830)", () => {
+    const message = "limit must be an integer between 1 and 1000.";
+    for (const limit of [1001, 0, -1, 1.5, Number.NaN, "lots"]) {
+      assert.throws(
+        () => rpcEndpointsQueryUrl({ limit }),
+        (err: Row) =>
+          err.code === "invalid_params" &&
+          err.toolError === true &&
+          err.message === message,
+      );
+    }
+  });
+
+  test("rpcEndpointsQueryUrl omits limit when absent so the REST default applies (#8830)", () => {
+    const url = rpcEndpointsQueryUrl({});
+    assert.equal(url.searchParams.get("limit"), null);
   });
 
   test("rpcEndpointsQueryUrl rejects invalid inputs", () => {
@@ -423,5 +432,18 @@ describe("rpc-endpoints-mcp (#7886, #7893)", () => {
     const tool = MCP_TOOLS.find((t: Row) => t.name === "list_rpc_endpoints");
     assert.ok(tool);
     assert.equal(tool.title, "List Bittensor RPC endpoints");
+  });
+
+  test("list_endpoints and list_rpc_endpoints publish limit maximum 1000 (#8830)", () => {
+    const listEndpoints = MCP_TOOLS.find((t: Row) => t.name === "list_endpoints");
+    const listRpc = MCP_TOOLS.find((t: Row) => t.name === "list_rpc_endpoints");
+    assert.ok(listEndpoints);
+    assert.ok(listRpc);
+    const endpointsLimit = (listEndpoints.inputSchema as Row)?.properties?.limit as Row;
+    const rpcLimit = (listRpc.inputSchema as Row)?.properties?.limit as Row;
+    assert.equal(endpointsLimit?.maximum, 1000);
+    assert.equal(endpointsLimit?.minimum, 1);
+    assert.equal(rpcLimit?.maximum, 1000);
+    assert.equal(rpcLimit?.minimum, 1);
   });
 });
