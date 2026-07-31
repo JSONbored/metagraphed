@@ -75,6 +75,7 @@ if [[ "$PREVIEW" == "--preview" ]]; then
 fi
 
 COMMIT_SHA=$(git rev-parse HEAD)
+RELEASE_NAME="metagraphed-$BASENAME"
 RELEASE_VERSION="$COMMIT_SHA"
 if [[ "$ENVIRONMENT" == "preview" ]]; then
   RELEASE_VERSION="$COMMIT_SHA-preview"
@@ -98,7 +99,19 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
 
   # Phase 2: inject PostHog's chunk-ID marker into the just-built bundle,
   # BEFORE it ever ships.
-  npx @posthog/cli sourcemap inject --directory "$OUTDIR"
+  # --release-name/--release-version passed HERE as well as on the upload in
+  # phase 4, not just there. `inject` creates a release too, and without these
+  # it auto-derives one from git -- which is `metagraphed@<commit>` for EVERY
+  # Worker and BOTH modes of a given commit. The bundle bytes for one Worker
+  # are identical in production and preview, so the second of the two deploys
+  # hit `release_hash_in_use` and the whole deploy command failed
+  # (metagraphed-data-api, 2026-07-31). posthog-cli's own help says these are
+  # "strongly recommended to be set explicitly during release CD workflows",
+  # and this is why: they are what makes the 3 Workers x 2 modes distinct.
+  npx @posthog/cli sourcemap inject \
+    --directory "$OUTDIR" \
+    --release-name "$RELEASE_NAME" \
+    --release-version "$RELEASE_VERSION"
 
   # Phase 3: ship the EXACT injected file -- --no-bundle skips wrangler's
   # own esbuild step (which would otherwise rebuild from source and discard
@@ -118,7 +131,7 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # actually deployed, so this correctly resolves real production traces.
   npx @posthog/cli sourcemap upload \
     --directory "$OUTDIR" \
-    --release-name "metagraphed-$BASENAME" \
+    --release-name "$RELEASE_NAME" \
     --release-version "$RELEASE_VERSION"
 else
   npx wrangler "${WRANGLER_SUBCOMMAND[@]}" \
