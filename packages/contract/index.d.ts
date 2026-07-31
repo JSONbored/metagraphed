@@ -5945,7 +5945,7 @@ export interface components {
                 args?: {
                     [key: string]: unknown;
                 } | null;
-                block_number: number | null;
+                block_number?: number | null;
                 event_index: number | null;
                 extrinsic_index?: number | null;
                 method: string | null;
@@ -12105,7 +12105,6 @@ export interface operations {
                      *         "count": 1,
                      *         "events": [
                      *           {
-                     *             "block_number": 5000000,
                      *             "event_index": 1,
                      *             "method": "GET",
                      *             "pallet": "example"
@@ -26730,7 +26729,6 @@ export interface operations {
                      *         "count": 1,
                      *         "events": [
                      *           {
-                     *             "block_number": 5000000,
                      *             "event_index": 1,
                      *             "method": "GET",
                      *             "pallet": "example"
