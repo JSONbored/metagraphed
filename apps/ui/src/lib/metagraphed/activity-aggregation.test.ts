@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTIVITY_AGGREGATION_WINDOW_MS,
+  activityGroupKey,
   activityGroupSpanMinutes,
   aggregateActivityEvents,
+  type ActivityGroup,
 } from "./activity-aggregation";
 import type { AccountEvent } from "./types";
 
@@ -113,5 +115,49 @@ describe("activityGroupSpanMinutes", () => {
       events: [ev("WeightsSet", 0), ev("WeightsSet", 5, { observed_at: undefined })],
     };
     expect(activityGroupSpanMinutes(group)).toBeNull();
+  });
+});
+
+describe("activityGroupKey (#8817)", () => {
+  it("keeps a group's key stable across a prepend that shifts its array index", () => {
+    const base = [
+      ev("StakeAdded", 1, { block_number: 100, event_index: 1 }),
+      ev("StakeAdded", 2, { block_number: 100, event_index: 2 }),
+      ev("WeightsSet", 5, { block_number: 90, event_index: 3 }),
+    ];
+    const before = aggregateActivityEvents(base);
+    expect(before.length).toBeGreaterThanOrEqual(2);
+    const targetIndex = before.length - 1;
+    const targetKey = activityGroupKey(before[targetIndex]!);
+
+    const prepended = ev("NeuronRegistered", 0, { block_number: 110, event_index: 0 });
+    const after = aggregateActivityEvents([prepended, ...base]);
+    const newIndex = after.findIndex((g) => activityGroupKey(g) === targetKey);
+    expect(newIndex).toBeGreaterThan(targetIndex);
+    expect(activityGroupKey(after[newIndex]!)).toBe(targetKey);
+  });
+
+  it("never collides two groups in one list, including when anchor fields are nullish", () => {
+    const groups: ActivityGroup[] = [
+      {
+        kind: "WeightsSet",
+        events: [
+          ev("WeightsSet", 0, { block_number: null, event_index: null, observed_at: undefined }),
+        ],
+      },
+      {
+        kind: "StakeAdded",
+        events: [
+          ev("StakeAdded", 0, { block_number: null, event_index: null, observed_at: undefined }),
+        ],
+      },
+      {
+        kind: null,
+        events: [ev(null, 0, { block_number: null, event_index: null, observed_at: undefined })],
+      },
+    ];
+    const keys = groups.map(activityGroupKey);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys.every((k) => k.includes("∅"))).toBe(true);
   });
 });
