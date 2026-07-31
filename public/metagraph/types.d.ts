@@ -7210,6 +7210,9 @@ export interface components {
             chain_state?: {
                 block: number;
                 block_hash: string;
+                emission_bar_quantile: number | null;
+                emission_gate_bar: number | null;
+                emission_gate_exponent: number | null;
                 total_issuance_tao: number;
             };
             contract_version?: string;
@@ -7241,12 +7244,14 @@ export interface components {
                 miner_burned_fraction?: number | null;
                 miner_count: number;
                 miner_readiness?: number | null;
+                moving_price_pinned?: number | null;
                 name: string;
                 netuid: number;
                 open_slots?: number | null;
                 owner_coldkey: string | null;
                 owner_hotkey: string | null;
                 registration_allowed: boolean;
+                registration_allowed_pinned?: boolean | null;
                 registration_cost_tao: number | null;
                 slug: string;
                 subnet_volume_tao: number | null;
@@ -9540,12 +9545,14 @@ export interface components {
                 miner_burned_fraction?: number | null;
                 miner_count: number;
                 miner_readiness?: number | null;
+                moving_price_pinned?: number | null;
                 name: string;
                 netuid: number;
                 open_slots?: number | null;
                 owner_coldkey: string | null;
                 owner_hotkey: string | null;
                 registration_allowed: boolean;
+                registration_allowed_pinned?: boolean | null;
                 registration_cost_tao: number | null;
                 slug: string;
                 subnet_volume_tao: number | null;
@@ -13754,6 +13761,9 @@ export interface operations {
                      *         "chain_state": {
                      *           "block": 5000000,
                      *           "block_hash": "example",
+                     *           "emission_bar_quantile": 0.5,
+                     *           "emission_gate_bar": 0.5,
+                     *           "emission_gate_exponent": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "contract_version": "2026-06-29.1",
@@ -18845,12 +18855,14 @@ export interface operations {
                      *           "miner_burned_fraction": 0.5,
                      *           "miner_count": 1,
                      *           "miner_readiness": 1,
+                     *           "moving_price_pinned": 0.5,
                      *           "name": "Example Subnet",
                      *           "netuid": 7,
                      *           "open_slots": 1,
                      *           "owner_coldkey": "example",
                      *           "owner_hotkey": "example",
                      *           "registration_allowed": false,
+                     *           "registration_allowed_pinned": false,
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
                      *           "subnet_volume_tao": 0.5,
@@ -32154,6 +32166,9 @@ export interface operations {
                      *         "chain_state": {
                      *           "block": 5000000,
                      *           "block_hash": "example",
+                     *           "emission_bar_quantile": 0.5,
+                     *           "emission_gate_bar": 0.5,
+                     *           "emission_gate_exponent": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "contract_version": "2026-06-29.1",
@@ -39930,12 +39945,14 @@ export interface operations {
                      *           "miner_burned_fraction": 0.5,
                      *           "miner_count": 1,
                      *           "miner_readiness": 1,
+                     *           "moving_price_pinned": 0.5,
                      *           "name": "Example Subnet",
                      *           "netuid": 7,
                      *           "open_slots": 1,
                      *           "owner_coldkey": "example",
                      *           "owner_hotkey": "example",
                      *           "registration_allowed": false,
+                     *           "registration_allowed_pinned": false,
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
                      *           "subnet_volume_tao": 0.5,

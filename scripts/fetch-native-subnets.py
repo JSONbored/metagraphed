@@ -45,11 +45,17 @@ def to_tao_exact(balance):
 
 # --- v440 emission-pipeline inputs (#8743) --------------------------------
 #
-# Five per-subnet storage items and one network-level one that MetagraphInfo
-# does NOT carry. Everything else stage 1-8 needs is already on the bulk
-# get_all_metagraphs_info call above (moving_price, tao_in_emission,
-# alpha_in_emission, alpha_out_emission, registration_allowed), so this adds
-# six round trips per refresh, not sixty.
+# Ten per-subnet storage items and four network-level ones, read at ONE pinned
+# block. One state_queryStorageAt covers all 128 netuids per item, so this is
+# fourteen round trips per refresh, not fourteen hundred.
+#
+# #8743's version of this comment said the bulk get_all_metagraphs_info call
+# already carried everything stage 1-8 needs beyond five items. That was true
+# of the VALUES and false of the instants: the bulk call runs at its own
+# height, so taking moving_price and registration_allowed from it left stage
+# 1's input and stage 0's last gate straddling a block boundary from the reads
+# they are combined with. #8744 pins both here. The gate parameters were not
+# captured at any height at all.
 #
 # Keys are assembled from HARDCODED twox128 constants rather than hashed at
 # runtime: the digests are fixed for the life of the pallet, and hashing them
@@ -78,6 +84,32 @@ PIPELINE_STORAGE_ITEMS = {
     "tao_in_emission": "dd62ae7237581e8f6a684f1ecae06215",
     "alpha_in_emission": "1905df3b2516a166b6f9fba54fef1cd8",
     "alpha_out_emission": "25257fbc5458419b7bc7e8c44c521521",
+    # STAGE 1'S INPUT AND STAGE 0'S LAST GATE, added by #8744 for the same
+    # reason the three channels above are here rather than off MetagraphInfo.
+    #
+    # The bulk call carries both (as moving_price and registration_allowed) and
+    # #8743 took them from there, which left the pipeline's MOST important
+    # input -- the one every share is computed from -- at a different instant
+    # than the reads it is combined with. #8749's harness reads both from
+    # storage at its pinned block, so a surface built on the bulk-call values
+    # would disagree with the harness that exists to hold it, and ADR 0023
+    # decision 3 binds the two together.
+    #
+    # alpha_price_tao is deliberately NOT re-sourced from this: it is a
+    # published field whose meaning ADR 0023 decision 1 fixes as-is. This is a
+    # second, pinned reading for the pipeline alone.
+    "moving_price": "1abf1b0f4fd14f7b72ee50f9d91d5915",
+    "registration_allowed": "d5fe74da02c7b4bbb340fb368eee3e77",
+}
+
+# The gate's three parameters, read ONCE at the pinned block rather than per
+# subnet. Not captured at all before #8744 -- the reconstruction needs theta at
+# the height its inputs came from, and theta is recomputed by the runtime every
+# 360 blocks, so a live read is the wrong number for 359 blocks out of 360.
+GATE_PARAM_STORAGE_ITEMS = {
+    "emission_gate_bar": "7c9b0d2964cc73e7519676c3cc4d5df9",
+    "emission_bar_quantile": "a772007dde2ed63e0f21b5f9d7f16650",
+    "emission_gate_exponent": "88c70e8dd0cf4af3aeb977ba2eee1df4",
 }
 
 # twox128("TotalIssuance"). The ONLY correct source for block emission -- the
@@ -92,6 +124,13 @@ TOTAL_ISSUANCE_STORAGE_KEY = (
 # finney: every non-zero value falls in (0, 1] with a maximum of exactly 1.0,
 # which is what a fraction looks like and what a misscaled amount does not.
 U96F32_SCALE = 2**32
+
+# SubnetMovingPrice, EmissionGateBar and EmissionBarQuantile are U64F64: a
+# 128-bit word scaled by 2**64, a DIFFERENT width from MinerBurned's U96F32
+# above. Two fixed-point widths in one pallet is a trap -- reading MinerBurned
+# at the wrong one is what put the first reconstruction at 5.4e-4 -- so they
+# are two named scales, never one helper with a width argument.
+U64F64_SCALE = 2**64
 
 
 def _pipeline_storage_key(item_hash, netuid):
@@ -167,10 +206,23 @@ def fetch_pipeline_state(substrate, netuids):
         "state_getStorage", [TOTAL_ISSUANCE_STORAGE_KEY, block_hash]
     )["result"]
 
+    # The gate parameters, at the SAME block. `emission_gate_exponent` is
+    # commonly unset, and that is not zero: unset means the runtime default
+    # h = 3, while h = 0 would make the Hill gate 0.5 for every subnet. The
+    # distinction is preserved as None here and resolved by the consumer.
+    gate_params = {}
+    for item, item_hash in GATE_PARAM_STORAGE_ITEMS.items():
+        raw = substrate.rpc_request(
+            "state_getStorage",
+            ["0x" + SUBTENSOR_PALLET_PREFIX + item_hash, block_hash],
+        )["result"]
+        gate_params[item] = decode_le_uint(raw, 16)
+
     return {
         "block": block_number,
         "block_hash": block_hash,
         "total_issuance_rao": decode_le_uint(issuance_raw, 8),
+        "gate_params": gate_params,
         "by_item": by_item,
     }
 
@@ -179,14 +231,39 @@ def normalize_pipeline(state, netuid):
     """One subnet's emission-pipeline inputs, decoded."""
     if not state:
         return {}
+    # .get(item, {}) rather than [item]: a node that failed one of the
+    # fourteen reads should cost that field, not the whole refresh. Same
+    # posture as the absent-chain_state path below -- publish less, not
+    # nothing.
     by_item = state["by_item"]
-    miner_burned_bits = decode_le_uint(by_item["miner_burned"].get(netuid), 16)
-    first_emission = decode_le_uint(by_item["first_emission_block"].get(netuid), 8)
-    excess_rao = decode_le_uint(by_item["excess_tao"].get(netuid), 8)
-    tao_in_rao = decode_le_uint(by_item["tao_in_emission"].get(netuid), 8)
-    alpha_in_rao = decode_le_uint(by_item["alpha_in_emission"].get(netuid), 8)
-    alpha_out_rao = decode_le_uint(by_item["alpha_out_emission"].get(netuid), 8)
+
+    def item(name):
+        return by_item.get(name, {})
+
+    miner_burned_bits = decode_le_uint(item("miner_burned").get(netuid), 16)
+    first_emission = decode_le_uint(item("first_emission_block").get(netuid), 8)
+    excess_rao = decode_le_uint(item("excess_tao").get(netuid), 8)
+    tao_in_rao = decode_le_uint(item("tao_in_emission").get(netuid), 8)
+    alpha_in_rao = decode_le_uint(item("alpha_in_emission").get(netuid), 8)
+    alpha_out_rao = decode_le_uint(item("alpha_out_emission").get(netuid), 8)
+    moving_price_bits = decode_le_uint(item("moving_price").get(netuid), 16)
     return {
+        # Stage 1's input, read at the pinned block (#8744). Distinct from
+        # alpha_price_tao, which carries the same chain item off the bulk call
+        # at the bulk call's own height -- see PIPELINE_STORAGE_ITEMS. The
+        # published field keeps its source and meaning; the pipeline gets an
+        # input that shares an instant with everything it is combined with.
+        "moving_price_pinned": (
+            moving_price_bits / U64F64_SCALE
+            if moving_price_bits is not None
+            else None
+        ),
+        # Stage 0's last eligibility gate, pinned for the same reason.
+        # Absent storage is FALSE here (unlike SubnetEmissionEnabled) --
+        # NetworkRegistrationAllowed has no true-by-default behaviour.
+        "registration_allowed_pinned": decode_optional_bool(
+            item("registration_allowed").get(netuid), False
+        ),
         # Stage 8: TAO injected into the subnet's own pool. Stage 7's chain
         # buys are excess_tao. Both are per-block, reservoir-smoothed and
         # cap-limited, so a point sample is noisy BY CONSTRUCTION -- the daily
@@ -210,10 +287,10 @@ def normalize_pipeline(state, netuid):
         # legitimately read 0 on both TAO channels because they are disabled.
         "excess_tao": rao_to_tao_exact(excess_rao if excess_rao is not None else 0),
         "emission_enabled": decode_optional_bool(
-            by_item["emission_enabled"].get(netuid), True
+            item("emission_enabled").get(netuid), True
         ),
         "subtoken_enabled": decode_optional_bool(
-            by_item["subtoken_enabled"].get(netuid), False
+            item("subtoken_enabled").get(netuid), False
         ),
         "miner_burned_fraction": (
             None if miner_burned_bits is None else miner_burned_bits / U96F32_SCALE
@@ -433,12 +510,27 @@ def main():
     # and a historical row is only interpretable against the block emission
     # in force when it was captured.
     if pipeline_state:
+        gate = pipeline_state["gate_params"]
         payload["chain_state"] = {
             "block": pipeline_state["block"],
             "block_hash": pipeline_state["block_hash"],
             "total_issuance_tao": rao_to_tao_exact(
                 pipeline_state["total_issuance_rao"]
             ),
+            # theta and q are U64F64. h is NOT decoded to a fraction: it is a
+            # small integer exponent, and null means "unset -> runtime default
+            # 3", which is why it is not coerced to 0 here.
+            "emission_gate_bar": (
+                gate["emission_gate_bar"] / U64F64_SCALE
+                if gate["emission_gate_bar"] is not None
+                else None
+            ),
+            "emission_bar_quantile": (
+                gate["emission_bar_quantile"] / U64F64_SCALE
+                if gate["emission_bar_quantile"] is not None
+                else None
+            ),
+            "emission_gate_exponent": gate["emission_gate_exponent"],
         }
 
     print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))

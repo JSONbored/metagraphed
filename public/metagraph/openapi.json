@@ -4232,6 +4232,9 @@
             "chain_state": {
               "block": 5000000,
               "block_hash": "example",
+              "emission_bar_quantile": 0.5,
+              "emission_gate_bar": 0.5,
+              "emission_gate_exponent": 1,
               "total_issuance_tao": 0.5
             },
             "contract_version": "2026-06-29.1",
@@ -7686,12 +7689,14 @@
               "miner_burned_fraction": 0.5,
               "miner_count": 1,
               "miner_readiness": 1,
+              "moving_price_pinned": 0.5,
               "name": "Example Subnet",
               "netuid": 7,
               "open_slots": 1,
               "owner_coldkey": "example",
               "owner_hotkey": "example",
               "registration_allowed": false,
+              "registration_allowed_pinned": false,
               "registration_cost_tao": 0.5,
               "slug": "example-subnet",
               "subnet_volume_tao": 0.5,
@@ -23615,6 +23620,38 @@
                 "pattern": "^0x[0-9a-fA-F]{64}$",
                 "type": "string"
               },
+              "emission_bar_quantile": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_gate_bar": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_gate_exponent": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "total_issuance_tao": {
                 "minimum": 0,
                 "type": "number"
@@ -23623,7 +23660,10 @@
             "required": [
               "block",
               "block_hash",
-              "total_issuance_tao"
+              "total_issuance_tao",
+              "emission_gate_bar",
+              "emission_bar_quantile",
+              "emission_gate_exponent"
             ],
             "type": "object"
           },
@@ -23879,6 +23919,16 @@
                     }
                   ]
                 },
+                "moving_price_pinned": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -23921,6 +23971,16 @@
                 },
                 "registration_allowed": {
                   "type": "boolean"
+                },
+                "registration_allowed_pinned": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "registration_cost_tao": {
                   "anyOf": [
@@ -36232,6 +36292,16 @@
                   }
                 ]
               },
+              "moving_price_pinned": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "name": {
                 "type": "string"
               },
@@ -36274,6 +36344,16 @@
               },
               "registration_allowed": {
                 "type": "boolean"
+              },
+              "registration_allowed_pinned": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "registration_cost_tao": {
                 "anyOf": [

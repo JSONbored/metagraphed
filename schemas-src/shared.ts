@@ -124,6 +124,19 @@ export const SubnetEconomicsSchema = z
     subnet_volume_tao: z.number().nullable(),
     // Stage 0 eligibility.
     subtoken_enabled: z.boolean().nullable().optional(),
+    // Stage 1's input and stage 0's last gate, READ AT chain_state.block
+    // (#8744) rather than off the bulk metagraph call the way alpha_price_tao
+    // and registration_allowed are. Same chain items, different instant: the
+    // bulk call runs at its own height, and every other term the
+    // reconstruction combines these with is pinned. alpha_price_tao keeps its
+    // own source and published meaning (ADR 0023 decision 1) -- these are a
+    // second reading for the pipeline alone, which is why the names differ.
+    //
+    // Null is "not captured", never zero: a zero moving price is a real
+    // stage-1 share of nothing, and conflating the two would hand a live
+    // subnet a share of exactly 0.
+    moving_price_pinned: z.number().nullable().optional(),
+    registration_allowed_pinned: z.boolean().nullable().optional(),
     // Stage 8: TAO injected into this subnet's own pool. Its sum with
     // excess_tao across subnets equals the issuance-derived block emission.
     //
@@ -164,6 +177,20 @@ export const ChainStateSchema = z
     // stale `BlockEmission` storage item. Kept at the height so a historical
     // row stays interpretable against the emission in force when captured.
     total_issuance_tao: z.number().nonnegative(),
+    // The gate's three parameters AT THIS BLOCK (#8744). Not captured at any
+    // height before now, and a live read is the wrong number for 359 blocks
+    // out of 360: the runtime recomputes theta whenever block % 360 == 0, and
+    // gates with the STORED value in between.
+    //
+    // theta is null when the bar is unset, which disables the gate outright
+    // (apply_emission_gate's own `if theta <= zero { return; }`).
+    emission_gate_bar: z.number().nullable(),
+    emission_bar_quantile: z.number().nullable(),
+    // NULL MEANS THE RUNTIME DEFAULT h = 3, NOT ZERO. h = 0 would make the
+    // Hill gate return exactly 0.5 for every subnet, so coercing absent to 0
+    // silently replaces the gate with a constant. Left null here and resolved
+    // by the consumer against DEFAULT_EMISSION_GATE_EXPONENT.
+    emission_gate_exponent: z.int().nullable(),
   })
   .strict();
 export type ChainState = z.infer<typeof ChainStateSchema>;
