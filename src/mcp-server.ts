@@ -427,6 +427,7 @@ import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.ts";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
+  FEED_KINDS,
   GET_FEED_INSTRUCTIONS,
   GET_FEED_MCP_TOOL,
   GET_FEED_OUTPUT_SCHEMA,
@@ -3195,6 +3196,37 @@ function requireAnyOf(
   keys: string[],
 ): Record<string, unknown> {
   return { ...schema, anyOf: keys.map((key) => ({ required: [key] })) };
+}
+
+/**
+ * get_feed's `netuid` is `.optional()` in Zod but resolveNetuid
+ * (src/feed-mcp.ts:76-96) makes it conditionally REQUIRED (kind === "subnet")
+ * and conditionally FORBIDDEN (any other kind) -- a dependency z.toJSONSchema
+ * cannot express, so the published schema said `{ kind: "subnet" }` and
+ * `{ kind: "registry", netuid: 64 }` were both valid while the handler rejects
+ * both. Same "patch the emitted JSON Schema, never the Zod schema" contract as
+ * requireAnyOf above: encode the dependency as `anyOf` (the standard JSON
+ * Schema spelling clients validate against), leaving Zod parsing and the
+ * inferred TS input type untouched. The non-subnet branch's enum is DERIVED
+ * from FEED_KINDS minus "subnet" so a new kind can never drift out of it.
+ */
+export function requireNetuidWhenSubnet(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  const nonSubnetKinds = FEED_KINDS.filter((kind) => kind !== "subnet");
+  return {
+    ...schema,
+    anyOf: [
+      {
+        properties: { kind: { const: "subnet" } },
+        required: ["kind", "netuid"],
+      },
+      {
+        properties: { kind: { enum: nonSubnetKinds } },
+        not: { required: ["netuid"] },
+      },
+    ],
+  };
 }
 
 export const MCP_TOOLS: McpToolDefinition[] = [
@@ -9190,6 +9222,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     ...GET_FEED_MCP_TOOL,
+    // #8829: netuid is conditionally required (kind === "subnet") and forbidden
+    // otherwise -- a dependency Zod can't emit, so patch it onto the published
+    // inputSchema, same mechanism how_do_i_call / verify_integration use.
+    inputSchema: requireNetuidWhenSubnet(GET_FEED_MCP_TOOL.inputSchema),
     async handler(args: z.infer<typeof GetFeedInputSchema>, ctx: McpCtx) {
       return loadFeedItems(asMcpLoaderCtx(ctx), args, {
         // Same cross-subnet incident ledger + wiring get_global_incidents uses

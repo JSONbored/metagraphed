@@ -10,6 +10,7 @@ import {
   MAX_MCP_BODY_BYTES,
   listToolDefinitions,
   handleMcpRequest,
+  requireNetuidWhenSubnet,
 } from "../src/mcp-server.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
@@ -12675,6 +12676,57 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(
       strayNetuid.body.result.content[0].text,
       /netuid.*only used when kind is `subnet`/,
+    );
+  });
+
+  // #8829: the runtime rule above must also be encoded in the PUBLISHED schema
+  // (anyOf) so a validating client rejects the two currently-valid-but-rejected
+  // calls locally instead of round-tripping to an invalid_params toolError.
+  test("get_feed publishes an anyOf making netuid required iff kind=subnet", () => {
+    const def = listToolDefinitions().find((t) => t.name === "get_feed");
+    assert.ok(def, "get_feed is registered");
+    const schema = def!.inputSchema as Row;
+    assert.ok(Array.isArray(schema.anyOf), "inputSchema carries an anyOf");
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    // Currently-valid-but-rejected calls now fail schema validation.
+    assert.equal(validate({ kind: "subnet" }), false, "subnet needs netuid");
+    assert.equal(
+      validate({ kind: "registry", netuid: 64 }),
+      false,
+      "non-subnet forbids netuid",
+    );
+    // The two well-formed calls still pass.
+    assert.equal(validate({ kind: "subnet", netuid: 64 }), true);
+    assert.equal(validate({ kind: "registry" }), true);
+  });
+
+  test("requireNetuidWhenSubnet emits both branches with the non-subnet enum derived from FEED_KINDS", () => {
+    const patched = requireNetuidWhenSubnet({
+      type: "object",
+      properties: { kind: {}, netuid: {} },
+    }) as Row;
+    // The original schema is preserved (patch, not replace).
+    assert.equal(patched.type, "object");
+    const anyOf = patched.anyOf as Row[];
+    assert.equal(anyOf.length, 2);
+    // Subnet branch requires both kind and netuid.
+    const subnetBranch = anyOf.find(
+      (b) => (b.properties as Row)?.kind?.const === "subnet",
+    ) as Row;
+    assert.ok(subnetBranch, "a kind=subnet branch is present");
+    assert.deepEqual(subnetBranch.required, ["kind", "netuid"]);
+    // Non-subnet branch forbids netuid and lists exactly FEED_KINDS minus subnet.
+    const otherBranch = anyOf.find(
+      (b) => (b.properties as Row)?.kind?.enum,
+    ) as Row;
+    assert.ok(otherBranch, "a non-subnet branch is present");
+    assert.deepEqual((otherBranch.not as Row).required, ["netuid"]);
+    const enumKinds = (otherBranch.properties as Row).kind.enum as string[];
+    assert.ok(enumKinds.length > 0);
+    assert.ok(!enumKinds.includes("subnet"), "subnet is excluded");
+    assert.ok(
+      enumKinds.includes("registry") && enumKinds.includes("upgrades"),
+      "non-subnet kinds are derived from FEED_KINDS",
     );
   });
 
