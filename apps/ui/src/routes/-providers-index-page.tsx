@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import type { ProvidersSearch } from "./apis.providers";
 import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
@@ -46,7 +47,7 @@ import { providerSortKeys } from "./apis.providers";
 import { ApisTabActions } from "./-apis-hub";
 
 export function ProvidersPage() {
-  const search = useSearch({ from: "/apis/providers" });
+  const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
   const navigate = useNavigate({ from: "/apis/providers" });
   const view = search.view ?? "table";
   const filtersActive = Boolean(
@@ -148,7 +149,7 @@ function authorityTone(a?: string): string {
 }
 
 function ProvidersGrid({ view }: { view: "grid" | "table" }) {
-  const search = useSearch({ from: "/apis/providers" });
+  const search = useSearch({ from: "/apis/providers" }) as ProvidersSearch;
   const navigate = useNavigate({ from: "/apis/providers" });
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({

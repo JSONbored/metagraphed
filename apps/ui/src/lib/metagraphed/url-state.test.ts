@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { joinEconomics, joinHealth, matchesQuery, sortBy } from "./url-state";
+import { z } from "zod";
+import { fallback } from "@tanstack/zod-adapter";
+import {
+  joinEconomics,
+  joinHealth,
+  matchesQuery,
+  sortBy,
+  stripDefaultSearchParams,
+  tableSearchSchema,
+} from "./url-state";
 
 describe("matchesQuery", () => {
   it("matches everything for an empty needle", () => {
@@ -172,6 +181,57 @@ describe("joinEconomics", () => {
       alpha_price_tao: 0.0412,
       total_stake_tao: 12_345,
       alpha_market_cap_tao: 507,
+    });
+  });
+});
+
+describe("stripDefaultSearchParams (#8628)", () => {
+  // The middleware's real contract is ({ search, next, meta }) => result,
+  // where `next` is the continuation returning the search to filter. Modelled
+  // on the implementation in @tanstack/router-core rather than guessed at.
+  const apply = <T extends z.ZodObject>(schema: T, search: object) =>
+    stripDefaultSearchParams(schema)({
+      search,
+      next: (s: object) => s,
+    } as never) as Record<string, unknown>;
+
+  it("derives the defaults from the schema rather than a hand-written list", () => {
+    // The whole point: nothing here names a default. A changed default must
+    // change what gets stripped, with no second place to update.
+    const schema = z.object({
+      a: fallback(z.string(), "hello").default("hello"),
+      b: fallback(z.number(), 42).default(42),
+    });
+    expect(apply(schema, { a: "hello", b: 42 })).toEqual({});
+  });
+
+  it("strips a value equal to its default", () => {
+    expect(apply(tableSearchSchema, tableSearchSchema.parse({}))).toEqual({});
+  });
+
+  it("keeps a value that differs from its default", () => {
+    const search = { ...tableSearchSchema.parse({}), health: "ok" };
+    expect(apply(tableSearchSchema, search)).toEqual({ health: "ok" });
+  });
+
+  it("keeps a false/zero value that is not the default", () => {
+    // Guards the classic falsy bug: includeRoot defaults to true, so `false`
+    // is a real choice and must survive rather than being treated as absent.
+    const search = { ...tableSearchSchema.parse({}), includeRoot: false };
+    expect(apply(tableSearchSchema, search)).toEqual({ includeRoot: false });
+  });
+
+  it("keeps only the non-defaults out of a fully-expanded legacy link", () => {
+    // Back-compat: an already-shared URL carrying every param still resolves,
+    // and normalizes down to just what the reader actually chose.
+    const search = {
+      ...tableSearchSchema.parse({}),
+      order: "desc" as const,
+      view: "grid" as const,
+    };
+    expect(apply(tableSearchSchema, search)).toEqual({
+      order: "desc",
+      view: "grid",
     });
   });
 });

@@ -1,3 +1,4 @@
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { z } from "zod";
@@ -40,6 +41,7 @@ export type EndpointsSearch = z.infer<typeof endpointsSearchSchema>;
 
 export const Route = createFileRoute("/apis/endpoints")({
   validateSearch: zodValidator(endpointsSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(endpointsSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Endpoints — Metagraphed" },

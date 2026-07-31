@@ -56,7 +56,7 @@ function blocksQueryParams(search: BlocksSearch): Record<string, string | number
 }
 
 export function BlocksPage() {
-  const search = useSearch({ from: "/chain/blocks" });
+  const search = useSearch({ from: "/chain/blocks" }) as BlocksSearch;
   const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
 
   return (
@@ -177,7 +177,7 @@ export function BlockCard({ block }: { block: Block }) {
 }
 
 function BlocksTable() {
-  const search = useSearch({ from: "/chain/blocks" });
+  const search = useSearch({ from: "/chain/blocks" }) as BlocksSearch;
   const navigate = useNavigate({ from: "/blocks/" });
 
   // Only send filters the user actually set, so an empty bar is the plain feed.

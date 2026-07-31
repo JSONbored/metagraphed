@@ -1,3 +1,4 @@
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -10,7 +11,9 @@ import { StatusPage } from "./-status-page";
 // falls back to the most-recent probe day in the component.
 const SURFACE_SORT_FIELDS = ["netuid", "provider", "kind", "status", "latency_ms"] as const;
 
-const statusSearchSchema = z.object({
+export type StatusSearch = z.infer<typeof statusSearchSchema>;
+
+export const statusSearchSchema = z.object({
   date: fallback(z.string(), "").default(""),
   kind: fallback(z.string(), "").default(""),
   status: fallback(z.string(), "").default(""),
@@ -23,6 +26,7 @@ const statusSearchSchema = z.object({
 
 export const Route = createFileRoute("/status")({
   validateSearch: zodValidator(statusSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(statusSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Status — Metagraphed" },

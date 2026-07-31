@@ -591,7 +591,7 @@ function EndpointsTable() {
     return m;
   }, [snRes]);
 
-  const search = useSearch({ from: "/apis/endpoints" });
+  const search = useSearch({ from: "/apis/endpoints" }) as EndpointsSearch;
   const navigate = useNavigate({ from: "/apis/endpoints" });
   const expandedId = search.endpoint || null;
   const toggleExpanded = (id: string) =>

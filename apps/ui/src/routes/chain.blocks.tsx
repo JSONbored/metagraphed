@@ -1,3 +1,4 @@
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -19,6 +20,7 @@ export type BlocksSearch = z.infer<typeof blocksSearchSchema>;
 
 export const Route = createFileRoute("/chain/blocks")({
   validateSearch: zodValidator(blocksSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(blocksSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Blocks — Metagraphed" },

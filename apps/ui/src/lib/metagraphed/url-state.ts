@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripSearchParams } from "@tanstack/react-router";
 import { fallback } from "@tanstack/zod-adapter";
 
 /** Common URL-driven table state schema for /subnets and /surfaces. */
@@ -47,6 +48,30 @@ export const tableSearchSchema = z.object({
   view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),
   density: fallback(z.enum(["comfortable", "compact"]), "comfortable").default("comfortable"),
 });
+
+/**
+ * Strip a route's default search params from the URL (#8628).
+ *
+ * Every field in these schemas carries a `.default()`, and TanStack Router
+ * materialises defaults during `validateSearch` then rewrites the URL to match
+ * — so `/subnets` always 307'd to a query string of 22 empty params. Nothing
+ * was mis-indexed (the canonical tag points back at the clean path), but every
+ * crawl paid a redirect hop and every shared link carried the noise.
+ *
+ * Defaults are DERIVED by parsing an empty object, never re-listed: a
+ * hand-written list would silently stop stripping the moment a default
+ * changed, which is exactly the drift this helper exists to prevent.
+ *
+ * NOTE for consumers: adding a search middleware collapses the route's search
+ * type to `{}` at `useSearch()` — a TanStack typing limitation, not a runtime
+ * change. `validateSearch` still applies every default when parsing, so the
+ * value always has all fields; pages therefore cast to the route's exported
+ * search type. That cast is sound precisely because the middleware only
+ * affects what is WRITTEN to the URL, never what is read from it.
+ */
+export function stripDefaultSearchParams<T extends z.ZodObject>(schema: T) {
+  return stripSearchParams<z.output<T>>(schema.parse({}) as Partial<z.output<T>>);
+}
 
 export type TableSearch = z.infer<typeof tableSearchSchema>;
 

@@ -1,4 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import type { EndpointsSearch } from "@/routes/apis.endpoints";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -155,7 +156,10 @@ function UsageStat({
 export function ProxyUsagePanel() {
   // #3976: window is URL-backed on /endpoints (this panel's only host) so a
   // shared link restores the same 7d/30d view and back/forward works.
-  const window = useSearch({ from: "/apis/endpoints", select: (s) => s.window });
+  const window = useSearch({
+    from: "/apis/endpoints",
+    select: (s) => (s as EndpointsSearch).window,
+  });
   const navigate = useNavigate({ from: "/apis/endpoints" });
   const { data } = useSuspenseQuery(rpcUsageQuery(window));
   const usage = data.data as RpcUsage;

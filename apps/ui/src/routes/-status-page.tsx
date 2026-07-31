@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import type { StatusSearch } from "./status";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
@@ -139,7 +140,10 @@ export function StatusPage() {
 }
 
 function RecentIncidents() {
-  const window = useSearch({ from: "/status", select: (s) => s.window });
+  const window = useSearch({
+    from: "/status",
+    select: (s) => (s as StatusSearch).window,
+  });
   const navigate = useNavigate({ from: "/status" });
   const [showAll, setShowAll] = useState(false);
   const refetchInterval = useRefetchInterval(60_000);

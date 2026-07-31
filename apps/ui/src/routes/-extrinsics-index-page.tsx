@@ -48,7 +48,7 @@ function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string 
 }
 
 export function ExtrinsicsPage() {
-  const search = useSearch({ from: "/chain/extrinsics" });
+  const search = useSearch({ from: "/chain/extrinsics" }) as ExtrinsicsSearch;
   const extrinsicsCsvUrl = buildUrl("/api/v1/extrinsics", extrinsicsQueryParams(search));
 
   return (
@@ -118,7 +118,7 @@ function FeesTrendCard() {
 }
 
 function ExtrinsicsTable() {
-  const search = useSearch({ from: "/chain/extrinsics" });
+  const search = useSearch({ from: "/chain/extrinsics" }) as ExtrinsicsSearch;
   const navigate = useNavigate({ from: "/extrinsics/" });
 
   // Only send filters the user actually set, so an empty bar is the plain feed.

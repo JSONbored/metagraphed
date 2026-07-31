@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import type { SubnetsSearch } from "./subnets.index";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -174,7 +175,7 @@ function joinCatalog(
 }
 
 export function SubnetsPage() {
-  const search = useSearch({ from: "/subnets/" });
+  const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
   const filtersActive =
     !!search.q ||
@@ -396,7 +397,7 @@ function SubnetsDomainsRollup() {
   const { data } = useSuspenseQuery(domainsQuery());
   const domains = data.data ?? [];
   const navigate = useNavigate({ from: "/subnets/" });
-  const search = useSearch({ from: "/subnets/" });
+  const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   if (domains.length === 0) return null;
   const sorted = [...domains].sort((a, b) => (b.subnet_count ?? 0) - (a.subnet_count ?? 0));
   return (
@@ -477,7 +478,7 @@ function ExcludeToggle({
 }
 
 function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; density?: Density }) {
-  const search = useSearch({ from: "/subnets/" });
+  const search = useSearch({ from: "/subnets/" }) as SubnetsSearch;
   const navigate = useNavigate({ from: "/subnets/" });
   const columns = useColumnVisibility("subnets", SUBNET_COLUMNS);
   // Local trend window powering the per-row Price/Stake/MCap sparklines +

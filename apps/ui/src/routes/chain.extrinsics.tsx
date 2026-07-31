@@ -1,3 +1,4 @@
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -17,6 +18,7 @@ export type ExtrinsicsSearch = z.infer<typeof extrinsicsSearchSchema>;
 
 export const Route = createFileRoute("/chain/extrinsics")({
   validateSearch: zodValidator(extrinsicsSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(extrinsicsSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Extrinsics — Metagraphed" },

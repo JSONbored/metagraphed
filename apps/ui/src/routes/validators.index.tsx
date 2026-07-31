@@ -1,3 +1,4 @@
+import { stripDefaultSearchParams } from "@/lib/metagraphed/url-state";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -8,7 +9,9 @@ import { ValidatorsPage } from "./-validators-index-page";
 // one request and sorts locally, so any numeric row field is sortable,
 // including take/apy_estimate/nominator_count that the API's own ?sort=
 // never supported.
-const validatorsSearchSchema = z.object({
+export type ValidatorsSearch = z.infer<typeof validatorsSearchSchema>;
+
+export const validatorsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
   // #8256: "Watched" quick filter, matching the /subnets index convention.
   // A search param (not component state) so a filtered view is shareable and
@@ -24,6 +27,7 @@ const validatorsSearchSchema = z.object({
 
 export const Route = createFileRoute("/validators/")({
   validateSearch: zodValidator(validatorsSearchSchema),
+  search: { middlewares: [stripDefaultSearchParams(validatorsSearchSchema)] },
   head: () => ({
     meta: [
       { title: "Validators — Metagraphed" },
