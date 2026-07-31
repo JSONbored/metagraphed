@@ -7215,8 +7215,10 @@ export interface components {
             schema_version: 1;
             subnets: {
                 alpha_fdv_tao: number | null;
+                alpha_in_emission?: number | null;
                 alpha_in_pool: number | null;
                 alpha_market_cap_tao: number | null;
+                alpha_out_emission?: number | null;
                 alpha_out_pool: number | null;
                 alpha_price_change_1d?: number | null;
                 alpha_price_change_1h?: number | null;
@@ -7224,10 +7226,14 @@ export interface components {
                 alpha_price_change_7d?: number | null;
                 alpha_price_tao: number | null;
                 block?: number | null;
+                emission_enabled?: boolean | null;
                 emission_share: number | null;
+                excess_tao?: number | null;
+                first_emission_block?: number | null;
                 max_stake_tao: number | null;
                 max_uids: number;
                 max_validators: number;
+                miner_burned_fraction?: number | null;
                 miner_count: number;
                 miner_readiness?: number | null;
                 name: string;
@@ -7239,6 +7245,8 @@ export interface components {
                 registration_cost_tao: number | null;
                 slug: string;
                 subnet_volume_tao: number | null;
+                subtoken_enabled?: boolean | null;
+                tao_in_emission_tao?: number | null;
                 tao_in_pool_tao: number | null;
                 total_stake_tao: number | null;
                 validator_count: number;
@@ -9506,8 +9514,10 @@ export interface components {
             contract_version?: string;
             economics?: {
                 alpha_fdv_tao: number | null;
+                alpha_in_emission?: number | null;
                 alpha_in_pool: number | null;
                 alpha_market_cap_tao: number | null;
+                alpha_out_emission?: number | null;
                 alpha_out_pool: number | null;
                 alpha_price_change_1d?: number | null;
                 alpha_price_change_1h?: number | null;
@@ -9515,10 +9525,14 @@ export interface components {
                 alpha_price_change_7d?: number | null;
                 alpha_price_tao: number | null;
                 block?: number | null;
+                emission_enabled?: boolean | null;
                 emission_share: number | null;
+                excess_tao?: number | null;
+                first_emission_block?: number | null;
                 max_stake_tao: number | null;
                 max_uids: number;
                 max_validators: number;
+                miner_burned_fraction?: number | null;
                 miner_count: number;
                 miner_readiness?: number | null;
                 name: string;
@@ -9530,6 +9544,8 @@ export interface components {
                 registration_cost_tao: number | null;
                 slug: string;
                 subnet_volume_tao: number | null;
+                subtoken_enabled?: boolean | null;
+                tao_in_emission_tao?: number | null;
                 tao_in_pool_tao: number | null;
                 total_stake_tao: number | null;
                 validator_count: number;
@@ -18799,8 +18815,10 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "economics": {
                      *           "alpha_fdv_tao": 0.5,
+                     *           "alpha_in_emission": 0.5,
                      *           "alpha_in_pool": 0.5,
                      *           "alpha_market_cap_tao": 0.5,
+                     *           "alpha_out_emission": 0.5,
                      *           "alpha_out_pool": 0.5,
                      *           "alpha_price_change_1d": 0.5,
                      *           "alpha_price_change_1h": 0.5,
@@ -18808,10 +18826,14 @@ export interface operations {
                      *           "alpha_price_change_7d": 0.5,
                      *           "alpha_price_tao": 0.5,
                      *           "block": 5000000,
+                     *           "emission_enabled": false,
                      *           "emission_share": 0.5,
+                     *           "excess_tao": 0.5,
+                     *           "first_emission_block": 5000000,
                      *           "max_stake_tao": 0.5,
                      *           "max_uids": 1,
                      *           "max_validators": 1,
+                     *           "miner_burned_fraction": 0.5,
                      *           "miner_count": 1,
                      *           "miner_readiness": 1,
                      *           "name": "Example Subnet",
@@ -18823,6 +18845,8 @@ export interface operations {
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
                      *           "subnet_volume_tao": 0.5,
+                     *           "subtoken_enabled": false,
+                     *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
                      *           "total_stake_tao": 0.5,
                      *           "validator_count": 1
@@ -39872,8 +39896,10 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "economics": {
                      *           "alpha_fdv_tao": 0.5,
+                     *           "alpha_in_emission": 0.5,
                      *           "alpha_in_pool": 0.5,
                      *           "alpha_market_cap_tao": 0.5,
+                     *           "alpha_out_emission": 0.5,
                      *           "alpha_out_pool": 0.5,
                      *           "alpha_price_change_1d": 0.5,
                      *           "alpha_price_change_1h": 0.5,
@@ -39881,10 +39907,14 @@ export interface operations {
                      *           "alpha_price_change_7d": 0.5,
                      *           "alpha_price_tao": 0.5,
                      *           "block": 5000000,
+                     *           "emission_enabled": false,
                      *           "emission_share": 0.5,
+                     *           "excess_tao": 0.5,
+                     *           "first_emission_block": 5000000,
                      *           "max_stake_tao": 0.5,
                      *           "max_uids": 1,
                      *           "max_validators": 1,
+                     *           "miner_burned_fraction": 0.5,
                      *           "miner_count": 1,
                      *           "miner_readiness": 1,
                      *           "name": "Example Subnet",
@@ -39896,6 +39926,8 @@ export interface operations {
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
                      *           "subnet_volume_tao": 0.5,
+                     *           "subtoken_enabled": false,
+                     *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
                      *           "total_stake_tao": 0.5,
                      *           "validator_count": 1

@@ -1199,9 +1199,64 @@ describe("syncSubnetSnapshotToPostgres", () => {
         alpha_in_pool: null,
         alpha_out_pool: null,
         subnet_volume_tao: null,
+        tao_in_emission_tao: null,
+        excess_tao: null,
+        alpha_in_emission: null,
+        alpha_out_emission: null,
+        miner_burned_fraction: null,
+        emission_enabled: null,
+        subtoken_enabled: null,
+        first_emission_block: null,
         captured_at: 1,
       },
     ]);
+  });
+
+  // #8743: the v440 pipeline inputs ride the same row. Two things this pins
+  // that a looser assertion would not.
+  test("carries the v440 pipeline inputs through, zeros and falses included", async () => {
+    let receivedBody: Row[] = [];
+    const env = {
+      DATA_API: {
+        fetch: async (request: Request) => {
+          receivedBody = (await request.json()) as Row[];
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), {
+      ...opts,
+      economicsByNetuid: new Map([
+        [
+          8,
+          {
+            validator_count: 5,
+            // A disabled subnet: zero on both TAO channels and false on the
+            // flag are REAL measurements, and `|| null` would erase all
+            // three -- which is exactly the row worth having.
+            tao_in_emission_tao: 0,
+            excess_tao: 0,
+            alpha_in_emission: 0.150157337,
+            alpha_out_emission: 1,
+            miner_burned_fraction: 0,
+            emission_enabled: false,
+            subtoken_enabled: true,
+            first_emission_block: 5228683,
+          },
+        ],
+      ]),
+    });
+    assert.deepEqual(result, { synced: true, rows: 1 });
+    const row = receivedBody[0];
+    assert.equal(row.tao_in_emission_tao, 0);
+    assert.equal(row.excess_tao, 0);
+    assert.equal(row.miner_burned_fraction, 0);
+    assert.equal(row.emission_enabled, false);
+    assert.equal(row.subtoken_enabled, true);
+    assert.equal(row.alpha_in_emission, 0.150157337);
+    assert.equal(row.alpha_out_emission, 1);
+    assert.equal(row.first_emission_block, 5228683);
   });
 
   test("reports the upstream status when the response is not ok, never throws", async () => {
@@ -1261,6 +1316,14 @@ describe("syncSubnetSnapshotToPostgres", () => {
         alpha_in_pool: null,
         alpha_out_pool: null,
         subnet_volume_tao: null,
+        tao_in_emission_tao: null,
+        excess_tao: null,
+        alpha_in_emission: null,
+        alpha_out_emission: null,
+        miner_burned_fraction: null,
+        emission_enabled: null,
+        subtoken_enabled: null,
+        first_emission_block: null,
         captured_at: 1,
       },
     ]);
