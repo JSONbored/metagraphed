@@ -640,21 +640,32 @@ jobs:
       # build-summary.json at the R2 staging root in place, racing the same
       # staging tree the artifact writers above touch. All five drive their
       # work via execFileSync child processes and add zero in-process
-      # coverage, so coverage comes only from `test:ci` and CI still makes a
-      # single Codecov upload.
+      # coverage, so coverage comes only from `test:ci`.
+      #
+      # `test:ci` is itself two vitest passes (scripts/run-ci-tests.ts, #8922):
+      # the ~17 files that use vi.mock/vi.doMock/vi.unmock/vi.resetModules keep
+      # per-file isolation, and everything else shares one module registry per
+      # worker (`--isolate=false`), which cuts the run from ~499s to ~141s of
+      # user CPU. Each pass writes its own lcov + junit -- neither is a valid
+      # coverage denominator alone, so BOTH are uploaded and Codecov merges
+      # them.
       #
       # NOTE: the `test` job intentionally does NOT participate in the docs
       # fast lane above. Coverage is a repo-wide delta gate (codecov.yml), not
       # diff-scoped, so shortcutting it on a docs-only PR would let a docs PR
       # merge without an accurate coverage report. It's also not the wall-clock
       # long pole when it does run alongside a fast `checks` job.
-      - name: Test (parallel, with coverage gate)
+      - name: Test (split passes, with coverage gate)
         env:
           VITEST_JUNIT_PATH: reports/junit/vitest.xml
         run: npm run test:ci
 
-      - name: Verify coverage report exists
-        run: test -s coverage/lcov.info
+      # Both passes must have produced a report -- an empty/missing one would
+      # otherwise upload a partial denominator and silently understate coverage.
+      - name: Verify coverage reports exist
+        run: |
+          test -s coverage/lcov.info
+          test -s coverage-mocked/lcov.info
 
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a
@@ -683,7 +694,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          files: ./coverage/lcov.info,./coverage-mocked/lcov.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
@@ -702,7 +713,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./coverage/lcov.info
+          files: ./coverage/lcov.info,./coverage-mocked/lcov.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
@@ -715,7 +726,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./reports/junit/vitest.xml
+          files: ./reports/junit/vitest.xml,./reports/junit/vitest-mocked.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
@@ -728,7 +739,7 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./reports/junit/vitest.xml
+          files: ./reports/junit/vitest.xml,./reports/junit/vitest-mocked.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1

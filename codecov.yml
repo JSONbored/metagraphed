@@ -7,6 +7,18 @@
 #     code" signal — PR-local, independent of global fluctuation).
 # The uploaded lcov is already scoped to runtime code (src/** + workers/** + 5
 # named scripts) by vitest's coverage.include, so Codecov reports only those.
+
+# The test job uploads TWO coverage reports (#8922): scripts/run-ci-tests.ts
+# splits the suite into a shared-registry pass and an isolated vi.mock pass, and
+# neither is a valid denominator alone — the shared pass measures ~89.9% lines
+# on its own purely because the other pass's files are missing from it. Without
+# this, Codecov computes project/patch off whichever report lands first and
+# posts a ~9% "drop" against a 1% threshold: a false red on every PR. Waiting
+# for both uploads makes the verdict fire once, on the merged report.
+codecov:
+  notify:
+    after_n_builds: 2
+
 coverage:
   status:
     project:
