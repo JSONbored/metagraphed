@@ -5801,6 +5801,7 @@ export interface components {
             /** @enum {string} */
             severity: "hard" | "missing-data" | "needs-review";
         };
+        /** @description Agent-facing readiness status and blocker taxonomy for one subnet. */
         AgentReadinessStatus: {
             /** @enum {string} */
             blocker_level: "none" | "hard-blocked" | "needs-review" | "missing-data";
@@ -6940,6 +6941,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column). */
         ConcentrationMetrics: ({
             entropy?: number | null;
             entropy_normalized?: number | null;
@@ -9096,6 +9098,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network). */
         ScoreDistribution: ({
             count?: number;
             max?: number | null;
@@ -10596,6 +10599,7 @@ export interface components {
             total_stake_tao: number;
             validator_count: number;
         };
+        /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup. */
         SubnetYieldHistoryArtifact: {
             netuid: number;
             point_count: number;

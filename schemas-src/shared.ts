@@ -162,7 +162,10 @@ export const ConcentrationMetricsSchema = z
     entropy_normalized: z.number().nullable().optional(),
   })
   .passthrough()
-  .nullable();
+  .nullable()
+  .describe(
+    "One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column).",
+  );
 export type ConcentrationMetrics = z.infer<typeof ConcentrationMetricsSchema>;
 
 // Distribution summary of a 0-1 per-UID score across neurons (src/subnet-
@@ -184,5 +187,8 @@ export const ScoreDistributionSchema = z
     p90: z.number().nullable().optional(),
   })
   .passthrough()
-  .nullable();
+  .nullable()
+  .describe(
+    "Distribution summary of a 0\u20131 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
+  );
 export type ScoreDistribution = z.infer<typeof ScoreDistributionSchema>;

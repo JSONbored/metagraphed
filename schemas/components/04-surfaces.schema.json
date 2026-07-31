@@ -167,40 +167,6 @@
             "additionalProperties": true
           }
         ]
-      },
-      "AgentReadinessStatus": {
-        "type": "object",
-        "description": "Agent-facing readiness status and blocker taxonomy for one subnet.",
-        "required": ["status", "blocker_level", "blockers", "missing_fields"],
-        "additionalProperties": false,
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "callable",
-              "base-layer",
-              "candidate",
-              "needs-evidence",
-              "blocked"
-            ]
-          },
-          "blocker_level": {
-            "type": "string",
-            "enum": ["none", "hard-blocked", "needs-review", "missing-data"]
-          },
-          "blockers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AgentReadinessBlocker"
-            }
-          },
-          "missing_fields": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
       }
     }
   }
