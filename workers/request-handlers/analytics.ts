@@ -31,6 +31,7 @@ import {
   resolveClientIp,
 } from "../config.ts";
 import { parseLimitParam } from "../request-params.ts";
+import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import {
@@ -157,6 +158,17 @@ let readEconomicsCurrentKv: EconomicsCurrentKvReader = () => {
   throw new Error("analytics handlers used before configureAnalytics()");
 };
 /* v8 ignore stop */
+
+// Post-load baseline captured before api.ts wires the real readers. See
+// src/module-state-registry.ts: under `isolate: false` a test file's fakes
+// would otherwise outlive the file. api.ts evaluates after this module, so its
+// reset re-wires production immediately after this one unwires.
+const unwiredReaders = { readHealthMetaKv, readEconomicsCurrentKv };
+
+registerModuleStateReset("workers/request-handlers/analytics.ts", () => {
+  readHealthMetaKv = unwiredReaders.readHealthMetaKv;
+  readEconomicsCurrentKv = unwiredReaders.readEconomicsCurrentKv;
+});
 
 /** The injected live-economics KV reader, for sibling handler modules. */
 export function economicsCurrentKvReader(): EconomicsCurrentKvReader {

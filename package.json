@@ -81,6 +81,7 @@
     "validate:workflows": "node scripts/validate-workflows.ts",
     "validate:migrations": "node scripts/validate-migrations.ts",
     "validate:no-hand-written-mjs": "node scripts/validate-no-hand-written-mjs.ts",
+    "validate:module-state-resets": "node scripts/validate-module-state-resets.ts",
     "migrate": "node scripts/apply-migrations.ts",
     "migrate:dry-run": "node scripts/apply-migrations.ts --dry-run",
     "openapi:generate": "node scripts/generate-openapi.ts --write",

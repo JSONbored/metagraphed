@@ -11,6 +11,7 @@
 // injected once at module-init so this file never imports api.ts back.
 
 import { UPTIME_WINDOWS } from "../config.ts";
+import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import { errorResponse } from "../http.ts";
@@ -223,6 +224,25 @@ interface LeaderboardProfilesProjection {
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache: LeaderboardProfilesProjection | null = null;
 let leaderboardProfilesCacheEnv: Env | null = null;
+
+// Post-load baseline for the injected readers, captured before api.ts wires them
+// (module bodies run to completion on import, so nothing has called
+// configureAnalyticsRoutes yet). Reading them here rather than naming the
+// placeholders keeps their `v8 ignore` block untouched.
+const unwiredReaders = { readHealthMetaKv, readEconomicsCurrentKv };
+
+// See src/module-state-registry.ts: with `isolate: false` this module is shared
+// by every test file in a worker, so a file that installs fake readers via
+// configureAnalyticsRoutes() would otherwise leak them into the next file.
+// Resets run in module-evaluation order, and api.ts evaluates after this file,
+// so its reset re-wires the production readers immediately after this one drops
+// back to the unwired placeholders.
+registerModuleStateReset("workers/request-handlers/analytics-routes.ts", () => {
+  readHealthMetaKv = unwiredReaders.readHealthMetaKv;
+  readEconomicsCurrentKv = unwiredReaders.readEconomicsCurrentKv;
+  leaderboardProfilesCache = null;
+  leaderboardProfilesCacheEnv = null;
+});
 
 // Week-over-week structural trajectory from daily snapshots.
 export async function handleTrajectory(
