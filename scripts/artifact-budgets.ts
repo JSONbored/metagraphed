@@ -20,12 +20,16 @@ export const ARTIFACT_SIZE_BUDGETS: ArtifactBudget[] = [
   // clear it today, so ongoing registry growth doesn't reopen the same outage in
   // a few weeks; still bounded well below "no budget at all" so a genuinely
   // runaway artifact (a bug, not organic growth) still fails loudly.
-  budget("surfaces.json", 2_500_000, 6_000_000),
-  budget("endpoints.json", 4_000_000, 7_500_000),
+  budget("surfaces.json", 5_500_000, 8_000_000),
+  budget("endpoints.json", 6_500_000, 9_000_000),
   budget("providers/*/endpoints.json", 1_000_000, 3_000_000),
-  budget("evidence-ledger.json", 1_000_000, 3_000_000),
-  budget("health/history/*.json", 650_000, 1_250_000),
-  budget("search.json", 750_000, 2_000_000),
+  budget("evidence-ledger.json", 2_500_000, 4_000_000),
+  budget("health/history/*.json", 800_000, 1_500_000),
+  // #8778: search.json was at 1,951,556 against a 2,000,000 FAIL line -- 97.6%
+  // of the ceiling, one subnet away from hard-failing the publish, and
+  // invisible because it was one warning among 44. That near-miss is the whole
+  // argument for this issue.
+  budget("search.json", 2_500_000, 4_000_000),
   budget("search-index.json", 1_500_000, 3_000_000),
   // #8698 documented the network-addressed form of every network-scoped route,
   // taking the spec from 202 to 278 paths and openapi.json from 2,198,245 to
@@ -42,11 +46,39 @@ export const ARTIFACT_SIZE_BUDGETS: ArtifactBudget[] = [
   budget("openapi.json", 3_000_000, 4_500_000),
   // Per-surface schema snapshots now embed the full upstream OpenAPI document.
   budget("schemas/*.json", 1_500_000, 5_000_000),
-  budget("profiles.json", 700_000, 1_000_000),
+  // #8778: 887,631 against a 1,000,000 fail line -- 88.8%, the second
+  // near-miss the noise was hiding.
+  budget("profiles.json", 1_200_000, 2_000_000),
   budget("review/profile-completeness.json", 350_000, 1_000_000),
   budget("review/enrichment-evidence.json", 500_000, 1_000_000),
   budget("review/enrichment-queue.json", 500_000, 1_000_000),
   budget("review/enrichment-targets.json", 1_100_000, 1_500_000),
+
+  // #8778: the per-subnet detail families. 24 of the 44 chronic warnings were
+  // these inheriting DEFAULT_BUDGET's 250,000 warn line, which never described
+  // them -- a large subnet's detail artifact is LEGITIMATELY bigger than a
+  // small one's, and SN49's is 792KB. Sized from the real maximum with warn at
+  // roughly 1.25-1.5x it (so the largest one growing another quarter is a
+  // signal) and fail at ~3x (so a generator bug still fails loudly).
+  budget("subnets/*.json", 1_000_000, 2_500_000),
+  budget("profiles/*.json", 700_000, 2_000_000),
+  budget("agent-catalog/*.json", 600_000, 1_500_000),
+  budget("endpoints/*.json", 400_000, 1_500_000),
+  budget("surfaces/*.json", 400_000, 1_500_000),
+  // Top-level artifacts that were also only ever matched by DEFAULT_BUDGET.
+  // Same sizing rule; listed individually because they grow for unrelated
+  // reasons and should not share one line.
+  budget("subnets.json", 550_000, 1_500_000),
+  // Per-NETWORK, not per-subnet: build-network-registry.ts writes
+  // `${prefix}/subnets.json` for every non-default network, so the budget is
+  // keyed the same way rather than naming testnet specifically. Sized from
+  // testnet's 471KB, which is the largest today.
+  budget("*/subnets.json", 650_000, 1_500_000),
+  budget("api-index.json", 500_000, 1_500_000),
+  budget("coverage-depth.json", 550_000, 1_500_000),
+  budget("operational-surfaces.json", 600_000, 1_500_000),
+  budget("metagraph/latest.json", 550_000, 1_500_000),
+  budget("review/curation.json", 450_000, 1_500_000),
 ];
 
 const DEFAULT_BUDGET = budget("*", 250_000, 1_000_000);

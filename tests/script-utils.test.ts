@@ -2413,7 +2413,8 @@ describe("script utility contracts", () => {
   test("evaluates artifact budgets with wildcard matching", () => {
     const results = evaluateArtifactBudgets([
       { path: "candidates.json", size_bytes: 100 },
-      { path: "health/history/2026-06-06.json", size_bytes: 700_000 },
+      // Above health/history's 800k warn line, below its 1.5M fail line (#8778).
+      { path: "health/history/2026-06-06.json", size_bytes: 850_000 },
       { path: "custom.json", size_bytes: 1_500_000 },
     ]);
 
@@ -2453,12 +2454,20 @@ describe("script utility contracts", () => {
     // emits, so an entry with no corresponding `artifactFile(...)` write is inert
     // and silently rots. Statically collect every literal/template path passed to
     // `artifactFile(...)` and assert each budget pattern matches at least one.
-    const source = await readFile(
-      path.join(repoRoot, "scripts/build-artifacts.ts"),
-      "utf8",
-    );
+    // #8778: build-artifacts.ts is not the only writer. The per-network
+    // artifacts (testnet/subnets.json and friends) come from
+    // build-network-registry.ts via artifactOutputPath, so scanning only the
+    // first file reports a perfectly good budget as orphaned.
+    const source = (
+      await Promise.all(
+        ["scripts/build-artifacts.ts", "scripts/build-network-registry.ts"].map(
+          (relative) => readFile(path.join(repoRoot, relative), "utf8"),
+        ),
+      )
+    ).join("\n");
     const writtenPatterns = new Set<string>();
-    const callRe = /artifactFile\(\s*(?:"([^"]+)"|`([^`]+)`)/g;
+    const callRe =
+      /(?:artifactFile|artifactOutputPath)\(\s*(?:"([^"]+)"|`([^`]+)`)/g;
     for (let match = callRe.exec(source); match; match = callRe.exec(source)) {
       // Collapse each `${…}` interpolation to a single path-segment glob, then to
       // a representative concrete segment, mirroring how the runtime resolves a
