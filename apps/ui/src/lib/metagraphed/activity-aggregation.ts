@@ -57,6 +57,25 @@ export function aggregateActivityEvents(
   return groups;
 }
 
+/**
+ * Single group identity used for both the row's React `key` and its
+ * expand/collapse state (#8817). Derived solely from the group's anchor
+ * event (`events[0]`) and kind -- an array index is not part of it, so a
+ * live event that prepends a new group and shifts every later group's
+ * index does not move an already-open row's identity out from under it.
+ * Nullish anchor fields get an explicit `∅` placeholder rather than
+ * flowing into the template literal as the strings "null"/"undefined",
+ * which would otherwise let two differently-nullish groups collide.
+ */
+export function activityGroupKey(group: ActivityGroup): string {
+  const anchor = group.events[0];
+  const kind = group.kind ?? "∅";
+  const block = anchor?.block_number ?? "∅";
+  const index = anchor?.event_index ?? "∅";
+  const observed = anchor?.observed_at ?? "∅";
+  return `${kind}-${block}-${index}-${observed}`;
+}
+
 function withinWindow(
   anchor: AccountEvent | undefined,
   ev: AccountEvent,

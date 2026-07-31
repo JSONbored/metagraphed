@@ -37,3 +37,12 @@ describe("subnet-activity entrance animation wiring (#8528)", () => {
     expect(source).toContain('isNew && !nested && "mg-fade-in"');
   });
 });
+
+describe("subnet-activity expand/collapse identity (#8817)", () => {
+  it("keys expand state by activityGroupKey strings, not array indices", () => {
+    expect(source).toContain("activityGroupKey");
+    expect(source).toContain("useState<ReadonlySet<string>>");
+    expect(source).not.toContain("useState<ReadonlySet<number>>");
+    expect(source).not.toMatch(/expandedGroups\.has\(i\)/);
+  });
+});
