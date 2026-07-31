@@ -8344,6 +8344,7 @@ test("GET /api/v1/chain/fees: default window, no call_module", async () => {
       {
         day: "2026-07-10",
         extrinsic_count: 10,
+        signed_extrinsic_count: 10,
         total_fee_tao: 1,
         total_tip_tao: 0.1,
       },
@@ -8363,7 +8364,35 @@ test("GET /api/v1/chain/fees: default window, no call_module", async () => {
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.daily[0].median_fee_tao).toBe(0.1);
+  expect(body.daily[0].signed_extrinsic_count).toBe(10);
   expect(body.top_fee_payers[0].signer).toBe("5Payer");
+});
+
+test("GET /api/v1/chain/fees: median query filters signer IS NOT NULL and does not COALESCE fee_tao/tip_tao", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [
+      {
+        day: "2026-07-10",
+        extrinsic_count: 10,
+        signed_extrinsic_count: 4,
+        total_fee_tao: 1,
+        total_tip_tao: 0.1,
+      },
+    ],
+    [],
+    [{ day: "2026-07-10", median_fee_tao: 0.25, median_tip_tao: 0.025 }],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/fees?window=7d");
+  expect(res.status).toBe(200);
+  const medianCall = sqlCalls.find((c) => c.text.includes("PERCENTILE_CONT"));
+  expect(medianCall).toBeDefined();
+  expect(medianCall!.text).toContain("AND signer IS NOT NULL");
+  expect(medianCall!.text).not.toContain("COALESCE(fee_tao");
+  expect(medianCall!.text).not.toContain("COALESCE(tip_tao");
 });
 
 test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause across all 3 queries", async () => {
@@ -8375,6 +8404,7 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
       {
         day: "2026-07-10",
         extrinsic_count: 4,
+        signed_extrinsic_count: 4,
         total_fee_tao: 2,
         total_tip_tao: 0,
       },
@@ -8395,6 +8425,74 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
   );
   expect(res.status).toBe(200);
   expect(queryText()).toContain("call_module = ");
+});
+
+test("GET /api/v1/chain/fees: a day mostly unsigned inherents reports averages/medians over the signed subset, not 0", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [
+      {
+        // 9 unsigned Timestamp.set-style inherents + 1 signed extrinsic.
+        day: "2026-07-10",
+        extrinsic_count: 10,
+        signed_extrinsic_count: 1,
+        total_fee_tao: 0.5,
+        total_tip_tao: 0.05,
+      },
+    ],
+    [
+      {
+        signer: "5Payer",
+        total_fee_tao: 0.5,
+        total_tip_tao: 0.05,
+        extrinsic_count: 1,
+      },
+    ],
+    [{ day: "2026-07-10", median_fee_tao: 0.5, median_tip_tao: 0.05 }],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/fees?window=7d");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  const day = body.daily[0];
+  expect(day.extrinsic_count).toBe(10);
+  expect(day.signed_extrinsic_count).toBe(1);
+  // avg divides by the signed subset (0.5/1), not by extrinsic_count (0.5/10)
+  // -- the old (buggy) denominator would have reported 0.05, not 0.5.
+  expect(day.avg_fee_tao).toBe(0.5);
+  expect(day.median_fee_tao).toBe(0.5);
+});
+
+test("GET /api/v1/chain/fees: a day with only unsigned inherents (signed_extrinsic_count 0) nulls avg/median but keeps extrinsic_count", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [
+      {
+        day: "2026-07-10",
+        extrinsic_count: 6,
+        signed_extrinsic_count: 0,
+        total_fee_tao: 0,
+        total_tip_tao: 0,
+      },
+    ],
+    [],
+    [], // no signed extrinsics -> no median row for this day
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/fees?window=7d");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  const day = body.daily[0];
+  expect(day.extrinsic_count).toBe(6);
+  expect(day.signed_extrinsic_count).toBe(0);
+  expect(day.avg_fee_tao).toBeNull();
+  expect(day.avg_tip_tao).toBeNull();
+  expect(day.median_fee_tao).toBeNull();
+  expect(day.median_tip_tao).toBeNull();
 });
 
 // #4832 gap-closure: health-tracking read routes. All 5 read from

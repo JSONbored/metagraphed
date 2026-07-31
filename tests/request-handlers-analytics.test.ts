@@ -1804,7 +1804,7 @@ describe("chain analytics ?format=csv export", () => {
       path: "/api/v1/chain/fees",
       handler: handleChainFees,
       header:
-        "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
+        "day,extrinsic_count,signed_extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
       // #4909/#6013: extrinsics' D1 write path is retired, so chain-fees no
       // longer queries D1 at all (D1 fully eliminated, 2026-07-16) -- there
       // is no "degraded D1" scenario to mark as fallback anymore.
@@ -2039,6 +2039,7 @@ describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
           {
             day: "2026-07-10",
             extrinsic_count: 10,
+            signed_extrinsic_count: 10,
             total_fee_tao: 1,
             avg_fee_tao: 0.1,
             median_fee_tao: 0.1,

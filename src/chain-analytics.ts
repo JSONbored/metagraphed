@@ -305,6 +305,7 @@ export function buildChainSigners({
 export interface ChainFeesDay {
   day: string;
   extrinsic_count: number;
+  signed_extrinsic_count: number;
   total_fee_tao: number;
   avg_fee_tao: number | null;
   median_fee_tao: number | null;
@@ -331,7 +332,14 @@ export interface ChainFeesResult {
 
 // Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
 // exact SQL-computed medians) plus a windowed top-fee-payer list. avg_*_tao and
-// median_*_tao guard the zero-denominator (a day with no extrinsics → null).
+// median_*_tao are computed over signed extrinsics only -- unsigned inherents
+// (Timestamp.set, etc.) carry no fee concept, and averaging/percentile-ranking
+// them alongside real fee-paying transactions understates the average and can
+// pin the median to a fabricated 0 once inherents are a large share of the day
+// (#8809). extrinsic_count keeps counting every extrinsic, inherents included --
+// it's already published elsewhere with that meaning. avg_*_tao/median_*_tao
+// guard the zero-denominator on signed_extrinsic_count (a day with no signed
+// extrinsics → null), not on extrinsic_count.
 export function buildChainFees({
   window,
   observedAt = null,
@@ -361,20 +369,28 @@ export function buildChainFees({
     .filter((r) => r && typeof r.day === "string")
     .map((r) => {
       const extrinsicCount = toCount(r.extrinsic_count);
+      const signedExtrinsicCount = toCount(r.signed_extrinsic_count);
       const totalFee = toTao(r.total_fee_tao);
       const totalTip = toTao(r.total_tip_tao);
       const medians = mediansByDay.get(r.day as string);
       return {
         day: r.day as string,
         extrinsic_count: extrinsicCount,
+        signed_extrinsic_count: signedExtrinsicCount,
         total_fee_tao: totalFee,
         avg_fee_tao:
-          extrinsicCount > 0 ? toTao(totalFee / extrinsicCount) : null,
-        median_fee_tao: extrinsicCount > 0 ? (medians?.fee ?? null) : null,
+          signedExtrinsicCount > 0
+            ? toTao(totalFee / signedExtrinsicCount)
+            : null,
+        median_fee_tao:
+          signedExtrinsicCount > 0 ? (medians?.fee ?? null) : null,
         total_tip_tao: totalTip,
         avg_tip_tao:
-          extrinsicCount > 0 ? toTao(totalTip / extrinsicCount) : null,
-        median_tip_tao: extrinsicCount > 0 ? (medians?.tip ?? null) : null,
+          signedExtrinsicCount > 0
+            ? toTao(totalTip / signedExtrinsicCount)
+            : null,
+        median_tip_tao:
+          signedExtrinsicCount > 0 ? (medians?.tip ?? null) : null,
       };
     })
     .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));

@@ -16712,7 +16712,7 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   function feesQuery(argsClause: string) {
     return `{ chain_fees${argsClause} {
       schema_version window observed_at day_count
-      daily { day extrinsic_count total_fee_tao avg_fee_tao median_fee_tao total_tip_tao avg_tip_tao median_tip_tao }
+      daily { day extrinsic_count signed_extrinsic_count total_fee_tao avg_fee_tao median_fee_tao total_tip_tao avg_tip_tao median_tip_tao }
       top_fee_payers { signer total_fee_tao total_tip_tao extrinsic_count }
     } }`;
   }
@@ -16744,6 +16744,7 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
               {
                 day: "2026-07-14",
                 extrinsic_count: 4,
+                signed_extrinsic_count: 3,
                 total_fee_tao: 0.4,
                 avg_fee_tao: 0.1,
                 median_fee_tao: 0.1,
@@ -16769,6 +16770,8 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.window, "30d");
     assert.equal(d.day_count, 1);
     assert.equal(d.daily[0].day, "2026-07-14");
+    assert.equal(d.daily[0].extrinsic_count, 4);
+    assert.equal(d.daily[0].signed_extrinsic_count, 3);
     assert.equal(d.daily[0].total_fee_tao, 0.4);
     assert.equal(d.daily[0].median_tip_tao, 0.004);
     assert.equal(d.top_fee_payers[0].signer, "5Signer");
@@ -16836,6 +16839,7 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.day_count, 0);
     const day = d.daily[0];
     assert.equal(day.extrinsic_count, 0);
+    assert.equal(day.signed_extrinsic_count, 0);
     assert.equal(day.total_fee_tao, null);
     assert.equal(day.avg_fee_tao, null);
     assert.equal(day.median_fee_tao, null);

@@ -1399,19 +1399,21 @@ test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
 
 // ---- fees (#1988) builder + handler ---------------------------------------
 
-test("buildChainFees computes per-day averages + null avg on a zero-extrinsic day", () => {
+test("buildChainFees computes per-day averages + null avg on a zero-signed-extrinsic day", () => {
   const out = buildChainFees({
     window: "7d",
     dailyRows: [
       {
         day: "2026-06-25",
         extrinsic_count: 100,
+        signed_extrinsic_count: 100,
         total_fee_tao: 1.0,
         total_tip_tao: 0.5,
       },
       {
         day: "2026-06-26",
         extrinsic_count: 0,
+        signed_extrinsic_count: 0,
         total_fee_tao: 0,
         total_tip_tao: 0,
       },
@@ -1443,15 +1445,71 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
     ["2026-06-26", "2026-06-25"],
   );
   const d25 = out.daily.find((d) => d.day === "2026-06-25")!;
+  assert.equal(d25.signed_extrinsic_count, 100);
   assert.equal(d25.avg_fee_tao, 0.01); // 1.0/100
   assert.equal(d25.median_fee_tao, 0.004);
   assert.equal(d25.avg_tip_tao, 0.005);
   assert.equal(d25.median_tip_tao, 0.001);
   const d26 = out.daily.find((d) => d.day === "2026-06-26")!;
-  assert.equal(d26.avg_fee_tao, null); // zero extrinsics → null, never NaN
+  assert.equal(d26.signed_extrinsic_count, 0);
+  assert.equal(d26.avg_fee_tao, null); // zero signed extrinsics → null, never NaN
+  assert.equal(d26.avg_tip_tao, null);
   assert.equal(d26.median_fee_tao, null);
   assert.equal(d26.median_tip_tao, null);
   assert.equal(out.top_fee_payers[0].signer, "5Pay");
+});
+
+test("buildChainFees divides averages/medians by signed_extrinsic_count, not extrinsic_count, on a day mostly unsigned inherents", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        // 9 unsigned inherents + 1 signed extrinsic -- the old (buggy)
+        // extrinsic_count-denominator would report avg_fee_tao 0.05, and
+        // a COALESCE'd median would be pinned toward 0 once inherents
+        // dominate; the signed-only denominator must report the true
+        // per-signed-extrinsic figures instead.
+        day: "2026-06-25",
+        extrinsic_count: 10,
+        signed_extrinsic_count: 1,
+        total_fee_tao: 0.5,
+        total_tip_tao: 0.05,
+      },
+    ],
+    medianRows: [
+      { day: "2026-06-25", median_fee_tao: 0.5, median_tip_tao: 0.05 },
+    ],
+  });
+  const day = out.daily[0];
+  assert.equal(day.extrinsic_count, 10);
+  assert.equal(day.signed_extrinsic_count, 1);
+  assert.equal(day.avg_fee_tao, 0.5); // 0.5/1, not 0.5/10
+  assert.equal(day.avg_tip_tao, 0.05);
+  assert.equal(day.median_fee_tao, 0.5);
+  assert.equal(day.median_tip_tao, 0.05);
+});
+
+test("buildChainFees nulls avg/median (never 0) when signed_extrinsic_count is 0, even with a nonzero extrinsic_count", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 6,
+        signed_extrinsic_count: 0,
+        total_fee_tao: 0,
+        total_tip_tao: 0,
+      },
+    ],
+    medianRows: [],
+  });
+  const day = out.daily[0];
+  assert.equal(day.extrinsic_count, 6);
+  assert.equal(day.signed_extrinsic_count, 0);
+  assert.equal(day.avg_fee_tao, null);
+  assert.equal(day.avg_tip_tao, null);
+  assert.equal(day.median_fee_tao, null);
+  assert.equal(day.median_tip_tao, null);
 });
 
 test("buildChainFees reports malformed median rows as null, not JSON numbers", () => {
@@ -1461,6 +1519,7 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
       {
         day: "2026-06-25",
         extrinsic_count: 2,
+        signed_extrinsic_count: 2,
         total_fee_tao: 1,
         total_tip_tao: 1,
       },
@@ -1499,6 +1558,7 @@ test("GET /api/v1/chain/fees returns daily series + top payers from the Postgres
             {
               day: "2026-06-25",
               extrinsic_count: 50,
+              signed_extrinsic_count: 50,
               total_fee_tao: 0.5,
               avg_fee_tao: 0.01,
               median_fee_tao: 0.006,
