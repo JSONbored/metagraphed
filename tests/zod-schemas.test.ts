@@ -2069,6 +2069,19 @@ describe("batch 6 (#8060) route artifact schemas parse real builder output", () 
           extrinsic_index: 15,
           observed_at: 1784965824000,
         },
+        // #8825: positional-tuple SubtensorModule events emit args as an
+        // array (decodeChainEventArgs), not a keyed object — regression
+        // against the old object-only schema.
+        {
+          block_number: 123,
+          event_index: 0,
+          pallet: "SubtensorModule",
+          method: "TimelockedWeightsRevealed",
+          args: [78, "5Fk765B4CRBekwErwE5VxvveWhHztHSfsnsLt8cbDayDWsuk"],
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 0,
+          observed_at: 1784965824000,
+        },
       ],
     };
     const parsed = ChainEventsFeedArtifactSchema.parse(data);
@@ -2629,7 +2642,7 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
   test("block-chain-events: ArtifactSchema.parse(<live block chain-events shape>) succeeds", () => {
     const data = {
       block_number: 8697469,
-      count: 2,
+      count: 3,
       events: [
         {
           block_number: 8697469,
@@ -2659,6 +2672,19 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
           },
           phase: "ApplyExtrinsic",
           extrinsic_index: 15,
+          observed_at: 1784965824000,
+        },
+        // #8825: positional-tuple SubtensorModule events emit args as an
+        // array (decodeChainEventArgs), not a keyed object — regression
+        // against the old object-only schema.
+        {
+          block_number: 8697469,
+          event_index: 0,
+          pallet: "SubtensorModule",
+          method: "TimelockedWeightsRevealed",
+          args: [78, "5Fk765B4CRBekwErwE5VxvveWhHztHSfsnsLt8cbDayDWsuk"],
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 0,
           observed_at: 1784965824000,
         },
       ],
