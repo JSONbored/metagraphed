@@ -46,6 +46,19 @@ describe("subnets.index.tsx compact masthead stats (post-#8248)", () => {
     expect(strip).toContain("formatTao(totalStake)");
   });
 
+  // #8818: a failed economicsQuery() previously reduced to a sum of 0 and
+  // rendered "Total stake 0.0000 τ" -- indistinguishable from a real reading.
+  it("consults statPhase for the economics query and renders StatUnavailable on error", () => {
+    expect(strip).toContain("statPhase(economicsRes)");
+    expect(strip).toContain("<StatUnavailable");
+  });
+
+  it("does not render formatTao(totalStake) on an unguarded path", () => {
+    const totalStakeLine = strip.split("\n").find((line) => line.includes("formatTao(totalStake)"));
+    expect(totalStakeLine).toBeDefined();
+    expect(totalStakeLine).toMatch(/\.length > 0 \? formatTao\(totalStake\)/);
+  });
+
   it("caps the masthead at Active / Healthy / Total stake, plus a freshness chip shown only when stale", () => {
     expect(strip).toContain("active");
     expect(strip).toContain("Healthy");

@@ -30,7 +30,8 @@ import {
 } from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
 import {
   BrandIcon,
   prefetchBrandIcon,
@@ -344,6 +345,7 @@ function SubnetsCompactStats() {
   // table's Total stake column reads, so the masthead figure and the column
   // total can never diverge from a second source.
   const economicsRes = useQuery(economicsQuery());
+  const economicsPhase = statPhase(economicsRes);
   const totalStake = (economicsRes.data?.data ?? []).reduce(
     (sum, e) => sum + (e.total_stake_tao ?? 0),
     0,
@@ -371,8 +373,16 @@ function SubnetsCompactStats() {
       <span>
         Total stake{" "}
         <span className="inline-flex items-center gap-1 font-medium text-ink-strong">
-          <Coins className="size-3.5 text-accent" aria-hidden />
-          {formatTao(totalStake)}
+          {economicsPhase === "pending" ? (
+            <Skeleton className="inline-block h-4 w-16" />
+          ) : economicsPhase === "error" ? (
+            <StatUnavailable />
+          ) : (
+            <>
+              <Coins className="size-3.5 text-accent" aria-hidden />
+              {(economicsRes.data?.data ?? []).length > 0 ? formatTao(totalStake) : "—"}
+            </>
+          )}
         </span>
       </span>
       {stale ? (
