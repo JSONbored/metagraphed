@@ -1762,3 +1762,137 @@ describe("hourly cron writes a daily snapshot", () => {
 // empty-shape builder directly, never a live D1 query, so the D1 read path
 // + its fallback-row bookkeeping had zero remaining callers. See
 // workers/request-handlers/analytics.ts's own header comment.
+
+// GET /api/v1/chain/emission-pipeline (#8744). The route reads the economics
+// tier, so these drive it through a stubbed artifact rather than the network.
+describe("emission-pipeline route", () => {
+  const CHAIN_STATE = {
+    block: 8_740_436,
+    block_hash: `0x${"ab".repeat(32)}`,
+    total_issuance_tao: 9_500_000,
+    emission_gate_bar: 0.00927284254359668,
+    emission_bar_quantile: 0.75,
+    emission_gate_exponent: null,
+  };
+  const SUBNETS = [
+    {
+      netuid: 1,
+      moving_price_pinned: 0.4,
+      miner_burned_fraction: 0.1,
+      emission_enabled: true,
+      subtoken_enabled: true,
+      registration_allowed_pinned: true,
+      emission_share: 0.4,
+      first_emission_block: 5_228_683,
+      tao_in_emission_tao: "0.001185079",
+      excess_tao: "0.001106056",
+      alpha_in_emission: 0,
+      alpha_out_emission: 1,
+    },
+    {
+      netuid: 2,
+      moving_price_pinned: 0.6,
+      miner_burned_fraction: 0.2,
+      emission_enabled: false,
+      subtoken_enabled: true,
+      registration_allowed_pinned: true,
+      emission_share: 0.6,
+      first_emission_block: 5_228_684,
+      tao_in_emission_tao: "0.000000000",
+      excess_tao: "0.000000000",
+      alpha_in_emission: 0,
+      alpha_out_emission: 1,
+    },
+  ];
+
+  // Drives the route through the LIVE economics blob -- the tier it actually
+  // prefers -- rather than the committed artifact, which carries no chain_state
+  // locally.
+  function envWithEconomics(economics: Row | null) {
+    return {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key !== "economics:current" || !economics) return null;
+          return {
+            schema_version: 1,
+            contract_version: CONTRACT_VERSION,
+            captured_at: new Date(Date.now() - 60_000).toISOString(),
+            // resolveLiveEconomics refuses a blob whose row count disagrees
+            // with the summary, or whose emission_share does not sum to ~1 --
+            // both are partial-write guards, so the fixture must satisfy them
+            // or the route never sees the live tier at all.
+            summary: {
+              with_economics_count: Array.isArray(economics.subnets)
+                ? (economics.subnets as Row[]).length
+                : 0,
+            },
+            ...economics,
+          };
+        },
+      },
+    } as unknown as Row;
+  }
+
+  test("serves the decomposition with its pinned block", async () => {
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
+      envWithEconomics({ chain_state: CHAIN_STATE, subnets: SUBNETS } as Row),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_state.block, 8_740_436);
+    assert.equal(body.data.subnets.length, 2);
+    // Stage 5: the disabled subnet is zeroed and its share redistributed, so
+    // the enabled one takes all of it.
+    const enabled = body.data.subnets.find((s: Row) => s.netuid === 1);
+    const disabled = body.data.subnets.find((s: Row) => s.netuid === 2);
+    assert.equal(disabled.emission_enabled, false);
+    assert.equal(disabled.final_share, 0);
+    assert.ok(Math.abs(enabled.final_share - 1) < 1e-9);
+    // ADR 0023 decision 3: reconstructed fields say so in the contract.
+    assert.equal(body.data.field_sources.final_share.kind, "reconstructed");
+    assert.equal(
+      body.data.field_sources.tao_in_emission.storage,
+      "SubtensorModule.SubnetTaoInEmission",
+    );
+  });
+
+  test("filters to one subnet without changing the aggregate", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline?netuid=1",
+      envWithEconomics({ chain_state: CHAIN_STATE, subnets: SUBNETS } as Row),
+    );
+    assert.equal(body.data.subnets.length, 1);
+    assert.equal(body.data.subnets[0].netuid, 1);
+    // The aggregate stays network-wide -- a filtered view must not silently
+    // redefine "the network split" as "this subnet".
+    assert.equal(body.data.aggregate.eligible_count, 2);
+  });
+
+  test("503s rather than serving a decomposition with no pinned block", async () => {
+    // Every share is reconstructed; without the block nobody can check it.
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
+      envWithEconomics({ subnets: SUBNETS } as Row),
+    );
+    assert.equal(status, 503);
+    assert.equal(body.error.code, "emission_pipeline_unavailable");
+  });
+
+  test("rejects an unsupported or malformed query param", async () => {
+    const env = envWithEconomics({
+      chain_state: CHAIN_STATE,
+      subnets: SUBNETS,
+    } as Row);
+    const bogus = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline?bogus=1",
+      env,
+    );
+    assert.equal(bogus.status, 400);
+    const bad = await getJson(
+      "https://api.metagraph.sh/api/v1/chain/emission-pipeline?netuid=abc",
+      env,
+    );
+    assert.equal(bad.status, 400);
+  });
+});

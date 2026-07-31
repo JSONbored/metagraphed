@@ -220,6 +220,7 @@ import {
   handleDomains,
   handleDomainSummary,
   handleEconomicsTrends,
+  handleEmissionPipeline,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
@@ -3744,6 +3745,12 @@ export async function handleRequest(
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
+    // #8744. Short-cached like its economics-tier sibling; the body is a pure
+    // function of (economics blob, contract version), and the blob's own
+    // chain_state block is what makes a stale response detectable.
+    if (resolved.url.pathname === "/api/v1/chain/emission-pipeline") {
+      return handleEmissionPipeline(request, env, resolved.url);
+    }
     if (resolved.url.pathname === "/api/v1/economics/trends") {
       return withEdgeCache(
         request,
@@ -4330,7 +4337,7 @@ export async function readHealthMetaKv(
 // memoized KV read, which stays here because the deferred handler clusters and a
 // test import it from api.ts. Injecting the stable reference (rather than having
 // analytics.ts import it back) keeps the two modules from importing each other.
-configureAnalytics({ readHealthMetaKv });
+configureAnalytics({ readHealthMetaKv, readEconomicsCurrentKv });
 
 // Same wiring for the extracted RPC-proxy module (workers/request-handlers/
 // rpc-proxy.ts, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
