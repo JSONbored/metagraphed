@@ -9,6 +9,44 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.14.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.13.0...ui-v0.14.0) (2026-07-31)
+
+
+### Features
+
+* **api:** emission-pipeline surface — per-subnet share decomposition and the liquidity/chain-buy TAO split ([#8892](https://github.com/JSONbored/metagraphed/issues/8892)) ([ce9147e](https://github.com/JSONbored/metagraphed/commit/ce9147ed8fb09ae8962ab7727df93a3a1fa684a2))
+* **api:** expose action summaries across API surfaces ([#8694](https://github.com/JSONbored/metagraphed/issues/8694)) ([d8b89b5](https://github.com/JSONbored/metagraphed/commit/d8b89b580d46b93498d7ff3826a4101595e32028))
+* **api:** express multi-network addressing in OpenAPI and the contract ([#8758](https://github.com/JSONbored/metagraphed/issues/8758)) ([6b54610](https://github.com/JSONbored/metagraphed/commit/6b546104885939300407cc24d122f5d6f5e63105))
+* **api:** per-key abuse controls — anomaly signals and a key-level blocklist ([#8695](https://github.com/JSONbored/metagraphed/issues/8695)) ([8123d93](https://github.com/JSONbored/metagraphed/commit/8123d9359e275c490614a9aad68d8f0a68ed13c9))
+* **chain:** upgrade radar — track runtime releases from GitHub through testnet to mainnet ([#8737](https://github.com/JSONbored/metagraphed/issues/8737)) ([9e72a6f](https://github.com/JSONbored/metagraphed/commit/9e72a6fbc5f423b755a2cc3848bcd74bb90cc67a))
+* **feeds:** make the feed system discoverable — contract, OpenAPI, autodiscovery ([#8738](https://github.com/JSONbored/metagraphed/issues/8738)) ([1b7fae2](https://github.com/JSONbored/metagraphed/commit/1b7fae249847b670cc7f43ca5393634e003b35ce))
+* **ui+api:** tenant usage dashboard — quota headroom, throttling, and export ([#8728](https://github.com/JSONbored/metagraphed/issues/8728)) ([ab1cd13](https://github.com/JSONbored/metagraphed/commit/ab1cd13156d680a9b1a99123a6cc048814e45fed))
+* **ui:** stop list routes redirecting to fully-expanded query strings ([#8790](https://github.com/JSONbored/metagraphed/issues/8790)) ([eaec728](https://github.com/JSONbored/metagraphed/commit/eaec728cfe3cf8b1bf3596af9487d4ad09621a50))
+* **ui:** weekly digest pages at /news, generated from the digest store ([#8782](https://github.com/JSONbored/metagraphed/issues/8782)) ([1ec77de](https://github.com/JSONbored/metagraphed/commit/1ec77de570227f0b59fc4016bd4a39ac798c9bea))
+
+
+### Bug Fixes
+
+* **api+ui:** disambiguate emission_share as stage 1 of the emission pipeline ([#8789](https://github.com/JSONbored/metagraphed/issues/8789)) ([f0f68a3](https://github.com/JSONbored/metagraphed/commit/f0f68a3f474f88766ed86e1ef909b01f3ee23fd2))
+* **api:** exclude unsigned inherents from chain/fees medians and averages ([#8893](https://github.com/JSONbored/metagraphed/issues/8893)) ([133f027](https://github.com/JSONbored/metagraphed/commit/133f027c35c6424398517f6fa9e82fcc4f3e0a3b)), closes [#8809](https://github.com/JSONbored/metagraphed/issues/8809)
+* **api:** treat missing top-holders net_flow as null, not zero ([#8851](https://github.com/JSONbored/metagraphed/issues/8851)) ([b722aa6](https://github.com/JSONbored/metagraphed/commit/b722aa6dfb0acbcf790375099408c9d0d2e20375)), closes [#8807](https://github.com/JSONbored/metagraphed/issues/8807)
+* **ui:** constrain /apis surface-card ExternalLink so long URLs truncate ([#8726](https://github.com/JSONbored/metagraphed/issues/8726)) ([bfa430c](https://github.com/JSONbored/metagraphed/commit/bfa430c07fee3e9a10fd0437798eaed723970166))
+* **ui:** give SectionAnchor title row a shrink/truncate contract ([#8716](https://github.com/JSONbored/metagraphed/issues/8716)) ([5976f9e](https://github.com/JSONbored/metagraphed/commit/5976f9ef8d32d266b1f2f840453b119da166aeb9))
+* **ui:** give the /endpoints latency-heatmap scroll container the mg-table-scroll affordance, drop 6 stale overflow-baseline entries ([#8708](https://github.com/JSONbored/metagraphed/issues/8708)) ([a8baad4](https://github.com/JSONbored/metagraphed/commit/a8baad44b8dd6a40b0ce5524a38e4d3e53209169))
+* **ui:** keep sub-milli amounts visible in formatNumber ([#8815](https://github.com/JSONbored/metagraphed/issues/8815)) ([#8877](https://github.com/JSONbored/metagraphed/issues/8877)) ([434070f](https://github.com/JSONbored/metagraphed/commit/434070f61a6f2a8355606f02531660361c000028))
+* **ui:** ratchet-clean apps/ui routes batch 2/4 (5 files, 15 violations) ([#8727](https://github.com/JSONbored/metagraphed/issues/8727)) ([0418b55](https://github.com/JSONbored/metagraphed/commit/0418b553cc90cb9e649e3e182a6b1012441a38c3)), closes [#8718](https://github.com/JSONbored/metagraphed/issues/8718)
+* **ui:** ratchet-clean design-token violations in src/routes batch 1/4 ([#8729](https://github.com/JSONbored/metagraphed/issues/8729)) ([92ef7e6](https://github.com/JSONbored/metagraphed/commit/92ef7e6adb5f8f93f2844e130a6d66ba5db5ee30)), closes [#8717](https://github.com/JSONbored/metagraphed/issues/8717)
+* **ui:** right-anchor SankeyMini last-column labels in horizontal mode ([#8725](https://github.com/JSONbored/metagraphed/issues/8725)) ([421c3b7](https://github.com/JSONbored/metagraphed/commit/421c3b7cdaf369e587fcb77ab12fbe5cdcf93c27))
+* **ui:** shrink ExternalLink children so long CTA labels truncate ([#8736](https://github.com/JSONbored/metagraphed/issues/8736)) ([49dcfeb](https://github.com/JSONbored/metagraphed/commit/49dcfebb17948b55318f2576cf02d065e6b41850))
+* **ui:** stop padding failed AMM exit quotes with un-slipped spot in Simulated exit ([#8907](https://github.com/JSONbored/metagraphed/issues/8907)) ([75ff6a9](https://github.com/JSONbored/metagraphed/commit/75ff6a9fe69dbc16638af346b97834929bd41af8))
+* **ui:** stop the subnet operational/curation tiles reporting real data on a failed query ([#8866](https://github.com/JSONbored/metagraphed/issues/8866)) ([1e27452](https://github.com/JSONbored/metagraphed/commit/1e274522ddf01c46797428fb88c71dea8dec928d))
+* **ui:** swap raw Bone & Ink one-off values for design tokens in routes batch 3/4 ([#8733](https://github.com/JSONbored/metagraphed/issues/8733)) ([22edc53](https://github.com/JSONbored/metagraphed/commit/22edc53adcf9cc6e24fbf25dda23286ad2883d20))
+
+
+### Documentation
+
+* **limits:** generate the limits and access page from enforced config ([#8776](https://github.com/JSONbored/metagraphed/issues/8776)) ([a31237c](https://github.com/JSONbored/metagraphed/commit/a31237c5390588f39cf3e03ba852c2b3b82629dd))
+
 ## [0.13.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.12.0...ui-v0.13.0) (2026-07-29)
 
 
