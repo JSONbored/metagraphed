@@ -8653,12 +8653,14 @@ async function dispatchDataApiRequest(
             {
               day: string;
               extrinsic_count: string;
+              signed_extrinsic_count: string;
               total_fee_tao: string;
               total_tip_tao: string;
             }[]
           >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
                  COUNT(*) AS extrinsic_count,
+                 COUNT(*) FILTER (WHERE signer IS NOT NULL) AS signed_extrinsic_count,
                  SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                  SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
           FROM extrinsics WHERE observed_at >= ${cutoff}
@@ -8681,9 +8683,9 @@ async function dispatchDataApiRequest(
             { day: string; median_fee_tao: number; median_tip_tao: number }[]
           >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
-                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY COALESCE(fee_tao, 0)) AS median_fee_tao,
-                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY COALESCE(tip_tao, 0)) AS median_tip_tao
-          FROM extrinsics WHERE observed_at >= ${cutoff}
+                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY fee_tao) AS median_fee_tao,
+                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tip_tao) AS median_tip_tao
+          FROM extrinsics WHERE observed_at >= ${cutoff} AND signer IS NOT NULL
             ${moduleClause}
           GROUP BY day`;
           const freshRows = await sql<{ newest_observed: string | null }[]>`

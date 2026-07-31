@@ -10038,7 +10038,7 @@
     {
       "artifact_path": "/metagraph/chain/fees.json",
       "cache": "short",
-      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians, computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator behind avg/median. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
       "id": "chain-fees",
       "mainnet_only": true,
       "method": "GET",
