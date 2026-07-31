@@ -148,6 +148,11 @@ export function routeOwnsOgImage(pathname: string): boolean {
     // gave all 20 doc pages the identical brand card. Note this matches the
     // splat's CHILDREN only -- /docs itself has an OG_SECTIONS entry and keeps
     // the server-injected card.
-    /^\/docs\/.+$/.test(pathname)
+    /^\/docs\/.+$/.test(pathname) ||
+    // #8705: /news/* for the same reason. A weekly digest's whole value is
+    // that it says something specific ("Subnet 104 - 2026-W29"), and these are
+    // the pages the issue expects search and social to land on -- a shared
+    // brand card would waste exactly the unfurl that matters most.
+    /^\/news\/.+$/.test(pathname)
   );
 }

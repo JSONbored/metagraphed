@@ -869,6 +869,20 @@ jobs:
             exit 1
           fi
 
+      # #8705: content/news/** is generated from registry/generated/digests.json.
+      # The store is append-only, so a page written once regenerates
+      # byte-identical forever -- which is what makes this check a real signal
+      # rather than noise. A digest added to the store without regenerating
+      # would leave the archive index disagreeing with the pages it links to.
+      - name: Build digest pages (drift check)
+        working-directory: apps/ui
+        run: |
+          node scripts/generate-digest-pages.ts
+          if ! git diff --exit-code -- content/news; then
+            echo "::error::apps/ui/content/news is stale -- run 'node scripts/generate-digest-pages.ts' (from apps/ui) and commit the result."
+            exit 1
+          fi
+
       - name: Typecheck packages/ui-kit
         run: npm run typecheck --workspace=packages/ui-kit
 
