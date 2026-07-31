@@ -16443,6 +16443,55 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  // #8830: list_endpoints and list_rpc_endpoints publish the identical limit
+  // contract and must behave identically at the ceiling -- both bound at
+  // maximum 1000 in the published schema and both REJECT (not clamp) an
+  // out-of-range value with the same invalid_params message.
+  test("list_endpoints and list_rpc_endpoints both publish limit maximum 1000 and reject an out-of-range limit identically", async () => {
+    const defs = listToolDefinitions();
+    for (const name of ["list_endpoints", "list_rpc_endpoints"]) {
+      const def = defs.find((t) => t.name === name);
+      assert.ok(def, `${name} is registered`);
+      const limitSchema = (def!.inputSchema as Row).properties.limit as Row;
+      assert.equal(
+        limitSchema.maximum,
+        1000,
+        `${name} advertises maximum 1000`,
+      );
+      assert.equal(limitSchema.minimum, 1, `${name} advertises minimum 1`);
+    }
+
+    const endpointsDepsFixture = makeDeps({
+      "/metagraph/rpc-endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [{ url: "wss://rpc.example", network: "finney" }],
+      },
+    });
+    for (const [name, deps] of [
+      ["list_endpoints", endpointsDeps()],
+      ["list_rpc_endpoints", endpointsDepsFixture],
+    ] as const) {
+      const rejected = await callTool(name, { limit: 1001 }, { deps });
+      assert.equal(
+        rejected.body.result.isError,
+        true,
+        `${name} rejects limit 1001`,
+      );
+      assert.match(rejected.body.result.content[0].text, /invalid_params/);
+      assert.match(
+        rejected.body.result.content[0].text,
+        /limit must be an integer between 1 and 1000\./,
+      );
+      // The ceiling itself is accepted (not rejected as out-of-range).
+      const okAtMax = await callTool(name, { limit: 1000 }, { deps });
+      assert.notEqual(
+        okAtMax.body.result.isError,
+        true,
+        `${name} accepts limit 1000`,
+      );
+    }
+  });
+
   test("list_source_snapshots returns filtered source rows", async () => {
     const deps = makeDeps({
       "/metagraph/source-snapshots.json": {

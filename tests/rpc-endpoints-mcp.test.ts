@@ -116,20 +116,36 @@ describe("rpc-endpoints-mcp (#7886, #7893)", () => {
     const url = rpcEndpointsQueryUrl({
       fields: " id,score ",
       cursor: 5,
-      limit: 2000,
+      limit: 1000,
     });
     assert.equal(url.searchParams.get("fields"), "id,score");
     assert.equal(url.searchParams.get("cursor"), "5");
     assert.equal(url.searchParams.get("limit"), "1000");
   });
 
-  test("rpcEndpointsQueryUrl clamps a non-positive limit to the default", () => {
-    const url = rpcEndpointsQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
-    const nanUrl = rpcEndpointsQueryUrl({ limit: Number.NaN });
-    assert.equal(nanUrl.searchParams.get("limit"), "50");
-    const strUrl = rpcEndpointsQueryUrl({ limit: "lots" });
-    assert.equal(strUrl.searchParams.get("limit"), "50");
+  // #8830: reject an out-of-range limit rather than silently clamping, matching
+  // the sibling list_endpoints and the REST route this tool proxies. An absent
+  // limit still defaults to 50 downstream (no limit param is set).
+  test("rpcEndpointsQueryUrl omits the limit param when limit is absent (defaults to 50 downstream)", () => {
+    const url = rpcEndpointsQueryUrl({});
+    assert.equal(url.searchParams.get("limit"), null);
+  });
+
+  test("rpcEndpointsQueryUrl accepts limit: 1000 (the ceiling) and passes it through", () => {
+    const url = rpcEndpointsQueryUrl({ limit: 1000 });
+    assert.equal(url.searchParams.get("limit"), "1000");
+  });
+
+  test("rpcEndpointsQueryUrl rejects an out-of-range, non-positive, fractional, or non-numeric limit", () => {
+    for (const bad of [1001, 0, -1, 1.5, Number.NaN, "lots"]) {
+      assert.throws(
+        () => rpcEndpointsQueryUrl({ limit: bad }),
+        (err: Row) =>
+          err.code === "invalid_params" &&
+          err.message === "limit must be an integer between 1 and 1000.",
+        `limit ${String(bad)} must be rejected`,
+      );
+    }
   });
 
   test("rpcEndpointsQueryUrl rejects invalid inputs", () => {
