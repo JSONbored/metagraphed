@@ -134,7 +134,7 @@
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run pipeline:check && npm run validate:docs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:ci": "vitest run --coverage --fileParallelism --testTimeout=30000 --exclude '**/artifacts.test.{mjs,ts}' --exclude '**/discovery-artifacts.test.{mjs,ts}' --exclude '**/public-safety.test.{mjs,ts}' --exclude '**/validate-error-messages.test.{mjs,ts}' --exclude '**/refresh-build-summary.test.{mjs,ts}'",
+    "test:ci": "node scripts/run-ci-tests.ts",
     "test:ci:artifacts": "vitest run tests/artifacts.test tests/discovery-artifacts.test tests/public-safety.test tests/validate-error-messages.test tests/refresh-build-summary.test",
     "curation:brief": "node scripts/curation-brief.ts",
     "curation:stale-notes": "node scripts/stale-gap-notes.ts",

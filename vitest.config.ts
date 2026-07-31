@@ -49,21 +49,31 @@ export default defineConfig({
     //
     // This serial default keeps a plain `npm test` / `npm run test:coverage`
     // (which runs the FULL suite, including the three filesystem-mutating
-    // writers) race-free. CI instead runs the suite in two non-overlapping
-    // passes that recover the parallelism: `test:ci` runs everything EXCEPT the
-    // three writers with `--fileParallelism` (the createLocalArtifactEnv readers
-    // only READ, so they parallelize safely once no writer runs alongside them)
-    // and a raised `--testTimeout` (the subprocess-spawning tests — public-safety's
-    // full-repo scan, script-utils, r2-upload — are CPU-starved under parallel
-    // load and would otherwise hit the 5s default); `test:ci:artifacts` then runs
-    // the three writers serially. The passes are sequential, so writers never
-    // overlap readers. Coverage is collected only in `test:ci` (all three
-    // writers drive their assertions primarily via execFileSync child
-    // processes — build-artifacts.ts for the first two, scan-public-safety.ts
-    // for the third — contributing zero in-process coverage there; none of the
-    // three scripts are in the `include` globs below, so moving their tests to
-    // the serial pass has no coverage effect either way — verified Δ=0.00
-    // across all metrics), keeping CI to a single Codecov upload.
+    // writers) race-free. CI instead runs the suite in non-overlapping passes
+    // that recover the parallelism: `test:ci` (scripts/run-ci-tests.ts) runs
+    // everything EXCEPT the writers with `--fileParallelism` (the
+    // createLocalArtifactEnv readers only READ, so they parallelize safely once
+    // no writer runs alongside them) and a raised `--testTimeout` (the
+    // subprocess-spawning tests — public-safety's full-repo scan, script-utils,
+    // r2-upload — are CPU-starved under parallel load and would otherwise hit
+    // the 5s default); `test:ci:artifacts` then runs the writers serially.
+    //
+    // `test:ci` splits again internally (#8922): the ~17 files that drive
+    // vi.mock/vi.doMock/vi.unmock/vi.resetModules keep per-file isolation
+    // because they rewrite the module registry itself, and every other file
+    // runs with `--isolate=false`, sharing one registry per worker. Module
+    // *state* that used to leak across those shared files is reset between
+    // files by setupFiles below; module *identity* is what the split handles.
+    //
+    // All passes are sequential, so writers never overlap readers. Coverage is
+    // collected only in `test:ci` (all three writers drive their assertions
+    // primarily via execFileSync child processes — build-artifacts.ts for the
+    // first two, scan-public-safety.ts for the third — contributing zero
+    // in-process coverage there; none of the three scripts are in the `include`
+    // globs below, so moving their tests to the serial pass has no coverage
+    // effect either way — verified Δ=0.00 across all metrics). `test:ci`'s two
+    // passes each emit their own lcov; CI uploads both and Codecov merges them
+    // (codecov.yml pins after_n_builds so the verdict waits for both).
     fileParallelism: false,
     // Restores module-level Worker state (in-isolate memos, breaker maps, the
     // configure* DI seams) after every test FILE, so a file's mutations cannot
