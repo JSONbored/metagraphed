@@ -51,6 +51,40 @@ blockedPaths:
 gate:
   aiJudgmentBlockers: gate
 
+  # The Superagent app added a second check, "Superagent Supply Chain Scan",
+  # alongside the security scan it has always posted (first observed
+  # 2026-07-31). It flags dependency-level "risks" heuristically, and its
+  # first finding here was a false positive of the worst kind for a gate: it
+  # failed PR #8911 for `actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9`
+  # under a `threat-runtime-keylogging` rule. That SHA is verifiably the
+  # official GitHub-owned actions/cache v6.1.0 (`gh api
+  # repos/actions/cache/git/ref/tags/v6.1.0` returns exactly it), the identical
+  # pin already ships on main in .github/workflows/validate-indexer-rs.yml, and
+  # this repo's Actions allowlist permits github_owned_allowed. The rule matched
+  # bundled @actions/core stdin handling inside the action's own dist -- GitHub's
+  # first-party cache action is not a keylogger.
+  #
+  # There is NO way to disable that check from this repo. Verified: the app's
+  # config loader (superagent-ai/superagent-github, src/services/config.ts)
+  # merges ONLY prScan/contributorTrust/comments and silently DROPS every other
+  # key, so a speculative `supplyChain: { enabled: false }` in
+  # .github/superagent.yml would be an inert no-op that merely LOOKS like it
+  # worked -- the worst possible outcome for a security control. The check also
+  # comes from a different, newer app than that public source (app slug
+  # `superagent-security`, id 3287076) which has no published docs for it.
+  #
+  # So it is ignored here rather than disabled: the check still runs and stays
+  # visible, it just cannot gate. Exactly the trade-off this option is
+  # documented for (see .loopover.yml.example's own note on the contributor-trust
+  # check) -- keep the scan's protection, drop the noise. THE SECURITY SCAN IS
+  # DELIBERATELY NOT LISTED: it stays fully gating.
+  #
+  # Revisit if Superagent ships a real toggle or the rule stops false-positiving
+  # on first-party GitHub actions.
+  ignoredCheckRuns:
+    - name: Superagent Supply Chain Scan
+      appSlug: superagent-security
+
 # Review-evasion protection (config-as-code override; layered OVER the dashboard's own default of
 # "off"): closing or converting-to-draft your OWN PR while gittensory has an active review pass
 # running, a prior recorded gate failure, or a repeated ready<->draft cycle on this PR, is treated
