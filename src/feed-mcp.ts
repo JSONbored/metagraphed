@@ -29,19 +29,12 @@ import { loadUpgradeFeedItems } from "./upgrade-radar.ts";
 import { loadChangelog } from "./changelog-mcp.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
+  FEED_KINDS,
   GetFeedInputSchema,
   GetFeedOutputSchema,
 } from "../schemas-src/mcp-tools/feed.ts";
 
-export const FEED_KINDS = [
-  "registry",
-  "incidents",
-  "gaps",
-  // #8702: Bittensor runtime upgrade activity -- releases, observed chain
-  // spec-version changes, and BIT documents.
-  "upgrades",
-  "subnet",
-];
+export { FEED_KINDS };
 const ENRICHMENT_QUEUE_ARTIFACT = "/metagraph/review/enrichment-queue.json";
 
 export interface FeedMcpError extends Error {
@@ -60,7 +53,10 @@ export function requireKind(
   args: Record<string, unknown> | null | undefined,
 ): string {
   const value = args?.kind;
-  if (typeof value !== "string" || !FEED_KINDS.includes(value)) {
+  if (
+    typeof value !== "string" ||
+    !(FEED_KINDS as readonly string[]).includes(value)
+  ) {
     throw feedMcpError(
       "invalid_params",
       `Argument \`kind\` is required and must be one of: ${FEED_KINDS.join(", ")}.`,
