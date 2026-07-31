@@ -69,7 +69,11 @@ export const ARTIFACT_SIZE_BUDGETS: ArtifactBudget[] = [
   // Same sizing rule; listed individually because they grow for unrelated
   // reasons and should not share one line.
   budget("subnets.json", 550_000, 1_500_000),
-  budget("testnet/subnets.json", 650_000, 1_500_000),
+  // Per-NETWORK, not per-subnet: build-network-registry.ts writes
+  // `${prefix}/subnets.json` for every non-default network, so the budget is
+  // keyed the same way rather than naming testnet specifically. Sized from
+  // testnet's 471KB, which is the largest today.
+  budget("*/subnets.json", 650_000, 1_500_000),
   budget("api-index.json", 500_000, 1_500_000),
   budget("coverage-depth.json", 550_000, 1_500_000),
   budget("operational-surfaces.json", 600_000, 1_500_000),
