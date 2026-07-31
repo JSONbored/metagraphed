@@ -18,6 +18,7 @@ import {
   POSTHOG_CAPTURE_PATH,
   USAGE_EVENT_NAME,
 } from "../src/usage-telemetry.ts";
+import { MAX_RPC_BODY_BYTES } from "../workers/config.ts";
 import type { Row } from "./row-type.ts";
 
 function createFakeKv() {
@@ -316,6 +317,28 @@ test("400s on an unparsable/negative content-length header", async () => {
   assert.equal(res.status, 400);
 });
 
+// Null-body POST (request.body === null) must take the same empty-body
+// path as request.text() historically did — JSON.parse("") → invalid_json.
+test("400s when the request body stream is null", async () => {
+  const { env, key } = makeValidatedKeyEnv();
+  const request = new Request(
+    `https://d/rpc/v1/fullnode?authorization=${key}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    },
+  );
+  assert.equal(request.body, null);
+  const res = await handleFullnodeRpcProxyRequest(
+    request,
+    env,
+    new URL(request.url),
+  );
+  assert.equal(res.status, 400);
+  const body = (await res.json()) as Row;
+  assert.equal(body.error.code, "fullnode_rpc_invalid_json");
+});
+
 test("413s on an oversized content-length header", async () => {
   const { env, key } = makeValidatedKeyEnv();
   const request = new Request(
@@ -332,6 +355,113 @@ test("413s on an oversized content-length header", async () => {
     new URL(request.url),
   );
   assert.equal(res.status, 413);
+});
+
+test("413s on Content-Length over the cap without reading any body bytes", async () => {
+  const { env, key } = makeValidatedKeyEnv();
+  const stream = new ReadableStream({
+    pull() {
+      throw new Error("body must not be read on Content-Length fast path");
+    },
+  });
+  const request = new Request(
+    `https://d/rpc/v1/fullnode?authorization=${key}`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(MAX_RPC_BODY_BYTES + 1),
+      },
+      body: stream,
+      duplex: "half",
+    } as unknown as RequestInit,
+  );
+  const res = await handleFullnodeRpcProxyRequest(
+    request,
+    env,
+    new URL(request.url),
+  );
+  assert.equal(res.status, 413);
+  const body = (await res.json()) as Row;
+  assert.equal(body.error.code, "fullnode_rpc_body_too_large");
+});
+
+// #8810: no Content-Length + unbounded stream must cancel shortly after the
+// cap — fails on main (buffers the whole body / OOM) and passes after.
+test("413s and aborts mid-stream when Content-Length is absent (regression #8810)", async () => {
+  const { env, key } = makeValidatedKeyEnv();
+  const CHUNK_BYTES = 8 * 1024;
+  let bytesProduced = 0;
+  let cancelled = false;
+  const stream = new ReadableStream({
+    pull(controller) {
+      if (cancelled) return;
+      bytesProduced += CHUNK_BYTES;
+      controller.enqueue(new Uint8Array(CHUNK_BYTES).fill(0x78));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const request = new Request(
+    `https://d/rpc/v1/fullnode?authorization=${key}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: stream,
+      duplex: "half",
+    } as unknown as RequestInit,
+  );
+  const res = await handleFullnodeRpcProxyRequest(
+    request,
+    env,
+    new URL(request.url),
+  );
+  assert.equal(res.status, 413);
+  const body = (await res.json()) as Row;
+  assert.equal(body.error.code, "fullnode_rpc_body_too_large");
+  assert.equal(cancelled, true);
+  assert.ok(
+    bytesProduced < MAX_RPC_BODY_BYTES + CHUNK_BYTES * 4,
+    `expected early cancel shortly after the cap, but ${bytesProduced} bytes were produced`,
+  );
+});
+
+test("a body just under the cap is forwarded upstream byte-identical", async () => {
+  const { env, key } = makeValidatedKeyEnv();
+  const pad = "x".repeat(MAX_RPC_BODY_BYTES - 120);
+  const bodyText = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "system_health",
+    params: [pad],
+  });
+  assert.ok(new TextEncoder().encode(bodyText).length <= MAX_RPC_BODY_BYTES);
+
+  let upstreamBody: string | null = null;
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    upstreamBody = String(init?.body ?? "");
+    return new Response(
+      JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+
+  const request = new Request(
+    `https://d/rpc/v1/fullnode?authorization=${key}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: bodyText,
+    },
+  );
+  const res = await handleFullnodeRpcProxyRequest(
+    request,
+    env,
+    new URL(request.url),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(upstreamBody, bodyText);
 });
 
 test("413s on a body that actually exceeds the byte limit", async () => {

@@ -14,6 +14,7 @@ import {
   handleRpcUsage,
   handleSurfaceVerify,
 } from "../workers/request-handlers/rpc-proxy.ts";
+import { MAX_RPC_BODY_BYTES } from "../workers/config.ts";
 
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
 const SURFACE_ID = "sn-6-numinous-api-health";
@@ -394,6 +395,22 @@ describe("handleRpcProxyRequest", () => {
     assert.equal(body.error.code, "rpc_invalid_json");
   });
 
+  // Null-body POST (request.body === null) must take the same empty-body
+  // path as request.text() historically did — JSON.parse("") → invalid_json.
+  test("400 rpc_invalid_json when the request body stream is null", async () => {
+    const request = new Request("https://api.metagraph.sh/rpc/v1/finney", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "203.0.113.21",
+      },
+    });
+    assert.equal(request.body, null);
+    const res = await handleRpcProxyRequest(request, rpcEnv(), finneyUrl);
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_json");
+  });
+
   test("400 rpc_invalid_content_length for a negative Content-Length", async () => {
     const res = await handleRpcProxyRequest(
       rpcPost(
@@ -437,6 +454,117 @@ describe("handleRpcProxyRequest", () => {
     );
     const body = await errorJson(res, 413);
     assert.equal(body.error.code, "rpc_body_too_large");
+  });
+
+  test("413 rpc_body_too_large on Content-Length over the cap without reading any body bytes", async () => {
+    const stream = new ReadableStream({
+      pull() {
+        throw new Error("body must not be read on Content-Length fast path");
+      },
+    });
+    const res = await handleRpcProxyRequest(
+      new Request("https://api.metagraph.sh/rpc/v1/finney", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "203.0.113.20",
+          "content-length": String(MAX_RPC_BODY_BYTES + 1),
+        },
+        body: stream,
+        duplex: "half",
+      } as unknown as RequestInit),
+      rpcEnv(),
+      finneyUrl,
+    );
+    const body = await errorJson(res, 413);
+    assert.equal(body.error.code, "rpc_body_too_large");
+  });
+
+  // #8810: without Content-Length the old await request.text() buffered the
+  // whole body (and a second TextEncoder copy) before 413ing — or OOMed.
+  // This infinite stream has no Content-Length (undici never auto-sets one
+  // for a stream body); it must fail on main (buffers forever / past the
+  // cap into memory) and pass after: cancel shortly after crossing the cap.
+  test("413 rpc_body_too_large aborts mid-stream when Content-Length is absent (regression #8810)", async () => {
+    const CHUNK_BYTES = 8 * 1024;
+    let bytesProduced = 0;
+    let cancelled = false;
+    const stream = new ReadableStream({
+      pull(controller) {
+        if (cancelled) return;
+        bytesProduced += CHUNK_BYTES;
+        controller.enqueue(new Uint8Array(CHUNK_BYTES).fill(0x78));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const res = await handleRpcProxyRequest(
+      new Request("https://api.metagraph.sh/rpc/v1/finney", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "203.0.113.20",
+        },
+        body: stream,
+        duplex: "half",
+      } as unknown as RequestInit),
+      rpcEnv(),
+      finneyUrl,
+    );
+    const body = await errorJson(res, 413);
+    assert.equal(body.error.code, "rpc_body_too_large");
+    assert.equal(cancelled, true);
+    assert.ok(
+      bytesProduced < MAX_RPC_BODY_BYTES + CHUNK_BYTES * 4,
+      `expected early cancel shortly after the cap, but ${bytesProduced} bytes were produced`,
+    );
+  });
+
+  test("a body just under the cap is forwarded upstream byte-identical", async () => {
+    // Pad params so the UTF-8 body sits just under MAX_RPC_BODY_BYTES.
+    const pad = "x".repeat(MAX_RPC_BODY_BYTES - 120);
+    const bodyText = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "system_health",
+      params: [pad],
+    });
+    assert.ok(new TextEncoder().encode(bodyText).length <= MAX_RPC_BODY_BYTES);
+    assert.ok(
+      new TextEncoder().encode(bodyText).length > MAX_RPC_BODY_BYTES - 200,
+    );
+
+    let upstreamBody: string | null = null;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      upstreamBody = String(init?.body ?? "");
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+    try {
+      const res = await handleRpcProxyRequest(
+        new Request("https://api.metagraph.sh/rpc/v1/finney", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.20",
+          },
+          body: bodyText,
+        }),
+        rpcEnv(),
+        finneyUrl,
+      );
+      assert.equal(res.status, 200);
+      assert.equal(upstreamBody, bodyText);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("passes a finite Content-Length within the cap before reading the body", async () => {
