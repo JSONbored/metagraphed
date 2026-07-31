@@ -410,6 +410,11 @@ import {
 import { buildValidatorHistory } from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
 import {
+  EMISSION_PIPELINE_UNAVAILABLE_CODE,
+  EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  projectEmissionPipeline,
+} from "./emission-pipeline-surface.ts";
+import {
   DEFAULT_MOVERS_SORT,
   DEFAULT_MOVERS_WINDOW,
   MOVERS_LIMIT_DEFAULT,
@@ -601,6 +606,7 @@ import type {
   QueryDomain_SummaryArgs,
   QueryEconomicsArgs,
   QueryEconomics_TrendsArgs,
+  QueryEmission_PipelineArgs,
   QueryEndpoint_IncidentsArgs,
   QueryEndpoint_PoolsArgs,
   QueryEndpointsArgs,
@@ -1045,6 +1051,7 @@ export const FIELD_COMPLEXITY = {
   runtime: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
+  emission_pipeline: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6214,6 +6221,35 @@ const rootValue = {
       day_count: data.day_count ?? 0,
       days: data.days || [],
     };
+  },
+
+  // The v440 emission decomposition (#8744). A thin projection over the SAME
+  // src/emission-pipeline-surface.ts REST and the get_emission_pipeline MCP
+  // tool project, reading the live-preferring economics memo this file already
+  // shares with the `economics` root and the opportunity boards — so the three
+  // surfaces cannot decompose the same capture differently.
+  //
+  // Deliberately NOT schema-stable-on-cold the way blocks/validators are. Those
+  // return an empty page because "no rows" is a real, honest answer; here the
+  // capture's chain_state is what makes every reconstructed share checkable at
+  // all, so an absent one has no honest body — only an error.
+  async emission_pipeline(
+    { netuid }: QueryEmission_PipelineArgs,
+    context: GqlContext,
+  ) {
+    const economics = await loadEconomics(context);
+    const data = projectEmissionPipeline(economics, netuid ?? null);
+    if (!data) {
+      throw new GraphQLError(EMISSION_PIPELINE_UNAVAILABLE_MESSAGE, {
+        // The REST error code, uppercased — GraphQL's extensions.code
+        // convention — so a client hitting both surfaces sees one condition,
+        // not two unrelated-looking failures.
+        extensions: {
+          code: EMISSION_PIPELINE_UNAVAILABLE_CODE.toUpperCase(),
+        },
+      });
+    }
+    return data;
   },
 
   async subnet_movers(

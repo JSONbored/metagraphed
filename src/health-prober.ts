@@ -868,6 +868,48 @@ export async function syncRpcProxyEventsPruneToPostgres(
   }
 }
 
+// The eight v440 pipeline inputs #8743 captures. A row is "pipeline-bearing"
+// when ANY of them is present -- not all eight -- because zero and false are
+// real readings on several of them and a subnet legitimately reads 0 on both
+// TAO channels (netuid 8 does, on every block sampled for #8744). Requiring
+// all eight would drop exactly the rows that make the disabled-vs-gated
+// distinction visible.
+const PIPELINE_INPUT_KEYS = [
+  "tao_in_emission_tao",
+  "excess_tao",
+  "alpha_in_emission",
+  "alpha_out_emission",
+  "miner_burned_fraction",
+  "emission_enabled",
+  "subtoken_enabled",
+  "first_emission_block",
+] as const;
+
+/**
+ * Stamp #8744 provenance onto a snapshot row, or nothing at all.
+ *
+ * Returns an empty object rather than `{ pipeline_block: null }` when there is
+ * nothing to stamp: the ingest's COALESCE(existing, excluded) backfill would
+ * otherwise let a later degraded fire overwrite an earlier good height with a
+ * null -- the same trap #8743 hit with `||` on the boolean columns.
+ */
+export function pipelineProvenance(
+  economics: Row | null | undefined,
+  chainState: Row | null | undefined,
+): Row {
+  if (!chainState) return {};
+  const block = chainState.block;
+  const hash = chainState.block_hash;
+  if (!Number.isInteger(block) || typeof hash !== "string") return {};
+  const bearing =
+    economics != null &&
+    PIPELINE_INPUT_KEYS.some(
+      (key) => economics[key] !== undefined && economics[key] !== null,
+    );
+  if (!bearing) return {};
+  return { pipeline_block: block, pipeline_block_hash: hash };
+}
+
 // #4832 gap-closure: mirror writeSubnetSnapshot's D1 upsert into Postgres via
 // the DATA_API service binding, called directly from writeSubnetSnapshot
 // below -- same "in-Worker hourly cron, direct env.DATA_API.fetch() service-
@@ -880,11 +922,17 @@ export async function syncSubnetSnapshotToPostgres(
   {
     profiles,
     economicsByNetuid,
+    chainState,
     date,
     capturedAt,
   }: {
     profiles?: Row[];
     economicsByNetuid?: Map<unknown, Row>;
+    /**
+     * The artifact's top-level pinned-read provenance (#8744). Network-wide,
+     * so it is stamped onto every row rather than looked up per subnet.
+     */
+    chainState?: Row | null;
     date?: string;
     capturedAt?: number;
   } = {},
@@ -929,6 +977,13 @@ export async function syncSubnetSnapshotToPostgres(
         emission_enabled: econ.emission_enabled ?? null,
         subtoken_enabled: econ.subtoken_enabled ?? null,
         first_emission_block: econ.first_emission_block ?? null,
+        // #8744 provenance. Stamped only where the row actually carries a
+        // pipeline reading, which keeps the column's meaning exact: non-null
+        // iff there is a pinned read behind this row's pipeline values. A
+        // degraded refresh that captured some subnets and not others stays
+        // self-describing row by row, and no row ever claims a height for
+        // values that were never read.
+        ...pipelineProvenance(econ, chainState),
         captured_at: capturedAt,
       };
     });
@@ -1024,6 +1079,9 @@ export async function writeSubnetSnapshot(
   const syncResult = await syncSubnetSnapshotToPostgres(env, {
     profiles,
     economicsByNetuid,
+    // #8744: top-level on the artifact, not per subnet -- one
+    // state_queryStorageAt produced every row, so they cannot disagree.
+    chainState: ((economicsResult?.data as Row)?.chain_state as Row) ?? null,
     date,
     capturedAt,
   });

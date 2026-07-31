@@ -3086,6 +3086,17 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
     first_emission_block: Number.isFinite(row.first_emission_block)
       ? row.first_emission_block
       : null,
+    // #8744 provenance for the pipeline columns above. The hash is guarded on
+    // shape, not merely on type: this value is published as the thing a reader
+    // replays our arithmetic against, so a malformed one is worse than none.
+    pipeline_block: Number.isFinite(row.pipeline_block)
+      ? row.pipeline_block
+      : null,
+    pipeline_block_hash:
+      typeof row.pipeline_block_hash === "string" &&
+      /^0x[0-9a-f]{64}$/i.test(row.pipeline_block_hash)
+        ? row.pipeline_block_hash
+        : null,
     validator_count: Number.isFinite(row.validator_count)
       ? row.validator_count
       : null,
@@ -3146,6 +3157,8 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
           "emission_enabled",
           "subtoken_enabled",
           "first_emission_block",
+          "pipeline_block",
+          "pipeline_block_hash",
           "captured_at",
         )}
         ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
@@ -3165,7 +3178,9 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
           miner_burned_fraction = COALESCE(subnet_snapshots.miner_burned_fraction, excluded.miner_burned_fraction),
           emission_enabled = COALESCE(subnet_snapshots.emission_enabled, excluded.emission_enabled),
           subtoken_enabled = COALESCE(subnet_snapshots.subtoken_enabled, excluded.subtoken_enabled),
-          first_emission_block = COALESCE(subnet_snapshots.first_emission_block, excluded.first_emission_block)`;
+          first_emission_block = COALESCE(subnet_snapshots.first_emission_block, excluded.first_emission_block),
+          pipeline_block = COALESCE(subnet_snapshots.pipeline_block, excluded.pipeline_block),
+          pipeline_block_hash = COALESCE(subnet_snapshots.pipeline_block_hash, excluded.pipeline_block_hash)`;
         return writeJson({ ok: true, rows_written: snapshotRows.length });
       },
     );

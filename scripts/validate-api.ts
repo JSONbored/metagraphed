@@ -22,6 +22,8 @@ import { buildSubnetHyperparams } from "../src/subnet-hyperparams.ts";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.ts";
 import { formatRpcUsage } from "../src/health-serving.ts";
+import { blockEmissionForIssuance } from "../src/block-emission.ts";
+import { taoToRao } from "../src/emission-decomposition.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
@@ -32,6 +34,67 @@ import {
 // readJson/readArtifactJson precedent in lib.ts.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
+
+// #8744: the committed economics artifact is built with no chain reads, so it
+// carries no `chain_state` and /api/v1/chain/emission-pipeline would 503 here
+// on provenance grounds alone — leaving the route's real body unvalidated.
+// Overlay ONE pinned block onto it, using only fields SubnetEconomicsSchema
+// already declares, and choose them so all four pipeline identities actually
+// hold: the gate is off (theta unset), no subnet burns, q is the 0.75 the
+// third identity requires, every subnet is enabled (so nothing can leak to a
+// disabled one), and each subnet's TAO channels are its exact share of the
+// issuance-derived block emission. That validates a `verified: true` body
+// rather than only its shape.
+const PINNED_BLOCK = 8_740_436;
+const PINNED_ISSUANCE_TAO = 9_500_000;
+
+function pinEconomicsArtifact(artifact: Row): Row {
+  const rows = (artifact.subnets ?? []) as Row[];
+  // netuid 0 is root — stage 0 excludes it, so it holds no share and takes no
+  // TAO, exactly as the reconstruction will independently conclude.
+  const isEligible = (row: Row) => row.netuid !== 0;
+  const totalPrice = rows
+    .filter(isEligible)
+    .reduce((sum, row) => sum + (row.alpha_price_tao || 0), 0);
+  const blockEmission = blockEmissionForIssuance(
+    taoToRao(PINNED_ISSUANCE_TAO),
+  )!;
+  const emissionRao = Number(blockEmission.rao_per_block);
+  return {
+    ...artifact,
+    chain_state: {
+      block: PINNED_BLOCK,
+      block_hash: `0x${"ab".repeat(32)}`,
+      total_issuance_tao: PINNED_ISSUANCE_TAO,
+      emission_gate_bar: null,
+      emission_bar_quantile: 0.75,
+      emission_gate_exponent: null,
+    },
+    subnets: rows.map((row) => {
+      const price = isEligible(row) ? row.alpha_price_tao || 0 : 0;
+      const share = totalPrice > 0 ? price / totalPrice : 0;
+      // Split each subnet's whole intake across the two channels so
+      // liquidity_fraction is a real fraction rather than a degenerate 0 or 1.
+      // Flooring loses under a rao per subnet, well inside the aggregate
+      // identity's ±1000-rao tolerance.
+      const taoInRao = Math.floor(emissionRao * share * 0.6);
+      const excessRao = Math.floor(emissionRao * share) - taoInRao;
+      return {
+        ...row,
+        moving_price_pinned: price,
+        registration_allowed_pinned: true,
+        miner_burned_fraction: 0,
+        emission_enabled: true,
+        subtoken_enabled: true,
+        first_emission_block: 1,
+        tao_in_emission_tao: taoInRao / 1e9,
+        excess_tao: excessRao / 1e9,
+        alpha_in_emission: 0,
+        alpha_out_emission: 1,
+      };
+    }),
+  };
+}
 
 const openapi: Row = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -185,6 +248,15 @@ const env = createLocalArtifactEnv({
         return {
           async json() {
             return fixtureDetail;
+          },
+        };
+      }
+      if (key === "latest/economics.json") {
+        const entry = await baseEnv.METAGRAPH_ARCHIVE.get(key);
+        const artifact = (await entry.json()) as Row;
+        return {
+          async json() {
+            return pinEconomicsArtifact(artifact);
           },
         };
       }
@@ -1457,6 +1529,24 @@ const checks: [string, (body: Row) => void][] = [
         true,
       );
       assert.equal(Array.isArray(body.data.subnets), true);
+    },
+  ],
+  [
+    "/api/v1/chain/emission-pipeline",
+    (body) => {
+      assert.equal(body.data.chain_state.block, PINNED_BLOCK);
+      assert.equal(Array.isArray(body.data.subnets), true);
+      // The identities are evaluated on the rows being served, so a green
+      // fixture must come back green -- a false here would mean the
+      // reconstruction disagrees with the emission it was handed.
+      assert.equal(
+        body.data.verification.verified,
+        true,
+        `emission-pipeline identities failed: ${JSON.stringify(
+          (body.data.verification.checks as Row[]).filter((c) => !c.ok),
+        )}`,
+      );
+      assert.equal(body.data.field_sources.final_share.kind, "reconstructed");
     },
   ],
   [

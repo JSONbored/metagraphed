@@ -179,6 +179,10 @@ import {
   GetEconomicsTrendsOutputSchema,
 } from "../schemas-src/mcp-tools/get-economics-trends.ts";
 import {
+  GetEmissionPipelineInputSchema,
+  GetEmissionPipelineOutputSchema,
+} from "../schemas-src/mcp-tools/get-emission-pipeline.ts";
+import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,
   recordMcpInitializeEvent,
@@ -969,6 +973,12 @@ import {
   parseEconomicsTrendsWindow,
 } from "./economics-trends.ts";
 import {
+  EMISSION_PIPELINE_UNAVAILABLE_CODE,
+  EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  projectEmissionPipeline,
+  resolveEmissionPipelineEconomics,
+} from "./emission-pipeline-surface.ts";
+import {
   buildCounterparties,
   buildCounterpartyRelationship,
 } from "./counterparties.ts";
@@ -1588,6 +1598,9 @@ export const MCP_INSTRUCTIONS =
   GET_ECONOMICS_INSTRUCTIONS +
   "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
+  "get_emission_pipeline the v440 decomposition behind emission_share -- how " +
+  "much TAO each subnet actually receives, and the split between pool " +
+  "injection and chain buys, " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, " +
   GET_NETWORK_HEALTH_INSTRUCTIONS +
@@ -3955,6 +3968,63 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       );
       if (postgres) return postgres;
       const { data } = await loadEconomicsTrends({ windowLabel: label });
+      return data;
+    },
+  },
+  {
+    name: "get_emission_pipeline",
+    title: "Get the v440 emission pipeline decomposition",
+    description:
+      "Fetch the v440 emission pipeline decomposed per subnet at the block the " +
+      "economics capture was pinned to: stage 1's price share (the published " +
+      "`emission_share`), MinerBurned, the post-burn weighted share, the " +
+      "post-Hill-gate share, SubnetEmissionEnabled, the final share of block " +
+      "emission actually received, the gate's give-or-take (`gate_delta`), " +
+      "`distance_to_bar`, and the TAO split -- `tao_in_emission` (pool " +
+      "liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, " +
+      "and `liquidity_fraction`. Plus the network aggregate and the " +
+      "issuance-derived block emission. " +
+      "USE THIS RATHER THAN get_economics's `emission_share` whenever the " +
+      "question is how much TAO a subnet actually receives -- that field is " +
+      "the STAGE-1 PRICE SHARE, and this tool is the decomposition that " +
+      "separates the two. " +
+      "EVERY SHARE HERE IS RECONSTRUCTED, NOT READ: the chain publishes the " +
+      "inputs, not the decomposition. `field_sources` gives each field its " +
+      "kind (measured|reconstructed) and, for measurements, the storage item " +
+      "behind it; every value is pinned to `chain_state.block`; and the four " +
+      "pipeline identities are evaluated on the rows being served, so " +
+      "`verification.verified: false` MEANS THE RESPONSE IS NOT DEFENSIBLE " +
+      "and must not be presented as fact. `emission_enabled` is published " +
+      "rather than inferred, because a deeply gated ENABLED subnet and a " +
+      "disabled one both read `final_share: 0`. The two TAO channels are " +
+      "point samples at that block, not a window average. `netuid` filters " +
+      "the subnet list and deliberately leaves the aggregate network-wide. " +
+      "Errors rather than returning a body when the capture carries no pinned " +
+      "block. Mirrors GET /api/v1/chain/emission-pipeline.",
+    inputSchema: z.toJSONSchema(GetEmissionPipelineInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetEmissionPipelineInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same tier precedence and the same projection REST and GraphQL use --
+      // src/emission-pipeline-surface.ts is the shared seam, so this handler
+      // owns nothing but MCP's own error idiom.
+      const economics = await resolveEmissionPipelineEconomics({
+        env: ctx.env,
+        readHealthKv: ctx.readHealthKv,
+        contractVersion: mcpContractVersion(ctx),
+        readArtifact: () =>
+          loadOptionalArtifact(ctx, "/metagraph/economics.json"),
+      });
+      const data = projectEmissionPipeline(economics, args?.netuid ?? null);
+      if (!data) {
+        throw toolError(
+          EMISSION_PIPELINE_UNAVAILABLE_CODE,
+          EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+        );
+      }
       return data;
     },
   },
@@ -10632,6 +10702,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_economics_trends: z.toJSONSchema(GetEconomicsTrendsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_emission_pipeline: z.toJSONSchema(GetEmissionPipelineOutputSchema, {
     target: "draft-2020-12",
   }),
   get_subnet_concentration: z.toJSONSchema(GetSubnetConcentrationOutputSchema, {

@@ -32,6 +32,13 @@ import {
 } from "../../src/neuron-history.ts";
 import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
+  EMISSION_PIPELINE_UNAVAILABLE_CODE,
+  EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  projectEmissionPipeline,
+  resolveEmissionPipelineEconomics,
+} from "../../src/emission-pipeline-surface.ts";
+import { economicsCurrentKvReader } from "./analytics.ts";
+import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
   growthRowsFromSamples,
@@ -1060,5 +1067,58 @@ export async function handleCompareValidators(
       },
     },
     "standard",
+  );
+}
+
+// GET /api/v1/chain/emission-pipeline (#8744) — the v440 decomposition.
+//
+// Tier resolution and the projection itself both live in
+// src/emission-pipeline-surface.ts, shared verbatim with the GraphQL field and
+// the get_emission_pipeline MCP tool, so the three surfaces cannot drift. All
+// that is left here is REST's own idiom: query-param validation, the 503, and
+// the envelope.
+//
+// A response WITHOUT chain_state is not served as a decomposition — see that
+// module's EMISSION_PIPELINE_UNAVAILABLE_MESSAGE for why a degraded capture
+// gets an explicit 503 rather than a plausible-looking body.
+export async function handleEmissionPipeline(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const validationError = validateQueryParams(url, ["netuid"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const netuidResult = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
+
+  const economics = await resolveEmissionPipelineEconomics({
+    env,
+    readHealthKv: economicsCurrentKvReader(),
+    contractVersion: contractVersion(env),
+    readArtifact: async () => {
+      const artifact = await readArtifact(env, "/metagraph/economics.json");
+      return artifact.ok ? artifact.data : null;
+    },
+  });
+
+  const data = projectEmissionPipeline(economics, netuidResult.value);
+  if (!data) {
+    return errorResponse(
+      EMISSION_PIPELINE_UNAVAILABLE_CODE,
+      EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+      503,
+    );
+  }
+
+  return await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await analyticsMeta(env, "/metagraph/economics.json", null),
+    },
+    "short",
   );
 }

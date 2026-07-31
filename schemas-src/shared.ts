@@ -124,10 +124,31 @@ export const SubnetEconomicsSchema = z
     subnet_volume_tao: z.number().nullable(),
     // Stage 0 eligibility.
     subtoken_enabled: z.boolean().nullable().optional(),
-    // Stage 8: TAO injected into this subnet's own pool. Per-block,
-    // reservoir-smoothed and cap-limited, so a point sample is noisy by
-    // construction -- the daily rollup is the reportable figure. Its sum with
+    // Stage 1's input and stage 0's last gate, READ AT chain_state.block
+    // (#8744) rather than off the bulk metagraph call the way alpha_price_tao
+    // and registration_allowed are. Same chain items, different instant: the
+    // bulk call runs at its own height, and every other term the
+    // reconstruction combines these with is pinned. alpha_price_tao keeps its
+    // own source and published meaning (ADR 0023 decision 1) -- these are a
+    // second reading for the pipeline alone, which is why the names differ.
+    //
+    // Null is "not captured", never zero: a zero moving price is a real
+    // stage-1 share of nothing, and conflating the two would hand a live
+    // subnet a share of exactly 0.
+    moving_price_pinned: z.number().nullable().optional(),
+    registration_allowed_pinned: z.boolean().nullable().optional(),
+    // Stage 8: TAO injected into this subnet's own pool. Its sum with
     // excess_tao across subnets equals the issuance-derived block emission.
+    //
+    // A POINT SAMPLE AT `chain_state.block`, AND THAT IS FINE (#8744). This
+    // comment previously said the value was "noisy by construction" per block
+    // and that a daily rollup was the reportable figure. Measured across 14
+    // consecutive finney blocks (8,740,604-8,740,617), that is not what the
+    // chain does: both channels move smoothly and near-monotonically -- a few
+    // rao per block -- and the derived liquidity_fraction varies by 1.8e-6 to
+    // 1.0e-5 over the window. That is ~20x tighter than the 2e-4 tolerance the
+    // reconstruction itself carries, so a rollup would average away noise
+    // smaller than the error already in the number. There is no rollup.
     tao_in_emission_tao: z.number().nullable().optional(),
     tao_in_pool_tao: z.number().nullable(),
     total_stake_tao: z.number().nullable(),
@@ -135,6 +156,44 @@ export const SubnetEconomicsSchema = z
   })
   .strict();
 export type SubnetEconomics = z.infer<typeof SubnetEconomicsSchema>;
+
+// The block every v440 emission-pipeline read was pinned to (#8744), carried
+// at the artifact's top level because one `state_queryStorageAt` produced the
+// whole network's row set -- two subnets cannot disagree about it.
+//
+// ADR 0023 decision 5 makes provenance a contract, not a nice-to-have: the
+// decomposition is OUR arithmetic over chain measurements, and a reader who
+// cannot tell which block it was read at cannot check it. `block_hash` is here
+// so that check is exact -- a height alone is ambiguous across a reorg.
+//
+// Absent (not null) on a degraded refresh whose node could not serve the
+// pinned reads. Never defaulted to captured_at or to chain tip: a height that
+// was not read from is worse than no height, because it looks like provenance.
+export const ChainStateSchema = z
+  .object({
+    block: z.int().min(0),
+    block_hash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    // Block emission is derived from issuance (#8747), never read from the
+    // stale `BlockEmission` storage item. Kept at the height so a historical
+    // row stays interpretable against the emission in force when captured.
+    total_issuance_tao: z.number().nonnegative(),
+    // The gate's three parameters AT THIS BLOCK (#8744). Not captured at any
+    // height before now, and a live read is the wrong number for 359 blocks
+    // out of 360: the runtime recomputes theta whenever block % 360 == 0, and
+    // gates with the STORED value in between.
+    //
+    // theta is null when the bar is unset, which disables the gate outright
+    // (apply_emission_gate's own `if theta <= zero { return; }`).
+    emission_gate_bar: z.number().nullable(),
+    emission_bar_quantile: z.number().nullable(),
+    // NULL MEANS THE RUNTIME DEFAULT h = 3, NOT ZERO. h = 0 would make the
+    // Hill gate return exactly 0.5 for every subnet, so coercing absent to 0
+    // silently replaces the gate with a constant. Left null here and resolved
+    // by the consumer against DEFAULT_EMISSION_GATE_EXPONENT.
+    emission_gate_exponent: z.int().nullable(),
+  })
+  .strict();
+export type ChainState = z.infer<typeof ChainStateSchema>;
 
 // One concentration lens over a single value distribution (src/concentration.ts's
 // computeConcentration()) -- shared by SubnetPerformanceArtifact/

@@ -13,7 +13,10 @@ import { mockEnv, type Row } from "./row-type.ts";
 // of this module already does (see tests/request-handlers-analytics.test.ts).
 // Only the fallback branch below needs it; a plain null is a valid "no
 // metadata yet" reading.
-configureAnalytics({ readHealthMetaKv: async () => null });
+configureAnalytics({
+  readHealthMetaKv: async () => null,
+  readEconomicsCurrentKv: async () => null,
+});
 
 /**
  * #8242: /api/v1/feeds/incidents reported "no incidents" while /status showed

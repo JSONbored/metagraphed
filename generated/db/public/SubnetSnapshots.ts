@@ -58,6 +58,10 @@ export default interface SubnetSnapshots {
   subtoken_enabled: boolean | null;
 
   first_emission_block: string | null;
+
+  pipeline_block: string | null;
+
+  pipeline_block_hash: string | null;
 }
 
 /** Represents the initializer for the table public.subnet_snapshots */
@@ -111,6 +115,10 @@ export interface SubnetSnapshotsInitializer {
   subtoken_enabled?: boolean | null;
 
   first_emission_block?: string | null;
+
+  pipeline_block?: string | null;
+
+  pipeline_block_hash?: string | null;
 }
 
 /** Represents the mutator for the table public.subnet_snapshots */
@@ -164,4 +172,8 @@ export interface SubnetSnapshotsMutator {
   subtoken_enabled?: boolean | null;
 
   first_emission_block?: string | null;
+
+  pipeline_block?: string | null;
+
+  pipeline_block_hash?: string | null;
 }

@@ -37,6 +37,16 @@ function valueForPattern(pattern: string, name = ""): string {
   switch (normalizedPattern) {
     case "^[a-f0-9]{64}$":
       return HEX64;
+    case "^0x[0-9a-fA-F]{64}$":
+      // The 0x-prefixed form (#8744's chain_state.block_hash) -- a block hash
+      // is carried alongside the height so the pinning is exact, and a height
+      // alone is ambiguous across a reorg.
+      return `0x${HEX64}`;
+    case "^\\d+$":
+      // A rao count as a decimal string, because the value is a bigint and a
+      // JSON number is the wrong type for one (the emission pipeline's
+      // aggregate identity tolerance). 1000 rao is the real tolerance.
+      return "1000";
     case "^[1-9A-HJ-NP-Za-km-z]{47,48}$":
       return /counterparty|^to$|address/.test(n)
         ? SAMPLE_COUNTERPARTY_SS58

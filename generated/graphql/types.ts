@@ -1870,6 +1870,69 @@ export type EconomicsTrendsDay = {
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
+/** One identity, reported whether it passed or failed. */
+export type EmissionIdentityCheck = {
+  __typename?: 'EmissionIdentityCheck';
+  detail: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  ok: Scalars['Boolean']['output'];
+};
+
+/** The v440 emission pipeline replayed over one pinned block (#8744) -- the per-subnet share decomposition, the network aggregate, and the identity checks evaluated on the rows being served. */
+export type EmissionPipeline = {
+  __typename?: 'EmissionPipeline';
+  aggregate: EmissionPipelineAggregate;
+  block_emission_halvings?: Maybe<Scalars['Int']['output']>;
+  /** Block emission derived from TotalIssuance at that block, never read from the stale BlockEmission storage item. */
+  block_emission_tao?: Maybe<Scalars['Float']['output']>;
+  /** The block every input below was pinned to. Required: without it nothing here can be verified. */
+  chain_state: EmissionPipelineChainState;
+  /** Per-field { kind, storage } map: every value is labelled measured (with the storage item it came from) or reconstructed (our arithmetic). ADR 0023 decision 5. */
+  field_sources: Scalars['JSON']['output'];
+  schema_version: Scalars['Int']['output'];
+  subnets: Array<SubnetEmissionDecomposition>;
+  verification: EmissionPipelineVerification;
+};
+
+/** Network-wide totals across every row in the capture -- unchanged by the netuid argument, which narrows the per-subnet rows only. */
+export type EmissionPipelineAggregate = {
+  __typename?: 'EmissionPipelineAggregate';
+  disabled_count: Scalars['Int']['output'];
+  eligible_count: Scalars['Int']['output'];
+  excess_tao: Scalars['Float']['output'];
+  /** The network split nobody else publishes: pool injection vs chain buys. */
+  liquidity_fraction?: Maybe<Scalars['Float']['output']>;
+  tao_in_emission: Scalars['Float']['output'];
+  tao_total: Scalars['Float']['output'];
+  /** Sum of final_share. 1.0 to float precision, or the surface is broken. */
+  total_final_share: Scalars['Float']['output'];
+};
+
+/** The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360. */
+export type EmissionPipelineChainState = {
+  __typename?: 'EmissionPipelineChainState';
+  block: Scalars['Int']['output'];
+  /** The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
+  block_hash: Scalars['String']['output'];
+  emission_bar_quantile?: Maybe<Scalars['Float']['output']>;
+  /** theta. Null when the bar is unset, which disables the gate outright. */
+  emission_gate_bar?: Maybe<Scalars['Float']['output']>;
+  /** h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
+  emission_gate_exponent?: Maybe<Scalars['Int']['output']>;
+  total_issuance_tao: Scalars['Float']['output'];
+};
+
+/** The four identities, evaluated on the rows being served rather than read from a stored flag -- a stored flag can be green while THIS response is broken, and it can go stale. ADR 0023 decision 3. */
+export type EmissionPipelineVerification = {
+  __typename?: 'EmissionPipelineVerification';
+  /** A rao count as a string -- the tolerance is a bigint, and a JSON number is the wrong type for one. */
+  aggregate_tolerance_rao: Scalars['String']['output'];
+  checks: Array<EmissionIdentityCheck>;
+  subnet_share_tolerance: Scalars['Float']['output'];
+  /** False means at least one identity did not hold on these rows: the response is not defensible and must not be used. */
+  verified: Scalars['Boolean']['output'];
+};
+
 export type Endpoint = {
   __typename?: 'Endpoint';
   auth_required?: Maybe<Scalars['Boolean']['output']>;
@@ -2541,6 +2604,8 @@ export type Query = {
   economics: EconomicsList;
   /** Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. */
   economics_trends: EconomicsTrends;
+  /** The v440 emission pipeline decomposed per subnet at the block the economics capture was pinned to: each subnet's stage-1 price share, its MinerBurned-reweighted and Hill-gated shares, its final share of block emission, and the split of its TAO intake between pool injection (tao_in_emission) and chain buys (excess_tao). netuid narrows the per-subnet rows only -- aggregate and verification stay network-wide, since a one-subnet slice of a network identity cannot be verified. ALWAYS read verification.verified: false means the four identities did not hold on these exact rows and the response is not defensible. field_sources labels every field measured or reconstructed. A capture with no chain_state is an EMISSION_PIPELINE_UNAVAILABLE error, never a partial body. Mirrors GET /api/v1/chain/emission-pipeline. */
+  emission_pipeline: EmissionPipeline;
   /** Probe-derived endpoint incident feed -- active endpoint failures/degradations with severity, state, provider, and subnet. Filter by netuid/kind/provider/status/severity/state, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-incidents. */
   endpoint_incidents: IncidentList;
   /** Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools. */
@@ -3164,6 +3229,11 @@ export type QueryEconomicsArgs = {
 
 export type QueryEconomics_TrendsArgs = {
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryEmission_PipelineArgs = {
+  netuid?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -4504,6 +4574,37 @@ export type SubnetEconomics = {
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
+/** One subnet's path through stages 0-8. Every share is a fraction of block emission, null where stage 0 excluded the subnet from the distribution entirely. */
+export type SubnetEmissionDecomposition = {
+  __typename?: 'SubnetEmissionDecomposition';
+  alpha_in_emission?: Maybe<Scalars['Float']['output']>;
+  alpha_out_emission?: Maybe<Scalars['Float']['output']>;
+  /** weighted_share / theta. Null when the bar is unset. */
+  distance_to_bar?: Maybe<Scalars['Float']['output']>;
+  /** PUBLISHED, NOT INFERRED. A subnet far enough below the bar has its gated share underflow to exactly 0, so an enabled-but-deeply-gated subnet and a disabled one both read final_share: 0 -- this flag is the only thing that separates them. */
+  emission_enabled: Scalars['Boolean']['output'];
+  /** Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received. */
+  emission_share?: Maybe<Scalars['Float']['output']>;
+  /** Stage 7, measured: the TAO that reached the subnet by chain buys instead. */
+  excess_tao?: Maybe<Scalars['Float']['output']>;
+  final_share?: Maybe<Scalars['Float']['output']>;
+  /** gated_share - weighted_share. Sums to ~0 across the network: the gate redistributes, it never withholds. */
+  gate_delta?: Maybe<Scalars['Float']['output']>;
+  gated_share?: Maybe<Scalars['Float']['output']>;
+  /** Non-null (root, never_emitted, subtoken_disabled, registration_closed) means the subnet took no part in stage 1, and every downstream share is null rather than 0 -- 'not in the distribution' is not 'in it with nothing'. */
+  ineligible_reason?: Maybe<Scalars['String']['output']>;
+  /** tao_in_emission / tao_total, the headline per-subnet number. Null rather than NaN for a zero-intake subnet: 0/0 is not a fraction, and zero intake is a real state. */
+  liquidity_fraction?: Maybe<Scalars['Float']['output']>;
+  /** Stage 2 input. A FRACTION in [0,1], never an amount. */
+  miner_burned: Scalars['Float']['output'];
+  netuid: Scalars['Int']['output'];
+  /** Stage 8, measured: the TAO injected into the subnet's pool this block. */
+  tao_in_emission?: Maybe<Scalars['Float']['output']>;
+  /** Their sum -- the subnet's whole TAO intake this block. Null unless both channels were actually read. */
+  tao_total?: Maybe<Scalars['Float']['output']>;
+  weighted_share?: Maybe<Scalars['Float']['output']>;
+};
+
 /** One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope. */
 export type SubnetEventSummary = {
   __typename?: 'SubnetEventSummary';
@@ -5589,6 +5690,11 @@ export type ResolversTypes = ResolversObject<{
   EconomicsSummary: ResolverTypeWrapper<EconomicsSummary>;
   EconomicsTrends: ResolverTypeWrapper<EconomicsTrends>;
   EconomicsTrendsDay: ResolverTypeWrapper<EconomicsTrendsDay>;
+  EmissionIdentityCheck: ResolverTypeWrapper<EmissionIdentityCheck>;
+  EmissionPipeline: ResolverTypeWrapper<EmissionPipeline>;
+  EmissionPipelineAggregate: ResolverTypeWrapper<EmissionPipelineAggregate>;
+  EmissionPipelineChainState: ResolverTypeWrapper<EmissionPipelineChainState>;
+  EmissionPipelineVerification: ResolverTypeWrapper<EmissionPipelineVerification>;
   Endpoint: ResolverTypeWrapper<Endpoint>;
   EndpointIncident: ResolverTypeWrapper<EndpointIncident>;
   EndpointList: ResolverTypeWrapper<EndpointList>;
@@ -5661,6 +5767,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetConviction: ResolverTypeWrapper<SubnetConviction>;
   SubnetDeregistrations: ResolverTypeWrapper<SubnetDeregistrations>;
   SubnetEconomics: ResolverTypeWrapper<SubnetEconomics>;
+  SubnetEmissionDecomposition: ResolverTypeWrapper<SubnetEmissionDecomposition>;
   SubnetEventSummary: ResolverTypeWrapper<SubnetEventSummary>;
   SubnetEvents: ResolverTypeWrapper<SubnetEvents>;
   SubnetHealth: ResolverTypeWrapper<SubnetHealth>;
@@ -5884,6 +5991,11 @@ export type ResolversParentTypes = ResolversObject<{
   EconomicsSummary: EconomicsSummary;
   EconomicsTrends: EconomicsTrends;
   EconomicsTrendsDay: EconomicsTrendsDay;
+  EmissionIdentityCheck: EmissionIdentityCheck;
+  EmissionPipeline: EmissionPipeline;
+  EmissionPipelineAggregate: EmissionPipelineAggregate;
+  EmissionPipelineChainState: EmissionPipelineChainState;
+  EmissionPipelineVerification: EmissionPipelineVerification;
   Endpoint: Endpoint;
   EndpointIncident: EndpointIncident;
   EndpointList: EndpointList;
@@ -5955,6 +6067,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetConviction: SubnetConviction;
   SubnetDeregistrations: SubnetDeregistrations;
   SubnetEconomics: SubnetEconomics;
+  SubnetEmissionDecomposition: SubnetEmissionDecomposition;
   SubnetEventSummary: SubnetEventSummary;
   SubnetEvents: SubnetEvents;
   SubnetHealth: SubnetHealth;
@@ -7512,6 +7625,49 @@ export type EconomicsTrendsDayResolvers<ContextType = GqlContext, ParentType ext
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type EmissionIdentityCheckResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionIdentityCheck'] = ResolversParentTypes['EmissionIdentityCheck']> = ResolversObject<{
+  detail?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  ok?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+}>;
+
+export type EmissionPipelineResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionPipeline'] = ResolversParentTypes['EmissionPipeline']> = ResolversObject<{
+  aggregate?: Resolver<ResolversTypes['EmissionPipelineAggregate'], ParentType, ContextType>;
+  block_emission_halvings?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  block_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  chain_state?: Resolver<ResolversTypes['EmissionPipelineChainState'], ParentType, ContextType>;
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnets?: Resolver<Array<ResolversTypes['SubnetEmissionDecomposition']>, ParentType, ContextType>;
+  verification?: Resolver<ResolversTypes['EmissionPipelineVerification'], ParentType, ContextType>;
+}>;
+
+export type EmissionPipelineAggregateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionPipelineAggregate'] = ResolversParentTypes['EmissionPipelineAggregate']> = ResolversObject<{
+  disabled_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  eligible_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  excess_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  liquidity_fraction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_in_emission?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  tao_total?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_final_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type EmissionPipelineChainStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionPipelineChainState'] = ResolversParentTypes['EmissionPipelineChainState']> = ResolversObject<{
+  block?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  block_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  emission_bar_quantile?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_bar?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_exponent?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  total_issuance_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type EmissionPipelineVerificationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionPipelineVerification'] = ResolversParentTypes['EmissionPipelineVerification']> = ResolversObject<{
+  aggregate_tolerance_rao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  checks?: Resolver<Array<ResolversTypes['EmissionIdentityCheck']>, ParentType, ContextType>;
+  subnet_share_tolerance?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  verified?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+}>;
+
 export type EndpointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Endpoint'] = ResolversParentTypes['Endpoint']> = ResolversObject<{
   auth_required?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   authority?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -8031,6 +8187,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   domains?: Resolver<ResolversTypes['DomainOverview'], ParentType, ContextType>;
   economics?: Resolver<ResolversTypes['EconomicsList'], ParentType, ContextType, Partial<QueryEconomicsArgs>>;
   economics_trends?: Resolver<ResolversTypes['EconomicsTrends'], ParentType, ContextType, Partial<QueryEconomics_TrendsArgs>>;
+  emission_pipeline?: Resolver<ResolversTypes['EmissionPipeline'], ParentType, ContextType, Partial<QueryEmission_PipelineArgs>>;
   endpoint_incidents?: Resolver<ResolversTypes['IncidentList'], ParentType, ContextType, Partial<QueryEndpoint_IncidentsArgs>>;
   endpoint_pools?: Resolver<ResolversTypes['PoolList'], ParentType, ContextType, Partial<QueryEndpoint_PoolsArgs>>;
   endpoints?: Resolver<ResolversTypes['EndpointList'], ParentType, ContextType, Partial<QueryEndpointsArgs>>;
@@ -8508,6 +8665,25 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   tao_in_pool_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEmissionDecompositionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionDecomposition'] = ResolversParentTypes['SubnetEmissionDecomposition']> = ResolversObject<{
+  alpha_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_out_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  distance_to_bar?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  excess_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  final_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gate_delta?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gated_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  ineligible_reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  liquidity_fraction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  miner_burned?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tao_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  weighted_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetEventSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEventSummary'] = ResolversParentTypes['SubnetEventSummary']> = ResolversObject<{
@@ -9362,6 +9538,11 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   EconomicsSummary?: EconomicsSummaryResolvers<ContextType>;
   EconomicsTrends?: EconomicsTrendsResolvers<ContextType>;
   EconomicsTrendsDay?: EconomicsTrendsDayResolvers<ContextType>;
+  EmissionIdentityCheck?: EmissionIdentityCheckResolvers<ContextType>;
+  EmissionPipeline?: EmissionPipelineResolvers<ContextType>;
+  EmissionPipelineAggregate?: EmissionPipelineAggregateResolvers<ContextType>;
+  EmissionPipelineChainState?: EmissionPipelineChainStateResolvers<ContextType>;
+  EmissionPipelineVerification?: EmissionPipelineVerificationResolvers<ContextType>;
   Endpoint?: EndpointResolvers<ContextType>;
   EndpointIncident?: EndpointIncidentResolvers<ContextType>;
   EndpointList?: EndpointListResolvers<ContextType>;
@@ -9430,6 +9611,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetConviction?: SubnetConvictionResolvers<ContextType>;
   SubnetDeregistrations?: SubnetDeregistrationsResolvers<ContextType>;
   SubnetEconomics?: SubnetEconomicsResolvers<ContextType>;
+  SubnetEmissionDecomposition?: SubnetEmissionDecompositionResolvers<ContextType>;
   SubnetEventSummary?: SubnetEventSummaryResolvers<ContextType>;
   SubnetEvents?: SubnetEventsResolvers<ContextType>;
   SubnetHealth?: SubnetHealthResolvers<ContextType>;

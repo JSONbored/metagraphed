@@ -406,6 +406,20 @@ CREATE TABLE IF NOT EXISTS subnet_snapshots (
   emission_enabled      BOOLEAN,
   subtoken_enabled      BOOLEAN,
   first_emission_block  BIGINT,
+  -- Provenance for the pipeline columns above (#8744, migration 0051). The
+  -- height and hash every one of those reads was pinned to, so a published
+  -- decomposition can be replayed against the exact state it was built from.
+  -- Per-row although network-wide -- see 0051 for why. NULL means "no pinned
+  -- read behind this row", never backfilled from captured_at or chain tip.
+  --
+  -- Note for readers of 0050: its header calls a single observation "noisy BY
+  -- CONSTRUCTION" and names a daily rollup the reportable figure. Measured
+  -- across 14 consecutive blocks (#8744), the channels move a few rao per
+  -- block, smoothly, and the derived liquidity_fraction varies by ~1e-5 --
+  -- well inside the reconstruction's own 2e-4 tolerance. There is no rollup;
+  -- these are point samples, published as such.
+  pipeline_block        BIGINT,
+  pipeline_block_hash   TEXT,
   PRIMARY KEY (netuid, snapshot_date)
 );
 CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date

@@ -28,6 +28,7 @@ decode_optional_bool = _fns.decode_optional_bool
 normalize_pipeline = _fns.normalize_pipeline
 fetch_pipeline_state = _fns.fetch_pipeline_state
 U96F32_SCALE = _fns.U96F32_SCALE
+U64F64_SCALE = _fns.U64F64_SCALE
 
 
 class FakeBalance:
@@ -171,10 +172,23 @@ def _pipeline_state(**overrides):
         "tao_in_emission": {1: "0x0f19120000000000"},
         "alpha_in_emission": {1: _le_hex(0, 8)},
         "alpha_out_emission": {1: _le_hex(1_000_000_000, 8)},
+        # #8744: stage 1's input and stage 0's last gate, now pinned.
+        "moving_price": {1: _le_hex(round(0.25 * U64F64_SCALE), 16)},
+        "registration_allowed": {1: "0x01"},
     }
     for key, value in overrides.items():
         by_item[key] = value
-    return {"block": 8_740_213, "block_hash": "0x0f", "total_issuance_rao": 1, "by_item": by_item}
+    return {
+        "block": 8_740_213,
+        "block_hash": "0x0f",
+        "total_issuance_rao": 1,
+        "gate_params": {
+            "emission_gate_bar": round(0.00927284254359668 * U64F64_SCALE),
+            "emission_bar_quantile": round(0.75 * U64F64_SCALE),
+            "emission_gate_exponent": None,
+        },
+        "by_item": by_item,
+    }
 
 
 class NormalizePipelineTests(unittest.TestCase):
@@ -293,6 +307,55 @@ class FetchPipelineStateTests(unittest.TestCase):
     def test_reads_total_issuance(self):
         state = fetch_pipeline_state(self._FakeSubstrate(), [1])
         self.assertEqual(state["total_issuance_rao"], 11_181_701_232_252_599)
+
+
+
+
+class PinnedPipelineInputTests(unittest.TestCase):
+    """#8744: stage 1's input and stage 0's last gate, read at the pinned block.
+
+    #8743 took both off the bulk get_all_metagraphs_info call, which runs at
+    its own height. The values were right; the INSTANT was not, and the
+    reconstruction combines them with reads pinned to one block.
+    """
+
+    def test_moving_price_decodes_as_u64f64_not_rao(self):
+        row = normalize_pipeline(_pipeline_state(), 1)
+        self.assertAlmostEqual(row["moving_price_pinned"], 0.25, places=12)
+
+    def test_moving_price_is_a_separate_field_from_alpha_price(self):
+        # alpha_price_tao keeps its bulk-call source and its published meaning
+        # (ADR 0023 decision 1). This is a second, pinned reading -- if the two
+        # ever collapse into one key, the published field silently changes
+        # provenance.
+        row = normalize_pipeline(_pipeline_state(), 1)
+        self.assertIn("moving_price_pinned", row)
+        self.assertNotIn("alpha_price_tao", row)
+
+    def test_absent_moving_price_is_none_not_zero(self):
+        # Zero is a real price share; absent is not captured. Collapsing them
+        # would hand a live subnet a stage-1 share of exactly 0.
+        row = normalize_pipeline(_pipeline_state(moving_price={}), 1)
+        self.assertIsNone(row["moving_price_pinned"])
+
+    def test_registration_allowed_defaults_false_when_absent(self):
+        # Unlike SubnetEmissionEnabled, NetworkRegistrationAllowed has no
+        # true-by-default behaviour -- absent means not allowed.
+        row = normalize_pipeline(_pipeline_state(registration_allowed={}), 1)
+        self.assertFalse(row["registration_allowed_pinned"])
+        explicit = normalize_pipeline(
+            _pipeline_state(registration_allowed={1: "0x00"}), 1
+        )
+        self.assertFalse(explicit["registration_allowed_pinned"])
+
+    def test_a_failed_item_read_costs_that_field_not_the_refresh(self):
+        # by_item.get(item, {}) rather than [item]: one failed read of the
+        # fourteen must not take the whole refresh down.
+        state = _pipeline_state()
+        del state["by_item"]["moving_price"]
+        row = normalize_pipeline(state, 1)
+        self.assertIsNone(row["moving_price_pinned"])
+        self.assertEqual(row["first_emission_block"], 5_228_683)
 
 
 if __name__ == "__main__":

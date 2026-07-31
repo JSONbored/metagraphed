@@ -150,6 +150,18 @@ interface BuildEconomicsArtifactOptions {
   capturedAt?: string | null;
   /** Optional Map<netuid, snapshot rows> for #7227 alpha_price_change_* fields. */
   priceHistoryByNetuid?: Map<number, Row[]> | null;
+  /**
+   * The block every v440 pipeline read was pinned to (#8744). Rides at the top
+   * level because it is network-wide, and because a per-subnet copy would
+   * invite the reader to believe two subnets could carry different heights --
+   * they cannot; one `state_queryStorageAt` produced all of them.
+   *
+   * Null on a degraded refresh whose node could not serve the pinned reads. It
+   * is deliberately NOT defaulted to the artifact's `captured_at` or to chain
+   * tip: a height that was never read from is worse than no height, because it
+   * looks like provenance.
+   */
+  chainState?: Row | null;
 }
 
 export function buildEconomicsArtifact({
@@ -159,6 +171,7 @@ export function buildEconomicsArtifact({
   network = null,
   capturedAt = null,
   priceHistoryByNetuid = null,
+  chainState = null,
 }: BuildEconomicsArtifactOptions): Row {
   const numericOrZero = (value: unknown): number =>
     typeof value === "number" ? value : 0;
@@ -241,6 +254,10 @@ export function buildEconomicsArtifact({
     generated_at: generatedAt,
     network,
     captured_at: capturedAt,
+    // Absent, not null, on a degraded refresh -- an absent key reads as "this
+    // run did not pin a block", where `chain_state: null` reads as "it pinned
+    // one and it was nothing".
+    ...(chainState ? { chain_state: chainState } : {}),
     summary: {
       subnet_count: subnets.length,
       with_economics_count: rows.length,

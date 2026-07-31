@@ -4231,6 +4231,14 @@
         "value": {
           "data": {
             "captured_at": "2026-06-01T00:00:00.000Z",
+            "chain_state": {
+              "block": 5000000,
+              "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "emission_bar_quantile": 0.5,
+              "emission_gate_bar": 0.5,
+              "emission_gate_exponent": 1,
+              "total_issuance_tao": 0.5
+            },
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
             "network": "example",
@@ -4340,6 +4348,94 @@
       },
       "EconomicsTrendsCsv": {
         "value": "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share\r\n2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752"
+      },
+      "EmissionPipelineArtifactResponse": {
+        "value": {
+          "data": {
+            "aggregate": {
+              "disabled_count": 1,
+              "eligible_count": 1,
+              "excess_tao": 0.5,
+              "liquidity_fraction": 0.5,
+              "tao_in_emission": 0.5,
+              "tao_total": 0.5,
+              "total_final_share": 0.5
+            },
+            "block_emission_halvings": 5000000,
+            "block_emission_tao": 5000000,
+            "chain_state": {
+              "block": 5000000,
+              "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "emission_bar_quantile": 0.5,
+              "emission_gate_bar": 0.5,
+              "emission_gate_exponent": 1,
+              "total_issuance_tao": 0.5
+            },
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
+            "schema_version": 1,
+            "subnets": [
+              {
+                "alpha_in_emission": 0.5,
+                "alpha_out_emission": 0.5,
+                "distance_to_bar": 0.5,
+                "emission_enabled": false,
+                "emission_share": 0.5,
+                "excess_tao": 0.5,
+                "final_share": 0.5,
+                "gate_delta": 0.5,
+                "gated_share": 0.5,
+                "ineligible_reason": "root",
+                "liquidity_fraction": 0.5,
+                "miner_burned": 0.5,
+                "netuid": 7,
+                "tao_in_emission": 0.5,
+                "tao_total": 0.5,
+                "weighted_share": 0.5
+              }
+            ],
+            "verification": {
+              "aggregate_tolerance_rao": "1000",
+              "checks": [
+                {
+                  "detail": "example",
+                  "name": "Example Subnet",
+                  "ok": true
+                }
+              ],
+              "subnet_share_tolerance": 0.5,
+              "verified": false
+            }
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
       },
       "EndpointIncidentsArtifactResponse": {
         "value": {
@@ -7683,12 +7779,14 @@
               "miner_burned_fraction": 0.5,
               "miner_count": 1,
               "miner_readiness": 1,
+              "moving_price_pinned": 0.5,
               "name": "Example Subnet",
               "netuid": 7,
               "open_slots": 1,
               "owner_coldkey": "example",
               "owner_hotkey": "example",
               "registration_allowed": false,
+              "registration_allowed_pinned": false,
               "registration_cost_tao": 0.5,
               "slug": "example-subnet",
               "subnet_volume_tao": 0.5,
@@ -23612,6 +23710,65 @@
               }
             ]
           },
+          "chain_state": {
+            "additionalProperties": false,
+            "properties": {
+              "block": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "block_hash": {
+                "pattern": "^0x[0-9a-fA-F]{64}$",
+                "type": "string"
+              },
+              "emission_bar_quantile": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_gate_bar": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_gate_exponent": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "total_issuance_tao": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "block",
+              "block_hash",
+              "total_issuance_tao",
+              "emission_gate_bar",
+              "emission_bar_quantile",
+              "emission_gate_exponent"
+            ],
+            "type": "object"
+          },
           "contract_version": {
             "type": "string"
           },
@@ -23864,6 +24021,16 @@
                     }
                   ]
                 },
+                "moving_price_pinned": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "name": {
                   "type": "string"
                 },
@@ -23906,6 +24073,16 @@
                 },
                 "registration_allowed": {
                   "type": "boolean"
+                },
+                "registration_allowed_pinned": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "registration_cost_tao": {
                   "anyOf": [
@@ -24187,6 +24364,413 @@
           "window",
           "day_count",
           "days"
+        ],
+        "type": "object"
+      },
+      "EmissionPipelineArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "aggregate": {
+            "additionalProperties": false,
+            "properties": {
+              "disabled_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "eligible_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "excess_tao": {
+                "type": "number"
+              },
+              "liquidity_fraction": {
+                "anyOf": [
+                  {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tao_in_emission": {
+                "type": "number"
+              },
+              "tao_total": {
+                "type": "number"
+              },
+              "total_final_share": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "eligible_count",
+              "disabled_count",
+              "tao_in_emission",
+              "excess_tao",
+              "tao_total",
+              "liquidity_fraction",
+              "total_final_share"
+            ],
+            "type": "object"
+          },
+          "block_emission_halvings": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "block_emission_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chain_state": {
+            "additionalProperties": false,
+            "properties": {
+              "block": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "block_hash": {
+                "pattern": "^0x[0-9a-fA-F]{64}$",
+                "type": "string"
+              },
+              "emission_bar_quantile": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_gate_bar": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_gate_exponent": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "total_issuance_tao": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "block",
+              "block_hash",
+              "total_issuance_tao",
+              "emission_gate_bar",
+              "emission_bar_quantile",
+              "emission_gate_exponent"
+            ],
+            "type": "object"
+          },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "alpha_in_emission": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_out_emission": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "distance_to_bar": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_enabled": {
+                  "type": "boolean"
+                },
+                "emission_share": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "excess_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "final_share": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "gate_delta": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "gated_share": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ineligible_reason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "root",
+                        "never_emitted",
+                        "subtoken_disabled",
+                        "registration_closed"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "liquidity_fraction": {
+                  "anyOf": [
+                    {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "miner_burned": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "tao_in_emission": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tao_total": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "weighted_share": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "netuid",
+                "ineligible_reason",
+                "emission_share",
+                "miner_burned",
+                "weighted_share",
+                "gated_share",
+                "emission_enabled",
+                "final_share",
+                "gate_delta",
+                "distance_to_bar",
+                "tao_in_emission",
+                "excess_tao",
+                "tao_total",
+                "liquidity_fraction",
+                "alpha_in_emission",
+                "alpha_out_emission"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "verification": {
+            "additionalProperties": false,
+            "properties": {
+              "aggregate_tolerance_rao": {
+                "pattern": "^\\d+$",
+                "type": "string"
+              },
+              "checks": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "ok",
+                    "detail"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "subnet_share_tolerance": {
+                "type": "number"
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "verified",
+              "checks",
+              "subnet_share_tolerance",
+              "aggregate_tolerance_rao"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema_version",
+          "chain_state",
+          "block_emission_tao",
+          "block_emission_halvings",
+          "subnets",
+          "aggregate",
+          "verification",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -36218,6 +36802,16 @@
                   }
                 ]
               },
+              "moving_price_pinned": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "name": {
                 "type": "string"
               },
@@ -36260,6 +36854,16 @@
               },
               "registration_allowed": {
                 "type": "boolean"
+              },
+              "registration_allowed_pinned": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "registration_cost_tao": {
                 "anyOf": [
@@ -47221,6 +47825,132 @@
         "summary": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
         "tags": [
           "chain",
+          "analytics"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/chain/emission-pipeline": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "emissionPipelineByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EmissionPipelineArtifactResponse": {
+                    "$ref": "#/components/examples/EmissionPipelineArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EmissionPipelineArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none.",
+        "tags": [
+          "subnets",
           "analytics"
         ],
         "x-metagraphed-networks": [
@@ -65675,6 +66405,116 @@
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
           "mainnet"
+        ]
+      }
+    },
+    "/api/v1/chain/emission-pipeline": {
+      "get": {
+        "operationId": "emissionPipeline",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "EmissionPipelineArtifactResponse": {
+                    "$ref": "#/components/examples/EmissionPipelineArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EmissionPipelineArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },

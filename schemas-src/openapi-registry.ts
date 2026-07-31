@@ -120,6 +120,7 @@ import {
 } from "./routes/subnet-profile.ts";
 import { SubnetOverviewArtifactSchema } from "./routes/subnet-overview.ts";
 import { EconomicsTrendsArtifactSchema } from "./routes/economics-trends.ts";
+import { EmissionPipelineArtifactSchema } from "./routes/emission-pipeline.ts";
 import {
   SubnetConcentrationArtifactSchema,
   SubnetConcentrationHistoryArtifactSchema,
@@ -423,6 +424,7 @@ register(SubnetOverviewArtifactSchema, "SubnetOverviewArtifact");
 
 // Batch 2 (#8056) additions.
 register(EconomicsTrendsArtifactSchema, "EconomicsTrendsArtifact");
+register(EmissionPipelineArtifactSchema, "EmissionPipelineArtifact");
 register(SubnetConcentrationArtifactSchema, "SubnetConcentrationArtifact");
 register(
   SubnetConcentrationHistoryArtifactSchema,

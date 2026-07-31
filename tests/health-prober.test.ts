@@ -6,6 +6,7 @@ import {
   KV_HEALTH_RPC_POOL,
   loadOperationalSurfaces,
   OPERATIONAL_SURFACES_PATH,
+  pipelineProvenance,
   pruneHealthHistory,
   rollupDailyUptime,
   runHealthProber,
@@ -2192,3 +2193,103 @@ describe("syncHealthUptimeRollupToPostgres", () => {
 // success/unavailable/status/fetch-failed cases are now the SAME cases this
 // block used to exercise "via" rollupDailyUptime -- there is no longer a
 // separate D1 outcome to vary independently of the Postgres one).
+
+// #8744: provenance stamping for the v440 emission-pipeline columns. The
+// column's contract is "non-null iff there is a pinned read behind THIS row's
+// pipeline values", so the interesting cases are all the ways that can be
+// false while the surrounding capture looks healthy.
+describe("pipelineProvenance (#8744)", () => {
+  const CHAIN_STATE = {
+    block: 8_740_436,
+    block_hash: `0x${"ab".repeat(32)}`,
+    total_issuance_tao: 9_123_456.789,
+  };
+  const STAMP = {
+    pipeline_block: CHAIN_STATE.block,
+    pipeline_block_hash: CHAIN_STATE.block_hash,
+  };
+
+  test("stamps a row carrying pipeline inputs", () => {
+    assert.deepEqual(
+      pipelineProvenance({ tao_in_emission_tao: 0.117 }, CHAIN_STATE),
+      STAMP,
+    );
+  });
+
+  // Zero and false are real readings, not absence. netuid 8 reads exactly 0 on
+  // both TAO channels on every block sampled for #8744, and 46 subnets carry
+  // emission_enabled = false -- a truthiness test here would drop precisely the
+  // rows that make the disabled-vs-gated distinction visible.
+  test("stamps on a zero channel and on a false flag", () => {
+    assert.deepEqual(
+      pipelineProvenance(
+        { tao_in_emission_tao: 0, excess_tao: 0 },
+        CHAIN_STATE,
+      ),
+      STAMP,
+    );
+    assert.deepEqual(
+      pipelineProvenance({ emission_enabled: false }, CHAIN_STATE),
+      STAMP,
+    );
+    assert.deepEqual(
+      pipelineProvenance({ subtoken_enabled: false }, CHAIN_STATE),
+      STAMP,
+    );
+    assert.deepEqual(
+      pipelineProvenance({ first_emission_block: 0 }, CHAIN_STATE),
+      STAMP,
+    );
+  });
+
+  // Empty object, NOT { pipeline_block: null }: the ingest upserts with
+  // COALESCE(existing, excluded), so emitting an explicit null would let a
+  // later degraded fire overwrite an earlier good height.
+  test("emits nothing at all when there is nothing to stamp", () => {
+    assert.deepEqual(
+      pipelineProvenance({ validator_count: 12 }, CHAIN_STATE),
+      {},
+    );
+    assert.deepEqual(pipelineProvenance({}, CHAIN_STATE), {});
+    assert.deepEqual(pipelineProvenance(null, CHAIN_STATE), {});
+    assert.deepEqual(pipelineProvenance(undefined, CHAIN_STATE), {});
+  });
+
+  test("emits nothing when the refresh pinned no block", () => {
+    assert.deepEqual(pipelineProvenance({ excess_tao: 1 }, null), {});
+    assert.deepEqual(pipelineProvenance({ excess_tao: 1 }, undefined), {});
+  });
+
+  // A height that was not read from is worse than no height, because it looks
+  // like provenance -- so a malformed chain_state stamps nothing rather than
+  // stamping a partial one.
+  test("emits nothing on a malformed chain_state", () => {
+    const bearing = { excess_tao: 1 };
+    assert.deepEqual(pipelineProvenance(bearing, { block_hash: "0x00" }), {});
+    assert.deepEqual(pipelineProvenance(bearing, { block: 8_740_436 }), {});
+    assert.deepEqual(
+      pipelineProvenance(bearing, { block: 8.5, block_hash: "0xabc" }),
+      {},
+    );
+    assert.deepEqual(
+      pipelineProvenance(bearing, { block: "8740436", block_hash: "0xabc" }),
+      {},
+    );
+    assert.deepEqual(
+      pipelineProvenance(bearing, { block: 8_740_436, block_hash: 12345 }),
+      {},
+    );
+  });
+
+  // A null pipeline value is "not captured" -- the same as absent -- so it
+  // must not pull a height in behind it.
+  test("treats an explicitly null pipeline value as not captured", () => {
+    assert.deepEqual(
+      pipelineProvenance(
+        { tao_in_emission_tao: null, emission_enabled: null },
+        CHAIN_STATE,
+      ),
+      {},
+    );
+  });
+});

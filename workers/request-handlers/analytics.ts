@@ -133,6 +133,14 @@ type HealthMetaKvReader = (
   env: Env,
 ) => Promise<{ last_run_at?: string | null } | null>;
 
+// The api.ts-local in-isolate memoized read of the live `economics:current` KV
+// blob, injected for the same reason and in the same way (#8744): the emission
+// decomposition is built from the economics tier, and the live blob is fresher
+// than the committed R2 artifact it falls back to.
+type EconomicsCurrentKvReader = (
+  env: Env,
+) => Promise<Record<string, unknown> | null>;
+
 // Injected once from api.ts (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.ts because the deferred handler clusters and a
 // test still import it from there; injecting the stable function reference here
@@ -144,11 +152,24 @@ let readHealthMetaKv: HealthMetaKvReader = () => {
 };
 /* v8 ignore stop */
 
-// Called once at api.ts module-init to wire the api.ts-local KV reader.
+/* v8 ignore start */
+let readEconomicsCurrentKv: EconomicsCurrentKvReader = () => {
+  throw new Error("analytics handlers used before configureAnalytics()");
+};
+/* v8 ignore stop */
+
+/** The injected live-economics KV reader, for sibling handler modules. */
+export function economicsCurrentKvReader(): EconomicsCurrentKvReader {
+  return readEconomicsCurrentKv;
+}
+
+// Called once at api.ts module-init to wire the api.ts-local KV readers.
 export function configureAnalytics(deps: {
   readHealthMetaKv: HealthMetaKvReader;
+  readEconomicsCurrentKv: EconomicsCurrentKvReader;
 }) {
   readHealthMetaKv = deps.readHealthMetaKv;
+  readEconomicsCurrentKv = deps.readEconomicsCurrentKv;
 }
 
 function validateQueryParams(

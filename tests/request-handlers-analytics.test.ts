@@ -69,6 +69,9 @@ configureAnalytics({
     }
     return null;
   },
+  // #8744: the emission decomposition reads the live economics blob. Null here
+  // exercises the committed-artifact fallback, which is what these tests want.
+  readEconomicsCurrentKv: async () => null,
 });
 
 const NETUID = 7;
