@@ -34,7 +34,11 @@ export function TaoValue({
     return <span className="mg-type-data text-ink-muted">—</span>;
   }
 
-  const tao = `τ ${formatNumber(Number(amount.toFixed(precision)))}`;
+  // #8815: only pre-round via toFixed once the amount is already whole-unit-or-larger -- for a
+  // sub-unit amount, toFixed(precision) followed by formatNumber's own rounding double-rounded dust
+  // straight to zero (a fee_tao of 0.000166248 rendered "τ 0"). Below 1, hand the raw amount to
+  // formatNumber and let its significant-digit tiering keep the leading non-zero digits.
+  const tao = `τ ${formatNumber(Math.abs(amount) >= 1 ? Number(amount.toFixed(precision)) : amount)}`;
   const usd = formatUsdApprox(amount, price);
 
   // Fall back to τ when USD is requested but unavailable.

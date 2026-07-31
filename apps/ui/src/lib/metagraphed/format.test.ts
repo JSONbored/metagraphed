@@ -6,6 +6,7 @@ import {
   formatRelative,
   relativeFromDiff,
   isStaleFreshness,
+  formatNumber,
   formatTao,
   formatUsdApprox,
   subnetAgeDays,
@@ -210,11 +211,17 @@ describe("formatUsdApprox", () => {
     expect(formatUsdApprox(undefined, undefined)).toBeNull();
   });
 
-  it("formats ≥$1 with 2 decimals and dust with 4", () => {
+  it("formats ≥$1 with 2 decimals and tiers sub-$1 dust via formatNumber's significant-digit rule", () => {
     expect(formatUsdApprox(2, 5)).toBe("$10");
     expect(formatUsdApprox(1, 1.234)).toBe("$1.23");
     expect(formatUsdApprox(0.01, 5)).toBe("$0.05");
     expect(formatUsdApprox(0.001, 1)).toBe("$0.001");
+  });
+
+  // #8815: formatUsdApprox used to pre-round sub-$1 amounts with toFixed(4), which collapsed
+  // anything under $0.00005 to "$0" -- it must never do that for a genuinely non-zero amount.
+  it('never rounds a non-zero sub-cent amount to "$0"', () => {
+    expect(formatUsdApprox(0.000166248, 1)).toBe("$0.0001662");
   });
 });
 
@@ -262,5 +269,43 @@ describe("formatSubnetAge", () => {
 
   it("thousands-separates large day counts via formatNumber", () => {
     expect(formatSubnetAge(1234)).toBe("1,234 days old");
+  });
+});
+
+describe("formatNumber", () => {
+  it("returns the fallback for nullish / non-finite input", () => {
+    expect(formatNumber(undefined)).toBe("—");
+    expect(formatNumber(null)).toBe("—");
+    expect(formatNumber(Number.NaN)).toBe("—");
+    expect(formatNumber(Infinity)).toBe("—");
+    expect(formatNumber(-Infinity)).toBe("—");
+  });
+
+  it('renders exactly zero as the literal "0"', () => {
+    expect(formatNumber(0)).toBe("0");
+  });
+
+  it("keeps the thousands-grouped integer path unchanged for |n| >= 1", () => {
+    expect(formatNumber(8_739_335)).toBe("8,739,335");
+    expect(formatNumber(1234)).toBe("1,234");
+  });
+
+  it("widens to 4 fraction digits for |n| >= 1 with a fractional part", () => {
+    expect(formatNumber(1234.56789)).toBe("1,234.5679");
+    expect(formatNumber(1.2345)).toBe("1.2345");
+  });
+
+  // #8815: a finite non-zero number must never format as "0" -- Intl's default
+  // maximumFractionDigits: 3 was flattening every sub-milli value to "0".
+  it("keeps 4 significant digits for 0 < |n| < 1, so dust never collapses to zero", () => {
+    expect(formatNumber(0.2985)).toBe("0.2985");
+    expect(formatNumber(0.000166248)).toBe("0.0001662");
+    expect(formatNumber(0.00003)).toBe("0.00003");
+    expect(formatNumber(0.000000001)).toBe("0.000000001");
+    expect(formatNumber(0.000191022)).toBe("0.000191");
+  });
+
+  it("tiers negative sub-unit amounts by magnitude, preserving the sign", () => {
+    expect(formatNumber(-0.000166248)).toBe("-0.0001662");
   });
 });

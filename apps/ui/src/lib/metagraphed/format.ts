@@ -1,7 +1,20 @@
 // Small formatting + UI helpers
+
+/**
+ * Format a number for compact display, thousands-grouped, with precision tiered by magnitude so a
+ * finite non-zero value never collapses to the literal "0" -- Intl's default maximumFractionDigits:
+ * 3 was silently flattening any sub-milli value (a fee_tao of 0.000166248 rendered "0") (#8815).
+ * n === 0 renders "0"; |n| >= 1 keeps up to 4 fraction digits (so it can carry TaoValue's declared
+ * 4dp precision); 0 < |n| < 1 keeps 4 SIGNIFICANT digits instead, so dust like 0.000166248 keeps its
+ * leading non-zero digits rather than being fraction-digit-capped away. Nullish / non-finite input
+ * renders `fallback`.
+ */
 export function formatNumber(n: number | undefined | null, fallback = "—"): string {
   if (n === undefined || n === null || !Number.isFinite(n)) return fallback;
-  return new Intl.NumberFormat("en-US").format(n);
+  if (n === 0) return "0";
+  const magnitude = Math.abs(n);
+  if (magnitude >= 1) return new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(n);
+  return new Intl.NumberFormat("en-US", { maximumSignificantDigits: 4 }).format(n);
 }
 
 /**
@@ -29,7 +42,8 @@ export function formatTao(v?: number | null): string {
  * Approximate USD for a τ amount at the live client-side TAO price (#8373).
  * Convenience conversion only — not historical price-at-tx. Returns null when
  * either input is missing/non-finite so callers can omit the secondary line.
- * Precision mirrors TaoValue: 2dp for ≥$1, 4dp for dust.
+ * ≥$1 keeps 2dp; below $1 the raw amount passes straight to formatNumber, whose own
+ * significant-digit tiering keeps dust readable instead of pre-rounding it to "$0" (#8815).
  */
 export function formatUsdApprox(
   tao: number | null | undefined,
@@ -38,7 +52,8 @@ export function formatUsdApprox(
   if (tao == null || !Number.isFinite(tao)) return null;
   if (priceUsd == null || !Number.isFinite(priceUsd)) return null;
   const usd = tao * priceUsd;
-  return `$${formatNumber(Number(usd.toFixed(Math.abs(usd) >= 1 ? 2 : 4)))}`;
+  if (Math.abs(usd) >= 1) return `$${formatNumber(Number(usd.toFixed(2)))}`;
+  return `$${formatNumber(usd)}`;
 }
 
 /**
