@@ -2645,7 +2645,6 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
       count: 3,
       events: [
         {
-          block_number: 8697469,
           event_index: 328,
           pallet: "System",
           method: "ExtrinsicSuccess",
@@ -2661,7 +2660,6 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
           observed_at: 1784965824000,
         },
         {
-          block_number: 8697469,
           event_index: 327,
           pallet: "TransactionPayment",
           method: "TransactionFeePaid",

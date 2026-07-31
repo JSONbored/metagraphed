@@ -12105,7 +12105,6 @@ export interface operations {
                      *         "count": 1,
                      *         "events": [
                      *           {
-                     *             "block_number": 5000000,
                      *             "event_index": 1,
                      *             "method": "GET",
                      *             "pallet": "example"
@@ -26730,7 +26729,6 @@ export interface operations {
                      *         "count": 1,
                      *         "events": [
                      *           {
-                     *             "block_number": 5000000,
                      *             "event_index": 1,
                      *             "method": "GET",
                      *             "pallet": "example"

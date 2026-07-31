@@ -976,6 +976,164 @@ describe("daily quotas (#8608)", () => {
   });
 });
 
+describe("per-minute limiter runs before the daily quota is spent (#8812)", () => {
+  // spendDailyQuota is a COMMIT (it POSTs to /api/v1/internal/keys/quota and
+  // debits units), so it must run only for a request the per-minute limiter has
+  // already accepted -- otherwise a caller refused with a 429 is billed for a
+  // request that was never served.
+  const CONFIG = {
+    anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
+    keyed: { envVar: "KEYED", limit: 100, windowSeconds: 60 },
+    tiers: {
+      paid: {
+        envVar: "KEYED",
+        limit: 5000,
+        windowSeconds: 60,
+        dailyUnits: 1000,
+      },
+    },
+    keyPrefix: "t",
+  };
+
+  // Like the #8608 block's envWith, but the per-minute limiter's verdict is a
+  // parameter, and the quota POSTs are recorded so a test can assert the store
+  // was never touched.
+  function envWith(
+    limiterSuccess: boolean,
+    quotaFetch?: (r: Request) => Promise<Response>,
+  ) {
+    const spends: unknown[] = [];
+    const env = envWithTier("paid", {
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: limiterSuccess }) },
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          if (path === "/api/v1/internal/keys/quota") {
+            spends.push(path);
+            if (!quotaFetch) return new Response("not found", { status: 404 });
+            return quotaFetch(request);
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "paid",
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    });
+    return { env, spends };
+  }
+
+  const req = (path = "/api/v1/subnets") =>
+    new Request(`https://api.metagraph.sh${path}`, {
+      headers: { authorization: `Bearer ${VALID_KEY}` },
+    });
+
+  const ok = (body: Row) => async () =>
+    new Response(JSON.stringify(body), { status: 200 });
+
+  test("a per-minute rejection spends NO daily quota (fails on main)", async () => {
+    // The store answers allowed:true, so if the quota were ever consulted the
+    // request would be let through AND debited -- the pre-#8812 bug. After the
+    // reorder the limiter's success:false short-circuits before the spend.
+    const { env, spends } = envWith(false, ok({ allowed: true }));
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, false);
+    assert.deepEqual(spends, [], "the quota store must not be POSTed to");
+    assert.equal(result.quota, undefined);
+  });
+
+  test("a per-minute rejection reports x-ratelimit-scope: per-minute with retry-after = windowSeconds", async () => {
+    const { env } = envWith(false, ok({ allowed: true }));
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    // quota is undefined on a per-minute rejection, so the header helper takes
+    // its per-minute branch.
+    const headers = tieredRateLimitHeaders(
+      result.policy,
+      result.tier,
+      result.quota,
+    );
+    assert.equal(headers["x-ratelimit-scope"], "per-minute");
+    assert.equal(headers["retry-after"], "60");
+  });
+
+  test("within the minute but over the day still rejects with the daily-quota scope and exact resetAt", async () => {
+    const { env, spends } = envWith(
+      true,
+      ok({
+        allowed: false,
+        used: 1000,
+        limit: 1000,
+        remaining: 0,
+        resetAt: "2026-07-30T00:00:00.000Z",
+      }),
+    );
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, false);
+    assert.equal(result.quota?.remaining, 0);
+    assert.deepEqual(spends, ["/api/v1/internal/keys/quota"]);
+    const headers = tieredRateLimitHeaders(
+      result.policy,
+      result.tier,
+      result.quota,
+    );
+    assert.equal(headers["x-ratelimit-scope"], "daily-quota");
+    assert.equal(headers["x-ratelimit-reset"], "2026-07-30T00:00:00.000Z");
+  });
+
+  test("allowed by both spends the quota exactly once, with cost = the route weight", async () => {
+    const { env, spends } = envWith(
+      true,
+      ok({ allowed: true, used: 1, limit: 1000, remaining: 999 }),
+    );
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, true);
+    assert.equal(result.quota?.remaining, 999);
+    assert.deepEqual(spends, ["/api/v1/internal/keys/quota"]);
+  });
+
+  test("a blocked caller short-circuits before both the limiter and the quota", async () => {
+    const spends: unknown[] = [];
+    // The blocklist snapshot lives under the "api-key-blocklist" KV key as a
+    // { blocks: [{ accountId, reasonCode }] } array (see the #8611 block).
+    const env = envWithTier("paid", {
+      METAGRAPH_CONTROL: {
+        get: async (key: string) =>
+          key === "api-key-blocklist"
+            ? { blocks: [{ accountId: 42, reasonCode: "abuse_scraping" }] }
+            : null,
+        put: async () => {},
+      },
+      ANON: { limit: async () => ({ success: true }) },
+      KEYED: { limit: async () => ({ success: true }) },
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          if (path === "/api/v1/internal/keys/quota") {
+            spends.push(path);
+            return Response.json({ allowed: true });
+          }
+          return Response.json({
+            valid: true,
+            code: "VALID",
+            tier: "paid",
+            accountId: "42",
+          });
+        },
+      },
+    });
+    const result = await applyTieredRateLimit(req(), env, CONFIG);
+    assert.equal(result.allowed, false);
+    assert.ok(result.block, "the verdict carries the block");
+    assert.deepEqual(spends, [], "no quota spend on a blocked caller");
+  });
+});
+
 describe("key-level blocklist (#8611)", () => {
   const CONFIG = {
     anonymous: { envVar: "ANON", limit: 10, windowSeconds: 60 },
