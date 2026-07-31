@@ -823,6 +823,8 @@ export const SDL = /* GraphQL */ `
     ): AccountHistory!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
+    "The v440 emission pipeline decomposed per subnet at the block the economics capture was pinned to: each subnet's stage-1 price share, its MinerBurned-reweighted and Hill-gated shares, its final share of block emission, and the split of its TAO intake between pool injection (tao_in_emission) and chain buys (excess_tao). netuid narrows the per-subnet rows only -- aggregate and verification stay network-wide, since a one-subnet slice of a network identity cannot be verified. ALWAYS read verification.verified: false means the four identities did not hold on these exact rows and the response is not defensible. field_sources labels every field measured or reconstructed. A capture with no chain_state is an EMISSION_PIPELINE_UNAVAILABLE error, never a partial body. Mirrors GET /api/v1/chain/emission-pipeline."
+    emission_pipeline(netuid: Int): EmissionPipeline!
     "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
     registry_leaderboards(board: String, limit: Int): RegistryLeaderboards!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -1122,6 +1124,94 @@ export const SDL = /* GraphQL */ `
     validator_count: Int
     miner_count: Int
     mean_emission_share: Float
+  }
+
+  "The v440 emission pipeline replayed over one pinned block (#8744) -- the per-subnet share decomposition, the network aggregate, and the identity checks evaluated on the rows being served."
+  type EmissionPipeline {
+    schema_version: Int!
+    "The block every input below was pinned to. Required: without it nothing here can be verified."
+    chain_state: EmissionPipelineChainState!
+    "Block emission derived from TotalIssuance at that block, never read from the stale BlockEmission storage item."
+    block_emission_tao: Float
+    block_emission_halvings: Int
+    subnets: [SubnetEmissionDecomposition!]!
+    aggregate: EmissionPipelineAggregate!
+    verification: EmissionPipelineVerification!
+    "Per-field { kind, storage } map: every value is labelled measured (with the storage item it came from) or reconstructed (our arithmetic). ADR 0023 decision 5."
+    field_sources: JSON!
+  }
+
+  "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360."
+  type EmissionPipelineChainState {
+    block: Int!
+    "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg."
+    block_hash: String!
+    total_issuance_tao: Float!
+    "theta. Null when the bar is unset, which disables the gate outright."
+    emission_gate_bar: Float
+    emission_bar_quantile: Float
+    "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet."
+    emission_gate_exponent: Int
+  }
+
+  "One subnet's path through stages 0-8. Every share is a fraction of block emission, null where stage 0 excluded the subnet from the distribution entirely."
+  type SubnetEmissionDecomposition {
+    netuid: Int!
+    "Non-null (root, never_emitted, subtoken_disabled, registration_closed) means the subnet took no part in stage 1, and every downstream share is null rather than 0 -- 'not in the distribution' is not 'in it with nothing'."
+    ineligible_reason: String
+    "Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received."
+    emission_share: Float
+    "Stage 2 input. A FRACTION in [0,1], never an amount."
+    miner_burned: Float!
+    weighted_share: Float
+    gated_share: Float
+    "PUBLISHED, NOT INFERRED. A subnet far enough below the bar has its gated share underflow to exactly 0, so an enabled-but-deeply-gated subnet and a disabled one both read final_share: 0 -- this flag is the only thing that separates them."
+    emission_enabled: Boolean!
+    final_share: Float
+    "gated_share - weighted_share. Sums to ~0 across the network: the gate redistributes, it never withholds."
+    gate_delta: Float
+    "weighted_share / theta. Null when the bar is unset."
+    distance_to_bar: Float
+    "Stage 8, measured: the TAO injected into the subnet's pool this block."
+    tao_in_emission: Float
+    "Stage 7, measured: the TAO that reached the subnet by chain buys instead."
+    excess_tao: Float
+    "Their sum -- the subnet's whole TAO intake this block. Null unless both channels were actually read."
+    tao_total: Float
+    "tao_in_emission / tao_total, the headline per-subnet number. Null rather than NaN for a zero-intake subnet: 0/0 is not a fraction, and zero intake is a real state."
+    liquidity_fraction: Float
+    alpha_in_emission: Float
+    alpha_out_emission: Float
+  }
+
+  "Network-wide totals across every row in the capture -- unchanged by the netuid argument, which narrows the per-subnet rows only."
+  type EmissionPipelineAggregate {
+    eligible_count: Int!
+    disabled_count: Int!
+    tao_in_emission: Float!
+    excess_tao: Float!
+    tao_total: Float!
+    "The network split nobody else publishes: pool injection vs chain buys."
+    liquidity_fraction: Float
+    "Sum of final_share. 1.0 to float precision, or the surface is broken."
+    total_final_share: Float!
+  }
+
+  "The four identities, evaluated on the rows being served rather than read from a stored flag -- a stored flag can be green while THIS response is broken, and it can go stale. ADR 0023 decision 3."
+  type EmissionPipelineVerification {
+    "False means at least one identity did not hold on these rows: the response is not defensible and must not be used."
+    verified: Boolean!
+    checks: [EmissionIdentityCheck!]!
+    subnet_share_tolerance: Float!
+    "A rao count as a string -- the tolerance is a bigint, and a JSON number is the wrong type for one."
+    aggregate_tolerance_rao: String!
+  }
+
+  "One identity, reported whether it passed or failed."
+  type EmissionIdentityCheck {
+    name: String!
+    ok: Boolean!
+    detail: String!
   }
 
   type SubnetMovers {
