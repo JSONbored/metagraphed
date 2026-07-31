@@ -4398,7 +4398,7 @@ export const SDL = /* GraphQL */ `
     ss58: String!
     captured_at: String
     position_count: Int!
-    "Sum of this coldkey's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure."
+    "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure."
     total_stake_alpha: Float!
     positions: [NominatorPosition!]!
   }

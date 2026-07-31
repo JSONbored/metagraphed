@@ -427,7 +427,7 @@ export type AccountPositions = {
   positions: Array<NominatorPosition>;
   schema_version: Scalars['Int']['output'];
   ss58: Scalars['String']['output'];
-  /** Sum of this coldkey's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
+  /** Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
   total_stake_alpha: Scalars['Float']['output'];
 };
 
