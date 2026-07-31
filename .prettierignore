@@ -1,4 +1,12 @@
 node_modules
+# Coverage output (gitignored, generated). Not excluded before, so running
+# `npm run test:coverage` and then `npm run format:check` locally made prettier
+# walk thousands of generated lcov-report HTML/CSS/JS files -- measured 13s ->
+# 73s, and it reports them as "code style issues" you cannot fix. CI never hit
+# it because the coverage step runs after Lint + format, which is exactly why
+# it survived: it only ever bites a contributor running things in a sane order.
+coverage
+coverage-mocked
 python
 # has its own prettier config + formatting conventions; formatted/gated on its
 # own terms in CI, not by this root check (same precedent as `python` above).
