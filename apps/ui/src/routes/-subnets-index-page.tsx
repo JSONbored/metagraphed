@@ -1330,6 +1330,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       <th
                         className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
                         aria-sort={ariaSort(search.sort === "emission_share", search.order)}
+                        // #8746: stage-1 price share, not TAO received.
+                        title="Stage 1 of the v440 emission pipeline: share of alpha price, not the share of TAO this subnet receives."
                       >
                         <SortHeader
                           label="Emission"

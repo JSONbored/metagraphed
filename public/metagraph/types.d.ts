@@ -409,7 +409,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.
+         * List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["economicsByNetwork"];
@@ -2775,7 +2775,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. */
+        /** Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. */
         get: operations["domains"];
         put?: never;
         post?: never;
@@ -2792,7 +2792,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share, and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). */
+        /** Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). */
         get: operations["domainSummary"];
         put?: never;
         post?: never;
@@ -2809,7 +2809,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. */
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -2826,7 +2826,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
+        /** Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
         get: operations["economicsTrends"];
         put?: never;
         post?: never;

@@ -46,7 +46,10 @@ const ECONOMIC_BOARDS: BoardSpec[] = [
   {
     key: "highest-emission",
     label: "Highest emission",
-    blurb: "Where network emission is concentrated.",
+    // #8746: the stage-1 PRICE share, not TAO received. The old blurb ("where
+    // network emission is concentrated") read as the latter, which spec 440
+    // separated from this number by five further pipeline stages.
+    blurb: "Where alpha price share is concentrated — stage 1 of emission, not TAO received.",
     metric: (r) => (r.emission_share != null ? `${(r.emission_share * 100).toFixed(2)}%` : null),
   },
   {

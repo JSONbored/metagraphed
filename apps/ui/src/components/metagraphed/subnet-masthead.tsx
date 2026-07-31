@@ -682,8 +682,8 @@ export function SubnetMasthead({
         <StatWithSpark
           label="Emission share"
           value={econ?.emission_share != null ? `${(econ.emission_share * 100).toFixed(3)}%` : "—"}
-          hint="of network emission"
-          full="Share of total network emission this subnet currently receives."
+          hint="stage-1 price share"
+          full="Stage 1 of the v440 emission pipeline: this subnet's share of alpha price (alpha_price / total), NOT the share of TAO it receives. Spec 440 separates the two by miner-burn reweighting, the Hill emission gate, the enabled filter, and the alpha injection cap."
           updatedAt={econRes?.meta?.generated_at}
         />
         <StatWithSpark

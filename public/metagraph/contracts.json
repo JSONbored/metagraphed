@@ -289,7 +289,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived alpha market-cap and FDV proxies, price-weighted emission share, and on-chain registration block height.",
+      "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived alpha market-cap and FDV proxies, price-weighted emission share, and on-chain registration block height. `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition.",
       "id": "economics",
       "path": "/metagraph/economics.json",
       "retirement": null,
@@ -1863,7 +1863,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.ts), each with its member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
+      "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.ts), each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
       "id": "domains",
       "path": "/metagraph/domains.json",
       "retirement": null,
@@ -1874,7 +1874,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One domain/capability tag's own rollup: member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains/{tag}/summary (no static file). Single-tag drill-down from /api/v1/domains.",
+      "description": "One domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains/{tag}/summary (no static file). Single-tag drill-down from /api/v1/domains.",
       "id": "domain-summary",
       "path": "/metagraph/domains/{tag}/summary.json",
       "retirement": null,
