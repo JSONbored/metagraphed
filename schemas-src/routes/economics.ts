@@ -8,7 +8,7 @@
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
-import { SubnetEconomicsSchema } from "../shared.ts";
+import { ChainStateSchema, SubnetEconomicsSchema } from "../shared.ts";
 
 // TAO amounts here are lossless fixed 9-decimal (rao-precision) strings, not
 // numbers -- a JSON number is only exact to 2^53-1 (~9,007,199 TAO at rao
@@ -20,6 +20,8 @@ const RaoPrecisionTaoStringSchema = z.string().regex(/^\d+\.\d{9}$/);
 export const EconomicsArtifactSchema = ArtifactBaseSchema.extend({
   captured_at: z.string().nullable(),
   network: z.string().nullable(),
+  // Optional, never null: absent means this refresh pinned no block (#8744).
+  chain_state: ChainStateSchema.optional(),
   subnets: z.array(SubnetEconomicsSchema),
   summary: z
     .object({

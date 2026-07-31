@@ -1381,6 +1381,10 @@ const economics = buildEconomicsArtifact({
   network: nativeSnapshot.network,
   capturedAt: nativeSnapshot.captured_at,
   priceHistoryByNetuid,
+  // #8744: the height the v440 pipeline reads were pinned to. Produced by
+  // fetch-native-subnets.py since #8743 and, until now, dropped here -- the
+  // decomposition is only defensible against the block it was read at.
+  chainState: nativeSnapshot.chain_state ?? null,
 });
 economics.contract_version = contractVersion;
 await writeJson(artifactFile("economics.json"), economics);

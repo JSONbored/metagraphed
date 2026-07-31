@@ -8842,6 +8842,9 @@ function snapshotRow(overrides = {}) {
     emission_enabled: true,
     subtoken_enabled: true,
     first_emission_block: 5228683,
+    // #8744 provenance for the pipeline inputs above.
+    pipeline_block: 8740436,
+    pipeline_block_hash: `0x${"ab".repeat(32)}`,
     captured_at: 1780000000000,
     ...overrides,
   };
@@ -9029,6 +9032,79 @@ test("subnet-snapshot-sync writes emission_enabled=false rather than dropping it
   expect(insert.values).toContain(false);
   expect(insert.values).toContain(0);
   expect(String(insert.text)).toMatch(/emission_enabled/);
+});
+
+test("subnet-snapshot-sync writes the #8744 pipeline provenance", async () => {
+  const res = await postSubnetSnapshot([snapshotRow()], {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((call) =>
+    /INSERT INTO subnet_snapshots\b/.test(String(call.text)),
+  )!;
+  expect(insert.values).toContain(8740436);
+  expect(insert.values).toContain(`0x${"ab".repeat(32)}`);
+  // COALESCE(existing, excluded) on both, so a later degraded fire cannot
+  // overwrite a good height with a null.
+  expect(String(insert.text)).toMatch(
+    /pipeline_block = COALESCE\(subnet_snapshots\.pipeline_block/,
+  );
+  expect(String(insert.text)).toMatch(
+    /pipeline_block_hash = COALESCE\(subnet_snapshots\.pipeline_block_hash/,
+  );
+});
+
+// The hash is guarded on SHAPE, not merely on type: it is published as the
+// thing a reader replays our arithmetic against, so a malformed one is worse
+// than none -- it would look like provenance while pointing nowhere.
+test("subnet-snapshot-sync nulls a malformed pipeline_block_hash", async () => {
+  for (const bad of [
+    "not-a-hash",
+    "0xabc",
+    `${"ab".repeat(32)}`,
+    `0x${"ab".repeat(32)}ff`,
+    `0x${"zz".repeat(32)}`,
+    12345,
+  ]) {
+    sqlCalls.length = 0;
+    const res = await postSubnetSnapshot(
+      [snapshotRow({ pipeline_block_hash: bad })],
+      { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+    );
+    expect(res.status).toBe(200);
+    const insert = sqlCalls.find((call) =>
+      /INSERT INTO subnet_snapshots\b/.test(String(call.text)),
+    )!;
+    expect(insert.values).not.toContain(bad);
+  }
+});
+
+test("subnet-snapshot-sync accepts an upper-case pipeline_block_hash", async () => {
+  const upper = `0x${"AB".repeat(32)}`;
+  const res = await postSubnetSnapshot(
+    [snapshotRow({ pipeline_block_hash: upper })],
+    { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((call) =>
+    /INSERT INTO subnet_snapshots\b/.test(String(call.text)),
+  )!;
+  expect(insert.values).toContain(upper);
+});
+
+test("subnet-snapshot-sync nulls a non-finite pipeline_block", async () => {
+  for (const bad of ["8740436", Number.NaN]) {
+    sqlCalls.length = 0;
+    const res = await postSubnetSnapshot(
+      [snapshotRow({ pipeline_block: bad })],
+      { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+    );
+    expect(res.status).toBe(200);
+    const insert = sqlCalls.find((call) =>
+      /INSERT INTO subnet_snapshots\b/.test(String(call.text)),
+    )!;
+    expect(insert.values).not.toContain(bad);
+  }
 });
 
 test("subnet-snapshot-sync nulls a non-boolean emission flag", async () => {

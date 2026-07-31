@@ -4229,6 +4229,11 @@
         "value": {
           "data": {
             "captured_at": "2026-06-01T00:00:00.000Z",
+            "chain_state": {
+              "block": 5000000,
+              "block_hash": "example",
+              "total_issuance_tao": 0.5
+            },
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
             "network": "example",
@@ -23597,6 +23602,30 @@
                 "type": "null"
               }
             ]
+          },
+          "chain_state": {
+            "additionalProperties": false,
+            "properties": {
+              "block": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "block_hash": {
+                "pattern": "^0x[0-9a-fA-F]{64}$",
+                "type": "string"
+              },
+              "total_issuance_tao": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "block",
+              "block_hash",
+              "total_issuance_tao"
+            ],
+            "type": "object"
           },
           "contract_version": {
             "type": "string"

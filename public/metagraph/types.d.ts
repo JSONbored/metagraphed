@@ -7207,6 +7207,11 @@ export interface components {
         };
         EconomicsArtifact: {
             captured_at: string | null;
+            chain_state?: {
+                block: number;
+                block_hash: string;
+                total_issuance_tao: number;
+            };
             contract_version?: string;
             generated_at: string;
             network: string | null;
@@ -13746,6 +13751,11 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "chain_state": {
+                     *           "block": 5000000,
+                     *           "block_hash": "example",
+                     *           "total_issuance_tao": 0.5
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "example",
@@ -32141,6 +32151,11 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "chain_state": {
+                     *           "block": 5000000,
+                     *           "block_hash": "example",
+                     *           "total_issuance_tao": 0.5
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "example",
