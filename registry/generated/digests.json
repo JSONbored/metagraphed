@@ -1,0 +1,177 @@
+{
+  "digests": [
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 104,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn104:hyperparam:8614531:min_burn_tao",
+            "chain:sn104:hyperparam:8611693:min_burn_tao",
+            "chain:sn104:hyperparam:8611693:immunity_period"
+          ],
+          "text": "Subnet 104 recorded three hyperparameter changes on 13 July."
+        }
+      ],
+      "slug": "2026-w29",
+      "sources": [
+        {
+          "id": "chain:sn104:hyperparam:8614531:min_burn_tao",
+          "summary": "Minimum burn changed from 0.1 to 1 at block #8614531.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn104"
+          ],
+          "timestamp": "2026-07-13T19:16:03.167Z",
+          "title": "Subnet 104: Minimum burn 0.1 → 1",
+          "url": "https://metagraph.sh/blocks/8614531"
+        },
+        {
+          "id": "chain:sn104:hyperparam:8611693:min_burn_tao",
+          "summary": "Minimum burn changed from 1 to 0.1 at block #8611693.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn104"
+          ],
+          "timestamp": "2026-07-13T09:48:49.763Z",
+          "title": "Subnet 104: Minimum burn 1 → 0.1",
+          "url": "https://metagraph.sh/blocks/8611693"
+        },
+        {
+          "id": "chain:sn104:hyperparam:8611693:immunity_period",
+          "summary": "Immunity period changed from 60 to 7200 at block #8611693.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn104"
+          ],
+          "timestamp": "2026-07-13T09:48:49.763Z",
+          "title": "Subnet 104: Immunity period 60 → 7200",
+          "url": "https://metagraph.sh/blocks/8611693"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 29,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 86,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn86:hyperparam:8693315:target_regs_per_interval",
+            "chain:sn86:hyperparam:8693315:yuma_version",
+            "chain:sn86:hyperparam:8693315:subnet_is_active"
+          ],
+          "text": "Subnet 86 recorded three hyperparameter changes on 24 July."
+        }
+      ],
+      "slug": "2026-w30",
+      "sources": [
+        {
+          "id": "chain:sn86:hyperparam:8693315:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #8693315.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn86"
+          ],
+          "timestamp": "2026-07-24T18:00:12.450Z",
+          "title": "Subnet 86: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/8693315"
+        },
+        {
+          "id": "chain:sn86:hyperparam:8693315:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #8693315.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn86"
+          ],
+          "timestamp": "2026-07-24T18:00:12.450Z",
+          "title": "Subnet 86: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/8693315"
+        },
+        {
+          "id": "chain:sn86:hyperparam:8693315:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #8693315.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn86"
+          ],
+          "timestamp": "2026-07-24T18:00:12.450Z",
+          "title": "Subnet 86: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/8693315"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 30,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 90,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn90:hyperparam:8625009:target_regs_per_interval",
+            "chain:sn90:hyperparam:8625009:yuma_version",
+            "chain:sn90:hyperparam:8625009:subnet_is_active"
+          ],
+          "text": "Subnet 90 recorded three hyperparameter changes on 15 July."
+        }
+      ],
+      "slug": "2026-w29",
+      "sources": [
+        {
+          "id": "chain:sn90:hyperparam:8625009:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #8625009.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn90"
+          ],
+          "timestamp": "2026-07-15T06:14:28.110Z",
+          "title": "Subnet 90: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/8625009"
+        },
+        {
+          "id": "chain:sn90:hyperparam:8625009:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #8625009.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn90"
+          ],
+          "timestamp": "2026-07-15T06:14:28.110Z",
+          "title": "Subnet 90: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/8625009"
+        },
+        {
+          "id": "chain:sn90:hyperparam:8625009:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #8625009.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn90"
+          ],
+          "timestamp": "2026-07-15T06:14:28.110Z",
+          "title": "Subnet 90: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/8625009"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 29,
+      "year": 2026
+    }
+  ],
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "schema_version": 1
+}
