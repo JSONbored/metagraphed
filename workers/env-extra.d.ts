@@ -40,14 +40,28 @@ interface Env {
    * GitHub throttles. */
   GITHUB_TOKEN?: string;
   /**
-   * #8600: Ethereum JSON-RPC endpoint for the TAO/USD index (ADR 0025).
+   * #8600: Ethereum MAINNET JSON-RPC endpoint for the TAO/USD index (ADR
+   * 0025). Mainnet specifically -- every pool ADR 0025 names is Uniswap v3 on
+   * Ethereum L1, not an L2.
    *
-   * A deploy-time binding with NO committed default, deliberately. Every free
-   * public endpoint surveyed carries blanket "no scraping / no derivative
-   * works" terms -- the same clauses that ruled out the CEX basis -- so which
-   * endpoint we accept terms with is an ops decision, not a repo constant.
-   * Unset means the ingestion tick is a recorded no-op, never a fallback to
-   * some other provider's node.
+   * A SECRET, not a var, and with no committed default. Two separate reasons,
+   * and both matter:
+   *
+   * SECRET, because the credential IS the URL. Providers whose terms permit
+   * programmatic access authenticate by embedding the key in the path
+   * (https://eth-mainnet.g.alchemy.com/v2/<key>), so there is no version of
+   * this that is safe to put in `vars`.
+   *
+   * NO DEFAULT, because every free public endpoint surveyed carries blanket
+   * "no scraping / no derivative works" terms -- the same clauses that ruled
+   * out the CEX basis in ADR 0025. Which endpoint we accept terms with is an
+   * ops decision, not a repo constant. Note this inverts the CEX finding: for
+   * an exchange a key made things worse (it meant accepting a redistribution
+   * ban), while for an RPC provider a key makes them better, because selling
+   * programmatic access IS the product.
+   *
+   * Unset, the ingestion tick is a recorded no-op -- never a silent fallback
+   * to some other provider's node.
    */
   ETH_RPC_URL?: string;
   HEALTH_CHECKS_SYNC_SECRET?: string;
