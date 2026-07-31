@@ -7,6 +7,8 @@ import {
   formatTrajectory,
   loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
+  PROBE_CADENCE_MS,
+  MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.ts";
 import {
   syncSubnetSnapshotToPostgres,
@@ -95,8 +97,12 @@ describe("formatIncidents", () => {
     assert.equal(surface.uptime_ratio, 0.96);
     assert.equal(surface.incident_count, 2);
     assert.equal(surface.incidents[0].failed_samples, 3);
-    assert.equal(surface.incidents[0].duration_ms, 240000);
-    assert.equal(surface.downtime_ms, 240000 + 120000);
+    // #8824: duration_ms = observed span + PROBE_CADENCE_MS (A1).
+    assert.equal(surface.incidents[0].duration_ms, 240000 + PROBE_CADENCE_MS);
+    assert.equal(surface.downtime_ms, 240000 + 120000 + 2 * PROBE_CADENCE_MS);
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
+    assert.equal(surface.transient_failure_count, 0);
+    assert.equal(surface.transient_failed_samples, 0);
   });
   test("surface with no incidents has zero incidents", () => {
     const out = formatIncidents({
@@ -114,6 +120,112 @@ describe("formatIncidents", () => {
       incidentRows: [],
     }) as Row;
     assert.equal(out.surfaces[0].uptime_ratio, null);
+  });
+  // #8824 requirement A: a 15-min-cadence, 3-failed-probe outage (12:00 ok /
+  // 12:15,12:30,12:45 fail / 13:00 ok) must report duration_ms strictly
+  // greater than 30 minutes (the old formula reported exactly 30 min --
+  // 12:45 - 12:15 -- systematically excluding both edge intervals). Fails
+  // before this change (30 * 60_000 is not > 30 * 60_000), passes after.
+  test("a 3-failed-probe outage at 15-min cadence reports duration_ms strictly > 30 minutes", () => {
+    const t1215 = Date.parse("2026-07-01T12:15:00.000Z");
+    const t1245 = Date.parse("2026-07-01T12:45:00.000Z");
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "flaky", total: 5, ok_count: 2 }],
+      incidentRows: [
+        {
+          surface_id: "flaky",
+          started_at: t1215,
+          ended_at: t1245,
+          failed_samples: 3,
+        },
+      ],
+    }) as Row;
+    const incident = out.surfaces[0].incidents[0];
+    assert.ok(incident.duration_ms > 30 * 60_000);
+    assert.ok(incident.duration_ms >= t1245 - t1215);
+    assert.equal(incident.duration_ms, t1245 - t1215 + PROBE_CADENCE_MS);
+  });
+  // #8824 requirement B: sub-MIN_INCIDENT_SAMPLES flaps never surface as a
+  // qualifying incident, but must be visible + countable so incident_count: 0
+  // next to uptime_ratio < 1 is explained rather than reading as a
+  // contradiction.
+  test("a surface with only single-probe failures reports transient_failure_count, not a phantom incident", () => {
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "flappy", total: 100, ok_count: 98 }],
+      incidentRows: [
+        {
+          surface_id: "flappy",
+          row_kind: "transient",
+          failed_samples: 2,
+          transient_islands: 2,
+        },
+      ],
+    }) as Row;
+    const surface = out.surfaces[0];
+    assert.equal(surface.incident_count, 0);
+    assert.equal(surface.downtime_ms, 0);
+    assert.ok(surface.uptime_ratio < 1);
+    assert.equal(surface.transient_failure_count, 2);
+    assert.equal(surface.transient_failed_samples, 2);
+  });
+  test("a transient row with a missing island/sample count defaults to 0, not NaN", () => {
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "y", total: 10, ok_count: 10 }],
+      incidentRows: [{ surface_id: "y", row_kind: "transient" }],
+    }) as Row;
+    assert.equal(out.surfaces[0].transient_failure_count, 0);
+    assert.equal(out.surfaces[0].transient_failed_samples, 0);
+  });
+  // #8824 requirement 5: samples - round(uptime_ratio * samples) must equal
+  // sum(incidents[].failed_samples) + transient_failed_samples exactly, on a
+  // fixture mixing one qualifying incident with two single-probe flaps.
+  test("reconciles samples/uptime_ratio against incidents + transient flaps", () => {
+    const t = 1_000_000_000_000;
+    const out = formatIncidents({
+      netuid: 1,
+      // 100 samples, 95 ok -> 5 failed: 3 in the qualifying incident, 2 as
+      // single-probe transient flaps.
+      slaRows: [{ surface_id: "mixed", total: 100, ok_count: 95 }],
+      incidentRows: [
+        {
+          surface_id: "mixed",
+          started_at: t,
+          ended_at: t + 30 * 60_000,
+          failed_samples: 3,
+        },
+        {
+          surface_id: "mixed",
+          row_kind: "transient",
+          failed_samples: 2,
+          transient_islands: 2,
+        },
+      ],
+    }) as Row;
+    const surface = out.surfaces[0];
+    const failedFromRatio =
+      surface.samples - Math.round(surface.uptime_ratio * surface.samples);
+    const accountedFor =
+      surface.incidents.reduce(
+        (sum: number, i: Row) => sum + (i.failed_samples as number),
+        0,
+      ) + surface.transient_failed_samples;
+    assert.equal(failedFromRatio, accountedFor);
+    assert.equal(failedFromRatio, 5);
+  });
+  // #8824 requirement 8: every new field is emitted (never omitted) on the
+  // cold/empty path, matching formatBulkTrends/formatUptime's convention.
+  test("cold path emits transient_failure_count/transient_failed_samples/min_incident_samples rather than omitting them", () => {
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [{ surface_id: "cold", total: 10, ok_count: 10 }],
+      incidentRows: [],
+    }) as Row;
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
+    assert.equal(out.surfaces[0].transient_failure_count, 0);
+    assert.equal(out.surfaces[0].transient_failed_samples, 0);
   });
   test("caps materialized incidents when requested by the API", () => {
     const t = 1_000_000_000_000;

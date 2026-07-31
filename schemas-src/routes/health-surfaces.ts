@@ -138,6 +138,10 @@ const GlobalIncidentEntrySchema = z
   .object({
     started_at: z.int(),
     ended_at: z.int(),
+    // #8824: (ended_at - started_at) + PROBE_CADENCE_MS -- the observed
+    // failed span plus one probe cadence, since the outage began sometime in
+    // the interval before started_at and ended sometime in the interval
+    // after ended_at. Always > ended_at - started_at.
     duration_ms: z.int().min(0),
     // Bucket (b): formatGlobalIncidents() always sets failed_samples --
     // tightened from optional to required.
@@ -154,6 +158,11 @@ const GlobalIncidentSurfaceSchema = z
     // downtime_ms (the sum of this surface's own incident durations) --
     // tightened from optional to required.
     downtime_ms: z.int().min(0),
+    // #8824: sub-MIN_INCIDENT_SAMPLES gap-islands the incident query excludes
+    // for this surface -- island count and their total failed probes --
+    // always emitted (0 on the cold/no-flap path), never omitted.
+    transient_failure_count: z.int().min(0),
+    transient_failed_samples: z.int().min(0),
     incidents: z.array(GlobalIncidentEntrySchema),
   })
   .passthrough();
@@ -170,6 +179,9 @@ export const GlobalIncidentsArtifactSchema = z
         affected_surface_count: z.int().min(0),
       })
       .passthrough(),
+    // #8824: the incident-qualifying threshold (MIN_INCIDENT_SAMPLES),
+    // published once so a surface's transient_failure_count is self-describing.
+    min_incident_samples: z.int().min(1),
     surfaces: z.array(GlobalIncidentSurfaceSchema),
   })
   .passthrough();
@@ -260,6 +272,10 @@ const HealthIncidentEntrySchema = z
   .object({
     started_at: z.int(),
     ended_at: z.int(),
+    // #8824: (ended_at - started_at) + PROBE_CADENCE_MS -- the observed
+    // failed span plus one probe cadence, since the outage began sometime in
+    // the interval before started_at and ended sometime in the interval
+    // after ended_at. Always > ended_at - started_at.
     duration_ms: z.int().min(0),
     failed_samples: z.int().min(0),
   })
@@ -272,6 +288,13 @@ const HealthIncidentSurfaceSchema = z
     uptime_ratio: z.number().nullable(),
     incident_count: z.int().min(0),
     downtime_ms: z.int().min(0),
+    // #8824: sub-MIN_INCIDENT_SAMPLES gap-islands the incident query excludes
+    // for this surface -- island count and their total failed probes --
+    // always emitted (0 on the cold/no-flap path), never omitted. Reconciles
+    // uptime_ratio against incident_count: incident_count 0 alongside
+    // uptime_ratio < 1 only ever occurs with transient_failure_count > 0.
+    transient_failure_count: z.int().min(0),
+    transient_failed_samples: z.int().min(0),
     incidents: z.array(HealthIncidentEntrySchema),
   })
   .passthrough();
@@ -283,6 +306,9 @@ export const HealthIncidentsArtifactSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
+    // #8824: the incident-qualifying threshold (MIN_INCIDENT_SAMPLES),
+    // published once so a surface's transient_failure_count is self-describing.
+    min_incident_samples: z.int().min(1),
     surfaces: z.array(HealthIncidentSurfaceSchema),
   })
   .passthrough();

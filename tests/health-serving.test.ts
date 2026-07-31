@@ -21,6 +21,8 @@ import {
   subnetBadgeStatus,
   summarizeRows,
   utcWindowCutoffDay,
+  PROBE_CADENCE_MS,
+  MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -3085,7 +3087,11 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
     assert.equal(out.surfaces[0].netuid, 7); // sorted by netuid
     const sn7 = out.surfaces.find((s: Row) => s.netuid === 7);
     assert.equal(sn7.incident_count, 2);
-    assert.equal(sn7.downtime_ms, 10000); // 4000 + 6000
+    // #8824: each incident's duration_ms extends by PROBE_CADENCE_MS (A1).
+    assert.equal(sn7.downtime_ms, 10000 + 2 * PROBE_CADENCE_MS); // 4000 + 6000 + 2*cadence
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
+    assert.equal(sn7.transient_failure_count, 0);
+    assert.equal(sn7.transient_failed_samples, 0);
   });
 
   test("empty rows -> empty ledger; caps at maxIncidents", () => {
@@ -3113,6 +3119,56 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
       ],
     }) as Row;
     assert.equal(capped.summary.incident_count, 1);
+  });
+
+  // #8824 requirement 8: cold path still emits min_incident_samples.
+  test("empty ledger still emits min_incident_samples", () => {
+    const out = formatGlobalIncidents({ incidentRows: [] }) as Row;
+    assert.equal(out.min_incident_samples, MIN_INCIDENT_SAMPLES);
+  });
+
+  // #8824 requirement B/4: a transient (sub-threshold) row attaches its
+  // rollup onto the matching surface already present from a real incident.
+  test("attaches transient_failure_count/transient_failed_samples to a surface with a qualifying incident", () => {
+    const out = formatGlobalIncidents({
+      incidentRows: [
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 1000,
+          ended_at: 2000,
+          failed_samples: 2,
+        },
+        {
+          netuid: 7,
+          surface_id: "a",
+          row_kind: "transient",
+          failed_samples: 3,
+          transient_islands: 3,
+        },
+      ],
+    }) as Row;
+    const sn7 = out.surfaces.find((s: Row) => s.netuid === 7);
+    assert.equal(sn7.transient_failure_count, 3);
+    assert.equal(sn7.transient_failed_samples, 3);
+  });
+
+  test("a transient row with a missing island/sample count defaults to 0, not NaN", () => {
+    const out = formatGlobalIncidents({
+      incidentRows: [
+        {
+          netuid: 7,
+          surface_id: "a",
+          started_at: 1000,
+          ended_at: 2000,
+          failed_samples: 2,
+        },
+        { netuid: 7, surface_id: "a", row_kind: "transient" },
+      ],
+    }) as Row;
+    const sn7 = out.surfaces.find((s: Row) => s.netuid === 7);
+    assert.equal(sn7.transient_failure_count, 0);
+    assert.equal(sn7.transient_failed_samples, 0);
   });
 });
 

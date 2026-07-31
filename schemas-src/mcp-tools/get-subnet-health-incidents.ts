@@ -32,6 +32,10 @@ const GetSubnetHealthIncidentsSurfaceSchema = z
     uptime_ratio: z.number().nullable().optional(),
     incident_count: z.int().optional(),
     downtime_ms: z.int().optional(),
+    // #8824: sub-MIN_INCIDENT_SAMPLES gap-islands excluded from incidents --
+    // island count + their total failed probes -- mirrors the REST route.
+    transient_failure_count: z.int().optional(),
+    transient_failed_samples: z.int().optional(),
     incidents: z.array(GetSubnetHealthIncidentSchema).optional(),
   })
   .passthrough();
@@ -43,6 +47,8 @@ export const GetSubnetHealthIncidentsOutputSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string().nullable().optional(),
+    // #8824: the incident-qualifying threshold, mirrors the REST route.
+    min_incident_samples: z.int().optional(),
     surfaces: z.array(GetSubnetHealthIncidentsSurfaceSchema),
   })
   .passthrough();

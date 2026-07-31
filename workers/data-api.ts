@@ -8979,9 +8979,13 @@ async function dispatchDataApiRequest(
               surface_key: string;
               // MIN/MAX of checked_at (BIGINT) stay bigint -> string, same
               // as the other checked_at aggregates in this file.
-              started_at: string;
-              ended_at: string;
+              started_at: string | null;
+              ended_at: string | null;
               failed_samples: string;
+              // Only set (non-null) on a `row_kind: "transient"` row -- the
+              // per-surface rollup of sub-MIN_INCIDENT_SAMPLES islands.
+              transient_islands: string | null;
+              row_kind: "incident" | "transient";
             }[]
           >`
           WITH checks AS (
@@ -8997,21 +9001,31 @@ async function dispatchDataApiRequest(
                      OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
             FROM checks
           ),
-          incidents AS (
+          islands AS (
             SELECT MAX(surface_id) AS surface_id, surface_key,
                    MIN(checked_at) AS started_at, MAX(checked_at) AS ended_at,
                    COUNT(*) AS failed_samples
             FROM grouped WHERE NOT ok
             GROUP BY surface_key, grp
-            HAVING COUNT(*) >= ${MIN_INCIDENT_SAMPLES}
-          )
-          SELECT surface_id, surface_key, started_at, ended_at, failed_samples
-          FROM (
+          ),
+          qualifying AS (
             SELECT surface_id, surface_key, started_at, ended_at, failed_samples,
                    ROW_NUMBER() OVER (PARTITION BY surface_key ORDER BY started_at) AS rn
-            FROM incidents
-          ) ranked
-          WHERE rn <= ${MAX_INCIDENT_ROWS}
+            FROM islands WHERE failed_samples >= ${MIN_INCIDENT_SAMPLES}
+          )
+          -- #8824: same "islands" CTE feeds both branches -- no second scan of
+          -- surface_checks -- so the sub-threshold flaps the incident branch
+          -- excludes are still visible, as a per-surface rollup, not lost.
+          SELECT surface_id, surface_key, started_at, ended_at, failed_samples,
+                 NULL::bigint AS transient_islands, 'incident' AS row_kind
+          FROM qualifying WHERE rn <= ${MAX_INCIDENT_ROWS}
+          UNION ALL
+          SELECT MAX(surface_id) AS surface_id, surface_key,
+                 NULL::bigint AS started_at, NULL::bigint AS ended_at,
+                 SUM(failed_samples)::bigint AS failed_samples,
+                 COUNT(*)::bigint AS transient_islands, 'transient' AS row_kind
+          FROM islands WHERE failed_samples < ${MIN_INCIDENT_SAMPLES}
+          GROUP BY surface_key
           ORDER BY surface_id, started_at`;
           const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
@@ -9050,9 +9064,13 @@ async function dispatchDataApiRequest(
               netuid: SurfaceChecks["netuid"];
               surface_id: string;
               surface_key: string;
-              started_at: string;
-              ended_at: string;
+              started_at: string | null;
+              ended_at: string | null;
               failed_samples: string;
+              // Only set (non-null) on a `row_kind: "transient"` row -- the
+              // per-surface rollup of sub-MIN_INCIDENT_SAMPLES islands.
+              transient_islands: string | null;
+              row_kind: "incident" | "transient";
             }[]
           >`
           WITH recent_checks AS (
@@ -9072,15 +9090,34 @@ async function dispatchDataApiRequest(
                    SUM(CASE WHEN ok OR gap IS NULL OR gap > ${INCIDENT_GAP_MS} THEN 1 ELSE 0 END)
                      OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
             FROM checks
+          ),
+          islands AS (
+            SELECT netuid, MAX(surface_id) AS surface_id, surface_key,
+                   MIN(checked_at) AS started_at, MAX(checked_at) AS ended_at,
+                   COUNT(*) AS failed_samples
+            FROM grouped WHERE NOT ok
+            GROUP BY netuid, surface_key, grp
+          ),
+          qualifying AS (
+            SELECT netuid, surface_id, surface_key, started_at, ended_at, failed_samples
+            FROM islands WHERE failed_samples >= ${MIN_INCIDENT_SAMPLES}
+            ORDER BY started_at DESC
+            LIMIT ${MAX_INCIDENT_ROWS}
           )
+          -- #8824: same "islands" CTE feeds both branches -- no second scan of
+          -- surface_checks -- so the sub-threshold flaps the incident branch
+          -- excludes are still visible, as a per-surface rollup, not lost.
+          SELECT netuid, surface_id, surface_key, started_at, ended_at, failed_samples,
+                 NULL::bigint AS transient_islands, 'incident' AS row_kind
+          FROM qualifying
+          UNION ALL
           SELECT netuid, MAX(surface_id) AS surface_id, surface_key,
-                 MIN(checked_at) AS started_at, MAX(checked_at) AS ended_at,
-                 COUNT(*) AS failed_samples
-          FROM grouped WHERE NOT ok
-          GROUP BY netuid, surface_key, grp
-          HAVING COUNT(*) >= ${MIN_INCIDENT_SAMPLES}
-          ORDER BY started_at DESC
-          LIMIT ${MAX_INCIDENT_ROWS}`;
+                 NULL::bigint AS started_at, NULL::bigint AS ended_at,
+                 SUM(failed_samples)::bigint AS failed_samples,
+                 COUNT(*)::bigint AS transient_islands, 'transient' AS row_kind
+          FROM islands WHERE failed_samples < ${MIN_INCIDENT_SAMPLES}
+          GROUP BY netuid, surface_key
+          ORDER BY started_at DESC NULLS LAST`;
           const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE checked_at >= ${since}`;

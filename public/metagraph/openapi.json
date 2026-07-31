@@ -5085,6 +5085,7 @@
       "GlobalIncidentsArtifactResponse": {
         "value": {
           "data": {
+            "min_incident_samples": 1,
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "source": "live-cron-prober",
@@ -5105,7 +5106,9 @@
                   }
                 ],
                 "netuid": 7,
-                "surface_id": "example"
+                "surface_id": "example",
+                "transient_failed_samples": 1,
+                "transient_failure_count": 1
               }
             ],
             "window": "30d"
@@ -5286,6 +5289,7 @@
       "HealthIncidentsArtifactResponse": {
         "value": {
           "data": {
+            "min_incident_samples": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -5304,6 +5308,8 @@
                 ],
                 "samples": 1,
                 "surface_id": "example",
+                "transient_failed_samples": 1,
+                "transient_failure_count": 1,
                 "uptime_ratio": 0.9966
               }
             ],
@@ -27052,6 +27058,11 @@
       "GlobalIncidentsArtifact": {
         "additionalProperties": {},
         "properties": {
+          "min_incident_samples": {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
           "observed_at": {
             "anyOf": [
               {
@@ -27146,6 +27157,16 @@
                 },
                 "surface_id": {
                   "type": "string"
+                },
+                "transient_failed_samples": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "transient_failure_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -27153,6 +27174,8 @@
                 "surface_id",
                 "incident_count",
                 "downtime_ms",
+                "transient_failure_count",
+                "transient_failed_samples",
                 "incidents"
               ],
               "type": "object"
@@ -27174,6 +27197,7 @@
           "schema_version",
           "source",
           "summary",
+          "min_incident_samples",
           "surfaces"
         ],
         "type": "object"
@@ -27841,6 +27865,11 @@
       "HealthIncidentsArtifact": {
         "additionalProperties": {},
         "properties": {
+          "min_incident_samples": {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
           "netuid": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -27921,6 +27950,16 @@
                 "surface_id": {
                   "type": "string"
                 },
+                "transient_failed_samples": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "transient_failure_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "uptime_ratio": {
                   "anyOf": [
                     {
@@ -27938,6 +27977,8 @@
                 "uptime_ratio",
                 "incident_count",
                 "downtime_ms",
+                "transient_failure_count",
+                "transient_failed_samples",
                 "incidents"
               ],
               "type": "object"
@@ -27959,6 +28000,7 @@
           "schema_version",
           "netuid",
           "source",
+          "min_incident_samples",
           "surfaces"
         ],
         "type": "object"
