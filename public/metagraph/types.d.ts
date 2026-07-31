@@ -8114,11 +8114,14 @@ export interface components {
             schema_version: 1;
         };
         NetworkParametersArtifact: {
+            block_emission_halvings?: number | null;
+            block_emission_tao?: number | null;
             pending_childkey_cooldown_blocks?: number | null;
             queried_at?: string | null;
             schema_version: number;
             stake_threshold_tao?: number | null;
             tao_weight?: number | null;
+            total_issuance_tao?: number | null;
         } & {
             [key: string]: unknown;
         };
@@ -35839,11 +35842,14 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "block_emission_halvings": 5000000,
+                     *         "block_emission_tao": 5000000,
                      *         "pending_childkey_cooldown_blocks": 5000000,
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "stake_threshold_tao": 0.5,
-                     *         "tao_weight": 0.5
+                     *         "tao_weight": 0.5,
+                     *         "total_issuance_tao": 0.5
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

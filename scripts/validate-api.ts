@@ -913,6 +913,31 @@ const checks: [string, (body: Row) => void][] = [
       assert.equal("tao_weight" in body.data, true);
       assert.equal("stake_threshold_tao" in body.data, true);
       assert.equal("pending_childkey_cooldown_blocks" in body.data, true);
+      // #8747: block emission is DERIVED from TotalIssuance, never read from
+      // the `BlockEmission` storage item, which reads 1.0 TAO and has been
+      // stale since the first halving. Asserted against the live response
+      // because the failure mode is silent: a stale 1.0 looks perfectly
+      // plausible and makes every emission share wrong by exactly 2x.
+      assert.equal("total_issuance_tao" in body.data, true);
+      assert.equal("block_emission_tao" in body.data, true);
+      assert.equal("block_emission_halvings" in body.data, true);
+      const halvings = body.data.block_emission_halvings;
+      const emission = body.data.block_emission_tao;
+      if (halvings !== null && emission !== null) {
+        assert.equal(Number.isInteger(halvings), true);
+        // The curve is a step: emission is exactly 1 TAO shifted right by the
+        // halving count. Any other value means the storage item leaked back in
+        // or the derivation drifted from the runtime formula.
+        assert.equal(
+          emission,
+          1 / 2 ** halvings,
+          `block_emission_tao ${emission} does not match 1/2^${halvings}`,
+        );
+        assert.ok(
+          halvings >= 1,
+          "the network is past its first halving; halvings < 1 means the stale BlockEmission item is being read",
+        );
+      }
     },
   ],
   [

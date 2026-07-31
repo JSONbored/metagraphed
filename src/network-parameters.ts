@@ -26,6 +26,8 @@
 //   PendingChildKeyCooldown raw result 0x201c000000000000 -> a plain u64
 //     block count (7200, no TAO conversion).
 
+import { blockEmissionForIssuance } from "./block-emission.ts";
+
 export const NETWORK_PARAMETERS_KV_TTL = 300; // seconds -- governance-adjustable, changes rarely but not never
 export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10; // seconds
 export const NETWORK_PARAMETERS_RPC_TIMEOUT_MS = 5000;
@@ -40,6 +42,12 @@ const STAKE_THRESHOLD_STORAGE_KEY =
 // twox128("SubtensorModule") ++ twox128("PendingChildKeyCooldown").
 const PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf0555503e4fe5f139cae8b9d045e82e1c83a2";
+// twox128("SubtensorModule") ++ twox128("TotalIssuance"). #8747: block
+// emission is DERIVED from this, never read from the `BlockEmission` storage
+// item -- see src/block-emission.ts for why that item is stale and what
+// reading it costs.
+const TOTAL_ISSUANCE_STORAGE_KEY =
+  "0x658faa385070e074c85bf6b568cf055557c875e4cff74148e4628f264b974c80";
 
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // BigInt. Returns null for anything else (malformed/short/absent result).
@@ -109,6 +117,12 @@ export interface NetworkParameters {
   tao_weight: number | null;
   stake_threshold_tao: number | null;
   pending_childkey_cooldown_blocks: number | null;
+  /** Total issuance in TAO, the input the block-emission halving is derived from (#8747). */
+  total_issuance_tao: number | null;
+  /** TAO emitted per block right now. Derived, never read from `BlockEmission`. */
+  block_emission_tao: number | null;
+  /** How many halvings have occurred. A step function, never interpolated. */
+  block_emission_halvings: number | null;
   queried_at: string;
 }
 
@@ -137,21 +151,26 @@ export async function loadNetworkParameters(
   }
 
   const queriedAt = new Date().toISOString();
-  const [taoWeightBits, stakeThresholdRao, pendingChildKeyCooldownBits] =
-    await Promise.all([
-      fetchStorageU64(
-        TAO_WEIGHT_STORAGE_KEY,
-        NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
-      ),
-      fetchStorageU64(
-        STAKE_THRESHOLD_STORAGE_KEY,
-        NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
-      ),
-      fetchStorageU64(
-        PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY,
-        NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
-      ),
-    ]);
+  const [
+    taoWeightBits,
+    stakeThresholdRao,
+    pendingChildKeyCooldownBits,
+    totalIssuanceRao,
+  ] = await Promise.all([
+    fetchStorageU64(TAO_WEIGHT_STORAGE_KEY, NETWORK_PARAMETERS_RPC_TIMEOUT_MS),
+    fetchStorageU64(
+      STAKE_THRESHOLD_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+    ),
+    fetchStorageU64(
+      PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+    ),
+    fetchStorageU64(
+      TOTAL_ISSUANCE_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+    ),
+  ]);
 
   const taoWeight = taoWeightBits != null ? u64f64ToFloat(taoWeightBits) : null;
   const stakeThresholdTao =
@@ -160,16 +179,25 @@ export async function loadNetworkParameters(
     pendingChildKeyCooldownBits != null
       ? Number(pendingChildKeyCooldownBits)
       : null;
+  // Derived here rather than served from storage: the `BlockEmission` item
+  // reads 1.0 TAO and has been stale since the first halving, so every share
+  // computed against it is wrong by 2x (#8747).
+  const emission = blockEmissionForIssuance(totalIssuanceRao);
   const rpcOk =
     taoWeight != null &&
     stakeThresholdTao != null &&
-    pendingChildKeyCooldownBlocks != null;
+    pendingChildKeyCooldownBlocks != null &&
+    emission != null;
 
   const payload: NetworkParameters = {
     schema_version: 1,
     tao_weight: taoWeight,
     stake_threshold_tao: stakeThresholdTao,
     pending_childkey_cooldown_blocks: pendingChildKeyCooldownBlocks,
+    total_issuance_tao:
+      totalIssuanceRao != null ? raoToTao(totalIssuanceRao) : null,
+    block_emission_tao: emission?.tao_per_block ?? null,
+    block_emission_halvings: emission?.halvings ?? null,
     queried_at: queriedAt,
   };
 

@@ -5584,11 +5584,14 @@
       "NetworkParametersArtifactResponse": {
         "value": {
           "data": {
+            "block_emission_halvings": 5000000,
+            "block_emission_tao": 5000000,
             "pending_childkey_cooldown_blocks": 5000000,
             "queried_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "stake_threshold_tao": 0.5,
-            "tao_weight": 0.5
+            "tao_weight": 0.5,
+            "total_issuance_tao": 0.5
           },
           "meta": {
             "artifact_path": "example",
@@ -28577,6 +28580,28 @@
       "NetworkParametersArtifact": {
         "additionalProperties": {},
         "properties": {
+          "block_emission_halvings": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "block_emission_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pending_childkey_cooldown_blocks": {
             "anyOf": [
               {
@@ -28615,6 +28640,16 @@
             ]
           },
           "tao_weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_issuance_tao": {
             "anyOf": [
               {
                 "type": "number"

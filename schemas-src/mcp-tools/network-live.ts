@@ -18,6 +18,10 @@ export const GetNetworkParametersOutputSchema = z
     tao_weight: z.number().nullable(),
     stake_threshold_tao: z.number().nullable(),
     pending_childkey_cooldown_blocks: z.int().nullable(),
+    // #8747: issuance-derived, never the stale `BlockEmission` storage item.
+    total_issuance_tao: z.number().nullable(),
+    block_emission_tao: z.number().nullable(),
+    block_emission_halvings: z.int().nullable(),
     queried_at: z.string().nullable(),
   })
   .passthrough();
