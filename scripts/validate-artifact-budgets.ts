@@ -61,11 +61,30 @@ const results = evaluateArtifactBudgets(
 const failures = results.filter((result) => result.status === "fail");
 const warnings = results.filter((result) => result.status === "warn");
 
+// Sorted by how far over the line each one is, and reported with the headroom
+// left before it FAILS. A warning's whole job is to be acted on before it
+// becomes an outage, and "1,951,556 >= 750,000" does not say which of these is
+// one publish away from breaking (#8778).
+const WARNINGS_SHOWN = 25;
+
 if (warnings.length > 0) {
-  console.warn("Artifact size budget warnings:");
-  for (const warning of warnings.slice(0, 25)) {
+  const ranked = [...warnings].sort(
+    (a, b) => b.size_bytes / b.warn_bytes - a.size_bytes / a.warn_bytes,
+  );
+  console.warn(`Artifact size budget warnings (${warnings.length}):`);
+  for (const warning of ranked.slice(0, WARNINGS_SHOWN)) {
+    const overWarn = (warning.size_bytes / warning.warn_bytes).toFixed(2);
+    const ofFail = ((warning.size_bytes / warning.fail_bytes) * 100).toFixed(0);
     console.warn(
-      `- ${warning.path}: ${warning.size_bytes} bytes >= ${warning.warn_bytes}`,
+      `- ${warning.path}: ${warning.size_bytes} bytes — ${overWarn}x warn (${warning.warn_bytes}), ${ofFail}% of fail (${warning.fail_bytes})`,
+    );
+  }
+  // The truncation used to be silent: the summary counted all of them while
+  // the list stopped at 25, so reading the output left you believing you had
+  // seen every warning.
+  if (ranked.length > WARNINGS_SHOWN) {
+    console.warn(
+      `- … and ${ranked.length - WARNINGS_SHOWN} more (showing the ${WARNINGS_SHOWN} furthest over their warn line)`,
     );
   }
 }

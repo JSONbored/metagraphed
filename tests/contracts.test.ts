@@ -19,7 +19,10 @@ import {
   compileRoutePattern,
 } from "../src/contracts.ts";
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
-import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.ts";
+import {
+  ARTIFACT_SIZE_BUDGETS,
+  evaluateArtifactBudgets,
+} from "../scripts/artifact-budgets.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { openApiExampleValue } from "./openapi-example-value.ts";
 import type { Row } from "./row-type.ts";
@@ -530,6 +533,64 @@ describe("public contract registry", () => {
     ]);
 
     assert.equal(result.status, "ok");
-    assert.equal(result.warn_bytes, 650_000);
+    assert.equal(result.warn_bytes, 800_000);
+  });
+
+  // #8778: the per-subnet families got their own budgets because 24 of 44
+  // chronic warnings were them inheriting DEFAULT_BUDGET's 250,000 line. The
+  // risk that introduces is SHADOWING -- `subnets/*.json` must not swallow
+  // `subnets.json`, and `endpoints/*.json` must not swallow
+  // `providers/*/endpoints.json`. budgetForArtifact returns the FIRST match,
+  // so a mis-ordered entry would silently apply the wrong ceiling to a
+  // multi-megabyte artifact.
+  test("per-subnet family budgets do not shadow their top-level namesakes", () => {
+    const byPath = new Map(
+      evaluateArtifactBudgets(
+        [
+          "subnets.json",
+          "subnets/49.json",
+          "profiles.json",
+          "profiles/49.json",
+          "endpoints.json",
+          "endpoints/49.json",
+          "providers/example/endpoints.json",
+          "surfaces.json",
+          "surfaces/49.json",
+        ].map((path) => ({ path, size_bytes: 1 })),
+      ).map((result) => [result.path, result]),
+    );
+
+    for (const [collection, detail] of [
+      ["subnets.json", "subnets/49.json"],
+      ["profiles.json", "profiles/49.json"],
+      ["endpoints.json", "endpoints/49.json"],
+      ["surfaces.json", "surfaces/49.json"],
+    ] as const) {
+      assert.notEqual(
+        byPath.get(collection)?.warn_bytes,
+        byPath.get(detail)?.warn_bytes,
+        `${collection} and ${detail} resolved to the same budget`,
+      );
+    }
+
+    // The provider sub-resource keeps its own budget rather than picking up
+    // the per-subnet endpoints one.
+    assert.equal(
+      byPath.get("providers/example/endpoints.json")?.warn_bytes,
+      1_000_000,
+    );
+    assert.equal(byPath.get("endpoints/49.json")?.warn_bytes, 400_000);
+  });
+
+  // A budget whose warn line already sits above its own fail line would report
+  // "fail" before ever warning -- silently converting a heads-up into an
+  // outage, which is the failure mode #8778 exists to prevent.
+  test("every budget's warn line sits below its fail line", () => {
+    for (const entry of ARTIFACT_SIZE_BUDGETS) {
+      assert.ok(
+        entry.warn_bytes < entry.fail_bytes,
+        `${entry.path}: warn ${entry.warn_bytes} is not below fail ${entry.fail_bytes}`,
+      );
+    }
   });
 });
