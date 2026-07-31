@@ -62,10 +62,19 @@ jobs:
       - name: Generate digests
         run: node scripts/refresh-digests.ts --write
 
+      # content/news/** is generated FROM the store, and validate.yml's "Build
+      # digest pages (drift check)" holds the two in agreement. Without this
+      # step the sync PR would carry a new digest with no page for it and fail
+      # that check on arrival -- the automation would have been broken from its
+      # very first run.
+      - name: Regenerate the digest pages
+        working-directory: apps/ui
+        run: node scripts/generate-digest-pages.ts
+
       - name: Check whether any digest was added
         id: diff
         run: |
-          if git diff --quiet -- registry/generated/digests.json; then
+          if git diff --quiet -- registry/generated/digests.json apps/ui/content/news; then
             echo "no new digests this run"
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
@@ -97,6 +106,7 @@ jobs:
           delete-branch: true
           add-paths: |
             registry/generated/digests.json
+            apps/ui/content/news
           title: "chore(digest): add weekly digests (${{ steps.summary.outputs.before }} -> ${{ steps.summary.outputs.after }})"
           commit-message: "chore(digest): add weekly digests (${{ steps.summary.outputs.before }} -> ${{ steps.summary.outputs.after }})"
           body: |
