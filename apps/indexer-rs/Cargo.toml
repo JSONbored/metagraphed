@@ -6,6 +6,25 @@ edition = "2021"
 [dependencies]
 # 0.50.x = block-first rewrite with automatic per-block (cross-runtime) metadata.
 subxt = { version = "0.50", features = ["reconnecting-rpc-client"] }
+# HTTP JSON-RPC transport for connect_chain's http:// path (see lib.rs:
+# HttpRpcClient) -- raw hyper, ONE fresh connection per request, no pooling.
+# All three crates pinned to the exact versions subxt already resolves
+# transitively (verified via Cargo.lock), same convention as scale-info above.
+# WHY a second transport exists at all: subxt-over-WebSocket silently stalls
+# against our own archive node while it is under continuous block-import
+# churn (the paritytech/subxt#2050 class documented in main.rs's header;
+# LegacyBackend removed the chainHead subscription trigger but the WS
+# message-routing stall persisted, measured 2026-07-31 at 0.67 blk/s
+# aggregate with the client at 0% CPU) -- while the SAME calls over plain
+# stateless one-shot HTTP against the SAME node measured 155+ blk/s at
+# 32-way concurrency with flat p50. jsonrpsee's POOLED HttpClient was tried
+# first and intermittently wedged whole shard processes (a request lost with
+# no response, no error, and no timeout); one connection per request has no
+# state that CAN wedge. See HttpRpcClient's own doc comment.
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+serde = { version = "1", features = ["derive"] }
 scale-value = "0.18"
 # Pinned to the exact version subxt 0.50.1 already resolves transitively
 # (verified via Cargo.lock) -- needed directly to name PortableRegistry/Type

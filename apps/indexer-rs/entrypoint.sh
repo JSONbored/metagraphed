@@ -32,6 +32,21 @@ total=$((TO - FROM))
 per=$(((total + SHARDS - 1) / SHARDS))
 echo "launcher: [$FROM,$TO) -> $SHARDS shards (~$per blocks/shard), conc=$SHARD_CONCURRENCY/shard, chunk=$CHUNK"
 
+# Discover the whole range's runtime-version segments ONCE, before any shard
+# starts, and hand every shard the same file. Without this each shard re-probed
+# its own slice sequentially (multi-minute, near-silent, and N-way concurrent
+# with its siblings) on EVERY container start -- see main.rs's discover-only
+# mode. Retried because a fresh archive-node restart can transiently fail
+# probes; shards must not start without the file (they'd fall back to slow
+# per-shard discovery and recreate exactly the thundering herd this avoids).
+SPEC_FILE="$DATA/spec-ranges.$FROM.$TO.json"
+until [ -s "$SPEC_FILE" ]; do
+  echo "launcher: discovering spec ranges -> $SPEC_FILE"
+  BACKFILL_DISCOVER_TO_FILE="$SPEC_FILE" BACKFILL_FROM="$FROM" BACKFILL_TO="$TO" "$BIN" \
+    || { echo "launcher: spec discovery failed, retrying in 15s"; sleep 15; }
+done
+export BACKFILL_SPEC_FILE="$SPEC_FILE"
+
 run_shard() {
   local i="$1" sfrom="$2" sto="$3"
   while true; do
