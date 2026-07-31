@@ -129,6 +129,63 @@ trades never appears in the output (a genuine gap, not a synthesized flat candle
 how sparse an illiquid subnet's trading can be). Root (netuid 0) is excluded entirely: it has no
 AMM pool, so staking there is always 1:1 TAO↔TAO with no price to chart.
 
+## Emission share (and what it is not)
+
+**Source:** `emission_share = alpha_price / Σ alpha_price` across subnets —
+[`scripts/lib/economics-artifacts.ts`](../scripts/lib/economics-artifacts.ts). It is a **price
+share**, and it is the default sort on `/api/v1/economics`.
+
+Before runtime spec 440 that was a reasonable proxy for a subnet's share of TAO emission. Since
+440 went live on finney (2026-07-27) it is **stage 1 of an eight-stage pipeline**, and the gap
+between it and the TAO a subnet actually receives is large enough that reading one as the other
+is simply wrong.
+
+| #   | stage                  | what it does                                                                              |
+| --- | ---------------------- | ----------------------------------------------------------------------------------------- |
+| 0   | eligibility            | non-root, `FirstEmissionBlockNumber` set, `SubtokenEnabled`, `NetworkRegistrationAllowed` |
+| 1   | **`emission_share`**   | price-EMA share — `SubnetMovingPrice_i / Σ SubnetMovingPrice`                             |
+| 2   | miner-burn reweighting | `× (1 − MinerBurned_i)`, renormalized — non-zero on 68 subnets                            |
+| 3   | gate bar               | `θ` recomputed by the runtime every `block % 360 == 0`                                    |
+| 4   | Hill gate              | `w · 1/(1+(θ/w)^h)`, renormalized to sum 1                                                |
+| 5   | enabled filter         | `SubnetEmissionEnabled == false` → zeroed, share redistributed (47 subnets)               |
+| 6   | TAO emission           | `block_emission × final_share`                                                            |
+| 7   | alpha injection cap    | the remainder becomes `excess_tao` → chain buys                                           |
+| 8   | balancer               | splits materialized TAO into the price-active part written to `SubnetTaoInEmission`       |
+
+Two consequences worth stating plainly, because both are counter-intuitive:
+
+- **The gate redistributes; it does not withhold.** Stage 4 renormalizes to sum 1, so 100% of
+  block emission reaches subnets. What changes is _which_ subnets get it.
+- **Block emission is 0.5 TAO/block, not 1.0.** The `BlockEmission` storage item reads 1.0 and is
+  stale — the live value is recomputed from `TotalIssuance` every block, and the network is past
+  its first halving. Anything deriving percentages from that storage item is off by 2×.
+
+`total_emission_share` (per domain) and `mean_emission_share` (on `/economics/trends`) are
+aggregates of this same stage-1 value and inherit the caveat exactly.
+
+### Verify the gate parameters yourself
+
+Each is a `StorageValue` under `twox128("SubtensorModule")` =
+`658faa385070e074c85bf6b568cf0555`, concatenated with the item hash — no further hashing:
+
+```sh
+# EmissionBarQuantile (q) — U64F64, SIXTEEN bytes, not eight
+curl -s -X POST https://api.metagraph.sh/rpc/v1/finney \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"state_getStorage","params":
+       ["0x658faa385070e074c85bf6b568cf0555a772007dde2ed63e0f21b5f9d7f16650"]}'
+# -> "0x00000000000000c00000000000000000"
+```
+
+Decode a U64F64: read the 16 bytes little-endian into a u128, then divide by `2^64`. The value
+above is `0.75`. `EmissionGateBar` (θ) is
+`7c9b0d2964cc73e7519676c3cc4d5df9`; `EmissionGateExponent` (h) is
+`88c70e8dd0cf4af3aeb977ba2eee1df4` and currently reads `null` — **unset means the runtime
+default `h = 3`, not zero** (`h = 0` would make the gate `0.5` for every subnet).
+
+All three, plus the issuance-derived block emission and its halving count, are served decoded on
+[`/api/v1/network/parameters`](https://api.metagraph.sh/api/v1/network/parameters).
+
 ## Verify it yourself
 
 Two worked examples, reproducing a published number from a raw chain read — the actual

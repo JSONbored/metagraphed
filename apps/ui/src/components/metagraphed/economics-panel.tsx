@@ -189,6 +189,7 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
       <div className="flex flex-wrap gap-3 [&>*]:grow [&>*]:basis-[200px]">
         <StatTile
           eyebrow="Emission share"
+          tooltip="Stage 1 of the v440 emission pipeline: this subnet's share of alpha price (alpha_price / total), NOT the share of TAO it receives. Spec 440 separates the two by miner-burn reweighting, the Hill emission gate, the enabled filter, and the alpha injection cap."
           tone="accent"
           value={e.emission_share != null ? `${(e.emission_share * 100).toFixed(3)}%` : "—"}
         />

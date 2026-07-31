@@ -3713,7 +3713,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "miner-readiness signal, total and max stake, alpha price, emission " +
       "share, and pool reserves. Served live from the economics tier " +
       "(refreshed ~3h), falling back to the latest committed snapshot. Use it " +
-      "to decide whether (and where) to register, mine, or validate.",
+      "to decide whether (and where) to register, mine, or validate. " +
+      "`emission_share` is the STAGE-1 PRICE SHARE of the v440 emission " +
+      "pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a " +
+      "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
+      "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
+      "injection cap, and the liquidity balancer. Do not present it as TAO " +
+      "earned or emitted. get_network_parameters carries the gate parameters.",
     inputSchema: z.toJSONSchema(GetSubnetEconomicsInputSchema, {
       target: "draft-2020-12",
     }),
@@ -3881,7 +3887,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the network-wide economics time series aggregated per UTC day " +
       "across all subnets: total stake, stake-weighted and median alpha price, " +
       "total validator and miner counts, and mean emission share. Mirrors " +
-      "GET /api/v1/economics/trends.",
+      "GET /api/v1/economics/trends. " +
+      "`emission_share` is the STAGE-1 PRICE SHARE of the v440 emission " +
+      "pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a " +
+      "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
+      "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
+      "injection cap, and the liquidity balancer. Do not present it as TAO " +
+      "earned or emitted. get_network_parameters carries the gate parameters.",
     inputSchema: z.toJSONSchema(GetEconomicsTrendsInputSchema, {
       target: "draft-2020-12",
     }),
