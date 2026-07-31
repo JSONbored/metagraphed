@@ -427,7 +427,8 @@ export type AccountPositions = {
   positions: Array<NominatorPosition>;
   schema_version: Scalars['Int']['output'];
   ss58: Scalars['String']['output'];
-  total_stake_tao: Scalars['Float']['output'];
+  /** Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
+  total_stake_alpha: Scalars['Float']['output'];
 };
 
 /** One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus. */
@@ -1673,8 +1674,10 @@ export type ChainYield = {
   neuron_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
-  total_emission_tao: Scalars['Float']['output'];
-  total_stake_tao: Scalars['Float']['output'];
+  /** Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
+  total_emission_alpha: Scalars['Float']['output'];
+  /** Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count (renamed from total_stake_tao in #8803). Use it as the yields' denominator, not as a TAO figure. */
+  total_stake_alpha: Scalars['Float']['output'];
   validator_count: Scalars['Int']['output'];
   validator_yield?: Maybe<Scalars['Float']['output']>;
 };
@@ -6478,7 +6481,7 @@ export type AccountPositionsResolvers<ContextType = GqlContext, ParentType exten
   positions?: Resolver<Array<ResolversTypes['NominatorPosition']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type AccountPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPrometheus'] = ResolversParentTypes['AccountPrometheus']> = ResolversObject<{
@@ -7456,8 +7459,8 @@ export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends Res
   neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validator_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;

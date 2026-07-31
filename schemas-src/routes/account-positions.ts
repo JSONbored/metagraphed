@@ -43,7 +43,12 @@ export const AccountPositionsArtifactSchema = z
     ss58: z.string(),
     captured_at: z.string().nullable(),
     position_count: z.int().min(0),
-    total_stake_tao: z.number().min(0),
+    total_stake_alpha: z
+      .number()
+      .min(0)
+      .describe(
+        "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure.",
+      ),
     positions: z.array(NominatorPositionSchema),
   })
   .passthrough();

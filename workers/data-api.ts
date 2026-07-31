@@ -6932,6 +6932,33 @@ async function dispatchDataApiRequest(
         // one grouped pass over the last 90 days (the widest window), with
         // the two narrower windows as conditional sums within that same
         // filtered set, rather than three separate subqueries.
+        //
+        // delegated_tao is PRICE-CONVERTED (#8803). nominator_positions only
+        // ever holds netuid != 0 rows (validator_nominators.rs: "root is never
+        // share-tracked"), and every non-root neurons.stake_tao is that
+        // subnet's ALPHA token, not TAO -- so the old raw
+        // SUM(share_fraction * stake_tao) added alpha across subnets and then
+        // handed it to src/top-holders.ts to be summed with genuine
+        // System::Account free_tao. The top account reported 14.98M "TAO",
+        // 71% of a supply hard-capped at 21M. Each position is now multiplied
+        // by its own subnet's alpha_price_tao, read latest-per-netuid from
+        // subnet_snapshots with the same DISTINCT ON idiom
+        // handleDeregRiskSnapshot uses -- a DAILY cadence table, so the price
+        // can lag up to ~24h behind the live economics tier.
+        //
+        // The WHERE clause is the deliberate part: a netuid whose latest
+        // snapshot has no usable price (NULL, NaN, ±Infinity, negative) is
+        // EXCLUDED from the sum rather than contributing 0. A silent 0 would
+        // reintroduce a quieter, harder-to-spot version of this same bug --
+        // an account would simply look poorer with nothing to indicate why.
+        // netuid = 0 cannot appear today, but if root stake is ever
+        // share-tracked it is TAO-denominated, so it converts at price 1.0
+        // instead of being dropped for having no subnet_snapshots row.
+        //
+        // One SUM over the price-multiplied rows, not per-(coldkey, netuid)
+        // subtotals summed afterwards: multiplication distributes over the
+        // sum, so the two are algebraically identical and this is one
+        // aggregation pass rather than two.
         if (url.pathname === "/api/v1/accounts/top-holders") {
           const sortParam = url.searchParams.get("sort") || undefined;
           const limitRaw = url.searchParams.get("limit");
@@ -6960,9 +6987,16 @@ async function dispatchDataApiRequest(
             b.captured_at
           FROM account_balances b
           FULL OUTER JOIN (
-            SELECT np.coldkey, SUM(np.share_fraction * n.stake_tao) AS delegated_tao
+            SELECT np.coldkey,
+              SUM(np.share_fraction * n.stake_tao * CASE WHEN np.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS delegated_tao
             FROM nominator_positions np
             JOIN neurons n ON n.hotkey = np.hotkey AND n.netuid = np.netuid
+            LEFT JOIN (
+              SELECT DISTINCT ON (netuid) netuid, alpha_price_tao
+              FROM subnet_snapshots
+              ORDER BY netuid, snapshot_date DESC) s ON s.netuid = np.netuid
+            WHERE np.netuid = 0
+               OR (s.alpha_price_tao >= 0 AND s.alpha_price_tao < 'Infinity'::numeric)
             GROUP BY np.coldkey) d ON d.coldkey = b.ss58
           LEFT JOIN (
             SELECT

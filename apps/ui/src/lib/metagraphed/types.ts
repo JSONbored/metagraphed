@@ -1531,7 +1531,12 @@ export interface AccountPositions {
   ss58: string;
   captured_at: string | null;
   position_count: number;
-  total_stake_tao: number;
+  /**
+   * ALPHA, not TAO (renamed from total_stake_tao in metagraphed#8803):
+   * nominator_positions holds only netuid != 0 rows and non-root stake is that
+   * subnet's alpha token, so this sums different subnets' alpha.
+   */
+  total_stake_alpha: number;
   positions: AccountPosition[];
   [key: string]: unknown;
 }
@@ -3496,8 +3501,14 @@ export interface ChainYield {
   validator_count: number;
   miner_count: number;
   captured_at: string | null;
-  total_stake_tao: number;
-  total_emission_tao: number;
+  /**
+   * ALPHA, not TAO (renamed from total_stake_tao in metagraphed#8803): a
+   * non-root neuron's stake is that subnet's alpha token, so this is a
+   * cross-subnet alpha count. It is the *_yield denominator, not a TAO figure.
+   */
+  total_stake_alpha: number;
+  /** ALPHA, for the same reason (renamed from total_emission_tao, #8803). */
+  total_emission_alpha: number;
   network_yield: number | null;
   validator_yield: number | null;
   miner_yield: number | null;

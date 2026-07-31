@@ -5755,7 +5755,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.ss58, SS58);
     assert.deepEqual(body.data.positions, []);
     assert.equal(body.data.position_count, 0);
-    assert.equal(body.data.total_stake_tao, 0);
+    assert.equal(body.data.total_stake_alpha, 0);
     assert.deepEqual(captures.sql, []);
   });
 

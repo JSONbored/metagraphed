@@ -18553,7 +18553,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     assert.equal(out.ss58, SS58);
     assert.equal(out.captured_at, null);
     assert.equal(out.position_count, 0);
-    assert.equal(out.total_stake_tao, 0);
+    assert.equal(out.total_stake_alpha, 0);
     assert.deepEqual(out.positions, []);
   });
 
@@ -18716,7 +18716,7 @@ describe("MCP get_account_snapshot", () => {
               schema_version: 1,
               ss58: SS58,
               position_count: 1,
-              total_stake_tao: 42,
+              total_stake_alpha: 42,
               positions: [],
             });
           }
@@ -18748,7 +18748,7 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.balance.balance_tao, 2.5);
       assert.equal(out.portfolio.position_count, 2);
       assert.equal(out.subnets.subnet_count, 3);
-      assert.equal(out.positions.total_stake_tao, 42);
+      assert.equal(out.positions.total_stake_alpha, 42);
       assert.equal(out.recent_events.events[0].kind, "Transfer");
     } finally {
       globalThis.fetch = orig;

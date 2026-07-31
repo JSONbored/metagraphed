@@ -7473,7 +7473,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
 
   function query(argsClause: string) {
     return `{ account_positions${argsClause} {
-      schema_version ss58 captured_at position_count total_stake_tao
+      schema_version ss58 captured_at position_count total_stake_alpha
       positions { hotkey netuid share_fraction stake_tao }
     } }`;
   }
@@ -7487,7 +7487,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
       ss58: SS58,
       captured_at: null,
       position_count: 0,
-      total_stake_tao: 0,
+      total_stake_alpha: 0,
       positions: [],
     });
   });
@@ -7502,7 +7502,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
             ss58: SS58,
             captured_at: "2026-07-10T00:00:00.000Z",
             position_count: 2,
-            total_stake_tao: 1500,
+            total_stake_alpha: 1500,
             positions: [
               {
                 hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
@@ -7524,7 +7524,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
     assert.equal(status, 200);
     const p = body.data.account_positions;
     assert.equal(p.position_count, 2);
-    assert.equal(p.total_stake_tao, 1500);
+    assert.equal(p.total_stake_alpha, 1500);
     assert.equal(p.positions[0].netuid, 3);
     assert.equal(p.positions[0].share_fraction, 0.5);
     assert.equal(
@@ -7564,7 +7564,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
       ss58: SS58,
       captured_at: null,
       position_count: 0,
-      total_stake_tao: 0,
+      total_stake_alpha: 0,
       positions: [],
     });
   });
@@ -19112,7 +19112,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     const { status, body } = await gql(
       `{ chain_yield {
           schema_version subnet_count neuron_count validator_count miner_count
-          captured_at total_stake_tao total_emission_tao
+          captured_at total_stake_alpha total_emission_alpha
           network_yield validator_yield miner_yield
           distribution { count mean median min max p10 p25 p75 p90 }
         } }`,
@@ -19125,8 +19125,8 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
       validator_count: 0,
       miner_count: 0,
       captured_at: null,
-      total_stake_tao: 0,
-      total_emission_tao: 0,
+      total_stake_alpha: 0,
+      total_emission_alpha: 0,
       network_yield: null,
       validator_yield: null,
       miner_yield: null,
@@ -19145,8 +19145,8 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
           validator_count: 40,
           miner_count: 460,
           captured_at: "2026-07-15T00:00:00.000Z",
-          total_stake_tao: 1200000,
-          total_emission_tao: 84,
+          total_stake_alpha: 1200000,
+          total_emission_alpha: 84,
           network_yield: 0.00007,
           validator_yield: 0.00009,
           miner_yield: 0.00002,
@@ -19212,7 +19212,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     const { status, body } = await gql(
       `{ chain_yield {
           schema_version subnet_count neuron_count validator_count miner_count
-          captured_at total_stake_tao total_emission_tao
+          captured_at total_stake_alpha total_emission_alpha
           network_yield validator_yield miner_yield distribution { count }
         } }`,
       env as unknown as Env,
@@ -19225,8 +19225,8 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
       validator_count: 0,
       miner_count: 0,
       captured_at: null,
-      total_stake_tao: 0,
-      total_emission_tao: 0,
+      total_stake_alpha: 0,
+      total_emission_alpha: 0,
       network_yield: null,
       validator_yield: null,
       miner_yield: null,

@@ -32,8 +32,18 @@ export const ChainYieldArtifactSchema = z
     validator_count: z.int().min(0).optional(),
     miner_count: z.int().min(0).optional(),
     captured_at: z.string().nullable().optional(),
-    total_stake_tao: z.number().optional(),
-    total_emission_tao: z.number().optional(),
+    total_stake_alpha: z
+      .number()
+      .optional()
+      .describe(
+        "Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Use it as the denominator of the yields below, not as a TAO figure.",
+      ),
+    total_emission_alpha: z
+      .number()
+      .optional()
+      .describe(
+        "Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid.",
+      ),
     network_yield: z.number().nullable(),
     validator_yield: z.number().nullable().optional(),
     miner_yield: z.number().nullable().optional(),

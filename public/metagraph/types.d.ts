@@ -49,7 +49,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys.
+         * Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["topHoldersByNetwork"];
@@ -2030,7 +2030,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys. */
+        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys. */
         get: operations["topHolders"];
         put?: never;
         post?: never;
@@ -5416,7 +5416,8 @@ export interface components {
             }[];
             schema_version: number;
             ss58: string;
-            total_stake_tao: number;
+            /** @description Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
+            total_stake_alpha: number;
         } & {
             [key: string]: unknown;
         };
@@ -6818,8 +6819,10 @@ export interface components {
             neuron_count: number;
             schema_version: number;
             subnet_count: number;
-            total_emission_tao?: number;
-            total_stake_tao?: number;
+            /** @description Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
+            total_emission_alpha?: number;
+            /** @description Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Use it as the denominator of the yields below, not as a TAO figure. */
+            total_stake_alpha?: number;
             validator_count?: number;
             validator_yield?: number | null;
         } & {
@@ -10878,13 +10881,16 @@ export interface components {
         TopHoldersArtifact: {
             account_count: number;
             accounts: {
+                /** @description This account's delegated stake, valued in TAO. TAO-converted: each delegated position is multiplied by its own subnet's alpha_price_tao, taken from the latest daily subnet_snapshots row for that netuid, so cross-subnet alpha is never summed as if it were TAO (#8803). That table has a DAILY cadence, so the price can lag up to ~24h behind the live economics tier. A netuid whose latest snapshot carries no usable price is excluded from the sum rather than counted as zero. */
                 delegated_tao: number;
+                /** @description Genuine free TAO from the System::Account chain-state scan. */
                 free_tao: number;
                 last_updated: string | null;
                 net_flow_30d: number | null;
                 net_flow_7d: number | null;
                 net_flow_90d: number | null;
                 ss58: string;
+                /** @description free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort. */
                 total_tao: number;
             }[];
             captured_at?: string | null;
@@ -24806,7 +24812,7 @@ export interface operations {
                      *         ],
                      *         "schema_version": 1,
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *         "total_stake_tao": 0.5
+                     *         "total_stake_alpha": 0.5
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -31225,8 +31231,8 @@ export interface operations {
                      *         "neuron_count": 1,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
-                     *         "total_emission_tao": 0.5,
-                     *         "total_stake_tao": 0.5,
+                     *         "total_emission_alpha": 0.5,
+                     *         "total_stake_alpha": 0.5,
                      *         "validator_count": 1,
                      *         "validator_yield": 0.5
                      *       },
