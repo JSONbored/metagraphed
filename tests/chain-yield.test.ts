@@ -84,8 +84,8 @@ describe("buildChainYield", () => {
 
   test("aggregate network return and the validator/miner split", () => {
     const out = buildChainYield(ROWS);
-    assert.equal(out.total_stake_tao, 1600);
-    assert.equal(out.total_emission_tao, 80);
+    assert.equal(out.total_stake_alpha, 1600);
+    assert.equal(out.total_emission_alpha, 80);
     assert.equal(out.network_yield, 0.05); // 80 / 1600
     assert.ok(Math.abs(out.validator_yield! - 70 / 1500) < 1e-6);
     assert.equal(out.miner_yield, 0.1); // 10 / 100
@@ -191,7 +191,7 @@ describe("buildChainYield", () => {
       },
     ]);
     assert.equal(out.neuron_count, 1);
-    assert.equal(out.total_stake_tao, 200);
+    assert.equal(out.total_stake_alpha, 200);
     assert.equal(out.network_yield, 0.1);
     assert.equal(out.validator_count, 1);
   });
@@ -211,7 +211,7 @@ describe("buildChainYield", () => {
         { stake_tao: 10, emission_tao: blank, netuid: 1 },
       ]);
       assert.equal(blankEmission.neuron_count, 1);
-      assert.equal(blankEmission.total_emission_tao, 0);
+      assert.equal(blankEmission.total_emission_alpha, 0);
       assert.equal(blankEmission.network_yield, null);
     }
 
@@ -231,8 +231,8 @@ describe("buildChainYield", () => {
       { stake_tao: 100, emission_tao: "   ", netuid: 1, validator_permit: 0 },
       { stake_tao: 100, emission_tao: 10, netuid: 1, validator_permit: 0 },
     ]);
-    assert.equal(out.total_stake_tao, 200);
-    assert.equal(out.total_emission_tao, 10);
+    assert.equal(out.total_stake_alpha, 200);
+    assert.equal(out.total_emission_alpha, 10);
     assert.equal(out.network_yield, 0.1);
     assert.equal(out.miner_yield, 0.1);
   });
@@ -251,7 +251,7 @@ describe("buildChainYield", () => {
     assert.equal(out.subnet_count, 0);
     assert.equal(out.neuron_count, 0);
     assert.equal(out.captured_at, null);
-    assert.equal(out.total_stake_tao, 0);
+    assert.equal(out.total_stake_alpha, 0);
     assert.equal(out.network_yield, null);
     assert.equal(out.validator_yield, null);
     assert.equal(out.miner_yield, null);
@@ -286,7 +286,7 @@ describe("buildChainYield", () => {
     const expectedTotal =
       Number(expectedTotalRao / 1_000_000_000n) +
       Number(expectedTotalRao % 1_000_000_000n) / 1e9;
-    assert.equal(out.total_stake_tao, Math.round(expectedTotal * 1e9) / 1e9);
+    assert.equal(out.total_stake_alpha, Math.round(expectedTotal * 1e9) / 1e9);
   });
 
   test("loadChainYield issues one un-filtered SELECT and shapes it", async () => {

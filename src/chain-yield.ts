@@ -136,6 +136,16 @@ export function yieldDistribution(
   return summary;
 }
 
+// total_stake_alpha / total_emission_alpha were total_stake_tao /
+// total_emission_tao until #8803. Both aggregate neurons rows across every
+// subnet, and a non-root neuron's stake_tao/emission_tao are that subnet's
+// ALPHA token, not TAO (src/metagraph-neurons.ts, #2550) -- so both totals
+// are cross-subnet alpha counts and the old names were wrong. Renamed rather
+// than price-converted, deliberately: the three *_yield ratios below are
+// emission/stake, so converting the denominator alone would break them, and
+// converting BOTH would silently change three published yield metrics. As
+// alpha/alpha the ratios stay dimensionally coherent and their values
+// unchanged; the rename just stops the two absolutes claiming to be TAO.
 export interface ChainYieldResult {
   schema_version: 1;
   subnet_count: number;
@@ -143,8 +153,8 @@ export interface ChainYieldResult {
   validator_count: number;
   miner_count: number;
   captured_at: string | null;
-  total_stake_tao: number;
-  total_emission_tao: number;
+  total_stake_alpha: number;
+  total_emission_alpha: number;
   network_yield: number | null;
   validator_yield: number | null;
   miner_yield: number | null;
@@ -222,8 +232,8 @@ export function buildChainYield(
     validator_count: validatorCount,
     miner_count: neuronCount - validatorCount,
     captured_at: capturedAt?.value ?? null,
-    total_stake_tao: round9(totalStake),
-    total_emission_tao: round9(totalEmission),
+    total_stake_alpha: round9(totalStake),
+    total_emission_alpha: round9(totalEmission),
     // Network aggregate return over neurons with known stake + emission only.
     network_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
     // The same aggregate return split by role.

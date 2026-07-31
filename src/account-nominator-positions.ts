@@ -17,6 +17,18 @@
 // root data at all (root is TAO-denominated 1:1, no alpha pool, #2550), so a
 // coldkey that only holds root-delegated stake shows zero positions here,
 // not because it holds nothing but because this source can't see it yet.
+//
+// That same limitation is why the aggregate is `total_stake_alpha`, renamed
+// from total_stake_tao in #8803. Because root is excluded, EVERY position
+// here sits on a netuid != 0, and non-root neurons.stake_tao is that
+// subnet's alpha token rather than TAO (src/metagraph-neurons.ts, #2550) --
+// so the aggregate is a sum of different subnets' alpha, which is a count,
+// not a TAO value. It is named for what it is instead of being converted:
+// unlike /accounts/top-holders (#8803), nothing here adds it to real TAO, so
+// the only harm was the name, and a rename cannot silently change a number
+// under an existing consumer the way a conversion would. positions[] keeps
+// its per-row `stake_tao` -- that is the on-chain column name every
+// neurons-tier route uses, and renaming it repo-wide is its own change.
 
 export const NOMINATOR_POSITION_INSERT_COLUMNS = [
   "coldkey",
@@ -81,7 +93,7 @@ export interface AccountPositionsResult {
   ss58: string;
   captured_at: string | null;
   position_count: number;
-  total_stake_tao: number;
+  total_stake_alpha: number;
   positions: AccountNominatorPosition[];
 }
 
@@ -100,7 +112,7 @@ export function buildAccountPositions(
   const stakeByKey =
     hotkeyNetuidStake instanceof Map ? hotkeyNetuidStake : new Map();
   const positions: AccountNominatorPosition[] = [];
-  let totalStakeTao = 0;
+  let totalStakeAlpha = 0;
   let latestCapturedAt: number | null = null;
 
   for (const row of rows) {
@@ -114,7 +126,7 @@ export function buildAccountPositions(
 
     const stakeTao = roundTao(fraction * hotkeyStake);
     if (stakeTao == null) continue;
-    totalStakeTao += stakeTao;
+    totalStakeAlpha += stakeTao;
 
     const capturedAt = nonNegativeInt(row?.captured_at);
     if (
@@ -145,7 +157,7 @@ export function buildAccountPositions(
     ss58,
     captured_at: latestCapturedAt != null ? toIso(latestCapturedAt) : null,
     position_count: positions.length,
-    total_stake_tao: roundTao(totalStakeTao) ?? 0,
+    total_stake_alpha: roundTao(totalStakeAlpha) ?? 0,
     positions,
   };
 }

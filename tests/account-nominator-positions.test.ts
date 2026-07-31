@@ -23,7 +23,7 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
     const body = await res.json();
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.position_count, 0);
-    assert.equal(body.data.total_stake_tao, 0);
+    assert.equal(body.data.total_stake_alpha, 0);
     assert.deepEqual(body.data.positions, []);
   });
 
@@ -40,7 +40,7 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
               ss58: SS58,
               captured_at: null,
               position_count: 1,
-              total_stake_tao: 250,
+              total_stake_alpha: 250,
               positions: [
                 {
                   hotkey: "5Hk1",
@@ -155,7 +155,7 @@ describe("buildAccountPositions", () => {
     assert.equal(data.positions[0].netuid, 3);
     assert.equal(data.positions[0].share_fraction, 0.25);
     assert.equal(data.positions[0].stake_tao, 250);
-    assert.equal(data.total_stake_tao, 250);
+    assert.equal(data.total_stake_alpha, 250);
     assert.equal(data.captured_at, new Date(1_780_000_000_000).toISOString());
   });
 
@@ -186,7 +186,7 @@ describe("buildAccountPositions", () => {
     assert.equal(data.position_count, 2);
     assert.equal(data.positions[0].hotkey, "5Hk2"); // 250 > 100
     assert.equal(data.positions[1].hotkey, "5Hk1");
-    assert.equal(data.total_stake_tao, 350);
+    assert.equal(data.total_stake_alpha, 350);
   });
 
   test("excludes a position whose hotkey|netuid has no entry in the stake map (deregistered or not yet in the daily snapshot)", () => {
@@ -204,7 +204,7 @@ describe("buildAccountPositions", () => {
       "5Cold",
     );
     assert.equal(data.position_count, 0);
-    assert.equal(data.total_stake_tao, 0);
+    assert.equal(data.total_stake_alpha, 0);
     assert.deepEqual(data.positions, []);
   });
 
@@ -212,7 +212,7 @@ describe("buildAccountPositions", () => {
     const data = buildAccountPositions([], new Map(), "5Cold");
     assert.equal(data.ss58, "5Cold");
     assert.equal(data.position_count, 0);
-    assert.equal(data.total_stake_tao, 0);
+    assert.equal(data.total_stake_alpha, 0);
     assert.equal(data.captured_at, null);
     assert.deepEqual(data.positions, []);
   });
@@ -309,7 +309,7 @@ describe("buildAccountPositions", () => {
       "5Cold",
     );
     assert.equal(data.position_count, 0);
-    assert.equal(data.total_stake_tao, 0);
+    assert.equal(data.total_stake_alpha, 0);
   });
 
   test("tie-breaks by netuid when stake AND hotkey are both equal (two subnets of the same validator)", () => {
@@ -360,7 +360,7 @@ describe("buildAccountPositions", () => {
     assert.equal(data.captured_at, null);
   });
 
-  test("falls back total_stake_tao to 0 when per-position stake_tao sums overflow to Infinity", () => {
+  test("falls back total_stake_alpha to 0 when per-position stake_tao sums overflow to Infinity", () => {
     // Each individual stakeTao is itself finite, but summing two
     // near-MAX_VALUE positions overflows the accumulator to Infinity --
     // roundTao(Infinity) is null, and the ?? 0 fallback catches it.
@@ -387,7 +387,7 @@ describe("buildAccountPositions", () => {
       ]),
       "5Cold",
     );
-    assert.equal(data.total_stake_tao, 0);
+    assert.equal(data.total_stake_alpha, 0);
   });
 
   test("does not advance captured_at when a later row's captured_at is not newer", () => {

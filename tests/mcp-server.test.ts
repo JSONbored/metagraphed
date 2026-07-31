@@ -18390,7 +18390,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     assert.equal(out.ss58, SS58);
     assert.equal(out.captured_at, null);
     assert.equal(out.position_count, 0);
-    assert.equal(out.total_stake_tao, 0);
+    assert.equal(out.total_stake_alpha, 0);
     assert.deepEqual(out.positions, []);
   });
 

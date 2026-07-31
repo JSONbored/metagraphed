@@ -81,7 +81,7 @@ describe("accountPositionsQuery", () => {
       ss58: "5Server",
       captured_at: "2026-07-05T00:00:00Z",
       position_count: 2,
-      total_stake_tao: 100,
+      total_stake_alpha: 100,
       positions: [
         { hotkey: "5HotkeyA", netuid: 4, share_fraction: 0.9, stake_tao: 90 },
         { hotkey: "5HotkeyB", netuid: 0 }, // missing share_fraction/stake_tao -> dropped
@@ -113,7 +113,7 @@ describe("accountPositionsQuery", () => {
     expect(result.data.captured_at).toBeNull();
     expect(result.data.positions).toEqual([]);
     expect(result.data.position_count).toBe(0);
-    expect(result.data.total_stake_tao).toBe(0);
+    expect(result.data.total_stake_alpha).toBe(0);
   });
 
   it("caps the position list defensively", async () => {

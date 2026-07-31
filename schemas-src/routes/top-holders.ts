@@ -31,9 +31,22 @@ const TOP_HOLDERS_SORT_VALUES = [
 const TopHoldersEntrySchema = z
   .object({
     ss58: z.string(),
-    free_tao: z.number().min(0),
-    delegated_tao: z.number().min(0),
-    total_tao: z.number().min(0),
+    free_tao: z
+      .number()
+      .min(0)
+      .describe("Genuine free TAO from the System::Account chain-state scan."),
+    delegated_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "This account's delegated stake, valued in TAO. TAO-converted: each delegated position is multiplied by its own subnet's alpha_price_tao, taken from the latest daily subnet_snapshots row for that netuid, so cross-subnet alpha is never summed as if it were TAO (#8803). That table has a DAILY cadence, so the price can lag up to ~24h behind the live economics tier. A netuid whose latest snapshot carries no usable price is excluded from the sum rather than counted as zero.",
+      ),
+    total_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort.",
+      ),
     net_flow_7d: z.number().nullable(),
     net_flow_30d: z.number().nullable(),
     net_flow_90d: z.number().nullable(),

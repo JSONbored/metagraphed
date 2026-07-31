@@ -80,9 +80,22 @@ export type GetTopHoldersInput = z.infer<typeof GetTopHoldersInputSchema>;
 const TopHolderItemSchema = z
   .object({
     ss58: z.string().optional(),
-    free_tao: z.unknown().optional(),
-    delegated_tao: z.unknown().optional(),
-    total_tao: z.unknown().optional(),
+    free_tao: z
+      .unknown()
+      .optional()
+      .describe("Genuine free TAO from the System::Account chain-state scan."),
+    delegated_tao: z
+      .unknown()
+      .optional()
+      .describe(
+        "This account's delegated stake, valued in TAO. TAO-converted: each delegated position is multiplied by its own subnet's alpha_price_tao, taken from the latest daily subnet_snapshots row for that netuid, so cross-subnet alpha is never summed as if it were TAO (#8803). That table has a DAILY cadence, so the price can lag up to ~24h behind the live economics tier. A netuid whose latest snapshot carries no usable price is excluded from the sum rather than counted as zero.",
+      ),
+    total_tao: z
+      .unknown()
+      .optional()
+      .describe(
+        "free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort.",
+      ),
     net_flow_7d: z.unknown().optional(),
     net_flow_30d: z.unknown().optional(),
     net_flow_90d: z.unknown().optional(),

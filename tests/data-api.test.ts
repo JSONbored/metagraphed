@@ -2868,6 +2868,41 @@ test("GET /api/v1/accounts/top-holders joins wallet_flow_daily and shapes the ne
   expect(queryText()).not.toContain("COALESCE(f.net_flow_90d");
 });
 
+test("GET /api/v1/accounts/top-holders prices each delegated position in TAO at its own subnet's alpha price (#8803)", async () => {
+  mockRows.current = [
+    {
+      ss58: "5Whale1",
+      free_tao: 1000.5,
+      delegated_tao: 250.25,
+      captured_at: 1750000000000,
+    },
+  ];
+  const res = await req("/api/v1/accounts/top-holders");
+  expect(res.status).toBe(200);
+  // The defect: a raw cross-subnet alpha sum, handed to src/top-holders.ts to
+  // be added to genuine System::Account free_tao. If this substring is ever
+  // back, delegated_tao is alpha again.
+  expect(queryText()).not.toContain(
+    "SUM(np.share_fraction * n.stake_tao) AS delegated_tao",
+  );
+  // Every position is multiplied by its OWN netuid's price -- a flat/global
+  // multiplier would preserve the wrong ordering, which is the real defect.
+  expect(queryText()).toContain("n.stake_tao * CASE WHEN np.netuid = 0 THEN 1");
+  expect(queryText()).toContain("ELSE s.alpha_price_tao END");
+  // Latest row per netuid, the same DISTINCT ON idiom handleDeregRiskSnapshot
+  // uses -- an existing table, not a new price source.
+  expect(queryText()).toContain(
+    "SELECT DISTINCT ON (netuid) netuid, alpha_price_tao",
+  );
+  expect(queryText()).toContain("FROM subnet_snapshots");
+  expect(queryText()).toContain("ORDER BY netuid, snapshot_date DESC");
+  // A netuid with no usable price is EXCLUDED, never COALESCEd to a silent 0.
+  expect(queryText()).toContain(
+    "OR (s.alpha_price_tao >= 0 AND s.alpha_price_tao < 'Infinity'::numeric)",
+  );
+  expect(queryText()).not.toContain("COALESCE(s.alpha_price_tao");
+});
+
 test("GET /api/v1/accounts/top-holders leaves missing net_flow columns as null (#8807)", async () => {
   mockRows.current = [
     {
@@ -6742,7 +6777,7 @@ test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neu
   expect(body.ss58).toBe("5Cold1");
   expect(body.position_count).toBe(1);
   expect(body.positions[0].stake_tao).toBe(250);
-  expect(body.total_stake_tao).toBe(250);
+  expect(body.total_stake_alpha).toBe(250);
 });
 
 test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey with no positions", async () => {
@@ -6754,7 +6789,7 @@ test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey w
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.position_count).toBe(0);
-  expect(body.total_stake_tao).toBe(0);
+  expect(body.total_stake_alpha).toBe(0);
   expect(body.positions).toEqual([]);
 });
 
@@ -6797,7 +6832,7 @@ test("GET /api/v1/accounts/:ss58/positions still serves a card (with zeroed stak
   // the OTHER query in this route failing instead.
   expect(body.position_count).toBe(0);
   expect(body.positions).toEqual([]);
-  expect(body.total_stake_tao).toBe(0);
+  expect(body.total_stake_alpha).toBe(0);
 });
 
 test("GET /api/v1/accounts/:ss58/identity returns the latest row", async () => {

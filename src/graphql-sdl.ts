@@ -3376,8 +3376,10 @@ export const SDL = /* GraphQL */ `
     validator_count: Int!
     miner_count: Int!
     captured_at: String
-    total_stake_tao: Float!
-    total_emission_tao: Float!
+    "Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count (renamed from total_stake_tao in #8803). Use it as the yields' denominator, not as a TAO figure."
+    total_stake_alpha: Float!
+    "Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid."
+    total_emission_alpha: Float!
     network_yield: Float
     validator_yield: Float
     miner_yield: Float
@@ -4396,7 +4398,8 @@ export const SDL = /* GraphQL */ `
     ss58: String!
     captured_at: String
     position_count: Int!
-    total_stake_tao: Float!
+    "Sum of this coldkey's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure."
+    total_stake_alpha: Float!
     positions: [NominatorPosition!]!
   }
 

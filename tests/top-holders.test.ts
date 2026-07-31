@@ -452,3 +452,123 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     assert.equal(res.status, 404);
   });
 });
+
+// #8803: delegated_tao used to be a raw cross-subnet SUM of alpha, added to
+// genuine System::Account free_tao. Production's top row reported 14,984,421
+// "TAO" -- 71% of a supply hard-capped at 21,000,000 -- and the top five rows
+// summed to 1.57x max supply. The conversion itself lives in the SQL
+// aggregate (tests/data-api.test.ts asserts that query's shape); these tests
+// pin the two consequences that made the bug matter: the leaderboard ORDER
+// was wrong, and the headline number was not a quantity that exists.
+describe("delegated_tao is TAO, not cross-subnet alpha (#8803)", () => {
+  const TAO_MAX_SUPPLY = 21_000_000;
+
+  // Two accounts, each with 1,000,000 alpha of delegated stake, but on
+  // subnets whose alpha prices differ by 150x -- the real spread (~0.002 to
+  // ~0.3 TAO) that makes the overstatement non-uniform rather than a scaling
+  // error a reader could mentally correct for.
+  const CHEAP_ALPHA_PRICE = 0.002;
+  const RICH_ALPHA_PRICE = 0.3;
+  const positions = [
+    // 5CheapWhale holds MORE alpha, all of it on the cheap subnet. 25M is a
+    // deliberately unremarkable alpha balance and an IMPOSSIBLE TAO one --
+    // one subnet's alpha supply is a different token, not bounded by TAO's
+    // 21M cap, which is exactly why summing alpha as TAO breaks the cap.
+    {
+      ss58: "5CheapWhale",
+      netuid: 12,
+      alpha: 25_000_000,
+      price: CHEAP_ALPHA_PRICE,
+    },
+    // 5RichHolder holds LESS alpha, on the expensive subnet -- and is worth
+    // ~29x more in real TAO.
+    { ss58: "5RichHolder", netuid: 4, alpha: 200_000, price: RICH_ALPHA_PRICE },
+  ];
+
+  // What the query produced BEFORE the fix: alpha summed raw, no price.
+  const unconvertedRows = positions.map((p) => ({
+    ss58: p.ss58,
+    free_tao: 0,
+    delegated_tao: p.alpha,
+    captured_at: 1750000000000,
+  }));
+  // What it produces AFTER: each position valued at its own netuid's price.
+  const convertedRows = positions.map((p) => ({
+    ss58: p.ss58,
+    free_tao: 0,
+    delegated_tao: p.alpha * p.price,
+    captured_at: 1750000000000,
+  }));
+
+  test("the price-weighted sum is not the raw sum", () => {
+    const converted = buildTopHoldersList(convertedRows) as Row;
+    const byId = new Map(
+      (converted.accounts as Row[]).map((a: Row) => [a.ss58, a]),
+    );
+    assert.equal(byId.get("5CheapWhale")?.delegated_tao, 50000);
+    assert.equal(byId.get("5RichHolder")?.delegated_tao, 60000);
+    // The raw sums the old query returned, for contrast.
+    assert.equal(unconvertedRows[0].delegated_tao, 25_000_000);
+    assert.equal(unconvertedRows[1].delegated_tao, 200_000);
+  });
+
+  test("the default total_tao ordering FLIPS versus the unconverted sum", () => {
+    // Before: whoever holds the most alpha tokens wins, regardless of value.
+    const before = buildTopHoldersList(unconvertedRows) as Row;
+    assert.deepEqual(
+      (before.accounts as Row[]).map((a: Row) => a.ss58),
+      ["5CheapWhale", "5RichHolder"],
+    );
+    // After: whoever holds the most TAO wins. This flip -- not the magnitude
+    // -- is why a flat multiplier would not have fixed anything.
+    const after = buildTopHoldersList(convertedRows) as Row;
+    assert.deepEqual(
+      (after.accounts as Row[]).map((a: Row) => a.ss58),
+      ["5RichHolder", "5CheapWhale"],
+    );
+  });
+
+  test("a netuid with no usable alpha price is excluded, never counted as 0", () => {
+    // The SQL's WHERE drops that netuid's rows from the aggregate, so the
+    // account still appears with the value of its PRICED positions -- it is
+    // not zeroed, and it is not silently credited with unpriced alpha.
+    const withUnpricedNetuid = [
+      {
+        ss58: "5PartlyPriced",
+        free_tao: 10,
+        // Only the priced netuid contributes: 200_000 * 0.3. The unpriced
+        // netuid's 5,000,000 alpha is absent from the sum entirely.
+        delegated_tao: 200_000 * RICH_ALPHA_PRICE,
+        captured_at: 1750000000000,
+      },
+    ];
+    const data = buildTopHoldersList(withUnpricedNetuid) as Row;
+    assert.equal(data.accounts[0].delegated_tao, 60000);
+    assert.equal(data.accounts[0].total_tao, 60010);
+    // A silent 0 for the unpriced netuid would look identical to a real
+    // zero-value position; exclusion keeps the priced part honest.
+    assert.notEqual(data.accounts[0].delegated_tao, 0);
+  });
+
+  test("no account reports more TAO than can exist", () => {
+    // A hard assertion, deliberately NOT a runtime clamp: a clamp would round
+    // a future regression away instead of failing CI. Every account in the
+    // converted leaderboard must sit under the 21M hard cap; the unconverted
+    // one blows straight through it, which is exactly what production did.
+    const after = buildTopHoldersList(convertedRows) as Row;
+    for (const account of after.accounts as Row[]) {
+      assert.ok(
+        (account.total_tao as number) <= TAO_MAX_SUPPLY,
+        `${account.ss58} reports ${account.total_tao} TAO, above the ${TAO_MAX_SUPPLY} hard cap`,
+      );
+    }
+    // Sanity: the same fixture through the OLD raw-alpha aggregate really
+    // does break the cap, so the bound above is a live check and not a
+    // vacuous one. Production's five top rows summed to 33,036,023 this way.
+    const before = buildTopHoldersList(unconvertedRows) as Row;
+    assert.ok(
+      (before.accounts[0].total_tao as number) > TAO_MAX_SUPPLY,
+      "sanity: the unconverted sum really is impossible",
+    );
+  });
+});
