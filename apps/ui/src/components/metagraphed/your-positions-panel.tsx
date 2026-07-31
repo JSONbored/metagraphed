@@ -11,11 +11,13 @@ import {
 } from "@/lib/metagraphed/queries";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { MoveStakeModal } from "@/components/metagraphed/move-stake-modal";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
+import { exitTotals, type PositionQuoteState } from "@/lib/metagraphed/position-totals";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
 
 /** One row of the portfolio, unified across the hotkey-owned and delegated feeds. */
@@ -122,20 +124,25 @@ export function YourPositionsPanel({ address }: { address: string }) {
     return typeof out === "number" ? out : null;
   };
 
+  // #8819: exit is never padded with a position's un-slipped spot value when its AMM quote is
+  // pending or errored -- see exitTotals' own doc comment for why. quoteStates mirrors quotes
+  // index-for-index; root positions' phase is derived too but exitTotals ignores it (a root
+  // position has no AMM and is always included at spot, per its own isRoot check).
   const totals = useMemo(() => {
-    let spot = 0;
-    let exit = 0;
-    let root = 0;
-    let alpha = 0;
-    positions.forEach((p, i) => {
-      spot += p.spotTao;
-      exit += exitTaoFor(i, p) ?? p.spotTao;
-      if (p.isRoot) root += p.spotTao;
-      else alpha += p.spotTao;
+    const quoteStates: PositionQuoteState[] = positions.map((_p, i) => {
+      const out = quotes[i]?.data?.data?.expected_out;
+      return {
+        phase: statPhase(quotes[i] ?? { isPending: false, isError: false }),
+        expectedOut: typeof out === "number" ? out : null,
+      };
     });
-    return { spot, exit, root, alpha };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return exitTotals(positions, quoteStates);
   }, [positions, quotes]);
+
+  // Error takes precedence over pending, matching statPhase's own precedence -- a repo-wide
+  // convention (see statPhase.ts), so the tile fails as loudly as its worst-off position.
+  const exitPhase: "pending" | "error" | "ready" =
+    totals.excludedError > 0 ? "error" : totals.excludedPending > 0 ? "pending" : "ready";
 
   if (positions.length === 0) {
     return (
@@ -162,7 +169,15 @@ export function YourPositionsPanel({ address }: { address: string }) {
         <StatTile
           icon={Coins}
           eyebrow="Simulated exit"
-          value={`${taoCompact(totals.exit)} τ`}
+          value={
+            exitPhase === "pending" ? (
+              <Skeleton className="h-6 w-20" />
+            ) : exitPhase === "error" ? (
+              <StatUnavailable />
+            ) : (
+              `${taoCompact(totals.exit)} τ`
+            )
+          }
           hint="after fee + slippage"
         />
         <StatTile
