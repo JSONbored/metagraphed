@@ -1336,13 +1336,16 @@ function ActivityEventRow({
   ev,
   nested,
   isNew,
+  id,
 }: {
   ev: AccountEvent;
   nested?: boolean;
   isNew?: boolean;
+  id?: string;
 }) {
   return (
     <tr
+      id={id}
       className={classNames(
         "hover:bg-surface/40",
         nested && "bg-surface/20",
@@ -1414,13 +1417,18 @@ function ActivityGroupRow({
   const latest = group.events[0]!;
   const span = activityGroupSpanMinutes(group);
   const sameHotkey = group.events.every((e) => e.hotkey === latest.hotkey);
+  // Same group identity as the row `key` at :1584 (minus the array-index
+  // suffix, which is a React rendering artifact, not part of the group's
+  // identity) -- stable across re-renders so aria-controls keeps pointing
+  // at the same ids as the group's own child rows below.
+  const groupId = `activity-group-${group.kind}-${latest.block_number}-${latest.event_index}`;
+  const childRowIds = group.events.map((_ev, i) => `${groupId}-row-${i}`).join(" ");
 
   return (
     <>
       <tr
         className={classNames("cursor-pointer hover:bg-surface/40", isNew && "mg-fade-in")}
         onClick={onToggle}
-        aria-expanded={expanded}
       >
         <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
           {latest.block_number != null ? (
@@ -1440,13 +1448,30 @@ function ActivityGroupRow({
         </td>
         <td className="px-4 py-2.5 whitespace-nowrap">
           <span className="inline-flex items-center gap-1.5">
-            <ChevronDown
-              className={classNames(
-                "size-3 shrink-0 text-ink-muted transition-transform",
-                !expanded && "-rotate-90",
-              )}
-              aria-hidden
-            />
+            <button
+              type="button"
+              onClick={(e) => {
+                // The row itself toggles expand/collapse; stop this from
+                // also bubbling to the row's own onClick and firing twice.
+                e.stopPropagation();
+                onToggle();
+              }}
+              aria-expanded={expanded}
+              aria-controls={childRowIds}
+              aria-label={
+                `${expanded ? "Collapse" : "Expand"} ${group.events.length} ` +
+                `${group.kind ?? "event"} events at block ${latest.block_number}`
+              }
+              className="rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronDown
+                className={classNames(
+                  "size-3 shrink-0 text-ink-muted transition-transform",
+                  !expanded && "-rotate-90",
+                )}
+                aria-hidden
+              />
+            </button>
             <EventKindCell kind={group.kind} count={group.events.length} spanMinutes={span} />
           </span>
         </td>
@@ -1475,7 +1500,12 @@ function ActivityGroupRow({
       </tr>
       {expanded
         ? group.events.map((ev, i) => (
-            <ActivityEventRow key={`${ev.block_number}-${ev.event_index}-${i}`} ev={ev} nested />
+            <ActivityEventRow
+              key={`${ev.block_number}-${ev.event_index}-${i}`}
+              id={`${groupId}-row-${i}`}
+              ev={ev}
+              nested
+            />
           ))
         : null}
     </>
