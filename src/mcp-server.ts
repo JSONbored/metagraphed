@@ -4094,6 +4094,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       args: z.infer<typeof GetChainIdentityHistoryInputSchema>,
       ctx: McpCtx,
     ) {
+      // Mirror REST handleChainIdentityHistory / parseLimitParam: reject an
+      // out-of-range limit before tryPostgresTier. Without this, a Worker 400
+      // is swallowed into a success-shaped empty feed (postgres-tier degrade).
+      const rawLimit = (args as Row)?.limit;
+      if (rawLimit !== undefined && rawLimit !== null) {
+        if (
+          typeof rawLimit !== "number" ||
+          !Number.isInteger(rawLimit) ||
+          rawLimit < 1 ||
+          rawLimit > CHAIN_IDENTITY_HISTORY_LIMIT_MAX
+        ) {
+          throw toolError(
+            "invalid_params",
+            `limit must be an integer between 1 and ${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}.`,
+          );
+        }
+      }
       // Mirrors REST's handleChainIdentityHistory: same tryPostgresTier
       // contract, same METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST
       // route (#4832), so this tool and GET /api/v1/chain/identity-history

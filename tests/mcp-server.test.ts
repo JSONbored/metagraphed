@@ -10014,6 +10014,84 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.changes, []);
   });
 
+  // #8832: out-of-range limit must hard-error before tryPostgresTier, not
+  // degrade into a success-shaped empty feed.
+  describe("get_chain_identity_history limit validation", () => {
+    for (const limit of [0, -1, 1.5, 201, 500, "abc"]) {
+      test(`rejects limit=${JSON.stringify(limit)} as invalid_params`, async () => {
+        let fetched = false;
+        const env = {
+          METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+          DATA_API: {
+            fetch: async () => {
+              fetched = true;
+              return Response.json({
+                schema_version: 1,
+                count: 0,
+                subnet_count: 0,
+                changes: [],
+              });
+            },
+          },
+        };
+        const res = await callTool(
+          "get_chain_identity_history",
+          { limit },
+          { env },
+        );
+        assert.equal(res.body.result.isError, true);
+        assert.equal(
+          res.body.result.structuredContent.error.code,
+          "invalid_params",
+        );
+        assert.match(
+          res.body.result.content[0].text,
+          /limit must be an integer between 1 and 200/,
+        );
+        assert.equal(fetched, false);
+        assert.notDeepEqual(res.body.result.structuredContent, {
+          count: 0,
+          subnet_count: 0,
+          changes: [],
+        });
+      });
+    }
+
+    test("accepts absent limit (default path) without error", async () => {
+      const res = await callTool("get_chain_identity_history", {});
+      assert.equal(res.body.result.isError, false);
+      assert.equal(res.body.result.structuredContent.count, 0);
+    });
+
+    test("accepts limit=1 and limit=200", async () => {
+      for (const limit of [1, 200]) {
+        let fetched = false;
+        const env = {
+          METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+          DATA_API: {
+            fetch: async () => {
+              fetched = true;
+              return Response.json({
+                schema_version: 1,
+                count: 0,
+                subnet_count: 0,
+                changes: [],
+              });
+            },
+          },
+        };
+        const res = await callTool(
+          "get_chain_identity_history",
+          { limit },
+          { env },
+        );
+        assert.equal(res.body.result.isError, false);
+        assert.equal(fetched, true);
+        assert.equal(res.body.result.structuredContent.count, 0);
+      }
+    });
+  });
+
   test("get_chain_identity_history summarizes recent changes across subnets", async () => {
     const env = {
       METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
