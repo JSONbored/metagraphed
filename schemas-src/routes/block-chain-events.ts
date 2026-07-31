@@ -22,7 +22,7 @@ import { successEnvelopeSchema } from "../envelope.ts";
 
 const ChainEventSchema = z
   .object({
-    block_number: z.int().nullable(),
+    block_number: z.int().nullable().optional(),
     event_index: z.int().nullable(),
     pallet: z.string().nullable(),
     method: z.string().nullable(),
