@@ -36,6 +36,15 @@ export const UPGRADE_RADAR_CRON = "7,37 * * * *";
 // Worker-native cron -- offset from the top-of-hour prune (0) so the two
 // don't tick on the same minute. Must match a wrangler.jsonc cron entry.
 export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
+
+// #8600: TAO/USD index tick. Every minute, which is ADR 0025 decision 5's
+// cadence and also Cloudflare's finest cron granularity -- the 300s staleness
+// threshold in the same decision assumes it, giving a reading four ticks of
+// headroom before it is served as stale. This is the only cron on the data-api
+// Worker; it lives there rather than on the api Worker because that is where
+// the Hyperdrive binding is, and a cross-Worker hop for a write the same
+// Worker could do is the shape #4832 spent a PR removing.
+export const TAO_USD_INDEX_CRON = "* * * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =

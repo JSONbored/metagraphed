@@ -107,6 +107,19 @@
       "head_sampling_rate": 1,
     },
   },
+  // #8600: the TAO/USD index tick (ADR 0025 decision 5's 60-second cadence,
+  // which is also Cloudflare's finest cron granularity). This Worker's only
+  // cron, and it is here rather than on the api Worker because HYPERDRIVE is
+  // bound here -- see TAO_USD_INDEX_CRON in workers/config.ts.
+  //
+  // ETH_RPC_URL is a deploy-time var with NO committed default: unset, the
+  // tick is a recorded no-op rather than a silent fallback to somebody's
+  // public node. See workers/env-extra.d.ts for why that choice is not an
+  // oversight.
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

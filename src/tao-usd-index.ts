@@ -35,12 +35,36 @@ export interface PoolReading {
   liquidity_usd: number;
 }
 
+/** Why a pool that was read did not end up contributing. */
+export type ExclusionReason =
+  /** Price or liquidity was zero, negative, or non-finite. */
+  | "unusable_reading"
+  /** Further than OUTLIER_THRESHOLD from the unweighted median. */
+  | "outlier"
+  /** Survived rejection, but too few others did for anything to publish. */
+  | "below_quorum"
+  /** The anchor leg was missing, so no pool could be used at all. */
+  | "anchor_unavailable";
+
+export interface PoolExclusion {
+  address: string;
+  reason: ExclusionReason;
+}
+
 export interface TaoUsdIndex {
   usd_per_tao: number | null;
   price_basis: FiatPriceBasis;
   pool_count: number;
-  /** Addresses that did not contribute, and why they didn't, is never silent. */
+  /** ADR 0025 decision 7's published shape: addresses that did not contribute. */
   pools_excluded: string[];
+  /**
+   * The same set, each with its reason. Kept alongside rather than replacing
+   * `pools_excluded`: the ADR fixes that field's shape as the published
+   * contract, while the stored provenance row (#8600 requirement 3) has to be
+   * able to say WHY a pool dropped out, and deriving that downstream would
+   * mean re-implementing the rejection rules to guess at them.
+   */
+  exclusions: PoolExclusion[];
   /** The anchor leg, published so a consumer can check the composition. */
   eth_usd: number | null;
 }
@@ -112,24 +136,42 @@ export function computeTaoUsdIndex(input: {
     }
   }
 
-  const unavailable = (): TaoUsdIndex => ({
-    usd_per_tao: null,
-    price_basis: "insufficient_pools",
-    pool_count: 0,
-    pools_excluded: [...excluded, ...usableReadings.map((p) => p.address)],
-    eth_usd: ethUsd,
-  });
+  // Every pool that was read is accounted for in one of these two lists, at
+  // every return below -- the invariant a test pins directly.
+  const unavailable = (reason: ExclusionReason): TaoUsdIndex => {
+    const all = [
+      ...excluded.map((address) => ({
+        address,
+        reason: "unusable_reading" as ExclusionReason,
+      })),
+      ...usableReadings.map((p) => ({ address: p.address, reason })),
+    ];
+    return {
+      usd_per_tao: null,
+      price_basis: "insufficient_pools",
+      pool_count: 0,
+      pools_excluded: all.map((e) => e.address),
+      exclusions: all,
+      eth_usd: ethUsd,
+    };
+  };
 
-  if (ethUsd === null) return unavailable();
-  if (usableReadings.length < MIN_QUALIFYING_POOLS) return unavailable();
+  if (ethUsd === null) return unavailable("anchor_unavailable");
+  if (usableReadings.length < MIN_QUALIFYING_POOLS)
+    return unavailable("below_quorum");
 
   // Outliers are located against the UNWEIGHTED median, so a single huge pool
   // cannot define "normal" and evict the pools disagreeing with it.
   const reference = median(usableReadings.map((p) => p.eth_per_tao));
+  const exclusions: PoolExclusion[] = excluded.map((address) => ({
+    address,
+    reason: "unusable_reading",
+  }));
   const survivors: PoolReading[] = [];
   for (const pool of usableReadings) {
     const deviation = Math.abs(pool.eth_per_tao - reference) / reference;
-    if (deviation > OUTLIER_THRESHOLD) excluded.push(pool.address);
+    if (deviation > OUTLIER_THRESHOLD)
+      exclusions.push({ address: pool.address, reason: "outlier" });
     else survivors.push(pool);
   }
 
@@ -137,11 +179,19 @@ export function computeTaoUsdIndex(input: {
   // drops below the floor, nothing publishes -- we do not fall back to the
   // pre-rejection set, which would publish the very prices just rejected.
   if (survivors.length < MIN_QUALIFYING_POOLS) {
+    const all = [
+      ...exclusions,
+      ...survivors.map((p) => ({
+        address: p.address,
+        reason: "below_quorum" as ExclusionReason,
+      })),
+    ];
     return {
       usd_per_tao: null,
       price_basis: "insufficient_pools",
       pool_count: 0,
-      pools_excluded: [...excluded, ...survivors.map((p) => p.address)],
+      pools_excluded: all.map((e) => e.address),
+      exclusions: all,
       eth_usd: ethUsd,
     };
   }
@@ -157,7 +207,8 @@ export function computeTaoUsdIndex(input: {
     usd_per_tao: ethPerTao * ethUsd,
     price_basis: "wrapped_onchain_median",
     pool_count: survivors.length,
-    pools_excluded: excluded,
+    pools_excluded: exclusions.map((e) => e.address),
+    exclusions,
     eth_usd: ethUsd,
   };
 }
