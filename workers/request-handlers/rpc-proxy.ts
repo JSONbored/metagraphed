@@ -893,6 +893,16 @@ export function rpcCachePolicy(
   method: string,
   params: unknown,
 ): { cacheable: boolean; ttl: number } {
+  // Named (object) params are forwarded verbatim upstream but CANNOT be
+  // represented in the cache key, which keys on the positional args (#8805).
+  // Caching them would let `{"at":"0x<old block>"}` store a historical answer
+  // under the key a later `params: []` caller reads -- cross-caller poisoning
+  // of signing-payload inputs like state_getRuntimeVersion's specVersion. An
+  // absent or null `params` is genuinely "no arguments" and keys faithfully as
+  // [], so only a present, non-array `params` is refused here.
+  if (params !== undefined && params !== null && !Array.isArray(params)) {
+    return { cacheable: false, ttl: 0 };
+  }
   const args = Array.isArray(params) ? params : [];
   switch (method) {
     case "chain_getBlockHash":
@@ -941,6 +951,10 @@ async function rpcCacheKey(
   method: string,
   params: unknown,
 ): Promise<Request> {
+  // rpcCachePolicy refuses a present, non-array `params` before anything
+  // reaches here, so the `: []` arm is only ever taken for an absent/null
+  // `params` -- which IS the empty positional list, not an erasure of named
+  // arguments (#8805).
   const normalized = JSON.stringify([
     network,
     method,
