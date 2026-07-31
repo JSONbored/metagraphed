@@ -55,19 +55,57 @@ first-party. It does not make it authoritative for settlement (decision 8).
 
 A venue qualifies only if it satisfies **all** of:
 
-| #   | Criterion                                   | Threshold                                                                                                                                           |
-| --- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| a   | Pair                                        | `TAO/USD`, `TAO/USDT`, or `TAO/USDC`                                                                                                                |
-| b   | Reported 24h volume on that pair            | **≥ $1,000,000 USD equivalent**                                                                                                                     |
-| c   | Public endpoint for recent trades or ticker | no authentication required for public market data                                                                                                   |
-| d   | Documented rate limit                       | permits **≥ 1 request/minute sustained** at decision 5's cadence, with headroom for retry                                                           |
-| e   | Terms of service                            | **explicitly permit redistribution of derived data.** Silence is not permission — a venue whose ToS does not address it is excluded until clarified |
-| f   | Operating history                           | ≥ 90 days serving the pair                                                                                                                          |
+| #   | Criterion                                   | Threshold                                                                                 |
+| --- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| a   | Pair                                        | `TAO/USD`, `TAO/USDT`, or `TAO/USDC`                                                      |
+| b   | Reported 24h volume on that pair            | **≥ $1,000,000 USD equivalent**                                                           |
+| c   | Public endpoint for recent trades or ticker | no authentication required for public market data                                         |
+| d   | Documented rate limit                       | permits **≥ 1 request/minute sustained** at decision 5's cadence, with headroom for retry |
+| e   | Terms of service                            | see the amendment below — this is a recorded risk position, not a gate                    |
+| f   | Operating history                           | ≥ 90 days serving the pair                                                                |
 
-Criterion (e) is a **gate, not a tiebreak**. A venue excluded on ToS grounds and
-one excluded for thin liquidity are different situations, and #8599 must record
-which applied so a later reader can tell whether a venue could ever be
-reconsidered.
+**Amended 2026-07-31, after #8599's survey.** Criterion (e) was originally
+written as a hard gate — "explicitly permit redistribution of derived data;
+silence is not permission." The survey established that no major venue clears
+that bar. The terms are not silent, they are prohibitive: Coinbase's Market
+Data Terms define "Derived Works" and bar redistributing them absent written
+consent; Kraken's Global Terms §8–9 prohibit automated extraction and
+commercial exploitation of "Our Content"; KuCoin's Terms bar derivative works
+and systematic collection for commercial interests. Applied literally, the
+criterion excludes every venue and the index cannot be built at all.
+
+The position taken instead, recorded plainly so it is a decision rather than an
+oversight:
+
+- We read **public, unauthenticated** market-data endpoints at a low fixed rate
+  (decision 5's 60s), the same access any browser makes.
+- We publish an **aggregate index across venues** — a single number derived from
+  many sources — and never redistribute any venue's data as such: no venue's
+  raw ticker, order book, or trade feed is exposed, and no venue is attributed a
+  price in the payload.
+- This is the posture a DEX aggregator or an index provider operates under, and
+  it is a **known, accepted risk**, not a clean permission. A venue may object
+  and ask us to stop; the response is to drop that venue, and decision 4's
+  quorum is what makes that survivable rather than fatal.
+
+**An API key is not a fix, and would make this worse.** Registering for one
+means affirmatively accepting the very terms that prohibit redistribution —
+Coinbase's Market Data Terms attach specifically to accessing its Market Data
+API. Holding a key converts "we read a public endpoint" into "we agreed not to
+do this and did it anyway," and costs us the same-as-any-browser argument for
+nothing in return. Criterion (c) already requires **no authentication**, and
+that stays, now for this second reason as well. The actual route to permission
+is a commercial redistribution licence — Coinbase calls these "authorized
+redistribution partners" — which is a business agreement to pursue if the index
+ever warrants it, not a checkbox.
+
+So (e) no longer gates venue selection. #8599 still **records** each venue's
+terms verbatim with a retrieval date, because a future reader needs to know
+what was accepted and on what basis — and because a venue that moves from
+prohibitive to permissive, or the reverse, is a fact worth having.
+
+Venues remain excluded on the criteria that are still gates: reachability,
+liquidity, public access, and rate limits.
 
 The concrete venue list is #8599's deliverable. This ADR fixes only the rules it
 must satisfy.

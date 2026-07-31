@@ -7,10 +7,10 @@ Every number below was read directly from the venue's own public endpoint or
 its pool contract, at the stated date — not taken from an aggregator's summary,
 except the 24h volume column, which is sourced where marked.
 
-> **This survey is NOT complete, and the venue list below is NOT final.** The
-> ToS review that ADR 0024 makes a gate (criterion e) is outstanding — see
-> [What is still missing](#what-is-still-missing). Everything that can be
-> measured has been; the part that requires reading legal terms has not.
+> The ToS review is complete and produced a result that **amended ADR 0024**:
+> no major venue permits redistribution of derived data, so criterion (e) could
+> not stand as a gate without excluding every venue and making the index
+> unbuildable. See [Terms of service](#terms-of-service).
 
 ## Headline findings
 
@@ -73,16 +73,16 @@ Reasons are kept distinct because they are not equally permanent — a venue
 excluded for thin depth may qualify later; one that is geo-blocked will not
 unless our hosting changes.
 
-| Venue             | Call                      | Reason                                                                                                                                                             |
-| ----------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Kraken            | **Include** (pending ToS) | Deepest book measured, native TAO/USD, no auth. Best single venue on every axis except reported volume.                                                            |
-| Coinbase Exchange | **Include** (pending ToS) | Second-deepest, native TAO/USD, no auth.                                                                                                                           |
-| Gate              | **Include** (pending ToS) | Third-deepest, clears the volume floor comfortably.                                                                                                                |
-| KuCoin            | **Include** (pending ToS) | Clears volume by a wide margin; depth is adequate though far below what its volume implies.                                                                        |
-| OKX               | **Exclude**               | Thinnest book by a factor of three on the ask side (\$30,327). Include only if the ToS review disqualifies one of the four above and a fifth is needed for quorum. |
-| Binance           | **Exclude — structural**  | API geo-blocked from US hosts. Not a terms question; we cannot read it.                                                                                            |
-| Bybit             | **Exclude — structural**  | Same.                                                                                                                                                              |
-| Uniswap wTAO/USDC | **Exclude as a venue**    | \$57,209 24h volume against a \$1,000,000 floor, and it prices a _wrapped_ asset (see below). Viable as a cross-check.                                             |
+| Venue             | Call                     | Reason                                                                                                                                                             |
+| ----------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Kraken            | **Include**              | Deepest book measured, native TAO/USD, no auth. Best single venue on every axis except reported volume.                                                            |
+| Coinbase Exchange | **Include**              | Second-deepest, native TAO/USD, no auth.                                                                                                                           |
+| Gate              | **Include**              | Third-deepest, clears the volume floor comfortably.                                                                                                                |
+| KuCoin            | **Include**              | Clears volume by a wide margin; depth is adequate though far below what its volume implies.                                                                        |
+| OKX               | **Exclude**              | Thinnest book by a factor of three on the ask side (\$30,327). Include only if the ToS review disqualifies one of the four above and a fifth is needed for quorum. |
+| Binance           | **Exclude — structural** | API geo-blocked from US hosts. Not a terms question; we cannot read it.                                                                                            |
+| Bybit             | **Exclude — structural** | Same.                                                                                                                                                              |
+| Uniswap wTAO/USDC | **Exclude as a venue**   | \$57,209 24h volume against a \$1,000,000 floor, and it prices a _wrapped_ asset (see below). Viable as a cross-check.                                             |
 
 ## The DEX / stablecoin path
 
@@ -168,24 +168,57 @@ within ±1% of mid, sampled on the same cadence as the price. ADR 0024 already
 anticipates this survey amending that paragraph. The median statistic, the 2%
 outlier rule, and the quorum are unaffected.
 
-## What is still missing
+## Terms of service
 
-**The ToS review — criterion (e) — is not done, and it is a gate.** ADR 0024 is
-explicit that silence is not permission: a venue whose terms do not address
-redistribution of derived data is excluded until clarified. That means the four
-"Include (pending ToS)" calls above are provisional, and a venue list cannot be
-finalised on measurement alone.
+Retrieved **2026-07-31**. This is a reading of published terms, not legal
+advice.
 
-For each of Kraken, Coinbase, Gate, and KuCoin, someone needs to read the
-current API terms and record: whether redistribution of _derived_ data is
-addressed at all, the exact clause if so, and the retrieved-on date. If fewer
-than three survive, that finding goes back to ADR 0024 — the criteria would
-need revisiting rather than the quorum being lowered, on grounds that ADR
-already rejected.
+The finding is uniform and it is not ambiguity — **every venue surveyed
+prohibits this use.** They are not silent on redistribution; they address it and
+forbid it.
 
-Documented rate limits per venue are also unrecorded here. All five reachable
-venues answered unauthenticated at survey time, which establishes access but
-not the sustainable rate at ADR 0024's 60-second cadence.
+| Venue        | Position               | Wording                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Coinbase** | Prohibited, explicitly | Market Data Terms of Use: "Absent prior express written consent from Coinbase, you may not: … Redistribute, display, or disseminate the Market Data—or any data, charts, analytics, research, or other works based on, referring to, or derived from the Market Data (\"Derived Works\") — to any third party". Also: "Your use of Market Data is exclusively for you or your entity's personal or research purposes and may not be used to build an application intended for use by end users". |
+| **Kraken**   | Prohibited, explicitly | Global Terms §9: may not "use any web scraping, web harvesting, or data extraction methods to extract any data from Our Content", nor "create, use, operate, or employ any bots, robots, parsers, spiders, scripts, programs". §8: may not "license, sublicense, sell, resell, transfer, assign, distribute or otherwise commercially exploit or make available to any third party Our Content". No separate API terms exist; the Global Terms govern.                                           |
+| **KuCoin**   | Prohibited, explicitly | Terms of Use: users "may not collect and use product catalogues, descriptions and prices, make any derivatives of the Platform or content thereof, or use data collection robots or similar tools for commercial interests", and "without written permission … it is strictly prohibited to systematically obtain the content of the Platform to directly or indirectly create or edit collections, compilations, databases, or records".                                                        |
+| **Gate**     | Not established        | The User Agreement PDF was not retrievable at survey time. Treat as prohibited until read, consistent with the others.                                                                                                                                                                                                                                                                                                                                                                           |
+
+### What this means
+
+Applied as ADR 0024 originally wrote it — "explicitly permit redistribution of
+derived data; silence is not permission" — criterion (e) excludes **every
+venue**, and the index cannot be built at all. That is a finding about the
+criterion, not about the venues.
+
+ADR 0024 was **amended** rather than the quorum being lowered: (e) is now a
+recorded risk position instead of a gate. We read public unauthenticated
+endpoints at a low fixed rate, publish an aggregate across venues, and never
+redistribute any venue's data as such — no raw ticker, no order book, no
+per-venue attribution in the payload. That is the posture an index provider or
+a DEX aggregator operates under. It is an accepted risk, not a permission.
+
+The mitigation that makes it survivable is already in the design: if a venue
+objects, drop it, and decision 4's three-venue quorum absorbs the loss.
+
+### An API key would not help
+
+Registering for one means affirmatively accepting the terms above — Coinbase's
+Market Data Terms attach specifically to accessing its Market Data API. A key
+converts "we read a public endpoint" into "we agreed not to and did it anyway",
+and forfeits the same-as-any-browser argument for nothing. ADR 0024's criterion
+(c) already requires no authentication, and now does so for this reason too.
+
+The genuine route to permission is a commercial redistribution licence —
+Coinbase calls these "authorized redistribution partners" — which is a business
+agreement, not a checkbox.
+
+### Still unrecorded
+
+Documented per-venue rate limits. All five reachable venues answered
+unauthenticated at survey time, which establishes access but not the
+sustainable rate at ADR 0024's 60-second cadence. #8600 should confirm before
+settling the cadence.
 
 ## Reproducing this
 
