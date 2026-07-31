@@ -34,7 +34,7 @@ infrastructure, not inherited from prior docs:
 | Tier                 | Where                                               | Pieces                                                                                                                                                                                                                                                                                                                           |
 | -------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Edge (rented)        | **Cloudflare**                                      | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose + alerter (#4984), R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy. The health-prober and rollups also still run here (CF crons) — moving them to the indexer box is tracked separately (#2113), not done.                                        |
-| Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data), Redis (cursor state). `indexer-rs-backfill` (sharded historical backfill) is currently **stopped** — paused deliberately so the archive node's own sync gets full I/O headroom. |
+| Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data), Redis (cursor state). `indexer-rs-backfill` (sharded historical backfill) and `indexer-rs-tail` (the auto-following gap-closer) are **running** against the archive node's own RPC. |
 | Archive box (owned)  | dedicated bare-metal, separate from the indexer box | `subtensor` full archive node (`--pruning=archive --sync=full`). **Still syncing** — not yet at chain tip.                                                                                                                                                                                                                       |
 | Fullnode box (owned) | dedicated bare-metal, third box                     | `subtensor` **pruned**, warp-synced node. This, not the archive node, is `indexer-rs`'s current live-follow RPC source (`EVENTS_RPC_URL`) — it reached chain tip fast and isn't competing with the archive node's own sync for I/O.                                                                                              |
 | Railway              | `wss-lb` only                                       | Everything else that previously ran on Railway (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) has moved to the boxes above or been retired; `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.                                                                           |
@@ -147,14 +147,28 @@ Each needs a human who can verify/roll back (ADR 0014 _Sequencing_):
    `neurons` / `neuron_daily` are all flipped to Postgres via Hyperdrive,
    D1's write/prune/ingest code for them retired (#4772, PR #4908,
    2026-07-11 — see item 4 below).
-3. 🔲 **Full historical re-backfill** (genesis-to-tip, archive-gated) —
-   **currently paused**, not shipped: the interim single-shard backfill
-   against a rate-limited public RPC was deliberately stopped so the archive
-   node's own sync gets full I/O headroom, and the plan is to repoint the
-   sharded backfill (`BACKFILL_SHARDS`) at the archive node's own RPC once
-   item 1 finishes. Don't confuse this with item 2 above — live serving is
-   cut over and stable; it's the deep historical window that's still gated
-   on the archive node.
+3. 🏃 **Full historical re-backfill** (genesis-to-tip, archive-gated) —
+   **running** since 2026-07-31, against the archive node's own RPC over
+   HTTP. The earlier "paused for archive I/O headroom" posture is retired:
+   the archive node holds its normal ~0.41 blk/s spec-423 sync rate with the
+   backfill running, so the two are not in practice competing (see
+   metagraphed-infra#183 for why that rate is what it is).
+
+   Two containers, deliberately split:
+   - `indexer-rs-backfill` — the bulk sweep, genesis → `indexer_backfill_to`.
+   - `indexer-rs-tail` — `BACKFILL_TO=auto`, closing the window between that
+     cap and where live-follow's continuous coverage begins (8,599,188). It
+     re-derives the archive node's head each pass, so it advances on its own
+     as the node syncs into that range rather than stopping at a fixed cap.
+
+   Throughput went 0.67 → 115+ blk/s once six stacked defects were fixed
+   (#8791): a WebSocket transport that silently wedged, a pooled HTTP client
+   that lost requests, a runtime-wasm call per block, per-shard duplicate
+   discovery, upgrade blocks decoded with the wrong runtime, and — the
+   dominant one — a per-row firehose trigger costing 63s per 500 rows.
+
+   Don't confuse this with item 2 above — live serving is cut over and
+   stable; this is the deep historical window.
 4. ✅ **Decommissioned** (#4772, 2026-07-11): the chain-data `*/3` R2-staging
    drain (`loadStagedNeurons`/`Events`/`Blocks`/`Extrinsics`), the realtime
    ingest endpoints, the D1-side daily rollup/archive/prune crons, the manual

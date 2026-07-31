@@ -1669,6 +1669,26 @@ async fn main() -> Result<()> {
     result
 }
 
+/// Where to resume from, given the requested `[from, to]` and a progress file
+/// recording `[pf, pt]` completed through `done`. `None` means start at `from`.
+///
+/// The progress file is only usable when it describes the SAME starting point,
+/// so `pf != from` always discards it -- a re-shard moves every boundary and
+/// resuming another shard's slice would silently skip blocks.
+///
+/// `pt` is allowed to be SMALLER than `to`, which is what makes a "follow the
+/// archive node's tip" run practical: the tail backfill's end moves forward as
+/// the node syncs, and requiring an exact match restarted it from `from` on
+/// every launch, re-walking millions of already-committed blocks. A progress
+/// file whose `pt` EXCEEDS `to` is still discarded -- the range shrank, so
+/// `done` may be past the new end and resuming there would skip the remainder.
+fn resume_point(from: u64, to: u64, pf: u64, pt: u64, done: u64) -> Option<u64> {
+    if pf != from || pt > to || done < from || done > to {
+        return None;
+    }
+    Some(done)
+}
+
 async fn run() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -1830,11 +1850,8 @@ async fn run() -> Result<()> {
         .and_then(|v| {
             let pf = v.get("from")?.as_u64()?;
             let pt = v.get("to")?.as_u64()?;
-            if pf == from && pt == to {
-                v.get("completed_through")?.as_u64()
-            } else {
-                None
-            }
+            let done = v.get("completed_through")?.as_u64()?;
+            resume_point(from, to, pf, pt, done)
         });
     let start = match resume {
         Some(done) => done + 1,
@@ -1949,6 +1966,51 @@ async fn run() -> Result<()> {
     }
     eprintln!("backfill complete #{from}..#{to}");
     Ok(())
+}
+
+#[cfg(test)]
+mod resume_point_tests {
+    use super::*;
+
+    #[test]
+    fn resumes_an_identical_range() {
+        assert_eq!(resume_point(1, 1000, 1, 1000, 400), Some(400));
+    }
+
+    #[test]
+    fn resumes_when_the_end_moved_forward() {
+        // The tail backfill follows the archive node's tip, so `to` grows on
+        // every launch. Requiring an exact match restarted it from `from` each
+        // time and re-walked everything already committed.
+        assert_eq!(resume_point(1, 2000, 1, 1000, 900), Some(900));
+    }
+
+    #[test]
+    fn discards_progress_when_the_range_shrank() {
+        // `done` may sit past the new end; resuming there would skip the
+        // blocks between `to` and `done`.
+        assert_eq!(resume_point(1, 500, 1, 1000, 900), None);
+    }
+
+    #[test]
+    fn discards_progress_from_a_different_shard_start() {
+        // A re-shard moves every boundary; another slice's progress must never
+        // be adopted or blocks are silently skipped.
+        assert_eq!(resume_point(1000, 2000, 1, 2000, 1500), None);
+    }
+
+    #[test]
+    fn discards_progress_pointing_outside_the_requested_range() {
+        assert_eq!(resume_point(1000, 2000, 1000, 2000, 5), None);
+        assert_eq!(resume_point(1000, 2000, 1000, 2000, 9999), None);
+    }
+
+    #[test]
+    fn resumes_at_the_exact_end_without_overrunning() {
+        // A completed range must resume at its end, not past it -- the caller
+        // adds one, which correctly terminates the loop.
+        assert_eq!(resume_point(1, 1000, 1, 1000, 1000), Some(1000));
+    }
 }
 
 #[cfg(test)]
