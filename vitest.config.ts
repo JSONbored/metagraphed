@@ -56,6 +56,12 @@ export default defineConfig({
     // per-file isolation; required by `isolate: false`. See
     // src/module-state-registry.ts.
     setupFiles: ["tests/setup/reset-module-state.ts"],
+    // Takes ONE pristine copy of the tree before any worker starts, which every
+    // per-file sandbox then clones from. Cloning the LIVE repo instead is racy
+    // by construction: lib.ts writes JSON atomically, so a concurrent writer
+    // leaves temp files that vanish mid-copy. See
+    // tests/setup/artifact-snapshot.ts.
+    globalSetup: ["tests/setup/artifact-snapshot.ts"],
     // vi.stubGlobal/vi.stubEnv are restored automatically rather than relying on
     // 54 hand-written restores across 11 files — the same cross-file hygiene the
     // reset registry gives module state.

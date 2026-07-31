@@ -21,18 +21,13 @@
 // repoRoot-derived consts already frozen against the real repo. Explicit paths
 // are order-independent; the import-time trick is not.
 
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  rmSync,
-  symlinkSync,
-} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { repoRoot } from "../../scripts/lib.ts";
+import { snapshotRoot } from "../setup/artifact-snapshot.ts";
 
 // Everything the build/validate scripts read or write. Deliberately not the
 // whole repo: node_modules and .git dominate the copy cost and no script under
@@ -66,19 +61,6 @@ export interface RepoSandbox {
   cleanup: () => void;
 }
 
-// Never worth copying: node_modules and .git dominate the cost, .claude holds
-// other agents' full repo copies, and the coverage/report outputs are written
-// by the run itself.
-const NEVER_COPY = new Set([
-  "node_modules",
-  ".git",
-  ".claude",
-  "coverage",
-  "coverage-mocked",
-  "coverage-tmp",
-  "reports",
-]);
-
 export interface RepoSandboxOptions {
   /**
    * "data" (default) copies only the directories the build/validate scripts
@@ -93,19 +75,44 @@ export interface RepoSandboxOptions {
   scope?: "data" | "full";
 }
 
+// Copies from the frozen snapshot (tests/setup/artifact-snapshot.ts), never
+// from the live repo — so a concurrent atomic write in the real tree can never
+// make a sandbox partial. Any non-zero status is a real failure and throws:
+// there is no benign vanish case left to tolerate.
+function copyTree(source: string, destination: string): void {
+  const result = spawnSync("rsync", ["-a", `${source}/`, `${destination}/`], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `repo-sandbox: rsync ${source} -> ${destination} failed ` +
+        `(status ${result.status}): ${result.stderr ?? ""}`,
+    );
+  }
+}
+
 export function createRepoSandbox(
   label = "artifacts",
   { scope = "data" }: RepoSandboxOptions = {},
 ): RepoSandbox {
   const root = mkdtempSync(path.join(tmpdir(), `metagraphed-${label}-`));
-  const entries =
-    scope === "full"
-      ? readdirSync(repoRoot).filter((entry) => !NEVER_COPY.has(entry))
-      : DATA_DIRS;
-  for (const dir of entries) {
-    const source = path.join(repoRoot, dir);
-    if (!existsSync(source)) continue;
-    cpSync(source, path.join(root, dir), { recursive: true });
+  const snapshot = snapshotRoot();
+  if (!existsSync(snapshot)) {
+    throw new Error(
+      `repo-sandbox: no snapshot at ${snapshot}. tests/setup/artifact-snapshot.ts ` +
+        `must be registered as vitest globalSetup.`,
+    );
+  }
+  if (scope === "full") {
+    // One rsync of the snapshot root. Copying per top-level entry is wrong:
+    // the root holds regular files too, and `rsync -a file/ dest/` is invalid.
+    copyTree(snapshot, root);
+  } else {
+    for (const dir of DATA_DIRS) {
+      const source = path.join(snapshot, dir);
+      if (!existsSync(source)) continue;
+      copyTree(source, path.join(root, dir));
+    }
   }
 
   // Several scripts resolve tooling from `repoRoot/node_modules` directly
