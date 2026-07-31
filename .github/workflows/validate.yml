@@ -335,6 +335,20 @@ jobs:
       # epic metagraphed#7510). tsc reads tsconfig.json's own include/exclude,
       # not the file list — this typechecks the whole in-scope tree every run,
       # not just files this PR touched.
+      # Incremental typecheck (#8924): tsc reuses a .tsbuildinfo and revalidates
+      # only what changed -- measured 8.5s -> 1.8s warm. Keyed on the lockfile
+      # (a dependency change invalidates types) plus the run sha so every run
+      # saves a fresh entry; restore-keys falls back to the newest prior one.
+      # A cold or stale buildinfo costs a full check, never a wrong one: tsc
+      # verifies every input against the version recorded in it.
+      - name: Cache TypeScript buildinfo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tsconfig.tsbuildinfo
+          key: ${{ runner.os }}-tsbuildinfo-root-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-tsbuildinfo-root-${{ hashFiles('package-lock.json') }}-
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -912,6 +926,16 @@ jobs:
 
       - name: Lint (ESLint + Prettier)
         run: npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
+
+      # Same incremental-typecheck cache as the test job (#8924); apps/ui is the
+      # bigger win at 28.9s -> 5.6s warm.
+      - name: Cache TypeScript buildinfo (apps/ui)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/ui/tsconfig.tsbuildinfo
+          key: ${{ runner.os }}-tsbuildinfo-ui-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-tsbuildinfo-ui-${{ hashFiles('package-lock.json') }}-
 
       - name: Typecheck
         run: npm run typecheck --workspace=apps/ui
