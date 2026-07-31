@@ -112,10 +112,18 @@
   // cron, and it is here rather than on the api Worker because HYPERDRIVE is
   // bound here -- see TAO_USD_INDEX_CRON in workers/config.ts.
   //
-  // ETH_RPC_URL is a deploy-time var with NO committed default: unset, the
-  // tick is a recorded no-op rather than a silent fallback to somebody's
-  // public node. See workers/env-extra.d.ts for why that choice is not an
-  // oversight.
+  // ETH_RPC_URL is a Worker SECRET, not a var, and not in this file:
+  //
+  //     npx wrangler secret put ETH_RPC_URL --config wrangler.data.jsonc
+  //
+  // Every provider whose terms actually permit programmatic access
+  // authenticates by embedding the key IN THE URL
+  // (https://eth-mainnet.g.alchemy.com/v2/<key>), so the endpoint and the
+  // credential are the same string. A "vars" entry here would commit it.
+  //
+  // No committed default either: unset, the tick is a recorded no-op rather
+  // than a silent fallback to somebody's public node. See
+  // workers/env-extra.d.ts for why that is a choice and not an oversight.
   "triggers": {
     "crons": ["* * * * *"],
   },
