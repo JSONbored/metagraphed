@@ -12,6 +12,7 @@ import {
   buildSubnetEventSummary,
   buildAccountSubnets,
   loadAccountHistory,
+  ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   buildAccountTransfers,
 } from "../src/account-events.ts";
@@ -514,6 +515,7 @@ test("buildAccountSummary is schema-stable with no data", () => {
   assert.equal(out.activity.last_tx_at, null);
   assert.equal(out.activity.total_fee_tao, null);
   assert.deepEqual(out.activity.modules_called, []);
+  assert.equal(out.activity.modules_called_capped, false);
 });
 
 test("buildAccountSummary threads the signing activity sub-object (#1847)", () => {
@@ -536,6 +538,31 @@ test("buildAccountSummary threads the signing activity sub-object (#1847)", () =
   // the {call_module:null} row is dropped
   assert.equal(out.activity.modules_called.length, 1);
   assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
+  assert.equal(out.activity.modules_called_capped, false);
+});
+
+test("formatAccountActivity modules_called_capped is false at tx_count === window", () => {
+  const out = formatAccountActivity(
+    { tx_count: ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW },
+    [],
+  );
+  assert.equal(out.tx_count, ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW);
+  assert.equal(out.modules_called_capped, false);
+});
+
+test("formatAccountActivity modules_called_capped is true at tx_count === window + 1", () => {
+  const out = formatAccountActivity(
+    { tx_count: ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW + 1 },
+    [],
+  );
+  assert.equal(out.tx_count, ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW + 1);
+  assert.equal(out.modules_called_capped, true);
+});
+
+test("formatAccountActivity modules_called_capped is false at tx_count 0", () => {
+  const out = formatAccountActivity({ tx_count: 0 }, []);
+  assert.equal(out.tx_count, 0);
+  assert.equal(out.modules_called_capped, false);
 });
 
 test("buildAccountSummary rounds activity.total_fee_tao to rao precision (#2351)", () => {

@@ -4112,13 +4112,14 @@ export const SDL = /* GraphQL */ `
     days: [AccountDay!]!
   }
 
-  "Signing-activity aggregate from the extrinsics tier, matched by signer only -- an account queried by a key that did not sign returns tx_count 0, other fields null/empty."
+  "Signing-activity aggregate from the extrinsics tier, matched by signer only. tx_count / total_fee_tao / last_tx_* are all-time; modules_called is a newest-N mix with modules_called_capped when incomplete. An account queried by a key that did not sign returns tx_count 0, other fields null/empty."
   type AccountActivity {
     tx_count: Int!
     last_tx_block: Int
     last_tx_at: String
     total_fee_tao: Float
     modules_called: [AccountModuleCall!]!
+    modules_called_capped: Boolean!
   }
 
   type AccountModuleCall {

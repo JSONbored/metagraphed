@@ -72,6 +72,7 @@ const AccountActivitySchema = z
         })
         .strict(),
     ),
+    modules_called_capped: z.boolean(),
   })
   .strict();
 

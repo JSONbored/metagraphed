@@ -51,6 +51,7 @@ import {
   buildAccountSummary,
   buildAccountSubnets,
   buildAccountHistory,
+  ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
@@ -7021,11 +7022,10 @@ async function dispatchDataApiRequest(
           >`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
-          // Both subqueries lead ORDER BY with observed_at (same chunk-
-          // exclusion fix as above) -- each caps to the most recent 1000
-          // extrinsics before aggregating, so which 1000 rows SQL fetches
-          // is what matters, not their fetch order (the outer aggregates
-          // don't care about row order at all).
+          // All-time signer aggregates (order-independent COUNT/MAX/SUM) —
+          // idx_extrinsics_signer_observed / idx_extrinsics_signer_block both
+          // lead on signer, so the predicate is index-backed. modules_called
+          // keeps its newest-N window below (recency mix, not a total).
           const activityRows = await sql<
             {
               tx_count: string;
@@ -7035,13 +7035,13 @@ async function dispatchDataApiRequest(
             }[]
           >`
           SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao
-          FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ${ss58} ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1000) sub`;
+          FROM extrinsics WHERE signer = ${ss58}`;
           const moduleRows = await sql<
             (Pick<Extrinsics, "call_module"> & { count: string })[]
           >`
           SELECT call_module, COUNT(*) AS count FROM (
             SELECT call_module FROM extrinsics WHERE signer = ${ss58}
-            ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1000
+            ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT ${ACCOUNT_ACTIVITY_MODULES_CALLED_WINDOW}
           ) sub GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`;
           const scanned = scanRows.length;
           const capped = scanRows.slice(0, ACCOUNT_EVENT_SUMMARY_SCAN_CAP);

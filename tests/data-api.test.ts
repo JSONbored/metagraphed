@@ -1433,11 +1433,19 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from two merged
   expect(body.recent_events.length).toBe(2);
   expect(body.activity.tx_count).toBe(3);
   expect(body.activity.modules_called[0].call_module).toBe("SubtensorModule");
+  expect(body.activity.modules_called_capped).toBe(false);
   const text = queryText();
   expect(text).toContain("FROM account_events WHERE hotkey =");
   expect(text).toContain("FROM account_events WHERE coldkey =");
   expect(text).toContain("hotkey IS NULL OR hotkey <>");
   expect(text).not.toContain("WHERE (hotkey =");
+  // #8822: activity aggregates are uncapped all-time — no LIMIT 1000 subquery
+  expect(text).toMatch(
+    /SELECT COUNT\(\*\) AS tx_count[\s\S]*FROM extrinsics WHERE signer =/,
+  );
+  expect(text).not.toMatch(
+    /FROM \(SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer =[\s\S]*LIMIT 1000\) sub/,
+  );
 });
 
 test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {

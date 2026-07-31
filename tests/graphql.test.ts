@@ -6806,12 +6806,13 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
               last_tx_at: "2026-07-13T00:00:00.000Z",
               total_fee_tao: 0.01,
               modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+              modules_called_capped: false,
             },
           }),
       },
     };
     const { status, body } = await gql(
-      `{ account(ss58: "${SS58}") { ss58 event_count subnet_count first_block last_block event_kinds { kind count } registrations { netuid stake_tao validator_permit active } recent_events { block_number event_kind } activity { tx_count last_tx_block total_fee_tao modules_called { call_module count } } } }`,
+      `{ account(ss58: "${SS58}") { ss58 event_count subnet_count first_block last_block event_kinds { kind count } registrations { netuid stake_tao validator_permit active } recent_events { block_number event_kind } activity { tx_count last_tx_block total_fee_tao modules_called { call_module count } modules_called_capped } } }`,
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -6834,6 +6835,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       last_tx_block: 490,
       total_fee_tao: 0.01,
       modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+      modules_called_capped: false,
     });
   });
 
