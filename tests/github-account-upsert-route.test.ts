@@ -31,9 +31,15 @@ vi.mock("postgres", () => ({
 
 const { default: worker } = await import("../workers/data-api.ts");
 
+// #8820: the route is gated with the internal-token pair, so the default env
+// provisions the secret and the default request carries the matching header --
+// the pre-gate happy/validation paths below assert behaviour AFTER the gate.
+const INTERNAL_TOKEN = "test-lookup-token";
+
 function baseEnv(overrides = {}) {
   return {
     HYPERDRIVE: { connectionString: "postgres://mock" },
+    API_KEY_LOOKUP_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,
   };
 }
@@ -43,10 +49,13 @@ beforeEach(() => {
   sqlCalls.length = 0;
 });
 
-function req(body: Row) {
+function req(body: Row, token: string | null = INTERNAL_TOKEN) {
   return new Request("https://d/api/v1/auth/github/upsert-account", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(token === null ? {} : { "x-api-key-lookup-token": token }),
+    },
     body: JSON.stringify(body),
   });
 }
@@ -64,7 +73,10 @@ test("rejects a malformed JSON body", async () => {
   const res = await fetchRoute(
     new Request("https://d/api/v1/auth/github/upsert-account", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-api-key-lookup-token": INTERNAL_TOKEN,
+      },
       body: "not json",
     }),
     env,
@@ -114,4 +126,61 @@ test("a GET to the same path is not routed here", async () => {
     env,
   );
   assert.notEqual(res.status, 200);
+});
+
+// #8820: the internal-token gate. Same two-step 503-then-401 fail-closed shape
+// as handleApiKeyVerify -- no token means no write is even attempted.
+test("no token header -> 401 and NO write attempted (fails on main)", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }, null),
+    env,
+  );
+  assert.equal(res.status, 401);
+  assert.deepEqual(sqlCalls, []);
+});
+
+test("a wrong token header -> 401 and NO write attempted", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }, "not-the-secret"),
+    env,
+  );
+  assert.equal(res.status, 401);
+  assert.deepEqual(sqlCalls, []);
+});
+
+test("the secret unprovisioned -> 503 even when a header is supplied, NO write (fail-closed ordering)", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: undefined });
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }, INTERNAL_TOKEN),
+    env,
+  );
+  assert.equal(res.status, 503);
+  assert.deepEqual(sqlCalls, []);
+});
+
+test("correct token + valid body -> 200 with the account row, byte-identical to today", async () => {
+  const env = baseEnv();
+  mockQueue.current.push([{ id: 7, github_login: "octocat", tier: "free" }]);
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()) as Row, {
+    id: 7,
+    github_login: "octocat",
+    tier: "free",
+  });
+});
+
+test("correct token + invalid body -> the existing 400, NO write attempted", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req({ github_user_id: "42", github_login: "octocat" }),
+    env,
+  );
+  assert.equal(res.status, 400);
+  assert.deepEqual(sqlCalls, []);
 });

@@ -50,6 +50,7 @@ import type {
   OAuthHelpers,
   OAuthProviderOptions,
 } from "@cloudflare/workers-oauth-provider";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -364,10 +365,23 @@ export async function handleGithubOAuthCallback(
       { status: 503 },
     );
   }
+  // #8820: the upsert route is now gated with the internal-token pair. Without
+  // the secret the request would 401; surface that as the same "not
+  // provisioned" 503 the missing-binding case above returns, so an
+  // unprovisioned deploy is diagnosable rather than a generic 502 below.
+  if (!env.API_KEY_LOOKUP_INTERNAL_TOKEN) {
+    return new Response(
+      "account storage is not provisioned on this deployment",
+      { status: 503 },
+    );
+  }
   const upsertResponse = await env.DATA_API.fetch(
     new Request("https://internal/api/v1/auth/github/upsert-account", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
+      },
       body: JSON.stringify({
         github_user_id: githubUserId,
         github_login: githubLogin,

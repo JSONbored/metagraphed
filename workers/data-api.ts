@@ -4873,6 +4873,9 @@ async function handleWatchPushSubscriptionsRoute(
 //     handleApiKeyVerify's own header comment.
 //   POST /api/v1/internal/accounts/tier -- internal-only, see
 //     handleAccountTierPromote's own header comment.
+//   POST /api/v1/auth/github/upsert-account -- internal-only (#8820), gated
+//     with the same internal-token pair; see handleGithubAccountUpsert's own
+//     header comment.
 
 // Mirrors ALERT_TRIGGER_CREATE_RATE_LIMIT's shape/reasoning: an unauthenticated
 // caller can hit challenge/verify before any session exists, so this is keyed
@@ -5123,7 +5126,29 @@ async function handleWatchTokenMint(request: Request, env: Env) {
 // (upsert, return the account row) minus the session-token minting -- the
 // caller mints ITS OWN grant/token via OAuthHelpers.completeAuthorization,
 // which needs OAUTH_KV (a binding only the caller's Worker has).
+//
+// #8820: gated with the same internal-token check every other internal write
+// route in this file carries (handleApiKeyVerify's shape), so the route's
+// safety no longer depends on the negative fact that workers/api.ts happens
+// not to forward /api/v1/auth/* -- if that prefix is ever widened, this route
+// is still not an unauthenticated account-rebinding primitive. The caller is
+// our own Worker over the service binding, which already reads this secret, so
+// the existing internal-token pair (not a new secret) is the right gate.
 async function handleGithubAccountUpsert(request: Request, env: Env) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "github account upsert is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
   const { body, error } = await readAccountRouteBody(request);
   if (error) return error;
   const githubUserId = body?.github_user_id;
