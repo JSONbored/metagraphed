@@ -114,7 +114,9 @@ export const ListRpcEndpointsInputSchema = z
     sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
     order: z.enum(["asc", "desc"]).optional(),
     fields: z.union([z.string(), z.array(z.string())]).optional(),
-    limit: z.int().min(1).optional(),
+    // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
+    // because schemas-src/ imports from neither src/ nor workers/.
+    limit: z.int().min(1).max(1000).optional(),
     cursor: z.union([z.int().min(0), z.string()]).optional(),
   })
   .strict();

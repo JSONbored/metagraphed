@@ -88,12 +88,6 @@ function optionalRangeBound(
   return value;
 }
 
-function clampLimit(value: unknown, fallback: number, max: number): number {
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
-}
-
 function resolveFieldsProjection(
   args: Record<string, unknown> | null | undefined,
 ): string | null {
@@ -196,7 +190,22 @@ export function rpcEndpointsQueryUrl(
   const maxScore = optionalRangeBound(args, "max_score");
   if (maxScore !== null) url.searchParams.set("max_score", String(maxScore));
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampLimit(args.limit, 50, 1000)));
+    // #8830: reject an out-of-range limit rather than silently clamping, so this
+    // tool matches its sibling list_endpoints (src/mcp-server.ts:8760-8762) and
+    // the REST route it proxies. An absent limit still defaults to 50 downstream.
+    const limit = args.limit;
+    if (
+      typeof limit !== "number" ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 1000
+    ) {
+      throw rpcEndpointsMcpError(
+        "invalid_params",
+        "limit must be an integer between 1 and 1000.",
+      );
+    }
+    url.searchParams.set("limit", String(limit));
   }
   const cursor = resolveCursor(args);
   if (cursor !== null) url.searchParams.set("cursor", String(cursor));
