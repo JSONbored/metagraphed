@@ -187,8 +187,20 @@ case "$STEP" in
     echo "entrypoint: sampling emission-gate parameters + dormant flow-path watch"
     exec node scripts/sample-emission-gate.ts
     ;;
+  emission-drift-check)
+    # #8749. Holds the v440 emission reconstruction against LIVE chain state.
+    # No DATABASE_URL: this one reads the chain and alerts, it writes nothing
+    # -- the CI harness pins our arithmetic, this pins the chain not moving
+    # underneath it.
+    #
+    # EMISSION_DRIFT_RPC_URL must point at a node AT CHAIN TIP, same reasoning
+    # as the emission-gate-sample step above.
+    : "${EMISSION_DRIFT_RPC_URL:?EMISSION_DRIFT_RPC_URL env var required for the emission-drift-check step}"
+    echo "entrypoint: checking the v440 emission reconstruction against live state"
+    exec node scripts/check-emission-drift.ts
+    ;;
   *)
-    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons|emission-gate-sample)" >&2
+    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons|emission-gate-sample|emission-drift-check)" >&2
     exit 1
     ;;
 esac

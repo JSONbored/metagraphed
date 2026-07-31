@@ -165,6 +165,22 @@ export function u64f64U128ToFloat(bits: bigint): number {
 }
 
 /**
+ * U96F32 (96 integer bits + 32 fraction bits) as a float.
+ *
+ * A DIFFERENT SCALE from its U64F64 sibling above, and the difference is not
+ * cosmetic: `MinerBurned` is U96F32, and reading it as rao lands ~4e9 out --
+ * the single largest error in the first v440 reconstruction (#8739), which it
+ * moved from a 4.3e-8 mean share error to 5.4e-4. Two fixed-point widths in
+ * one pallet is a trap, so they get two clearly named functions rather than
+ * one with a scale argument somebody can pass wrongly.
+ */
+export function u96f32U128ToFloat(bits: bigint): number {
+  // Split in BigInt space before dividing, same reasoning as u64f64 above.
+  const scale = 1n << 32n;
+  return Number(bits / scale) + Number(bits % scale) / Number(scale);
+}
+
+/**
  * A u128 storage read that distinguishes UNSET from FAILED.
  *
  * fetchStorageU64 folds both into "0n or null", which is fine where absent
