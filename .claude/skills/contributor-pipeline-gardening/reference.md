@@ -8,7 +8,7 @@ probe-config gaps, curation fields, etc). See SKILL.md's "Scope boundary" sectio
 incident that established this.
 
 This is about not _authoring_ registry content, not about ignoring issue-state hygiene for an issue
-whose deliverable happens to touch `registry/`. The MCP execute "verify + wire SN*" family is the
+whose deliverable happens to touch `registry/`. The MCP execute "verify + wire SN\*" family is the
 one exception where Pass 1's normal stale-sweep verification still applies — see SKILL.md's dedicated
 subsection under Pass 1 and the milestone-table row below.
 
@@ -36,6 +36,45 @@ for the full contribution model — that skill is authoritative for how a PR get
 skill only covers issue-pipeline hygiene, not PR review mechanics.
 
 ## Milestone taxonomy (re-check every run — this repo's hygiene and counts drift faster than gittensory's)
+
+**2026-07-31 correction — still zero contributor-available, and both 2026-07-25 "productive veins" are now
+fully drained.** Total open issues: 42 at run start, 38 after Pass 1's stale-sweep closed 4 (three
+epics whose full native-sub-issue set had shipped without closing the tracker itself — #8606 API access
+GA, #8701 upgrade radar, #8350 PWA/T9 — plus one superseded design-spike, #6646, whose own ask was
+fully answered by ADR 0022 + epic #8606's implementation). All 38 remaining open issues are
+`maintainer-only` and assigned to the maintainer; contributor-available count was 0 before this run and
+stayed 0 after — the second consecutive run to observe the floor at literally zero (first was
+2026-07-25). Confirmed exhausted this run, so don't re-derive from scratch next time unless a run finds
+otherwise:
+
+- **Design-token lint-ratchet**: `src/hooks/**`, `src/lib/**`, `src/components/**` are now ratcheted in
+  both `apps/ui` and `packages/ui-kit` (the 2026-07-25 batches #8167-8172 did it). The one remaining
+  un-ratcheted directory, `apps/ui/src/routes/**`, was grep-swept this run (approximating the actual
+  `no-restricted-syntax` selectors — palette colors, `font-bold`, anchored raw hex, `rounded-sm/lg/3xl`,
+  raw `z-*`, `shadow-[`, `bg-card/NN`) and came back near-zero real hits (most naive hex matches were the
+  same `#nnnn`-issue-reference false positive the eslint config itself warns about). Not a productive
+  vein anymore — don't re-check without a `git diff` signal that new drift landed in `routes/**`.
+- **Generated-types epic follow-on**: batches D1-D9 (#8158-8166) all closed 2026-07-25/26. Tri-surface
+  parity (REST/GraphQL/MCP) for newly-shipped fields is now codegen-enforced by `npm run build` +
+  `validate:contract-drift`, not a manual gap — spot-checked this run against the just-shipped v440
+  emission-gate fields (`emission_gate_bar`/`emission_bar_quantile`/`emission_gate_exponent`/
+  `emission_gate_exponent_effective`, epic #8739): present and in sync across `public/metagraph/openapi.json`,
+  `generated/graphql/types.ts`, and the resolver map, same day the REST route shipped. Don't expect a
+  manual parity-gap vein here again unless codegen itself breaks.
+- **Also checked and empty**: a repo-wide `TODO`/`FIXME`/`HACK:` grep across `src/`, `workers/`,
+  `apps/ui/src/` found exactly one hit (`apps/ui/src/lib/metagraphed/partners.ts:22`, a real partner
+  hotkey placeholder — needs the maintainer's own wallet data, not contributor-fileable). Every active
+  epic's own "Sub-issues" section names concrete near-term work, but on inspection every one either (a)
+  already has its named sub-issues filed and closed (epic bodies don't self-update, so read the epic's
+  actual `subIssues` via GraphQL, not just its prose — #8350/T9 looked like a 2-issue gap from its body
+  text alone and was actually fully shipped, #8384/#8385/#8527 all closed) or (b) is genuinely blocked on
+  a maintainer-only prerequisite (archive node reaching chain tip for #8345/T4's #8368; a design decision
+  or backend groundwork not yet merged for the SN74/#8617, TAO/USD/#8600-8603, and v440/#8739 epic
+  families' UI-layer sub-issues).
+- **Net takeaway for the next run**: don't assume zero-yield is a script bug — verify fresh, but if the
+  same drought shows up a third consecutive time, that's a real signal worth raising to the maintainer
+  directly (parked design-spikes resolving, or the "what's safe to unleash" bar needing a second look)
+  rather than something to keep silently re-deriving.
 
 **2026-07-25 correction — the entire prior snapshot below is obsolete, not just drifted.** Between
 roughly 2026-07-20 and 2026-07-25 the maintainer (plus a small number of very active contributors)
