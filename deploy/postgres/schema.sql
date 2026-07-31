@@ -876,6 +876,13 @@ CREATE TABLE IF NOT EXISTS surface_uptime_daily (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_surface_uptime_daily_key_day_unique
   ON surface_uptime_daily (surface_key, day) WHERE surface_key IS NOT NULL;
+-- #8811: the rollup writer always INSERTs a non-null surface_key via
+-- COALESCE(surface_key, surface_id) over NOT NULL surface_id, and upserts on
+-- (surface_key, day) WHERE surface_key IS NOT NULL. Legacy rows with
+-- surface_key IS NULL sit outside that partial unique index and would still
+-- collide on PRIMARY KEY (surface_id, day) without matching the arbiter.
+-- Idempotent: re-applying is a no-op once every row has a key.
+UPDATE surface_uptime_daily SET surface_key = surface_id WHERE surface_key IS NULL;
 -- handleBulkHealthTrends: `... WHERE day >= ? GROUP BY netuid, day` --
 -- (day, netuid) matches a `day >=` range scan across all subnets (mirrors
 -- the same reasoning as idx_surface_uptime_daily_day_netuid in D1's

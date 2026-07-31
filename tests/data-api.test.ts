@@ -116,6 +116,10 @@ const healthChecksSyncConnectionFailure = vi.hoisted(() => ({
 }));
 const healthUptimeRollupSyncFailure = vi.hoisted(() => ({
   error: null as Error | null,
+  // When set, only INSERT attempts whose bound values include this UTC date
+  // string reject — lets a two-day request exercise savepoint isolation
+  // (#8811) without failing the other day.
+  failOnDate: null as string | null,
 }));
 const subnetSnapshotSyncFailure = vi.hoisted(() => ({
   error: null as Error | null,
@@ -383,7 +387,12 @@ vi.mock("postgres", () => ({
         healthUptimeRollupSyncFailure.error &&
         /INSERT INTO surface_uptime_daily\b/.test(text)
       ) {
-        return Promise.reject(healthUptimeRollupSyncFailure.error);
+        if (
+          healthUptimeRollupSyncFailure.failOnDate == null ||
+          boundValues.includes(healthUptimeRollupSyncFailure.failOnDate)
+        ) {
+          return Promise.reject(healthUptimeRollupSyncFailure.error);
+        }
       }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
@@ -568,6 +577,7 @@ beforeEach(() => {
   healthChecksSyncConnectionFailure.code = "CONNECTION_CLOSED";
   subnetSnapshotSyncFailure.error = null;
   healthUptimeRollupSyncFailure.error = null;
+  healthUptimeRollupSyncFailure.failOnDate = null;
   rpcUsageSyncFailure.error = null;
   rpcUsagePruneFailure.error = null;
   rpcUsagePruneCount.current = 0;
@@ -7482,7 +7492,62 @@ test("health-uptime-rollup-sync rolls up each valid day via PERCENTILE_CONT", as
   expect(body).toEqual({ ok: true, days_rolled: ["2026-07-11", "2026-07-10"] });
   expect(queryText()).toMatch(/INSERT INTO surface_uptime_daily\b/);
   expect(queryText()).toMatch(/PERCENTILE_CONT\(0\.5\)/);
-  expect(queryText()).toMatch(/ON CONFLICT \(surface_id, day\) DO UPDATE/);
+  // #8811: arbiter is the stable key (matching GROUP BY + both read paths),
+  // with the partial unique index's predicate restated so Postgres can use it.
+  expect(queryText()).toMatch(
+    /ON CONFLICT \(surface_key, day\) WHERE surface_key IS NOT NULL DO UPDATE/,
+  );
+  expect(queryText()).not.toMatch(/ON CONFLICT \(surface_id, day\)/);
+});
+
+// #8811: a surface_id rename keeps surface_key stable. The old arbiter
+// (surface_id, day) missed the existing row and then hit
+// idx_surface_uptime_daily_key_day_unique — aborting the whole multi-day
+// transaction. Upserting on (surface_key, day) with surface_id refreshed in
+// the DO UPDATE SET makes the rename a successful overwrite instead.
+test("health-uptime-rollup-sync upserts on surface_key so a surface_id rename rolls instead of raising", async () => {
+  const res = await postHealthUptimeRollup(
+    {
+      days: [dayBounds("2026-07-11", 1780000000000, 1780086400000)],
+      updated_at: 1780086400000,
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  expect(((await res.json()) as Row).days_rolled).toEqual(["2026-07-11"]);
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO surface_uptime_daily\b/.test(c.text),
+  );
+  expect(insert).toBeTruthy();
+  expect(insert!.text).toMatch(
+    /ON CONFLICT \(surface_key, day\) WHERE surface_key IS NOT NULL DO UPDATE/,
+  );
+  expect(insert!.text).toMatch(/surface_id = excluded\.surface_id/);
+  expect(insert!.text).toMatch(/GROUP BY surface_key, netuid/);
+});
+
+test("health-uptime-rollup-sync isolates a per-day failure so the other day still commits", async () => {
+  healthUptimeRollupSyncFailure.error = new Error("unique_violation");
+  healthUptimeRollupSyncFailure.failOnDate = "2026-07-11";
+  const res = await postHealthUptimeRollup(
+    {
+      days: [
+        dayBounds("2026-07-11", 1780000000000, 1780086400000),
+        dayBounds("2026-07-10", 1779913600000, 1780000000000),
+      ],
+      updated_at: 1780086400000,
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.ok).toBe(true);
+  expect(body.days_rolled).toEqual(["2026-07-10"]);
+  expect(body.days_rolled).not.toContain("2026-07-11");
+  const inserts = sqlCalls.filter((c) =>
+    /INSERT INTO surface_uptime_daily\b/.test(c.text),
+  );
+  expect(inserts.length).toBe(2);
 });
 
 test("health-uptime-rollup-sync maps a DB failure to a clean 502 instead of throwing", async () => {
@@ -7493,6 +7558,50 @@ test("health-uptime-rollup-sync maps a DB failure to a clean 502 instead of thro
   );
   expect(res.status).toBe(502);
   expect(((await res.json()) as Row).error).toBe("write failed");
+});
+
+test("health-uptime-rollup-sync captures a per-day failure and stays non-2xx when every day fails", async () => {
+  healthUptimeRollupSyncFailure.error = new Error("unique_violation");
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_url: string, init: RequestInit) => {
+    posted.push({ body: JSON.parse(init.body as string) });
+    return { ok: true };
+  }) as unknown as typeof globalThis.fetch;
+  try {
+    const res = await worker.fetch(
+      new Request("https://d/api/v1/internal/health-uptime-rollup-sync", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
+        },
+        body: JSON.stringify({
+          days: [dayBounds("2026-07-11", 1, 2), dayBounds("2026-07-10", 0, 1)],
+          updated_at: 1,
+        }),
+      }),
+      {
+        ...env,
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+      } as unknown as Env,
+      ctx,
+    );
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as Row;
+    expect(body.error).toBe("write failed");
+    expect(body.days_rolled).toEqual([]);
+    // One capture per failed day — failures stay visible, never swallowed.
+    expect(posted.length).toBe(2);
+    expect(posted.every((p) => p.body.event === "$exception")).toBe(true);
+    expect(
+      posted.every(
+        (p) => p.body.properties.route === "health-uptime-rollup-sync",
+      ),
+    ).toBe(true);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 
 test("GET /api/v1/subnets/:netuid/identity-history returns the change timeline", async () => {

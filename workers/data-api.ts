@@ -2871,8 +2871,15 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
       env,
       async (sql: postgres.TransactionSql) => {
         await sql`SET statement_timeout = '20000ms'`;
+        // #8811: each day is savepoint-isolated so a unique-violation (or any
+        // other failure) on one day rolls back only that day — mirroring
+        // loadRealizedStakeBaselines / loadSubnetTempos above — rather than
+        // discarding every surface's rollup for both today and yesterday.
+        const daysRolled: string[] = [];
         for (const { date, start, end } of validDays) {
-          await sql`
+          try {
+            await sql.savepoint(async (sql: postgres.TransactionSql) => {
+              await sql`
         WITH ranked AS (
           SELECT
             surface_id,
@@ -2912,8 +2919,8 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
           ${updatedAt} AS updated_at
         FROM ranked
         GROUP BY surface_key, netuid
-        ON CONFLICT (surface_id, day) DO UPDATE SET
-          surface_key = excluded.surface_key,
+        ON CONFLICT (surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET
+          surface_id = excluded.surface_id,
           netuid = excluded.netuid,
           samples = excluded.samples,
           ok_count = excluded.ok_count,
@@ -2925,10 +2932,25 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
           p99_latency_ms = excluded.p99_latency_ms,
           status = excluded.status,
           updated_at = excluded.updated_at`;
+            });
+            daysRolled.push(date);
+          } catch (err) {
+            console.error(
+              `data-api health-uptime-rollup-sync day ${date} failed:`,
+              err,
+            );
+            await captureDataApiError(err, "health-uptime-rollup-sync", env);
+          }
+        }
+        // No day committed → non-2xx so rollupDailyUptime reports
+        // {rolled:false} and pruneHealthHistory stays withheld
+        // (src/health-prober.ts:792-796).
+        if (!daysRolled.length) {
+          return writeJson({ error: "write failed", days_rolled: [] }, 502);
         }
         return writeJson({
           ok: true,
-          days_rolled: validDays.map((d: Row) => d.date),
+          days_rolled: daysRolled,
         });
       },
     );
