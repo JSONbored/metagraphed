@@ -1,6 +1,9 @@
 # ADR 0024 — First-party TAO/USD index: posture, venue criteria, and published methodology
 
-- **Status:** Proposed
+- **Status:** Superseded by [ADR 0025](0025-on-chain-tao-usd-index.md) — #8599's
+  survey established that every surveyed venue explicitly prohibits this use, so the
+  CEX basis below was replaced by an on-chain one. The reasoning here is retained as
+  the record of why.
 - **Date:** 2026-07-31
 - **Relates to:** #8598 (this ADR), #8503 (the parent design spike, option (c)),
   #8599 (venue survey — the concrete list these criteria must be satisfied by),

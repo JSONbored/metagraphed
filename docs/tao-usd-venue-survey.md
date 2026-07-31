@@ -7,10 +7,12 @@ Every number below was read directly from the venue's own public endpoint or
 its pool contract, at the stated date — not taken from an aggregator's summary,
 except the 24h volume column, which is sourced where marked.
 
-> The ToS review is complete and produced a result that **amended ADR 0024**:
-> no major venue permits redistribution of derived data, so criterion (e) could
-> not stand as a gate without excluding every venue and making the index
-> unbuildable. See [Terms of service](#terms-of-service).
+> **Outcome: the CEX basis was rejected.** Every venue surveyed explicitly
+> prohibits redistributing derived data, and two of the largest are geo-blocked
+> from our infrastructure. [ADR 0025](adr/0025-on-chain-tao-usd-index.md)
+> supersedes ADR 0024 and moves the index on-chain, where no terms of service
+> exist. This survey is retained as the record of why — the venue measurements
+> below are no longer a shortlist.
 
 ## Headline findings
 
