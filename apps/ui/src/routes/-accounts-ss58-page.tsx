@@ -31,7 +31,13 @@ import { PriceAtTx } from "@/components/metagraphed/price-at-tx";
 import { AddressLabelEditor } from "@/components/metagraphed/address-label-editor";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import {
+  EmptyState,
+  Skeleton,
+  StatUnavailable,
+  StaleBanner,
+} from "@/components/metagraphed/states";
+import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { SelectFilter, FilterChip } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { WatchStarButton } from "@/components/metagraphed/watch-star-button";
@@ -338,6 +344,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         balanceImplausible={balanceImplausible}
         onRetryBalance={() => void balanceResult.refetch()}
         portfolio={portfolio}
+        portfolioPhase={statPhase(portfolioResult)}
         stakeFlow={stakeFlow}
         validator={validator}
         estApyPct={estApyPct}
@@ -575,6 +582,7 @@ function AccountKpiBand({
   balanceImplausible,
   onRetryBalance,
   portfolio,
+  portfolioPhase,
   stakeFlow,
   validator,
   estApyPct,
@@ -593,6 +601,7 @@ function AccountKpiBand({
     subnet_count: number;
     total_stake_tao: number | null;
   } | null;
+  portfolioPhase: StatPhase;
   stakeFlow?: { net_flow_tao: number | null; window: string } | null;
   validator?: {
     total_stake_tao: number;
@@ -682,12 +691,17 @@ function AccountKpiBand({
             <StatTile
               icon={Boxes}
               eyebrow="Positions"
-              value={formatNumber(portfolio?.position_count ?? 0)}
-              hint={
-                portfolio
+              value={(() => {
+                if (portfolioPhase === "pending") return <Skeleton className="h-5 w-10" />;
+                if (portfolioPhase === "error") return <StatUnavailable />;
+                return formatNumber(portfolio?.position_count);
+              })()}
+              hint={(() => {
+                if (portfolioPhase !== "ready") return null;
+                return portfolio
                   ? `across ${formatNumber(portfolio.subnet_count)} subnets`
-                  : "no positions"
-              }
+                  : "no positions";
+              })()}
               className={KPI_TILE}
             />
             <StatTile
