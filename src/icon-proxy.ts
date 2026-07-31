@@ -18,6 +18,7 @@
 // often bot-blocked from Worker egress anyway, and the UI's GitHub-avatar fallback
 // (BrandIcon repoUrl) is the real icon source for most subnets.
 import type { StorageReadResult } from "../workers/storage.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 
 const ICON_CACHE_PREFIX = "icon-cache";
 const MAX_SIZE = 256;
@@ -181,6 +182,10 @@ let allowlistMemo: {
   orgs: Set<string> | null;
   expiresAt: number;
 } = { env: null, value: null, orgs: null, expiresAt: 0 };
+
+registerModuleStateReset("src/icon-proxy.ts", () => {
+  allowlistMemo = { env: null, value: null, orgs: null, expiresAt: 0 };
+});
 
 async function iconHostAllowlist(
   env: Env,

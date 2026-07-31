@@ -110,6 +110,7 @@ function checkCommands(): Step[] {
     step("worker:deploy:dry-run"),
     step("scan:public-safety"),
     step("validate:no-hand-written-mjs"),
+    step("validate:module-state-resets"),
     step("validate:private-boundary"),
     step("test"),
   ];
@@ -183,6 +184,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("worker:deploy:dry-run"),
     step("scan:public-safety"),
     step("validate:no-hand-written-mjs"),
+    step("validate:module-state-resets"),
     step("validate:private-boundary"),
     step("test"),
   ];

@@ -10,6 +10,7 @@ import {
   isR2PreferredDualArtifactPath,
 } from "../src/artifact-storage.ts";
 import { METAGRAPH_LATEST_KEY } from "./config.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
 
@@ -458,6 +459,10 @@ let pointerMemo: {
   value: LatestPointer | null;
   expiresAt: number;
 } = { env: null, value: null, expiresAt: 0 };
+
+registerModuleStateReset("workers/storage.ts", () => {
+  pointerMemo = { env: null, value: null, expiresAt: 0 };
+});
 
 export async function latestPointer(env: Env): Promise<LatestPointer | null> {
   if (!env.METAGRAPH_CONTROL?.get) {

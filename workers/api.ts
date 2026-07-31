@@ -440,6 +440,7 @@ import {
 import { buildTierPolicies } from "../src/api-tiers.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import { foldObservations, observeRequest } from "../src/usage-rollup.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -4433,6 +4434,22 @@ export async function readChainEventsDb(
 }
 
 configureAnalyticsRoutes({ readHealthMetaKv, readEconomicsCurrentKv });
+
+// See src/module-state-registry.ts. This module owns both the env-keyed
+// in-isolate memos and the production wiring for the three handler modules
+// above. Resets run in module-evaluation order and api.ts evaluates LAST (it
+// imports all three), so this reset re-wires production immediately after each
+// handler module has dropped back to its unwired placeholders — leaving the
+// process in exactly the state a fresh import would produce.
+registerModuleStateReset("workers/api.ts", () => {
+  healthMetaKvMemo = { env: null, value: null, expiresAt: 0 };
+  economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
+  chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
+  subnetSlugIndexByNetwork.clear();
+  configureAnalytics({ readHealthMetaKv, readEconomicsCurrentKv });
+  configureRpcProxy({ readHealthMetaKv, recordApiKeyUsage });
+  configureAnalyticsRoutes({ readHealthMetaKv, readEconomicsCurrentKv });
+});
 
 async function resolveSubnetSlugRoute(
   env: Env,

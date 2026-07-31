@@ -28,6 +28,7 @@
 // than shaving upstream calls, and it now carries a non-idempotent write
 // method -- a deliberate v1 scope cut, not an oversight.
 import { errorResponse } from "../http.ts";
+import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { validateApiKey } from "../../src/api-key-validation.ts";
 import {
   orderSafeRpcEndpoints,
@@ -106,6 +107,13 @@ function isFullnodeSafeRpcMethod(method: string): boolean {
 // public-pool endpoint must never influence this pool's ordering, or vice
 // versa.
 const FULLNODE_RPC_HEALTH: RpcHealthMap = new Map();
+
+registerModuleStateReset(
+  "workers/request-handlers/fullnode-rpc-proxy.ts",
+  () => {
+    FULLNODE_RPC_HEALTH.clear();
+  },
+);
 
 // Bounds the cost of an unauthenticated caller guessing random keys (each
 // miss is a real KV-then-Postgres round trip via src/api-key-validation.ts)

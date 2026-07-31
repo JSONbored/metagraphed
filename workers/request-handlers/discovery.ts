@@ -1,4 +1,5 @@
 import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.ts";
+import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import { contractVersion, publishedAt } from "../responses.ts";
@@ -307,6 +308,14 @@ function getHomepageEtag(): Promise<string> {
 }
 
 let _catalogEtagPromise: Promise<string> | null = null;
+
+// Content-derived ETag promises: pure functions of module constants, so these
+// are safe to keep across a warm isolate. Reset anyway so `isolate: false` test
+// files never observe a promise created under another file's fake timers/mocks.
+registerModuleStateReset("workers/request-handlers/discovery.ts", () => {
+  _homepageEtagPromise = null;
+  _catalogEtagPromise = null;
+});
 function getCatalogEtag(): Promise<string> {
   if (!_catalogEtagPromise) _catalogEtagPromise = weakEtag(CATALOG_BODY);
   return _catalogEtagPromise;

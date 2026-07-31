@@ -1,4 +1,5 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
 // Postgres-tier serving gate, one env flag per data source (originally ADR
 // 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully eliminated
@@ -36,6 +37,10 @@ import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 // live-testing pass happened to notice). The same silent-degradation risk is
 // why this also now reaches PostHog, not just Wrangler's own log tail.
 let postgresTierFallbackGeneration = 0;
+
+registerModuleStateReset("workers/postgres-tier.ts", () => {
+  postgresTierFallbackGeneration = 0;
+});
 
 function markPostgresTierFallback(): null {
   postgresTierFallbackGeneration += 1;

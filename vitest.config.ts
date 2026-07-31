@@ -65,6 +65,17 @@ export default defineConfig({
     // the serial pass has no coverage effect either way — verified Δ=0.00
     // across all metrics), keeping CI to a single Codecov upload.
     fileParallelism: false,
+    // Restores module-level Worker state (in-isolate memos, breaker maps, the
+    // configure* DI seams) after every test FILE, so a file's mutations cannot
+    // leak into the next one when the module registry is shared. A no-op under
+    // per-file isolation; required by `isolate: false`. See
+    // src/module-state-registry.ts.
+    setupFiles: ["tests/setup/reset-module-state.ts"],
+    // vi.stubGlobal/vi.stubEnv are restored automatically rather than relying on
+    // 54 hand-written restores across 11 files — the same cross-file hygiene the
+    // reset registry gives module state.
+    unstubGlobals: true,
+    unstubEnvs: true,
     reporters: junitPath ? ["default", "junit"] : ["default"],
     ...(junitPath ? { outputFile: { junit: junitPath } } : {}),
     coverage: {

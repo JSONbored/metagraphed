@@ -580,6 +580,14 @@ jobs:
       - name: Validate no hand-written .mjs/.js
         run: npm run validate:no-hand-written-mjs
 
+      # Module-level mutable state in src/ and workers/ must register a reset
+      # (src/module-state-registry.ts), or it leaks across test files once the
+      # coverage pass runs with `isolate: false` (#8922). Static scan of the
+      # source tree only — sub-second, and unconditional for the same reason
+      # the .mjs lock is: the set it guards is computed, not declared.
+      - name: Validate module-state resets
+        run: npm run validate:module-state-resets
+
       - name: Validate Cloudflare config
         if: env.DOCS_ONLY != 'true'
         run: npm run cloudflare:verify:dry-run

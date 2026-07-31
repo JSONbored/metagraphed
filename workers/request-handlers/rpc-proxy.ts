@@ -27,6 +27,7 @@
 // dispatches them, and re-exports the test-facing helpers from itself.
 
 import { apiHeaders, errorResponse } from "../http.ts";
+import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import {
   readArtifact,
   readHealthKv,
@@ -847,6 +848,20 @@ export type RpcHealthMap = Map<string, RpcHealthEntry>;
 const RPC_HEALTH: RpcHealthMap = new Map();
 const RPC_EJECT_THRESHOLD = 3;
 const RPC_EJECT_COOLDOWN_MS = 30_000;
+
+// Post-load baseline for the injected helpers, captured before api.ts wires
+// them. See src/module-state-registry.ts -- under `isolate: false` both the
+// injected readers and the breaker map are shared by every test file in a
+// worker, so an ejected endpoint (or a fake reader) would otherwise change the
+// next file's failover ordering.
+const unwiredRpcDeps = { readHealthMetaKv, recordApiKeyUsage };
+
+registerModuleStateReset("workers/request-handlers/rpc-proxy.ts", () => {
+  readHealthMetaKv = unwiredRpcDeps.readHealthMetaKv;
+  recordApiKeyUsage = unwiredRpcDeps.recordApiKeyUsage;
+  RPC_HEALTH.clear();
+  rpcPoolArtifactCache = { env: null, value: null, expiresAt: 0 };
+});
 
 export function recordRpcFailure(map: RpcHealthMap, id: string, now: number) {
   const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
