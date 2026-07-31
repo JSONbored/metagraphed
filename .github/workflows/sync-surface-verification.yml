@@ -13,7 +13,7 @@ name: Sync surface verification
 # them continuously. The evidence existed; nothing carried it.
 #
 # The snapshot is COMMITTED rather than fetched during the build because
-# tests/artifacts.test.ts asserts the artifact build is byte-identical across
+# tests/artifacts-build-determinism.test.ts asserts the artifact build is byte-identical across
 # rebuilds, and a network call inside the build would end that -- as well as
 # making every build depend on the API being up. Same posture as
 # registry/verification/promotions.json.

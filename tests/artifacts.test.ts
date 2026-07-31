@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { execFile, execFileSync, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import {
   cpSync,
   existsSync,
@@ -63,16 +62,6 @@ const artifactDirectoryPath = (relativePath: string) =>
   toSandbox(realArtifactDirectoryPath(relativePath));
 const publicMetagraphRoot = sandbox.publicMetagraphRoot;
 const r2StagingRoot = sandbox.r2StagingRoot;
-
-// Sandbox-rooted, NOT relative. A bare relative path resolves against
-// process.cwd() — the real repo — so restoreSupportArtifacts would truncate and
-// rewrite the committed public/metagraph/r2-manifest.json while the rest of the
-// suite runs. writeFileSync is not atomic, so any of the eight other test files
-// that read that manifest could observe it empty or half-written. Rooting it in
-// the sandbox is the point of #8937: the build writes only its own tree.
-const SUPPORT_ARTIFACT_PATHS = [
-  path.join(sandbox.root, "public/metagraph/r2-manifest.json"),
-];
 
 function runNode(script: string) {
   execFileSync(process.execPath, [script], {
@@ -399,355 +388,6 @@ test("registry validation rejects tampered per-subnet artifacts", () => {
     /per-subnet detail artifact is not reproducible from registry inputs/,
   );
 });
-
-test("artifact build does not preserve forged endpoint index health", () => {
-  const endpointsPath = artifactFilePath("endpoints.json");
-  // Sandbox-rooted for the same reason as SUPPORT_ARTIFACT_PATHS. Relative, it
-  // pointed at the real repo, which also made the setup a no-op against its own
-  // purpose: the build reads the SANDBOX's .cache, so clearing the real one
-  // never removed the health cache the rebuild would actually consult.
-  const cachePath = path.join(
-    sandbox.root,
-    ".cache/metagraphed/health/latest.json",
-  );
-  const original = readFileSync(endpointsPath, "utf8");
-  const originalCache = existsSync(cachePath)
-    ? readFileSync(cachePath, "utf8")
-    : null;
-  const supportArtifacts = snapshotSupportArtifacts();
-  rmSync(cachePath, { force: true });
-  const tampered = JSON.parse(original);
-  const target = tampered.endpoints.find(
-    (endpoint: Row) => endpoint.public_safe === true,
-  );
-  assert(target, "expected a public-safe endpoint row to tamper");
-
-  target.health_source = "probe-derived";
-  target.monitoring_status = "monitored";
-  target.status = "ok";
-  target.classification = "live";
-  target.last_checked = "2999-01-01T00:00:00.000Z";
-  target.last_ok = "2999-01-01T00:00:00.000Z";
-  target.observed_at = "2999-01-01T00:00:00.000Z";
-  target.latency_ms = 7;
-  target.latest_block = 4242424242;
-  target.archive_support = true;
-
-  try {
-    writeFileSync(endpointsPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: { ...sandbox.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
-      stdio: "pipe",
-    });
-
-    const rebuilt = JSON.parse(readFileSync(endpointsPath, "utf8"));
-    const rebuiltTarget = rebuilt.endpoints.find(
-      (endpoint: Row) => endpoint.surface_id === target.surface_id,
-    );
-    assert.equal(rebuiltTarget.status, "unknown");
-    assert.equal(rebuiltTarget.classification, "unknown");
-    assert.equal(rebuiltTarget.last_checked, null);
-    assert.equal(rebuiltTarget.latency_ms, null);
-    assert.equal(rebuiltTarget.latest_block, null);
-    assert.equal(rebuiltTarget.archive_support, null);
-    assert.equal(rebuiltTarget.health_source, "missing-probe");
-  } finally {
-    writeFileSync(endpointsPath, original);
-    if (originalCache === null) {
-      rmSync(cachePath, { force: true });
-    } else {
-      writeFileSync(cachePath, originalCache);
-    }
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: {
-        ...sandbox.env,
-        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
-      },
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-types.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-client.ts", "--write"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    restoreSupportArtifacts(supportArtifacts);
-  }
-}, 30_000);
-
-test("artifact build does not preserve forged schema snapshot metadata", () => {
-  const schemaDriftPath = artifactFilePath("schema-drift.json");
-  const schemaIndexPath = artifactFilePath("schemas/index.json");
-  const originalSchemaDrift = existsSync(schemaDriftPath)
-    ? readFileSync(schemaDriftPath, "utf8")
-    : null;
-  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
-  const supportArtifacts = snapshotSupportArtifacts();
-  const schemaDrift = originalSchemaDrift
-    ? JSON.parse(originalSchemaDrift)
-    : null;
-  const schemaIndex = JSON.parse(originalSchemaIndex);
-  const driftTarget = schemaDrift?.surfaces?.[0];
-  const indexTarget =
-    schemaIndex.schemas?.find(
-      (schema: Row) => schema.surface_id === driftTarget?.surface_id,
-    ) ||
-    schemaIndex.schemas?.find((schema: Row) => schema.status === "captured");
-  assert(indexTarget, "expected a schema index entry to tamper");
-
-  const forgedMarker = "AUTOVALIDATOR_FORGED_METADATA_SHOULD_NOT_SURVIVE_BUILD";
-  if (driftTarget) {
-    driftTarget.netuid = 999999;
-    driftTarget.subnet_slug = forgedMarker;
-    driftTarget.url = "https://attacker.invalid/openapi";
-    driftTarget.schema_url = "https://attacker.invalid/openapi.json";
-    driftTarget.hash = "forged-hash";
-  }
-  indexTarget.netuid = 999999;
-  indexTarget.subnet_slug = forgedMarker;
-  indexTarget.url = "https://attacker.invalid/openapi";
-  indexTarget.schema_url = "https://attacker.invalid/openapi.json";
-  indexTarget.hash = "forged-hash";
-  indexTarget.path = "/metagraph/schemas/forged-by-autovalidator.json";
-  indexTarget.snapshot = {
-    ...indexTarget.snapshot,
-    netuid: 999999,
-    subnet_slug: forgedMarker,
-    surface_url: "https://attacker.invalid/openapi",
-    schema_url: "https://attacker.invalid/openapi.json",
-    hash: "forged-hash",
-    title: forgedMarker,
-  };
-
-  try {
-    if (schemaDrift) {
-      writeFileSync(
-        schemaDriftPath,
-        `${JSON.stringify(schemaDrift, null, 2)}\n`,
-      );
-    }
-    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-
-    const rebuiltSchemaDrift = existsSync(schemaDriftPath)
-      ? readFileSync(schemaDriftPath, "utf8")
-      : "";
-    const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
-    assert.equal(rebuiltSchemaDrift.includes(forgedMarker), false);
-    assert.equal(rebuiltSchemaIndex.includes(forgedMarker), false);
-    if (rebuiltSchemaDrift) {
-      assert.equal(JSON.parse(rebuiltSchemaDrift).source, "artifact-build");
-    }
-    assert.equal(JSON.parse(rebuiltSchemaIndex).source, "artifact-build");
-  } finally {
-    if (originalSchemaDrift) {
-      writeFileSync(schemaDriftPath, originalSchemaDrift);
-    } else {
-      rmSync(schemaDriftPath, { force: true });
-    }
-    writeFileSync(schemaIndexPath, originalSchemaIndex);
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-types.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-client.ts", "--write"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    restoreSupportArtifacts(supportArtifacts);
-  }
-}, 30_000);
-
-// #510 refactor invariant: the artifact build is deterministic, so two
-// consecutive builds (epoch timestamp, no METAGRAPH_BUILD_TIMESTAMP) must emit a
-// byte-identical R2 staging tree. This is the regression guard that lets the
-// build-artifacts/lib decomposition stay safe — any future code-motion that
-// silently reorders keys, changes a number, or drops an artifact flips this hash.
-// It deliberately compares the whole staging tree (not a hardcoded golden), so it
-// never needs touching when the committed source data legitimately refreshes.
-function digestArtifactTree(root: string) {
-  const hash = createHash("sha256");
-  for (const file of walkFilesRecursive(root)
-    .filter((file) => path.basename(file) !== ".DS_Store") // OS noise, not an artifact
-    .sort()) {
-    hash.update(path.relative(root, file));
-    hash.update("\0");
-    hash.update(readFileSync(file));
-    hash.update("\0");
-  }
-  return hash.digest("hex");
-}
-
-test("artifact build is deterministic (byte-identical across rebuilds)", () => {
-  const supportArtifacts = snapshotSupportArtifacts();
-  const buildEnv: Row = {
-    ...sandbox.env,
-    METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
-  };
-  delete buildEnv.METAGRAPH_BUILD_TIMESTAMP; // force the reproducible epoch
-  const runBuild = () =>
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: buildEnv as unknown as NodeJS.ProcessEnv,
-      stdio: "pipe",
-    });
-  try {
-    runBuild();
-    const firstDigest = digestArtifactTree(r2StagingRoot);
-
-    // The build must actually produce the artifacts whose derivation was
-    // extracted to scripts/lib/ — a broken import would yield empty/missing
-    // output, which this asserts before the cheaper hash comparison.
-    for (const relativePath of [
-      "endpoints.json",
-      "rpc-endpoints.json",
-      "economics.json",
-      "endpoint-pools.json",
-      "endpoint-incidents.json",
-    ]) {
-      const artifact = readArtifact(relativePath);
-      assert.ok(
-        artifact && typeof artifact === "object",
-        `${relativePath} should build to a non-empty object`,
-      );
-    }
-
-    runBuild();
-    const secondDigest = digestArtifactTree(r2StagingRoot);
-
-    assert.equal(
-      secondDigest,
-      firstDigest,
-      "two consecutive builds must emit a byte-identical R2 staging tree",
-    );
-  } finally {
-    runBuild();
-    restoreSupportArtifacts(supportArtifacts);
-  }
-}, 30_000);
-
-test("artifact build preserves committed schema index without R2 schema details", () => {
-  const schemaIndexPath = artifactFilePath("schemas/index.json");
-  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
-  const originalSchemaIndexJson = JSON.parse(originalSchemaIndex);
-  const supportArtifacts = snapshotSupportArtifacts();
-  const backupDir = mkdtempSync(`${tmpdir()}/metagraphed-schema-r2-`);
-  const stagingBackup = `${backupDir}/metagraph-r2`;
-  const hadStagingRoot = existsSync(r2StagingRoot);
-  if (hadStagingRoot) {
-    cpSync(r2StagingRoot, stagingBackup, { recursive: true });
-  }
-
-  assert.equal(originalSchemaIndexJson.source, "openapi-snapshot");
-  assert.equal(originalSchemaIndexJson.schemas.length > 0, true);
-
-  try {
-    rmSync(r2StagingRoot, { recursive: true, force: true });
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-
-    const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
-    assert.deepEqual(JSON.parse(rebuiltSchemaIndex), originalSchemaIndexJson);
-  } finally {
-    writeFileSync(schemaIndexPath, originalSchemaIndex);
-    rmSync(r2StagingRoot, { recursive: true, force: true });
-    if (hadStagingRoot) {
-      cpSync(stagingBackup, r2StagingRoot, { recursive: true });
-    }
-    restoreSupportArtifacts(supportArtifacts);
-    rmSync(backupDir, { recursive: true, force: true });
-  }
-}, 30_000);
-
-test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured schema entry", () => {
-  const schemaIndexPath = artifactFilePath("schemas/index.json");
-  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
-  const supportArtifacts = snapshotSupportArtifacts();
-  const schemaIndex = JSON.parse(originalSchemaIndex);
-  const indexTarget = schemaIndex.schemas?.find(
-    (schema: Row) => schema.status === "captured",
-  );
-  assert(indexTarget, "expected a captured schema index entry to retype");
-
-  // A real subnet (SN-71 Leadpoet) serves its OpenAPI document as
-  // application/vnd.oai.openapi+json rather than plain application/json -- a
-  // spec-valid, OAI-registered media type. schemaIndexEntryMatchesSurface used
-  // to require an exact "application/json" match, so this one entry failed the
-  // reconciler's forgery/staleness guard and wholesale-discarded the entire
-  // committed index down to an empty placeholder (metagraphed#6411).
-  indexTarget.content_type = "application/vnd.oai.openapi+json; charset=utf-8";
-
-  try {
-    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-
-    const rebuiltSchemaIndex = JSON.parse(
-      readFileSync(schemaIndexPath, "utf8"),
-    );
-    assert.equal(rebuiltSchemaIndex.source, "openapi-snapshot");
-    const rebuiltTarget = rebuiltSchemaIndex.schemas.find(
-      (schema: Row) => schema.surface_id === indexTarget.surface_id,
-    );
-    assert.equal(rebuiltTarget?.content_type, indexTarget.content_type);
-    assert.equal(rebuiltTarget?.hash, indexTarget.hash);
-  } finally {
-    writeFileSync(schemaIndexPath, originalSchemaIndex);
-    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: sandbox.scriptCwd,
-      encoding: "utf8",
-      env: sandbox.env,
-      stdio: "pipe",
-    });
-    restoreSupportArtifacts(supportArtifacts);
-  }
-}, 30_000);
 
 test("committed R2 manifest does not use fallback history keys", () => {
   // Read the git-committed manifest, not the working-tree copy: the Validate
@@ -2531,7 +2171,28 @@ test("R2-only generated artifacts stay out of the public git tree", () => {
   }
 });
 
+// The R2 upload tests below consume the sandbox's STAGING manifest
+// (dist/metagraph-r2/metagraph/r2-manifest.json). They must regenerate it
+// rather than assume it: the llms.txt test earlier in this file runs the real
+// build, which rm's + repopulates the staging dir WITHOUT a manifest (the
+// manifest is r2-manifest.ts's product, not the build's). Before the
+// build-running tests were split into their own files, their cleanup happened
+// to recreate it -- an in-file ordering dependency this helper replaces with
+// self-sufficiency. Memoized: one regeneration covers every consumer.
+let stagingManifestFresh = false;
+function ensureStagingManifest() {
+  if (stagingManifestFresh) return;
+  execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
+    cwd: sandbox.scriptCwd,
+    encoding: "utf8",
+    env: sandbox.env,
+    stdio: "pipe",
+  });
+  stagingManifestFresh = true;
+}
+
 test("R2 history upload deduplicates content-addressed objects that already exist", async () => {
+  ensureStagingManifest();
   const execFileAsync = promisify(execFile);
   const manifestPath = path.join(r2StagingRoot, "r2-manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -2648,6 +2309,7 @@ test("R2 history upload deduplicates content-addressed objects that already exis
 }, 30_000);
 
 test("limited R2 upload dry run skips control manifests", () => {
+  ensureStagingManifest();
   const output = execFileSync(
     process.execPath,
     ["scripts/r2-upload.ts", "--dry-run"],
@@ -2751,30 +2413,6 @@ function latestArtifactDate(relativePath: string) {
     .map((file) => file.replace(/\.json$/, ""))
     .sort()
     .at(-1);
-}
-
-function snapshotSupportArtifacts(): Map<string, string> {
-  return new Map(
-    SUPPORT_ARTIFACT_PATHS.map((filePath): [string, string] => [
-      filePath,
-      readFileSync(filePath, "utf8"),
-    ]),
-  );
-}
-
-function restoreSupportArtifacts(snapshot: Map<string, string>) {
-  for (const [filePath, content] of snapshot) {
-    writeFileSync(filePath, content);
-  }
-  execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-    cwd: sandbox.scriptCwd,
-    encoding: "utf8",
-    env: sandbox.env,
-    stdio: "pipe",
-  });
-  for (const [filePath, content] of snapshot) {
-    writeFileSync(filePath, content);
-  }
 }
 
 test("#745 social accounts stay display-only and never feed completeness", () => {

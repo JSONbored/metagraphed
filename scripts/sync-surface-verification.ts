@@ -7,7 +7,7 @@
 // the evidence comes from the health prober rather than verify-candidates.ts,
 // and for the promotion bar itself.
 //
-// COMMITTED, not fetched at build time. tests/artifacts.test.ts asserts the
+// COMMITTED, not fetched at build time. tests/artifacts-build-determinism.test.ts asserts the
 // artifact build is byte-identical across rebuilds; a network call inside the
 // build would end that, and would also make every build depend on the API being
 // up. Same posture as registry/verification/promotions.json.
