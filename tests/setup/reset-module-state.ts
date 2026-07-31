@@ -29,5 +29,17 @@ afterAll(() => {
   // on how vitest happens to shard files across workers.
   //
   // Unconditional: vi.useRealTimers() is a no-op when timers are already real.
+  // Reported before restoring, because a leak is a bug in the file that leaked
+  // and silently papering over it is how it stays unfound -- the restore keeps
+  // the suite green, this line says who to fix.
+  if (vi.isFakeTimers()) {
+    console.warn(
+      "reset-module-state: a test file finished with FAKE timers still " +
+        "installed. Under isolate:false that clock is inherited by the next " +
+        "file in this worker, where anything awaiting a real setTimeout hangs " +
+        "until its timeout. Restore them in a finally, not after the last " +
+        "assertion.",
+    );
+  }
   vi.useRealTimers();
 });
