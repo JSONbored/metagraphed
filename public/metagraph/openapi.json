@@ -5586,6 +5586,10 @@
           "data": {
             "block_emission_halvings": 5000000,
             "block_emission_tao": 5000000,
+            "emission_bar_quantile": 0.5,
+            "emission_gate_bar": 0.5,
+            "emission_gate_exponent": 0.5,
+            "emission_gate_exponent_effective": 0.5,
             "pending_childkey_cooldown_blocks": 5000000,
             "queried_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -28593,6 +28597,46 @@
             ]
           },
           "block_emission_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_bar_quantile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_gate_bar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_gate_exponent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_gate_exponent_effective": {
             "anyOf": [
               {
                 "type": "number"

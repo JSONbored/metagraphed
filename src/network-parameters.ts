@@ -46,6 +46,30 @@ const PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY =
 // emission is DERIVED from this, never read from the `BlockEmission` storage
 // item -- see src/block-emission.ts for why that item is stale and what
 // reading it costs.
+// #8742: the three spec-440 emission-gate parameters. All U64F64 StorageValues
+// under the same SubtensorModule prefix -- and all SIXTEEN bytes, not eight,
+// which is why they cannot go through fetchStorageU64 below.
+// twox128("SubtensorModule") ++ twox128("EmissionGateBar").
+const EMISSION_GATE_BAR_STORAGE_KEY =
+  "0x658faa385070e074c85bf6b568cf05557c9b0d2964cc73e7519676c3cc4d5df9";
+// twox128("SubtensorModule") ++ twox128("EmissionBarQuantile").
+const EMISSION_BAR_QUANTILE_STORAGE_KEY =
+  "0x658faa385070e074c85bf6b568cf0555a772007dde2ed63e0f21b5f9d7f16650";
+// twox128("SubtensorModule") ++ twox128("EmissionGateExponent").
+const EMISSION_GATE_EXPONENT_STORAGE_KEY =
+  "0x658faa385070e074c85bf6b568cf055588c70e8dd0cf4af3aeb977ba2eee1df4";
+
+/**
+ * `DefaultEmissionGateExponent` from the v440 runtime (lib.rs).
+ *
+ * The storage item is UNSET on chain, and absent means "use this", NOT zero.
+ * h = 0 makes the Hill gate 1/(1+(theta/w)^0) = 0.5 for every subnet -- a
+ * silently plausible wrong answer that would misreport the gate for all 128 of
+ * them at once. That is why the raw and effective values are served as separate
+ * fields below rather than collapsed into one.
+ */
+export const DEFAULT_EMISSION_GATE_EXPONENT = 3;
+
 const TOTAL_ISSUANCE_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf055557c875e4cff74148e4628f264b974c80";
 
@@ -112,6 +136,71 @@ async function fetchStorageU64(
   }
 }
 
+/**
+ * Decode a "0x"-prefixed 32-hex-char (16-byte) little-endian u128.
+ *
+ * Separate from decodeLeU64 rather than a widening of it: that function
+ * REJECTS anything but 16 hex chars, and silently returning null for a
+ * perfectly good 16-byte value is exactly how these three parameters would
+ * have read as "unavailable" forever.
+ */
+function decodeLeU128(hex: unknown): bigint | null {
+  if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{32}$/.test(hex)) {
+    return null;
+  }
+  let value = 0n;
+  for (let i = hex.length - 2; i >= 2; i -= 2) {
+    value = (value << 8n) | BigInt(parseInt(hex.slice(i, i + 2), 16));
+  }
+  return value;
+}
+
+/** U64F64 (64 integer bits + 64 fraction bits) as a float. */
+function u64f64U128ToFloat(bits: bigint): number {
+  // Split in BigInt space before dividing -- Number(bits) / 2**64 routes the
+  // numerator through double rounding first. Same reasoning as
+  // src/subnet-conviction.ts's u64f64BitsToFloat.
+  const scale = 1n << 64n;
+  return Number(bits / scale) + Number(bits % scale) / Number(scale);
+}
+
+/**
+ * A u128 storage read that distinguishes UNSET from FAILED.
+ *
+ * fetchStorageU64 folds both into "0n or null", which is fine where absent
+ * genuinely means zero. It is not fine for EmissionGateExponent, where absent
+ * means "use the runtime default" and zero means something else entirely.
+ */
+type StorageU128Result =
+  { state: "value"; bits: bigint } | { state: "unset" } | { state: "failed" };
+
+async function fetchStorageU128(
+  storageKey: string,
+  timeoutMs: number,
+): Promise<StorageU128Result> {
+  try {
+    const rpcResp = await fetch(FINNEY_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getStorage",
+        params: [storageKey],
+      }),
+    });
+    if (!rpcResp.ok) return { state: "failed" };
+    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
+    const raw = rpcBody?.result;
+    if (raw === null) return { state: "unset" };
+    const bits = decodeLeU128(raw);
+    return bits != null ? { state: "value", bits } : { state: "failed" };
+  } catch {
+    return { state: "failed" };
+  }
+}
+
 export interface NetworkParameters {
   schema_version: 1;
   tao_weight: number | null;
@@ -123,6 +212,17 @@ export interface NetworkParameters {
   block_emission_tao: number | null;
   /** How many halvings have occurred. A step function, never interpolated. */
   block_emission_halvings: number | null;
+  /** Spec-440 emission gate: the q-mass bar (theta), recomputed every 360 blocks. */
+  emission_gate_bar: number | null;
+  /** Spec-440 emission gate: the quantile (q) the bar is taken at. */
+  emission_bar_quantile: number | null;
+  /**
+   * The exponent (h) AS STORED — null when the storage item is unset, which is
+   * its current state. Not the value the gate uses; see the effective field.
+   */
+  emission_gate_exponent: number | null;
+  /** The exponent the gate actually applies: the stored value, or the runtime default. */
+  emission_gate_exponent_effective: number | null;
   queried_at: string;
 }
 
@@ -156,6 +256,9 @@ export async function loadNetworkParameters(
     stakeThresholdRao,
     pendingChildKeyCooldownBits,
     totalIssuanceRao,
+    emissionGateBarResult,
+    emissionBarQuantileResult,
+    emissionGateExponentResult,
   ] = await Promise.all([
     fetchStorageU64(TAO_WEIGHT_STORAGE_KEY, NETWORK_PARAMETERS_RPC_TIMEOUT_MS),
     fetchStorageU64(
@@ -168,6 +271,18 @@ export async function loadNetworkParameters(
     ),
     fetchStorageU64(
       TOTAL_ISSUANCE_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+    ),
+    fetchStorageU128(
+      EMISSION_GATE_BAR_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+    ),
+    fetchStorageU128(
+      EMISSION_BAR_QUANTILE_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+    ),
+    fetchStorageU128(
+      EMISSION_GATE_EXPONENT_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
     ),
   ]);
@@ -183,11 +298,39 @@ export async function loadNetworkParameters(
   // reads 1.0 TAO and has been stale since the first halving, so every share
   // computed against it is wrong by 2x (#8747).
   const emission = blockEmissionForIssuance(totalIssuanceRao);
+
+  const emissionGateBar =
+    emissionGateBarResult.state === "value"
+      ? u64f64U128ToFloat(emissionGateBarResult.bits)
+      : null;
+  const emissionBarQuantile =
+    emissionBarQuantileResult.state === "value"
+      ? u64f64U128ToFloat(emissionBarQuantileResult.bits)
+      : null;
+  // Raw stays null when the item is unset -- that is the honest reading, and
+  // the effective value carries the runtime default alongside it rather than
+  // in place of it (#8742 trap 2).
+  const emissionGateExponent =
+    emissionGateExponentResult.state === "value"
+      ? u64f64U128ToFloat(emissionGateExponentResult.bits)
+      : null;
+  const emissionGateExponentEffective =
+    emissionGateExponentResult.state === "value"
+      ? emissionGateExponent
+      : emissionGateExponentResult.state === "unset"
+        ? DEFAULT_EMISSION_GATE_EXPONENT
+        : null;
   const rpcOk =
     taoWeight != null &&
     stakeThresholdTao != null &&
     pendingChildKeyCooldownBlocks != null &&
-    emission != null;
+    emission != null &&
+    emissionGateBar != null &&
+    emissionBarQuantile != null &&
+    // "unset" is a successful read, not a failure -- caching it for the full
+    // TTL is correct, and treating it as a partial failure would put this
+    // whole response on the 10s negative TTL indefinitely.
+    emissionGateExponentResult.state !== "failed";
 
   const payload: NetworkParameters = {
     schema_version: 1,
@@ -198,6 +341,10 @@ export async function loadNetworkParameters(
       totalIssuanceRao != null ? raoToTao(totalIssuanceRao) : null,
     block_emission_tao: emission?.tao_per_block ?? null,
     block_emission_halvings: emission?.halvings ?? null,
+    emission_gate_bar: emissionGateBar,
+    emission_bar_quantile: emissionBarQuantile,
+    emission_gate_exponent: emissionGateExponent,
+    emission_gate_exponent_effective: emissionGateExponentEffective,
     queried_at: queriedAt,
   };
 

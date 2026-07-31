@@ -8116,6 +8116,10 @@ export interface components {
         NetworkParametersArtifact: {
             block_emission_halvings?: number | null;
             block_emission_tao?: number | null;
+            emission_bar_quantile?: number | null;
+            emission_gate_bar?: number | null;
+            emission_gate_exponent?: number | null;
+            emission_gate_exponent_effective?: number | null;
             pending_childkey_cooldown_blocks?: number | null;
             queried_at?: string | null;
             schema_version: number;
@@ -35844,6 +35848,10 @@ export interface operations {
                      *       "data": {
                      *         "block_emission_halvings": 5000000,
                      *         "block_emission_tao": 5000000,
+                     *         "emission_bar_quantile": 0.5,
+                     *         "emission_gate_bar": 0.5,
+                     *         "emission_gate_exponent": 0.5,
+                     *         "emission_gate_exponent_effective": 0.5,
                      *         "pending_childkey_cooldown_blocks": 5000000,
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,

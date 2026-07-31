@@ -938,6 +938,28 @@ const checks: [string, (body: Row) => void][] = [
           "the network is past its first halving; halvings < 1 means the stale BlockEmission item is being read",
         );
       }
+      // #8742: the gate parameters. Asserted live because both failure modes
+      // are silent -- a 16-byte value routed through a u64 decoder reads as
+      // null (looks like an RPC problem), and an unset exponent collapsed to 0
+      // reads as a real setting that makes the gate 0.5 for every subnet.
+      assert.equal("emission_gate_bar" in body.data, true);
+      assert.equal("emission_bar_quantile" in body.data, true);
+      assert.equal("emission_gate_exponent" in body.data, true);
+      assert.equal("emission_gate_exponent_effective" in body.data, true);
+      const effective = body.data.emission_gate_exponent_effective;
+      if (effective !== null) {
+        assert.ok(
+          effective > 0,
+          `emission_gate_exponent_effective ${effective} must never be 0 -- h = 0 makes the Hill gate 0.5 for every subnet`,
+        );
+      }
+      const quantile = body.data.emission_bar_quantile;
+      if (quantile !== null) {
+        assert.ok(
+          quantile > 0 && quantile < 1,
+          `emission_bar_quantile ${quantile} is not a quantile; a 128-bit value decoded as u64 would land outside this range`,
+        );
+      }
     },
   ],
   [
