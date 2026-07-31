@@ -283,3 +283,134 @@ describe("weighting is by liquidity", () => {
     expect(forward.usd_per_tao).toBe(reversed.usd_per_tao);
   });
 });
+
+describe("exclusions carry a reason", () => {
+  // pools_excluded is the ADR's published shape; `exclusions` is what the
+  // stored provenance row needs. They must never disagree about WHICH pools
+  // dropped out — deriving one from the other downstream would mean
+  // re-implementing the rejection rules to guess at them.
+  const sameSet = (index: ReturnType<typeof computeTaoUsdIndex>) => {
+    expect(index.exclusions.map((e) => e.address).sort()).toEqual(
+      [...index.pools_excluded].sort(),
+    );
+  };
+
+  it("names an outlier as an outlier", () => {
+    const index = computeTaoUsdIndex({
+      pools: [
+        pool("0xa", 195.5, 1_000_000),
+        pool("0xb", 195.6, 900_000),
+        pool("0xwild", 260, 50_000),
+      ],
+      ethUsd: ETH_USD,
+    });
+    expect(index.exclusions).toEqual([
+      { address: "0xwild", reason: "outlier" },
+    ]);
+    sameSet(index);
+  });
+
+  it("distinguishes an unusable reading from a rejected one", () => {
+    const index = computeTaoUsdIndex({
+      pools: [
+        pool("0xa", 195.5, 1_000_000),
+        pool("0xb", 195.6, 900_000),
+        { address: "0xnan", eth_per_tao: NaN, liquidity_usd: 100 },
+        pool("0xwild", 260, 50_000),
+      ],
+      ethUsd: ETH_USD,
+    });
+    const byAddress = new Map(
+      index.exclusions.map((e) => [e.address, e.reason]),
+    );
+    expect(byAddress.get("0xnan")).toBe("unusable_reading");
+    expect(byAddress.get("0xwild")).toBe("outlier");
+    sameSet(index);
+  });
+
+  it("says below_quorum when rejection leaves too few", () => {
+    const index = computeTaoUsdIndex({
+      pools: [
+        pool("0xa", 100, 1_000_000),
+        pool("0xb", 195.5, 900_000),
+        pool("0xc", 300, 800_000),
+      ],
+      ethUsd: ETH_USD,
+    });
+    // Two are outliers against the 195.5 median; the survivor is below the
+    // floor on its own. Each is labelled for what actually happened to it.
+    const byAddress = new Map(
+      index.exclusions.map((e) => [e.address, e.reason]),
+    );
+    expect(byAddress.get("0xb")).toBe("below_quorum");
+    expect(byAddress.get("0xa")).toBe("outlier");
+    expect(byAddress.get("0xc")).toBe("outlier");
+    sameSet(index);
+  });
+
+  it("keeps an unusable reading labelled as such below the floor", () => {
+    // Two different reasons in one refusal: the NaN pool was never usable, the
+    // other was fine and simply had nobody to be a quorum with. Collapsing
+    // both into one label would lose the distinction the row exists to record.
+    const index = computeTaoUsdIndex({
+      pools: [
+        pool("0xa", 195.5, 1_000_000),
+        { address: "0xnan", eth_per_tao: NaN, liquidity_usd: 100 },
+      ],
+      ethUsd: ETH_USD,
+    });
+    expect(index.usd_per_tao).toBeNull();
+    const byAddress = new Map(
+      index.exclusions.map((e) => [e.address, e.reason]),
+    );
+    expect(byAddress.get("0xnan")).toBe("unusable_reading");
+    expect(byAddress.get("0xa")).toBe("below_quorum");
+    sameSet(index);
+  });
+
+  it("says anchor_unavailable when there is no ETH leg", () => {
+    const index = computeTaoUsdIndex({
+      pools: LIVE_POOLS,
+      ethUsd: NaN,
+    });
+    expect(
+      index.exclusions.every((e) => e.reason === "anchor_unavailable"),
+    ).toBe(true);
+    sameSet(index);
+  });
+
+  it("accounts for every pool it was given, on every path", () => {
+    // The invariant the provenance row depends on: contributors plus
+    // exclusions is exactly the input, with nothing counted twice.
+    const inputs = [
+      { pools: LIVE_POOLS, ethUsd: ETH_USD },
+      { pools: LIVE_POOLS, ethUsd: 0 },
+      { pools: [pool("0xa", 195.5, 1_000)], ethUsd: ETH_USD },
+      {
+        pools: [
+          pool("0xa", 100, 1_000),
+          pool("0xb", 195.5, 1_000),
+          pool("0xc", 300, 1_000),
+        ],
+        ethUsd: ETH_USD,
+      },
+      {
+        pools: [
+          pool("0xa", 195.5, 1_000),
+          pool("0xb", 195.6, 1_000),
+          { address: "0xbad", eth_per_tao: 0, liquidity_usd: 1 },
+        ],
+        ethUsd: ETH_USD,
+      },
+    ];
+    for (const input of inputs) {
+      const index = computeTaoUsdIndex(input);
+      expect(index.pool_count + index.exclusions.length).toBe(
+        input.pools.length,
+      );
+      const addresses = new Set(index.exclusions.map((e) => e.address));
+      expect(addresses.size).toBe(index.exclusions.length);
+      sameSet(index);
+    }
+  });
+});

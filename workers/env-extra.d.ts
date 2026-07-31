@@ -39,6 +39,17 @@ interface Env {
    * radar still runs without it and simply reports null upstreams when
    * GitHub throttles. */
   GITHUB_TOKEN?: string;
+  /**
+   * #8600: Ethereum JSON-RPC endpoint for the TAO/USD index (ADR 0025).
+   *
+   * A deploy-time binding with NO committed default, deliberately. Every free
+   * public endpoint surveyed carries blanket "no scraping / no derivative
+   * works" terms -- the same clauses that ruled out the CEX basis -- so which
+   * endpoint we accept terms with is an ops decision, not a repo constant.
+   * Unset means the ingestion tick is a recorded no-op, never a fallback to
+   * some other provider's node.
+   */
+  ETH_RPC_URL?: string;
   HEALTH_CHECKS_SYNC_SECRET?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;

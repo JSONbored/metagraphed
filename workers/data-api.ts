@@ -59,6 +59,12 @@ import {
 } from "../src/account-events.ts";
 import { buildAlphaVolume } from "../src/alpha-volume.ts";
 import {
+  buildObservationBatch,
+  rowFromBatch,
+  type TaoUsdIndexRow,
+} from "../src/tao-usd-ingest.ts";
+import { TAO_USD_INDEX_CRON } from "./config.ts";
+import {
   buildSubnetOhlc,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
@@ -11260,7 +11266,166 @@ async function dispatchDataApiRequest(
   }
 }
 
+// --- TAO/USD index ingestion (#8600, ADR 0025) ----------------------------
+//
+// One minute-cadence tick: read the Ethereum height, read every pool at that
+// exact height in one batch, compute, append.
+//
+// FOUR THINGS REQUIREMENT 4 ASKS FOR, AND WHERE EACH ONE LIVES.
+//
+//   (a) One failing read must not fail the run. Every read is independently
+//       optional inside decodeObservation -- a pool whose price or balance
+//       does not come back is excluded WITH A REASON, and the other pools
+//       still produce an index. Nothing here needs a try/catch to achieve
+//       that; the decoder is total.
+//   (b) Which pools were healthy is recorded. The `pools` JSONB holds every
+//       pool the tick looked at, contributors and rejects alike.
+//   (c) Never on a user-facing path. This runs from `scheduled`, not `fetch`.
+//   (d) Idempotent. observed_at is the BLOCK's timestamp, so a re-run of the
+//       same height collides on the primary key and DO NOTHING is a real
+//       no-op rather than a near-duplicate insert.
+//
+// RATE-LIMIT DISCIPLINE (requirement 5). Two HTTP requests per tick -- one
+// eth_getBlockByNumber, one 7-call batch -- so 2,880 requests/day against
+// whatever endpoint ETH_RPC_URL names. No surveyed public endpoint publishes a
+// numeric ceiling to cite; this is the ceiling WE impose, and it is the number
+// that matters for staying well inside an unstated one.
+const TAO_USD_RPC_TIMEOUT_MS = 10_000;
+
+async function ethRpc(
+  url: string,
+  body: unknown,
+  timeoutMs = TAO_USD_RPC_TIMEOUT_MS,
+): Promise<unknown> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`eth rpc HTTP ${response.status}`);
+  return response.json();
+}
+
+/**
+ * The height and timestamp every call in the tick is pinned to. Parses only --
+ * a header of `{number: "0x0"}` gets past this and is refused where every
+ * other unusable observation is refused, on one code path with one meaning.
+ */
+export function decodeBlockHeader(
+  payload: unknown,
+): { blockTag: string; blockNumber: number; timestampSeconds: number } | null {
+  const result = (payload as { result?: unknown })?.result as
+    { number?: unknown; timestamp?: unknown } | undefined;
+  if (!result) return null;
+  const { number: rawNumber, timestamp: rawTimestamp } = result;
+  if (typeof rawNumber !== "string" || typeof rawTimestamp !== "string")
+    return null;
+  const blockNumber = Number.parseInt(rawNumber, 16);
+  const timestampSeconds = Number.parseInt(rawTimestamp, 16);
+  // NaN means the strings were not hex at all, so there is no tag to pin to.
+  // Whether the parsed values are USABLE is buildIndexRow's judgement and is
+  // not repeated here: two validators for one condition is how a guard becomes
+  // unreachable and stops being exercised.
+  if (Number.isNaN(blockNumber) || Number.isNaN(timestampSeconds)) return null;
+  return { blockTag: rawNumber, blockNumber, timestampSeconds };
+}
+
+export async function writeTaoUsdIndexRow(
+  env: Env,
+  row: TaoUsdIndexRow,
+): Promise<{ inserted: boolean }> {
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 1,
+    prepare: false,
+    fetch_types: false,
+  });
+  // The provenance array is bound as text and cast, not handed over as an
+  // object: with fetch_types:false postgres.js has no type OIDs to infer from,
+  // so an explicit ::jsonb is what makes the column type unambiguous.
+  //
+  // RETURNING plus a length check, rather than trusting a rowcount: ON CONFLICT
+  // DO NOTHING returns zero rows on a re-run, which is precisely the signal
+  // wanted -- "this height was already recorded" is a success, not a failure.
+  const written = await sql`
+    INSERT INTO tao_usd_index
+      (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
+    VALUES (
+      ${row.block_number},
+      ${row.observed_at},
+      ${row.usd_per_tao},
+      ${row.price_basis},
+      ${row.eth_usd},
+      ${row.pool_count},
+      ${JSON.stringify(row.pools)}::jsonb
+    )
+    ON CONFLICT (block_number, observed_at) DO NOTHING
+    RETURNING block_number`;
+  return { inserted: written.length > 0 };
+}
+
+export async function ingestTaoUsdIndex(env: Env): Promise<Row> {
+  if (!env.ETH_RPC_URL) {
+    return { ok: false, skipped: true, reason: "ETH_RPC_URL not configured" };
+  }
+  try {
+    const header = decodeBlockHeader(
+      await ethRpc(env.ETH_RPC_URL, {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getBlockByNumber",
+        params: ["latest", false],
+      }),
+    );
+    // Without a height there is no idempotency key, and a row keyed on "now"
+    // is worse than no row: it is one this tick can never recognise again.
+    if (!header) return { ok: false, reason: "block_header_unreadable" };
+
+    const batch = await ethRpc(
+      env.ETH_RPC_URL,
+      buildObservationBatch(header.blockTag),
+    );
+    const row = rowFromBatch({
+      blockNumber: header.blockNumber,
+      blockTimestampSeconds: header.timestampSeconds,
+      response: batch,
+    });
+    if (!row) return { ok: false, reason: "observation_unusable" };
+
+    const { inserted } = await writeTaoUsdIndexRow(env, row);
+    return {
+      ok: true,
+      inserted,
+      block_number: row.block_number,
+      usd_per_tao: row.usd_per_tao,
+      price_basis: row.price_basis,
+      pool_count: row.pool_count,
+    };
+  } catch (err) {
+    // A tick that cannot run is one missing minute of a minute-cadence series,
+    // not an outage. It is reported so a persistent failure is visible, and
+    // the next tick is a full retry of the same work.
+    console.error("data-api tao-usd-index tick failed:", err);
+    await captureDataApiError(err, "tao-usd-index", env);
+    return { ok: false, reason: "tick_failed" };
+  }
+}
+
 export default {
+  // #8600: the data-api Worker's first cron. It lives here rather than on the
+  // api Worker because this is where HYPERDRIVE is bound -- routing a write
+  // through a service binding to reach the Worker that already owns the
+  // connection is the hop #4832 removed, not one to add back.
+  async scheduled(
+    controller: ScheduledController,
+    env: Env,
+    _ctx: ExecutionContext,
+  ) {
+    if (controller?.cron !== TAO_USD_INDEX_CRON) {
+      return { ok: false, skipped: true, reason: "unknown cron" };
+    }
+    return ingestTaoUsdIndex(env);
+  },
   async fetch(
     request: Request,
     env: Env,

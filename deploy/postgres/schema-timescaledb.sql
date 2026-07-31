@@ -45,6 +45,12 @@ SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval 
 -- only a 30-day hot window before pruning, so a 1-day chunk interval keeps
 -- individual chunks small without accumulating chunks indefinitely.
 SELECT create_hypertable('surface_checks', 'checked_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
+
+-- #8600: one row per minute of TAO/USD index ticks (~1,440/day). 30-day chunks
+-- put ~43k rows in each -- small, but the table is append-only and never
+-- pruned (the price history IS the deliverable), so it wants the same chunk
+-- exclusion every other observed_at table here gets.
+SELECT create_hypertable('tao_usd_index', 'observed_at', chunk_time_interval => 2592000000, migrate_data => true, if_not_exists => true);
 -- metagraphed#8317: written every ~60s for 3 components (~4.3k rows/day), the
 -- highest-frequency/lowest-volume table here. 1-day chunks, and unlike every
 -- other hypertable it gets an explicit retention policy -- the 90-day serving
@@ -73,7 +79,7 @@ DO $$
 DECLARE
   tbl TEXT;
 BEGIN
-  FOREACH tbl IN ARRAY ARRAY['blocks', 'extrinsics', 'account_events', 'chain_events', 'surface_checks', 'self_health_checks'] LOOP
+  FOREACH tbl IN ARRAY ARRAY['blocks', 'extrinsics', 'account_events', 'chain_events', 'surface_checks', 'self_health_checks', 'tao_usd_index'] LOOP
     IF NOT EXISTS (
       SELECT 1 FROM timescaledb_information.dimensions
       WHERE hypertable_name = tbl AND integer_now_func IS NOT NULL
@@ -88,6 +94,7 @@ ALTER TABLE extrinsics     SET (timescaledb.compress, timescaledb.compress_segme
 ALTER TABLE account_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'hotkey', timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE chain_events   SET (timescaledb.compress, timescaledb.compress_segmentby = 'pallet', timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE surface_checks SET (timescaledb.compress, timescaledb.compress_segmentby = 'surface_id', timescaledb.compress_orderby = 'checked_at DESC');
+ALTER TABLE tao_usd_index  SET (timescaledb.compress, timescaledb.compress_orderby = 'observed_at DESC');
 
 -- if_not_exists => true on all 5: unlike ALTER TABLE...SET (timescaledb.compress...)
 -- above (idempotent by default), add_compression_policy hard-ERRORs ("compression
@@ -99,6 +106,9 @@ SELECT add_compression_policy('extrinsics',     BIGINT '604800000', if_not_exist
 SELECT add_compression_policy('account_events', BIGINT '604800000', if_not_exists => true);
 SELECT add_compression_policy('chain_events',   BIGINT '604800000', if_not_exists => true);
 SELECT add_compression_policy('surface_checks', BIGINT '604800000', if_not_exists => true);
+-- No segmentby: every row shares the same (implicit) series, so there is
+-- nothing to segment on -- ordering by observed_at is the whole win.
+SELECT add_compression_policy('tao_usd_index',  BIGINT '604800000', if_not_exists => true);
 
 -- No compression policy for self_health_checks, unlike every other hypertable
 -- above: add_compression_policy requires ALTER TABLE ... SET
