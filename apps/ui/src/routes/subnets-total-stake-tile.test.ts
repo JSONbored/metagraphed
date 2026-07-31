@@ -48,7 +48,7 @@ describe("subnets.index.tsx compact masthead stats (post-#8248)", () => {
 
   it("phases Total stake via statPhase so a failed economics query cannot fabricate 0 τ (#8818)", () => {
     expect(strip).toContain("statPhase(economicsRes)");
-    expect(strip).toContain("StatUnavailable");
+    expect(strip).toContain('StatUnavailable variant="inline"');
     expect(strip).toContain("economicsRows.length === 0 ? (");
     // formatTao must sit behind the ready branch, not on an unguarded path
     expect(strip).toMatch(/economicsPhase === "error"[\s\S]*formatTao\(totalStake\)/);

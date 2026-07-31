@@ -354,7 +354,7 @@ function SubnetsCompactStats() {
     economicsPhase === "pending" ? (
       <Skeleton className="h-4 w-16" />
     ) : economicsPhase === "error" ? (
-      <StatUnavailable />
+      <StatUnavailable variant="inline" />
     ) : economicsRows.length === 0 ? (
       "—"
     ) : (
