@@ -9,6 +9,7 @@ import {
   OAUTH_PENDING_TTL_SECONDS,
   UNUSED_DEFAULT_HANDLER,
 } from "../src/github-oauth.ts";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import type { Row } from "./row-type.ts";
 // Type-only -- fully erased, no runtime cost, safe even though the real
 // package can't load in plain Node (see the vi.mock comment below).
@@ -50,6 +51,7 @@ function baseEnv(overrides: Record<string, unknown> = {}): Env {
     OAUTH_KV: createFakeKv(),
     GITHUB_OAUTH_CLIENT_ID: "client-id",
     GITHUB_OAUTH_CLIENT_SECRET: "client-secret",
+    API_KEY_LOOKUP_INTERNAL_TOKEN: "test-api-key-lookup-token",
     DATA_API: { fetch: async () => new Response(JSON.stringify({ id: 1 })) },
     ...overrides,
   } as unknown as Env;
@@ -442,6 +444,29 @@ describe("handleGithubOAuthCallback", () => {
     assert.equal(res.status, 503);
   });
 
+  test("503 when API_KEY_LOOKUP_INTERNAL_TOKEN is absent without calling DATA_API", async () => {
+    let dataApiCalled = false;
+    const env = baseEnv({
+      API_KEY_LOOKUP_INTERNAL_TOKEN: undefined,
+      DATA_API: {
+        fetch: async () => {
+          dataApiCalled = true;
+          return new Response(JSON.stringify({ id: 1 }));
+        },
+      },
+    });
+    await seedPendingState(env, "n1");
+    const deps = { fetch: fakeGithubFetch() };
+    const res = await handleGithubOAuthCallback(
+      new Request(githubCallbackUrl({ code: "c", state: "n1" })),
+      env,
+      deps,
+    );
+    assert.equal(res.status, 503);
+    assert.match(await res.text(), /account storage is not provisioned/);
+    assert.equal(dataApiCalled, false);
+  });
+
   test("502 when the DATA_API upsert fails", async () => {
     const env = baseEnv({
       DATA_API: { fetch: async () => new Response("boom", { status: 500 }) },
@@ -495,6 +520,10 @@ describe("handleGithubOAuthCallback", () => {
     assert.equal(
       upsertRequest!.url,
       "https://internal/api/v1/auth/github/upsert-account",
+    );
+    assert.equal(
+      upsertRequest!.headers.get(API_KEY_LOOKUP_TOKEN_HEADER),
+      "test-api-key-lookup-token",
     );
     assert.deepEqual(await upsertRequest!.clone().json(), {
       github_user_id: 42,

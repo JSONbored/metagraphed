@@ -50,6 +50,7 @@ import type {
   OAuthHelpers,
   OAuthProviderOptions,
 } from "@cloudflare/workers-oauth-provider";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -364,10 +365,22 @@ export async function handleGithubOAuthCallback(
       { status: 503 },
     );
   }
+  // Same internal-token gate the upsert handler requires (#8820). Absent
+  // secret must surface as the existing "not provisioned" 503 rather than a
+  // 502 from posting without the header.
+  if (!env.API_KEY_LOOKUP_INTERNAL_TOKEN) {
+    return new Response(
+      "account storage is not provisioned on this deployment",
+      { status: 503 },
+    );
+  }
   const upsertResponse = await env.DATA_API.fetch(
     new Request("https://internal/api/v1/auth/github/upsert-account", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
+      },
       body: JSON.stringify({
         github_user_id: githubUserId,
         github_login: githubLogin,

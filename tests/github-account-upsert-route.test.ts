@@ -1,12 +1,13 @@
 // Unit tests for workers/data-api.ts's handleGithubAccountUpsert
-// (metagraphed#7151) -- POST /api/v1/auth/github/upsert-account, reached
+// (metagraphed#7151, #8820) -- POST /api/v1/auth/github/upsert-account, reached
 // only via the DATA_API service binding from src/github-oauth.ts's
 // callback handler (see that module's own test file for the OAuth-flow
 // side). Mirrors tests/wallet-auth-keys-route.test.ts's shape: its own
 // per-test postgres mock queue, scoped only to this file (vi.mock is
-// per-test-file).
+// per-test-file). Gated by API_KEY_LOOKUP_INTERNAL_TOKEN (#8820).
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
 const mockQueue = vi.hoisted((): { current: Row[] } => ({ current: [] }));
@@ -31,9 +32,12 @@ vi.mock("postgres", () => ({
 
 const { default: worker } = await import("../workers/data-api.ts");
 
+const INTERNAL_TOKEN = "test-api-key-lookup-token";
+
 function baseEnv(overrides = {}) {
   return {
     HYPERDRIVE: { connectionString: "postgres://mock" },
+    API_KEY_LOOKUP_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,
   };
 }
@@ -43,10 +47,14 @@ beforeEach(() => {
   sqlCalls.length = 0;
 });
 
-function req(body: Row) {
+function req(body: Row, { token = INTERNAL_TOKEN }: { token?: string | null } = {}) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (token != null) headers[API_KEY_LOOKUP_TOKEN_HEADER] = token;
   return new Request("https://d/api/v1/auth/github/upsert-account", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
 }
@@ -59,12 +67,51 @@ async function fetchRoute(request: Request, env: Row) {
   );
 }
 
+test("rejects a missing token header with 401 and issues no write", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }, { token: null }),
+    env,
+  );
+  assert.equal(res.status, 401);
+  assert.deepEqual(await res.json(), {
+    error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header`,
+  });
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("rejects a wrong token header with 401 and issues no write", async () => {
+  const env = baseEnv();
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }, { token: "wrong" }),
+    env,
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("returns 503 when the internal token is not provisioned, even with a header", async () => {
+  const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: undefined });
+  const res = await fetchRoute(
+    req({ github_user_id: 42, github_login: "octocat" }),
+    env,
+  );
+  assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), {
+    error: "github account upsert is not provisioned on this deployment",
+  });
+  assert.equal(sqlCalls.length, 0);
+});
+
 test("rejects a malformed JSON body", async () => {
   const env = baseEnv();
   const res = await fetchRoute(
     new Request("https://d/api/v1/auth/github/upsert-account", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        [API_KEY_LOOKUP_TOKEN_HEADER]: INTERNAL_TOKEN,
+      },
       body: "not json",
     }),
     env,
@@ -79,12 +126,14 @@ test("rejects a non-integer github_user_id", async () => {
     env,
   );
   assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
 });
 
 test("rejects a missing/empty github_login", async () => {
   const env = baseEnv();
   const res = await fetchRoute(req({ github_user_id: 42 }), env);
   assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
 });
 
 test("upserts on github_user_id and returns the account row", async () => {
