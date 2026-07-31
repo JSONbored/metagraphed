@@ -1505,6 +1505,11 @@ const SUBNET_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
 );
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
+// Directions accepted by get_account_transfers' direction filter -- mirrors
+// GET /api/v1/accounts/{ss58}/transfers' REST validation
+// (workers/request-handlers/entities.ts).
+const ACCOUNT_TRANSFERS_DIRECTIONS = ["all", "sent", "received"];
+
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
   title: "metagraphed — Bittensor subnet operational registry",
@@ -7425,11 +7430,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description:
       "Fetch the native-TAO Balances.Transfer feed for one account by its SS58 address, " +
       "newest first: from address, to address, amount in TAO, and direction (sent/ " +
-      "received). Filter by direction with direction='sent' or 'received'; omit for " +
-      "both sides. Optionally constrain block height with block_start/block_end " +
-      "(inclusive). Page with limit (1-1000, default 100) / offset, or follow " +
-      "next_cursor for stable keyset pagination. Mirrors " +
-      "GET /api/v1/accounts/{ss58}/transfers.",
+      "received). Filter by direction with direction='sent' or 'received'; " +
+      "direction='all' or omitting it returns both sides. Optionally constrain block " +
+      "height with block_start/block_end (inclusive). Page with limit (1-1000, " +
+      "default 100) / offset, or follow next_cursor for stable keyset pagination. " +
+      "Mirrors GET /api/v1/accounts/{ss58}/transfers.",
     inputSchema: z.toJSONSchema(GetAccountTransfersInputSchema, {
       target: "draft-2020-12",
     }),
@@ -7438,7 +7443,28 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const direction = optionalString(args, "direction");
+      // direction is validated for REST-parity (matching STAKE_FLOW_DIRECTIONS'
+      // shape at src/stake-flow.ts) and forwarded to the Postgres tier below;
+      // "all" is normalised to the same "no direction param" shape as omitting
+      // it, rather than forwarded as a literal string relying on the downstream
+      // else-branch to treat it as both-sides.
+      const rawDirection = (args as Row)?.direction;
+      if (
+        rawDirection !== undefined &&
+        !(
+          typeof rawDirection === "string" &&
+          ACCOUNT_TRANSFERS_DIRECTIONS.includes(rawDirection)
+        )
+      ) {
+        throw toolError(
+          "invalid_params",
+          `direction must be one of: ${ACCOUNT_TRANSFERS_DIRECTIONS.join(", ")}.`,
+        );
+      }
+      const direction: "sent" | "received" | undefined =
+        rawDirection === undefined || rawDirection === "all"
+          ? undefined
+          : rawDirection;
       // block_start/block_end/cursor are validated for REST-parity and forwarded to
       // the Postgres tier below; the local D1 fallback still ignores them (like the
       // D1 filters they used to bound, they have nothing left to filter now that
@@ -7455,7 +7481,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/transfers`, {
-            direction: direction ?? undefined,
+            direction,
             block_start: blockStart,
             block_end: blockEnd,
             limit,
@@ -7465,7 +7491,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
         buildAccountTransfers([], ss58, {
-          direction: direction ?? undefined,
+          direction,
           limit,
           offset,
           nextCursor: null,
