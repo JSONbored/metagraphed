@@ -30,7 +30,8 @@ import {
 } from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
 import {
   BrandIcon,
   prefetchBrandIcon,
@@ -344,12 +345,24 @@ function SubnetsCompactStats() {
   // table's Total stake column reads, so the masthead figure and the column
   // total can never diverge from a second source.
   const economicsRes = useQuery(economicsQuery());
-  const totalStake = (economicsRes.data?.data ?? []).reduce(
-    (sum, e) => sum + (e.total_stake_tao ?? 0),
-    0,
-  );
+  const economicsPhase = statPhase(economicsRes);
+  const economicsRows = economicsRes.data?.data ?? [];
+  const totalStake = economicsRows.reduce((sum, e) => sum + (e.total_stake_tao ?? 0), 0);
   const generatedAt = coverageRes.data.meta?.generated_at ?? healthRes.data.meta?.generated_at;
   const stale = isStaleFreshness(generatedAt);
+  const totalStakeFigure =
+    economicsPhase === "pending" ? (
+      <Skeleton className="h-4 w-16" />
+    ) : economicsPhase === "error" ? (
+      <StatUnavailable variant="inline" />
+    ) : economicsRows.length === 0 ? (
+      "—"
+    ) : (
+      <>
+        <Coins className="size-3.5 text-accent" aria-hidden />
+        {formatTao(totalStake)}
+      </>
+    );
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 mg-type-data text-ink-muted">
       <span>
@@ -371,8 +384,7 @@ function SubnetsCompactStats() {
       <span>
         Total stake{" "}
         <span className="inline-flex items-center gap-1 font-medium text-ink-strong">
-          <Coins className="size-3.5 text-accent" aria-hidden />
-          {formatTao(totalStake)}
+          {totalStakeFigure}
         </span>
       </span>
       {stale ? (

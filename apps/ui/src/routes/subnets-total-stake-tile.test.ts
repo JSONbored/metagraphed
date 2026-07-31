@@ -46,6 +46,24 @@ describe("subnets.index.tsx compact masthead stats (post-#8248)", () => {
     expect(strip).toContain("formatTao(totalStake)");
   });
 
+  it("phases Total stake via statPhase so a failed economics query cannot fabricate 0 τ (#8818)", () => {
+    expect(strip).toContain("statPhase(economicsRes)");
+    expect(strip).toContain('StatUnavailable variant="inline"');
+    expect(strip).toContain("economicsRows.length === 0 ? (");
+    // formatTao must sit behind the ready branch, not on an unguarded path
+    expect(strip).toMatch(/economicsPhase === "error"[\s\S]*formatTao\(totalStake\)/);
+    // Coins glyph only accompanies a real figure — never beside StatUnavailable
+    // (desktop/tablet double-icon look that closed #8933).
+    expect(strip).toMatch(
+      /economicsPhase === "error"[\s\S]*<>\s*<Coins[\s\S]*formatTao\(totalStake\)/,
+    );
+    const errorBranch = strip.slice(
+      strip.indexOf('economicsPhase === "error"'),
+      strip.indexOf("economicsRows.length === 0"),
+    );
+    expect(errorBranch).not.toContain("<Coins");
+  });
+
   it("caps the masthead at Active / Healthy / Total stake, plus a freshness chip shown only when stale", () => {
     expect(strip).toContain("active");
     expect(strip).toContain("Healthy");

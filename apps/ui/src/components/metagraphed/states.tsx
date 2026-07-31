@@ -363,11 +363,29 @@ export function StaleBanner({
  * failed — a distinct error affordance so failure reads differently from a
  * loading skeleton or a legitimately-empty "—". Used in the homepage KPI panels
  * (#3964) and the About "At a glance" sidebar (#3968).
+ *
+ * `h-[1em]` matches the parent value line's font-size (e.g. StatTile's
+ * font-display text-2xl) so an error tile stays the same height as its
+ * numeric neighbours instead of collapsing to text-sm metrics (#8818).
+ *
+ * `variant="inline"` drops the alert icon and inherits the parent type size —
+ * for compact masthead strips (Active / Healthy / Total stake) where an icon
+ * next to "Unavailable" reads as a broken chip rather than a missing figure.
  */
-export function StatUnavailable({ iconClassName = "size-3.5" }: { iconClassName?: string }) {
+export function StatUnavailable({
+  iconClassName = "size-3.5",
+  variant = "default",
+}: {
+  iconClassName?: string;
+  variant?: "default" | "inline";
+}) {
+  if (variant === "inline") {
+    return <span className="font-medium text-health-down">Unavailable</span>;
+  }
   return (
-    <span className="inline-flex items-center gap-1 text-sm font-medium text-health-down">
-      <AlertCircle className={iconClassName} /> Unavailable
+    <span className="inline-flex h-[1em] max-w-full items-center gap-1 text-sm font-medium leading-none text-health-down">
+      <AlertCircle className={`shrink-0 ${iconClassName}`} aria-hidden />
+      <span className="min-w-0 truncate">Unavailable</span>
     </span>
   );
 }
