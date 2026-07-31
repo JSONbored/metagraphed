@@ -13698,6 +13698,109 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.equal(out.next_cursor, null);
   });
 
+  test("get_account_transfers accepts every valid direction value", async () => {
+    for (const direction of [undefined, "all", "sent", "received"]) {
+      const args: Row = { ss58: SS58 };
+      if (direction !== undefined) args.direction = direction;
+      const res = await callTool("get_account_transfers", args);
+      assert.equal(
+        res.body.result.isError,
+        false,
+        `direction ${JSON.stringify(direction)} should be accepted`,
+      );
+    }
+  });
+
+  test("get_account_transfers rejects an unrecognised direction instead of silently merging both sides", async () => {
+    const sentRow = {
+      block_number: 100,
+      event_index: 0,
+      event_kind: "Transfer",
+      hotkey: SS58,
+      coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+      amount_tao: 1,
+      alpha_amount: null,
+      observed_at: 1750009000000,
+      extrinsic_index: null,
+    };
+    const receivedRow = {
+      block_number: 200,
+      event_index: 0,
+      event_kind: "Transfer",
+      hotkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+      coldkey: SS58,
+      amount_tao: 2,
+      alpha_amount: null,
+      observed_at: 1750009000000,
+      extrinsic_index: null,
+    };
+    const res = await callTool(
+      "get_account_transfers",
+      { ss58: SS58, direction: "out" },
+      { env: tailPostgresEnv({ transfers: [sentRow, receivedRow] }) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+    assert.match(res.body.result.content[0].text, /direction must be one of/);
+  });
+
+  test("get_account_transfers rejects out-of-set direction values", async () => {
+    for (const direction of [
+      "out",
+      "outgoing",
+      "Sent",
+      "in",
+      "incoming",
+      "",
+      123,
+    ]) {
+      const res = await callTool("get_account_transfers", {
+        ss58: SS58,
+        direction,
+      });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `direction ${JSON.stringify(direction)} should be rejected`,
+      );
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+        `direction ${JSON.stringify(direction)} should be invalid_params`,
+      );
+    }
+  });
+
+  test("get_account_transfers treats direction='all' identically to omitting direction", async () => {
+    const seenDirectionParams: (string | null)[] = [];
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const url = new URL(request.url);
+          seenDirectionParams.push(url.searchParams.get("direction"));
+          return Response.json(
+            buildAccountTransfers([], SS58, {
+              limit: 100,
+              offset: 0,
+              nextCursor: null,
+            }),
+          );
+        },
+      },
+    };
+    await callTool(
+      "get_account_transfers",
+      { ss58: SS58, direction: "all" },
+      { env },
+    );
+    await callTool("get_account_transfers", { ss58: SS58 }, { env });
+    assert.deepEqual(seenDirectionParams, [null, null]);
+  });
+
   test("get_account_transfers rejects a non-integer block_end", async () => {
     const res = await callTool(
       "get_account_transfers",

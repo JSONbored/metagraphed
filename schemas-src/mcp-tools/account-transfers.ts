@@ -11,7 +11,7 @@ const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 export const GetAccountTransfersInputSchema = z
   .object({
     ss58: Ss58Schema,
-    direction: z.enum(["sent", "received"]).optional(),
+    direction: z.enum(["all", "sent", "received"]).optional(),
     block_start: z.int().min(0).optional(),
     block_end: z.int().min(0).optional(),
     limit: z.int().min(1).max(1000).optional(),
