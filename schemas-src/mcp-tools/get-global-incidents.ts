@@ -36,6 +36,10 @@ export const GetGlobalIncidentsOutputSchema = z
     observed_at: z.string().nullable().optional(),
     source: z.string().nullable().optional(),
     summary: OpenObjectSchema,
+    // #8824: the incident-qualifying threshold, mirrors the REST route.
+    // surfaces (OpenObjectArraySchema, shallow) already carries each
+    // surface's transient_failure_count/transient_failed_samples through.
+    min_incident_samples: z.int().optional(),
     surfaces: OpenObjectArraySchema,
     total: z.int().optional(),
     returned: z.int().optional(),
