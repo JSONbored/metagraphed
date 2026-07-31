@@ -259,9 +259,24 @@ export async function applyTieredRateLimit(
     if (block.blocked) {
       return { allowed: false, ...result, block };
     }
-    // Daily quota first: it is the coarser, more expensive-to-exceed control,
-    // and a caller already over their day should be told that rather than
-    // being told they are going too fast this minute.
+    // #8812: per-minute limiter BEFORE the daily quota. spendDailyQuota is a
+    // commit, not a check -- it debits units -- so it must run only for a
+    // request the per-minute limiter has already accepted, otherwise a caller
+    // refused with a 429 is still billed for a request that was never served
+    // (the exact "wrong twice over" the blocklist comment above guards against,
+    // applied one control down). The tradeoff: a caller simultaneously over the
+    // day AND over the minute now gets the per-minute 429 rather than the daily
+    // one -- accepted, because the alternative is billing for refused requests.
+    if (limiter?.limit) {
+      // Keyed by account AND tier: moving an account between tiers must start a
+      // fresh window on the new ceiling rather than inheriting the old tier's
+      // partially-spent one, which would otherwise let a downgrade be dodged (or
+      // an upgrade be throttled) for the rest of the window.
+      const { success } = await limiter.limit({
+        key: `${config.keyPrefix}:${result.tier}:${auth.accountId}`,
+      });
+      if (!success) return { allowed: false, ...result };
+    }
     if (policy.dailyUnits) {
       const quota = await spendDailyQuota(
         request,
@@ -274,15 +289,7 @@ export async function applyTieredRateLimit(
       }
       if (quota) Object.assign(result, { quota });
     }
-    if (!limiter?.limit) return { allowed: true, ...result };
-    // Keyed by account AND tier: moving an account between tiers must start a
-    // fresh window on the new ceiling rather than inheriting the old tier's
-    // partially-spent one, which would otherwise let a downgrade be dodged (or
-    // an upgrade be throttled) for the rest of the window.
-    const { success } = await limiter.limit({
-      key: `${config.keyPrefix}:${result.tier}:${auth.accountId}`,
-    });
-    return { allowed: success, ...result };
+    return { allowed: true, ...result };
   }
 
   const policy = config.anonymous;
