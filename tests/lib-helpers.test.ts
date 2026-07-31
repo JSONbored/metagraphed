@@ -1958,64 +1958,99 @@ describe("withSurfaceFreshness curation_level re-resolution (#1757)", () => {
   });
 });
 
+// The temp repos below inherit the developer's global git config, so a machine
+// with `commit.gpgsign=true` (SSH signing) fails every `git commit` here with
+// "fatal: failed to write commit object". CI has no signing config, so it stays
+// green there while the file is unrunnable locally. Pointing GIT_CONFIG_GLOBAL
+// at an empty file plus GIT_CONFIG_NOSYSTEM detaches these repos from ambient
+// config entirely -- not just signing, but hooks paths, commit templates and
+// default-branch settings too -- and the -c flags supply the identity and
+// defaults that detaching takes away. Route every git call against a temp repo
+// through `git()` so tests added here inherit the isolation.
+const GIT_ISOLATION_ARGS = [
+  "-c",
+  "user.name=Test",
+  "-c",
+  "user.email=test@example.com",
+  "-c",
+  "commit.gpgsign=false",
+  "-c",
+  "tag.gpgsign=false",
+  "-c",
+  "init.defaultBranch=main",
+];
+
+const EMPTY_GIT_CONFIG = path.join(
+  mkdtempSync(path.join(tmpdir(), "wj-git-isolation-")),
+  "gitconfig",
+);
+writeFileSync(EMPTY_GIT_CONFIG, "");
+
+function git(args: string[], cwd: string) {
+  return execFileSync("git", [...GIT_ISOLATION_ARGS, ...args], {
+    cwd,
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: EMPTY_GIT_CONFIG,
+      GIT_CONFIG_NOSYSTEM: "1",
+    },
+  });
+}
+
 describe("resolveBaseRemote", () => {
   function initRepo() {
     const dir = mkdtempSync(path.join(tmpdir(), "wj-base-remote-"));
-    execFileSync("git", ["init", "-q"], { cwd: dir });
+    git(["init", "-q"], dir);
     return dir;
   }
 
   test("prefers upstream when a fork has both origin and upstream configured", () => {
     const dir = initRepo();
-    execFileSync(
-      "git",
+    git(
       [
         "remote",
         "add",
         "origin",
         "https://github.com/contributor/metagraphed.git",
       ],
-      { cwd: dir },
+      dir,
     );
-    execFileSync(
-      "git",
+    git(
       [
         "remote",
         "add",
         "upstream",
         "https://github.com/JSONbored/metagraphed.git",
       ],
-      { cwd: dir },
+      dir,
     );
     assert.equal(resolveBaseRemote(dir), "upstream");
   });
 
   test("falls back to origin for a direct clone with no upstream remote", () => {
     const dir = initRepo();
-    execFileSync(
-      "git",
+    git(
       [
         "remote",
         "add",
         "origin",
         "https://github.com/JSONbored/metagraphed.git",
       ],
-      { cwd: dir },
+      dir,
     );
     assert.equal(resolveBaseRemote(dir), "origin");
   });
 
   test("defaults to process.cwd() when called with no argument", () => {
     const dir = initRepo();
-    execFileSync(
-      "git",
+    git(
       [
         "remote",
         "add",
         "upstream",
         "https://github.com/JSONbored/metagraphed.git",
       ],
-      { cwd: dir },
+      dir,
     );
     const previousCwd = process.cwd();
     process.chdir(dir);
@@ -2038,16 +2073,12 @@ describe("resolveBaseRemote", () => {
 describe("dirtyTrackedPaths", () => {
   function initRepoWithFiles(files: Record<string, string>) {
     const dir = mkdtempSync(path.join(tmpdir(), "wj-dirty-paths-"));
-    execFileSync("git", ["init", "-q"], { cwd: dir });
-    execFileSync("git", ["config", "user.email", "test@example.com"], {
-      cwd: dir,
-    });
-    execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+    git(["init", "-q"], dir);
     for (const [relPath, contents] of Object.entries(files)) {
       writeFileSync(path.join(dir, relPath), contents);
     }
-    execFileSync("git", ["add", "-A"], { cwd: dir });
-    execFileSync("git", ["commit", "-q", "-m", "initial"], { cwd: dir });
+    git(["add", "-A"], dir);
+    git(["commit", "-q", "-m", "initial"], dir);
     return dir;
   }
 
@@ -2184,22 +2215,18 @@ describe("revertDeployOwnedArtifactsIfDirty", () => {
   // <paths>`, which needs a real, fetched `<remote>/main` ref to revert against.
   function initRepoWithRemote(files: Record<string, string>) {
     const bareDir = mkdtempSync(path.join(tmpdir(), "wj-revert-bare-"));
-    execFileSync("git", ["init", "-q", "--bare"], { cwd: bareDir });
+    git(["init", "-q", "--bare"], bareDir);
     const dir = mkdtempSync(path.join(tmpdir(), "wj-revert-work-"));
-    execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
-    execFileSync("git", ["config", "user.email", "test@example.com"], {
-      cwd: dir,
-    });
-    execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+    git(["init", "-q", "-b", "main"], dir);
     for (const [relPath, contents] of Object.entries(files)) {
       mkdirSync(path.dirname(path.join(dir, relPath)), { recursive: true });
       writeFileSync(path.join(dir, relPath), contents);
     }
-    execFileSync("git", ["add", "-A"], { cwd: dir });
-    execFileSync("git", ["commit", "-q", "-m", "initial"], { cwd: dir });
-    execFileSync("git", ["remote", "add", "origin", bareDir], { cwd: dir });
-    execFileSync("git", ["push", "-q", "origin", "main"], { cwd: dir });
-    execFileSync("git", ["fetch", "-q", "origin"], { cwd: dir });
+    git(["add", "-A"], dir);
+    git(["commit", "-q", "-m", "initial"], dir);
+    git(["remote", "add", "origin", bareDir], dir);
+    git(["push", "-q", "origin", "main"], dir);
+    git(["fetch", "-q", "origin"], dir);
     return dir;
   }
 
@@ -2269,14 +2296,10 @@ describe("revertDeployOwnedArtifactsIfDirty", () => {
 
   test("warns instead of throwing when the revert itself can't run (no remote configured)", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "wj-revert-no-remote-"));
-    execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
-    execFileSync("git", ["config", "user.email", "test@example.com"], {
-      cwd: dir,
-    });
-    execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+    git(["init", "-q", "-b", "main"], dir);
     writeFileSync(path.join(dir, "a.json"), '{"v":1}\n');
-    execFileSync("git", ["add", "-A"], { cwd: dir });
-    execFileSync("git", ["commit", "-q", "-m", "initial"], { cwd: dir });
+    git(["add", "-A"], dir);
+    git(["commit", "-q", "-m", "initial"], dir);
     writeFileSync(path.join(dir, "a.json"), '{"v":2}\n');
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
