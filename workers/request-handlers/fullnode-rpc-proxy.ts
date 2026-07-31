@@ -316,17 +316,13 @@ async function runAuthenticatedFullnodeRpc(
     }
   }
 
+  const limited = await readLimitedFullnodeRpcBody(request);
+  if ("error" in limited) return limited.error;
+
   let bodyText: string;
   let rpcBody: { method: string; [key: string]: unknown };
   try {
-    bodyText = await request.text();
-    if (new TextEncoder().encode(bodyText).length > MAX_RPC_BODY_BYTES) {
-      return errorResponse(
-        "fullnode_rpc_body_too_large",
-        "Request body is too large for the fullnode RPC gate.",
-        413,
-      );
-    }
+    bodyText = limited.bodyText;
     rpcBody = JSON.parse(bodyText);
   } catch {
     return errorResponse(
@@ -381,4 +377,57 @@ async function runAuthenticatedFullnodeRpc(
     healthMap: FULLNODE_RPC_HEALTH,
     maxAttempts: RPC_MAX_ATTEMPTS,
   });
+}
+
+// Streams the request body with an early-abort byte counter instead of
+// buffering it whole via request.text() first -- a missing, chunked, or
+// simply untruthful Content-Length header bypasses a pre-read
+// `contentLength > MAX_RPC_BODY_BYTES` check entirely (this endpoint is
+// public and unauthenticated at the body-read layer; rate limiting throttles
+// request COUNT, not a single request's body size), so the declared length
+// can only ever be a fast-path optimization, never the actual enforcement.
+// Mirrors workers/request-handlers/rpc-proxy.ts's readLimitedRpcBody and
+// src/mcp-server.ts's readLimitedMcpBody — kept as its own copy because the
+// fullnode gate's error codes differ from the public proxy's.
+async function readLimitedFullnodeRpcBody(
+  request: Request,
+): Promise<{ bodyText: string } | { error: Response }> {
+  // request.text() on a null body yields "" — JSON.parse then fails into
+  // the same fullnode_rpc_invalid_json path as today.
+  if (!request.body) {
+    return { bodyText: "" };
+  }
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_RPC_BODY_BYTES) {
+        await reader.cancel();
+        return {
+          error: errorResponse(
+            "fullnode_rpc_body_too_large",
+            "Request body is too large for the fullnode RPC gate.",
+            413,
+          ),
+        };
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { bodyText: new TextDecoder().decode(bytes) };
 }
