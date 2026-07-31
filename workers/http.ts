@@ -29,6 +29,10 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-ratelimit-limit",
   "x-ratelimit-remaining",
   "x-ratelimit-policy",
+  "x-ratelimit-reset", // when to retry (exact UTC midnight on daily; upper-bound on per-minute)
+  "x-ratelimit-scope", // which ceiling rejected the caller: per-minute | daily-quota | blocked
+  "x-ratelimit-tier", // which tier the caller was measured against
+  "x-api-key-block-reason", // closed-set reason code on a 403 api_key_blocked
   // x-metagraph-* diagnostics
   "x-metagraph-contract-version",
   X_METAGRAPH_STALE_CONTRACT_HEADER,
