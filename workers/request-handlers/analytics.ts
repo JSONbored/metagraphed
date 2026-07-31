@@ -877,6 +877,7 @@ const CHAIN_SIGNERS_CSV_COLUMNS = [
 const CHAIN_FEES_CSV_COLUMNS = [
   "day",
   "extrinsic_count",
+  "signed_extrinsic_count",
   "total_fee_tao",
   "avg_fee_tao",
   "median_fee_tao",

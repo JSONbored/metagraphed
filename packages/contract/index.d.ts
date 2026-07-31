@@ -2367,7 +2367,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
+        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
         get: operations["chainFees"];
         put?: never;
         post?: never;
@@ -6380,6 +6380,7 @@ export interface components {
                 extrinsic_count: number;
                 median_fee_tao: number | null;
                 median_tip_tao: number | null;
+                signed_extrinsic_count: number;
                 total_fee_tao: number;
                 total_tip_tao: number;
             }[];
@@ -28594,6 +28595,7 @@ export interface operations {
                      *             "extrinsic_count": 1,
                      *             "median_fee_tao": 0.5,
                      *             "median_tip_tao": 0.5,
+                     *             "signed_extrinsic_count": 1,
                      *             "total_fee_tao": 0.5,
                      *             "total_tip_tao": 0.5
                      *           }
@@ -28641,8 +28643,8 @@ export interface operations {
                         data?: components["schemas"]["ChainFeesArtifact"];
                     };
                     /**
-                     * @example day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao
-                     *     2026-07-01,15000,42.5,0.002833,0.0025,0,0,0
+                     * @example day,extrinsic_count,signed_extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao
+                     *     2026-07-01,15000,9200,42.5,0.004620,0.0025,0,0,0
                      */
                     "text/csv": string;
                 };

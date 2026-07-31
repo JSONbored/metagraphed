@@ -1111,7 +1111,7 @@ export type ChainFees = {
   window: Scalars['String']['output'];
 };
 
-/** One UTC day's fee/tip aggregate: extrinsic count, total/avg/median fee and tip in TAO (avg/median are null on a zero-extrinsic day). */
+/** One UTC day's fee/tip aggregate: extrinsic count, total/avg/median fee and tip in TAO. avg/median are computed over signed extrinsics only and are null on a day with no signed extrinsics; extrinsic_count counts every extrinsic including unsigned inherents. */
 export type ChainFeesDay = {
   __typename?: 'ChainFeesDay';
   avg_fee_tao?: Maybe<Scalars['Float']['output']>;
@@ -1120,6 +1120,7 @@ export type ChainFeesDay = {
   extrinsic_count: Scalars['Int']['output'];
   median_fee_tao?: Maybe<Scalars['Float']['output']>;
   median_tip_tao?: Maybe<Scalars['Float']['output']>;
+  signed_extrinsic_count: Scalars['Int']['output'];
   total_fee_tao?: Maybe<Scalars['Float']['output']>;
   total_tip_tao?: Maybe<Scalars['Float']['output']>;
 };
@@ -6910,6 +6911,7 @@ export type ChainFeesDayResolvers<ContextType = GqlContext, ParentType extends R
   extrinsic_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   median_fee_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   median_tip_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  signed_extrinsic_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_fee_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_tip_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
