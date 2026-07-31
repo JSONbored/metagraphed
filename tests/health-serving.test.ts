@@ -20,6 +20,7 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
   summarizeRows,
+  utcWindowCutoffDay,
 } from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -3138,5 +3139,46 @@ describe("global incidents route", () => {
       {},
     );
     assert.equal(res.status, 400);
+  });
+});
+
+describe("utcWindowCutoffDay (#8814)", () => {
+  // The request instant is mid-day so a UTC-vs-local-truncation bug would show.
+  const now = Date.parse("2026-07-30T14:00:00Z");
+
+  test("returns the oldest day of an inclusive N-day window", () => {
+    // days=7 ending on (and including) 07-30 => 07-24..07-30 = 7 dates.
+    assert.equal(utcWindowCutoffDay(now, 7), "2026-07-24");
+    assert.equal(utcWindowCutoffDay(now, 30), "2026-07-01");
+    assert.equal(utcWindowCutoffDay(now, 90), "2026-05-02");
+  });
+
+  test("days=1 is the current UTC day itself (a >= filter yields one date)", () => {
+    assert.equal(utcWindowCutoffDay(now, 1), "2026-07-30");
+  });
+
+  test("is exactly one day tighter than the old now-days*DAY_MS floor it replaces", () => {
+    // Regression guard: the former `new Date(now - days*DAY_MS).slice(0,10)`
+    // returned 07-23 for a 7d window, so `>= cutoff` served 8 days, not 7.
+    const oldFloor = new Date(now - 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    assert.equal(oldFloor, "2026-07-23");
+    assert.equal(utcWindowCutoffDay(now, 7), "2026-07-24");
+  });
+
+  test("derives the day in UTC, independent of the local timezone", () => {
+    // 23:30Z is still 07-30 in UTC even where local time has rolled to 07-31.
+    const lateUtc = Date.parse("2026-07-30T23:30:00Z");
+    assert.equal(utcWindowCutoffDay(lateUtc, 1), "2026-07-30");
+    assert.equal(utcWindowCutoffDay(lateUtc, 7), "2026-07-24");
+  });
+
+  test("rolls back across month and year boundaries", () => {
+    const mar1 = Date.parse("2026-03-01T09:00:00Z");
+    assert.equal(utcWindowCutoffDay(mar1, 1), "2026-03-01");
+    assert.equal(utcWindowCutoffDay(mar1, 2), "2026-02-28"); // 2026 is not a leap year
+    const jan1 = Date.parse("2026-01-01T00:00:00Z");
+    assert.equal(utcWindowCutoffDay(jan1, 2), "2025-12-31");
   });
 });
