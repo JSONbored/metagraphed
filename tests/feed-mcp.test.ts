@@ -13,6 +13,10 @@ import {
   resolveLimit,
   resolveNetuid,
 } from "../src/feed-mcp.ts";
+import {
+  GetFeedInputSchema,
+  GetFeedOutputSchema,
+} from "../schemas-src/mcp-tools/feed.ts";
 import { FEED_MAX_ITEMS } from "../src/feeds.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -21,10 +25,18 @@ const isInvalidParams = (e: Row) =>
   e?.toolError === true && e?.code === "invalid_params";
 
 describe("requireKind", () => {
-  test("returns each of the four valid FEED_KINDS unchanged", () => {
+  test("returns each valid FEED_KINDS value unchanged", () => {
     for (const kind of FEED_KINDS) {
       assert.equal(requireKind({ kind }), kind);
     }
+  });
+
+  test("published input/output kind enums match requireKind's accepted set", () => {
+    const inputEnum = GetFeedInputSchema.shape.kind.options;
+    const outputEnum = GetFeedOutputSchema.shape.kind.options;
+    assert.deepEqual([...inputEnum], [...FEED_KINDS]);
+    assert.deepEqual([...outputEnum], [...FEED_KINDS]);
+    assert.deepEqual([...inputEnum], [...outputEnum]);
   });
 
   test("rejects a missing kind", () => {
@@ -35,6 +47,16 @@ describe("requireKind", () => {
   test("rejects an unknown or non-string kind", () => {
     assert.throws(() => requireKind({ kind: "bogus" }), isInvalidParams);
     assert.throws(() => requireKind({ kind: 7 }), isInvalidParams);
+    try {
+      requireKind({ kind: "nope" });
+      assert.fail("expected requireKind to throw");
+    } catch (err) {
+      assert.ok(isInvalidParams(err as Row));
+      assert.match(
+        String((err as Row).message),
+        /registry, incidents, gaps, upgrades, subnet/,
+      );
+    }
   });
 });
 

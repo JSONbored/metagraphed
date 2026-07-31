@@ -7,7 +7,17 @@
 // cross-checked against the actual runtime source at the time of writing.
 import { z } from "zod";
 
-const FEED_KINDS = ["registry", "incidents", "gaps", "subnet"] as const;
+// Single source of truth for get_feed kind enums (input + output) and the
+// runtime requireKind allow-list in src/feed-mcp.ts.
+// #8702: Bittensor runtime upgrade activity -- releases, observed chain
+// spec-version changes, and BIT documents.
+export const FEED_KINDS = [
+  "registry",
+  "incidents",
+  "gaps",
+  "upgrades",
+  "subnet",
+] as const;
 const FEED_MAX_ITEMS = 50;
 
 export const GetFeedInputSchema = z
