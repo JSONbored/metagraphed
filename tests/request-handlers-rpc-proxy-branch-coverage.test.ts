@@ -152,9 +152,22 @@ beforeEach(() => {
 
 describe("rpcCachePolicy arms", () => {
   test("chain_getBlockHash with a non-array params is not cacheable", () => {
-    // params is an object → the `Array.isArray(params) ? params : []` else arm.
+    // params is an object → the present-and-not-an-array guard (#8805).
     const policy = rpcCachePolicy("chain_getBlockHash", { not: "array" });
     assert.deepEqual(policy, { cacheable: false, ttl: 0 });
+  });
+
+  test("chain_getBlockHash with an absent params is not cacheable", () => {
+    // params omitted → past the guard into `Array.isArray(params) ? params :
+    // []`'s else arm, where the empty arg list fails the block-pinned check.
+    assert.deepEqual(rpcCachePolicy("chain_getBlockHash", undefined), {
+      cacheable: false,
+      ttl: 0,
+    });
+    assert.deepEqual(rpcCachePolicy("chain_getBlockHash", null), {
+      cacheable: false,
+      ttl: 0,
+    });
   });
 
   test("chain_getBlockHash caches a numeric-string block argument via regex", () => {
@@ -168,9 +181,24 @@ describe("rpcCachePolicy arms", () => {
     assert.deepEqual(policy, { cacheable: false, ttl: 0 });
   });
 
-  test("quasi-static method is cacheable regardless of params shape", () => {
-    const policy = rpcCachePolicy("system_chain", { ignored: true });
-    assert.deepEqual(policy, { cacheable: true, ttl: 300 });
+  test("quasi-static method is cacheable for positional params only", () => {
+    // A quasi-static method takes no arguments in practice, so an absent or
+    // empty positional params is the real caller shape and stays cacheable.
+    assert.deepEqual(rpcCachePolicy("system_chain", []), {
+      cacheable: true,
+      ttl: 300,
+    });
+    assert.deepEqual(rpcCachePolicy("system_chain", undefined), {
+      cacheable: true,
+      ttl: 300,
+    });
+    // Named params reach the upstream verbatim but cannot be keyed, so they
+    // are refused before the method switch (#8805) rather than collapsing
+    // onto the `params: []` entry.
+    assert.deepEqual(rpcCachePolicy("system_chain", { ignored: true }), {
+      cacheable: false,
+      ttl: 0,
+    });
   });
 });
 
@@ -340,8 +368,11 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
   });
 
   test("caches a successful quasi-static result and rebuilds the id on a hit", async () => {
-    // system_chain is cacheable with non-array params → rpcCacheKey's `: []`
-    // arm; the stored result is replayed with THIS request's id.
+    // system_chain is cacheable with positional params; an ABSENT `params`
+    // (the third call) is the surviving path into rpcCacheKey's `: []` arm and
+    // keys identically to `params: []`. Named/object params are no longer
+    // cacheable at all (#8805), so they cannot reach that arm. The stored
+    // result is replayed with THIS request's id.
     const cache = fakeCache();
     const ctx = { waitUntil: (p: Promise<unknown>) => p };
     const originalCaches = (globalThis as Row).caches;
@@ -364,7 +395,7 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
             jsonrpc: "2.0",
             id: 1,
             method: "system_chain",
-            params: { trailing: true },
+            params: [],
           }),
         }),
         env,
@@ -391,7 +422,7 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
             jsonrpc: "2.0",
             id: 42,
             method: "system_chain",
-            params: { trailing: true },
+            params: [],
           }),
         }),
         rpcEnv(poolWith(ep("a", SAFE_A))),
@@ -416,7 +447,6 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "system_chain",
-            params: { trailing: true },
           }),
         }),
         rpcEnv(poolWith(ep("a", SAFE_A))),
