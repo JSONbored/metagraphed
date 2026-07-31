@@ -18,6 +18,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import prettier from "prettier";
+import { isoWeekStart } from "../../../src/weekly-digest-store.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.join(__dirname, "../../..");
@@ -49,6 +50,21 @@ interface WeeklyDigest {
   substantive_count: number;
 }
 
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 /** `sn8` / `network` — the URL segment and the directory name, one definition. */
 function subjectSegment(netuid: number | null): string {
   return netuid === null ? "network" : `sn${netuid}`;
@@ -67,25 +83,38 @@ function weekLabel(digest: WeeklyDigest): string {
 function formatDate(timestamp: string): string {
   const parsed = new Date(timestamp);
   if (!Number.isFinite(parsed.getTime())) return timestamp;
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  return `${parsed.getUTCDate()} ${months[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
+  return `${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
 }
 
 function escapeYaml(value: string): string {
   return value.replace(/"/g, '\\"');
+}
+
+/**
+ * `20–26 July 2026` — the week the digest covers, in words.
+ *
+ * The dates come from isoWeekStart, the same function the store uses to decide
+ * whether a week has ended, rather than from arithmetic repeated here. A page
+ * whose stated span disagreed with the window its items were selected from
+ * would be wrong in the one way a reader cannot check.
+ */
+function weekSpan(year: number, week: number): string {
+  const start = isoWeekStart(year, week);
+  const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const startDay = `${start.getUTCDate()}`;
+  const endDay = `${end.getUTCDate()}`;
+  const startMonth = MONTHS[start.getUTCMonth()];
+  const endMonth = MONTHS[end.getUTCMonth()];
+  const endYear = end.getUTCFullYear();
+  // Only repeat the month when the week straddles one, and the year when it
+  // straddles a year boundary.
+  if (start.getUTCFullYear() !== endYear) {
+    return `${startDay} ${startMonth} ${start.getUTCFullYear()} – ${endDay} ${endMonth} ${endYear}`;
+  }
+  if (startMonth !== endMonth) {
+    return `${startDay} ${startMonth} – ${endDay} ${endMonth} ${endYear}`;
+  }
+  return `${startDay}–${endDay} ${startMonth} ${endYear}`;
 }
 
 /**
@@ -100,7 +129,13 @@ function digestPage(digest: WeeklyDigest): string {
   const label = subjectLabel(digest.netuid);
   const week = weekLabel(digest);
   const title = `${label} — ${week}`;
-  const description = digest.sentences.map((s) => s.text).join(" ");
+  const span = weekSpan(digest.year, digest.week);
+
+  // NOT the body sentences. Fumadocs renders `description` as the page's
+  // subtitle directly above the body, so reusing the prose printed the same
+  // sentence twice on every page. This says what the page IS; the body says
+  // what happened.
+  const description = `What changed for ${label.toLowerCase()} during ${week} (${span}), with every claim linked to the item behind it.`;
 
   const body = digest.sentences.map((sentence) => sentence.text).join("\n\n");
 
@@ -111,11 +146,21 @@ function digestPage(digest: WeeklyDigest): string {
     )
     .join("\n");
 
+  // A subnet digest links back to the subnet it is about. Without it the page
+  // is a dead end — a reader who arrives from search has nowhere to go for the
+  // context the digest deliberately does not restate.
+  const backlink =
+    digest.netuid === null
+      ? "[Browse all subnets](/subnets)"
+      : `[Subnet ${digest.netuid} overview](/subnets/${digest.netuid})`;
+
   return [
     "---",
     `title: "${escapeYaml(title)}"`,
     `description: "${escapeYaml(description)}"`,
     "---",
+    "",
+    `**${span}**`,
     "",
     `${body}`,
     "",
@@ -124,6 +169,10 @@ function digestPage(digest: WeeklyDigest): string {
     "Every sentence above is derived by counting and dating these items. Nothing else went into this page.",
     "",
     sources,
+    "",
+    "---",
+    "",
+    `${backlink} · [All weekly digests](/news)`,
     "",
   ].join("\n");
 }
