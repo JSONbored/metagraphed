@@ -50,6 +50,9 @@ function baseEnv(overrides: Record<string, unknown> = {}): Env {
     OAUTH_KV: createFakeKv(),
     GITHUB_OAUTH_CLIENT_ID: "client-id",
     GITHUB_OAUTH_CLIENT_SECRET: "client-secret",
+    // #8820: the upsert route is now gated with the internal-token pair; the
+    // callback sends it and returns "not provisioned" 503 when it is absent.
+    API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
     DATA_API: { fetch: async () => new Response(JSON.stringify({ id: 1 })) },
     ...overrides,
   } as unknown as Env;
@@ -508,6 +511,67 @@ describe("handleGithubOAuthCallback", () => {
       githubLogin: "octocat",
       accountId: 7,
     });
+  });
+
+  // #8820: the callback authenticates its own DATA_API hop with the
+  // internal-token header the upsert route now requires.
+  test("the DATA_API upsert request carries the x-api-key-lookup-token header", async () => {
+    let upsertRequest: Request | undefined;
+    const env = baseEnv({
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "the-secret",
+      DATA_API: {
+        fetch: async (request: Request) => {
+          upsertRequest = request;
+          return new Response(
+            JSON.stringify({ id: 7, github_login: "octocat", tier: "free" }),
+          );
+        },
+      },
+    });
+    await seedPendingState(env, "n1");
+    const deps = {
+      fetch: fakeGithubFetch(),
+      getHelpers: async () => fakeHelpers(),
+    };
+    const res = await handleGithubOAuthCallback(
+      new Request(githubCallbackUrl({ code: "c", state: "n1" })),
+      env,
+      deps,
+    );
+    assert.equal(res.status, 302);
+    assert.equal(
+      upsertRequest!.headers.get("x-api-key-lookup-token"),
+      "the-secret",
+    );
+  });
+
+  test("503 (not a 502) when API_KEY_LOOKUP_INTERNAL_TOKEN is absent, and DATA_API is never called", async () => {
+    let called = false;
+    const env = baseEnv({
+      API_KEY_LOOKUP_INTERNAL_TOKEN: undefined,
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return new Response(JSON.stringify({ id: 1 }));
+        },
+      },
+    });
+    await seedPendingState(env, "n1");
+    const deps = {
+      fetch: fakeGithubFetch(),
+      getHelpers: async () => fakeHelpers(),
+    };
+    const res = await handleGithubOAuthCallback(
+      new Request(githubCallbackUrl({ code: "c", state: "n1" })),
+      env,
+      deps,
+    );
+    assert.equal(res.status, 503);
+    assert.equal(
+      called,
+      false,
+      "the upsert must not be posted unauthenticated",
+    );
   });
 
   test("falls back to globalThis.fetch when deps.fetch is omitted", async () => {
