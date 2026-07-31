@@ -92,6 +92,12 @@ function checkCommands(): Step[] {
     step("validate:committed-seed"),
     step("validate:artifact-budgets"),
     step("validate:docs"),
+    // #8917: apps/ui/content/docs/api-reference is generated from
+    // openapi.json, so a CONTRACT change invalidates it -- but that lands
+    // in a backend PR that need never touch apps/ui, and the only prior
+    // check lived in the separately path-gated `ui` CI job. Checked here so
+    // the PR that causes the drift can see it locally.
+    step("validate:ui-docs-drift"),
     step("validate:intake"),
     step("validate:surface"),
     // #8658: runs after the build steps above, so the staged surfaces.json
@@ -159,6 +165,12 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:committed-seed"),
     step("validate:artifact-budgets"),
     step("validate:docs"),
+    // #8917: apps/ui/content/docs/api-reference is generated from
+    // openapi.json, so a CONTRACT change invalidates it -- but that lands
+    // in a backend PR that need never touch apps/ui, and the only prior
+    // check lived in the separately path-gated `ui` CI job. Checked here so
+    // the PR that causes the drift can see it locally.
+    step("validate:ui-docs-drift"),
     step("validate:intake"),
     step("validate:surface"),
     // #8658: runs after the build steps above, so the staged surfaces.json
