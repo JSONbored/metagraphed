@@ -20,67 +20,48 @@ export default defineConfig({
       "packages/ui-kit/**",
       "packages/chain-summaries/**",
     ],
-    // Run test FILES sequentially (each still in its own isolated fork). Three
-    // files mutate shared on-disk state outside their own process and must never
-    // run alongside a concurrent reader/scanner of that same state:
-    //   - tests/artifacts.test.ts and tests/discovery-artifacts.test.ts
-    //     execFileSync the real scripts/build-artifacts.ts, which mutates the
-    //     shared on-disk artifact trees in place: it rm's + repopulates the R2
-    //     staging dir (dist/metagraph-r2/metagraph, where R2-only artifacts such
-    //     as registry-summary.json live with NO committed public/metagraph
-    //     fallback) and writeFileSyncs forged JSON into committed
-    //     public/metagraph files before restoring them. Reader tests that serve
-    //     those artifacts via createLocalArtifactEnv (subnet-overview,
-    //     mcp-server, api-coverage, …) would otherwise race that rebuild and
-    //     intermittently 404 (e.g. GET /api/v1/registry/summary -> 404 instead
-    //     of 200). The build output root resolves from the script's own
-    //     location, so it can't be redirected to a temp dir without a full
-    //     input+output tree copy.
-    //   - tests/public-safety.test.ts writes a transient fixture into
-    //     dist/metagraph-r2/metagraph/fixtures/ (to exercise
-    //     scan-public-safety.ts's mirroredFixturePatterns exemption) and
-    //     deletes it in afterEach. scripts/validate-schemas.ts treats that same
-    //     directory as a templated artifact location and schema-validates every
-    //     .json file in it, so a concurrently-running consumer of
-    //     validate-schemas.ts (e.g. tests/validate-error-messages.test.ts) can
-    //     read the fixture mid-write or after cleanup and throw ENOENT.
-    // Serializing these files is the clean, low-risk fix. Per-file fork
-    // isolation is preserved; only filesystem-race concurrency is removed.
+    // Test files run in parallel. They used to be pinned sequential because
+    // three of them mutated shared on-disk state outside their own process --
+    // artifacts.test.ts rebuilt the artifact trees in place, public-safety.test
+    // .ts planted a fixture that validate-schemas.ts also scanned, and
+    // refresh-build-summary.test.ts rewrote build-summary.json at the R2
+    // staging root -- which raced every createLocalArtifactEnv reader serving
+    // those same trees (a rebuild mid-read shows up as GET
+    // /api/v1/registry/summary -> 404).
     //
-    // This serial default keeps a plain `npm test` / `npm run test:coverage`
-    // (which runs the FULL suite, including the three filesystem-mutating
-    // writers) race-free. CI instead runs the suite in non-overlapping passes
-    // that recover the parallelism: `test:ci` (scripts/run-ci-tests.ts) runs
-    // everything EXCEPT the writers with `--fileParallelism` (the
-    // createLocalArtifactEnv readers only READ, so they parallelize safely once
-    // no writer runs alongside them) and a raised `--testTimeout` (the
-    // subprocess-spawning tests — public-safety's full-repo scan, script-utils,
-    // r2-upload — are CPU-starved under parallel load and would otherwise hit
-    // the 5s default); `test:ci:artifacts` then runs the writers serially.
+    // #8937 removed the cause rather than serializing around it: each of those
+    // tests now clones the repo's data directories into a temp root and points
+    // the real scripts at it via METAGRAPH_REPO_ROOT (see
+    // tests/helpers/repo-sandbox.ts), so nothing mutates the shared tree and
+    // there is no race left to avoid. That also deleted the separate serial CI
+    // pass (`test:ci:artifacts`) those files needed.
     //
-    // `test:ci` splits again internally (#8922): the ~17 files that drive
-    // vi.mock/vi.doMock/vi.unmock/vi.resetModules keep per-file isolation
-    // because they rewrite the module registry itself, and every other file
-    // runs with `--isolate=false`, sharing one registry per worker. Module
-    // *state* that used to leak across those shared files is reset between
-    // files by setupFiles below; module *identity* is what the split handles.
+    // The raised `--testTimeout` in test:ci stays: the subprocess-spawning
+    // tests (public-safety's full-repo scan, script-utils, r2-upload) are
+    // CPU-starved under parallel load and would otherwise hit the 5s default.
     //
-    // All passes are sequential, so writers never overlap readers. Coverage is
-    // collected only in `test:ci` (all three writers drive their assertions
-    // primarily via execFileSync child processes — build-artifacts.ts for the
-    // first two, scan-public-safety.ts for the third — contributing zero
-    // in-process coverage there; none of the three scripts are in the `include`
-    // globs below, so moving their tests to the serial pass has no coverage
-    // effect either way — verified Δ=0.00 across all metrics). `test:ci`'s two
-    // passes each emit their own lcov; CI uploads both and Codecov merges them
-    // (codecov.yml pins after_n_builds so the verdict waits for both).
-    fileParallelism: false,
+    // `test:ci` (scripts/run-ci-tests.ts) additionally splits by isolation
+    // (#8922): the ~17 files that drive vi.mock/vi.doMock/vi.unmock/
+    // vi.resetModules keep per-file isolation because they rewrite the module
+    // registry itself, and every other file runs with `--isolate=false`,
+    // sharing one registry per worker. Module *state* that used to leak across
+    // those shared files is reset between files by setupFiles below; module
+    // *identity* is what the split handles. Each pass emits its own lcov; CI
+    // uploads both and Codecov merges them (codecov.yml pins after_n_builds so
+    // the verdict waits for both).
+    fileParallelism: true,
     // Restores module-level Worker state (in-isolate memos, breaker maps, the
     // configure* DI seams) after every test FILE, so a file's mutations cannot
     // leak into the next one when the module registry is shared. A no-op under
     // per-file isolation; required by `isolate: false`. See
     // src/module-state-registry.ts.
     setupFiles: ["tests/setup/reset-module-state.ts"],
+    // Takes ONE pristine copy of the tree before any worker starts, which every
+    // per-file sandbox then clones from. Cloning the LIVE repo instead is racy
+    // by construction: lib.ts writes JSON atomically, so a concurrent writer
+    // leaves temp files that vanish mid-copy. See
+    // tests/setup/artifact-snapshot.ts.
+    globalSetup: ["tests/setup/artifact-snapshot.ts"],
     // vi.stubGlobal/vi.stubEnv are restored automatically rather than relying on
     // 54 hand-written restores across 11 files — the same cross-file hygiene the
     // reset registry gives module state.

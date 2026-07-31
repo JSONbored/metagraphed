@@ -21,15 +21,32 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, test } from "vitest";
-import { listJsonFiles, readJson, repoRoot } from "../scripts/lib.ts";
+import { afterAll, afterEach, describe, test } from "vitest";
+import { listJsonFiles, readJson } from "../scripts/lib.ts";
+import { createRepoSandbox } from "./helpers/repo-sandbox.ts";
 import type { Row } from "./row-type.ts";
+
+// The validate-schemas cases below mutate a real registry/subnets file in place
+// (the script re-scans the whole registry, so there is no isolated-fixture
+// equivalent) and restore it in afterEach. Against the shared tree that raced
+// every other full-registry scan -- tests/validate-surface-schema-url.test.ts
+// would see the deliberately-invalid `kind` mid-mutation. It gets its own copy
+// instead (#8937), which is what let this file leave the serial pass.
+// "full" scope: validate-schemas.ts reads beyond the artifact/registry dirs
+// (docs/examples/**, among others), so a data-only copy leaves it ENOENT-ing
+// partway through the scan.
+const sandbox = createRepoSandbox("validate-error-messages", {
+  scope: "full",
+});
+const repoRoot = sandbox.root;
+afterAll(() => sandbox.cleanup());
 
 function runNode(args: string[]) {
   try {
     const stdout = execFileSync(process.execPath, args, {
-      cwd: repoRoot,
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
+      env: sandbox.env,
       stdio: "pipe",
     });
     return { status: 0, output: stdout };

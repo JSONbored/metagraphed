@@ -27,7 +27,25 @@ type Row = Record<string, unknown>;
 // root is a valid native path on every OS. On Windows the bare `.pathname` form
 // yields a leading-slash, drive-prefixed string (e.g. `/E:/work/...`) that
 // `path.join` mangles into `E:\E:\work\...`, breaking every artifact read.
-export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+//
+// METAGRAPH_REPO_ROOT redirects every derived path — the 48 `public/**` write
+// sites across 23 scripts, both artifact roots below, and every consumer of
+// R2_STAGING_RELATIVE_ROOT — at the ONE place the root is computed. This is
+// what lets the filesystem-mutating tests each build into their own tree
+// instead of racing the single shared one (#8929): a test clones the repo's
+// data directories into a temp dir, points the real scripts at it, and asserts
+// there. Scripts still load from their real location, so only DATA is
+// redirected, never code.
+//
+// Deliberately not a general-purpose knob: unset (the normal case, including
+// all of CI's own build/publish steps) it resolves exactly as before.
+const defaultRepoRoot = fileURLToPath(new URL("..", import.meta.url));
+export const repoRoot = process.env.METAGRAPH_REPO_ROOT
+  ? // Trailing separator to match fileURLToPath's directory form, so the
+    // handful of `path.relative(repoRoot, …)` / string-prefix callers behave
+    // identically under both.
+    path.join(path.resolve(process.env.METAGRAPH_REPO_ROOT), path.sep)
+  : defaultRepoRoot;
 export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
 export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");

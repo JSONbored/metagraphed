@@ -338,6 +338,14 @@ describe("deliverChangeEvent", () => {
       event,
       fetchFn,
       now,
+      // Injected, so this test never depends on a live global setTimeout. These
+      // two retry tests were the only ones in the suite that awaited the real
+      // default sleepFn, and the only two that timed out at 30s once the
+      // artifact builds joined the parallel pass -- at 500ms and again at 1ms,
+      // which rules out "the box was slow" and means the timer never fired at
+      // all. The default sleepFn is still covered, deterministically, by the
+      // fake-timer test below.
+      sleepFn: async () => {},
     });
     assert.equal(res.status, "delivered");
     assert.equal(res.attempts, 2);
@@ -386,6 +394,7 @@ describe("deliverChangeEvent", () => {
       fetchFn,
       now,
       maxAttempts: 3,
+      sleepFn: async () => {}, // see "retries 5xx then succeeds"
     });
     assert.equal(res.status, "failed");
     assert.equal(res.attempts, 3);

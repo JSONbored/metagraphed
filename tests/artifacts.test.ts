@@ -18,15 +18,14 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, test } from "vitest";
 import {
-  artifactDirectoryPath,
-  artifactFilePath,
+  artifactDirectoryPath as realArtifactDirectoryPath,
+  artifactFilePath as realArtifactFilePath,
   createLocalArtifactEnv,
   MULTI_TENANT_HOST_SUFFIXES,
   nativeContactHandle,
   nativeContactUrl,
   deriveDomainTags,
-  publicMetagraphRoot,
-  r2StagingRoot,
+  repoRoot as realRepoRoot,
   registrySurfaceKey,
   isSurfaceStale,
   loadSubnets,
@@ -37,23 +36,53 @@ import {
   PRIMARY_DOMAIN,
 } from "../src/contracts.ts";
 import { handleRequest } from "../workers/api.ts";
+import { createRepoSandbox } from "./helpers/repo-sandbox.ts";
 import type { Row } from "./row-type.ts";
 
 // The committed digests the forged-build tests snapshot + restore (so a forged
 // rebuild never dirties version-controlled files). Only r2-manifest.json stays
 // committed (publish infra); changelog + build-summary moved to R2-only (#1003)
 // — they live in dist/ (gitignored, freely regenerated) and need no preservation.
-const SUPPORT_ARTIFACT_PATHS = ["public/metagraph/r2-manifest.json"];
+// This file runs the REAL build against its own copy of the repo's data dirs,
+// so it no longer rebuilds the shared tree that every createLocalArtifactEnv
+// reader also serves from -- which is the only reason it needed the serial pass
+// (#8937). ~0.6s to clone.
+//
+// The path helpers below re-root lib.ts's real answers rather than
+// reimplementing them: artifactFilePath's public-vs-R2 tier routing is real
+// logic, and the sandbox is a byte copy taken moments earlier, so lib's
+// existsSync-based routing resolves identically in both trees.
+const sandbox = createRepoSandbox("artifacts");
+const toSandbox = (real: string) =>
+  path.join(sandbox.root, path.relative(realRepoRoot, real));
+const artifactFilePath = (
+  relativePath: string,
+  options?: { allowPublicFallback?: boolean },
+) => toSandbox(realArtifactFilePath(relativePath, options));
+const artifactDirectoryPath = (relativePath: string) =>
+  toSandbox(realArtifactDirectoryPath(relativePath));
+const publicMetagraphRoot = sandbox.publicMetagraphRoot;
+const r2StagingRoot = sandbox.r2StagingRoot;
+
+// Sandbox-rooted, NOT relative. A bare relative path resolves against
+// process.cwd() — the real repo — so restoreSupportArtifacts would truncate and
+// rewrite the committed public/metagraph/r2-manifest.json while the rest of the
+// suite runs. writeFileSync is not atomic, so any of the eight other test files
+// that read that manifest could observe it empty or half-written. Rooting it in
+// the sandbox is the point of #8937: the build writes only its own tree.
+const SUPPORT_ARTIFACT_PATHS = [
+  path.join(sandbox.root, "public/metagraph/r2-manifest.json"),
+];
 
 function runNode(script: string) {
   execFileSync(process.execPath, [script], {
-    cwd: process.cwd(),
+    cwd: sandbox.scriptCwd,
     encoding: "utf8",
     stdio: "pipe",
     // The committed artifacts are an inert cold-start seed (ADR 0006) that drifts
     // from live source between publishes. This no-build suite validates structure;
     // committed-vs-fresh freshness parity is gated in CI (post-build) instead.
-    env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    env: { ...sandbox.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
   });
 }
 
@@ -61,7 +90,7 @@ function runNode(script: string) {
 // the working tree exactly as they found it. build-artifacts.ts regenerates from
 // current source (which drifts from the committed seed), so restoring exact bytes
 // keeps `npm test` idempotent — a contributor can't accidentally commit drift.
-const PUBLIC_TREE = path.join(process.cwd(), "public");
+const PUBLIC_TREE = path.join(sandbox.root, "public");
 
 function walkFilesRecursive(dir: string): string[] {
   const out: string[] = [];
@@ -108,6 +137,7 @@ beforeAll(() => {
 });
 afterAll(() => {
   restorePublicTree(publicTreeSnapshot);
+  sandbox.cleanup();
 });
 
 // #6250: the llms.txt family (public/llms.txt, public/llms-full.txt,
@@ -173,7 +203,10 @@ test("registry validates", () => {
 });
 
 test("registry validation accepts the community-seeded curation level", () => {
-  const overlayPath = "registry/subnets/test-community-seeded-sn-1.json";
+  const overlayPath = path.join(
+    sandbox.root,
+    "registry/subnets/test-community-seeded-sn-1.json",
+  );
   const fixture = tamperedOverlayFixture("sn-1-community-seeded");
   fixture.curation.level = "community-seeded";
   fixture.curation.review_state = "unreviewed";
@@ -182,10 +215,10 @@ test("registry validation accepts the community-seeded curation level", () => {
   try {
     writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
     result = spawnSync(process.execPath, ["scripts/validate.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+      env: { ...sandbox.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
     });
   } finally {
     rmSync(overlayPath, { force: true });
@@ -200,7 +233,10 @@ test("registry validation accepts the community-seeded curation level", () => {
 });
 
 test("registry validation warns but does not block on cross-netuid on-chain name collisions", () => {
-  const nativePath = "registry/native/finney-subnets.json";
+  const nativePath = path.join(
+    sandbox.root,
+    "registry/native/finney-subnets.json",
+  );
   const original = readFileSync(nativePath, "utf8");
   const nativeSnapshot = JSON.parse(original);
   const attackerControlledSubnet = nativeSnapshot.subnets.find(
@@ -217,10 +253,10 @@ test("registry validation warns but does not block on cross-netuid on-chain name
   try {
     writeFileSync(nativePath, `${JSON.stringify(nativeSnapshot, null, 2)}\n`);
     result = spawnSync(process.execPath, ["scripts/validate.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+      env: { ...sandbox.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
     });
   } finally {
     writeFileSync(nativePath, original);
@@ -238,7 +274,10 @@ test("registry validation warns but does not block on cross-netuid on-chain name
 });
 
 test("registry validation rejects registry-observed surfaces without verification evidence", () => {
-  const overlayPath = "registry/subnets/test-tampered-sn-1.json";
+  const overlayPath = path.join(
+    sandbox.root,
+    "registry/subnets/test-tampered-sn-1.json",
+  );
   const tampered = tamperedOverlayFixture("sn-1-unverified-registry-observed");
 
   tampered.surfaces.push({
@@ -274,7 +313,10 @@ test("registry validation rejects registry-observed surfaces without verificatio
 });
 
 test("registry validation rejects registry-observed surfaces with only inline verification", () => {
-  const overlayPath = "registry/subnets/test-tampered-sn-1.json";
+  const overlayPath = path.join(
+    sandbox.root,
+    "registry/subnets/test-tampered-sn-1.json",
+  );
   const tampered = tamperedOverlayFixture("sn-1-forged-inline-verification");
 
   tampered.surfaces.push({
@@ -360,7 +402,14 @@ test("registry validation rejects tampered per-subnet artifacts", () => {
 
 test("artifact build does not preserve forged endpoint index health", () => {
   const endpointsPath = artifactFilePath("endpoints.json");
-  const cachePath = ".cache/metagraphed/health/latest.json";
+  // Sandbox-rooted for the same reason as SUPPORT_ARTIFACT_PATHS. Relative, it
+  // pointed at the real repo, which also made the setup a no-op against its own
+  // purpose: the build reads the SANDBOX's .cache, so clearing the real one
+  // never removed the health cache the rebuild would actually consult.
+  const cachePath = path.join(
+    sandbox.root,
+    ".cache/metagraphed/health/latest.json",
+  );
   const original = readFileSync(endpointsPath, "utf8");
   const originalCache = existsSync(cachePath)
     ? readFileSync(cachePath, "utf8")
@@ -387,9 +436,9 @@ test("artifact build does not preserve forged endpoint index health", () => {
   try {
     writeFileSync(endpointsPath, `${JSON.stringify(tampered, null, 2)}\n`);
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
+      env: { ...sandbox.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
       stdio: "pipe",
     });
 
@@ -412,30 +461,30 @@ test("artifact build does not preserve forged endpoint index health", () => {
       writeFileSync(cachePath, originalCache);
     }
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       env: {
-        ...process.env,
+        ...sandbox.env,
         METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
       },
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/generate-types.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/generate-client.ts", "--write"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     restoreSupportArtifacts(supportArtifacts);
@@ -495,9 +544,9 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
     }
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
 
@@ -519,27 +568,27 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
     }
     writeFileSync(schemaIndexPath, originalSchemaIndex);
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/generate-types.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/generate-client.ts", "--write"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     restoreSupportArtifacts(supportArtifacts);
@@ -569,13 +618,13 @@ function digestArtifactTree(root: string) {
 test("artifact build is deterministic (byte-identical across rebuilds)", () => {
   const supportArtifacts = snapshotSupportArtifacts();
   const buildEnv: Row = {
-    ...process.env,
+    ...sandbox.env,
     METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
   };
   delete buildEnv.METAGRAPH_BUILD_TIMESTAMP; // force the reproducible epoch
   const runBuild = () =>
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       env: buildEnv as unknown as NodeJS.ProcessEnv,
       stdio: "pipe",
@@ -633,9 +682,9 @@ test("artifact build preserves committed schema index without R2 schema details"
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
 
@@ -673,9 +722,9 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
   try {
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
 
@@ -691,9 +740,9 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
   } finally {
     writeFileSync(schemaIndexPath, originalSchemaIndex);
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
-      env: process.env,
+      env: sandbox.env,
       stdio: "pipe",
     });
     restoreSupportArtifacts(supportArtifacts);
@@ -725,8 +774,13 @@ test("committed R2 manifest does not use fallback history keys", () => {
 test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
   const timestamp = "2026-06-08T12:34:56.789Z";
   const expectedRunPrefix = "runs/2026-06-08T12-34-56-789Z/";
+  // Read from the sandbox, which is also where the finally block writes it back
+  // (below). Relative, this read came from the real repo, so the "restore" wrote
+  // the real tree's bytes into the sandbox rather than the sandbox's own prior
+  // state — a mismatch that only stayed invisible because the sandbox starts as
+  // a byte copy of the repo.
   const originalManifest = readFileSync(
-    "public/metagraph/r2-manifest.json",
+    path.join(sandbox.publicMetagraphRoot, "r2-manifest.json"),
     "utf8",
   );
   const backupDir = mkdtempSync(`${tmpdir()}/metagraphed-r2-manifest-`);
@@ -739,19 +793,19 @@ test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", 
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
     execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       env: {
-        ...process.env,
+        ...sandbox.env,
         METAGRAPH_BUILD_TIMESTAMP: timestamp,
       },
       stdio: "pipe",
     });
 
-    const dryRunEnv = { ...process.env };
+    const dryRunEnv = { ...sandbox.env };
     delete dryRunEnv.METAGRAPH_BUILD_TIMESTAMP;
     const output = execFileSync(process.execPath, ["scripts/r2-manifest.ts"], {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       env: dryRunEnv,
       stdio: "pipe",
@@ -760,7 +814,10 @@ test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", 
 
     assert.equal(summary.run_prefix, expectedRunPrefix);
   } finally {
-    writeFileSync("public/metagraph/r2-manifest.json", originalManifest);
+    writeFileSync(
+      path.join(sandbox.publicMetagraphRoot, "r2-manifest.json"),
+      originalManifest,
+    );
     rmSync(r2StagingRoot, { recursive: true, force: true });
     if (hadStagingRoot) {
       cpSync(stagingBackup, r2StagingRoot, { recursive: true });
@@ -771,7 +828,10 @@ test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", 
 
 test("public artifacts are internally consistent", () => {
   const native = JSON.parse(
-    readFileSync("registry/native/finney-subnets.json", "utf8"),
+    readFileSync(
+      path.join(sandbox.root, "registry/native/finney-subnets.json"),
+      "utf8",
+    ),
   );
   const subnets = readArtifact("subnets.json");
   const surfaces = readArtifact("surfaces.json");
@@ -823,7 +883,13 @@ test("public artifacts are internally consistent", () => {
   const enrichmentTargets = readArtifact("review/enrichment-targets.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
   const generatedCandidateDiscovery = JSON.parse(
-    readFileSync("registry/candidates/generated/public-sources.json", "utf8"),
+    readFileSync(
+      path.join(
+        sandbox.root,
+        "registry/candidates/generated/public-sources.json",
+      ),
+      "utf8",
+    ),
   );
 
   assert.equal(subnets.subnets.length, native.subnets.length);
@@ -2523,10 +2589,10 @@ test("R2 history upload deduplicates content-addressed objects that already exis
       process.execPath,
       ["scripts/r2-upload.ts", "--write"],
       {
-        cwd: process.cwd(),
+        cwd: sandbox.scriptCwd,
         encoding: "utf8",
         env: {
-          ...process.env,
+          ...sandbox.env,
           CLOUDFLARE_ACCOUNT_ID: "test-account",
           CLOUDFLARE_API_TOKEN: "test-token",
           METAGRAPH_ALLOW_R2_UPLOAD: "1",
@@ -2586,10 +2652,10 @@ test("limited R2 upload dry run skips control manifests", () => {
     process.execPath,
     ["scripts/r2-upload.ts", "--dry-run"],
     {
-      cwd: process.cwd(),
+      cwd: sandbox.scriptCwd,
       encoding: "utf8",
       env: {
-        ...process.env,
+        ...sandbox.env,
         METAGRAPH_R2_UPLOAD_LIMIT: "5",
       },
       stdio: "pipe",
@@ -2701,9 +2767,9 @@ function restoreSupportArtifacts(snapshot: Map<string, string>) {
     writeFileSync(filePath, content);
   }
   execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
-    cwd: process.cwd(),
+    cwd: sandbox.scriptCwd,
     encoding: "utf8",
-    env: process.env,
+    env: sandbox.env,
     stdio: "pipe",
   });
   for (const [filePath, content] of snapshot) {
