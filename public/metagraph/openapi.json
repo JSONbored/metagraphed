@@ -1123,6 +1123,7 @@
                   "count": 1
                 }
               ],
+              "modules_called_capped": false,
               "total_fee_tao": 0.5,
               "tx_count": 1
             },
@@ -13958,6 +13959,9 @@
                 },
                 "type": "array"
               },
+              "modules_called_capped": {
+                "type": "boolean"
+              },
               "total_fee_tao": {
                 "anyOf": [
                   {
@@ -13979,7 +13983,8 @@
               "last_tx_block",
               "last_tx_at",
               "total_fee_tao",
-              "modules_called"
+              "modules_called",
+              "modules_called_capped"
             ],
             "type": "object"
           },

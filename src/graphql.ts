@@ -1629,7 +1629,11 @@ function accountSummaryNode(data: Row, ss58: string) {
     event_kinds: data.event_kinds || [],
     registrations: data.registrations || [],
     recent_events: data.recent_events || [],
-    activity: data.activity || { tx_count: 0, modules_called: [] },
+    activity: data.activity || {
+      tx_count: 0,
+      modules_called: [],
+      modules_called_capped: false,
+    },
   };
 }
 

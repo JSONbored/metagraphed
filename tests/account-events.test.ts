@@ -14,6 +14,7 @@ import {
   loadAccountHistory,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   buildAccountTransfers,
+  ACCOUNT_ACTIVITY_MODULES_WINDOW,
 } from "../src/account-events.ts";
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
@@ -277,6 +278,27 @@ test("buildAccountTransfers coerces string-typed observed_at cells to ISO timest
 test("formatAccountActivity coerces string-typed last_tx_at to ISO timestamps", () => {
   const out = formatAccountActivity({ last_tx_at: "1750000000000" }, []);
   assert.equal(out.last_tx_at, new Date(1750000000000).toISOString());
+  assert.equal(out.modules_called_capped, false);
+});
+
+// #8822: modules_called covers only the newest ACCOUNT_ACTIVITY_MODULES_WINDOW;
+// the flag is true exactly when all-time tx_count exceeds that window (`>`, not
+// `>=` — an account with EXACTLY WINDOW extrinsics is complete).
+test("formatAccountActivity modules_called_capped is false at tx_count 0 and at the window boundary", () => {
+  assert.equal(
+    formatAccountActivity({ tx_count: 0 }, []).modules_called_capped,
+    false,
+  );
+  assert.equal(
+    formatAccountActivity({ tx_count: ACCOUNT_ACTIVITY_MODULES_WINDOW }, [])
+      .modules_called_capped,
+    false,
+  );
+  assert.equal(
+    formatAccountActivity({ tx_count: ACCOUNT_ACTIVITY_MODULES_WINDOW + 1 }, [])
+      .modules_called_capped,
+    true,
+  );
 });
 
 test("buildAccountSummary coerces string-typed first/last seen timestamps", () => {
@@ -514,6 +536,7 @@ test("buildAccountSummary is schema-stable with no data", () => {
   assert.equal(out.activity.last_tx_at, null);
   assert.equal(out.activity.total_fee_tao, null);
   assert.deepEqual(out.activity.modules_called, []);
+  assert.equal(out.activity.modules_called_capped, false);
 });
 
 test("buildAccountSummary threads the signing activity sub-object (#1847)", () => {
@@ -536,6 +559,7 @@ test("buildAccountSummary threads the signing activity sub-object (#1847)", () =
   // the {call_module:null} row is dropped
   assert.equal(out.activity.modules_called.length, 1);
   assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
+  assert.equal(out.activity.modules_called_capped, false);
 });
 
 test("buildAccountSummary rounds activity.total_fee_tao to rao precision (#2351)", () => {

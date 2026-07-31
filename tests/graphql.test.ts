@@ -6768,7 +6768,10 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       event_kinds: [],
       registrations: [],
       recent_events: [],
-      activity: { tx_count: 0, modules_called: [] },
+      activity: {
+        tx_count: 0,
+        modules_called: [],
+      },
     });
   });
 
@@ -6857,7 +6860,48 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       event_kinds: [],
       registrations: [],
       recent_events: [],
-      activity: { tx_count: 0, modules_called: [] },
+      activity: {
+        tx_count: 0,
+        modules_called: [],
+      },
+    });
+  });
+
+  test("account: activity.modules_called_capped is published when requested (#8822)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            event_count: 0,
+            subnet_count: 0,
+            event_scan_capped: false,
+            first_block: null,
+            last_block: null,
+            event_kinds: [],
+            registrations: [],
+            recent_events: [],
+            activity: {
+              tx_count: 1001,
+              last_tx_block: null,
+              last_tx_at: null,
+              total_fee_tao: null,
+              modules_called: [],
+              modules_called_capped: true,
+            },
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      `{ account(ss58: "${SS58}") { activity { tx_count modules_called_capped } } }`,
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account.activity, {
+      tx_count: 1001,
+      modules_called_capped: true,
     });
   });
 
