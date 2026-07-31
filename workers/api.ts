@@ -2122,7 +2122,13 @@ export async function handleRequest(
     // pass-through proxy (all auth/routing/validation live in
     // workers/data-api.ts's handleWatchTriggersRoute), same error-code
     // family as it's still an alert-trigger-family failure.
-    url.pathname.startsWith("/api/v1/watch/triggers")
+    url.pathname.startsWith("/api/v1/watch/triggers") ||
+    // #8808: web-push device subscriptions (#8385) accept GET/POST/DELETE and
+    // authorize on the same watch-token header -- same generic pass-through
+    // proxy (all auth/SSRF-validation/device-cap live in workers/data-api.ts's
+    // handleWatchPushSubscriptions*), so they route here rather than through
+    // the read-only method gate below.
+    url.pathname.startsWith("/api/v1/watch/push-subscriptions")
   ) {
     return handleAlertTriggersProxy(request, env);
   }
@@ -3833,6 +3839,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/watch/challenges" ||
     pathname === "/api/v1/watch/tokens" ||
     pathname.startsWith("/api/v1/watch/triggers") ||
+    pathname.startsWith("/api/v1/watch/push-subscriptions") ||
     pathname.startsWith("/api/v1/keys") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
@@ -5936,6 +5943,9 @@ function corsPreflight(request: Request) {
     methods = "POST, GET, PATCH, DELETE, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/watch/triggers")) {
     methods = "GET, PATCH, DELETE, OPTIONS";
+  } else if (url.pathname.startsWith("/api/v1/watch/push-subscriptions")) {
+    // #8808: GET lists devices, POST enables push, DELETE removes a device.
+    methods = "GET, POST, DELETE, OPTIONS";
   } else if (url.pathname === "/api/v1/graphql") {
     // POST executes queries; GET serves the published SDL document.
     methods = "GET, POST, OPTIONS";
