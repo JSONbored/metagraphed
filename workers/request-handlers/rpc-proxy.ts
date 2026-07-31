@@ -929,7 +929,15 @@ async function rpcCacheKey(
   const normalized = JSON.stringify([
     network,
     method,
-    Array.isArray(params) ? params : [],
+    // #8805: key on `params` AS RECEIVED (undefined/absent normalized to a
+    // single stable `null` sentinel) so an object param and an array can never
+    // collide on one cache entry. The old `Array.isArray(params) ? params : []`
+    // fallback erased non-array params from the KEY while still forwarding them
+    // upstream, so an unauthenticated caller could store one query's result
+    // under a different query's key and poison the shared colo cache for every
+    // caller for the TTL. (Two semantically-equal objects with different JSON
+    // key order key differently -- a safe cache-miss, never a wrong hit.)
+    params ?? null,
   ]);
   const digest = await crypto.subtle.digest(
     "SHA-256",

@@ -340,8 +340,9 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
   });
 
   test("caches a successful quasi-static result and rebuilds the id on a hit", async () => {
-    // system_chain is cacheable with non-array params → rpcCacheKey's `: []`
-    // arm; the stored result is replayed with THIS request's id.
+    // system_chain is cacheable, and its object `params` now key on the raw
+    // params (#8805) -- identical object params across the three calls below
+    // share one cache entry; the stored result is replayed with THIS request's id.
     const cache = fakeCache();
     const ctx = { waitUntil: (p: Promise<unknown>) => p };
     const originalCaches = (globalThis as Row).caches;
@@ -430,6 +431,76 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
         false,
       );
       assert.equal(idlessBody.result, "bittensor");
+    } finally {
+      (globalThis as Row).caches = originalCaches;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("object params never collide with array params on the cache key (#8805)", async () => {
+    // Requirement 2: a request with `params` of one shape can never be served a
+    // cached response stored for a different shape. The old `: []` key-fallback
+    // stored an object-param result under the SAME key as `[]`, so an
+    // unauthenticated caller could poison the shared colo cache; keying on the
+    // raw params gives each shape its own entry.
+    const cache = fakeCache();
+    const ctx = { waitUntil: (p: Promise<unknown>) => p };
+    const originalCaches = (globalThis as Row).caches;
+    const originalFetch = globalThis.fetch;
+    (globalThis as Row).caches = { default: cache };
+    try {
+      // Prime with ARRAY params.
+      globalThis.fetch = scriptedFetch(
+        jsonResponse(200, { jsonrpc: "2.0", id: 1, result: "array-result" }),
+      );
+      const first = await handleRpcProxyRequest(
+        req("/rpc/v1/finney", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.30",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "system_chain",
+            params: [],
+          }),
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+        ctx,
+      );
+      assert.equal(first.headers.get("x-metagraph-rpc-cache"), "miss");
+      assert.equal(cache.store.size, 1);
+
+      // OBJECT params for the SAME method+network must MISS (not the array
+      // primer's entry) and get their OWN upstream result + cache entry.
+      globalThis.fetch = scriptedFetch(
+        jsonResponse(200, { jsonrpc: "2.0", id: 2, result: "object-result" }),
+      );
+      const second = await handleRpcProxyRequest(
+        req("/rpc/v1/finney", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.30",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "system_chain",
+            params: { at: "0xdeadbeef" },
+          }),
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+        ctx,
+      );
+      assert.equal(second.headers.get("x-metagraph-rpc-cache"), "miss");
+      const body = (await second.json()) as Row;
+      assert.equal(body.result, "object-result"); // NOT the poisoned "array-result"
+      assert.equal(cache.store.size, 2); // two distinct keys, no collision
     } finally {
       (globalThis as Row).caches = originalCaches;
       globalThis.fetch = originalFetch;
