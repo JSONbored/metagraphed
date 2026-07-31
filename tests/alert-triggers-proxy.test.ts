@@ -429,6 +429,131 @@ test("GET /api/v1/testnet/watch/triggers 404s -- mainnet-only, not partitioned p
   assert.equal(res.status, 404);
 });
 
+// --- /api/v1/watch/push-subscriptions* (#8808) -- shares the SAME proxy
+// function as /api/v1/watch/triggers* above (handleAlertTriggersProxy is a
+// generic pass-through; all real auth/routing lives in
+// workers/data-api.ts's handleWatchPushSubscriptions* handlers), so these
+// tests only need to cover the dispatch wiring (does
+// /api/v1/watch/push-subscriptions* actually reach the proxy, for every
+// method it needs), not re-derive the full error-code/rate-limit-header
+// matrix already covered above. These fail on main -- before this change
+// the routing branch never matched this prefix, so handleRequest fell
+// through to the generic 404 and never reached the stubbed DATA_API.
+test("forwards GET /api/v1/watch/push-subscriptions to DATA_API", async () => {
+  let receivedPath;
+  let receivedMethod;
+  let receivedToken;
+  const res = await handleRequest(
+    req("/api/v1/watch/push-subscriptions", {
+      method: "GET",
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {
+      DATA_API: {
+        fetch(request: Request) {
+          receivedPath = new URL(request.url).pathname;
+          receivedMethod = request.method;
+          receivedToken = request.headers.get("x-watch-trigger-token");
+          return new Response(JSON.stringify({ devices: [] }), {
+            status: 200,
+          });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(receivedPath, "/api/v1/watch/push-subscriptions");
+  assert.equal(receivedMethod, "GET");
+  assert.equal(receivedToken, "tok");
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).data, { devices: [] });
+});
+
+test("forwards POST /api/v1/watch/push-subscriptions to DATA_API with the request body intact", async () => {
+  let receivedMethod;
+  let receivedBody;
+  const res = await handleRequest(
+    req("/api/v1/watch/push-subscriptions", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": "tok" },
+      body: { endpoint: "https://push.example/abc" },
+    }),
+    {
+      DATA_API: {
+        async fetch(request: Request) {
+          receivedMethod = request.method;
+          receivedBody = await request.json();
+          return new Response(JSON.stringify({ id: "1" }), { status: 201 });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(receivedMethod, "POST");
+  assert.deepEqual(receivedBody, { endpoint: "https://push.example/abc" });
+  assert.equal(res.status, 201);
+});
+
+test("forwards DELETE /api/v1/watch/push-subscriptions/9 to DATA_API", async () => {
+  let receivedPath;
+  let receivedMethod;
+  const res = await handleRequest(
+    req("/api/v1/watch/push-subscriptions/9", {
+      method: "DELETE",
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {
+      DATA_API: {
+        fetch(request: Request) {
+          receivedPath = new URL(request.url).pathname;
+          receivedMethod = request.method;
+          return new Response(JSON.stringify({ id: "9", deleted: true }), {
+            status: 200,
+          });
+        },
+      },
+    } as unknown as Env,
+    {},
+  );
+  assert.equal(receivedPath, "/api/v1/watch/push-subscriptions/9");
+  assert.equal(receivedMethod, "DELETE");
+  assert.deepEqual((await res.json()).data, { id: "9", deleted: true });
+});
+
+test("returns 503 for /api/v1/watch/push-subscriptions when DATA_API is not bound", async () => {
+  const res = await handleRequest(
+    req("/api/v1/watch/push-subscriptions"),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 503);
+  assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
+});
+
+test("OPTIONS /api/v1/watch/push-subscriptions advertises GET, POST, DELETE, OPTIONS", async () => {
+  const res = await handleRequest(
+    req("/api/v1/watch/push-subscriptions", { method: "OPTIONS" }),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 204);
+  assert.equal(
+    res.headers.get("access-control-allow-methods"),
+    "GET, POST, DELETE, OPTIONS",
+  );
+});
+
+test("GET /api/v1/testnet/watch/push-subscriptions 404s -- mainnet-only, not partitioned per network", async () => {
+  const res = await handleRequest(
+    req("/api/v1/testnet/watch/push-subscriptions", {
+      headers: { "x-watch-trigger-token": "tok" },
+    }),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 404);
+});
+
 test("does not attach rate-limit headers when the upstream error carries none", async () => {
   const res = await handleRequest(
     req("/api/v1/alerts/triggers/1", {
