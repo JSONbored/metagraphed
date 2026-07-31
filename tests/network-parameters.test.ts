@@ -38,10 +38,22 @@ const GOLDEN_STAKE_THRESHOLD_TAO = 1000;
 const GOLDEN_COOLDOWN_RAW = "0x201c000000000000"; // 7200 blocks
 const GOLDEN_COOLDOWN_BLOCKS = 7200;
 
+// #8747: captured from finney via state_getStorage on 2026-07-30, not typed
+// from the schema — 11,180,872,732,340,983 rao (11,180,872.73 TAO), which puts
+// the network one halving in at 0.5 TAO/block.
+const GOLDEN_TOTAL_ISSUANCE_RAW = "0xf7727dcbf1b82700";
+const GOLDEN_TOTAL_ISSUANCE_TAO = 11180872.732340982;
+const GOLDEN_BLOCK_EMISSION_TAO = 0.5;
+const GOLDEN_BLOCK_EMISSION_HALVINGS = 1;
+
 const TAO_WEIGHT_KEY =
   "0x658faa385070e074c85bf6b568cf05556b2684762c3b1e22ffb4a92939298741";
 const STAKE_THRESHOLD_KEY =
   "0x658faa385070e074c85bf6b568cf0555782d99ebaa64a1ba18b3e8cda1047327";
+// #8747: block emission is derived from this, not from the stale
+// `BlockEmission` storage item.
+const TOTAL_ISSUANCE_KEY =
+  "0x658faa385070e074c85bf6b568cf055557c875e4cff74148e4628f264b974c80";
 const COOLDOWN_KEY =
   "0x658faa385070e074c85bf6b568cf0555503e4fe5f139cae8b9d045e82e1c83a2";
 
@@ -55,6 +67,7 @@ function goldenFetchStub() {
       [TAO_WEIGHT_KEY]: GOLDEN_TAO_WEIGHT_RAW,
       [STAKE_THRESHOLD_KEY]: GOLDEN_STAKE_THRESHOLD_RAW,
       [COOLDOWN_KEY]: GOLDEN_COOLDOWN_RAW,
+      [TOTAL_ISSUANCE_KEY]: GOLDEN_TOTAL_ISSUANCE_RAW,
     };
     return {
       ok: true,
@@ -70,6 +83,14 @@ describe("loadNetworkParameters", () => {
       assert.equal(data.schema_version, 1);
       assert.equal(data.tao_weight, GOLDEN_TAO_WEIGHT);
       assert.equal(data.stake_threshold_tao, GOLDEN_STAKE_THRESHOLD_TAO);
+      // The whole point of #8747: 0.5, not the 1.0 the BlockEmission storage
+      // item still reports.
+      assert.equal(data.block_emission_tao, GOLDEN_BLOCK_EMISSION_TAO);
+      assert.equal(
+        data.block_emission_halvings,
+        GOLDEN_BLOCK_EMISSION_HALVINGS,
+      );
+      assert.equal(data.total_issuance_tao, GOLDEN_TOTAL_ISSUANCE_TAO);
       assert.equal(
         data.pending_childkey_cooldown_blocks,
         GOLDEN_COOLDOWN_BLOCKS,
@@ -78,7 +99,7 @@ describe("loadNetworkParameters", () => {
     });
   });
 
-  test("queries all three storage keys", async () => {
+  test("queries all four storage keys", async () => {
     const seenKeys = new Set();
     await withFetchStub(
       async (_url: unknown, init: Row) => {
@@ -93,7 +114,8 @@ describe("loadNetworkParameters", () => {
         assert.ok(seenKeys.has(TAO_WEIGHT_KEY));
         assert.ok(seenKeys.has(STAKE_THRESHOLD_KEY));
         assert.ok(seenKeys.has(COOLDOWN_KEY));
-        assert.equal(seenKeys.size, 3);
+        assert.ok(seenKeys.has(TOTAL_ISSUANCE_KEY));
+        assert.equal(seenKeys.size, 4);
       },
     );
   });
@@ -280,7 +302,7 @@ describe("loadNetworkParameters", () => {
       },
       async () => {
         await loadNetworkParameters(mockEnv());
-        assert.equal(seenSignals.length, 3);
+        assert.equal(seenSignals.length, 4);
         for (const signal of seenSignals) {
           assert.ok(signal);
           assert.equal(typeof signal.aborted, "boolean");

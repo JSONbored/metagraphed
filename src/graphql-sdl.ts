@@ -3497,6 +3497,9 @@ export const SDL = /* GraphQL */ `
     tao_weight: Float
     stake_threshold_tao: Float
     pending_childkey_cooldown_blocks: Int
+    total_issuance_tao: Float
+    block_emission_tao: Float
+    block_emission_halvings: Int
     queried_at: String!
   }
 

@@ -2159,11 +2159,14 @@ export enum Network {
 /** Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope. */
 export type NetworkParameters = {
   __typename?: 'NetworkParameters';
+  block_emission_halvings?: Maybe<Scalars['Int']['output']>;
+  block_emission_tao?: Maybe<Scalars['Float']['output']>;
   pending_childkey_cooldown_blocks?: Maybe<Scalars['Int']['output']>;
   queried_at: Scalars['String']['output'];
   schema_version: Scalars['Int']['output'];
   stake_threshold_tao?: Maybe<Scalars['Float']['output']>;
   tao_weight?: Maybe<Scalars['Float']['output']>;
+  total_issuance_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 /** Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope. */
@@ -7751,11 +7754,14 @@ export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 }
 
 export type NetworkParametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NetworkParameters'] = ResolversParentTypes['NetworkParameters']> = ResolversObject<{
+  block_emission_halvings?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  block_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   pending_childkey_cooldown_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stake_threshold_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_issuance_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type NetworkRandomnessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NetworkRandomness'] = ResolversParentTypes['NetworkRandomness']> = ResolversObject<{
