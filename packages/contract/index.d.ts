@@ -13105,7 +13105,7 @@ export interface operations {
                      *         "block_emission_tao": 5000000,
                      *         "chain_state": {
                      *           "block": 5000000,
-                     *           "block_hash": "example",
+                     *           "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
@@ -13139,7 +13139,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "verification": {
-                     *           "aggregate_tolerance_rao": "example",
+                     *           "aggregate_tolerance_rao": "1000",
                      *           "checks": [
                      *             {
                      *               "detail": "example",
@@ -14017,7 +14017,7 @@ export interface operations {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "chain_state": {
                      *           "block": 5000000,
-                     *           "block_hash": "example",
+                     *           "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
@@ -28872,7 +28872,7 @@ export interface operations {
                      *         "block_emission_tao": 5000000,
                      *         "chain_state": {
                      *           "block": 5000000,
-                     *           "block_hash": "example",
+                     *           "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
@@ -28906,7 +28906,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "verification": {
-                     *           "aggregate_tolerance_rao": "example",
+                     *           "aggregate_tolerance_rao": "1000",
                      *           "checks": [
                      *             {
                      *               "detail": "example",
@@ -32580,7 +32580,7 @@ export interface operations {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "chain_state": {
                      *           "block": 5000000,
-                     *           "block_hash": "example",
+                     *           "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
