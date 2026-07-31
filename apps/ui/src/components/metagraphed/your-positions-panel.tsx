@@ -16,6 +16,8 @@ import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { statPhase } from "@/lib/metagraphed/stat-phase";
+import { exitTotals, type ExitTotals, type PositionQuoteState } from "@/lib/metagraphed/position-totals";
 import type { SubnetEconomics } from "@/lib/metagraphed/types";
 
 /** One row of the portfolio, unified across the hotkey-owned and delegated feeds. */
@@ -80,6 +82,19 @@ export function buildUnifiedPositions(
 const pct = (v: number | null) =>
   v != null && Number.isFinite(v) ? `${(v * 100).toFixed(2)}%` : "—";
 
+/** Caption for the "Simulated exit" tile: honest about which positions, if
+ *  any, are missing from the sum -- and whether that's temporary (still
+ *  loading) or permanent (the quote failed), per issue #8819's Option A. */
+function exitHint(totals: ExitTotals, positionCount: number): string {
+  const excluded = totals.excludedError + totals.excludedPending;
+  if (excluded === 0) return "after fee + slippage";
+  const noun = `position${positionCount === 1 ? "" : "s"}`;
+  if (totals.excludedError === 0) {
+    return `after fee + slippage · loading ${excluded} of ${positionCount} ${noun}`;
+  }
+  return `after fee + slippage · ${excluded} of ${positionCount} ${noun} unavailable`;
+}
+
 export function YourPositionsPanel({ address }: { address: string }) {
   const portfolio = useSuspenseQuery(accountPortfolioQuery(address)).data.data;
   const nominator = useSuspenseQuery(accountPositionsQuery(address)).data.data;
@@ -110,7 +125,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
     queries: positions.map((p) => ({
       // Homogeneous query-options so useQueries infers one result type. Root /
       // unknown-price rows pass a placeholder amount but are disabled, so no
-      // request fires and their exit falls back to spot in exitTaoFor.
+      // request ever fires for them (root's exit is 1:1 spot; see exitTaoFor).
       ...subnetStakeQuoteQuery(p.netuid, p.alpha && p.alpha > 0 ? p.alpha : 1, "unstake"),
       enabled: Boolean(p.alpha && p.alpha > 0),
     })),
@@ -122,20 +137,24 @@ export function YourPositionsPanel({ address }: { address: string }) {
     return typeof out === "number" ? out : null;
   };
 
-  const totals = useMemo(() => {
-    let spot = 0;
-    let exit = 0;
-    let root = 0;
-    let alpha = 0;
-    positions.forEach((p, i) => {
-      spot += p.spotTao;
-      exit += exitTaoFor(i, p) ?? p.spotTao;
-      if (p.isRoot) root += p.spotTao;
-      else alpha += p.spotTao;
-    });
-    return { spot, exit, root, alpha };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, quotes]);
+  // Per-position quote state (statPhase, matching the shared loading/error
+  // convention -- see stat-phase.ts) feeding the pure exitTotals aggregator,
+  // so the "Simulated exit" tile can never silently pad a pending/errored
+  // quote with spot value the way the per-row cells above already refuse to.
+  const quoteStates = useMemo<PositionQuoteState[]>(
+    () =>
+      positions.map((p, i): PositionQuoteState => {
+        if (p.isRoot) return { phase: "pending" }; // unused: exitTotals sums root spot directly
+        const q = quotes[i];
+        const phase = statPhase(q);
+        if (phase !== "ready") return { phase };
+        const out = q.data?.data?.expected_out;
+        return typeof out === "number" ? { phase: "ready", expectedOut: out } : { phase: "pending" };
+      }),
+    [positions, quotes],
+  );
+
+  const totals = useMemo(() => exitTotals(positions, quoteStates), [positions, quoteStates]);
 
   if (positions.length === 0) {
     return (
@@ -163,7 +182,8 @@ export function YourPositionsPanel({ address }: { address: string }) {
           icon={Coins}
           eyebrow="Simulated exit"
           value={`${taoCompact(totals.exit)} τ`}
-          hint="after fee + slippage"
+          hint={exitHint(totals, positions.length)}
+          truncate={totals.excludedError + totals.excludedPending === 0}
         />
         <StatTile
           icon={Coins}
