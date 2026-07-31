@@ -483,6 +483,37 @@ pub async fn discover_spec_ranges(
     Ok(merge_spec_ranges(all))
 }
 
+/// Shift a discovered version map forward by one block, so each block is
+/// decoded with the runtime that ENCODED it.
+///
+/// `state_getRuntimeVersion(B)` reports the version *after* B executes, but a
+/// runtime upgrade is applied by an extrinsic inside B -- so B itself runs on,
+/// and emits events encoded by, the PREVIOUS runtime. Decoding an upgrade
+/// block with the version that call reports uses the wrong type registry and
+/// fails; observed live at block 7,430,358 (the v367 -> v372 boundary) as
+/// `Can't decode event topics: Not enough data to fill buffer`.
+///
+/// This is not cosmetic: flush() only commits a chunk when EVERY block in it
+/// decodes, so one boundary block wedges its whole 500-block chunk, the shard
+/// retries to its round limit, exits, and the launcher restarts it onto the
+/// same chunk forever. ~140 boundaries over full history means ~70k blocks
+/// that could never land, each also burning a shard in a restart loop.
+///
+/// For non-boundary blocks `version_at(B) == version_at(B-1)`, so shifting the
+/// whole map is a no-op there and correct at the boundaries -- no per-block
+/// special-casing. The first segment keeps its original start so the earliest
+/// blocks stay covered rather than falling off the front of the map.
+pub fn shift_spec_ranges_for_event_decoding(ranges: &[SpecRange]) -> Vec<SpecRange> {
+    ranges
+        .iter()
+        .enumerate()
+        .map(|(i, &(start, end, spec, txv))| {
+            let shifted_start = if i == 0 { start } else { start + 1 };
+            (shifted_start, end + 1, spec, txv)
+        })
+        .collect()
+}
+
 /// Sort segments and coalesce adjacent ones carrying the same versions. A
 /// runtime era spanning a fan-out sub-range boundary is discovered as two
 /// touching segments; left unmerged they are still CORRECT (subxt's RangeMap
@@ -795,6 +826,54 @@ impl ChainClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shift_spec_ranges_moves_the_boundary_so_an_upgrade_block_uses_the_old_runtime() {
+        // Discovery reports v367 up to (not including) 7430358 and v372 from
+        // 7430358. Block 7430358 is the upgrade block: it EXECUTED on v367, so
+        // its events must decode with v367 -- the shifted map must cover it
+        // with the old version, and start v372 at the block after.
+        let shifted = shift_spec_ranges_for_event_decoding(&[
+            (7287033, 7430358, 367, 1),
+            (7430358, 7435433, 372, 1),
+        ]);
+        assert_eq!(
+            shifted,
+            vec![(7287033, 7430359, 367, 1), (7430359, 7435434, 372, 1)]
+        );
+        // The upgrade block falls in the v367 segment, not the v372 one.
+        let (start, end, spec, _) = shifted[0];
+        assert!((start..end).contains(&7430358) && spec == 367);
+    }
+
+    #[test]
+    fn shift_spec_ranges_keeps_the_first_segment_start_so_early_blocks_stay_covered() {
+        // Shifting the very first start would leave block 1 off the front of
+        // the map and force a per-block Core_version fallback for it.
+        let shifted =
+            shift_spec_ranges_for_event_decoding(&[(1, 561, 101, 1), (561, 1075, 102, 1)]);
+        assert_eq!(shifted[0].0, 1);
+        assert_eq!(shifted, vec![(1, 562, 101, 1), (562, 1076, 102, 1)]);
+    }
+
+    #[test]
+    fn shift_spec_ranges_leaves_no_gaps_between_segments() {
+        // Every block must resolve to exactly one segment; a gap would send
+        // that block back to the slow per-block path.
+        let shifted = shift_spec_ranges_for_event_decoding(&[
+            (1, 100, 1, 1),
+            (100, 200, 2, 1),
+            (200, 300, 3, 1),
+        ]);
+        for pair in shifted.windows(2) {
+            assert_eq!(pair[0].1, pair[1].0, "segment end must meet the next start");
+        }
+    }
+
+    #[test]
+    fn shift_spec_ranges_on_empty_input_is_empty() {
+        assert!(shift_spec_ranges_for_event_decoding(&[]).is_empty());
+    }
 
     #[test]
     fn merge_spec_ranges_coalesces_segments_split_across_fanout_boundaries() {

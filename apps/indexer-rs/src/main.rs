@@ -1809,10 +1809,15 @@ async fn run() -> Result<()> {
             .collect::<Vec<_>>()
             .join(" ")
     );
-    let api = backfill_rs::connect_chain_from_rpc(rpc, &spec_ranges)
+    // Shift by one block before handing the map to subxt: a block is decoded
+    // with the runtime that ENCODED it, not the one reported at its own hash.
+    // See shift_spec_ranges_for_event_decoding -- without this, every
+    // runtime-upgrade boundary block fails to decode and wedges its chunk.
+    let decode_ranges = backfill_rs::shift_spec_ranges_for_event_decoding(&spec_ranges);
+    let api = backfill_rs::connect_chain_from_rpc(rpc, &decode_ranges)
         .await
         .context("connect from rpc with spec ranges")?;
-    let client = Arc::new(ChainClient::from_parts(rpc_url.clone(), spec_ranges, api));
+    let client = Arc::new(ChainClient::from_parts(rpc_url.clone(), decode_ranges, api));
 
     let concurrency = env_u64("BACKFILL_CONCURRENCY").unwrap_or(12) as usize;
     let chunk = env_u64("BACKFILL_CHUNK").unwrap_or(2000);
