@@ -169,6 +169,34 @@ describe("loadNetworkParameters", () => {
     });
   });
 
+  // The day governance actually sets the exponent, raw and effective must both
+  // report it — the unset case must not be the only one that works. h = 4 as
+  // U64F64 is 4 << 64, encoded little-endian across sixteen bytes.
+  test("reports a set exponent as both the raw and the effective value", async () => {
+    const SET_EXPONENT_RAW = "0x00000000000000000400000000000000";
+    await withFetchStub(
+      async (_url: unknown, init: Row) => {
+        const key = JSON.parse(init.body).params[0];
+        if (key === GATE_EXPONENT_KEY) {
+          return {
+            ok: true,
+            json: async () => ({
+              jsonrpc: "2.0",
+              id: 1,
+              result: SET_EXPONENT_RAW,
+            }),
+          };
+        }
+        return goldenFetchStub()(_url, init);
+      },
+      async () => {
+        const data = await loadNetworkParameters(mockEnv());
+        assert.equal(data.emission_gate_exponent, 4);
+        assert.equal(data.emission_gate_exponent_effective, 4);
+      },
+    );
+  });
+
   // An unset item is a SUCCESSFUL read. Treating it as a partial failure would
   // pin this whole response to the 10s negative TTL for as long as the item
   // stays unset — which is indefinitely.
