@@ -19,6 +19,30 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [1.1.1](https://github.com/JSONbored/metagraphed/compare/platform-v1.1.0...platform-v1.1.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **api:** refuse to cache RPC responses for named params ([#8805](https://github.com/JSONbored/metagraphed/issues/8805)) ([#8940](https://github.com/JSONbored/metagraphed/issues/8940)) ([90627b6](https://github.com/JSONbored/metagraphed/commit/90627b60ed93dc01c456b2d1b531646fea10e7b5))
+* **api:** value top-holders delegated stake in TAO, not cross-subnet alpha ([#8803](https://github.com/JSONbored/metagraphed/issues/8803)) ([#8943](https://github.com/JSONbored/metagraphed/issues/8943)) ([bbb211e](https://github.com/JSONbored/metagraphed/commit/bbb211ed62504ec84f6ce0c62998a4f0f44ecff4))
+* **dx:** ignore coverage output in format:check ([#8932](https://github.com/JSONbored/metagraphed/issues/8932)) ([60dbad2](https://github.com/JSONbored/metagraphed/commit/60dbad285483ae7efca4dd31c73bf56063a40b4a)), closes [#8931](https://github.com/JSONbored/metagraphed/issues/8931)
+* **mcp:** validate the network argument before it selects an artifact key ([#8804](https://github.com/JSONbored/metagraphed/issues/8804)) ([#8941](https://github.com/JSONbored/metagraphed/issues/8941)) ([dd60495](https://github.com/JSONbored/metagraphed/commit/dd6049584092b78e846f641d2e2cb345eeb737b1))
+* **test:** isolate temp-repo git commits from ambient developer config ([#8948](https://github.com/JSONbored/metagraphed/issues/8948)) ([#8949](https://github.com/JSONbored/metagraphed/issues/8949)) ([b8af998](https://github.com/JSONbored/metagraphed/commit/b8af99891cc1353f0752e030fde4aaec0660794a))
+* **ui:** keyboard-accessible Activity group disclosure ([#8821](https://github.com/JSONbored/metagraphed/issues/8821)) ([#8923](https://github.com/JSONbored/metagraphed/issues/8923)) ([4f523a4](https://github.com/JSONbored/metagraphed/commit/4f523a4c7ca12776d54de3651c87864b3877f769))
+* **ui:** show StatUnavailable when KPI source queries fail ([#8818](https://github.com/JSONbored/metagraphed/issues/8818)) ([#8939](https://github.com/JSONbored/metagraphed/issues/8939)) ([66124d8](https://github.com/JSONbored/metagraphed/commit/66124d8fff2b04f5316b98e58fb9cf890f1cdcdf))
+
+
+### Performance
+
+* **api:** buffer usage-rollup observations in the isolate ([#8823](https://github.com/JSONbored/metagraphed/issues/8823)) ([#8946](https://github.com/JSONbored/metagraphed/issues/8946)) ([d2a3c5e](https://github.com/JSONbored/metagraphed/commit/d2a3c5e6ee70d8a9b7144757e6524ca273651e8c))
+* **ci:** build artifact-mutating tests into per-file repo sandboxes ([#8938](https://github.com/JSONbored/metagraphed/issues/8938)) ([300f258](https://github.com/JSONbored/metagraphed/commit/300f258d2a57c6784664347d3191c1f71a21e3c9))
+* **ci:** run the coverage suite as two passes, sharing a module registry ([#8936](https://github.com/JSONbored/metagraphed/issues/8936)) ([27bd18f](https://github.com/JSONbored/metagraphed/commit/27bd18f45be26294d10fb44828d1884f6af39539)), closes [#8922](https://github.com/JSONbored/metagraphed/issues/8922)
+* **ci:** skip browser e2e on diffs that cannot change rendering ([#8930](https://github.com/JSONbored/metagraphed/issues/8930)) ([941e20a](https://github.com/JSONbored/metagraphed/commit/941e20a9a40466eb6053a1d1b49bcd40c7ae5c7c)), closes [#8929](https://github.com/JSONbored/metagraphed/issues/8929)
+* **ci:** split the e2e run into a parallel sweep and a serial interaction phase ([#8928](https://github.com/JSONbored/metagraphed/issues/8928)) ([#8951](https://github.com/JSONbored/metagraphed/issues/8951)) ([be5f56f](https://github.com/JSONbored/metagraphed/commit/be5f56f925bf1470e50b874e0828aacb54e13478))
+* **ci:** typecheck incrementally with a cached buildinfo ([#8925](https://github.com/JSONbored/metagraphed/issues/8925)) ([6ac64c5](https://github.com/JSONbored/metagraphed/commit/6ac64c517da3d3f8f885642096a4ed145932b849)), closes [#8924](https://github.com/JSONbored/metagraphed/issues/8924)
+* **test:** split the six build-running artifact tests into parallel files ([#8950](https://github.com/JSONbored/metagraphed/issues/8950)) ([762d7f1](https://github.com/JSONbored/metagraphed/commit/762d7f10df2e75d456ba10e4f328e6dc130601cc))
+
 ## [1.1.0](https://github.com/JSONbored/metagraphed/compare/platform-v1.0.0...platform-v1.1.0) (2026-07-31)
 
 

@@ -9,6 +9,21 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.14.1](https://github.com/JSONbored/metagraphed/compare/ui-v0.14.0...ui-v0.14.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **api:** value top-holders delegated stake in TAO, not cross-subnet alpha ([#8803](https://github.com/JSONbored/metagraphed/issues/8803)) ([#8943](https://github.com/JSONbored/metagraphed/issues/8943)) ([bbb211e](https://github.com/JSONbored/metagraphed/commit/bbb211ed62504ec84f6ce0c62998a4f0f44ecff4))
+* **ui:** keyboard-accessible Activity group disclosure ([#8821](https://github.com/JSONbored/metagraphed/issues/8821)) ([#8923](https://github.com/JSONbored/metagraphed/issues/8923)) ([4f523a4](https://github.com/JSONbored/metagraphed/commit/4f523a4c7ca12776d54de3651c87864b3877f769))
+* **ui:** show StatUnavailable when KPI source queries fail ([#8818](https://github.com/JSONbored/metagraphed/issues/8818)) ([#8939](https://github.com/JSONbored/metagraphed/issues/8939)) ([66124d8](https://github.com/JSONbored/metagraphed/commit/66124d8fff2b04f5316b98e58fb9cf890f1cdcdf))
+
+
+### Performance
+
+* **ci:** split the e2e run into a parallel sweep and a serial interaction phase ([#8928](https://github.com/JSONbored/metagraphed/issues/8928)) ([#8951](https://github.com/JSONbored/metagraphed/issues/8951)) ([be5f56f](https://github.com/JSONbored/metagraphed/commit/be5f56f925bf1470e50b874e0828aacb54e13478))
+* **ci:** typecheck incrementally with a cached buildinfo ([#8925](https://github.com/JSONbored/metagraphed/issues/8925)) ([6ac64c5](https://github.com/JSONbored/metagraphed/commit/6ac64c517da3d3f8f885642096a4ed145932b849)), closes [#8924](https://github.com/JSONbored/metagraphed/issues/8924)
+
 ## [0.14.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.13.0...ui-v0.14.0) (2026-07-31)
 
 
