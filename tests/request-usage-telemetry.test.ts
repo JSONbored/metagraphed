@@ -142,7 +142,12 @@ describe("usageRouteLabel", () => {
   // route that reaches this fallback in production, which /api/v1/internal/
   // no longer does.
   test("masks identifier-shaped segments on routes outside the contract", () => {
-    assert.equal(label("/api/v1/ask"), "/api/v1/ask");
+    // A synthetic path, deliberately. This case used `/api/v1/ask` until #9092
+    // registered it -- at which point the label correctly became its route id
+    // ("ask") and this assertion failed for the right reason. A fixture that
+    // depends on a real path STAYING unregistered rots the moment someone
+    // fixes the contract; one that can never be registered cannot.
+    assert.equal(label("/api/v1/not-a-route"), "/api/v1/not-a-route");
     assert.equal(
       label("/api/v1/webhooks/subscriptions/123"),
       "/api/v1/webhooks/subscriptions/:n",

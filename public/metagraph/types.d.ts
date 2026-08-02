@@ -1401,6 +1401,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/surfaces/{surface_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches.
+         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["surfaceVerifyByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts": {
         parameters: {
             query?: never;
@@ -1922,6 +1942,23 @@ export interface paths {
         get: operations["agentResources"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask a natural-language question about the registry and get a grounded answer with citations. POST a JSON body `{ question }`; the answer carries inline [n] markers resolved by `citations`, each naming the surface it came from, so every claim is traceable to a registered surface rather than to the model. Use this when the question is exploratory ("which subnets expose a public inference API?"); use /api/v1/search/semantic when you want the ranked matches themselves rather than prose. Mirrored by the `ask` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured. */
+        post: operations["ask"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3853,6 +3890,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search/semantic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms. The complement to /api/v1/search, which is lexical -- reach for that one when you know the exact name. Each result carries its score, type, netuid/slug, title/subtitle, URL, categories, and service kinds; `model` names the embedding model. ?limit caps the list. Mirrored by the `semantic_search` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured. */
+        get: operations["searchSemantic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/self-health": {
         parameters: {
             query?: never;
@@ -4856,6 +4910,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/surfaces/{surface_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches. */
+        get: operations["surfaceVerify"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validators": {
         parameters: {
             query?: never;
@@ -5767,8 +5838,8 @@ export interface components {
                 description: string;
                 id: string;
                 mainnet_only?: boolean;
-                /** @constant */
-                method: "GET";
+                /** @enum {string} */
+                method: "GET" | "POST";
                 networks?: string[];
                 path: string;
                 /** @constant */
@@ -5798,6 +5869,25 @@ export interface components {
             schema_version: 1;
         } & {
             [key: string]: unknown;
+        };
+        AskArtifact: {
+            answer: string;
+            citations: {
+                netuid: number;
+                ref: number;
+                score: number;
+                slug: string;
+                title: string;
+                url: string;
+            }[];
+            context_count: number;
+            model: string;
+            question: string;
+        } & {
+            [key: string]: unknown;
+        };
+        AskRequest: {
+            question: string;
         };
         /** @enum {string} */
         Authority: "official" | "provider-claimed" | "community" | "registry-observed";
@@ -9153,6 +9243,26 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        SemanticSearchArtifact: {
+            count: number;
+            model: string;
+            query: string;
+            results: ({
+                categories: string[];
+                netuid: number;
+                score: number;
+                service_kinds: string[];
+                slug: string;
+                subtitle?: string | null;
+                title: string;
+                type: string;
+                url?: string | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+        } & {
+            [key: string]: unknown;
+        };
         SourceHealthArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -10730,6 +10840,26 @@ export interface components {
             /** @constant */
             schema_version: 1;
             surfaces: components["schemas"]["Surface"][];
+        } & {
+            [key: string]: unknown;
+        };
+        SurfaceVerifyArtifact: {
+            auth_required: boolean;
+            callable: boolean;
+            classification: string;
+            error?: string | null;
+            from_cache: boolean;
+            kind: string;
+            latency_ms?: number | null;
+            netuid: number;
+            probed_at?: string | null;
+            provider?: string | null;
+            schema_version: number;
+            status: string;
+            status_code?: number | null;
+            surface_id: string;
+            surface_key: string;
+            url: string;
         } & {
             [key: string]: unknown;
         };
@@ -21692,6 +21822,124 @@ export interface operations {
             };
         };
     };
+    surfaceVerifyByNetwork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+                surface_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "auth_required": true,
+                     *         "callable": false,
+                     *         "classification": "example",
+                     *         "error": "example",
+                     *         "from_cache": false,
+                     *         "kind": "example",
+                     *         "latency_ms": 120,
+                     *         "netuid": 7,
+                     *         "probed_at": "2026-06-01T00:00:00.000Z",
+                     *         "provider": "example-provider",
+                     *         "schema_version": 1,
+                     *         "status": "ok",
+                     *         "status_code": 1,
+                     *         "surface_id": "example",
+                     *         "surface_key": "example",
+                     *         "url": "https://api.metagraph.sh/example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SurfaceVerifyArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     accountsList: {
         parameters: {
             query?: {
@@ -25480,6 +25728,122 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AgentResourcesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    ask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskRequest"];
+            };
+        };
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "answer": "example",
+                     *         "citations": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "ref": 1,
+                     *             "score": 100,
+                     *             "slug": "example-subnet",
+                     *             "title": "Example Subnet",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "context_count": 1,
+                     *         "model": "example",
+                     *         "question": "example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AskArtifact"];
                     };
                 };
             };
@@ -38557,6 +38921,125 @@ export interface operations {
             };
         };
     };
+    searchSemantic: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "count": 1,
+                     *         "model": "example",
+                     *         "query": "example",
+                     *         "results": [
+                     *           {
+                     *             "categories": [
+                     *               "example"
+                     *             ],
+                     *             "netuid": 7,
+                     *             "score": 100,
+                     *             "service_kinds": [
+                     *               "example"
+                     *             ],
+                     *             "slug": "example-subnet",
+                     *             "title": "Example Subnet",
+                     *             "type": "example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SemanticSearchArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     selfHealth: {
         parameters: {
             query?: never;
@@ -46648,6 +47131,122 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    surfaceVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surface_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "auth_required": true,
+                     *         "callable": false,
+                     *         "classification": "example",
+                     *         "error": "example",
+                     *         "from_cache": false,
+                     *         "kind": "example",
+                     *         "latency_ms": 120,
+                     *         "netuid": 7,
+                     *         "probed_at": "2026-06-01T00:00:00.000Z",
+                     *         "provider": "example-provider",
+                     *         "schema_version": 1,
+                     *         "status": "ok",
+                     *         "status_code": 1,
+                     *         "surface_id": "example",
+                     *         "surface_key": "example",
+                     *         "url": "https://api.metagraph.sh/example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SurfaceVerifyArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

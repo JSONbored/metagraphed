@@ -896,6 +896,31 @@ export const PUBLIC_ARTIFACTS = [
     "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived alpha market-cap and FDV proxies, price-weighted emission share, and on-chain registration block height. `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition.",
     "EconomicsArtifact",
   ),
+  // --- The AI-native layer (ADR 0003), registered by #9092 -----------------
+  // Live since the layer shipped and absent from this contract until now, so
+  // openapi.json, the generated types, and every typed client were blind to
+  // the three endpoints an agent would most want.
+  artifact(
+    "ask",
+    "/metagraph/ai/ask.json",
+    "A grounded natural-language answer over the registry, served live at POST /api/v1/ask (no static file -- the response answers one caller's question). Retrieval runs over the embedded surface/subnet corpus; the answer carries inline [n] markers resolved by `citations`, each naming the surface, its netuid/slug, its URL, and the retrieval score, so every claim is traceable to a registered surface rather than to the model. `context_count` is how many retrieved documents were in the context window and `model` names the generator, so an answer stays attributable. Returns 503 ai_unavailable on a deployment with no AI binding.",
+    "AskArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "search-semantic",
+    "/metagraph/ai/search-semantic.json",
+    "Embedding-ranked discovery over the registry, served live at /api/v1/search/semantic (no static file). Matches by MEANING rather than by keyword, so it finds surfaces whose text never contains the query terms -- the complement to /api/v1/search, which is lexical. Each result carries its cosine `score`, what it is (`type`), the subnet (`netuid`/`slug`), a title/subtitle, the URL, and the surface's categories and service kinds. `model` names the embedding model so two runs can be told apart. Returns 503 ai_unavailable on a deployment with no AI binding.",
+    "SemanticSearchArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "surface-verify",
+    "/metagraph/surfaces/{surface_id}/verify.json",
+    "A catalog-resolved liveness probe of ONE registered surface, served live at /api/v1/surfaces/{surface_id}/verify (no static file -- a stored verdict would be a stale one). Deliberately not arbitrary URL fetching: the caller names a surface the registry already knows and the Worker probes the URL it has on file, echoing the resolved identity (`surface_key`, `netuid`, `kind`, `url`, `provider`, `auth_required`) beside the outcome so a client can see exactly what was called on its behalf. `status`/`classification`/`callable` are the verdict, `latency_ms`/`status_code`/`error` the evidence, and `from_cache` says whether this was a fresh probe. 404 surface_not_found when no catalogued surface matches the id.",
+    "SurfaceVerifyArtifact",
+    COMPUTED_LIVE,
+  ),
   artifact(
     "emission-pipeline",
     "/metagraph/chain/emission-pipeline.json",
@@ -2249,6 +2274,44 @@ export const API_ROUTES = [
     "standard",
     ["subnets"],
     csvListQuery("economics"),
+  ),
+  // --- The AI-native layer (ADR 0003), registered by #9092 -----------------
+  route(
+    "ask",
+    "POST",
+    "/api/v1/ask",
+    "/metagraph/ai/ask.json",
+    'Ask a natural-language question about the registry and get a grounded answer with citations. POST a JSON body `{ question }`; the answer carries inline [n] markers resolved by `citations`, each naming the surface it came from, so every claim is traceable to a registered surface rather than to the model. Use this when the question is exploratory ("which subnets expose a public inference API?"); use /api/v1/search/semantic when you want the ranked matches themselves rather than prose. Mirrored by the `ask` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.',
+    "short",
+    ["search"],
+    [],
+    [],
+    "AskRequest",
+  ),
+  route(
+    "search-semantic",
+    "GET",
+    "/api/v1/search/semantic",
+    "/metagraph/ai/search-semantic.json",
+    "Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms. The complement to /api/v1/search, which is lexical -- reach for that one when you know the exact name. Each result carries its score, type, netuid/slug, title/subtitle, URL, categories, and service kinds; `model` names the embedding model. ?limit caps the list. Mirrored by the `semantic_search` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.",
+    "short",
+    ["search"],
+    [
+      { name: "q", schema: { type: "string" } },
+      { name: "limit", schema: { type: "string" } },
+    ],
+    [],
+  ),
+  route(
+    "surface-verify",
+    "GET",
+    "/api/v1/surfaces/{surface_id}/verify",
+    "/metagraph/surfaces/{surface_id}/verify.json",
+    "Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches.",
+    "short",
+    ["surfaces"],
+    [],
+    [{ name: "surface_id", schema: { type: "string" } }],
   ),
   route(
     "emission-pipeline",
@@ -4564,6 +4627,23 @@ export const API_ROUTES = [
   ),
 ];
 
+/**
+ * Every HTTP method the registered routes actually use, derived from
+ * {@link API_ROUTES} rather than listed (#9092).
+ *
+ * The route index publishes each route's method and constrains it against this
+ * set. It was a hardcoded `"GET"` literal until POST /api/v1/ask was
+ * registered -- the same "every route is a GET" assumption that lived in the
+ * OpenAPI drift check and in validate-api's dispatcher, and that kept the
+ * AI-native layer out of the contract. Deriving it means adding a route with a
+ * new verb updates the constraint by construction.
+ *
+ * Sorted so the generated contract is stable regardless of declaration order.
+ */
+export const API_ROUTE_METHODS = [
+  ...new Set(API_ROUTES.map((entry) => entry.method)),
+].sort() as [string, ...string[]];
+
 // ── feed routes (#8703) ─────────────────────────────────────────────────────
 //
 // The feed system (src/feeds.ts, #741) shipped complete and undocumented: no
@@ -4784,10 +4864,16 @@ const DATA_NETWORK_ALIASES = ["finney", "mainnet", "test", "testnet"];
  * either direction. A hand-copied version of this list was wrong by 77 entries
  * on the first attempt, which is exactly why it is proven rather than trusted.
  *
- * 111 of 180 routes: most of the API is mainnet-only today, because we do not
+ * 113 of 183 routes: most of the API is mainnet-only today, because we do not
  * index testnet chain data (#8700 is the issue that would change that).
  */
 export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
+  // The AI-native layer (#9092). The embedded corpus and the retrieval index
+  // are built from mainnet registry data, so a testnet-addressed question has
+  // nothing to answer from. /api/v1/surfaces/{surface_id}/verify is NOT here:
+  // it probes a URL off the surface record, which testnet has too.
+  "/api/v1/ask",
+  "/api/v1/search/semantic",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",
@@ -5237,6 +5323,22 @@ export function buildOpenApiArtifact(
             required: false,
           })),
         ],
+        // Omitted entirely rather than emitted empty for the 180 GET routes
+        // that have none -- an empty requestBody is a claim, not an absence.
+        ...(entry.request_body_schema
+          ? {
+              requestBody: {
+                required: true,
+                content: {
+                  "application/json": {
+                    schema: {
+                      $ref: `#/components/schemas/${entry.request_body_schema}`,
+                    },
+                  },
+                },
+              },
+            }
+          : {}),
         responses: {
           200: {
             description: entry.csv_response
@@ -5631,12 +5733,18 @@ function route(
   tags: string[],
   queryParameters: QueryParametersInput = [],
   pathParameters: Row[] = [],
+  // #9092: the component name of a JSON request body, for the routes that take
+  // one. Every route was GET until /api/v1/ask was registered, so nothing in
+  // this contract could express a body -- and an operation whose body is
+  // undocumented is worse than no entry at all when the body IS the input.
+  requestBodySchema: string | null = null,
 ) {
   const querySpec = normalizeQueryParameters(queryParameters);
   return {
     id,
     method,
     path: pathValue,
+    request_body_schema: requestBodySchema,
     artifact_path: artifactPath,
     description,
     cache,

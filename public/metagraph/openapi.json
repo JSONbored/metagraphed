@@ -1611,6 +1611,50 @@
           "schema_version": 1
         }
       },
+      "AskArtifactResponse": {
+        "value": {
+          "data": {
+            "answer": "example",
+            "citations": [
+              {
+                "netuid": 7,
+                "ref": 1,
+                "score": 100,
+                "slug": "example-subnet",
+                "title": "Example Subnet",
+                "url": "https://api.metagraph.sh/example"
+              }
+            ],
+            "context_count": 1,
+            "model": "example",
+            "question": "example"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "BlockChainEventsArtifactResponse": {
         "value": {
           "data": {
@@ -7238,6 +7282,54 @@
           "schema_version": 1
         }
       },
+      "SemanticSearchArtifactResponse": {
+        "value": {
+          "data": {
+            "count": 1,
+            "model": "example",
+            "query": "example",
+            "results": [
+              {
+                "categories": [
+                  "example"
+                ],
+                "netuid": 7,
+                "score": 100,
+                "service_kinds": [
+                  "example"
+                ],
+                "slug": "example-subnet",
+                "title": "Example Subnet",
+                "type": "example"
+              }
+            ]
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SourceHealthArtifactResponse": {
         "value": {
           "data": {
@@ -10606,6 +10698,52 @@
                 "url": "https://api.metagraph.sh/example"
               }
             ]
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
+      "SurfaceVerifyArtifactResponse": {
+        "value": {
+          "data": {
+            "auth_required": true,
+            "callable": false,
+            "classification": "example",
+            "error": "example",
+            "from_cache": false,
+            "kind": "example",
+            "latency_ms": 120,
+            "netuid": 7,
+            "probed_at": "2026-06-01T00:00:00.000Z",
+            "provider": "example-provider",
+            "schema_version": 1,
+            "status": "ok",
+            "status_code": 1,
+            "surface_id": "example",
+            "surface_key": "example",
+            "url": "https://api.metagraph.sh/example"
           },
           "meta": {
             "artifact_path": "example",
@@ -15892,7 +16030,10 @@
                   "type": "boolean"
                 },
                 "method": {
-                  "const": "GET",
+                  "enum": [
+                    "GET",
+                    "POST"
+                  ],
                   "type": "string"
                 },
                 "networks": {
@@ -16017,6 +16158,85 @@
         "required": [
           "schema_version",
           "generated_at"
+        ],
+        "type": "object"
+      },
+      "AskArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "ref": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ref",
+                "score",
+                "title",
+                "netuid",
+                "slug",
+                "url"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "context_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer",
+          "citations",
+          "context_count",
+          "model"
+        ],
+        "type": "object"
+      },
+      "AskRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
         ],
         "type": "object"
       },
@@ -34725,6 +34945,96 @@
         ],
         "type": "object"
       },
+      "SemanticSearchArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "categories": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "service_kinds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "subtitle": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "score",
+                "type",
+                "netuid",
+                "slug",
+                "title",
+                "categories",
+                "service_kinds"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "count",
+          "results",
+          "model"
+        ],
+        "type": "object"
+      },
       "SourceHealthArtifact": {
         "additionalProperties": {},
         "properties": {
@@ -44447,6 +44757,114 @@
           "generated_at",
           "schema_version",
           "surfaces"
+        ],
+        "type": "object"
+      },
+      "SurfaceVerifyArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "auth_required": {
+            "type": "boolean"
+          },
+          "callable": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_cache": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "probed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "status_code": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "surface_key": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "surface_id",
+          "surface_key",
+          "netuid",
+          "kind",
+          "url",
+          "auth_required",
+          "status",
+          "classification",
+          "callable",
+          "from_cache"
         ],
         "type": "object"
       },
@@ -59142,6 +59560,130 @@
         ]
       }
     },
+    "/api/v1/{network}/surfaces/{surface_id}/verify": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "surfaceVerifyByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "surface_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SurfaceVerifyArtifactResponse": {
+                    "$ref": "#/components/examples/SurfaceVerifyArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SurfaceVerifyArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches.",
+        "tags": [
+          "surfaces"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/accounts": {
       "get": {
         "operationId": "accountsList",
@@ -63038,6 +63580,113 @@
           "mainnet",
           "test",
           "testnet"
+        ]
+      }
+    },
+    "/api/v1/ask": {
+      "post": {
+        "operationId": "ask",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AskArtifactResponse": {
+                    "$ref": "#/components/examples/AskArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AskArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Ask a natural-language question about the registry and get a grounded answer with citations. POST a JSON body `{ question }`; the answer carries inline [n] markers resolved by `citations`, each naming the surface it came from, so every claim is traceable to a registered surface rather than to the model. Use this when the question is exploratory (\"which subnets expose a public inference API?\"); use /api/v1/search/semantic when you want the ranked matches themselves rather than prose. Mirrored by the `ask` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.",
+        "tags": [
+          "search"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
         ]
       }
     },
@@ -78912,6 +79561,120 @@
         ]
       }
     },
+    "/api/v1/search/semantic": {
+      "get": {
+        "operationId": "searchSemantic",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SemanticSearchArtifactResponse": {
+                    "$ref": "#/components/examples/SemanticSearchArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SemanticSearchArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms. The complement to /api/v1/search, which is lexical -- reach for that one when you know the exact name. Each result carries its score, type, netuid/slug, title/subtitle, URL, categories, and service kinds; `model` names the embedding model. ?limit caps the list. Mirrored by the `semantic_search` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.",
+        "tags": [
+          "search"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
     "/api/v1/self-health": {
       "get": {
         "operationId": "selfHealth",
@@ -87463,6 +88226,114 @@
           }
         },
         "summary": "List curated public surfaces.",
+        "tags": [
+          "surfaces"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/surfaces/{surface_id}/verify": {
+      "get": {
+        "operationId": "surfaceVerify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "surface_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SurfaceVerifyArtifactResponse": {
+                    "$ref": "#/components/examples/SurfaceVerifyArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SurfaceVerifyArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches.",
         "tags": [
           "surfaces"
         ],
