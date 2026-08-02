@@ -1645,6 +1645,43 @@ describe("not_callable vs not_found (#8652)", () => {
     assert.doesNotMatch(message, /surfaces are: *[.,]/);
   });
 
+  // #9064: the netuid is right there in `sn64-…`; rejecting it for a missing
+  // hyphen turned a one-hop recovery into a dead end. Observed in production
+  // on 2026-07-29, inside a run of 1,265 distinct constructed ids.
+  test("a near-miss separator still recovers the subnet's real surfaces", async () => {
+    for (const guessed of [
+      "sn5-taomarketcap-dashboard",
+      "sn-5_taomarketcap-dashboard",
+    ]) {
+      const result = await call({ surface_id: guessed });
+      const error = (result.structuredContent as Row).error as Row;
+      assert.equal(error.code, "not_found", guessed);
+      // Same recovery the canonical spelling gets: this subnet's real ids.
+      assert.match(String(error.message), /x:api:1/, guessed);
+    }
+  });
+
+  // The widening must not start claiming a netuid where there is none, or a
+  // genuinely unrelated id would be answered with some arbitrary subnet's
+  // surface list -- confidently wrong is worse than the dead end.
+  test("a near-miss parse does not invent a netuid", async () => {
+    for (const notAnSn of [
+      "snap-5-thing",
+      "sn-thing",
+      "sn5thing",
+      "taostats-api-v1",
+    ]) {
+      const result = await call({ surface_id: notAnSn });
+      const error = (result.structuredContent as Row).error as Row;
+      assert.equal(error.code, "not_found", notAnSn);
+      assert.doesNotMatch(
+        String(error.message),
+        /callable surfaces are:/,
+        notAnSn,
+      );
+    }
+  });
+
   test("an id with no netuid in it still gets the discovery pointer", async () => {
     const result = await call({ surface_id: "some-provider-thing" });
     const error = (result.structuredContent as Row).error as Row;

@@ -2312,7 +2312,18 @@ function normalizeSurfaceCredentialArgument(
 // `metagraphed-fullnode-rpc` has no subnet in it). Only used to make a
 // not_found message actionable -- never to resolve a surface.
 export function netuidFromSurfaceId(surfaceId: string): number | null {
-  const match = /^sn-(\d{1,5})-/.exec(surfaceId.trim());
+  // Tolerant of the separator, deliberately. Real ids are always `sn-<n>-…`,
+  // but this function's ONLY job is to make a failed lookup actionable by
+  // naming the right subnet's real surfaces -- so it should read the netuid out
+  // of a near-miss too. `sn64-chutes-api` is an observed production guess
+  // (2026-07-29, in a run of 1,265 distinct constructed ids): the netuid is
+  // right there, and rejecting it for a missing hyphen turned a one-hop
+  // recovery into a dead end.
+  //
+  // Widening this cannot mis-route a real lookup: every caller runs only AFTER
+  // the id failed to resolve against both the operational catalog and the full
+  // registry, so there is no id it could steal.
+  const match = /^sn-?(\d{1,5})[-_]/.exec(surfaceId.trim());
   if (!match) return null;
   const netuid = Number(match[1]);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
