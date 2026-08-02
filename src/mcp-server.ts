@@ -189,6 +189,7 @@ import {
 } from "../schemas-src/mcp-tools/get-emission-pipeline.ts";
 import {
   isUsageTelemetryConfigured,
+  recordAiDegradedEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpToolCallEvent,
@@ -1391,6 +1392,7 @@ interface McpCtx {
   recordMcpInitializeEvent?: AnyFn;
   recordMcpToolsListEvent?: AnyFn;
   recordExceptionEvent?: AnyFn;
+  recordAiDegradedEvent?: AnyFn;
 }
 
 // Explicit element type for MCP_TOOLS (types-epic E, #7863): without this,
@@ -2800,7 +2802,16 @@ async function rankSubnetsForTask(
       // purely non-callable matches falls through to keyword discovery.
       if (ranked.length > 0) return { mode: "semantic", ranked };
     } catch {
-      // AI hiccup → fall back to keyword discovery below.
+      // #8999: falling back is correct; falling back SILENTLY was not. The
+      // agent asked for semantic matching on intent and gets keyword matching,
+      // with nothing in the response saying so -- results look plausible and
+      // are quietly worse. Same shape as the fabricated $ai_input_tokens: 0
+      // fixed in #8979: the degraded path was indistinguishable from the
+      // healthy one, so nobody looked.
+      scheduleAiDegradedEvent(ctx, {
+        reason: "semantic_search_failed",
+        surface: "find_subnet_for_task",
+      });
     }
   }
   const index = await loadArtifactData(ctx, "/metagraph/search.json");
@@ -12246,6 +12257,23 @@ function scheduleMcpInitializeEvent(ctx: McpCtx, event: Row) {
 // metagraphed#7758: PostHog $exception capture (Sentry.captureException
 // removed here once parity was proven, #7766). Same waitUntil/no-throw
 // discipline as the schedulers above.
+// #8999: an AI outage silently changed what a tool MEANS -- the agent asked
+// for semantic matching on intent and got keyword matching, with no indication
+// in the response and no event anywhere. recordAiDegradedEvent already existed
+// and was already used for the rate-limited case in src/ai-search.ts; the
+// largest consumer of semantic search simply never called it.
+function scheduleAiDegradedEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record = ctx?.recordAiDegradedEvent ?? recordAiDegradedEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
 function scheduleExceptionEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordExceptionEvent ?? recordExceptionEvent;
@@ -12562,6 +12590,7 @@ function buildContext(request: Request, env: Env, deps: Row, authTier: string) {
     recordMcpInitializeEvent: deps.recordMcpInitializeEvent,
     recordMcpToolsListEvent: deps.recordMcpToolsListEvent,
     recordExceptionEvent: deps.recordExceptionEvent,
+    recordAiDegradedEvent: deps.recordAiDegradedEvent,
   };
 }
 
