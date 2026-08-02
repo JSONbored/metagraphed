@@ -19,6 +19,13 @@ import {
   compileRoutePattern,
 } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../src/metagraph-neurons.ts";
+import { MOVERS_LIMIT_MAX } from "../src/movers.ts";
+import { CHAIN_TURNOVER_LIMIT_MAX } from "../src/chain-turnover.ts";
+import { TOP_HOLDERS_LIMIT_MAX } from "../src/top-holders.ts";
+import { ACCOUNTS_LIST_LIMIT_MAX } from "../src/accounts-list.ts";
+import { SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX } from "../src/account-events.ts";
+import { CHAIN_IDENTITY_HISTORY_LIMIT_MAX } from "../src/chain-identity-history.ts";
 import type { Row } from "./row-type.ts";
 
 // #8703: feeds are their own registry (FEED_ROUTES) because they serve feed
@@ -333,4 +340,97 @@ describe("contracts — compileRoutePattern per token type", () => {
       "/metagraph/subnets/.json",
     );
   });
+});
+
+// #9127: /api/v1/validators enforced limit 2000 (GLOBAL_VALIDATOR_LIMIT_MAX,
+// raised 100 -> 2000 by #8251 so the directory can fetch the full validator set
+// in one request) while the contract still declared 100 -- a consumer
+// generating a client from openapi.json got one that rejects, at build time, the
+// exact ?limit=2000 call the validators directory makes. The number was correct
+// in one file and stale in another because nothing tied the two together.
+//
+// This guard removes that freedom for EVERY constant-backed limit: the pairing
+// (which runtime constant governs which route's `limit` maximum) is the declared
+// judgement below, but both VALUES are read from source -- the constant from its
+// module, the declared maximum from API_ROUTES -- so neither side can move
+// without the other. Changing either number fails here, named by route.
+const CONSTANT_BACKED_LIMIT_MAXIMUMS: ReadonlyArray<{
+  path: string;
+  param: string;
+  constant: number;
+  constantName: string;
+}> = [
+  {
+    path: "/api/v1/validators",
+    param: "limit",
+    constant: GLOBAL_VALIDATOR_LIMIT_MAX,
+    constantName: "GLOBAL_VALIDATOR_LIMIT_MAX",
+  },
+  {
+    path: "/api/v1/accounts",
+    param: "limit",
+    constant: ACCOUNTS_LIST_LIMIT_MAX,
+    constantName: "ACCOUNTS_LIST_LIMIT_MAX",
+  },
+  {
+    path: "/api/v1/accounts/top-holders",
+    param: "limit",
+    constant: TOP_HOLDERS_LIMIT_MAX,
+    constantName: "TOP_HOLDERS_LIMIT_MAX",
+  },
+  {
+    path: "/api/v1/subnets/movers",
+    param: "limit",
+    constant: MOVERS_LIMIT_MAX,
+    constantName: "MOVERS_LIMIT_MAX",
+  },
+  {
+    path: "/api/v1/chain/turnover",
+    param: "limit",
+    constant: CHAIN_TURNOVER_LIMIT_MAX,
+    constantName: "CHAIN_TURNOVER_LIMIT_MAX",
+  },
+  {
+    path: "/api/v1/chain/identity-history",
+    param: "limit",
+    constant: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+    constantName: "CHAIN_IDENTITY_HISTORY_LIMIT_MAX",
+  },
+  {
+    path: "/api/v1/subnets/{netuid}/event-summary",
+    param: "limit",
+    constant: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+    constantName: "SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX",
+  },
+];
+
+describe("contracts — constant-backed limit maxima cannot drift (#9127)", () => {
+  for (const {
+    path,
+    param,
+    constant,
+    constantName,
+  } of CONSTANT_BACKED_LIMIT_MAXIMUMS) {
+    test(`${path} ?${param}.maximum equals ${constantName}`, () => {
+      const routeEntry = API_ROUTES.find((entry) => entry.path === path);
+      assert.ok(routeEntry, `no route registered for ${path}`);
+      const parameter = (
+        routeEntry.query_parameters as ReadonlyArray<{
+          name: string;
+          schema: Row;
+        }>
+      ).find((candidate) => candidate.name === param);
+      assert.ok(
+        parameter,
+        `route ${path} has no ${param} query parameter to bound`,
+      );
+      assert.equal(
+        parameter.schema.maximum,
+        constant,
+        `${path} declares ${param} maximum ${parameter.schema.maximum} but its ` +
+          `runtime ceiling ${constantName} is ${constant} -- update whichever is ` +
+          `stale so the published contract matches what the route enforces`,
+      );
+    });
+  }
 });

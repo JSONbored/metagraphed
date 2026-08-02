@@ -2874,7 +2874,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators",
     "/metagraph/validators.json",
-    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
+    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons D1 tier.",
     "short",
     ["validators", "analytics"],
     csvRouteQuery([
@@ -2895,7 +2895,11 @@ export const API_ROUTES = [
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 100 },
+        // #8251 raised the runtime ceiling (GLOBAL_VALIDATOR_LIMIT_MAX,
+        // src/metagraph-neurons.ts) 100 -> 2000 so the validators directory can
+        // fetch the full live set (~1,014) in one request; the contract lagged
+        // (#9127). tests/invariants-contracts.ts now pins this to the constant.
+        schema: { type: "integer", minimum: 1, maximum: 2000 },
       },
     ]),
     [],
