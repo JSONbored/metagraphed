@@ -29,8 +29,19 @@ const ROOTS = ["src", "workers"];
 const REGISTRY_MODULE = "src/module-state-registry.ts";
 
 const LET_DECL = /^let ([A-Za-z_$][\w$]*)/gm;
+// #8988: the type-argument list is OPTIONAL. This used to require `new Set(`
+// immediately, so every GENERICALLY-TYPED module-level collection was
+// invisible to the gate -- in a TypeScript codebase, i.e. the common case. A
+// `const x = new Set<string>()` with `.add()` calls passed a validator whose
+// entire purpose is to catch exactly that.
+//
+// The type argument is matched by balanced-depth scanning rather than a
+// character class: `new Map<string, Map<string, string>>(` is real code here
+// (workers/storage.ts's runManifestMemo), and `<[^>]*>` stops at the first
+// `>` and misses it -- a half-fix that would have left the nested case
+// exactly as blind as before.
 const COLLECTION_DECL =
-  /^const ([A-Za-z_$][\w$]*)(?:\s*:[^=]+)?\s*=\s*new (?:Map|Set|WeakMap|WeakSet)\(/gm;
+  /^const ([A-Za-z_$][\w$]*)(?:\s*:[^=]+)?\s*=\s*new (?:Map|Set|WeakMap|WeakSet)\s*(<[^<>]*(?:<[^<>]*>[^<>]*)*>)?\s*\(/gm;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -42,7 +53,16 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-function mutableStateIn(source: string): string[] {
+/**
+ * The module-level mutable state declared in `source`.
+ *
+ * #8988: exported so the gate's own detection is testable. It was not, and the
+ * consequence was a regex that silently missed every generically-typed
+ * collection -- in a TypeScript codebase, the common case -- for as long as
+ * nobody happened to look. A validator nobody can test is a validator nobody
+ * knows the coverage of.
+ */
+export function mutableStateIn(source: string): string[] {
   const mutable: string[] = [];
 
   for (const match of source.matchAll(LET_DECL)) {

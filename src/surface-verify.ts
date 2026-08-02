@@ -5,6 +5,7 @@
 // re-probes the exact URLs the 15-minute health cron already probes, just on
 // demand. The worker layer adds the rate limiter + a 60s per-surface cache so
 // repeated calls can't fan out into real outbound probes.
+import { registerModuleStateReset } from "./module-state-registry.ts";
 import { probeSurface, type ProbeSurface } from "./health-probe-core.ts";
 import { resolveSurfaceAlias } from "./surface-aliases.ts";
 
@@ -105,6 +106,15 @@ export function verifyCacheRequest(surface: Row): Request {
 }
 
 const verifyInFlight = new Map<string, Promise<Row>>();
+
+// #8988: an in-flight-promise dedupe map is exactly the cross-file channel the
+// registry exists to close -- under `isolate: false` a file that leaves a
+// pending or rejected promise here hands it to the next file, which then sees
+// a verification it never started. This went unregistered because
+// validate-module-state-resets.ts could not see generically-typed collections.
+registerModuleStateReset("src/surface-verify.ts", () => {
+  verifyInFlight.clear();
+});
 
 function verifyInFlightKey(
   cacheKey: Request,
