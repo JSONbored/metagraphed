@@ -9,6 +9,7 @@ import {
   recordTraceSpan,
   shouldSampleTrace,
   timedSpan,
+  POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV,
   tracesSampleRate,
   type TraceSpanInput,
 } from "../src/tracing.ts";
@@ -255,5 +256,70 @@ describe("timedSpan", () => {
       assert.equal(result.error, boom);
     }
     assert.ok(result.endedAt >= result.startedAt);
+  });
+});
+
+// #9000: one global rate cannot fit this project's traffic shape. Tracing had
+// been wired into four Workers since #7768 and emitted ZERO spans in 30 days,
+// and the obvious fix — set a global rate — is wrong here:
+//
+//   REST  ~1.1M requests/day   -> even 1% is 330K spans/month
+//   MCP   ~1.9K tool calls/day -> 100% is ~56K spans/month
+//
+// against a 1M/month free tier the project is already ~33x over on events
+// alone. A rate useful on MCP is ruinous on REST; a rate safe on REST rounds
+// to no MCP spans at all.
+describe("per-surface trace sampling (#9000)", () => {
+  test("the mcp surface uses its own rate", () => {
+    const env = mockEnv({ [POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV]: "1" });
+    assert.equal(tracesSampleRate(env, "mcp"), 1);
+    // ...and REST is untouched by it — this is the whole point.
+    assert.equal(tracesSampleRate(env), 0);
+  });
+
+  test("mcp falls back to the general rate when it has none of its own", () => {
+    const env = mockEnv({ [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "0.05" });
+    assert.equal(tracesSampleRate(env, "mcp"), 0.05);
+    assert.equal(tracesSampleRate(env), 0.05);
+  });
+
+  // Absent and invalid are different: absent falls THROUGH to the general
+  // rate, invalid falls back to the default. Coercing an unset key with
+  // Number() yields NaN, which is indistinguishable from a typo'd value — so
+  // a typo must not silently inherit the general rate.
+  test("an invalid mcp rate does not silently inherit the general rate", () => {
+    const env = mockEnv({
+      [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "0.5",
+      [POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV]: "nope",
+    });
+    assert.equal(tracesSampleRate(env, "mcp"), 0.5);
+  });
+
+  test("an out-of-range mcp rate is rejected, not clamped", () => {
+    for (const bad of ["1.5", "-1"]) {
+      assert.equal(
+        tracesSampleRate(
+          mockEnv({ [POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV]: bad }),
+          "mcp",
+        ),
+        0,
+      );
+    }
+  });
+
+  // The zero default is load-bearing for test determinism (see the module
+  // header): no test sets either var, so nothing becomes randomly flaky.
+  test("both surfaces default to 0 with nothing configured", () => {
+    assert.equal(tracesSampleRate(mockEnv()), 0);
+    assert.equal(tracesSampleRate(mockEnv(), "mcp"), 0);
+    assert.equal(shouldSampleTrace(mockEnv(), "mcp"), false);
+  });
+
+  test("an mcp rate of 1 always samples", () => {
+    const env = mockEnv({ [POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV]: "1" });
+    for (let i = 0; i < 20; i += 1) {
+      assert.equal(shouldSampleTrace(env, "mcp"), true);
+      assert.equal(shouldSampleTrace(env), false);
+    }
   });
 });

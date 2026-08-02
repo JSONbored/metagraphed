@@ -48,19 +48,69 @@ export const POSTHOG_TRACES_PATH = "/i/v1/traces";
  * keeps every test call-count assertion deterministic by construction (no
  * test sets this var), while a real deployment sets it once, deliberately. */
 export const POSTHOG_TRACES_SAMPLE_RATE_ENV = "POSTHOG_TRACES_SAMPLE_RATE";
+
+/**
+ * #9000: a PER-SURFACE override, because one global rate cannot fit this
+ * project's traffic shape.
+ *
+ * Tracing has been wired into four Workers since #7768 and has emitted ZERO
+ * spans in 30 days -- the rate defaults to 0 and was set in no wrangler
+ * config. The obvious fix (set a global rate) is wrong here, and the
+ * arithmetic is why:
+ *
+ *   REST  ~1.1M requests/day  -> even 1% is 11K spans/day, 330K/month
+ *   MCP   ~1.9K tool calls/day -> 100% is ~1.9K spans/day, ~56K/month
+ *
+ * against a PostHog FREE tier of 1M events/month, which the project is
+ * already ~33x over on events alone (#9004). A global rate high enough to be
+ * useful on MCP would be ruinous on REST; a global rate safe on REST rounds
+ * to no MCP spans at all.
+ *
+ * So the surfaces are separated. MCP -- the priority surface, and the cheap
+ * one -- can run at a rate that actually answers questions, while REST stays
+ * dark until its volume is dealt with. Turning REST on later is a config
+ * change, not a code change.
+ */
+export const POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV =
+  "POSTHOG_TRACES_SAMPLE_RATE_MCP";
+
 const DEFAULT_TRACES_SAMPLE_RATE = 0;
 
-export function tracesSampleRate(env: Env | null | undefined): number {
-  const raw = Number(env?.[POSTHOG_TRACES_SAMPLE_RATE_ENV]);
-  return Number.isFinite(raw) && raw >= 0 && raw <= 1
-    ? raw
-    : DEFAULT_TRACES_SAMPLE_RATE;
+function readRate(env: Env | null | undefined, key: string): number | null {
+  const value = env?.[key as keyof Env];
+  // Absent is different from invalid: absent falls through to the general
+  // rate, invalid falls back to the default. Coercing an unset key with
+  // Number() gives NaN, which is indistinguishable from a typo'd value.
+  if (value === undefined || value === null || value === "") return null;
+  const raw = Number(value);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : null;
+}
+
+/**
+ * The sample rate for a surface. `surface` "mcp" consults the MCP-specific
+ * rate first and falls back to the general one, so a deployment that sets only
+ * the general rate keeps its previous behaviour exactly.
+ */
+export function tracesSampleRate(
+  env: Env | null | undefined,
+  surface?: "mcp",
+): number {
+  if (surface === "mcp") {
+    const mcp = readRate(env, POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV);
+    if (mcp !== null) return mcp;
+  }
+  return (
+    readRate(env, POSTHOG_TRACES_SAMPLE_RATE_ENV) ?? DEFAULT_TRACES_SAMPLE_RATE
+  );
 }
 
 /** Sampling decision only -- callers still gate on isUsageTelemetryConfigured
  * separately (no point rolling dice on a deployment with no PostHog token). */
-export function shouldSampleTrace(env: Env | null | undefined): boolean {
-  return Math.random() < tracesSampleRate(env);
+export function shouldSampleTrace(
+  env: Env | null | undefined,
+  surface?: "mcp",
+): boolean {
+  return Math.random() < tracesSampleRate(env, surface);
 }
 
 function randomHex(byteLength: number): string {

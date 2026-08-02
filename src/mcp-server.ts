@@ -12407,7 +12407,10 @@ async function dispatchTool(
       toolOk = false;
       throw err;
     } finally {
-      if (shouldSampleTrace(ctx?.env)) {
+      // #9000: the "mcp" surface rate, not the global one. MCP is ~1.9K tool
+      // calls/day against REST's ~1.1M requests/day, so it can afford a rate
+      // that actually answers questions while REST stays dark.
+      if (shouldSampleTrace(ctx?.env, "mcp")) {
         scheduleTraceSpan(ctx, {
           traceId: newTraceId(),
           spanId: newSpanId(),
