@@ -5850,6 +5850,9 @@ export function compileRoutePattern(pathTemplate: string) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
     .replace(/\{uid\}/g, "__METAGRAPH_UID__")
+    // Crowdloan {crowdloan_id} (#8696): a u32 id, same numeric shape as
+    // {uid}, kept as its own token since it indexes an unrelated collection.
+    .replace(/\{crowdloan_id\}/g, "__METAGRAPH_CROWDLOAN_ID__")
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     // {hotkey} (#4334/7.1) is structurally the same SS58 shape as {ss58} —
     // just a more self-documenting path-parameter name for a route that only
@@ -5874,6 +5877,7 @@ export function compileRoutePattern(pathTemplate: string) {
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
     .replace(/__METAGRAPH_UID__/g, "(?<uid>\\d+)")
+    .replace(/__METAGRAPH_CROWDLOAN_ID__/g, "(?<crowdloan_id>\\d+)")
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
