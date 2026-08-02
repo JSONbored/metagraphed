@@ -34,16 +34,28 @@ between the lakehouse and D1.
 Coverage is continuous by construction, and each boundary was measured:
 
 ```
-chain_events   1 ─────────────────────► 8,756,634
+chain_events   1 ─────────────────────────► 8,759,336
+chain.extrinsics ───────────────────────────► 8,759,336
 raw NDJSON                    8,756,635 ──────────► advancing
-blocks         0 ───────────────────────► 8,756,998
+blocks         0 ───────────────────────────► 8,759,336
 blocks_head             8,755,245 ─────────────────► advancing
 ```
 
-`RAW_CAPTURE_GENESIS_FLOOR` (8,756,635) is deliberately `max(chain_events) + 1`,
-and `DEFAULT_BLOCKS_SEAM` (8,756,998) is exactly `max(chain.blocks)`. **If you
-re-export or backfill, re-measure both** — they are constants precisely so the
-boundary is reproducible, and a stale one silently mis-routes reads.
+Re-measured 2026-08-02 (#9161). The decoder has run: `chain.extrinsics` and
+`chain.account_events` now reach the same height as `chain.blocks`, so the
+"captured but not queryable" range described below is closed up to 8,759,336.
+
+`DEFAULT_BLOCKS_SEAM` is exactly `max(chain.blocks)` = **8,759,336**. It was
+8,756,998 for long enough to matter: the drift is invisible while the box
+answers reads and would have started mis-routing at the wipe.
+`scripts/check-lakehouse-seam.ts` now fails when the constant and the lakehouse
+diverge, so **re-measuring after a backfill is enforced rather than remembered**.
+
+`RAW_CAPTURE_GENESIS_FLOOR` (8,756,635) is deliberately left where it is. It is
+the raw lane's STARTING height, so a value below the decoded ceiling only
+re-captures settled blocks — wasteful but safe — while raising it above the
+decoder's input would starve the pipeline. Over-capture is recoverable;
+under-capture is not.
 
 Verify coverage at any time:
 
