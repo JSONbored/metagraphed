@@ -143,6 +143,7 @@
     "endpoint:brief": "node scripts/endpoint-ops-brief.ts"
   },
   "dependencies": {
+    "@cloudflare/containers": "^0.3.7",
     "@cloudflare/workers-oauth-provider": "^0.8.2",
     "@duckdb/node-api": "^1.5.4-r.1",
     "@jsonbored/chain-summaries": "*",

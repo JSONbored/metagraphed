@@ -349,6 +349,7 @@ import {
 } from "../src/ai-search.ts";
 import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
+import { ensurePollerRunning } from "./poller-container-control.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
 import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
 import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
@@ -1475,6 +1476,18 @@ async function dispatchScheduled(
     return runEmbeddingSync(env, { readArtifact });
   }
   if (cron === RAW_CAPTURE_CRON) {
+    // #9146: keep the poller Container alive on the same tick. Containers
+    // sleep when idle and the poller is a forever-loop, so something has to
+    // reset the idle timer; piggy-backing on this 5-minute cron avoids adding
+    // a trigger whose only job is a keep-alive. Reported, never thrown -- a
+    // failed ping must not stop the capture below it.
+    ctx.waitUntil(
+      ensurePollerRunning(env).then((outcome) => {
+        if (!outcome.ok) {
+          console.error("[poller-container] not running:", outcome.detail);
+        }
+      }),
+    );
     // Gap-free capture of raw extrinsic/event bytes into R2, replacing what
     // the decommissioned indexer box used to produce. Durable-first on
     // purpose: the bytes land before anything decodes them, because decode is

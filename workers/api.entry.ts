@@ -37,6 +37,13 @@ export {
   AlerterHub,
   SubnetStatusHub,
 } from "./api.ts";
+// #9146: exported from the class module directly, NOT re-exported through
+// api.ts. @cloudflare/containers' dist entry imports "./lib/container" with no
+// file extension, which plain Node ESM cannot resolve -- so any Node-run
+// script that imports api.ts (validate:committed-seed and friends) would die
+// at module load. Only wrangler bundles THIS file, so the dependency stays on
+// the deployed path and off every script's.
+export { PollerContainer } from "./poller-container.ts";
 
 // GitHub OAuth (metagraphed#7151): OAuthProvider owns top-level fetch
 // dispatch (its own /oauth/token + /oauth/register endpoints, plus routing

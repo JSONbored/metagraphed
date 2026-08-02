@@ -212,7 +212,15 @@ const patterns: SafetyPattern[] = [
     // scrubbed (PR #5091) -- an obviously-synthetic placeholder value, not a
     // real credential shape, allowlisted by its exact text rather than a
     // broader pattern so it can't accidentally cover a real one.
-    allow: /=\s*process\.env\.|api_key=SECRET_TOKEN_123\b/gi,
+    // The third is a Worker's own binding reference -- `env.NAME` or
+    // `this.env.NAME`, including in object-literal form (`NAME: this.env.NAME`)
+    // -- which is the SAME class as `process.env.NAME` above: a reference to a
+    // binding's NAME, never a literal VALUE. Workers have no `process`, so
+    // without this every legitimate secret passthrough in workers/ trips a
+    // rule whose whole purpose is catching hardcoded credentials (#9146:
+    // poller-container.ts's envVars).
+    allow:
+      /=\s*process\.env\.|[:=]\s*(?:this\.)?env\.[A-Z0-9_]+|api_key=SECRET_TOKEN_123\b/gi,
   },
   // `soft` patterns are terminology heuristics (not actual secrets). They are
   // skipped for mirrored third-party OpenAPI specs, where wording like "seed

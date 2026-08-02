@@ -144,6 +144,9 @@ interface Env {
 // capturing before the migration that creates its watermark table.
 interface Env {
   RAW_CAPTURE_ENABLED?: string;
+  /** #9146: the chain-state poller Container (workers/poller-container.ts).
+   * Absent in local/CI, where ensurePollerRunning is a reported no-op. */
+  POLLER_CONTAINER?: DurableObjectNamespace;
   /** R2 SQL read tier over the chain lakehouse (src/r2-sql.ts). Token is a
    * wrangler secret; account/warehouse fall back to this account's values and
    * are only set when pointing at a different warehouse. */

@@ -617,6 +617,10 @@
       // (idFromName("global")), pinged from the health prober write path —
       // not from ChainFirehoseHub.broadcast(). See workers/subnet-status-hub.ts.
       { "name": "SUBNET_STATUS_HUB", "class_name": "SubnetStatusHub" },
+      // #9146: the chain-state poller, running as a Cloudflare Container
+      // (deploy/poller.Dockerfile). A SINGLETON -- see workers/poller-container.ts
+      // for why a second instance would corrupt the neurons prune.
+      { "name": "POLLER_CONTAINER", "class_name": "PollerContainer" },
     ],
   },
   // Durable Object class migrations are one-way and versioned: adding a new
@@ -641,6 +645,27 @@
     {
       "tag": "v4-subnet-status-hub",
       "new_sqlite_classes": ["SubnetStatusHub"],
+    },
+    {
+      "tag": "v5-poller-container",
+      "new_sqlite_classes": ["PollerContainer"],
+    },
+  ],
+  // #9146: the chain-state poller as a Container. max_instances is 1 and must
+  // stay 1 -- two schedulers POSTing the same snapshots would race the neurons
+  // route's per-netuid prune, which keys on captured_at, so an older instance
+  // landing after a newer one would delete UIDs the newer one just wrote.
+  //
+  // Build context is the crate directory so the Dockerfile's COPY paths match
+  // apps/indexer-rs/Dockerfile's, which it is derived from.
+  "containers": [
+    {
+      "class_name": "PollerContainer",
+      "image": "./deploy/poller.Dockerfile",
+      "image_build_context": "./apps/indexer-rs",
+      "max_instances": 1,
+      // "standard-1" is the current name; plain "standard" is deprecated.
+      "instance_type": "standard-1",
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
