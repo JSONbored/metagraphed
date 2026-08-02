@@ -89,7 +89,7 @@ const RESPONSE_FORMATS = ["json", "csv"];
 const ECONOMICS_TRENDS_CSV_COLUMNS = [
   "snapshot_date",
   "subnet_count",
-  "total_stake_tao",
+  "total_stake_alpha",
   "alpha_price_tao_weighted",
   "alpha_price_tao_median",
   "validator_count",
@@ -104,7 +104,7 @@ const TRAJECTORY_CSV_COLUMNS = [
   "endpoint_count",
   "validator_count",
   "miner_count",
-  "total_stake_tao",
+  "total_stake_alpha",
   "alpha_price_tao",
   "emission_share",
   "tao_in_pool_tao",
@@ -736,7 +736,7 @@ export function composeCompareData({
       alpha_price_tao: coerceD1Number(row.alpha_price_tao),
       validator_count: coerceD1Number(row.validator_count),
       miner_count: coerceD1Number(row.miner_count),
-      total_stake_tao: coerceD1Number(row.total_stake_tao),
+      total_stake_alpha: coerceD1Number(row.total_stake_alpha),
       miner_readiness: coerceD1Number(row.miner_readiness),
     });
   }

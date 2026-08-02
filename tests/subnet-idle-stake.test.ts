@@ -19,7 +19,7 @@ describe("buildSubnetIdleStake", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.neuron_count, 3);
     assert.equal(out.idle_neuron_count, 2);
-    assert.equal(out.idle_stake_tao, 125);
+    assert.equal(out.idle_stake_alpha, 125);
   });
 
   test("a neuron with no validator_permit and no weight-setting output are both just dividends == 0", () => {
@@ -31,13 +31,13 @@ describe("buildSubnetIdleStake", () => {
       7,
     );
     assert.equal(out.idle_neuron_count, 2);
-    assert.equal(out.idle_stake_tao, 30);
+    assert.equal(out.idle_stake_alpha, 30);
   });
 
   test("a neuron with positive dividends is never counted as idle", () => {
     const out = buildSubnetIdleStake([{ stake_tao: 100, dividends: 0.01 }], 7);
     assert.equal(out.idle_neuron_count, 0);
-    assert.equal(out.idle_stake_tao, 0);
+    assert.equal(out.idle_stake_alpha, 0);
   });
 
   test("empty/cold rows yield a schema-stable zero, never throws", () => {
@@ -47,7 +47,7 @@ describe("buildSubnetIdleStake", () => {
       assert.equal(out.captured_at, null);
       assert.equal(out.neuron_count, 0);
       assert.equal(out.idle_neuron_count, 0);
-      assert.equal(out.idle_stake_tao, 0);
+      assert.equal(out.idle_stake_alpha, 0);
     }
   });
 
@@ -117,7 +117,7 @@ describe("buildSubnetIdleStake", () => {
       7,
     );
     assert.equal(out.idle_neuron_count, 2);
-    assert.equal(out.idle_stake_tao, 10);
+    assert.equal(out.idle_stake_alpha, 10);
   });
 
   test("a missing/null dividends value is NOT treated as idle (dividends must be present and exactly 0)", () => {
@@ -137,7 +137,7 @@ describe("buildSubnetIdleStake", () => {
       7,
     );
     assert.equal(out.idle_neuron_count, 1);
-    assert.equal(out.idle_stake_tao, 100);
+    assert.equal(out.idle_stake_alpha, 100);
   });
 
   test("sums in rao-integer precision, avoiding float drift across many neurons", () => {
@@ -146,7 +146,7 @@ describe("buildSubnetIdleStake", () => {
       dividends: 0,
     }));
     const out = buildSubnetIdleStake(rows, 7);
-    assert.equal(out.idle_stake_tao, 1000);
+    assert.equal(out.idle_stake_alpha, 1000);
   });
 });
 
@@ -171,11 +171,11 @@ describe("buildChainIdleStake", () => {
       (out.subnets as Row[]).map((s) => s.netuid),
       [2, 1],
     );
-    assert.equal((out.subnets as Row[])[0].idle_stake_tao, 55);
+    assert.equal((out.subnets as Row[])[0].idle_stake_alpha, 55);
     assert.equal((out.subnets as Row[])[0].neuron_count, 2);
-    assert.equal((out.subnets as Row[])[1].idle_stake_tao, 10);
+    assert.equal((out.subnets as Row[])[1].idle_stake_alpha, 10);
     assert.equal((out.subnets as Row[])[1].neuron_count, 2);
-    assert.equal(out.total_idle_stake_tao, 65);
+    assert.equal(out.total_idle_stake_alpha, 65);
   });
 
   test("a tie in idle_stake_tao breaks by netuid ascending (stable, deterministic order)", () => {
@@ -200,7 +200,7 @@ describe("buildChainIdleStake", () => {
     for (const rows of [[], null, undefined]) {
       const out = buildChainIdleStake(rows);
       assert.equal(out.subnet_count, 0);
-      assert.equal(out.total_idle_stake_tao, 0);
+      assert.equal(out.total_idle_stake_alpha, 0);
       assert.deepEqual(out.subnets, []);
     }
   });

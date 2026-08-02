@@ -819,7 +819,7 @@ function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
     registration_cost_tao: num(r.registration_cost_tao),
     registration_allowed: bool(r.registration_allowed),
     emission_share: num(r.emission_share),
-    total_stake_tao: num(r.total_stake_tao),
+    total_stake_alpha: num(r.total_stake_alpha),
     validator_count: num(r.validator_count),
     miner_count: num(r.miner_count),
     validator_headroom: num(r.validator_headroom),
@@ -851,12 +851,12 @@ function normalizeSubnetMover(raw: unknown): SubnetMover | null {
   if (netuid == null) return null;
   return {
     netuid,
-    stake_start_tao: coerceFiniteNumber(raw.stake_start_tao) ?? 0,
-    stake_end_tao: coerceFiniteNumber(raw.stake_end_tao) ?? 0,
-    stake_delta_tao: coerceFiniteNumber(raw.stake_delta_tao) ?? 0,
+    stake_start_alpha: coerceFiniteNumber(raw.stake_start_alpha) ?? 0,
+    stake_end_alpha: coerceFiniteNumber(raw.stake_end_alpha) ?? 0,
+    stake_delta_alpha: coerceFiniteNumber(raw.stake_delta_alpha) ?? 0,
     stake_pct_change: coerceFiniteNumber(raw.stake_pct_change) ?? null,
     stake_share_pct: coerceFiniteNumber(raw.stake_share_pct) ?? null,
-    emission_delta_tao: coerceFiniteNumber(raw.emission_delta_tao) ?? 0,
+    emission_delta_alpha: coerceFiniteNumber(raw.emission_delta_alpha) ?? 0,
     validators_delta: coerceFiniteNumber(raw.validators_delta) ?? 0,
     neurons_delta: coerceFiniteNumber(raw.neurons_delta) ?? 0,
   };
@@ -3568,7 +3568,7 @@ function normalizeEconomicsTrendsDay(raw: unknown): EconomicsTrendsDay | null {
   return {
     snapshot_date: snapshotDate,
     subnet_count: subnetCount,
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? null,
+    total_stake_alpha: coerceFiniteNumber(raw.total_stake_alpha) ?? null,
     alpha_price_tao_weighted: coerceFiniteNumber(raw.alpha_price_tao_weighted) ?? null,
     alpha_price_tao_median: coerceFiniteNumber(raw.alpha_price_tao_median) ?? null,
     validator_count: coerceFiniteNumber(raw.validator_count) ?? null,
@@ -5676,7 +5676,7 @@ export const subnetIdleStakeQuery = (netuid: number) =>
           captured_at: firstString(d.captured_at) ?? null,
           neuron_count: firstFiniteNumber(d.neuron_count) ?? 0,
           idle_neuron_count: firstFiniteNumber(d.idle_neuron_count) ?? 0,
-          idle_stake_tao: coerceFiniteNumber(d.idle_stake_tao) ?? null,
+          idle_stake_alpha: coerceFiniteNumber(d.idle_stake_alpha) ?? null,
         } as SubnetIdleStake,
         meta: res.meta,
         url: res.url,
@@ -5693,7 +5693,7 @@ function normalizeChainIdleStakeSubnet(raw: unknown): ChainIdleStakeSubnet | und
     netuid,
     neuron_count: firstFiniteNumber(raw.neuron_count) ?? 0,
     idle_neuron_count: firstFiniteNumber(raw.idle_neuron_count) ?? 0,
-    idle_stake_tao: coerceFiniteNumber(raw.idle_stake_tao) ?? null,
+    idle_stake_alpha: coerceFiniteNumber(raw.idle_stake_alpha) ?? null,
   };
 }
 
@@ -5709,7 +5709,7 @@ export function normalizeChainIdleStake(raw: unknown): ChainIdleStake {
     schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
     captured_at: firstString(rec.captured_at) ?? null,
     subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
-    total_idle_stake_tao: coerceFiniteNumber(rec.total_idle_stake_tao) ?? null,
+    total_idle_stake_alpha: coerceFiniteNumber(rec.total_idle_stake_alpha) ?? null,
     subnets,
   };
 }
@@ -7145,8 +7145,8 @@ function normalizeSubnetYield(netuid: number, raw: unknown): SubnetYield {
     neuron_count: coerceFiniteNumber(d.neuron_count) ?? neurons.length,
     validator_count: coerceFiniteNumber(d.validator_count),
     miner_count: coerceFiniteNumber(d.miner_count),
-    total_stake_tao: coerceFiniteNumber(d.total_stake_tao),
-    total_emission_tao: coerceFiniteNumber(d.total_emission_tao),
+    total_stake_alpha: coerceFiniteNumber(d.total_stake_alpha),
+    total_emission_alpha: coerceFiniteNumber(d.total_emission_alpha),
     subnet_yield: nullableNum(d.subnet_yield),
     mean_yield: nullableNum(d.mean_yield),
     median_yield: nullableNum(d.median_yield),

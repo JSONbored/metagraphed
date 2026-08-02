@@ -340,8 +340,8 @@ def normalize_economics(info, pipeline=None):
         # 2026-07-31). An earlier version of this comment lumped it in with
         # subnet_emission, which is the one that actually reads zero.
         "alpha_price_tao": to_tao_exact(getattr(info, "moving_price", None)),
-        "total_stake_tao": rao_to_tao_exact(total_stake_rao),
-        "max_stake_tao": rao_to_tao_exact(max_stake_rao),
+        "total_stake_alpha": rao_to_tao_exact(total_stake_rao),
+        "max_stake_alpha": rao_to_tao_exact(max_stake_rao),
         "tao_in_pool_tao": to_tao_exact(getattr(info, "tao_in", None)),
         "alpha_in_pool": to_tao_exact(getattr(info, "alpha_in", None)),
         "alpha_out_pool": to_tao_exact(getattr(info, "alpha_out", None)),

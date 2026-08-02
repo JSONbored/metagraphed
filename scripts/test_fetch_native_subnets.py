@@ -81,8 +81,8 @@ class NormalizeEconomicsAggregationTest(unittest.TestCase):
         result = normalize_economics(info)
         expected_total_rao = sum(s.rao for s in stakes)
         expected_whole_tao = expected_total_rao // 1_000_000_000
-        self.assertEqual(int(result["total_stake_tao"]), expected_whole_tao)
-        self.assertEqual(result["max_stake_tao"], rao_to_tao_exact(max(s.rao for s in stakes)))
+        self.assertEqual(int(result["total_stake_alpha"]), expected_whole_tao)
+        self.assertEqual(result["max_stake_alpha"], rao_to_tao_exact(max(s.rao for s in stakes)))
 
     def test_empty_stakes_returns_none(self):
         info = types.SimpleNamespace(
@@ -102,8 +102,8 @@ class NormalizeEconomicsAggregationTest(unittest.TestCase):
             owner_coldkey="",
         )
         result = normalize_economics(info)
-        self.assertIsNone(result["total_stake_tao"])
-        self.assertIsNone(result["max_stake_tao"])
+        self.assertIsNone(result["total_stake_alpha"])
+        self.assertIsNone(result["max_stake_alpha"])
 
 
 # --- v440 emission-pipeline inputs (#8743) --------------------------------

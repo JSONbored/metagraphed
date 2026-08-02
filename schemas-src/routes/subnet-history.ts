@@ -15,8 +15,8 @@ const SubnetHistoryPointSchema = z
     snapshot_date: z.string(),
     neuron_count: z.int().nullable().optional(),
     validator_count: z.int().nullable().optional(),
-    total_stake_tao: z.number().nullable().optional(),
-    total_emission_tao: z.number().nullable().optional(),
+    total_stake_alpha: z.number().nullable().optional(),
+    total_emission_alpha: z.number().nullable().optional(),
   })
   .strict();
 

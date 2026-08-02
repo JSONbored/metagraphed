@@ -32,7 +32,7 @@ describe("computeMinerReadiness", () => {
         {
           registration_allowed: true,
           registration_cost_tao: 0.5,
-          total_stake_tao: 100,
+          total_stake_alpha: 100,
         },
         50,
         0.01,
@@ -108,7 +108,7 @@ describe("computeMinerReadiness", () => {
         {
           registration_allowed: true,
           registration_cost_tao: Number.NaN,
-          total_stake_tao: 100,
+          total_stake_alpha: 100,
         },
         50,
         0.01,
@@ -119,12 +119,12 @@ describe("computeMinerReadiness", () => {
 
   test("activity is satisfied by positive emission share alone", () => {
     // unknown cost (+10) + active via emission share (+10).
-    assert.equal(computeMinerReadiness({ total_stake_tao: 0 }, 0, 0.5), 20);
+    assert.equal(computeMinerReadiness({ total_stake_alpha: 0 }, 0, 0.5), 20);
   });
 
   test("activity is satisfied by positive total stake alone", () => {
     // unknown cost (+10) + active via stake (+10).
-    assert.equal(computeMinerReadiness({ total_stake_tao: 5 }, 0, 0), 20);
+    assert.equal(computeMinerReadiness({ total_stake_alpha: 5 }, 0, 0), 20);
   });
 });
 
@@ -188,11 +188,11 @@ describe("computeNetworkValueSummary", () => {
     });
   });
 
-  test("root (netuid 0) contributes total_stake_tao directly, not price-multiplied", () => {
+  test("root (netuid 0) contributes total_stake_alpha directly, not price-multiplied", () => {
     // Root's own alpha_market_cap_tao would be huge (price ~1.0 x its TAO
     // stake) if it were ever included in the alpha sum -- it must not be.
     const result = computeNetworkValueSummary([
-      { netuid: 0, total_stake_tao: 500, alpha_market_cap_tao: 499.5 },
+      { netuid: 0, total_stake_alpha: 500, alpha_market_cap_tao: 499.5 },
     ]);
     assert.deepEqual(result, {
       total_root_value_tao: "500.000000000",
@@ -201,10 +201,10 @@ describe("computeNetworkValueSummary", () => {
     });
   });
 
-  test("non-root rows sum alpha_market_cap_tao, ignoring their total_stake_tao", () => {
+  test("non-root rows sum alpha_market_cap_tao, ignoring their total_stake_alpha", () => {
     const result = computeNetworkValueSummary([
-      { netuid: 1, total_stake_tao: 1000, alpha_market_cap_tao: 40 },
-      { netuid: 2, total_stake_tao: 2000, alpha_market_cap_tao: 60 },
+      { netuid: 1, total_stake_alpha: 1000, alpha_market_cap_tao: 40 },
+      { netuid: 2, total_stake_alpha: 2000, alpha_market_cap_tao: 60 },
     ]);
     assert.deepEqual(result, {
       total_root_value_tao: "0.000000000",
@@ -215,7 +215,7 @@ describe("computeNetworkValueSummary", () => {
 
   test("root + alpha rows sum into a single network total", () => {
     const result = computeNetworkValueSummary([
-      { netuid: 0, total_stake_tao: 500 },
+      { netuid: 0, total_stake_alpha: 500 },
       { netuid: 1, alpha_market_cap_tao: 40 },
       { netuid: 2, alpha_market_cap_tao: 60 },
     ]);
@@ -228,7 +228,7 @@ describe("computeNetworkValueSummary", () => {
 
   test("null/non-finite values contribute zero, not NaN or a thrown error", () => {
     const result = computeNetworkValueSummary([
-      { netuid: 0, total_stake_tao: null },
+      { netuid: 0, total_stake_alpha: null },
       { netuid: 1, alpha_market_cap_tao: null },
       { netuid: 2, alpha_market_cap_tao: Number.NaN },
     ]);
@@ -266,7 +266,7 @@ describe("buildEconomicsArtifact", () => {
     assert.deepEqual(artifact.summary, {
       subnet_count: 0,
       with_economics_count: 0,
-      total_stake_tao: "0.000000000",
+      total_stake_alpha: "0.000000000",
       total_validators: 0,
       total_miners: 0,
       registration_open_count: 0,
@@ -289,7 +289,7 @@ describe("buildEconomicsArtifact", () => {
             miner_count: 200,
             registration_allowed: true,
             registration_cost_tao: 0.5,
-            total_stake_tao: 1000,
+            total_stake_alpha: 1000,
           },
         ],
       ]),
@@ -312,7 +312,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(row.slug, "sn-1");
     assert.equal(artifact.summary.subnet_count, 1);
     assert.equal(artifact.summary.with_economics_count, 1);
-    assert.equal(artifact.summary.total_stake_tao, "1000.000000000");
+    assert.equal(artifact.summary.total_stake_alpha, "1000.000000000");
     assert.equal(artifact.summary.total_validators, 9);
     assert.equal(artifact.summary.total_miners, 200);
     assert.equal(artifact.summary.registration_open_count, 1);
@@ -331,8 +331,8 @@ describe("buildEconomicsArtifact", () => {
     const artifact = buildEconomicsArtifact({
       subnets: [econSubnet(0), econSubnet(1)],
       economicsByNetuid: new Map([
-        [0, { alpha_price_tao: 1.0, total_stake_tao: 500 }],
-        [1, { alpha_price_tao: 0.04, total_stake_tao: 1000 }],
+        [0, { alpha_price_tao: 1.0, total_stake_alpha: 500 }],
+        [1, { alpha_price_tao: 0.04, total_stake_alpha: 1000 }],
       ]),
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
@@ -349,7 +349,7 @@ describe("buildEconomicsArtifact", () => {
     const artifact = buildEconomicsArtifact({
       subnets: [econSubnet(1), econSubnet(2)],
       economicsByNetuid: new Map([
-        [1, { alpha_price_tao: 0.04, total_stake_tao: 5 }],
+        [1, { alpha_price_tao: 0.04, total_stake_alpha: 5 }],
       ]),
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
@@ -402,8 +402,8 @@ describe("buildEconomicsArtifact", () => {
     const artifact = buildEconomicsArtifact({
       subnets: [econSubnet(5), econSubnet(3), econSubnet(1)],
       economicsByNetuid: new Map([
-        [5, { total_stake_tao: 10 }], // no alpha price → null share
-        [3, { total_stake_tao: 10 }], // no alpha price → null share
+        [5, { total_stake_alpha: 10 }], // no alpha price → null share
+        [3, { total_stake_alpha: 10 }], // no alpha price → null share
         [1, { alpha_price_tao: 0.04 }], // priced → sorts first
       ]),
       generatedAt: "2026-06-25T00:00:00.000Z",

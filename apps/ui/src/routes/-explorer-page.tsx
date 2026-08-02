@@ -1008,7 +1008,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
         <StatTile
           icon={Coins}
           eyebrow="Total idle stake"
-          value={formatTao(idleStake.total_idle_stake_tao)}
+          value={formatTao(idleStake.total_idle_stake_alpha)}
           hint="network-wide, zero-dividend"
           tone="accent"
         />
@@ -1050,7 +1050,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
                     </Link>
                   </td>
                   <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
-                    {formatTao(s.idle_stake_tao)}
+                    {formatTao(s.idle_stake_alpha)}
                   </td>
                   <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatNumber(s.idle_neuron_count)}
@@ -1268,7 +1268,7 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
           <MiniSeries
             label="Total stake"
             days={chrono.map((d) => d.snapshot_date)}
-            values={chrono.map((d) => d.total_stake_tao ?? 0)}
+            values={chrono.map((d) => d.total_stake_alpha ?? 0)}
             color="var(--accent)"
             formatValue={formatTao}
           />

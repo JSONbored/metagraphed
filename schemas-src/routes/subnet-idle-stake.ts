@@ -13,7 +13,7 @@ export const SubnetIdleStakeArtifactSchema = z
     captured_at: z.string().nullable().optional(),
     neuron_count: z.int().min(0),
     idle_neuron_count: z.int().min(0),
-    idle_stake_tao: z.number().min(0),
+    idle_stake_alpha: z.number().min(0),
   })
   .passthrough();
 export type SubnetIdleStakeArtifact = z.infer<

@@ -97,15 +97,15 @@ describe("computeMovers", () => {
   test("computes per-subnet deltas, pct changes, and counts", () => {
     const m = computeMovers(startRows, endRows, { sort: "stake" });
     const s1 = m.find((x) => x.netuid === 1)!;
-    assert.equal(s1.stake_start_tao, 100);
-    assert.equal(s1.stake_end_tao, 250);
-    assert.equal(s1.stake_delta_tao, 150);
+    assert.equal(s1.stake_start_alpha, 100);
+    assert.equal(s1.stake_end_alpha, 250);
+    assert.equal(s1.stake_delta_alpha, 150);
     assert.equal(s1.stake_pct_change, 150); // +150%
-    assert.equal(s1.emission_delta_tao, 4);
+    assert.equal(s1.emission_delta_alpha, 4);
     assert.equal(s1.validators_delta, 1);
     assert.equal(s1.neurons_delta, 2);
     const s2 = m.find((x) => x.netuid === 2)!;
-    assert.equal(s2.stake_delta_tao, -20);
+    assert.equal(s2.stake_delta_alpha, -20);
     assert.equal(s2.stake_pct_change, -40);
   });
 
@@ -129,8 +129,8 @@ describe("computeMovers", () => {
       [agg(7, "e", { neurons: 5, validators: 1, stake: 80, emission: 2 })],
       { sort: "stake" },
     );
-    assert.equal(m[0].stake_start_tao, 0);
-    assert.equal(m[0].stake_delta_tao, 80);
+    assert.equal(m[0].stake_start_alpha, 0);
+    assert.equal(m[0].stake_delta_alpha, 80);
     assert.equal(m[0].stake_pct_change, null); // growth from zero is undefined
   });
 
@@ -140,8 +140,8 @@ describe("computeMovers", () => {
       [],
       { sort: "stake" },
     );
-    assert.equal(m[0].stake_end_tao, 0);
-    assert.equal(m[0].stake_delta_tao, -60);
+    assert.equal(m[0].stake_end_alpha, 0);
+    assert.equal(m[0].stake_delta_alpha, -60);
     assert.equal(m[0].stake_pct_change, -100);
   });
 
@@ -151,7 +151,7 @@ describe("computeMovers", () => {
       [agg(1, "e", { neurons: 1, validators: 0, stake: 0.3, emission: 0 })],
       { sort: "stake" },
     );
-    assert.equal(m[0].stake_delta_tao, 0.2); // 0.3 - 0.1, not 0.199999...
+    assert.equal(m[0].stake_delta_alpha, 0.2); // 0.3 - 0.1, not 0.199999...
   });
 
   test("buildMovers caps movers to limit but counts all subnets", () => {
@@ -230,7 +230,7 @@ describe("computeMovers", () => {
       const s1 = m.find((x) => x.netuid === 1)!;
       // Start snapshot skipped -> treated as absent (zeros), not phantom 0 stake / 100 neurons.
       assert.equal(
-        s1.stake_start_tao,
+        s1.stake_start_alpha,
         0,
         `stake_start for total_stake_tao ${JSON.stringify(blank)}`,
       );
@@ -239,7 +239,7 @@ describe("computeMovers", () => {
         0,
         `neurons_start for total_stake_tao ${JSON.stringify(blank)}`,
       );
-      assert.equal(s1.stake_end_tao, 200);
+      assert.equal(s1.stake_end_alpha, 200);
       assert.equal(s1.neurons_end, 50);
       const { network } = buildMovers(
         [
@@ -263,7 +263,7 @@ describe("computeMovers", () => {
         { window: "30d", startDate: "s", endDate: "e", sort: "stake" },
       ) as Row;
       assert.equal(
-        network.total_stake_start_tao,
+        network.total_stake_start_alpha,
         "50.000000000",
         `network stake start for total_stake_tao ${JSON.stringify(blank)}`,
       );
@@ -278,8 +278,8 @@ describe("computeMovers", () => {
       [agg(1, "e", { neurons: 1, validators: 0, stake: 50, emission: 0 })],
       { sort: "stake" },
     );
-    assert.equal(zero[0].stake_start_tao, 0);
-    assert.equal(zero[0].stake_delta_tao, 50);
+    assert.equal(zero[0].stake_start_alpha, 0);
+    assert.equal(zero[0].stake_delta_alpha, 50);
   });
 
   test("skips rows with blank emission aggregates", () => {
@@ -295,9 +295,9 @@ describe("computeMovers", () => {
       [agg(1, "e", { neurons: 10, validators: 2, stake: 100, emission: 5 })],
       { sort: "emission" },
     );
-    assert.equal(m[0].emission_start_tao, 0);
-    assert.equal(m[0].emission_end_tao, 5);
-    assert.equal(m[0].emission_delta_tao, 5);
+    assert.equal(m[0].emission_start_alpha, 0);
+    assert.equal(m[0].emission_end_alpha, 5);
+    assert.equal(m[0].emission_delta_alpha, 5);
   });
 
   test("skips rows with a null or blank netuid instead of coercing to subnet 0", () => {
@@ -326,7 +326,7 @@ describe("computeMovers", () => {
     );
     assert.equal(m.length, 1);
     assert.equal(m[0].netuid, 0);
-    assert.equal(m[0].stake_start_tao, 10);
+    assert.equal(m[0].stake_start_alpha, 10);
   });
 
   test("non-array inputs yield an empty ranking", () => {
@@ -423,12 +423,12 @@ describe("movers network summary", () => {
 
   test("totals stake/emission/validators across all subnets with their deltas", () => {
     const { network } = buildMovers(startRows, endRows, opts) as Row;
-    assert.equal(network.total_stake_start_tao, "150.000000000");
-    assert.equal(network.total_stake_end_tao, "280.000000000");
-    assert.equal(network.total_stake_delta_tao, "130.000000000");
-    assert.equal(network.total_emission_start_tao, "9.000000000");
-    assert.equal(network.total_emission_end_tao, "13.000000000");
-    assert.equal(network.total_emission_delta_tao, "4.000000000");
+    assert.equal(network.total_stake_start_alpha, "150.000000000");
+    assert.equal(network.total_stake_end_alpha, "280.000000000");
+    assert.equal(network.total_stake_delta_alpha, "130.000000000");
+    assert.equal(network.total_emission_start_alpha, "9.000000000");
+    assert.equal(network.total_emission_end_alpha, "13.000000000");
+    assert.equal(network.total_emission_delta_alpha, "4.000000000");
     assert.equal(network.total_validators_start, 5);
     assert.equal(network.total_validators_end, 6);
     assert.equal(network.total_validators_delta, 1);
@@ -444,8 +444,8 @@ describe("movers network summary", () => {
       agg(2, "e", { neurons: 8, validators: 2, stake: 20, emission: 1 }),
     ];
     const { network } = buildMovers(startRows, decreasing, opts) as Row;
-    assert.equal(network.total_stake_delta_tao, "-30.000000000");
-    assert.equal(network.total_emission_delta_tao, "-4.000000000");
+    assert.equal(network.total_stake_delta_alpha, "-30.000000000");
+    assert.equal(network.total_emission_delta_alpha, "-4.000000000");
   });
 
   test("gainer/loser/unchanged counts follow the active sort metric", () => {
@@ -492,7 +492,7 @@ describe("movers network summary", () => {
       startDate: null,
       endDate: null,
     }) as Row;
-    assert.equal(network.total_stake_end_tao, "0.000000000");
+    assert.equal(network.total_stake_end_alpha, "0.000000000");
     assert.equal(network.total_validators_delta, 0);
     assert.equal(network.gainers, 0);
     assert.equal(network.losers, 0);
@@ -559,7 +559,7 @@ describe("loadSubnetMovers", () => {
     assert.equal(data.start_date, "2026-05-31");
     assert.equal(data.end_date, "2026-06-30");
     assert.equal(data.subnet_count, 1);
-    assert.equal(data.movers[0].stake_delta_tao, 150);
+    assert.equal(data.movers[0].stake_delta_alpha, 150);
     vi.useRealTimers();
   });
 
@@ -673,7 +673,7 @@ describe("loadSubnetMovers", () => {
     assert.equal(data.start_date, "2026-01-01");
     assert.equal(data.end_date, "2026-01-31");
     assert.equal(data.subnet_count, 1);
-    assert.equal(data.movers[0].stake_delta_tao, 150);
+    assert.equal(data.movers[0].stake_delta_alpha, 150);
     vi.useRealTimers();
   });
 

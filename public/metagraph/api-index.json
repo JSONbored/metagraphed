@@ -2373,7 +2373,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2554,7 +2554,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2760,7 +2760,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2877,7 +2877,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3070,7 +3070,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3260,7 +3260,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3417,7 +3417,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3563,7 +3563,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3678,7 +3678,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3881,7 +3881,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4040,7 +4040,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4146,7 +4146,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4159,7 +4159,7 @@
               "alpha_price_tao",
               "block",
               "emission_share",
-              "max_stake_tao",
+              "max_stake_alpha",
               "max_uids",
               "max_validators",
               "miner_count",
@@ -4169,7 +4169,7 @@
               "open_slots",
               "registration_cost_tao",
               "subnet_volume_tao",
-              "total_stake_tao",
+              "total_stake_alpha",
               "validator_count"
             ],
             "type": "string"
@@ -4438,7 +4438,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4539,7 +4539,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4660,7 +4660,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4787,7 +4787,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4950,7 +4950,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5127,7 +5127,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5368,7 +5368,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5549,7 +5549,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5805,7 +5805,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5898,7 +5898,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -6043,7 +6043,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -6177,7 +6177,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -10159,7 +10159,7 @@
     {
       "artifact_path": "/metagraph/chain/idle-stake.json",
       "cache": "short",
-      "description": "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
+      "description": "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
       "id": "chain-idle-stake",
       "mainnet_only": true,
       "method": "GET",
@@ -10563,7 +10563,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -10635,7 +10635,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -10726,7 +10726,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -10907,7 +10907,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -11023,7 +11023,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -11133,7 +11133,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -11274,7 +11274,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -11360,7 +11360,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -11491,7 +11491,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -11584,7 +11584,7 @@
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [

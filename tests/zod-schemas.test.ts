@@ -2826,7 +2826,7 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
         {
           snapshot_date: "2026-06-20",
           subnet_count: 3,
-          total_stake_tao: 1000,
+          total_stake_alpha: 1000,
           total_emission_tao: 12.3,
         },
       ],

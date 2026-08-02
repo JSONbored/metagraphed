@@ -14,9 +14,9 @@ const SUBNETS = [
 ];
 
 const ECONOMICS = [
-  { netuid: 1, total_stake_tao: 100, emission_share: 0.4 },
-  { netuid: 2, total_stake_tao: 50, emission_share: 0.1 },
-  { netuid: 3, total_stake_tao: 25, emission_share: 0.2 },
+  { netuid: 1, total_stake_alpha: 100, emission_share: 0.4 },
+  { netuid: 2, total_stake_alpha: 50, emission_share: 0.1 },
+  { netuid: 3, total_stake_alpha: 25, emission_share: 0.2 },
   // netuid 4 has no economics row at all -- cold/missing tier.
 ];
 
@@ -98,7 +98,7 @@ describe("buildDomainSummary", () => {
       { netuid: 7, categories: ["search"], derived_categories: [] },
     ];
     const badEconomics = [
-      { netuid: "not-a-number", total_stake_tao: 100, emission_share: 0.5 },
+      { netuid: "not-a-number", total_stake_alpha: 100, emission_share: 0.5 },
     ];
     const search = buildDomainSummary("search", subnets, badEconomics);
     assert.equal(search.subnet_count, 1);
@@ -111,7 +111,7 @@ describe("buildDomainSummary", () => {
       { netuid: 9, categories: ["storage"], derived_categories: [] },
     ];
     const economics = [
-      { netuid: 9, total_stake_tao: "not-a-number", emission_share: null },
+      { netuid: 9, total_stake_alpha: "not-a-number", emission_share: null },
     ];
     const storage = buildDomainSummary("storage", subnets, economics);
     assert.equal(storage.subnet_count, 1);

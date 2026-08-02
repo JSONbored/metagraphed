@@ -162,8 +162,8 @@ function sumBoundary(map: Map<number, BoundaryEntry>): {
 }
 
 const SORT_KEY: Record<string, string> = {
-  stake: "stake_delta_tao",
-  emission: "emission_delta_tao",
+  stake: "stake_delta_alpha",
+  emission: "emission_delta_alpha",
   validators: "validators_delta",
   neurons: "neurons_delta",
 };
@@ -203,15 +203,15 @@ export function computeMovers(
     const e = endMap.get(netuid) ?? ZERO;
     movers.push({
       netuid,
-      stake_start_tao: roundTao(s.stake),
-      stake_end_tao: roundTao(e.stake),
-      stake_delta_tao: roundTao(e.stake - s.stake),
+      stake_start_alpha: roundTao(s.stake),
+      stake_end_alpha: roundTao(e.stake),
+      stake_delta_alpha: roundTao(e.stake - s.stake),
       stake_pct_change: pctChange(s.stake, e.stake),
       // Dominance: this subnet's share of network stake at the end snapshot.
       stake_share_pct: pctShare(e.stake, raoToTaoNumber(endTotals.stakeRao)),
-      emission_start_tao: roundTao(s.emission),
-      emission_end_tao: roundTao(e.emission),
-      emission_delta_tao: roundTao(e.emission - s.emission),
+      emission_start_alpha: roundTao(s.emission),
+      emission_end_alpha: roundTao(e.emission),
+      emission_delta_alpha: roundTao(e.emission - s.emission),
       emission_pct_change: pctChange(s.emission, e.emission),
       emission_share_pct: pctShare(
         e.emission,
@@ -259,12 +259,12 @@ function buildNetworkSummary(
     else unchanged += 1;
   }
   return {
-    total_stake_start_tao: raoToTaoString(start.stakeRao),
-    total_stake_end_tao: raoToTaoString(end.stakeRao),
-    total_stake_delta_tao: raoToTaoString(end.stakeRao - start.stakeRao),
-    total_emission_start_tao: raoToTaoString(start.emissionRao),
-    total_emission_end_tao: raoToTaoString(end.emissionRao),
-    total_emission_delta_tao: raoToTaoString(
+    total_stake_start_alpha: raoToTaoString(start.stakeRao),
+    total_stake_end_alpha: raoToTaoString(end.stakeRao),
+    total_stake_delta_alpha: raoToTaoString(end.stakeRao - start.stakeRao),
+    total_emission_start_alpha: raoToTaoString(start.emissionRao),
+    total_emission_end_alpha: raoToTaoString(end.emissionRao),
+    total_emission_delta_alpha: raoToTaoString(
       end.emissionRao - start.emissionRao,
     ),
     total_validators_start: start.validators,

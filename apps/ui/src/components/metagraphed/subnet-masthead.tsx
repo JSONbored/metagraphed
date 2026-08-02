@@ -688,7 +688,7 @@ export function SubnetMasthead({
         />
         <StatWithSpark
           label="Total stake"
-          value={formatTao(econ?.total_stake_tao)}
+          value={formatTao(econ?.total_stake_alpha)}
           hint="staked alpha"
           full="Total alpha staked into this subnet."
           updatedAt={econRes?.meta?.generated_at}

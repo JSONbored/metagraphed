@@ -877,7 +877,7 @@ export const SDL = /* GraphQL */ `
     chain_concentration: ChainConcentration!
     "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet with StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao, each carrying its full buy/sell/total volume + sentiment scorecard (vol_mcap_ratio always null here -- no per-subnet market-cap input at the network level), plus a network rollup with its own net/gross sentiment reading and the per-subnet total-volume spread, summed live from the account_events stream. Fixed 24h window (no window arg); limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/alpha-volume."
     chain_alpha_volume(limit: Int): ChainAlphaVolume!
-    "Network-wide idle-stake rollup: every subnet's stake delegated to a currently-zero-dividends hotkey, ranked by idle_stake_tao, plus the network total. Current snapshot only (no window/params). A cold store yields a schema-stable empty ranking, never a GraphQL error. Mirrors GET /api/v1/chain/idle-stake."
+    "Network-wide idle-stake rollup: every subnet's stake delegated to a currently-zero-dividends hotkey, ranked by idle_stake_alpha, plus the network total. Current snapshot only (no window/params). A cold store yields a schema-stable empty ranking, never a GraphQL error. Mirrors GET /api/v1/chain/idle-stake."
     chain_idle_stake: ChainIdleStake!
     "Network-wide cross-subnet capital-flow leaderboard over a 7d/30d window (default 7d): subnets ranked by net StakeAdded minus StakeRemoved TAO with staked/unstaked/gross totals and an inflow/outflow/balanced direction label, plus a network rollup and the per-subnet net-flow spread, summed live from the account_events stream. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/stake-flow."
     chain_stake_flow(window: String, limit: Int): ChainStakeFlow!
@@ -1060,7 +1060,7 @@ export const SDL = /* GraphQL */ `
   type EconomicsSummary {
     subnet_count: Int!
     with_economics_count: Int!
-    total_stake_tao: String!
+    total_stake_alpha: String!
     total_validators: Int!
     total_miners: Int!
     registration_open_count: Int!
@@ -1096,8 +1096,8 @@ export const SDL = /* GraphQL */ `
     miner_readiness: Int
     validator_count: Int
     max_validators: Int
-    total_stake_tao: Float
-    max_stake_tao: Float
+    total_stake_alpha: Float
+    max_stake_alpha: Float
     subnet_volume_tao: Float
     tao_in_pool_tao: Float
     alpha_in_pool: Float
@@ -1118,7 +1118,7 @@ export const SDL = /* GraphQL */ `
     snapshot_date: String!
     subnet_count: Int!
     "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float."
-    total_stake_tao: String
+    total_stake_alpha: String
     alpha_price_tao_weighted: Float
     alpha_price_tao_median: Float
     validator_count: Int
@@ -1228,12 +1228,12 @@ export const SDL = /* GraphQL */ `
   "Network-wide boundary totals for the movers window, summed across every ranked subnet (not just the returned page)."
   type SubnetMoversNetwork {
     "Lossless fixed 9-decimal (rao-precision) TAO string -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float."
-    total_stake_start_tao: String!
-    total_stake_end_tao: String!
-    total_stake_delta_tao: String!
-    total_emission_start_tao: String!
-    total_emission_end_tao: String!
-    total_emission_delta_tao: String!
+    total_stake_start_alpha: String!
+    total_stake_end_alpha: String!
+    total_stake_delta_alpha: String!
+    total_emission_start_alpha: String!
+    total_emission_end_alpha: String!
+    total_emission_delta_alpha: String!
     total_validators_start: Int!
     total_validators_end: Int!
     total_validators_delta: Int!
@@ -1245,16 +1245,16 @@ export const SDL = /* GraphQL */ `
   "One subnet's stake/emission/validator/neuron movement between the window's start and end snapshots."
   type SubnetMover {
     netuid: Int!
-    stake_start_tao: Float!
-    stake_end_tao: Float!
-    stake_delta_tao: Float!
+    stake_start_alpha: Float!
+    stake_end_alpha: Float!
+    stake_delta_alpha: Float!
     "Null when the start snapshot's stake was 0 (growth from nothing is undefined)."
     stake_pct_change: Float
     "This subnet's share of network stake at the end snapshot; null when the network total is 0."
     stake_share_pct: Float
-    emission_start_tao: Float!
-    emission_end_tao: Float!
-    emission_delta_tao: Float!
+    emission_start_alpha: Float!
+    emission_end_alpha: Float!
+    emission_delta_alpha: Float!
     emission_pct_change: Float
     emission_share_pct: Float
     validators_start: Int!
@@ -1682,12 +1682,12 @@ export const SDL = /* GraphQL */ `
     vol_mcap_ratio: Float
   }
 
-  "Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_tao. Mirrors GET /api/v1/chain/idle-stake's data envelope."
+  "Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope."
   type ChainIdleStake {
     schema_version: Int!
     captured_at: String
     subnet_count: Int!
-    total_idle_stake_tao: Float!
+    total_idle_stake_alpha: Float!
     subnets: [ChainIdleStakeSubnet!]!
   }
 
@@ -1696,7 +1696,7 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     neuron_count: Int!
     idle_neuron_count: Int!
-    idle_stake_tao: Float!
+    idle_stake_alpha: Float!
   }
 
   "Network-wide cross-subnet capital-flow leaderboard over a lookback window, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/stake-flow's data envelope."
@@ -2491,7 +2491,7 @@ export const SDL = /* GraphQL */ `
     registration_cost_tao: Float
     registration_allowed: Boolean
     emission_share: Float
-    total_stake_tao: Float
+    total_stake_alpha: Float
     validator_count: Int
     miner_count: Int
     validator_headroom: Int
@@ -2534,7 +2534,7 @@ export const SDL = /* GraphQL */ `
     alpha_price_tao: Float
     validator_count: Int
     miner_count: Int
-    total_stake_tao: Float
+    total_stake_alpha: Float
     miner_readiness: Int
   }
 
@@ -2573,7 +2573,7 @@ export const SDL = /* GraphQL */ `
     endpoint_count: Int
     validator_count: Int
     miner_count: Int
-    total_stake_tao: Float
+    total_stake_alpha: Float
     alpha_price_tao: Float
     emission_share: Float
     tao_in_pool_tao: Float
@@ -2774,7 +2774,7 @@ export const SDL = /* GraphQL */ `
     captured_at: String
     neuron_count: Int!
     idle_neuron_count: Int!
-    idle_stake_tao: Float!
+    idle_stake_alpha: Float!
   }
 
   "Per-subnet net stake flow (#7172) over a 7d/30d/90d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-flow' data envelope."
@@ -2805,8 +2805,8 @@ export const SDL = /* GraphQL */ `
     snapshot_date: String
     neuron_count: Int
     validator_count: Int
-    total_stake_tao: Float
-    total_emission_tao: Float
+    total_stake_alpha: Float
+    total_emission_alpha: Float
   }
 
   "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope."
@@ -2870,8 +2870,8 @@ export const SDL = /* GraphQL */ `
     neuron_count: Int!
     validator_count: Int!
     miner_count: Int!
-    total_stake_tao: Float
-    total_emission_tao: Float
+    total_stake_alpha: Float
+    total_emission_alpha: Float
     subnet_yield: Float
     mean_yield: Float
     median_yield: Float

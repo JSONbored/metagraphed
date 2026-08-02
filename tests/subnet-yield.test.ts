@@ -63,7 +63,7 @@ describe("buildSubnetYield", () => {
       assert.equal(d.neuron_count, 0);
       assert.equal(d.validator_count, 0);
       assert.equal(d.miner_count, 0);
-      assert.equal(d.total_stake_tao, 0);
+      assert.equal(d.total_stake_alpha, 0);
       assert.equal(d.subnet_yield, null);
       assert.equal(d.mean_yield, null);
       assert.equal(d.median_yield, null);
@@ -84,8 +84,8 @@ describe("buildSubnetYield", () => {
     assert.equal(d.neuron_count, 4);
     assert.equal(d.validator_count, 2);
     assert.equal(d.miner_count, 2);
-    assert.equal(d.total_stake_tao, 40);
-    assert.equal(d.total_emission_tao, 10);
+    assert.equal(d.total_stake_alpha, 40);
+    assert.equal(d.total_emission_alpha, 10);
     assert.equal(d.subnet_yield, 0.25); // 10/40
     assert.equal(d.captured_at, new Date(CAPTURED).toISOString());
     assert.equal(d.block_number, 5000);
@@ -113,11 +113,11 @@ describe("buildSubnetYield", () => {
       Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
     const d = buildSubnetYield(rows, 7);
     assert.equal(
-      d.total_stake_tao,
+      d.total_stake_alpha,
       Math.round(raoToTao(expectedStakeRao) * 1e9) / 1e9,
     );
     assert.equal(
-      d.total_emission_tao,
+      d.total_emission_alpha,
       Math.round(raoToTao(expectedEmissionRao) * 1e9) / 1e9,
     );
   });
@@ -217,7 +217,7 @@ describe("buildSubnetYield", () => {
       assert.equal(blankEmission.neuron_count, 1);
       assert.equal(blankEmission.neurons[0].emission_tao, null);
       assert.equal(blankEmission.neurons[0].yield, null);
-      assert.equal(blankEmission.total_emission_tao, 0);
+      assert.equal(blankEmission.total_emission_alpha, 0);
       assert.equal(blankEmission.subnet_yield, null);
     }
 
@@ -262,8 +262,8 @@ describe("buildSubnetYield", () => {
       ],
       7,
     );
-    assert.equal(d.total_stake_tao, 200);
-    assert.equal(d.total_emission_tao, 10);
+    assert.equal(d.total_stake_alpha, 200);
+    assert.equal(d.total_emission_alpha, 10);
     assert.equal(d.subnet_yield, 0.1);
   });
 

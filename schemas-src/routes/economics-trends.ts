@@ -12,7 +12,7 @@ const EconomicsTrendsDaySchema = z
   .object({
     snapshot_date: z.string(),
     subnet_count: z.int().min(0),
-    total_stake_tao: RaoPrecisionTaoStringSchema.nullable().optional(),
+    total_stake_alpha: RaoPrecisionTaoStringSchema.nullable().optional(),
     alpha_price_tao_weighted: z.number().nullable().optional(),
     alpha_price_tao_median: z.number().nullable().optional(),
     validator_count: z.int().nullable().optional(),

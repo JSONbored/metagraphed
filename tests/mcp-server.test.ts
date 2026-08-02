@@ -3427,7 +3427,7 @@ describe("MCP tools (injected deps)", () => {
           registration_cost_tao: 1,
           registration_allowed: true,
           emission_share: 0.1,
-          total_stake_tao: 5000,
+          total_stake_alpha: 5000,
           validator_count: 10,
           miner_count: 46,
           max_validators: 64,
@@ -3440,7 +3440,7 @@ describe("MCP tools (injected deps)", () => {
           registration_cost_tao: 0.5,
           registration_allowed: true,
           emission_share: 0.3,
-          total_stake_tao: 9000,
+          total_stake_alpha: 9000,
           validator_count: 60,
           miner_count: 18,
           max_validators: 64,
@@ -5906,7 +5906,7 @@ describe("MCP stake-flow and movers economics tools", () => {
               netuid: 7,
               neuron_count: 10,
               validator_count: 2,
-              total_stake_tao: 100,
+              total_stake_alpha: 100,
               total_emission_tao: 1,
             },
           ],
@@ -5915,7 +5915,7 @@ describe("MCP stake-flow and movers economics tools", () => {
               netuid: 7,
               neuron_count: 12,
               validator_count: 3,
-              total_stake_tao: 120,
+              total_stake_alpha: 120,
               total_emission_tao: 1.5,
             },
           ],
@@ -9286,8 +9286,8 @@ describe("MCP economics + metagraph data tools", () => {
     miner_readiness: 80,
     validator_count: 12,
     miner_count: 200,
-    total_stake_tao: 1000,
-    max_stake_tao: 5000,
+    total_stake_alpha: 1000,
+    max_stake_alpha: 5000,
     alpha_price_tao: 0.06,
   };
   const ECON_BLOB = {
@@ -10377,14 +10377,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.neuron_count, 0);
     assert.equal(out.idle_neuron_count, 0);
-    assert.equal(out.idle_stake_tao, 0);
+    assert.equal(out.idle_stake_alpha, 0);
   });
 
   test("get_chain_idle_stake returns a schema-stable empty ranking on cold D1", async () => {
     const res = await callTool("get_chain_idle_stake", {});
     const out = res.body.result.structuredContent;
     assert.equal(out.subnet_count, 0);
-    assert.equal(out.total_idle_stake_tao, 0);
+    assert.equal(out.total_idle_stake_alpha, 0);
     assert.deepEqual(out.subnets, []);
   });
 
@@ -12522,8 +12522,8 @@ describe("MCP economics + metagraph data tools", () => {
       },
       "/metagraph/economics.json": {
         subnets: [
-          { netuid: 1, total_stake_tao: 100, emission_share: 0.4 },
-          { netuid: 2, total_stake_tao: 50, emission_share: 0.1 },
+          { netuid: 1, total_stake_alpha: 100, emission_share: 0.4 },
+          { netuid: 2, total_stake_alpha: 50, emission_share: 0.1 },
         ],
       },
     });
@@ -17866,7 +17866,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
             apy_estimate: 0.2,
             apy_estimate_eligible_subnet_count: 1,
             nominator_count: 42,
-            total_stake_tao: 1000,
+            total_stake_alpha: 1000,
             total_emission_tao: 5,
             avg_validator_trust: 0.9,
             max_validator_trust: 0.99,

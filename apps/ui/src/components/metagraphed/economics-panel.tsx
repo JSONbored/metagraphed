@@ -136,7 +136,7 @@ function RecycledTaoTile({ netuid }: { netuid: number }) {
 // stays "—" (not "0") on a cold snapshot, since 0 is a real, distinct value.
 function IdleStakeTile({ netuid }: { netuid: number }) {
   const { data: res, isPending, isError } = useQuery(subnetIdleStakeQuery(netuid));
-  const idle = res?.data.idle_stake_tao;
+  const idle = res?.data.idle_stake_alpha;
   const count = res?.data.idle_neuron_count;
   const value = isError
     ? "—"
@@ -220,7 +220,7 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
           value={formatNumber(e.miner_count)}
           hint={e.max_uids ? `${e.max_uids} max UIDs` : undefined}
         />
-        <StatTile eyebrow="Total stake" value={formatTao(e.total_stake_tao)} />
+        <StatTile eyebrow="Total stake" value={formatTao(e.total_stake_alpha)} />
         <StatTile eyebrow="Volume" value={formatTao(e.subnet_volume_tao)} />
         <StatTile eyebrow="Max stake" value={formatTao(e.max_stake_tao)} />
         <StatTile eyebrow="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />

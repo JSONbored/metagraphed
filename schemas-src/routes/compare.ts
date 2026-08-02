@@ -37,7 +37,7 @@ const CompareSubnetEconomicsSchema = z
     alpha_price_tao: z.number().nullable().optional(),
     validator_count: z.int().min(0).optional(),
     miner_count: z.int().min(0).optional(),
-    total_stake_tao: z.number().nullable().optional(),
+    total_stake_alpha: z.number().nullable().optional(),
     miner_readiness: z.number().nullable().optional(),
   })
   .strict()

@@ -263,8 +263,8 @@ function normalizeSubnetYieldSample(out: Sample): Sample {
   out.neuron_count = 2;
   out.validator_count = 1;
   out.miner_count = 1;
-  out.total_stake_tao = 15;
-  out.total_emission_tao = 4;
+  out.total_stake_alpha = 15;
+  out.total_emission_alpha = 4;
   out.subnet_yield = 0.266666667;
   out.mean_yield = 0.3;
   // Conventional median of the two yields [0.2, 0.4] -> (0.2 + 0.4) / 2.

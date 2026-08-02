@@ -103,7 +103,7 @@ export const SubnetEconomicsSchema = z
     // Stage 0 eligibility. The block a subnet first emitted at, or null if it
     // never has.
     first_emission_block: z.int().min(0).nullable().optional(),
-    max_stake_tao: z.number().nullable(),
+    max_stake_alpha: z.number().nullable(),
     max_uids: z.int().min(0),
     max_validators: z.int().min(0),
     miner_count: z.int().min(0),
@@ -151,7 +151,7 @@ export const SubnetEconomicsSchema = z
     // smaller than the error already in the number. There is no rollup.
     tao_in_emission_tao: z.number().nullable().optional(),
     tao_in_pool_tao: z.number().nullable(),
-    total_stake_tao: z.number().nullable(),
+    total_stake_alpha: z.number().nullable(),
     validator_count: z.int().min(0),
   })
   .strict();

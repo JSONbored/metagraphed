@@ -13,17 +13,17 @@ GET https://api.metagraph.sh/api/v1/economics
 
 Per-subnet economic/validator snapshot — one row per subnet, live at the current moment.
 
-| Param                  | Notes                                                                                                                                                                       |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `netuid`               | Scope to one subnet.                                                                                                                                                        |
-| `registration_allowed` | `true` / `false`.                                                                                                                                                           |
-| `q`                    | Name/slug search, ≤200 chars.                                                                                                                                               |
-| `fields`               | Comma-separated partial field selection.                                                                                                                                    |
-| `limit` / `cursor`     | 1–1000, keyset paging.                                                                                                                                                      |
-| `sort` / `order`       | Sort key (`alpha_fdv_tao`, `alpha_price_tao`, `emission_share`, `total_stake_tao`, `netuid`, and more) + `asc`/`desc` (default `desc`, and default sort is emission share). |
-| `format`               | `csv` for a flat export.                                                                                                                                                    |
+| Param                  | Notes                                                                                                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `netuid`               | Scope to one subnet.                                                                                                                                                          |
+| `registration_allowed` | `true` / `false`.                                                                                                                                                             |
+| `q`                    | Name/slug search, ≤200 chars.                                                                                                                                                 |
+| `fields`               | Comma-separated partial field selection.                                                                                                                                      |
+| `limit` / `cursor`     | 1–1000, keyset paging.                                                                                                                                                        |
+| `sort` / `order`       | Sort key (`alpha_fdv_tao`, `alpha_price_tao`, `emission_share`, `total_stake_alpha`, `netuid`, and more) + `asc`/`desc` (default `desc`, and default sort is emission share). |
+| `format`               | `csv` for a flat export.                                                                                                                                                      |
 
-**Response fields** worth knowing: `alpha_price_tao` (the AMM's current TAO/alpha exchange rate), `tao_in_pool_tao` / `alpha_in_pool` / `alpha_out_pool` (the pool reserves), `emission_share` (this subnet's cut of new TAO issuance), `alpha_market_cap_tao` / `alpha_fdv_tao` (derived, not on-chain — FDV is alpha price × the fixed 21,000,000 per-subnet alpha max supply, the same cap structure as TAO's own 21M), `registration_cost_tao` (the current dynamic recycle-burn cost to register a new UID), and `total_stake_tao`.
+**Response fields** worth knowing: `alpha_price_tao` (the AMM's current TAO/alpha exchange rate), `tao_in_pool_tao` / `alpha_in_pool` / `alpha_out_pool` (the pool reserves), `emission_share` (this subnet's cut of new TAO issuance), `alpha_market_cap_tao` / `alpha_fdv_tao` (derived, not on-chain — FDV is alpha price × the fixed 21,000,000 per-subnet alpha max supply, the same cap structure as TAO's own 21M), `registration_cost_tao` (the current dynamic recycle-burn cost to register a new UID), and `total_stake_alpha`.
 
 ```bash
 curl -s 'https://api.metagraph.sh/api/v1/economics?sort=alpha_fdv_tao&order=desc&limit=10'
@@ -38,7 +38,7 @@ A network-wide daily time series — the aggregate across every subnet, one poin
 | `window` | `7d` \| `30d` \| `90d` \| `1y` \| `all`, default `30d`. |
 | `format` | `csv`.                                                  |
 
-Each day rolls up summed `total_stake_tao`, a stake-weighted mean alpha price, an unweighted median alpha price, summed validator/miner counts, and mean emission share — network-wide, not per subnet. A cold rollup returns `{ day_count: 0, days: [] }` rather than erroring.
+Each day rolls up summed `total_stake_alpha`, a stake-weighted mean alpha price, an unweighted median alpha price, summed validator/miner counts, and mean emission share — network-wide, not per subnet. A cold rollup returns `{ day_count: 0, days: [] }` rather than erroring.
 
 ```bash
 curl -s https://api.metagraph.sh/api/v1/economics/trends?window=90d

@@ -1157,21 +1157,21 @@ export type ChainIdentityHistoryEntry = {
   symbol?: Maybe<Scalars['String']['output']>;
 };
 
-/** Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_tao. Mirrors GET /api/v1/chain/idle-stake's data envelope. */
+/** Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope. */
 export type ChainIdleStake = {
   __typename?: 'ChainIdleStake';
   captured_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainIdleStakeSubnet>;
-  total_idle_stake_tao: Scalars['Float']['output'];
+  total_idle_stake_alpha: Scalars['Float']['output'];
 };
 
 /** One subnet's idle-stake scorecard in the network ranking. */
 export type ChainIdleStakeSubnet = {
   __typename?: 'ChainIdleStakeSubnet';
   idle_neuron_count: Scalars['Int']['output'];
-  idle_stake_tao: Scalars['Float']['output'];
+  idle_stake_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
   neuron_count: Scalars['Int']['output'];
 };
@@ -1712,7 +1712,7 @@ export type CompareEconomics = {
   open_slots?: Maybe<Scalars['Int']['output']>;
   registration_allowed?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
-  total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -1846,7 +1846,7 @@ export type EconomicsSummary = {
   total_network_value_tao: Scalars['String']['output'];
   /** Root (netuid 0) TAO-denominated stake -- rao-precision decimal string (#6641). */
   total_root_value_tao: Scalars['String']['output'];
-  total_stake_tao: Scalars['String']['output'];
+  total_stake_alpha: Scalars['String']['output'];
   total_validators: Scalars['Int']['output'];
   with_economics_count: Scalars['Int']['output'];
 };
@@ -1869,7 +1869,7 @@ export type EconomicsTrendsDay = {
   snapshot_date: Scalars['String']['output'];
   subnet_count: Scalars['Int']['output'];
   /** Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float. */
-  total_stake_tao?: Maybe<Scalars['String']['output']>;
+  total_stake_alpha?: Maybe<Scalars['String']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -2394,7 +2394,7 @@ export type OpportunityEntry = {
   registration_allowed?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
   slug?: Maybe<Scalars['String']['output']>;
-  total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
   validator_headroom?: Maybe<Scalars['Int']['output']>;
 };
@@ -2555,7 +2555,7 @@ export type Query = {
   chain_fees: ChainFees;
   /** Network-wide identity-change feed: the most-recent SubnetIdentitiesV3 changes across every subnet (each entry carries its netuid), newest first, capped by limit; a cold/absent store resolves to a schema-stable empty feed (count 0), never null. Mirrors GET /api/v1/chain/identity-history. */
   chain_identity_history: ChainIdentityHistory;
-  /** Network-wide idle-stake rollup: every subnet's stake delegated to a currently-zero-dividends hotkey, ranked by idle_stake_tao, plus the network total. Current snapshot only (no window/params). A cold store yields a schema-stable empty ranking, never a GraphQL error. Mirrors GET /api/v1/chain/idle-stake. */
+  /** Network-wide idle-stake rollup: every subnet's stake delegated to a currently-zero-dividends hotkey, ranked by idle_stake_alpha, plus the network total. Current snapshot only (no window/params). A cold store yields a schema-stable empty ranking, never a GraphQL error. Mirrors GET /api/v1/chain/idle-stake. */
   chain_idle_stake: ChainIdleStake;
   /** Network-wide reward-distribution & score-spread card across every subnet's neurons: incentive/dividends concentration (who actually captures rewards network-wide) plus the trust/consensus/validator_trust score spread. Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet_performance. Mirrors GET /api/v1/chain/performance. */
   chain_performance: ChainPerformance;
@@ -4558,7 +4558,7 @@ export type SubnetEconomics = {
   alpha_price_change_7d?: Maybe<Scalars['Float']['output']>;
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
   emission_share?: Maybe<Scalars['Float']['output']>;
-  max_stake_tao?: Maybe<Scalars['Float']['output']>;
+  max_stake_alpha?: Maybe<Scalars['Float']['output']>;
   max_uids?: Maybe<Scalars['Int']['output']>;
   max_validators?: Maybe<Scalars['Int']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
@@ -4573,7 +4573,7 @@ export type SubnetEconomics = {
   slug?: Maybe<Scalars['String']['output']>;
   subnet_volume_tao?: Maybe<Scalars['Float']['output']>;
   tao_in_pool_tao?: Maybe<Scalars['Float']['output']>;
-  total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -4709,8 +4709,8 @@ export type SubnetHistoryPoint = {
   __typename?: 'SubnetHistoryPoint';
   neuron_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date?: Maybe<Scalars['String']['output']>;
-  total_emission_tao?: Maybe<Scalars['Float']['output']>;
-  total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  total_emission_alpha?: Maybe<Scalars['Float']['output']>;
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -4767,7 +4767,7 @@ export type SubnetIdleStake = {
   __typename?: 'SubnetIdleStake';
   captured_at?: Maybe<Scalars['String']['output']>;
   idle_neuron_count: Scalars['Int']['output'];
-  idle_stake_tao: Scalars['Float']['output'];
+  idle_stake_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
   neuron_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
@@ -4802,22 +4802,22 @@ export type SubnetList = {
 /** One subnet's stake/emission/validator/neuron movement between the window's start and end snapshots. */
 export type SubnetMover = {
   __typename?: 'SubnetMover';
-  emission_delta_tao: Scalars['Float']['output'];
-  emission_end_tao: Scalars['Float']['output'];
+  emission_delta_alpha: Scalars['Float']['output'];
+  emission_end_alpha: Scalars['Float']['output'];
   emission_pct_change?: Maybe<Scalars['Float']['output']>;
   emission_share_pct?: Maybe<Scalars['Float']['output']>;
-  emission_start_tao: Scalars['Float']['output'];
+  emission_start_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
   neurons_delta: Scalars['Int']['output'];
   neurons_end: Scalars['Int']['output'];
   neurons_start: Scalars['Int']['output'];
-  stake_delta_tao: Scalars['Float']['output'];
-  stake_end_tao: Scalars['Float']['output'];
+  stake_delta_alpha: Scalars['Float']['output'];
+  stake_end_alpha: Scalars['Float']['output'];
   /** Null when the start snapshot's stake was 0 (growth from nothing is undefined). */
   stake_pct_change?: Maybe<Scalars['Float']['output']>;
   /** This subnet's share of network stake at the end snapshot; null when the network total is 0. */
   stake_share_pct?: Maybe<Scalars['Float']['output']>;
-  stake_start_tao: Scalars['Float']['output'];
+  stake_start_alpha: Scalars['Float']['output'];
   validators_delta: Scalars['Int']['output'];
   validators_end: Scalars['Int']['output'];
   validators_start: Scalars['Int']['output'];
@@ -4840,13 +4840,13 @@ export type SubnetMoversNetwork = {
   __typename?: 'SubnetMoversNetwork';
   gainers: Scalars['Int']['output'];
   losers: Scalars['Int']['output'];
-  total_emission_delta_tao: Scalars['String']['output'];
-  total_emission_end_tao: Scalars['String']['output'];
-  total_emission_start_tao: Scalars['String']['output'];
-  total_stake_delta_tao: Scalars['String']['output'];
-  total_stake_end_tao: Scalars['String']['output'];
+  total_emission_delta_alpha: Scalars['String']['output'];
+  total_emission_end_alpha: Scalars['String']['output'];
+  total_emission_start_alpha: Scalars['String']['output'];
+  total_stake_delta_alpha: Scalars['String']['output'];
+  total_stake_end_alpha: Scalars['String']['output'];
   /** Lossless fixed 9-decimal (rao-precision) TAO string -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float. */
-  total_stake_start_tao: Scalars['String']['output'];
+  total_stake_start_alpha: Scalars['String']['output'];
   total_validators_delta: Scalars['Int']['output'];
   total_validators_end: Scalars['Int']['output'];
   total_validators_start: Scalars['Int']['output'];
@@ -5078,7 +5078,7 @@ export type SubnetTrajectoryPoint = {
   subnet_volume_tao?: Maybe<Scalars['Float']['output']>;
   surface_count?: Maybe<Scalars['Int']['output']>;
   tao_in_pool_tao?: Maybe<Scalars['Float']['output']>;
-  total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -5217,8 +5217,8 @@ export type SubnetYield = {
   p90_yield?: Maybe<Scalars['Float']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_yield?: Maybe<Scalars['Float']['output']>;
-  total_emission_tao?: Maybe<Scalars['Float']['output']>;
-  total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  total_emission_alpha?: Maybe<Scalars['Float']['output']>;
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count: Scalars['Int']['output'];
 };
 
@@ -7058,12 +7058,12 @@ export type ChainIdleStakeResolvers<ContextType = GqlContext, ParentType extends
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainIdleStakeSubnet']>, ParentType, ContextType>;
-  total_idle_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_idle_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainIdleStakeSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainIdleStakeSubnet'] = ResolversParentTypes['ChainIdleStakeSubnet']> = ResolversObject<{
   idle_neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  idle_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  idle_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
@@ -7492,7 +7492,7 @@ export type CompareEconomicsResolvers<ContextType = GqlContext, ParentType exten
   open_slots?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   registration_allowed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -7605,7 +7605,7 @@ export type EconomicsSummaryResolvers<ContextType = GqlContext, ParentType exten
   total_miners?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_network_value_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   total_root_value_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_stake_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   total_validators?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   with_economics_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
@@ -7624,7 +7624,7 @@ export type EconomicsTrendsDayResolvers<ContextType = GqlContext, ParentType ext
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -8058,7 +8058,7 @@ export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType exten
   registration_allowed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_headroom?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
@@ -8651,7 +8651,7 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   alpha_price_change_7d?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  max_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  max_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   max_uids?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   max_validators?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -8666,7 +8666,7 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_volume_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_in_pool_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -8767,8 +8767,8 @@ export type SubnetHistoryResolvers<ContextType = GqlContext, ParentType extends 
 export type SubnetHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHistoryPoint'] = ResolversParentTypes['SubnetHistoryPoint']> = ResolversObject<{
   neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  total_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -8816,7 +8816,7 @@ export type SubnetIdentityHistoryEntryResolvers<ContextType = GqlContext, Parent
 export type SubnetIdleStakeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetIdleStake'] = ResolversParentTypes['SubnetIdleStake']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   idle_neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  idle_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  idle_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -8844,20 +8844,20 @@ export type SubnetListResolvers<ContextType = GqlContext, ParentType extends Res
 }>;
 
 export type SubnetMoverResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMover'] = ResolversParentTypes['SubnetMover']> = ResolversObject<{
-  emission_delta_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  emission_end_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  emission_delta_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  emission_end_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   emission_pct_change?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_share_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  emission_start_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  emission_start_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neurons_delta?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neurons_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neurons_start?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  stake_delta_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  stake_end_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_delta_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_end_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   stake_pct_change?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   stake_share_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  stake_start_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_start_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   validators_delta?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validators_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validators_start?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -8877,12 +8877,12 @@ export type SubnetMoversResolvers<ContextType = GqlContext, ParentType extends R
 export type SubnetMoversNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMoversNetwork'] = ResolversParentTypes['SubnetMoversNetwork']> = ResolversObject<{
   gainers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   losers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  total_emission_delta_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_emission_end_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_emission_start_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_stake_delta_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_stake_end_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  total_stake_start_tao?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_emission_delta_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_emission_end_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_emission_start_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_stake_delta_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_stake_end_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  total_stake_start_alpha?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   total_validators_delta?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_validators_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_validators_start?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9072,7 +9072,7 @@ export type SubnetTrajectoryPointResolvers<ContextType = GqlContext, ParentType 
   subnet_volume_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   tao_in_pool_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -9186,8 +9186,8 @@ export type SubnetYieldResolvers<ContextType = GqlContext, ParentType extends Re
   p90_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  total_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 

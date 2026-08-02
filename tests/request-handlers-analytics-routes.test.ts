@@ -138,7 +138,7 @@ describe("handleTrajectory", () => {
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 60,
-        total_stake_tao: 90,
+        total_stake_alpha: 90,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -153,7 +153,7 @@ describe("handleTrajectory", () => {
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 64,
-        total_stake_tao: 100,
+        total_stake_alpha: 100,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -179,7 +179,7 @@ describe("handleTrajectory", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_alpha,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
     );
     assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02,,,,");
     assert.equal(lines[2], "2026-06-02,40,2,1,8,64,100,0.01,0.02,,,,");
@@ -194,7 +194,7 @@ describe("handleTrajectory", () => {
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 60,
-        total_stake_tao: 90,
+        total_stake_alpha: 90,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -226,7 +226,7 @@ describe("handleTrajectory", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_alpha,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
     );
     assert.equal(lines.length, 1);
   });
@@ -264,7 +264,7 @@ describe("handleTrajectory", () => {
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 60,
-        total_stake_tao: 90,
+        total_stake_alpha: 90,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -370,7 +370,7 @@ describe("handleEconomicsTrends", () => {
         {
           snapshot_date: "2026-06-02",
           subnet_count: 1,
-          total_stake_tao: "300.000000000",
+          total_stake_alpha: "300.000000000",
           alpha_price_tao_weighted: 0.02,
           alpha_price_tao_median: 0.02,
           validator_count: 8,
@@ -392,7 +392,7 @@ describe("handleEconomicsTrends", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
     );
     assert.equal(lines[1], "2026-06-02,1,300.000000000,0.02,0.02,8,50,0.04");
   });
@@ -402,7 +402,7 @@ describe("handleEconomicsTrends", () => {
       {
         snapshot_date: "2026-06-02",
         subnet_count: 1,
-        total_stake_tao: "300.000000000",
+        total_stake_alpha: "300.000000000",
         alpha_price_tao_weighted: 0.02,
         alpha_price_tao_median: 0.02,
         validator_count: 8,
@@ -432,7 +432,7 @@ describe("handleEconomicsTrends", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
     );
     assert.equal(lines.length, 1);
   });
@@ -464,7 +464,7 @@ describe("handleEconomicsTrends", () => {
       {
         snapshot_date: "2026-06-02",
         subnet_count: 1,
-        total_stake_tao: "300.000000000",
+        total_stake_alpha: "300.000000000",
         alpha_price_tao_weighted: 0.02,
         alpha_price_tao_median: 0.02,
         validator_count: 8,

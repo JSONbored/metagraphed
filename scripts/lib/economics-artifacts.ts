@@ -46,8 +46,8 @@ export function computeMinerReadiness(
   }
   const active =
     (typeof emissionShare === "number" && emissionShare > 0) ||
-    (typeof economics.total_stake_tao === "number" &&
-      economics.total_stake_tao > 0);
+    (typeof economics.total_stake_alpha === "number" &&
+      economics.total_stake_alpha > 0);
   if (active) score += 10; // worth mining
   return Math.max(0, Math.min(100, score));
 }
@@ -130,7 +130,7 @@ export function computeNetworkValueSummary(rows: Row[]): NetworkValueSummary {
   let alphaRao = 0n;
   for (const row of rows) {
     if (row.netuid === 0) {
-      rootRao += taoNumberToRao(row.total_stake_tao);
+      rootRao += taoNumberToRao(row.total_stake_alpha);
     } else {
       alphaRao += taoNumberToRao(row.alpha_market_cap_tao);
     }
@@ -208,7 +208,7 @@ export function buildEconomicsArtifact({
     const openSlots = maxUids > 0 ? Math.max(0, maxUids - participants) : null;
     const alphaMarketCapTao = computeAlphaMarketCapTao(
       price,
-      economics.total_stake_tao,
+      economics.total_stake_alpha,
     );
     const alphaFdvTao = computeAlphaFdvTao(price);
     const history =
@@ -261,7 +261,7 @@ export function buildEconomicsArtifact({
     summary: {
       subnet_count: subnets.length,
       with_economics_count: rows.length,
-      total_stake_tao: sumFieldTaoString(rows, "total_stake_tao"),
+      total_stake_alpha: sumFieldTaoString(rows, "total_stake_alpha"),
       total_validators: sumField("validator_count"),
       total_miners: sumField("miner_count"),
       registration_open_count: rows.filter((row) => row.registration_allowed)

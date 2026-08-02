@@ -67,7 +67,7 @@ const ChainIdleStakeSubnetSchema = z
     netuid: z.int(),
     neuron_count: z.int(),
     idle_neuron_count: z.int(),
-    idle_stake_tao: z.number(),
+    idle_stake_alpha: z.number(),
   })
   .passthrough();
 
@@ -76,7 +76,7 @@ export const GetChainIdleStakeOutputSchema = z
     schema_version: z.int().optional(),
     captured_at: z.string().nullable().optional(),
     subnet_count: z.int(),
-    total_idle_stake_tao: z.number(),
+    total_idle_stake_alpha: z.number(),
     subnets: z.array(ChainIdleStakeSubnetSchema),
   })
   .passthrough();

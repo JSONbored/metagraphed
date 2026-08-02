@@ -210,8 +210,8 @@ export function buildSubnetYield(
     neuron_count: neurons.length,
     validator_count: validatorCount,
     miner_count: neurons.length - validatorCount,
-    total_stake_tao: round9(totalStake),
-    total_emission_tao: round9(totalEmission),
+    total_stake_alpha: round9(totalStake),
+    total_emission_alpha: round9(totalEmission),
     // Subnet-wide return over UIDs with known stake + emission only — blank-emission
     // rows stay in the neuron list but must not dilute the aggregate as if emission were 0.
     subnet_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,

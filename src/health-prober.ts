@@ -1009,7 +1009,11 @@ export async function syncSubnetSnapshotToPostgres(
         candidate_count: profile.candidate_count ?? null,
         validator_count: econ.validator_count ?? null,
         miner_count: econ.miner_count ?? null,
-        total_stake_tao: econ.total_stake_tao ?? null,
+        // DB COLUMN, not a wire field: this row is written into
+        // subnet_snapshots, whose column is still total_stake_tao (#8945
+        // renames the published field, never the column). The READ moves
+        // because the economics artifact now publishes total_stake_alpha.
+        total_stake_tao: econ.total_stake_alpha ?? null,
         alpha_price_tao: econ.alpha_price_tao ?? null,
         emission_share: econ.emission_share ?? null,
         tao_in_pool_tao: econ.tao_in_pool_tao ?? null,

@@ -2847,7 +2847,7 @@ test("GET /api/v1/subnets/:netuid/idle-stake shapes the live idle-stake scorecar
   expect(body.netuid).toBe(4);
   expect(body.neuron_count).toBe(2);
   expect(body.idle_neuron_count).toBe(1);
-  expect(body.idle_stake_tao).toBe(456.7);
+  expect(body.idle_stake_alpha).toBe(456.7);
   expect(queryText()).toContain("FROM neurons WHERE netuid =");
 });
 
@@ -2857,7 +2857,7 @@ test("GET /api/v1/chain/idle-stake shapes the network-wide idle-stake rollup", a
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
-  expect(body.total_idle_stake_tao).toBe(456.7);
+  expect(body.total_idle_stake_alpha).toBe(456.7);
   expect(queryText()).toContain("FROM neurons");
   expect(queryText()).not.toContain("WHERE netuid");
 });
@@ -9112,7 +9112,7 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
       endpoint_count: 5,
       validator_count: 8,
       miner_count: 60,
-      total_stake_tao: 90,
+      total_stake_alpha: 90,
       alpha_price_tao: 0.01,
       emission_share: 0.02,
       tao_in_pool_tao: 26707.57,
@@ -9138,7 +9138,7 @@ test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async (
   mockRows.current = [
     {
       snapshot_date: "2026-06-01",
-      total_stake_tao: 300,
+      total_stake_alpha: 300,
       alpha_price_tao: 0.02,
       validator_count: 8,
       miner_count: 50,
@@ -9172,7 +9172,7 @@ function snapshotRow(overrides = {}) {
     candidate_count: 1,
     validator_count: 8,
     miner_count: 60,
-    total_stake_tao: 90,
+    total_stake_alpha: 90,
     alpha_price_tao: 0.01,
     emission_share: 0.02,
     tao_in_pool_tao: 26707.57,

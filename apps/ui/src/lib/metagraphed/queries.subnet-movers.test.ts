@@ -39,12 +39,12 @@ describe("normalizeSubnetMovers", () => {
       movers: [
         {
           netuid: 64,
-          stake_start_tao: 100,
-          stake_end_tao: 250,
-          stake_delta_tao: 150,
+          stake_start_alpha: 100,
+          stake_end_alpha: 250,
+          stake_delta_alpha: 150,
           stake_pct_change: 1.5,
           stake_share_pct: 2.1,
-          emission_delta_tao: 9,
+          emission_delta_alpha: 9,
           validators_delta: 4,
           neurons_delta: 8,
         },
@@ -53,7 +53,7 @@ describe("normalizeSubnetMovers", () => {
     expect(card.network).toEqual({ gainers: 5, losers: 3, unchanged: 2 });
     expect(card.movers).toHaveLength(1);
     expect(card.movers[0]?.netuid).toBe(64);
-    expect(card.movers[0]?.stake_delta_tao).toBe(150);
+    expect(card.movers[0]?.stake_delta_alpha).toBe(150);
     expect(card.movers[0]?.stake_pct_change).toBe(1.5);
   });
 
@@ -70,13 +70,13 @@ describe("normalizeSubnetMovers", () => {
   it("drops malformed mover rows (no netuid) and coerces junk numbers to 0 / null", () => {
     const card = normalizeSubnetMovers({
       movers: [
-        { stake_delta_tao: 5 }, // no netuid -> dropped
-        { netuid: 12, stake_delta_tao: "junk", stake_pct_change: "junk" }, // kept, coerced
+        { stake_delta_alpha: 5 }, // no netuid -> dropped
+        { netuid: 12, stake_delta_alpha: "junk", stake_pct_change: "junk" }, // kept, coerced
       ],
     });
     expect(card.movers).toHaveLength(1);
     expect(card.movers[0]?.netuid).toBe(12);
-    expect(card.movers[0]?.stake_delta_tao).toBe(0);
+    expect(card.movers[0]?.stake_delta_alpha).toBe(0);
     expect(card.movers[0]?.stake_pct_change).toBeNull();
   });
 });
@@ -87,7 +87,7 @@ describe("subnetMoversQuery", () => {
   });
 
   it("passes window/sort/limit params and normalizes", async () => {
-    resolveWith({ movers: [{ netuid: 1, stake_delta_tao: 3 }] });
+    resolveWith({ movers: [{ netuid: 1, stake_delta_alpha: 3 }] });
     const res = await runQuery({ window: "7d", sort: "emission", limit: 5 });
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/api/v1/subnets/movers",

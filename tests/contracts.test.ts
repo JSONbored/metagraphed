@@ -344,11 +344,11 @@ describe("public contract registry", () => {
       ],
       [
         "/api/v1/economics/trends",
-        "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+        "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       ],
       [
         "/api/v1/subnets/{netuid}/trajectory",
-        "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+        "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_alpha,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
       ],
       [
         "/api/v1/accounts/{ss58}/extrinsics",

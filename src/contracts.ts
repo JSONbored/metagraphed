@@ -255,7 +255,7 @@ export const API_QUERY_COLLECTIONS = {
       "alpha_price_tao",
       "block",
       "emission_share",
-      "max_stake_tao",
+      "max_stake_alpha",
       "max_uids",
       "max_validators",
       "miner_count",
@@ -265,7 +265,7 @@ export const API_QUERY_COLLECTIONS = {
       "open_slots",
       "registration_cost_tao",
       "subnet_volume_tao",
-      "total_stake_tao",
+      "total_stake_alpha",
       "validator_count",
     ],
   }),
@@ -1807,7 +1807,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "chain-idle-stake",
     "/metagraph/chain/idle-stake.json",
-    "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/idle-stake (no static file).",
+    "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/idle-stake (no static file).",
     "ChainIdleStakeArtifact",
     COMPUTED_LIVE,
   ),
@@ -4197,7 +4197,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/idle-stake",
     "/metagraph/chain/idle-stake.json",
-    "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
+    "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
     "short",
     ["chain", "analytics"],
     [],
@@ -5705,7 +5705,7 @@ function listQuery(collection: string, options: { exclude?: string[] } = {}) {
       {
         name: "sort",
         description:
-          "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
         schema: { type: "string", enum: config.sort_fields },
       },
       {
@@ -5796,13 +5796,13 @@ function csvExampleForRoute(entry: (typeof API_ROUTES)[number]) {
   }
   if (entry.id === "economics-trends") {
     return [
-      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
     ].join("\r\n");
   }
   if (entry.id === "subnet-trajectory") {
     return [
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_alpha,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
       "2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45",
     ].join("\r\n");
   }

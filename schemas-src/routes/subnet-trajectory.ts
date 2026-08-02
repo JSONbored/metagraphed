@@ -16,7 +16,7 @@ const SubnetTrajectoryPointSchema = z
     endpoint_count: z.int().nullable().optional(),
     validator_count: z.int().nullable().optional(),
     miner_count: z.int().nullable().optional(),
-    total_stake_tao: z.number().nullable().optional(),
+    total_stake_alpha: z.number().nullable().optional(),
     alpha_price_tao: z.number().nullable().optional(),
     emission_share: z.number().nullable().optional(),
     tao_in_pool_tao: z.number().nullable().optional(),

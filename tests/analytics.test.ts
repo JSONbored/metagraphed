@@ -969,13 +969,13 @@ describe("formatTrajectory", () => {
     assert.equal(typeof point.endpoint_count, "number");
     assert.equal(typeof point.validator_count, "number");
     assert.equal(typeof point.miner_count, "number");
-    assert.equal(typeof point.total_stake_tao, "number");
+    assert.equal(typeof point.total_stake_alpha, "number");
     assert.equal(typeof point.alpha_price_tao, "number");
     assert.equal(typeof point.emission_share, "number");
     assert.equal(point.surface_count, 5);
     assert.equal(point.validator_count, 9);
     assert.equal(point.miner_count, 247);
-    assert.equal(point.total_stake_tao, 2522266);
+    assert.equal(point.total_stake_alpha, 2522266);
     assert.equal(point.alpha_price_tao, 0.04);
     assert.equal(point.emission_share, 0.01);
   });
@@ -995,7 +995,7 @@ describe("formatTrajectory", () => {
       ],
     }) as Row;
     const point = out.points[0];
-    assert.equal(point.total_stake_tao, null);
+    assert.equal(point.total_stake_alpha, null);
     assert.equal(point.alpha_price_tao, null);
     assert.equal(point.emission_share, null);
     assert.equal(point.completeness_score, 70);
@@ -1519,7 +1519,7 @@ function rowsForSql(sql: string) {
         endpoint_count: "15",
         validator_count: "9",
         miner_count: "205",
-        total_stake_tao: "1600000",
+        total_stake_alpha: "1600000",
         alpha_price_tao: "0.035",
         emission_share: "0.009",
         tao_in_pool_tao: "26707.57",
