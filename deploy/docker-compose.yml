@@ -1,6 +1,14 @@
 # Bare-metal "own the core" stack (ADR 0013) — one-command bring-up for the
-# dedicated server: TimescaleDB + Redis + a subtensor node, one private
-# bridge network (localhost-fast, zero egress). The continuous indexer is
+# dedicated server: TimescaleDB + a subtensor node, one private
+# bridge network (localhost-fast, zero egress).
+#
+# Redis is GONE, not omitted: nothing in this repo has referenced a Redis client
+# for some time, and no Redis container was running on the box either, so the
+# service definition here was describing a dependency that did not exist. The
+# work it once did is covered by Workers primitives (KV for cache-shaped state,
+# Durable Objects for pub/sub and counters) — see workers/tiered-rate-limit.ts.
+#
+# The continuous indexer is
 # NOT included here — it's the Rust implementation (faster + more capable
 # than the retired Python scripts/index-chain.py / backfill-chain.py), whose
 # source doesn't have a git home in this repo yet (tracked: give it one, then
@@ -34,18 +42,6 @@ services:
       - ./postgres/schema-timescaledb.sql:/docker-entrypoint-initdb.d/20-schema-timescaledb.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U metagraphed -d metagraphed"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7.4-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -97,5 +93,4 @@ services:
 
 volumes:
   pgdata:
-  redisdata:
   subtensordata:
