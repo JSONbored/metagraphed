@@ -111,6 +111,15 @@ jobs:
           # marker (deterministic, no churn). The real time is served live
           # (meta.published_at); the unique run prefix comes from METAGRAPH_RUN_ID.
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
+          # Read-only R2 use: loadGithubSignals() reads the Worker cron's
+          # github-signals store first (the #233 cron->store lane; see
+          # src/github-signals-sync.ts) and materializes the snapshot into
+          # registry/generated/github-signals.json, so the publish job's later
+          # credential-less `npm run validate` step reads the identical
+          # snapshot from the restored registry/ tree. Absent credentials, the
+          # build falls back to the committed seed -- never a failure.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters
       # from live GitHub metadata. Refuse to publish if any degraded to broken

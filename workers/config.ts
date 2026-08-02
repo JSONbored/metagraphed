@@ -36,6 +36,16 @@ export const UPGRADE_RADAR_CRON = "7,37 * * * *";
 // Worker-native cron -- offset from the top-of-hour prune (0) so the two
 // don't tick on the same minute. Must match a wrangler.jsonc cron entry.
 export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
+// Daily github-signals capture (#233 pattern), moved off the retired
+// sync-github-signals.yml GitHub Actions workflow (which regenerated the
+// committed registry/generated/github-signals.json via an auto-merged bot PR)
+// onto this Worker-native cron writing the R2 store directly -- see
+// src/github-signals-sync.ts's header for the full lane provenance. Keeps the
+// workflow's historical 06:20 UTC cadence (daily: releases are a day-scale
+// signal; subnet repos publish a few a week at most), on a minute/hour pair
+// that collides with none of the crons above. Must match a wrangler.jsonc
+// `triggers.crons` entry.
+export const GITHUB_SIGNALS_SYNC_CRON = "20 6 * * *";
 
 // Freshness watchdog (src/freshness-watchdog.ts) -- the alarm that replaces the
 // box-side Prometheus/Alertmanager pair and the cross-box dead-man's-switch,

@@ -645,6 +645,11 @@
       // which do not survive the boxes -- see FRESHNESS_WATCHDOG_CRON in
       // workers/config.ts and src/freshness-watchdog.ts's header.
       "23 * * * *",
+      // 20 6 = daily github-signals capture writing the R2 store, replacing
+      // the retired sync-github-signals.yml commit-a-file workflow (same
+      // 06:20 UTC cadence it ran on) -- see GITHUB_SIGNALS_SYNC_CRON in
+      // workers/config.ts and src/github-signals-sync.ts's header.
+      "20 6 * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

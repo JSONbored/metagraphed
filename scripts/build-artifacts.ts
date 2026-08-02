@@ -185,11 +185,13 @@ const detailedVerification = redactCredentialedUrls(
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
 const nativeSnapshot: Row = await loadNativeSnapshot();
-// #6639: per-subnet GitHub language + last-push signal, from the committed
-// registry/generated/github-signals.json (periodically maintainer-refreshed
-// via `node scripts/github-signals.ts --write`, mirrors how verification/
-// candidates are loaded above -- a cold/absent file degrades every subnet's
-// github_languages/github_last_push_at to null, never throws).
+// #6639: per-subnet GitHub language + last-push signal. Store-first: the
+// Worker cron (src/github-signals-sync.ts, #233 pattern) refreshes the R2
+// store daily and publish builds read it (Cloudflare credentials present);
+// credential-less builds (Validate CI, local) fall back to the committed
+// registry/generated/github-signals.json seed -- a cold/absent store+seed
+// degrades every subnet's github_languages/github_last_push_at to null,
+// never throws.
 const githubSignals = await loadGithubSignals();
 const overlayByNetuid = new Map(
   overlays.map((overlay) => [overlay.netuid, overlay]),

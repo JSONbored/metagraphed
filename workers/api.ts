@@ -342,6 +342,7 @@ import {
   runEmbeddingSync,
   semanticSearch,
 } from "../src/ai-search.ts";
+import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_ROOT_CLAIM_PATH_PATTERN,
@@ -382,6 +383,7 @@ import {
   ABUSE_SCAN_CRON,
   UPGRADE_RADAR_CRON,
   EMBEDDING_SYNC_CRON,
+  GITHUB_SIGNALS_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
   INCIDENTS_PATH_PATTERN,
@@ -1311,6 +1313,7 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 function cronLabel(cron: string): string {
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
+  if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
   if (cron === ABUSE_SCAN_CRON) return "abuse-scan";
   if (cron === UPGRADE_RADAR_CRON) return "upgrade-radar";
   if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
@@ -1449,6 +1452,13 @@ async function dispatchScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === GITHUB_SIGNALS_SYNC_CRON) {
+    // #233 pattern: daily GitHub dev-signal capture written straight to the
+    // R2 store, replacing the retired sync-github-signals.yml bot-PR lane --
+    // see src/github-signals-sync.ts's header for the provenance, repo-list
+    // sourcing, token posture, and subrequest budget.
+    return runGithubSignalsSync(env, ctx, { readArtifact });
   }
   if (cron === ABUSE_SCAN_CRON) {
     // #8611: score recent per-key usage and report a spike to the ops channel.
