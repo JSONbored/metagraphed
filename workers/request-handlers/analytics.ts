@@ -356,9 +356,60 @@ function validateMaxLength(
 
 const POSTGRES_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
 
+/**
+ * The header a degraded response carries (#9110).
+ *
+ * A tier miss used to be invisible to the caller: the empty payload came back
+ * `ok: true` with the same headers as a real one, so `total_extrinsics: 0` from
+ * a missed tier read exactly like a measured zero. Observed live —
+ * /api/v1/chain/calls?window=30d returned 0 in the same minute ?window=7d
+ * returned 1,347,135, and 5,118,674 on the next attempt. That is worse than an
+ * error: a client retries a 503 and publishes a zero.
+ *
+ * A HEADER and not a body field, deliberately. Writing `meta.degraded` into the
+ * envelope means re-serialising it, which invalidates the ETag
+ * `envelopeResponse` already computed — and recomputing it breaks conditional
+ * requests, because the retry recomputes the ETag from the UNLABELLED body and
+ * no longer matches. That is not hypothetical; it broke
+ * "a warm cache honours conditional requests with a 304" when this was tried
+ * body-first. The header carries the same information, costs no
+ * re-serialisation, and works for the CSV variants too.
+ */
+export const DEGRADED_HEADER = "x-metagraph-degraded";
+export const DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
+
+/**
+ * Tag a response as having used the empty-fallback path, and say so to the
+ * caller.
+ *
+ * `withEdgeCache` reads the WeakSet on the object it gets back, so the NEW
+ * response is what gets tagged — tagging the original would let a degraded
+ * payload into the edge cache (the #1760 bug class this WeakSet exists for).
+ */
 function markPostgresTierFallbackResponse(response: Response): Response {
-  POSTGRES_TIER_FALLBACK_RESPONSES.add(response);
-  return response;
+  // Set in place so the returned object IS the one passed in. Identity matters
+  // here: `withEdgeCache` reads the WeakSet on the object it gets back, and
+  // handlers hand this response straight on, so returning a copy would both
+  // break that invariant and silently change what callers already assert.
+  //
+  // A response read back out of the edge cache has immutable headers; that path
+  // never reaches this function today, and the copy is the correct fallback if
+  // it ever does rather than throwing on a degraded response.
+  try {
+    response.headers.set(DEGRADED_HEADER, DEGRADED_TIER_UNAVAILABLE);
+    POSTGRES_TIER_FALLBACK_RESPONSES.add(response);
+    return response;
+  } catch {
+    const headers = new Headers(response.headers);
+    headers.set(DEGRADED_HEADER, DEGRADED_TIER_UNAVAILABLE);
+    const marked = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+    POSTGRES_TIER_FALLBACK_RESPONSES.add(marked);
+    return marked;
+  }
 }
 
 async function analyticsMeta(
@@ -475,7 +526,29 @@ export async function withEdgeCache(
     }
   }
   const pgFallbackGeneration = currentPostgresTierFallbackGeneration();
-  const response = await buildResponse(cacheRequest);
+  const built = await buildResponse(cacheRequest);
+  // #9110: the generation counter already told us the tier degraded while this
+  // request was being served -- it is what suppresses caching two lines down.
+  // Until now that was the ONLY thing it did, so 16 of the 21 tier-reading
+  // handlers returned an unlabelled empty payload: `total: 0`, `ok: true`, and
+  // no way for a caller to tell it from a measured zero.
+  //
+  // Labelling here rather than in each handler is deliberate. Only 5 of the 21
+  // remembered to call markPostgresTierFallbackResponse; a per-handler flag is
+  // exactly the thing the 22nd handler will forget. Every one of them already
+  // goes through this function.
+  //
+  // The counter is module-global, so a CONCURRENT request degrading can label
+  // this one too. That is the same trade the cache-suppression below already
+  // makes, and it errs the safe way: a false "degraded" makes good data look
+  // suspect, where the bug it replaces made missing data look measured.
+  const degraded =
+    POSTGRES_TIER_FALLBACK_RESPONSES.has(built) ||
+    currentPostgresTierFallbackGeneration() !== pgFallbackGeneration;
+  const response =
+    degraded && built.status === 200 && !built.headers.has(DEGRADED_HEADER)
+      ? markPostgresTierFallbackResponse(built)
+      : built;
   // Never cache errors / non-200s (a cold Postgres tier still returns a 200
   // empty envelope; a 400 bad-window or 5xx must not be persisted).
   if (
@@ -2446,9 +2519,17 @@ export async function handleChainFees(
       // the table is dropped in production, so a D1 query here would always
       // miss. Postgres → schema-stable empty stub, never a live D1 read.
       let data: ReturnType<typeof buildChainFees> | null = null;
-      if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres" && env.DATA_API) {
-        const limited = await dataRateLimitResponse(cacheRequest, env);
-        if (limited) return limited;
+      if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres") {
+        // The `&& env.DATA_API` this condition used to carry swallowed the
+        // degradation signal (#9110): tryPostgresTier handles a missing
+        // DATA_API itself and marks the fallback, and skipping the call meant
+        // this route returned an unlabelled empty payload where every sibling
+        // returned a labelled one. The rate limiter still only runs when there
+        // is an upstream to protect.
+        if (env.DATA_API) {
+          const limited = await dataRateLimitResponse(cacheRequest, env);
+          if (limited) return limited;
+        }
         data = (await tryPostgresTier(
           env,
           cacheRequest,

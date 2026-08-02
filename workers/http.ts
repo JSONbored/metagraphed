@@ -44,6 +44,11 @@ const EXPOSED_RESPONSE_HEADERS = [
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   "x-metagraph-storage-tier",
   "x-metagraph-error-code",
+  // #9110: set when a response used the empty-fallback path after a data-tier
+  // miss. Exposed so a browser client can tell a degraded zero from a
+  // measured one -- the whole point of the header is that it reaches the
+  // consumer, and an unexposed header does not.
+  "x-metagraph-degraded",
   "x-metagraph-rpc-cache",
   "x-metagraph-rpc-endpoint-id",
   "x-metagraph-rpc-provider",
