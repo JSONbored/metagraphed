@@ -2318,7 +2318,27 @@ test("GET /api/v1/validators carries realized_return_* from the neuron_daily bas
   // AND a lower bound (>= cutoff − tolerance), so a stale far-older permitted
   // snapshot can never stand in as the baseline for a fresh window.
   expect(queryText()).toMatch(/snapshot_date <= /);
-  expect(queryText()).toMatch(/snapshot_date >= .*::date - /);
+  expect(queryText()).toMatch(/snapshot_date >= /);
+  // #8961: BOTH bounds must be bound as YYYY-MM-DD strings. This assertion
+  // used to require `>= ...::date - <param>`, which pinned the defect: a plain
+  // JS number is sent untyped by postgres.js, so Postgres resolved that to
+  // `date - date -> integer` and every invocation failed with "operator does
+  // not exist: date >= integer". No numeric parameter may reach a snapshot_date
+  // comparison. The end-to-end proof against real Postgres operator resolution
+  // is tests/data-api-sql-types.test.ts; this keeps the unit suite honest too.
+  const baselineCall = sqlCalls.find((call: Row) =>
+    /AS baseline_stake_tao/.test(call.text),
+  );
+  expect(baselineCall).toBeDefined();
+  for (const value of baselineCall!.values) {
+    expect(typeof value).not.toBe("number");
+  }
+  expect(
+    baselineCall!.values.filter(
+      (value: unknown) =>
+        typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value),
+    ).length,
+  ).toBe(2);
 });
 
 test("GET /api/v1/validators degrades realized_return_* to null when the neuron_daily baseline query fails (#7228)", async () => {

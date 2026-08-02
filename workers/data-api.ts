@@ -3508,6 +3508,27 @@ async function loadRealizedStakeBaselines(
           const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
             .toISOString()
             .slice(0, 10);
+          // #8961: the window's oldest permitted snapshot date, computed HERE
+          // rather than as `${cutoff}::date - ${TOLERANCE}` in SQL. postgres.js
+          // serializes a plain JS number with type OID 0 (unspecified --
+          // `types.number.to = 0`), so Postgres resolved `date - <unknown>` to
+          // the `date - date -> integer` operator, and the comparison became
+          // `snapshot_date >= <integer>`:
+          //
+          //   operator does not exist: date >= integer
+          //
+          // Every invocation failed from the day it shipped. Both bounds are
+          // now plain YYYY-MM-DD strings, which coerce against a DATE column
+          // with no operator ambiguity at all. UTC-ms arithmetic and
+          // toISOString() are both UTC, so this is exactly the date the SQL
+          // subtraction was meant to produce.
+          const floor = new Date(
+            Date.now() -
+              (days + REALIZED_RETURN_BASELINE_TOLERANCE_DAYS) *
+                ANALYTICS_DAY_MS,
+          )
+            .toISOString()
+            .slice(0, 10);
           type BaselineRow = {
             hotkey: NeuronDaily["hotkey"];
             baseline_stake_tao: string | null;
@@ -3519,7 +3540,7 @@ async function loadRealizedStakeBaselines(
               FROM neuron_daily
               WHERE validator_permit = TRUE AND hotkey = ${hotkey}
                 AND snapshot_date <= ${cutoff}
-                AND snapshot_date >= ${cutoff}::date - ${REALIZED_RETURN_BASELINE_TOLERANCE_DAYS}
+                AND snapshot_date >= ${floor}
               GROUP BY hotkey, snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
@@ -3529,7 +3550,7 @@ async function loadRealizedStakeBaselines(
               SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
               FROM neuron_daily
               WHERE validator_permit = TRUE AND snapshot_date <= ${cutoff}
-                AND snapshot_date >= ${cutoff}::date - ${REALIZED_RETURN_BASELINE_TOLERANCE_DAYS}
+                AND snapshot_date >= ${floor}
               GROUP BY hotkey, snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
