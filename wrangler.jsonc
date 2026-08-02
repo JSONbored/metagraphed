@@ -340,27 +340,19 @@
     // still falls back to D1 on any failure, so this remains a single-flag
     // revert (D1's copy is frozen from this point on, not actively wrong).
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE": "postgres",
-    // health_trends / surface_checks / surface_uptime_daily / surface_status
-    // (D1 retirement, 2026-07-16): FLIPPED to "postgres". This flag already
-    // gates handleBulkHealthTrends, handleHealthTrends, handleHealthPercentiles,
-    // handleHealthIncidents, handleGlobalIncidents, handleUptime
-    // (workers/request-handlers/analytics.ts + analytics-routes.ts), and the
-    // surface_status slice of handleCompare -- all deliberately left unset
-    // pending Postgres accumulating a real 30-day history window, since an
-    // empty/short Postgres window is still a valid 200 response that
-    // tryPostgresTier's error-only fallback can't distinguish from "missing
-    // D1's real history." That window has since filled in: direct `psql`
-    // confirms surface_checks holds 111,088 rows and surface_uptime_daily
-    // holds 1,182 rows spanning 2026-07-11 through 2026-07-16 (a full rolling
-    // window), and surface_status holds 564 current rows (verified
-    // 2026-07-16). src/health-prober.ts's own D1 writes for surface_checks
-    // and surface_uptime_daily's D1-derived rollup are retired in the same
-    // change that adds this flag -- syncHealthChecksToPostgres and
-    // syncHealthUptimeRollupToPostgres (already unconditional) are the sole
-    // writers now. tryPostgresTier still falls back to D1 on any failure, so
-    // this remains a single-flag revert (D1's copy is frozen from this point
-    // on, not actively wrong).
-    "METAGRAPH_HEALTH_SOURCE": "postgres",
+    // health_trends / surface_checks / surface_uptime_daily / surface_status:
+    // FLIPPED BACK to "d1" (2026-08-02, box decommission). "postgres" routed
+    // these reads through DATA_API to the self-hosted box (flipped there
+    // 2026-07-16 when D1's copies were retired); that box is being wiped, and
+    // the observation tables live in D1 again — backfilled to exact parity
+    // (1,030,713 rows) and dual-written by every probe sweep since #9036.
+    // Any non-"postgres" value makes tryPostgresTier return null instantly,
+    // which routes handleBulkHealthTrends, handleHealthTrends,
+    // handleHealthPercentiles, handleHealthIncidents, handleGlobalIncidents,
+    // and handleUptime straight to the resurrected D1 loaders (#9061) with no
+    // doomed subrequest to a dead origin and no per-request tier-failure
+    // capture. Still a single-flag revert while the box lives.
+    "METAGRAPH_HEALTH_SOURCE": "d1",
     // subnet-ownership ties (#6740/#6737): GET /api/v1/accounts/{coldkey}/entities
     // reads chain_events' SubnetOwnerChanged stream via workers/data-api.ts
     // (which has carried a complete Postgres implementation since Phase 3's
