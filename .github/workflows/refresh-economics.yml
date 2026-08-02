@@ -1,0 +1,72 @@
+name: Refresh Economics (live tier)
+
+# Publishes the live economics tier (KV economics:current), DECOUPLED from the 6h
+# Publish Cloudflare Backend job so /api/v1/economics stays fresh (and survives)
+# independent of the heavy publish. Fetches the chain snapshot fresh, builds the
+# economics blob (byte-shape-identical to R2 economics.json), and writes it to KV.
+# Tolerant: a chain/wrangler failure leaves the last live value in place; the serve
+# path falls back KV → R2 regardless.
+#
+# RESTORED FROM THE INDEXER BOX. Retired in #5647 when a 3-hourly systemd timer
+# took it over; that box is being decommissioned, so it comes back here on the
+# same cadence. One thing genuinely changed with the move: the box run fetched
+# from the private fullnode over ws://, and that node is already decommissioned,
+# so this fetches from the public chain endpoint like every other caller now
+# does.
+on:
+  schedule:
+    # Every 3 hours — fresher than the 6h publish, light chain load.
+    - cron: "41 */3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-economics
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - name: Install
+        run: npm ci
+
+      - name: Stamp run time
+        run: echo "METAGRAPH_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" >> "$GITHUB_ENV"
+
+      - name: Refresh native chain snapshot (tolerant)
+        run: node scripts/refresh-native-snapshot.ts
+
+      - name: Publish live economics (KV)
+        run: npm run economics:refresh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_KV_WRITE: "1"
+
+      - name: Notify on failure
+        if: failure() && env.METAGRAPH_ALERT_WEBHOOK_URL != ''
+        env:
+          METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d '{"content":"🔴 metagraphed refresh-economics FAILED — live economics may go stale (serve falls back to R2)."}' || true

@@ -1,0 +1,79 @@
+name: Check emission drift
+
+# Holds the emission reconstruction against LIVE chain state
+# (scripts/check-emission-drift.ts). tests/emission-pipeline.test.ts pins our
+# ARITHMETIC against a committed fixture; it cannot notice the chain changing
+# underneath it, and the runtime ships every two to three days. This is the
+# other half.
+#
+# MOVED OFF THE INDEXER BOX. This ran as a ~30-minute systemd timer there. It is
+# the only one of the box's four remaining refresh jobs that can move as-is,
+# because it is the only one that needs no database: it reads chain state and
+# alerts, and writes nothing. The other three (emission-gate-sample,
+# reconcile-neurons, export-parquet) all require DATABASE_URL and are blocked on
+# the chain-data tier's own migration.
+#
+# Zero alerts is the correct steady state and means the reconstruction still
+# holds -- not that the monitor is broken. The script prints a summary line every
+# run for exactly that reason, and this workflow surfaces it in the job summary
+# so a healthy run is still legible at a glance.
+#
+# THE ENDPOINT MUST BE AT CHAIN TIP. The box run pointed at the private fullnode
+# with a comment warning against the archive node, "which is still syncing and
+# would report months-old gate parameters as if they were current." Both facts
+# have changed: that fullnode is decommissioned, and the public archive endpoint
+# has since caught up and is what every other caller now reads. Verified before
+# this workflow was written by running the script against it -- it returned
+# block 8,753,790 (chain tip) with identities_failed: 0.
+on:
+  schedule:
+    # Every 30 minutes, matching the box timer's observed cadence. The job is a
+    # handful of RPC reads, so this is cheap.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-emission-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: Reconstruct emission against live chain state
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check emission drift against live chain state
+        env:
+          # A repo variable, not a secret: this is a public endpoint, and
+          # pinning it here means the tip requirement above is reviewable rather
+          # than hidden in settings. Falls back to the public archive endpoint so
+          # the job is not silently unrunnable if the variable is unset.
+          EMISSION_DRIFT_RPC_URL: ${{ vars.EMISSION_DRIFT_RPC_URL || 'https://archive.chain.opentensor.ai' }}
+          LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
+        run: |
+          node scripts/check-emission-drift.ts | tee drift.log
+          {
+            echo '## Emission drift'
+            echo '```json'
+            cat drift.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
