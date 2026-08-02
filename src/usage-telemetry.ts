@@ -544,7 +544,19 @@ export interface McpToolCallEvent extends McpServerIdentity {
 export interface McpInitializeEvent extends McpServerIdentity {
   clientName?: string;
   clientVersion?: string;
-  /** Mcp-Session-Id header value; omitted from the payload when absent. */
+  /**
+   * #8994: where clientName came from. Optional and usually omitted -- the
+   * handshake's own clientInfo is the normal case and the recorder defaults to
+   * `client_info`. Supplied explicitly when initialize falls back to the
+   * User-Agent for a client that sent no clientInfo, so a transport-level
+   * guess is never recorded as an MCP-declared identity.
+   */
+  clientNameSource?: McpClientNameSource;
+  /**
+   * The session id this initialize is CREATING (#8994), not the one it arrived
+   * with -- a canonical initialize arrives with none, which is why this was
+   * null on every one of them before.
+   */
   sessionId?: string | null;
 }
 
@@ -652,10 +664,16 @@ export async function recordMcpInitializeEvent(
 
     const properties: Record<string, unknown> = {};
 
-    // clientInfo from the handshake itself is always authoritative here.
+    // clientInfo from the handshake itself is authoritative when the client
+    // sent one -- but #8994 lets initialize fall back to the User-Agent-derived
+    // name for a client that omits clientInfo, and that name must NOT be
+    // labelled client_info. An explicit source wins; the client_info default
+    // applies only when the caller did not say.
     assignMcpAttribution(properties, {
       ...event,
-      clientNameSource: event.clientName ? "client_info" : undefined,
+      clientNameSource:
+        event.clientNameSource ??
+        (event.clientName ? "client_info" : undefined),
     });
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
