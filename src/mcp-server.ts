@@ -505,6 +505,7 @@ import {
   GetSubnetMetagraphInputSchema,
   GetSubnetMetagraphOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-metagraph.ts";
+import { NEURON_FIELD_NAMES } from "../schemas-src/mcp-tools/shared.ts";
 import {
   GetSubnetHistoryInputSchema,
   GetSubnetHistoryOutputSchema,
@@ -1102,6 +1103,7 @@ import {
 import {
   buildNeuronDetail,
   buildSubnetMetagraph,
+  projectNeuronPayload,
   buildSubnetValidators,
   buildGlobalValidators,
   NO_ALPHA_PRICES,
@@ -2046,6 +2048,46 @@ function toolError(code: string, message: string) {
 // networkArtifactPath, whose non-finney branch is otherwise reachable by any
 // unvalidated string off the wire.
 const MCP_NETWORK_VALUES = McpNetworkSchema.options;
+
+// #9082: the Neuron field names `fields` may name, read off the SAME published
+// list the three tools advertise (schemas-src/mcp-tools/shared.ts, itself read
+// off NeuronSchema). Enforced here because a published enum is decorative at
+// dispatch (#8942) -- tests/mcp-schema-enforcement.test.ts holds every tool to
+// actually rejecting what its schema forbids, and this is that rejection.
+const NEURON_FIELD_VALUES = NEURON_FIELD_NAMES as readonly string[];
+
+/**
+ * An optional array-of-enum argument: null when absent, a validated list
+ * otherwise.
+ *
+ * Rejects rather than silently dropping an unknown name. A caller who asked
+ * for `stake` when the field is `stake_tao` wants to be told, not handed a row
+ * that quietly lacks the column they were counting on.
+ */
+function optionalEnumArray(
+  args: Row,
+  key: string,
+  allowed: readonly string[],
+): string[] | null {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value) || value.length === 0) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a non-empty array of field names.`,
+    );
+  }
+  const unknown = value.filter(
+    (item) => typeof item !== "string" || !allowed.includes(item),
+  );
+  if (unknown.length > 0) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` includes unsupported field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}. Valid fields: ${allowed.join(", ")}.`,
+    );
+  }
+  return [...new Set(value as string[])];
+}
 
 // #8228: rewrite a mainnet artifact path for the requested chain network.
 // Mirrors the Worker's own /metagraph/{prefix}/… partitioning (see
@@ -6220,7 +6262,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "hot and cold keys, stake, rank, trust, consensus, incentive, dividends, " +
       "emission, validator permit, immunity, and axon, ordered by UID. Set " +
       "validator_permit to true to return only permit-holding validators. " +
-      "Captured from the chain on a schedule; empty when no snapshot exists yet.",
+      "Captured from the chain on a schedule; empty when no snapshot exists yet. " +
+      "PASS `fields` UNLESS YOU GENUINELY NEED EVERY COLUMN: the full response is " +
+      '256 rows x 17 fields (~95 KB, ~24k tokens on subnet 1). `fields: ["uid", ' +
+      "\"hotkey\"]` answers 'is this hotkey registered, and at which UID' in ~18 KB.",
     inputSchema: z.toJSONSchema(GetSubnetMetagraphInputSchema, {
       target: "draft-2020-12",
     }),
@@ -6236,14 +6281,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // handleSubnetMetagraph (validator_permit=true is the only value that
       // changes the canonical cache path; omission and false are equivalent).
       const validatorPermit = optionalBoolean(args, "validator_permit");
-      return (
+      // #9082: rejected before the tier read, so an unsupported field costs a
+      // tool error rather than a full 256-row fetch the caller never sees.
+      const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
+      return projectNeuronPayload(
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
             validator_permit: validatorPermit ? "true" : undefined,
           }),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildSubnetMetagraph([], netuid)
+        )) ?? buildSubnetMetagraph([], netuid),
+        fields,
       );
     },
   },
@@ -6256,7 +6305,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "dividends, emission, and axon. Use it to pick which validators to " +
       "target, delegate to, or weight against. Optionally cap the list with " +
       "limit (keeps the highest-stake rows, since the list is already " +
-      "stake-ranked) or drop small-stake rows with min_stake_tao.",
+      "stake-ranked) or drop small-stake rows with min_stake_tao, and narrow " +
+      "each row to the columns you need with `fields` (min_stake_tao still " +
+      "filters on stake_tao whether or not you asked for it).",
     inputSchema: z.toJSONSchema(ListSubnetValidatorsInputSchema, {
       target: "draft-2020-12",
     }),
@@ -6267,6 +6318,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const limit = optionalPositiveInt(args, "limit");
       const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
+      const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
       // limit/min_stake_tao are MCP-only post-filters (REST's
       // handleSubnetValidators takes no such params), so the synthetic
       // request below carries no query string -- filtering happens after,
@@ -6279,7 +6331,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildSubnetValidators([], netuid);
       if (limit === null && minStakeTao === null) {
-        return data;
+        return projectNeuronPayload(data, fields);
       }
       // The loader already ranks by stake_tao DESC, so a limit after the
       // min_stake_tao floor keeps the highest-stake survivors — no re-sort.
@@ -6292,7 +6344,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             )
       ) as Row[];
       const validators = limit === null ? filtered : filtered.slice(0, limit);
-      return { ...data, validator_count: validators.length, validators };
+      // Projected LAST: min_stake_tao filters on stake_tao, so narrowing the
+      // rows first would make the filter depend on whether the caller happened
+      // to ask for the column it filters on.
+      return projectNeuronPayload(
+        { ...data, validator_count: validators.length, validators },
+        fields,
+      );
     },
   },
   {
@@ -6607,7 +6665,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch a single neuron in one subnet by its UID: hot and cold keys, stake, " +
       "rank, trust, consensus, incentive, dividends, emission, validator " +
       "permit, immunity, and axon. Returns neuron: null when that UID is not " +
-      "in the latest snapshot.",
+      "in the latest snapshot. Narrow the row with `fields`.",
     inputSchema: z.toJSONSchema(GetNeuronInputSchema, {
       target: "draft-2020-12",
     }),
@@ -6619,12 +6677,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // still forwarded in the synthetic path below, mirroring REST's
       // handleNeuron.
       const uid = requireNonNegativeInt(args, "uid");
-      return (
+      const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
+      return projectNeuronPayload(
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildNeuronDetail(null, netuid)
+        )) ?? buildNeuronDetail(null, netuid),
+        fields,
       );
     },
   },

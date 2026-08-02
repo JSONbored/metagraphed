@@ -10,8 +10,13 @@ import {
 } from "../src/contracts.ts";
 import { linkHeader } from "./http.ts";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
-
-const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+import {
+  parseFieldsParam,
+  projectionMeta,
+  projectRows,
+  unknownAgainstRows,
+  type FieldProjectionResult,
+} from "../src/field-projection.ts";
 
 export type Row = Record<string, unknown>;
 
@@ -364,9 +369,7 @@ function applyListTransform(
         sort: paginated.sort,
         order: paginated.order,
       },
-      ...(projection.fields
-        ? { projection: { fields: projection.fields } }
-        : {}),
+      ...projectionMeta(projection.fields),
     },
   };
 }
@@ -619,79 +622,18 @@ function validateListQuery(
   return null;
 }
 
-interface ProjectionResult {
-  fields?: string[] | null;
-  error?: QueryError;
-}
-
+// A field is "known" here if it appears on at least one row: an artifact
+// collection can be heterogeneous and has no single row schema to ask.
+// src/field-projection.ts owns the parse, the messages, and the projector --
+// this passes it the row-union resolver, so list routes behave exactly as they
+// did while the neuron routes (#9082) get the same parameter with the same
+// syntax and the same errors, from the same code.
 function parseProjection(
   params: URLSearchParams,
   rows: Row[],
   dataKey: string,
-): ProjectionResult {
-  if (!params.has("fields")) {
-    return { fields: null };
-  }
-  const requested = (params.get("fields") as string)
-    .split(",")
-    .map((field) => field.trim())
-    .filter((field) => field.length > 0);
-  if (
-    requested.length === 0 ||
-    requested.some((field) => !FIELD_NAME_PATTERN.test(field))
-  ) {
-    return {
-      error: {
-        parameter: "fields",
-        message:
-          "fields must be a comma-separated list of row field names, e.g. netuid,name,slug.",
-      },
-    };
-  }
-
-  // A field is "known" if it appears on at least one row, so correctness needs
-  // the union of all rows' keys (collections can be heterogeneous). But the
-  // common case — every requested field present on the first row — only needs
-  // one row. Scan lazily: drop each requested field as a row reveals it and stop
-  // the moment all are resolved. On the largest collection (~1160 endpoints) a
-  // valid ?fields= request now touches ~1 row instead of materializing every
-  // row's keys; an unsupported field still scans to the end to confirm it truly
-  // appears on no row. Behaviour is identical to the prior full-union check.
-  const fields = [...new Set(requested)];
-  const unresolved = new Set(fields);
-  for (const row of rows) {
-    if (unresolved.size === 0) break;
-    if (row && typeof row === "object" && !Array.isArray(row)) {
-      for (const key of Object.keys(row)) unresolved.delete(key);
-    }
-  }
-  if (unresolved.size > 0) {
-    const unknown = [...unresolved];
-    return {
-      error: {
-        parameter: "fields",
-        message: `fields includes unsupported field${unknown.length === 1 ? "" : "s"} for ${dataKey}: ${unknown.join(", ")}.`,
-      },
-    };
-  }
-
-  return { fields };
-}
-
-function projectRows(rows: Row[], fields: string[] | null | undefined): Row[] {
-  if (!fields) {
-    return rows;
-  }
-  return rows.map((row) => {
-    if (!row || typeof row !== "object" || Array.isArray(row)) {
-      return row;
-    }
-    return Object.fromEntries(
-      fields
-        .filter((field) => Object.hasOwn(row, field))
-        .map((field) => [field, row[field]]),
-    );
-  });
+): FieldProjectionResult {
+  return parseFieldsParam(params, unknownAgainstRows(rows), dataKey);
 }
 
 function integerParam(value: string | null): number | null {

@@ -6,6 +6,10 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "vitest";
+import {
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+} from "../src/metagraph-neurons.ts";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
@@ -722,6 +726,101 @@ describe("handleSubnetMetagraph", () => {
     assert.equal(body.data.captured_at, null);
     assert.equal(body.meta.source, "metagraph-snapshot");
   });
+
+  // #9082: `fields=` narrows each neuron row. Exercised through the Postgres
+  // tier because that is the only path that produces real rows to narrow.
+  test("fields= narrows each row and echoes the projection in meta", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph?fields=uid,hotkey`;
+    const body = await json(
+      await handleSubnetMetagraph(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    assert.deepEqual(body.data.neurons, [{ uid: UID, hotkey: SS58 }]);
+    // The envelope is untouched -- only the rows narrow.
+    assert.equal(body.data.neuron_count, 1);
+    assert.deepEqual(body.meta.projection, { fields: ["uid", "hotkey"] });
+  });
+
+  test("omitting fields= leaves the response and its meta exactly as before", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph`;
+    const body = await json(
+      await handleSubnetMetagraph(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    assert.equal(Object.keys(body.data.neurons[0]).length > 2, true);
+    assert.equal("projection" in body.meta, false);
+  });
+
+  test("an unsupported field is a 400 that names it, before any tier read", async () => {
+    let fetched = false;
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      async fetch() {
+        fetched = true;
+        return Response.json({});
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph?fields=uid,stake`;
+    const body = await errorJson(
+      await handleSubnetMetagraph(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /unsupported field for neurons: stake/);
+    assert.equal(fetched, false);
+  });
+
+  // The reason the neuron routes resolve `fields` against NeuronSchema rather
+  // than against the rows in hand: immunity_expires_at_block is emitted only
+  // while a neuron is inside its immunity window, and it is still a legitimate
+  // field to ask for when none of them is.
+  test("a declared field absent from every row is accepted, not rejected", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(
+          buildSubnetMetagraph([neuronRow({ is_immunity_period: 0 })], NETUID),
+        ),
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph?fields=uid,immunity_expires_at_block`;
+    const res = await handleSubnetMetagraph(
+      req(path),
+      env as unknown as Env,
+      NETUID,
+      url(path),
+    );
+    assert.equal(res.status, 200);
+    const body = await json(res);
+    // Present in the contract, absent on this row -- so it is simply not
+    // emitted, rather than emitted as null.
+    assert.deepEqual(body.data.neurons, [{ uid: UID }]);
+  });
 });
 
 describe("handleSubnetYield", () => {
@@ -759,6 +858,34 @@ describe("handleSubnetYield", () => {
 });
 
 describe("handleNeuron", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const body = await errorJson(
+      await handleNeuron(
+        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        UID,
+        url(`/api/v1/subnets/${NETUID}/neurons/${UID}?bogus=1`),
+      ),
+    );
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /bogus/);
+  });
+
+  test("rejects an unsupported fields= name with 400 (#9082)", async () => {
+    const body = await errorJson(
+      await handleNeuron(
+        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        UID,
+        url(`/api/v1/subnets/${NETUID}/neurons/${UID}?fields=stake`),
+      ),
+    );
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /unsupported field for neuron: stake/);
+  });
+
   test("returns schema-stable neuron:null on cold/unbound D1", async () => {
     const body = await assertColdSchema(
       handleNeuron,
@@ -766,6 +893,7 @@ describe("handleNeuron", () => {
       emptyEnv(),
       NETUID,
       UID,
+      url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
     );
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.neuron, null);
@@ -781,6 +909,7 @@ describe("handleNeuron", () => {
         env as unknown as Env,
         NETUID,
         999,
+        url(`/api/v1/subnets/${NETUID}/neurons/999`),
       ),
     );
     assert.equal(body.data.neuron, null);
@@ -788,6 +917,40 @@ describe("handleNeuron", () => {
 });
 
 describe("handleSubnetValidators", () => {
+  test("rejects an unsupported fields= name with 400 (#9082)", async () => {
+    const path = `/api/v1/subnets/${NETUID}/validators?fields=stake`;
+    const body = await errorJson(
+      await handleSubnetValidators(
+        req(path),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /unsupported field for validators: stake/);
+  });
+
+  test("fields= narrows each validator row and echoes the projection (#9082)", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(buildSubnetValidators([neuronRow()], NETUID)),
+    };
+    const path = `/api/v1/subnets/${NETUID}/validators?fields=hotkey`;
+    const body = await json(
+      await handleSubnetValidators(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    assert.deepEqual(body.data.validators, [{ hotkey: SS58 }]);
+    assert.deepEqual(body.meta.projection, { fields: ["hotkey"] });
+  });
+
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetValidators(
       req(`/api/v1/subnets/${NETUID}/validators`),
@@ -4352,6 +4515,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         env as unknown as Env,
         NETUID,
         UID,
+        url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
       ),
     );
     assert.equal(body.data.neuron.hotkey, "postgres-hotkey");
@@ -6158,6 +6322,7 @@ describe("entities handler exports (#1900)", () => {
           emptyEnv() as unknown as Env,
           NETUID,
           UID,
+          url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
         ),
       () =>
         handleAccount(
@@ -6497,6 +6662,7 @@ describe("envelope + meta contracts (#1900)", () => {
         env as unknown as Env,
         NETUID,
         UID,
+        url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
       ),
     );
     assert.equal(body.meta.source, "metagraph-snapshot");
@@ -6508,6 +6674,7 @@ describe("envelope + meta contracts (#1900)", () => {
           env as unknown as Env,
           NETUID,
           UID,
+          url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
         ),
       ),
     );

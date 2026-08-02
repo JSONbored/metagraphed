@@ -83306,6 +83306,14 @@
             }
           },
           {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
             "in": "query",
             "name": "format",
@@ -83412,7 +83420,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+        "summary": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set.",
         "tags": [
           "subnets",
           "analytics"
@@ -83443,6 +83451,14 @@
             "schema": {
               "minimum": 0,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -83529,7 +83545,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+        "summary": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400.",
         "tags": [
           "subnets",
           "analytics"
@@ -86006,6 +86022,14 @@
             }
           },
           {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
             "in": "query",
             "name": "format",
@@ -86112,7 +86136,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+        "summary": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set.",
         "tags": [
           "subnets",
           "analytics"

@@ -6,9 +6,77 @@
 // and call these builders.
 
 import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
+import { NeuronSchema } from "../schemas-src/routes/subnet-metagraph.ts";
+import {
+  parseFieldsParam,
+  projectRow,
+  projectRows,
+  unknownAgainstSchema,
+  type FieldProjectionResult,
+} from "./field-projection.ts";
 
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
+// --- `fields=` projection (#9082) ------------------------------------------
+//
+// Three routes serve this row shape -- /metagraph, /validators, and
+// /neurons/{uid} -- so the projection lives here, once, rather than at the six
+// REST and MCP call sites that would otherwise each grow their own copy.
+//
+// Resolved against NeuronSchema's own shape, NOT against the keys the rows in
+// hand happen to carry. That distinction is the whole reason this route uses
+// the schema resolver: `immunity_expires_at_block` and `immunity_expires_at`
+// are emitted only while a neuron is inside its immunity window (formatNeuron,
+// below), so on a subnet where nobody currently is, a row-union check would
+// reject `fields=immunity_expires_at_block` as unsupported when it is a
+// declared field of the contract. Deriving from the schema also means a field
+// added to NeuronSchema is projectable the same day, with no list to update.
+
+/** Every field of the published Neuron contract, and nothing else. */
+const unknownNeuronFields = unknownAgainstSchema(NeuronSchema);
+
+/**
+ * Parse `fields` for any of the three neuron routes.
+ *
+ * `collection` names the rows in the unsupported-field message, so a caller
+ * who asked /validators for a field it does not have is told about
+ * "validators" rather than about some other route's collection.
+ */
+export function parseNeuronFields(
+  params: URLSearchParams,
+  collection: string,
+): FieldProjectionResult {
+  return parseFieldsParam(params, unknownNeuronFields, collection);
+}
+
+/**
+ * Apply a parsed projection to whichever neuron payload this is.
+ *
+ * Deliberately shape-driven rather than route-driven: the three artifacts
+ * differ only in where the rows live (`neurons`, `validators`, or a single
+ * `neuron`), and a caller of this function should not have to say which route
+ * it is. Returns the payload untouched when no projection was requested, so
+ * the default response stays byte-identical.
+ */
+export function projectNeuronPayload<T extends Row>(
+  data: T,
+  fields: string[] | null | undefined,
+): T {
+  if (!fields || !data) return data;
+  const projected: Row = { ...data };
+  for (const key of ["neurons", "validators"]) {
+    if (Array.isArray(projected[key])) {
+      projected[key] = projectRows(projected[key] as Row[], fields);
+    }
+  }
+  // Null is a real answer here (the UID is absent from the latest snapshot),
+  // and projectRow passes it through rather than turning it into {}.
+  if (Object.hasOwn(projected, "neuron")) {
+    projected.neuron = projectRow(projected.neuron as Row | null, fields);
+  }
+  return projected as T;
+}
 
 // The columns the handlers SELECT for a neuron row.
 export const NEURON_COLUMNS =
