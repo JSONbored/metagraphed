@@ -1428,7 +1428,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
+        /** Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the Postgres-backed neurons tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
         get: operations["accountsList"];
         put?: never;
         post?: never;
@@ -1445,7 +1445,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers. */
+        /** Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the Postgres-backed account_events + neurons tiers. */
         get: operations["accountSummary"];
         put?: never;
         post?: never;
@@ -1666,7 +1666,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons D1 tier. */
+        /** Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the Postgres-backed neurons tier. */
         get: operations["accountPortfolio"];
         put?: never;
         post?: never;
@@ -1683,7 +1683,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered. */
+        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the Postgres-backed neurons tier. Root (netuid 0) stake is not covered. */
         get: operations["accountPositions"];
         put?: never;
         post?: never;
@@ -1802,7 +1802,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier. */
+        /** Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the Postgres-backed neurons tier. */
         get: operations["accountSubnets"];
         put?: never;
         post?: never;
@@ -1819,7 +1819,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the Postgres-backed account_position_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["accountSubnetPositionHistory"];
         put?: never;
         post?: never;
@@ -2210,7 +2210,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        /** Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the Postgres-backed neurons tier; schema-stable nulls when cold. */
         get: operations["chainConcentration"];
         put?: never;
         post?: never;
@@ -2295,7 +2295,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold. */
+        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the Postgres-backed neurons tier; schema-stable empty ranking when cold. */
         get: operations["chainIdleStake"];
         put?: never;
         post?: never;
@@ -2312,7 +2312,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        /** Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the Postgres-backed neurons tier; schema-stable nulls when cold. */
         get: operations["chainPerformance"];
         put?: never;
         post?: never;
@@ -2482,7 +2482,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only). */
+        /** Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the Postgres-backed neuron_daily rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only). */
         get: operations["chainTurnover"];
         put?: never;
         post?: never;
@@ -2533,7 +2533,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        /** Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the Postgres-backed neurons tier; schema-stable nulls when cold. */
         get: operations["chainYield"];
         put?: never;
         post?: never;
@@ -4050,7 +4050,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier). */
+        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the Postgres-backed neurons tier). */
         get: operations["subnetConcentration"];
         put?: never;
         post?: never;
@@ -4067,7 +4067,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup). Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the Postgres-backed neuron_daily rollup). Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetConcentrationHistory"];
         put?: never;
         post?: never;
@@ -4271,7 +4271,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the Postgres-backed neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["subnetHistory"];
         put?: never;
         post?: never;
@@ -4339,7 +4339,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons D1 tier). */
+        /** Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the Postgres-backed neurons tier). */
         get: operations["subnetIdleStake"];
         put?: never;
         post?: never;
@@ -4390,7 +4390,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
+        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the Postgres-backed neurons tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
         get: operations["subnetMetagraph"];
         put?: never;
         post?: never;
@@ -4407,7 +4407,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
+        /** Fetch a single neuron's metagraph state by UID, computed live from the Postgres-backed neurons tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
         get: operations["subnetNeuron"];
         put?: never;
         post?: never;
@@ -4424,7 +4424,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the Postgres-backed neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["subnetNeuronHistory"];
         put?: never;
         post?: never;
@@ -4492,7 +4492,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration. */
+        /** Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the Postgres-backed neurons tier). The reward-flow companion to /concentration. */
         get: operations["subnetPerformance"];
         put?: never;
         post?: never;
@@ -4509,7 +4509,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily D1 rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the Postgres-backed neuron_daily rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetPerformanceHistory"];
         put?: never;
         post?: never;
@@ -4713,7 +4713,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily D1 rollup). */
+        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the Postgres-backed neuron_daily rollup). */
         get: operations["subnetTurnover"];
         put?: never;
         post?: never;
@@ -4747,7 +4747,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
+        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the Postgres-backed neurons tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
         get: operations["subnetValidators"];
         put?: never;
         post?: never;
@@ -4815,7 +4815,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. Pass ?format=csv to download the ranked neuron rows as CSV. */
+        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the Postgres-backed neurons tier. Pass ?format=csv to download the ranked neuron rows as CSV. */
         get: operations["subnetYield"];
         put?: never;
         post?: never;
@@ -4832,7 +4832,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
+        /** Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the Postgres-backed neuron_daily rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetYieldHistory"];
         put?: never;
         post?: never;
@@ -4849,7 +4849,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
+        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the Postgres-backed neuron_daily rollup. */
         get: operations["subnetMovers"];
         put?: never;
         post?: never;
@@ -4934,7 +4934,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the neurons D1 tier. */
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 2000). Computed live from the Postgres-backed neurons tier. */
         get: operations["globalValidators"];
         put?: never;
         post?: never;
@@ -4951,7 +4951,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
+        /** Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the Postgres-backed neurons tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
         get: operations["validatorDetail"];
         put?: never;
         post?: never;
@@ -4968,7 +4968,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        /** Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the Postgres-backed neuron_daily rollup tier. ?window=7d|30d|90d|1y|all. */
         get: operations["validatorHistory"];
         put?: never;
         post?: never;
