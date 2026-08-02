@@ -31,6 +31,8 @@
 
 import { ErrorTracking } from "@posthog/core";
 
+import { registerModuleStateReset } from "./module-state-registry.ts";
+
 /** Env var holding the PostHog project API token (wrangler secret). */
 export const POSTHOG_PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN";
 
@@ -100,12 +102,22 @@ export const POSTHOG_USAGE_SAMPLE_RATES_ENV = "POSTHOG_USAGE_SAMPLE_RATES";
 const DEFAULT_USAGE_SAMPLE_RATE = 1;
 
 // Single-entry memo of the parsed override map, keyed on the raw var text so
-// it re-parses if the value ever differs. Two scalars rather than a Map/Set on
-// purpose: this is input-keyed and therefore semantically pure (same input,
-// same output), so unlike a genuine cache it carries no cross-test state that
-// src/module-state-registry.ts would need to reset.
+// it re-parses if the value ever differs -- a per-request JSON.parse at this
+// module's call volume is pure waste.
+//
+// Registered with the module-state registry because this IS observable across
+// test files under `isolate: false`, even though the memo returns the same
+// answer for the same input: the malformed-map console.error below fires once
+// per distinct raw value, so without a reset a second file's identical
+// malformed map would stay silent and its assertion would fail depending on
+// file order.
 let usageSampleRatesRaw: string | undefined;
 let usageSampleRatesParsed: Record<string, number> = {};
+
+registerModuleStateReset("src/usage-telemetry.ts", () => {
+  usageSampleRatesRaw = undefined;
+  usageSampleRatesParsed = {};
+});
 
 function parseRate(value: unknown): number | undefined {
   // An empty or whitespace-only var is UNSET, not zero. Number("") is 0,
