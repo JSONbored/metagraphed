@@ -59,6 +59,19 @@ export interface R2SqlDeps {
   /** Override the query ceiling. Tests use a tiny value so the abort path is
    * exercised in milliseconds rather than by waiting out the real ceiling. */
   timeoutMs?: number;
+  /**
+   * Schedule the abort. Defaults to a real `setTimeout`; returns its own
+   * canceller so the caller need not know which timer primitive was used.
+   *
+   * Injectable because a real timer is not dependable in CI's shared-registry
+   * pass (#9123). The abort test hung there until vitest killed it at 30s: the
+   * fetch it stubs only settles on abort, so a timer that never fires leaves
+   * nothing to end the promise. Same seam, and the same reason, as
+   * src/webhooks.ts's `sleepFn` -- a real `setTimeout`, even at 1ms, has been
+   * observed not firing in one shared-pass worker, with a fake-timer leak
+   * investigated and ruled out.
+   */
+  scheduleAbort?: (abort: () => void, ms: number) => () => void;
 }
 
 interface R2SqlBody {
@@ -98,7 +111,13 @@ export async function r2SqlQuery(
   const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${account}/r2-sql/query/${warehouse}`;
 
   const abort = new AbortController();
-  const timer = setTimeout(
+  const scheduleAbort =
+    deps.scheduleAbort ??
+    ((fire: () => void, ms: number) => {
+      const handle = setTimeout(fire, ms);
+      return () => clearTimeout(handle);
+    });
+  const cancelAbort = scheduleAbort(
     () => abort.abort(),
     deps.timeoutMs ?? QUERY_TIMEOUT_MS,
   );
@@ -135,7 +154,7 @@ export async function r2SqlQuery(
     });
     return null;
   } finally {
-    clearTimeout(timer);
+    cancelAbort();
   }
 }
 
