@@ -53,6 +53,8 @@ export default interface NeuronDaily {
   captured_at: string;
 
   updated_at: string;
+
+  take: number | null;
 }
 
 /** Represents the initializer for the table public.neuron_daily */
@@ -98,6 +100,8 @@ export interface NeuronDailyInitializer {
   captured_at: string;
 
   updated_at: string;
+
+  take?: number | null;
 }
 
 /** Represents the mutator for the table public.neuron_daily */
@@ -143,4 +147,6 @@ export interface NeuronDailyMutator {
   captured_at?: string;
 
   updated_at?: string;
+
+  take?: number | null;
 }
