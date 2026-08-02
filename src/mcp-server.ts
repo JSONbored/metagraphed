@@ -190,6 +190,7 @@ import {
   recordMcpToolCallEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
+  parseUserAgentClient,
 } from "./usage-telemetry.ts";
 import {
   newSpanId,
@@ -12433,35 +12434,11 @@ function mcpClientKey(request: Request) {
   return resolveClientIp(request);
 }
 
-// #8963: best-effort client identity from the User-Agent, for the tool calls
-// that carry no session to link back to an initialize handshake. MCP HTTP
-// clients send a conventional `name/version` first token (claude-code/2.1.220,
-// mcporter/0.12.3, python-httpx/0.27.0), so the first token before any space
-// is split on its last "/". Anything that doesn't fit that shape yields a name
-// with no version rather than a guess. Capped well under the telemetry
-// module's own label cap so a hostile UA can't dominate a payload.
-const MAX_USER_AGENT_CLIENT_CHARS = 80;
-
-export function parseUserAgentClient(userAgent: unknown): {
-  clientName?: string;
-  clientVersion?: string;
-} {
-  if (typeof userAgent !== "string") return {};
-  const token = userAgent.trim().split(/\s+/)[0] ?? "";
-  if (!token) return {};
-  const slash = token.lastIndexOf("/");
-  // A leading "/" (or a bare "/") leaves no name -- treat the whole token as
-  // the name rather than emitting an empty one.
-  const name = slash > 0 ? token.slice(0, slash) : token;
-  const version = slash > 0 ? token.slice(slash + 1) : "";
-  if (!name) return {};
-  return {
-    clientName: name.slice(0, MAX_USER_AGENT_CLIENT_CHARS),
-    ...(version
-      ? { clientVersion: version.slice(0, MAX_USER_AGENT_CLIENT_CHARS) }
-      : {}),
-  };
-}
+// Re-exported from its home in usage-telemetry.ts (#8963): the request-path
+// usage_event chokepoint in workers/api.ts needs the same parser, and a
+// telemetry helper should not live in the MCP server for one of its two
+// callers to import.
+export { parseUserAgentClient };
 
 async function enforceMcpRateLimit(
   request: Request,

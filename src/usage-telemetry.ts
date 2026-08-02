@@ -41,6 +41,19 @@ export interface UsageEvent {
   mcpTool?: string;
   ok: boolean;
   durationMs: number;
+  // #8963: the dimensions that make 6M events/month queryable. Before these,
+  // usage_event carried route + ok + duration_ms and nothing else -- most of a
+  // free tier spent on three columns, with no way to ask "which method", "was
+  // that a client error or ours", or "who is generating this".
+  /** HTTP method, uppercased. Absent for non-HTTP emitters (cron jobs, MCP). */
+  method?: string;
+  /** Response status class: "2xx" | "3xx" | "4xx" | "5xx". Distinguishes a
+   * route correctly rejecting a bad request from a route that broke -- `ok`
+   * alone folds every 4xx in with the 2xxs. */
+  statusClass?: string;
+  /** Coarse caller bucket from the User-Agent (name only, no version), so
+   * traffic is attributable without the high-cardinality raw header. */
+  client?: string;
   // metagraphed#7726: one of the fixed literal codes a `toolError`-style
   // helper produces (e.g. "invalid_params", "auth_required",
   // "credential_not_supported", "upstream_unavailable", "internal_error") --
@@ -57,6 +70,36 @@ export interface RecordUsageEventDeps {
   fetch?: typeof fetch;
   /** Override distinct_id (tests). */
   distinctId?: string;
+}
+
+// #8963: best-effort client identity from the User-Agent, for the tool calls
+// that carry no session to link back to an initialize handshake. MCP HTTP
+// clients send a conventional `name/version` first token (claude-code/2.1.220,
+// mcporter/0.12.3, python-httpx/0.27.0), so the first token before any space
+// is split on its last "/". Anything that doesn't fit that shape yields a name
+// with no version rather than a guess. Capped well under the telemetry
+// module's own label cap so a hostile UA can't dominate a payload.
+const MAX_USER_AGENT_CLIENT_CHARS = 80;
+
+export function parseUserAgentClient(userAgent: unknown): {
+  clientName?: string;
+  clientVersion?: string;
+} {
+  if (typeof userAgent !== "string") return {};
+  const token = userAgent.trim().split(/\s+/)[0] ?? "";
+  if (!token) return {};
+  const slash = token.lastIndexOf("/");
+  // A leading "/" (or a bare "/") leaves no name -- treat the whole token as
+  // the name rather than emitting an empty one.
+  const name = slash > 0 ? token.slice(0, slash) : token;
+  const version = slash > 0 ? token.slice(slash + 1) : "";
+  if (!name) return {};
+  return {
+    clientName: name.slice(0, MAX_USER_AGENT_CLIENT_CHARS),
+    ...(version
+      ? { clientVersion: version.slice(0, MAX_USER_AGENT_CLIENT_CHARS) }
+      : {}),
+  };
 }
 
 /** True when this deployment has a non-empty PostHog project token configured. */
@@ -105,7 +148,29 @@ export function usageEventProperties(
   const errorCode = sanitizeLabel(event.errorCode);
   if (errorCode !== undefined) properties.error_code = errorCode;
 
+  // #8963 dimensions. Each is omitted (not defaulted) when absent, matching
+  // the contract every other optional field here already follows.
+  const method = sanitizeLabel(event.method);
+  if (method !== undefined) properties.method = method.toUpperCase();
+
+  const statusClass = sanitizeLabel(event.statusClass);
+  if (statusClass !== undefined) properties.status_class = statusClass;
+
+  const client = sanitizeLabel(event.client);
+  if (client !== undefined) properties.client = client;
+
   return properties;
+}
+
+/**
+ * Map an HTTP status to its class label (#8963). Anything outside 100-599 is
+ * not a status we produced, so it yields undefined rather than a bucket that
+ * would quietly absorb garbage.
+ */
+export function statusClassOf(status: unknown): string | undefined {
+  if (typeof status !== "number" || !Number.isFinite(status)) return undefined;
+  if (status < 100 || status > 599) return undefined;
+  return `${Math.floor(status / 100)}xx`;
 }
 
 /**
