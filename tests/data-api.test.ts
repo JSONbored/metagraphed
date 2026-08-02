@@ -1122,6 +1122,72 @@ test("GET /api/v1/blocks/:ref resolves a numeric ref + neighbors", async () => {
   expect(body.next_block_number).toBe(8586301);
 });
 
+// #8968: `blocks` is a hypertable partitioned on observed_at, and this
+// prev/next navigation filtered ONLY on block_number — no chunk exclusion, all
+// 312 chunks probed. Measured live: 261.8ms unloaded, versus 13.1ms bounded,
+// with identical results. That 261ms is survivable alone, but the client sets
+// statement_timeout=3000ms and the indexer runs concurrent COPY/INSERT into
+// `blocks`, so under write contention it blew the timeout and 502'd — 127
+// statement timeouts in three hours, on the busiest route in the project.
+test("blocks/:ref bounds the neighbour lookup on the partition column", async () => {
+  mockQueue.current = [[], [BLOCK_ROW], [{ prev: 8586299, next: 8586301 }]];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(200);
+
+  const nav = sqlCalls.at(-1)!.text;
+  expect(nav).toContain("observed_at BETWEEN");
+  // block_number stays the EXACT predicate — observed_at is a superset bound
+  // for chunk exclusion, not a replacement for the requested semantics.
+  expect(nav).toContain("block_number <");
+  expect(nav).toContain("block_number >");
+  // The window is derived from the block's own observed_at, so it costs no
+  // extra query.
+  expect(sqlCalls.at(-1)!.values).toContain(1783600000000 - 86_400_000);
+});
+
+// A null on ONE side is the honest answer at genesis (no prev) and at the head
+// (no next). Falling back there would run the expensive scan on the two most-
+// requested blocks in the chain, for no gain.
+test("blocks/:ref does NOT fall back when only one side is null", async () => {
+  mockQueue.current = [[], [BLOCK_ROW], [{ prev: 8586299, next: null }]];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.prev_block_number).toBe(8586299);
+  expect(body.next_block_number).toBeNull();
+  // Exactly one neighbour query ran, and it was the bounded one.
+  const navQueries = sqlCalls.filter((c) =>
+    c.text.includes("MAX(block_number)"),
+  );
+  expect(navQueries.length).toBe(1);
+  expect(navQueries[0].text).toContain("observed_at BETWEEN");
+});
+
+// Both null means either an isolated block or no window at all. Claiming a
+// block has no neighbours in EITHER direction would be a false statement rather
+// than a slow one, so correctness wins over the optimisation here.
+test("blocks/:ref falls back to the unbounded scan when both sides are null", async () => {
+  mockQueue.current = [
+    [],
+    [BLOCK_ROW],
+    [{ prev: null, next: null }],
+    [{ prev: 8586299, next: 8586301 }],
+  ];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.prev_block_number).toBe(8586299);
+  expect(body.next_block_number).toBe(8586301);
+
+  const navQueries = sqlCalls.filter((c) =>
+    c.text.includes("MAX(block_number)"),
+  );
+  expect(navQueries.length).toBe(2);
+  expect(navQueries[0].text).toContain("observed_at BETWEEN");
+  // The fallback is deliberately unbounded — that is the whole point of it.
+  expect(navQueries[1].text).not.toContain("observed_at BETWEEN");
+});
+
 test("GET /api/v1/blocks/:ref resolves a lowercased hash ref", async () => {
   mockQueue.current = [[], [BLOCK_ROW], [{ prev: null, next: null }]];
   const upperHash = `0x${"ABC".repeat(21)}D`; // 64 hex chars, mixed-case
