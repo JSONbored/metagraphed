@@ -218,6 +218,10 @@
     // same fallback. Explorer routes (blocks/extrinsics/events/sudo) serve
     // from the lakehouse cold tiers; the remaining families serve schema-
     // stable empties until their D1 ports / projections land.
+    // Measured max(chain.blocks) after the final top-up load (2026-08-02,
+    // contiguity re-verified: count == max - min + 1). Blocks at or below
+    // this height serve from the lakehouse; above it, from D1 blocks_head.
+    "ICEBERG_BLOCKS_MAX": "8759336",
     "METAGRAPH_BLOCKS_SOURCE": "retired",
     "METAGRAPH_EXTRINSICS_SOURCE": "retired",
     // account_events: RE-FLIPPED to "postgres" 2026-07-10 alongside the other
