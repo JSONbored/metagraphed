@@ -9,6 +9,7 @@
 // this tool's existing required set. Modeled fresh instead, matching each
 // hand-written literal exactly.
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const GetSubnetRecycledInputSchema = z
   .object({
@@ -25,6 +26,8 @@ export const GetSubnetRecycledOutputSchema = z
     netuid: z.int(),
     recycled_tao: z.number().nullable().optional(),
     queried_at: z.string().nullable(),
+    // #9104 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetSubnetRecycledOutput = z.infer<
@@ -44,6 +47,8 @@ export const GetSubnetBurnOutputSchema = z
     netuid: z.int(),
     burn_tao: z.number().nullable().optional(),
     queried_at: z.string().nullable(),
+    // #9104 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetSubnetBurnOutput = z.infer<typeof GetSubnetBurnOutputSchema>;

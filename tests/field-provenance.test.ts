@@ -36,6 +36,12 @@ import {
   RandomnessArtifactSchema,
   SudoKeyArtifactSchema,
 } from "../schemas-src/routes/network-singletons.ts";
+import {
+  SubnetBurnArtifactSchema,
+  SubnetRecycledArtifactSchema,
+} from "../schemas-src/routes/subnet-registration-cost.ts";
+import { SUBNET_BURN_FIELD_SOURCES } from "../src/subnet-burn.ts";
+import { SUBNET_RECYCLED_FIELD_SOURCES } from "../src/subnet-recycled.ts";
 
 /**
  * One surface's contract, paired with the map that claims to describe it.
@@ -62,6 +68,16 @@ const SURFACES: {
     name: "GET /api/v1/sudo/key",
     schema: SudoKeyArtifactSchema,
     sources: SUDO_KEY_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/subnets/{netuid}/burn",
+    schema: SubnetBurnArtifactSchema,
+    sources: SUBNET_BURN_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/subnets/{netuid}/recycled",
+    schema: SubnetRecycledArtifactSchema,
+    sources: SUBNET_RECYCLED_FIELD_SOURCES,
   },
   {
     // The map describes the per-subnet ROW, not the artifact envelope — the

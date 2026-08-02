@@ -5,6 +5,7 @@ import {
   RECYCLED_NEGATIVE_KV_TTL,
   RECYCLED_RPC_TIMEOUT_MS,
   loadSubnetRecycled,
+  SUBNET_RECYCLED_FIELD_SOURCES,
 } from "../src/subnet-recycled.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -190,7 +191,13 @@ describe("loadSubnetRecycled", () => {
     }) as unknown as typeof fetch;
     try {
       const data = await loadSubnetRecycled(env, GOLDEN_NETUID);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9104). field_sources is
+      // attached outside the cache, so an entry written before it existed
+      // still comes back with one rather than serving a full TTL without.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: SUBNET_RECYCLED_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       globalThis.fetch = orig;

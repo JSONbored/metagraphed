@@ -69,6 +69,8 @@ function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
+import type { FieldSources } from "./field-provenance.ts";
+
 type Row = Record<string, unknown>;
 
 // Query the live current burn/registration cost for one subnet. Uses
@@ -77,7 +79,18 @@ type Row = Record<string, unknown>;
 // result (schema-stable, never throws). A subnet with a genuinely zero burn
 // cost reads back the chain's own 0x00...0 ValueQuery default, decoding to a
 // real 0, not null.
-export async function loadSubnetBurn(env: Env, netuid: number): Promise<Row> {
+/**
+ * Where each published value came from (#9104).
+ *
+ * One field, one read: the current registration cost for this subnet, straight
+ * off SubtensorModule.Burn. The rao-to-TAO division keeps it `measured` -- the
+ * value is still that single storage read, in the unit a caller wants.
+ */
+export const SUBNET_BURN_FIELD_SOURCES = {
+  burn_tao: { kind: "measured", storage: "SubtensorModule.Burn" },
+} as const satisfies FieldSources;
+
+async function loadSubnetBurnSnapshot(env: Env, netuid: number): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
@@ -147,4 +160,19 @@ export async function loadSubnetBurn(env: Env, netuid: number): Promise<Row> {
   }
 
   return payload;
+}
+
+/**
+ * The served scorecard: the snapshot above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob -- at a 600s TTL
+ * an entry cached before #9104 would otherwise serve without provenance for the
+ * rest of its life. It is also the single point REST, GraphQL and MCP all
+ * inherit it from, rather than three call sites kept in step by hand.
+ */
+export async function loadSubnetBurn(env: Env, netuid: number): Promise<Row> {
+  return {
+    ...(await loadSubnetBurnSnapshot(env, netuid)),
+    field_sources: SUBNET_BURN_FIELD_SOURCES,
+  };
 }

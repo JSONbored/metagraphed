@@ -9357,6 +9357,14 @@ export interface components {
         };
         SubnetBurnArtifact: {
             burn_tao?: number | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    storage: string | null;
+                };
+            };
             netuid: number;
             queried_at?: string | null;
             schema_version: number;
@@ -10416,6 +10424,14 @@ export interface components {
             window: ("7d" | "30d") | null;
         };
         SubnetRecycledArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    storage: string | null;
+                };
+            };
             netuid: number;
             queried_at?: string | null;
             recycled_tao?: number | null;
@@ -40032,6 +40048,12 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "burn_tao": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "netuid": 7,
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1
@@ -44647,6 +44669,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "netuid": 7,
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "recycled_tao": 0.5,

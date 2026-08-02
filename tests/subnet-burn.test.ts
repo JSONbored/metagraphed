@@ -5,6 +5,7 @@ import {
   BURN_NEGATIVE_KV_TTL,
   BURN_RPC_TIMEOUT_MS,
   loadSubnetBurn,
+  SUBNET_BURN_FIELD_SOURCES,
 } from "../src/subnet-burn.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -187,7 +188,13 @@ describe("loadSubnetBurn", () => {
     }) as unknown as typeof fetch;
     try {
       const data = await loadSubnetBurn(env, GOLDEN_NETUID);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9104). field_sources is
+      // attached outside the cache, so an entry written before it existed
+      // still comes back with one rather than serving a full TTL without.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: SUBNET_BURN_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       globalThis.fetch = orig;

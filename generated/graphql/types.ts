@@ -4474,6 +4474,8 @@ export type SubnetAxonRemovals = {
 export type SubnetBurn = {
   __typename?: 'SubnetBurn';
   burn_tao?: Maybe<Scalars['Float']['output']>;
+  /** Per-field { kind, storage } map: burn_tao is measured, read from SubtensorModule.Burn. ADR 0023 decision 5, generalised in #9078/#9104. */
+  field_sources: Scalars['JSON']['output'];
   netuid: Scalars['Int']['output'];
   queried_at: Scalars['String']['output'];
   schema_version: Scalars['Int']['output'];
@@ -4964,6 +4966,8 @@ export type SubnetPrometheus = {
 /** Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC. recycled_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/recycled. */
 export type SubnetRecycled = {
   __typename?: 'SubnetRecycled';
+  /** Per-field { kind, storage } map: recycled_tao is measured, read from SubtensorModule.RAORecycledForRegistration -- the chain's own cumulative counter, not an account_events aggregation. ADR 0023 decision 5, generalised in #9078/#9104. */
+  field_sources: Scalars['JSON']['output'];
   netuid: Scalars['Int']['output'];
   queried_at: Scalars['String']['output'];
   recycled_tao?: Maybe<Scalars['Float']['output']>;
@@ -8595,6 +8599,7 @@ export type SubnetAxonRemovalsResolvers<ContextType = GqlContext, ParentType ext
 
 export type SubnetBurnResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetBurn'] = ResolversParentTypes['SubnetBurn']> = ResolversObject<{
   burn_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -8982,6 +8987,7 @@ export type SubnetPrometheusResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type SubnetRecycledResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetRecycled'] = ResolversParentTypes['SubnetRecycled']> = ResolversObject<{
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   recycled_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;

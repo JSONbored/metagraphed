@@ -7,6 +7,7 @@
 // SubnetBurnArtifact/SubnetRecycledArtifact components they replace.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const SubnetBurnArtifactSchema = z
   .object({
@@ -14,6 +15,9 @@ export const SubnetBurnArtifactSchema = z
     netuid: z.int().min(0).max(65535),
     burn_tao: z.number().nullable().optional(),
     queried_at: z.iso.datetime().nullable().optional(),
+    // #9104. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type SubnetBurnArtifact = z.infer<typeof SubnetBurnArtifactSchema>;
@@ -27,6 +31,9 @@ export const SubnetRecycledArtifactSchema = z
     netuid: z.int().min(0).max(65535),
     recycled_tao: z.number().nullable().optional(),
     queried_at: z.iso.datetime().nullable().optional(),
+    // #9104. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type SubnetRecycledArtifact = z.infer<

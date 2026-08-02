@@ -3406,6 +3406,8 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     recycled_tao: Float
     queried_at: String!
+    "Per-field { kind, storage } map: recycled_tao is measured, read from SubtensorModule.RAORecycledForRegistration -- the chain's own cumulative counter, not an account_events aggregation. ADR 0023 decision 5, generalised in #9078/#9104."
+    field_sources: JSON!
   }
 
   "Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn."
@@ -3414,6 +3416,8 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     burn_tao: Float
     queried_at: String!
+    "Per-field { kind, storage } map: burn_tao is measured, read from SubtensorModule.Burn. ADR 0023 decision 5, generalised in #9078/#9104."
+    field_sources: JSON!
   }
 
   "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard."
