@@ -168,11 +168,91 @@ No `Council`, `Senate`, `SenateMembers`, `TechnicalCommittee`, `Triumvirate`, `D
   `BurnIncreaseMultSet`, `SubnetEmissionEnabledSet`) — the reliable source for the rest is the
   extrinsic itself (`call_module = 'AdminUtils'`, decoded `call_args`).
 
-Both `call_module` values are confirmed present in the captured `extrinsics` D1 tier: `Sudo`
+Both `call_module` values are confirmed present in the captured `extrinsics` tier: `Sudo`
 had zero calls in the last ~104k blocks (~2 weeks) sampled 2026-07-08; `AdminUtils` had 57 in
 the same window — this is where real activity happens. Epic #4310's 2.2 (`/api/v1/sudo`) and
 2.3 (AdminUtils config-change feed, re-scoped from the original Council/Senate framing) and 2.4
 (current Sudo key, re-scoped from Senate/Council membership) are built directly on this audit.
+
+> The `Sudo` figure above is a **two-week window**, not a whole-history count, and it was
+> sampled against an index that had not yet reached genesis. `Sudo` does have history. See the
+> corrected census below.
+
+### The metadata-grep trap (#8697, verified 2026-08-02)
+
+This audit's conclusion keeps getting re-litigated, and there is a specific reason: **a raw
+substring search of the runtime metadata blob does hit `Triumvirate` and `Senate`.** Verified
+against live finney metadata on 2026-08-02 (308,312 decoded bytes) — one hit each.
+
+Those hits are real and current. They are **not** stale type paths left over from a removed
+pallet: they are variants of `runtime_common::proxy::ProxyType`, the enum behind the `Proxy`
+pallet's `proxy_type` argument. The full variant list as decoded from that same blob:
+
+```
+Any, Owner, NonCritical, NonTransfer, Senate, NonFungible, Triumvirate, Governance,
+Staking, Registration, Transfer, SmallTransfer, RootWeights, ChildKeys,
+SudoUncheckedSetCode, SwapHotkey, SubnetLeaseBeneficiary, RootClaim
+```
+
+So subtensor's proxy system carries delegation categories named after governance bodies
+(`Senate`, `Triumvirate`, `Governance`) that **do not exist as pallets**. A grep finds live
+runtime data and draws exactly the wrong conclusion from it.
+
+Two more results from the same check, for completeness:
+
+- `Collective` also hits twice — both occurrences are the pallet `RandomnessCollectiveFlip`.
+- `Council`, `Democracy`, `Referenda` and `SenateMembers` have **zero** hits.
+
+**The only correct check is decoding `md.asLatest.pallets`.** Done that way the runtime has
+exactly **28 pallets**, matching the list above with no additions:
+
+```bash
+curl -s -X POST https://entrypoint-finney.opentensor.ai \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"state_getMetadata","params":[]}' > meta.json
+
+node -e 'const {Metadata,TypeRegistry}=require("@polkadot/types");
+const r=new TypeRegistry();const m=new Metadata(r,require("./meta.json").result);
+r.setMetadata(m);console.log(m.asLatest.pallets.map(p=>p.name.toString()).join(", "))'
+```
+
+**There are no on-chain proposals or votes on Bittensor.** A governance-proposals surface would
+render an empty table forever, and nothing in this repo should build one. Governance that does
+exist is already covered: `/api/v1/sudo`, `/api/v1/sudo/key`,
+`/api/v1/governance/config-changes` (AdminUtils), per-subnet hyperparameter history, and the
+`SubnetOwnerHotkeySet` / `BurnSet` / `SubnetLease*` / `Contributed` / `Withdrew` events
+classified `"governance"` in `src/account-events.ts`.
+
+### Corrected pallet-usage census (#8696, 2026-08-02)
+
+Supersedes every "never called" verdict derived from a windowed sample, including #8697's own
+2026-07-29 census — the blocks/extrinsics backfill only reached genesis on 2026-08-02, so
+anything measured before that ran against a partial index.
+
+Counted by paginating `GET /api/v1/extrinsics?call_module=<pallet>` to exhaustion, with
+`success === true` counted **separately from the total** — that distinction is the whole
+finding:
+
+| Pallet        | Extrinsics | Succeeded | Block range           |
+| ------------- | ---------: | --------: | --------------------- |
+| `Crowdloan`   |        489 |   **432** | 6,766,682 – 8,421,037 |
+| `LimitOrders` |        403 |    **57** | 8,492,449 – 8,617,315 |
+| `Scheduler`   |         43 |     **0** | 1,562,942 – 7,335,514 |
+| `SafeMode`    |          1 |     **0** | 4,222,830             |
+| `Preimage`    |          0 |         0 | —                     |
+| `AlphaAssets` |          0 |         0 | —                     |
+
+`Scheduler` and `SafeMode` look used and are not — every one of their extrinsics failed. Both
+therefore need a **storage** read rather than an extrinsics view: root-origin scheduling never
+appears in the extrinsic feed at all, so an extrinsics-backed agenda would report empty while a
+real one existed, and root can pause the chain with no signed `SafeMode` extrinsic ever
+appearing (`SafeMode.EnteredUntil` is the only thing that answers the real question — shipped as
+a monitor in #9126).
+
+Two measurement traps worth keeping:
+
+- `?call_module=X&limit=1` is an **existence probe, not a count**.
+- `limit` is clamped to **100** server-side, so a single unpaginated call under-reports.
 
 ## Nested-call decode depth (#4319/4.1, 2026-07-09)
 
