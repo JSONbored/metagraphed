@@ -26,6 +26,15 @@
 // deliberately KEPT as a fallback rather than deleted: it is what dev, test
 // and any fixture-backed environment load, and it costs nothing to honour a
 // baked file if one ever appears. The schema-stable empty shape is the floor.
+//
+// #8987 -- AND THAT REORDER DID NOT ACTUALLY FIX IT. The ordering above landed
+// in #8633, but readSelfHealthTier then required an `{ ok, data }` envelope the
+// DATA_API binding has never emitted, so the newly-promoted branch returned
+// null on every call and both surfaces kept serving the empty shape. The
+// paragraphs above described a working fix for over a month while production
+// behaved exactly as before it. See readSelfHealthTier for the detail; the
+// lesson worth keeping is that the test which should have caught it asserted
+// the envelope the CODE expected rather than the one the PRODUCER emits.
 
 import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -62,7 +71,37 @@ export function selfHealthToolError(
  *
  * Returns null rather than throwing on every failure, so the caller can fall
  * through instead of surfacing plumbing to an agent.
+ *
+ * #8987 -- THE BINDING RETURNS THE DOCUMENT BARE. This previously required an
+ * `{ ok, data }` envelope and unwrapped `payload.data`. No such envelope ever
+ * arrives here: workers/data-api.ts's `json()` helper serializes the value
+ * directly, and the self-health route returns `json(buildSelfHealth(...))`, so
+ * `payload.ok` was `undefined` on every call and this function returned null
+ * unconditionally. `get_self_health` and the GraphQL `selfHealth` field both
+ * served the all-null degraded shape in production for over a month while
+ * GET /api/v1/self-health returned `verdict: "operational"` beside them.
+ *
+ * The `{ ok, data }` envelope is added by the API Worker's response wrapper on
+ * the way OUT to the public; it is not what a service binding hands back. The
+ * sibling workers/postgres-tier.ts `tryPostgresTier` gets this right and does
+ * no `ok` check at all.
+ *
+ * What replaces it is a SHAPE check, not another envelope guess: a self-health
+ * document has a `components` array. That keeps the "don't hand an agent
+ * nonsense" property the old check accidentally provided -- an unexpected body
+ * still degrades rather than being served -- without inventing a wrapper the
+ * producer does not emit. It is also self-correcting in the direction that
+ * matters: if the payload shape ever changes, this degrades loudly to the
+ * empty verdict rather than silently serving a body no consumer understands.
  */
+function isSelfHealthDocument(payload: unknown): boolean {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    Array.isArray((payload as { components?: unknown }).components)
+  );
+}
+
 async function readSelfHealthTier(env: Env): Promise<unknown | null> {
   if (env.METAGRAPH_SELF_HEALTH_SOURCE !== "postgres" || !env.DATA_API) {
     return null;
@@ -75,8 +114,8 @@ async function readSelfHealthTier(env: Env): Promise<unknown | null> {
       }),
     );
     if (!upstream.ok) return null;
-    const payload = (await upstream.json()) as { ok?: boolean; data?: unknown };
-    return payload?.ok && payload.data ? payload.data : null;
+    const payload = await upstream.json();
+    return isSelfHealthDocument(payload) ? payload : null;
   } catch {
     return null;
   }
