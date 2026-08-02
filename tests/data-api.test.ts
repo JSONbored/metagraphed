@@ -901,13 +901,23 @@ test("chain-events/stats ranks with a deterministic tie-break on the group key",
   expect(stats).not.toMatch(/ORDER BY count DESC\s+LIMIT/);
 });
 
+// #8970: the window is no longer bound as a raw `blocks` parameter — it is
+// resolved against the head into two absolute bounds (an observed_at floor for
+// chunk exclusion and an exact block_number floor). These assert the derived
+// values, which pins the flooring AND the arithmetic that depends on it.
+// The head mock returns block_number 123 / observed_at 100.
+const STATS_BLOCK_MS_CEILING = 60_000;
+
 test("chain-events/stats floors fractional blocks before binding", async () => {
   const res = await req("/api/v1/chain-events/stats?blocks=1.5");
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.window_blocks).toBe(1);
-  expect(sqlCalls.at(-1)!.values).toContain(1);
-  expect(sqlCalls.at(-1)!.values).not.toContain(1.5);
+  const values = sqlCalls.at(-1)!.values;
+  // 1, not 1.5 — a fractional window would produce a fractional bound.
+  expect(values).toContain(123 - 1);
+  expect(values).toContain(100 - 1 * STATS_BLOCK_MS_CEILING);
+  expect(values).not.toContain(100 - 1.5 * STATS_BLOCK_MS_CEILING);
 });
 
 test("chain-events/stats preserves minimum block window after flooring", async () => {
@@ -915,8 +925,48 @@ test("chain-events/stats preserves minimum block window after flooring", async (
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.window_blocks).toBe(1);
-  expect(sqlCalls.at(-1)!.values).toContain(1);
-  expect(sqlCalls.at(-1)!.values).not.toContain(0);
+  const values = sqlCalls.at(-1)!.values;
+  // Floors to 1, never to 0 — a zero window would bind the head itself as the
+  // exclusive floor and return nothing.
+  expect(values).toContain(123 - 1);
+  expect(values).not.toContain(123);
+});
+
+// A cold store has no head to anchor the window on. Running the aggregate
+// anyway would issue an unanchored scan — exactly the shape #8970 removed.
+test("chain-events/stats answers empty on a cold store instead of scanning", async () => {
+  const previous = mockRows.current;
+  mockRows.current = [];
+  try {
+    const res = await req("/api/v1/chain-events/stats?blocks=500");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Row;
+    expect(body.groups).toBe(0);
+    expect(body.activity).toEqual([]);
+    expect(body.window_blocks).toBe(500);
+    // Only the head lookup ran — no aggregate was issued.
+    expect(sqlCalls.at(-1)!.text).toContain("max(block_number)");
+    expect(sqlCalls.at(-1)!.text).not.toContain("GROUP BY pallet, method");
+  } finally {
+    mockRows.current = previous;
+  }
+});
+
+// The defect this route was 502-ing on: chain_events is partitioned on
+// observed_at, so a block_number-only predicate excludes no chunks and the
+// query scanned the whole hypertable (181s measured) while the Worker gave up
+// at ~3.3s.
+test("chain-events/stats bounds on the partition column so chunks can be excluded", async () => {
+  const res = await req("/api/v1/chain-events/stats?blocks=500");
+  expect(res.status).toBe(200);
+  const stats = sqlCalls.at(-1)!.text;
+  expect(stats).toMatch(/WHERE observed_at >= /);
+  // block_number stays the exact filter — the observed_at bound is a superset
+  // for chunk exclusion, not a replacement for the requested semantics.
+  expect(stats).toMatch(/AND block_number > /);
+  // ...and the correlated max() subquery is gone from the aggregate.
+  expect(stats).not.toMatch(/SELECT max\(block_number\) FROM chain_events\)/);
+  expect(sqlCalls.at(-1)!.values).toContain(100 - 500 * STATS_BLOCK_MS_CEILING);
 });
 
 test("chain-events rejects overlong or non-enumerable pallet/method filters", async () => {
