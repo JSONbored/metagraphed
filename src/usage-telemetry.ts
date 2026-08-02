@@ -1013,11 +1013,21 @@ export async function recordAiEmbeddingEvent(
       // PostHog reports latency in SECONDS, as with $ai_generation.
       $ai_latency: event.latencyMs / 1000,
       $ai_http_status: event.isError ? 500 : 200,
-      $ai_input_tokens: Number.isFinite(event.inputTokens)
-        ? event.inputTokens
-        : 0,
       $ai_is_error: event.isError,
     };
+
+    // Workers AI's embedding response carries no `usage` object, so a token
+    // count is genuinely unavailable here -- not zero. Reporting 0 would be
+    // the same fabricated-value defect #8963 fixed for $mcp_duration_ms: it
+    // makes "we cannot measure this" indistinguishable from "this embedded
+    // nothing", and it drags any sum or average over embeddings toward zero.
+    // Omit unless a caller actually has a count. ($ai_generation keeps its own
+    // 0 default: Workers AI does return usage for completions, so a 0 there is
+    // a real reading, and changing it would rewrite established semantics
+    // mid-stream.)
+    if (Number.isFinite(event.inputTokens)) {
+      properties.$ai_input_tokens = event.inputTokens;
+    }
 
     const traceName = sanitizeLabel(event.traceName);
     if (traceName !== undefined) properties.$ai_trace_name = traceName;

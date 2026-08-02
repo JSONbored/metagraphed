@@ -1703,6 +1703,30 @@ describe("recordAiEmbeddingEvent", () => {
     assert.equal(props.$ai_is_error, false);
   });
 
+  // Workers AI's embedding response has no `usage` object, so in production
+  // this is ALWAYS the case. Reporting 0 would be the same fabricated-value
+  // defect #8963 fixed for durations, and would drag every sum or average
+  // over embeddings toward zero.
+  test("omits the token count when the model reports none, rather than sending 0", async () => {
+    const { calls, deps } = capture8965();
+    await recordAiEmbeddingEvent(
+      CONFIGURED_8965,
+      {
+        provider: "cloudflare_workers_ai",
+        model: "@cf/qwen/qwen3-embedding-0.6b",
+        latencyMs: 12,
+        isError: false,
+        inputCount: 1,
+      },
+      deps,
+    );
+    const props = calls[0].body.properties;
+    assert.ok(!("$ai_input_tokens" in props));
+    // The call itself is still counted -- that is what makes per-call billing
+    // readable without a token count.
+    assert.equal(props.$ai_input_count, 1);
+  });
+
   test("never reports a cost — Workers AI bills embeddings in neurons", async () => {
     const { calls, deps } = capture8965();
     await recordAiEmbeddingEvent(
