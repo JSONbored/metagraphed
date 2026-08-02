@@ -136,9 +136,9 @@ import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
 import {
-  loadBlockFeedFromR2Sql,
-  loadBlockFromR2Sql,
-} from "../../src/r2-sql-blocks.ts";
+  loadBlockFeedColdTier,
+  loadBlockColdTier,
+} from "../../src/blocks-cold-tier.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
@@ -4823,19 +4823,19 @@ export async function handleBlocks(request: Request, env: Env, url: URL) {
     const parsed = parseNonNegativeIntParam(raw, param);
     if ("error" in parsed) return analyticsQueryError(parsed.error);
   }
-  // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
-  // #9115: when the Postgres tier misses (the self-hosted box is gone), read
-  // the same history from the R2 lakehouse before falling back to an empty
-  // page. Both tiers feed the SAME buildBlockFeed formatter, so the payload is
-  // identical whichever answered.
+  // When the Postgres tier misses (the self-hosted box is gone), the cold tier
+  // answers from the two sources that outlive it: the R2 lakehouse for
+  // verified history, and D1's blocks_head for everything the head poller has
+  // seen since. They meet at a fixed seam, so every block comes from exactly
+  // one of them -- see src/blocks-cold-tier.ts. All tiers feed the SAME
+  // buildBlockFeed formatter, so the payload is identical whichever answered.
   const data =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildBlockFeed> | null) ??
-    (await loadBlockFeedFromR2Sql(env, {
+    (await loadBlockFeedColdTier(env, {
       limit,
       offset,
       cursor: url.searchParams.get("cursor"),
@@ -4916,7 +4916,7 @@ export async function handleBlock(request: Request, env: Env, ref: string) {
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildBlock> | null) ??
-    (await loadBlockFromR2Sql(env, ref)) ??
+    (await loadBlockColdTier(env, ref)) ??
     buildBlock(undefined, ref);
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
   // on the short profile so clients re-check when the block lands.
