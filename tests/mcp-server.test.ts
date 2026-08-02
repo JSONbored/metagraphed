@@ -14792,6 +14792,60 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.match(queries[1]!, /FROM chain\.account_events/);
   });
 
+  test("get_block_events serves one block's events in read order", async () => {
+    const queries = lakeFetch([
+      {
+        block_number: 4200000,
+        event_index: 0,
+        extrinsic_index: 3,
+        event_kind: "WeightsSet",
+        hotkey: LAKE_EXTRINSIC.signer,
+        coldkey: null,
+        netuid: 7,
+        uid: 3,
+        amount_tao: null,
+        alpha_amount: null,
+        observed_at: 1750009000000,
+      },
+    ]);
+    const res = await callTool(
+      "get_block_events",
+      { ref: "4200000", limit: 10 },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.events.length, 1);
+    assert.equal(data.events[0].event_kind, "WeightsSet");
+    assert.match(queries[0]!, /ORDER BY event_index ASC/);
+  });
+
+  test("get_account_events reads both key sides from the lakehouse", async () => {
+    const queries = lakeFetch([
+      {
+        block_number: 4200000,
+        event_index: 0,
+        extrinsic_index: 3,
+        event_kind: "StakeAdded",
+        hotkey: LAKE_EXTRINSIC.signer,
+        coldkey: null,
+        netuid: 7,
+        uid: 3,
+        amount_tao: "5000",
+        alpha_amount: null,
+        observed_at: 1750009000000,
+      },
+    ]);
+    const res = await callTool(
+      "get_account_events",
+      { ss58: LAKE_EXTRINSIC.signer, limit: 5, kind: "StakeAdded" },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.events.length, 1);
+    assert.match(queries[0]!, /hotkey = '5G9hfkx.*OR coldkey = '5G9hfkx/);
+    assert.match(queries[0]!, /event_kind = 'StakeAdded'/);
+  });
+
   test("get_account_extrinsics filters by signer from the lakehouse", async () => {
     const queries = lakeFetch([LAKE_EXTRINSIC]);
     const res = await callTool(

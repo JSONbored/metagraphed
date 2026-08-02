@@ -229,6 +229,10 @@ import {
   loadExtrinsicFeedColdTier,
 } from "./extrinsics-cold-tier.ts";
 import {
+  loadAccountEventsColdTier,
+  loadBlockEventsColdTier,
+} from "./events-cold-tier.ts";
+import {
   handleRpcProxyRequest,
   graphqlRateLimited,
 } from "../workers/request-handlers/rpc-proxy.ts";
@@ -7434,6 +7438,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
+        (await loadAccountEventsColdTier(ctx.env, ss58, {
+          limit,
+          offset,
+          cursor,
+          kind,
+          netuid,
+          blockStart,
+          blockEnd,
+        })) ??
         buildAccountEvents([], ss58, {
           limit,
           offset,
@@ -8498,7 +8511,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           },
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? { data: buildBlockEvents([], ref, null, { limit, offset }) };
+      )) ?? {
+        // Lazily built only when the Postgres tier missed, mirroring REST's
+        // handleBlockEvents.
+        data:
+          (await loadBlockEventsColdTier(ctx.env, ref, { limit, offset })) ??
+          buildBlockEvents([], ref, null, { limit, offset }),
+      };
       return data;
     },
   },
