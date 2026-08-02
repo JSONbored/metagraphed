@@ -5277,6 +5277,107 @@ function openApiOperationId(routeId: string) {
   );
 }
 
+/**
+ * Default descriptions for the query parameters that mean the same thing on
+ * every route (#9131).
+ *
+ * 942 of the 1,327 query parameters we publish carried no description at all,
+ * and they were not the obscure tail -- `limit` (134 operations), `cursor`
+ * (77), `fields` (68) and `offset` had none, while `format` and `network` had
+ * one on every single operation. The reason is mechanical: `format`'s were
+ * hand-written inline, one per route, so the parameters nobody wanted to type
+ * 134 times went undocumented.
+ *
+ * Writing them inline would mean ~480 more hand-maintained strings that go
+ * stale the moment a behaviour changes -- the failure #9127 just fixed for the
+ * `limit` ceiling. These parameters have one meaning, so they get one
+ * description, applied at emit time to both parameter sites.
+ *
+ * An inline `description` always wins: a route that needs to say something
+ * specific keeps saying it, and none of the existing 385 change.
+ */
+export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
+  string,
+  (parameter: {
+    schema?: { maximum?: number; minimum?: number; enum?: unknown[] };
+  }) => string
+> = {
+  limit: (parameter) => {
+    const maximum = parameter.schema?.maximum;
+    // The ceiling is read off the parameter's own schema rather than restated,
+    // so it follows route-limits.ts wherever a route sets a different one.
+    return (
+      "Maximum number of rows to return in one page" +
+      (typeof maximum === "number" ? ` (at most ${maximum})` : "") +
+      ". Routes differ in how they handle a larger value: some reject it with " +
+      "400 `invalid_query`, others clamp to the maximum and answer 200. Read " +
+      "the `limit` echoed in the response body rather than assuming the page " +
+      "is the size you asked for."
+    );
+  },
+  offset: () =>
+    "Number of rows to skip before the page begins. Correct only in " +
+    "combination with the page size the response actually returned -- prefer " +
+    "`cursor` for anything beyond the first few pages, since a row inserted " +
+    "mid-scan shifts every later offset.",
+  cursor: () =>
+    "Opaque keyset pagination token. Echo the `next_cursor` from the previous " +
+    "response back VERBATIM -- it encodes an internal sort position, not a " +
+    "row number, so it must never be constructed, incremented, parsed or " +
+    "compared. Omit it for the first page; a response with no `next_cursor` " +
+    "is the last page.",
+  window: (parameter) => {
+    const values = parameter.schema?.enum;
+    // The allowed windows differ per route (7d/30d, +90d, +1y/all), so they
+    // are read off the schema rather than restated -- the MEANING is what is
+    // shared, and it is what was missing.
+    return (
+      "Trailing lookback window the response is computed over, ending at the " +
+      "most recent data point rather than at today" +
+      (Array.isArray(values) && values.length
+        ? `. Accepts ${values.map((value) => `\`${String(value)}\``).join(", ")}`
+        : "") +
+      ". A longer window is not a superset of a shorter one -- rankings and " +
+      "rates are recomputed over the whole window, not summed."
+    );
+  },
+  netuid: () =>
+    "Subnet id (netuid). `0` is the root subnet -- a stake-allocation " +
+    "construct rather than a running subnet. It IS present in the registry " +
+    "collections, but it is excluded from application-subnet counts, and " +
+    "stake on it is denominated in TAO rather than in a subnet alpha token, " +
+    "so its economics are not directly comparable to a running subnet's.",
+  q: () =>
+    "Free-text search query, matched case-insensitively against the " +
+    "collection's indexed text fields. Whitespace-separated terms narrow the " +
+    "result (AND), and an empty or whitespace-only value is treated as no " +
+    "filter rather than as a search matching nothing.",
+  fields: () =>
+    "Comma-separated allow-list projecting the response's primary row " +
+    "collection down to just these fields. A response carrying several " +
+    "collections projects only the primary one -- the others keep their full " +
+    "shape. An unrecognised field is a 400 `invalid_query` naming both the " +
+    "field and the collection it was resolved against, rather than being " +
+    "ignored.",
+};
+
+/**
+ * One query parameter as OpenAPI emits it, with a shared description filled in
+ * when the route did not give it one of its own.
+ */
+function withSharedParameterDescription<T extends object>(parameter: T): T {
+  const spec = parameter as {
+    name?: unknown;
+    description?: unknown;
+    schema?: { maximum?: number; minimum?: number; enum?: unknown[] };
+  };
+  if (typeof spec.name !== "string" || spec.description) return parameter;
+  const shared = SHARED_QUERY_PARAMETER_DESCRIPTIONS[spec.name];
+  return shared
+    ? { ...parameter, description: shared({ schema: spec.schema }) }
+    : parameter;
+}
+
 export function buildOpenApiArtifact(
   generatedAt: string,
   componentSchemas: Row | null,
@@ -5339,7 +5440,7 @@ export function buildOpenApiArtifact(
             required: true,
           })),
           ...entry.query_parameters.map((parameter) => ({
-            ...parameter,
+            ...withSharedParameterDescription(parameter),
             in: "query",
             required: false,
           })),
@@ -5468,7 +5569,7 @@ export function buildOpenApiArtifact(
         required: true,
       })),
       ...feed.query_parameters.map((parameter) => ({
-        ...parameter,
+        ...withSharedParameterDescription(parameter),
         in: "query",
         required: false,
       })),
