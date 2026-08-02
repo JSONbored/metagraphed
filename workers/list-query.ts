@@ -38,6 +38,8 @@ export interface QueryCollectionConfig {
   csv_filters?: Record<string, string>;
   array_filters?: Record<string, string[]>;
   range_filters?: string[];
+  /** Param name -> the row field whose PRESENCE it tests. */
+  presence_filters?: Record<string, string>;
   search_keys?: string[];
   sort_fields?: string[];
 }
@@ -242,6 +244,7 @@ function filterRows(
   keys: string[],
   csvFilters: Record<string, string> = {},
   arrayFilters: Record<string, string[]> = {},
+  presenceFilters: Record<string, string> = {},
 ): Row[] {
   const csvWantedByKey = new Map(
     Object.keys(csvFilters)
@@ -277,6 +280,16 @@ function filterRows(
             fieldValue.map((v) => String(v).toLowerCase()).includes(expectedCi)
           );
         });
+      }
+      // Presence filter: "does this row have the field at all", not "what is
+      // its value". `?rate_limited=true` keeps rows documenting a limit; the
+      // engine could not express this before, which is why /apis filtered it
+      // client-side over one page (#9117). Empty string counts as absent -- a
+      // blank note documents nothing.
+      const presenceField = presenceFilters[key];
+      if (presenceField) {
+        const present = row[presenceField] != null && row[presenceField] !== "";
+        return present === (expectedCi === "true");
       }
       const value = row[key];
       // A row missing the filtered field can't satisfy a value filter — exclude
@@ -347,6 +360,7 @@ function applyListTransform(
       filterKeys,
       config.csv_filters,
       config.array_filters,
+      config.presence_filters,
     ),
     params,
     config.range_filters,

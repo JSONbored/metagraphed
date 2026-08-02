@@ -21441,6 +21441,9 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 id?: string;
+                auth_required?: "true" | "false";
+                public_safe?: "true" | "false";
+                rate_limited?: "true" | "false";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -21813,6 +21816,9 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 id?: string;
+                auth_required?: "true" | "false";
+                public_safe?: "true" | "false";
+                rate_limited?: "true" | "false";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -45576,6 +45582,9 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 id?: string;
+                auth_required?: "true" | "false";
+                public_safe?: "true" | "false";
+                rate_limited?: "true" | "false";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -47232,6 +47241,9 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 id?: string;
+                auth_required?: "true" | "false";
+                public_safe?: "true" | "false";
+                rate_limited?: "true" | "false";
                 fields?: string;
                 limit?: number;
                 cursor?: number;

@@ -237,7 +237,17 @@ export const API_QUERY_COLLECTIONS = {
       provider: filterTextSchema,
       // Same exact-match id filter as pools / endpoint-pools (#6242).
       id: filterTextSchema,
+      // Server-side because the UI's own "auth required" / "public safe"
+      // shortcuts were applying them CLIENT-side over one loaded page. With the
+      // default page size of 25 against 3,494 surfaces, ?auth=required rendered
+      // at most the auth rows inside the first 25 -- 6 of the 1,184 that match.
+      // A filter that silently under-reports by 99% is worse than one that
+      // errors, because it looks like it worked.
+      auth_required: enumSchema(["true", "false"]),
+      public_safe: enumSchema(["true", "false"]),
+      rate_limited: enumSchema(["true", "false"]),
     },
+    presenceFilters: { rate_limited: "rate_limit_notes" },
     sort: ["id", "kind", "name", "netuid", "provider"],
   }),
   documents: queryCollection("documents", {
@@ -5783,6 +5793,16 @@ function queryCollection(dataKey: string, options: Row = {}) {
     // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
     // hand-rolled min_readiness the MCP list_subnets tool did.
     range_filters: options.rangeFilters || [],
+    // Presence filters: param name -> the row field whose PRESENCE it tests.
+    // e.g. { rate_limited: "rate_limit_notes" } makes `?rate_limited=true`
+    // return rows that document a limit and `=false` those that do not.
+    //
+    // A fourth filter kind rather than a derived boolean on the row, because
+    // "has a rate limit" IS `rate_limit_notes != null` -- publishing both would
+    // be two fields that can disagree. The engine already carries csv/array/
+    // range kinds; presence is the one it was missing, and it is the reason
+    // /apis had to filter this one client-side over a single page (#9117).
+    presence_filters: options.presenceFilters || {},
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };

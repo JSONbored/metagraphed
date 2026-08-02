@@ -2718,7 +2718,10 @@
         "netuid",
         "kind",
         "provider",
-        "id"
+        "id",
+        "auth_required",
+        "public_safe",
+        "rate_limited"
       ],
       "query_parameters": [
         {
@@ -2761,6 +2764,36 @@
           "name": "id",
           "schema": {
             "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "name": "auth_required",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "public_safe",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "rate_limited",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
             "type": "string"
           }
         },
@@ -2842,7 +2875,10 @@
       "query_filter_names": [
         "kind",
         "provider",
-        "id"
+        "id",
+        "auth_required",
+        "public_safe",
+        "rate_limited"
       ],
       "query_parameters": [
         {
@@ -2878,6 +2914,36 @@
           "name": "id",
           "schema": {
             "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "name": "auth_required",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "public_safe",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "rate_limited",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
             "type": "string"
           }
         },

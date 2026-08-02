@@ -1497,3 +1497,75 @@ describe("curated-surfaces id filter (#6242)", () => {
     assert.deepEqual(ids(upper), ids(lower));
   });
 });
+
+// Presence filters (#9117): "does this row HAVE the field", not "what is its
+// value". Added because /apis' rate-limited shortcut had no server-side way to
+// ask -- "has a rate limit" is rate_limit_notes being non-empty, which no
+// equality filter can express -- so the UI filtered it over one loaded page and
+// under-reported.
+describe("list-query presence filter", () => {
+  const collection = "__test_presence_filter";
+
+  function withCollection<T>(fn: () => T): T {
+    const previous = queryCollections[collection];
+    queryCollections[collection] = {
+      data_key: "rows",
+      filters: { rate_limited: { type: "string", enum: ["true", "false"] } },
+      csv_filters: {},
+      array_filters: {},
+      presence_filters: { rate_limited: "rate_limit_notes" },
+      range_filters: [],
+      search_keys: [],
+      sort_fields: [],
+    };
+    try {
+      return fn();
+    } finally {
+      if (previous === undefined) delete queryCollections[collection];
+      else queryCollections[collection] = previous;
+    }
+  }
+
+  const data = {
+    rows: [
+      { id: "has-notes", rate_limit_notes: "60 req/min" },
+      { id: "null-notes", rate_limit_notes: null },
+      // An EMPTY note documents nothing, so it must count as absent -- not as
+      // a present-but-blank limit.
+      { id: "empty-notes", rate_limit_notes: "" },
+      { id: "no-field" },
+    ],
+  };
+
+  function ids(search: string): string[] {
+    return withCollection(() => {
+      const result = applyQueryFilters(
+        data,
+        new URL(`https://api.metagraph.sh/x${search}`),
+        collection,
+      ) as Row;
+      return (result.data.rows as Row[]).map((r) => r.id as string);
+    });
+  }
+
+  test("true keeps only rows whose field is present and non-empty", () => {
+    assert.deepEqual(ids("?rate_limited=true"), ["has-notes"]);
+  });
+
+  test("false keeps the exact complement, including a missing field", () => {
+    assert.deepEqual(ids("?rate_limited=false"), [
+      "null-notes",
+      "empty-notes",
+      "no-field",
+    ]);
+  });
+
+  test("omitting the param filters nothing", () => {
+    assert.deepEqual(ids(""), [
+      "has-notes",
+      "null-notes",
+      "empty-notes",
+      "no-field",
+    ]);
+  });
+});

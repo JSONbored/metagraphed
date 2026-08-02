@@ -30,9 +30,18 @@ export function matchesSurfaceFilters(s: Surface, search: SurfacesSearch): boole
   if (search.kind && s.kind !== search.kind) return false;
   if (search.provider && (s.provider_slug ?? s.provider) !== search.provider) return false;
   if (search.netuid && String(s.netuid) !== search.netuid) return false;
+  // public_safe / auth are SERVER-side now (?public_safe=, ?auth_required=),
+  // so the rows here are already narrowed. Re-checking them is harmless and
+  // keeps this predicate correct for any caller holding an unfiltered list --
+  // but it must never be the ONLY place they are applied, which is what made
+  // ?auth=required report 6 of 1,184 matches.
   if (search.public_safe && !s.public_safe) return false;
   if (search.auth === "required" && !s.auth_required) return false;
   if (search.auth === "none" && s.auth_required) return false;
+  // Server-side too now (?rate_limited=), via the engine's presence-filter
+  // kind -- "has a rate limit" is rate_limit_notes being non-empty, which no
+  // equality filter could express. Re-checked here for the same reason as the
+  // two above.
   if (search.rate_limited && !s.rate_limit_notes) return false;
   return true;
 }
