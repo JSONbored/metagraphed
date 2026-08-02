@@ -1420,7 +1420,13 @@ async function dispatchScheduled(
     const [pruned] = await Promise.all([
       // .catch-isolated — a transient D1 error must degrade to a no-op for this
       // tick, not abort the whole Promise.all and discard the snapshot write.
-      pruneHealthHistory(env).catch(() => ({ pruned: false })),
+      // The D1 raw-checks prune is gated on D1's OWN rollup having succeeded
+      // this tick (see pruneHealthHistory's pruneD1Checks comment) -- the
+      // combined `rolled` only proves SOME store aggregated the day.
+      pruneHealthHistory(env, {
+        pruneD1Checks:
+          (uptimeRollup as { d1_rolled?: boolean }).d1_rolled === true,
+      }).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);
     return pruned;

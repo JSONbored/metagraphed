@@ -434,6 +434,21 @@
       "bucket_name": "metagraphed-artifacts",
     },
   ],
+  // Observation tables on D1 (migrations/d1/0002_observations.sql): the
+  // probe-derived history series, dual-written by the health prober alongside
+  // the Postgres mirrors while the box lives -- see src/observations-d1.ts's
+  // header. Same physical database the registry write path uses
+  // (wrangler.registry.jsonc's REGISTRY_DB); a second D1 database would be a
+  // second thing to operate for tables that comfortably share one. The
+  // binding name keeps the pre-2026-07-16 METAGRAPH_HEALTH_DB, matching the
+  // resurrected code that uses it.
+  "d1_databases": [
+    {
+      "binding": "METAGRAPH_HEALTH_DB",
+      "database_name": "metagraphed",
+      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
+    },
+  ],
   // AI-native layer (semantic search + grounded /ask). Workers AI runs the
   // embedding (bge-base-en-v1.5, 768-dim) + answer (llama-3.1-8b) models; the
   // Vectorize index holds the registry embeddings, refreshed by the daily
