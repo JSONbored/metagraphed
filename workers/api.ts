@@ -309,6 +309,7 @@ import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
+import { maskRouteParams } from "../src/route-label.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -955,7 +956,11 @@ export function usageRouteLabel(url: URL) {
     pathname === "/api/v1/graphql"
       ? GRAPHQL_USAGE_ROUTE
       : (matchRoute(pathname)?.id ??
-        // Static assets, badges, OG images and the RPC proxy are not API usage.
+        // Anything outside /api/v1/ is not API usage: static assets, OG
+        // images, the RPC proxy, /health, /.well-known/*, raw /metagraph/*
+        // artifacts. #9001: this used to say "badges" too, which was wrong --
+        // badges are served at /api/v1/{subnets,providers}/{id}/badge.svg, so
+        // they DO start with /api/v1/ and DO get a masked label here.
         (pathname.startsWith("/api/v1/")
           ? maskUsageRouteParams(pathname)
           : null));
@@ -972,19 +977,17 @@ export function usageRouteLabel(url: URL) {
  * contract (/ask, /webhooks/..., /internal/...). Path segments that look like
  * identifiers are masked so an unlisted route can never emit unbounded labels.
  *
+ * #9001: the masking itself moved to src/route-label.ts so workers/data-api.ts
+ * can apply the identical rules to its span names and exception routes, which
+ * were using the raw pathname. This wrapper stays because the NAME documents
+ * the caller's intent (a usage-route fallback) even though the body is now one
+ * call.
+ *
  * @param {string} pathname
  * @returns {string}
  */
 function maskUsageRouteParams(pathname: string) {
-  return pathname
-    .split("/")
-    .map((segment) => {
-      if (/^\d+$/.test(segment)) return ":n";
-      if (/^0x[0-9a-fA-F]{6,}$/.test(segment)) return ":hash";
-      if (/^[1-9A-HJ-NP-Za-km-z]{47,48}$/.test(segment)) return ":ss58";
-      return segment;
-    })
-    .join("/");
+  return maskRouteParams(pathname);
 }
 
 /**
