@@ -2074,10 +2074,89 @@ async function uncallableSurfaceError(
         `callable ones.`,
     );
   }
+  // #8962: a genuinely unknown id is the single largest error class on the
+  // whole MCP server -- 1,244 of 1,642 errors in the week to 2026-08-01, every
+  // one a DISTINCT id, none repeated more than twice. They are not typos: they
+  // are the `sn-<netuid>-<provider>-<kind>` template enumerated across the
+  // provider x kind x netuid cross-product. `sn-92-taomarketcap-dashboard`
+  // exists, so a caller reasonably infers `sn-118-taomarketcap-dashboard` --
+  // which never did.
+  //
+  // The bare "no such surface" above is a dead end: it is true, and it leaves
+  // the caller with nowhere to go but another guess, which is exactly the loop
+  // the volume shows. But the guessed id carries the one thing needed to
+  // recover -- the netuid -- so parse it back out and name that subnet's
+  // ACTUAL callable surfaces. A wrong guess becomes a right answer in one hop
+  // instead of a retry.
+  const netuid = netuidFromSurfaceId(surfaceId);
+  const suggestions =
+    netuid === null ? [] : await callableSurfaceIdsForNetuid(ctx, netuid);
+  if (suggestions.length > 0) {
+    return toolError(
+      "not_found",
+      `No catalogued surface with id, key, or deprecated id "${surfaceId}". ` +
+        `Surface ids are not derivable from a naming pattern -- they must be ` +
+        `discovered. Subnet ${netuid}'s callable surfaces are: ` +
+        `${suggestions.join(", ")}. Use list_subnet_surfaces or ` +
+        `list_subnet_apis to enumerate them rather than constructing an id.`,
+    );
+  }
+  if (netuid !== null) {
+    return toolError(
+      "not_found",
+      `No catalogued surface with id, key, or deprecated id "${surfaceId}", ` +
+        `and subnet ${netuid} has no callable surfaces at all. Surface ids ` +
+        `are not derivable from a naming pattern; use list_subnet_surfaces to ` +
+        `see what this subnet does publish, or search_subnets to find one ` +
+        `that exposes a callable API.`,
+    );
+  }
   return toolError(
     "not_found",
-    `No catalogued surface with id, key, or deprecated id "${surfaceId}".`,
+    `No catalogued surface with id, key, or deprecated id "${surfaceId}". ` +
+      `Surface ids are not derivable from a naming pattern -- use ` +
+      `list_subnet_surfaces or list_surfaces to discover a real one.`,
   );
+}
+
+// The netuid embedded in a conventional `sn-<netuid>-…` surface id, or null
+// when the id does not follow that shape (a provider-scoped id such as
+// `metagraphed-fullnode-rpc` has no subnet in it). Only used to make a
+// not_found message actionable -- never to resolve a surface.
+export function netuidFromSurfaceId(surfaceId: string): number | null {
+  const match = /^sn-(\d{1,5})-/.exec(surfaceId.trim());
+  if (!match) return null;
+  const netuid = Number(match[1]);
+  return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
+}
+
+// Callable surface ids for one subnet, from the same operational catalog the
+// failed lookup just read. Capped: a suggestion list is a nudge toward the
+// discovery tools, not a substitute for them.
+const MAX_SURFACE_SUGGESTIONS = 8;
+
+async function callableSurfaceIdsForNetuid(
+  ctx: McpCtx,
+  netuid: number,
+): Promise<string[]> {
+  try {
+    const catalog = await loadOptionalArtifact(
+      ctx,
+      "/metagraph/operational-surfaces.json",
+    );
+    const surfaces = Array.isArray(catalog?.surfaces) ? catalog.surfaces : [];
+    return (surfaces as Row[])
+      .filter(
+        (surface) =>
+          surface?.netuid === netuid && typeof surface?.surface_id === "string",
+      )
+      .map((surface) => String(surface.surface_id))
+      .slice(0, MAX_SURFACE_SUGGESTIONS);
+  } catch {
+    // An unreadable catalog must never upgrade a bad id into an internal
+    // error -- the caller still gets a correct, if less helpful, not_found.
+    return [];
+  }
 }
 
 async function resolveArtifactSurfaceId(ctx: McpCtx, surfaceId: string) {

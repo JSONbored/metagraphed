@@ -1614,6 +1614,44 @@ describe("not_callable vs not_found (#8652)", () => {
     );
   });
 
+  // #8962: the largest single error class on the MCP server -- 1,244 of 1,642
+  // errors in the week to 2026-08-01, every one a DISTINCT id, none repeated
+  // more than twice. They are the `sn-<netuid>-<provider>-<kind>` template
+  // enumerated across the cross-product, not typos. A bare "no such surface"
+  // is true and useless: it leaves the caller with nowhere to go but another
+  // guess, which is the loop the volume shows.
+  test("an unknown sn-<netuid>-… id names that subnet's real callable surfaces", async () => {
+    const result = await call({ surface_id: "sn-5-taomarketcap-dashboard" });
+    const error = (result.structuredContent as Row).error as Row;
+    assert.equal(error.code, "not_found");
+    const message = String(error.message);
+    // Still says the id is unknown -- the recovery is additive, not a
+    // replacement for the truth.
+    assert.match(message, /sn-5-taomarketcap-dashboard/);
+    // ...and names the one thing that gets the caller unstuck.
+    assert.match(message, /x:api:1/);
+    assert.match(message, /list_subnet_surfaces|list_subnet_apis/);
+    // The whole point: ids are discovered, not constructed.
+    assert.match(message, /not derivable from a naming pattern/);
+  });
+
+  test("says so plainly when the subnet has no callable surfaces at all", async () => {
+    const result = await call({ surface_id: "sn-777-invented-dashboard" });
+    const error = (result.structuredContent as Row).error as Row;
+    assert.equal(error.code, "not_found");
+    const message = String(error.message);
+    assert.match(message, /subnet 777 has no callable surfaces/);
+    // Must not dangle an empty suggestion list.
+    assert.doesNotMatch(message, /surfaces are: *[.,]/);
+  });
+
+  test("an id with no netuid in it still gets the discovery pointer", async () => {
+    const result = await call({ surface_id: "some-provider-thing" });
+    const error = (result.structuredContent as Row).error as Row;
+    assert.equal(error.code, "not_found");
+    assert.match(String(error.message), /list_subnet_surfaces|list_surfaces/);
+  });
+
   test("an unreadable registry degrades to not_found, never an internal error", async () => {
     // A bad id must not become a 500 just because the registry read failed.
     const result = await call({ surface_id: "bittensor-networks-docs" }, false);
