@@ -339,14 +339,32 @@ describe("loadExtrinsicColdTier", () => {
   test("resolves a composite <block>-<index> id and embeds its events", async () => {
     const q = sqlFetch(
       [row(500, 3)],
-      [{ block_number: 500, extrinsic_index: 3, event_index: 0 }],
+      [
+        {
+          block_number: 500,
+          event_index: 0,
+          extrinsic_index: 3,
+          event_kind: "Transfer",
+          hotkey: null,
+          coldkey: SIGNER,
+          netuid: null,
+          uid: null,
+          amount_tao: "1000000",
+          alpha_amount: null,
+          observed_at: 1_700_000_000_500,
+        },
+      ],
     );
     const data = await loadExtrinsicColdTier(TOKEN as never, "500-3");
     assert.match(q[0]!, /block_number = 500 AND extrinsic_index = 3/);
     assert.match(q[1]!, /FROM chain\.account_events/);
+    assert.match(q[1]!, /event_kind/, "selects the REAL event columns");
     assert.match(q[1]!, /LIMIT 50/, "event embedding stays bounded");
     assert.equal(data!.extrinsic!.block_number, 500);
     assert.equal(data!.events.length, 1);
+    // Formatted through formatAccountEvent, not embedded raw.
+    const ev = data!.events[0] as Record<string, unknown>;
+    assert.equal(ev.event_kind, "Transfer");
   });
 
   test("resolves by hash", async () => {

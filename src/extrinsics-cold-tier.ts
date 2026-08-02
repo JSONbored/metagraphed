@@ -26,6 +26,7 @@ import {
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "./extrinsics.ts";
+import { formatAccountEvent } from "./account-events.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -41,10 +42,14 @@ const EXTRINSIC_COLUMNS =
   "block_number, extrinsic_index, extrinsic_hash, signer, call_module, " +
   "call_function, success, fee_tao, tip_tao, call_args, observed_at";
 
-/** Events emitted by one extrinsic, embedded in the detail payload. Bounded
- * exactly as the Postgres tier bounds it. */
+/** Events emitted by one extrinsic, embedded in the detail payload. The
+ * column list and the bound match the Postgres tier's embedded-events query
+ * exactly, and rows go through the same formatAccountEvent before embedding
+ * -- buildExtrinsic embeds what it is given verbatim, so handing it raw rows
+ * would leak an unformatted shape into a payload callers already parse. */
 const EVENT_COLUMNS =
-  "block_number, extrinsic_index, event_index, section, method, data, observed_at";
+  "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
+  "netuid, uid, amount_tao, alpha_amount, observed_at";
 const MAX_EMBEDDED_EVENTS = 50;
 
 /** Newest first, and stable: two extrinsics share a block, so block_number
@@ -250,7 +255,7 @@ export async function loadExtrinsicColdTier(
 
   const block = safeBlockNumber(row.block_number);
   const index = safeBlockNumber(row.extrinsic_index);
-  let events: Record<string, unknown>[] = [];
+  let events: unknown[] = [];
   if (block !== null && index !== null) {
     const found = await r2SqlQuery(
       env,
@@ -261,7 +266,7 @@ export async function loadExtrinsicColdTier(
     // Events failing is NOT a reason to withhold the extrinsic: the Postgres
     // tier serves an empty event list for pre-migration rows too, so an empty
     // list here is a shape the caller already handles.
-    events = found ?? [];
+    events = (found ?? []).map(formatAccountEvent).filter(Boolean);
   }
   return buildExtrinsic(row, ref, events);
 }
