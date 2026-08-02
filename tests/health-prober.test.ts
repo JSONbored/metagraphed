@@ -868,6 +868,9 @@ describe("handleScheduled dispatch", () => {
         // directly and has nothing between it and the caller.
         const exploding = {
           POSTHOG_PROJECT_TOKEN: "phc_test_token",
+          // The retired-tier gate sits before the secret read, so the flag
+          // must say "postgres" for the throwing getter to be reached at all.
+          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
           get ROLLUP_SYNC_SECRET(): never {
             throw new Error("cron exploded");
           },
