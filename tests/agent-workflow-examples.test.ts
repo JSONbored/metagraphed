@@ -146,12 +146,22 @@ const REST_CALLS = RUNNABLE_CALLS.filter(
 );
 
 /**
- * Statuses that mean "this environment has no data behind that path", never
- * "the page documents a path that does not exist".
+ * The error code the Worker returns when NO ROUTE MATCHED — as opposed to
+ * `artifact_not_found`, which means the route exists and this environment has
+ * no data behind it.
  *
- * 404 is deliberately NOT here. A retired or renamed route is the single most
- * likely way this page rots, and 404 is exactly what that looks like.
+ * Both are 404, which is why the assertion below reads the code rather than
+ * the status. Getting that wrong makes the test order-dependent: the local
+ * artifact tier under `dist/metagraph-r2/` is populated as a side effect of
+ * `tests/artifacts.test.ts`, this file sorts before it, and vitest runs files
+ * in parallel anyway -- so a status-only check passes or fails depending on
+ * which file won the race. Measured: with the tier absent,
+ * `/api/v1/agent-catalog` 404s with `artifact_not_found`, while a genuinely
+ * retired route 404s with `not_found`. Only the second is this page's problem.
  */
+const NO_ROUTE_MATCHED_CODE = "not_found";
+
+/** Statuses that mean the environment is degraded, never that the page is wrong. */
 const ENVIRONMENT_STATUSES = new Set([500, 502, 503, 504]);
 
 describe(`the examples in ${DOC_PATH} are executed, not assumed (#9091)`, () => {
@@ -262,9 +272,12 @@ describe(`the examples in ${DOC_PATH} are executed, not assumed (#9091)`, () => 
           {},
         );
         if (ENVIRONMENT_STATUSES.has(response.status)) return;
-        assert.ok(
-          response.status < 400,
-          `${DOC_PATH} documents ${pathname}${search}, which the Worker answers with ${response.status}`,
+        if (response.status < 400) return;
+        const code = ((await response.json()) as Row)?.error as Row;
+        assert.notEqual(
+          code?.code,
+          NO_ROUTE_MATCHED_CODE,
+          `${DOC_PATH} documents ${pathname}${search}, which matches no API route (${response.status})`,
         );
       });
     }
