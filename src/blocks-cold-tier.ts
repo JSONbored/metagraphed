@@ -41,11 +41,23 @@ import { decodeCursor, encodeCursor } from "./cursor.ts";
 export const BLOCKS_SEAM_ENV = "ICEBERG_BLOCKS_MAX";
 
 /**
- * Default seam: the maximum block_number in chain.blocks after the final
- * export + delta load (8,755,096 frozen rows plus a 1,903-row post-quiesce
- * delta). Verified against Postgres before the box was released.
+ * Default seam: the maximum block_number in chain.blocks.
+ *
+ * Re-measured 2026-08-02 against the live lakehouse (#9161):
+ * `min=0, max=8,759,336, count=8,759,337` -- `count == max - min + 1`, so the
+ * range is contiguous with no gaps and no duplicates.
+ *
+ * It was 8,756,998, the height of the final export + delta load. The decoder
+ * has since extended chain.blocks (and chain.extrinsics and
+ * chain.account_events) 2,338 blocks further, and nothing re-measured this.
+ * That drift is invisible while the box lives -- Postgres answers first -- and
+ * would have started mis-routing the moment the box was wiped, serving those
+ * blocks from D1 blocks_head with null author/spec_version/event_count.
+ *
+ * scripts/check-lakehouse-seam.ts now fails when this and the lakehouse
+ * diverge, so the next backfill cannot leave it stale in silence.
  */
-export const DEFAULT_BLOCKS_SEAM = 8_756_998;
+export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 
 /** Columns blocks_head actually has. Anything else is null above the seam. */
 const D1_COLUMNS =
