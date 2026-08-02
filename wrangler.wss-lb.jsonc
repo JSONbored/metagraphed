@@ -62,6 +62,12 @@
   // record untouched -- and deleting it puts traffic straight back on Railway,
   // with no DNS change in either direction.
   "routes": [{ "pattern": "wss.metagraph.sh/*", "zone_name": "metagraph.sh" }],
+  // PostHog capture (#9046) needs POSTHOG_PROJECT_TOKEN set as a SECRET
+  // (`wrangler secret put POSTHOG_PROJECT_TOKEN --config wrangler.wss-lb.jsonc`),
+  // matching the other Workers -- never a committed var. Unset => capture is a
+  // no-op and the proxy serves identically. Only condition-level events are
+  // emitted (no-upstream, all-unreachable, unhandled throw), rate-bounded per
+  // isolate, so this cannot become a per-connection event stream.
   "vars": {
     "METAGRAPHED_API": "https://api.metagraph.sh",
     "NETWORKS": "finney,test",

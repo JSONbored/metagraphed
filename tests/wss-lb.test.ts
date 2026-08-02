@@ -363,3 +363,272 @@ test("loadPools accepts both the enveloped and bare artifact shapes", async () =
   const bare = await loadPools({} as WssLbEnv, poolsFetch(POOLS));
   assert.equal(bare?.pools?.length, 1);
 });
+
+// ---------------------------------------------------------------------------
+// Condition-level PostHog capture (#9046). What is pinned here, deliberately:
+// the two availability conditions and the unhandled-throw path emit; routine
+// failover and healthy serving do NOT; and the per-isolate window means an
+// outage is one event per condition, not one per connect attempt.
+
+import { shouldEmitCondition } from "../workers/wss-lb.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
+import {
+  POSTHOG_CAPTURE_PATH,
+  USAGE_EVENT_NAME,
+} from "../src/usage-telemetry.ts";
+
+const TELEMETRY_ENV = { POSTHOG_PROJECT_TOKEN: "phc_test" } as WssLbEnv;
+
+// One fetch serving both roles, exactly as in the Worker: pools reads AND the
+// PostHog capture POST. Captured events accumulate in `captured`.
+function poolsAndPosthogFetch(
+  captured: Array<Record<string, unknown>>,
+  poolsBody: unknown = POOLS,
+  upstreamStatus = 500,
+): typeof fetch {
+  return (async (input: string | Request, init?: RequestInit) => {
+    const href = typeof input === "string" ? input : input.url;
+    if (href.includes(POSTHOG_CAPTURE_PATH)) {
+      captured.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return { ok: true, status: 200 } as Response;
+    }
+    if (href.includes("/api/v1/rpc/pools")) {
+      return { ok: true, status: 200, json: async () => poolsBody } as Response;
+    }
+    return { ok: false, status: upstreamStatus } as Response;
+  }) as unknown as typeof fetch;
+}
+
+test("shouldEmitCondition allows one event per label per window", () => {
+  resetModuleState();
+  assert.equal(shouldEmitCondition("wss-test-label", 1_000), true);
+  assert.equal(shouldEmitCondition("wss-test-label", 2_000), false);
+  // A DIFFERENT label has its own window.
+  assert.equal(shouldEmitCondition("wss-other-label", 2_000), true);
+  // The same label emits again once the window has fully elapsed.
+  assert.equal(
+    shouldEmitCondition("wss-test-label", 1_000 + 5 * 60 * 1000),
+    true,
+  );
+});
+
+test("an empty pool emits ONE wss-lb-no-upstream usage event, window-bounded", async () => {
+  resetModuleState();
+  const captured: Array<Record<string, unknown>> = [];
+  const deps = { fetchImpl: poolsAndPosthogFetch(captured, { pools: [] }) };
+  const waits: Promise<unknown>[] = [];
+  const res = await handleWssLbRequest(wsRequest("/finney"), TELEMETRY_ENV, {
+    ...deps,
+    waitUntil: (p) => waits.push(p),
+  });
+  assert.equal(res.status, 503);
+  await Promise.all(waits);
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].event, USAGE_EVENT_NAME);
+  const props = captured[0].properties as Record<string, unknown>;
+  assert.equal(props.route, "wss-lb-no-upstream");
+  assert.equal(props.ok, false);
+  assert.equal(props.status_class, "5xx");
+  assert.equal(props.error_code, "no_healthy_upstream");
+  assert.equal(props.client, "finney");
+
+  // A second connect during the same window hits the same condition but emits
+  // NOTHING -- the whole point of the per-isolate bound (#9004).
+  const res2 = await handleWssLbRequest(wsRequest("/finney"), TELEMETRY_ENV, {
+    ...deps,
+    waitUntil: (p) => waits.push(p),
+  });
+  assert.equal(res2.status, 503);
+  await Promise.all(waits);
+  assert.equal(captured.length, 1);
+});
+
+test("an unfetchable pools artifact is the same route but error_code pool_unfetchable", async () => {
+  resetModuleState();
+  const captured: Array<Record<string, unknown>> = [];
+  const fetchImpl = (async (input: string | Request, init?: RequestInit) => {
+    const href = typeof input === "string" ? input : input.url;
+    if (href.includes(POSTHOG_CAPTURE_PATH)) {
+      captured.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return { ok: true, status: 200 } as Response;
+    }
+    return { ok: false, status: 500 } as Response; // pools read fails
+  }) as unknown as typeof fetch;
+  const waits: Promise<unknown>[] = [];
+  const res = await handleWssLbRequest(wsRequest("/finney"), TELEMETRY_ENV, {
+    fetchImpl,
+    waitUntil: (p) => waits.push(p),
+  });
+  assert.equal(res.status, 503);
+  await Promise.all(waits);
+  assert.equal(captured.length, 1);
+  const props = captured[0].properties as Record<string, unknown>;
+  assert.equal(props.route, "wss-lb-no-upstream");
+  assert.equal(props.error_code, "pool_unfetchable");
+});
+
+test("every candidate failing its handshake emits wss-lb-all-upstreams-unreachable", async () => {
+  resetModuleState();
+  const captured: Array<Record<string, unknown>> = [];
+  const waits: Promise<unknown>[] = [];
+  const res = await handleWssLbRequest(wsRequest("/finney"), TELEMETRY_ENV, {
+    fetchImpl: poolsAndPosthogFetch(captured),
+    waitUntil: (p) => waits.push(p),
+  });
+  assert.equal(res.status, 502);
+  await Promise.all(waits);
+  assert.equal(captured.length, 1);
+  const props = captured[0].properties as Record<string, unknown>;
+  assert.equal(props.route, "wss-lb-all-upstreams-unreachable");
+  assert.equal(props.error_code, "all_upstreams_unreachable");
+});
+
+test("a successful connect and routine failover emit NOTHING", async () => {
+  resetModuleState();
+  const captured: Array<Record<string, unknown>> = [];
+  // First candidate fails its handshake (routine failover), second succeeds.
+  let dialled = 0;
+  const fetchImpl = (async (input: string | Request, init?: RequestInit) => {
+    const href = typeof input === "string" ? input : input.url;
+    if (href.includes(POSTHOG_CAPTURE_PATH)) {
+      captured.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return { ok: true, status: 200 } as Response;
+    }
+    if (href.includes("/api/v1/rpc/pools")) {
+      return { ok: true, status: 200, json: async () => POOLS } as Response;
+    }
+    dialled += 1;
+    if (dialled === 1) return { ok: false, status: 500 } as Response;
+    return {
+      ok: true,
+      status: 101,
+      webSocket: new FakeSocket(),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+  const res = await handleWssLbRequest(wsRequest("/finney"), TELEMETRY_ENV, {
+    fetchImpl,
+    makeUpgradeResponse: () => new Response(null, { status: 200 }),
+  });
+  assert.equal(res.status, 200);
+  assert.equal(dialled, 2); // the failover really happened
+  assert.equal(captured.length, 0); // and produced no event
+});
+
+test("an unconfigured deployment serves the 503 identically and posts nothing", async () => {
+  resetModuleState();
+  const captured: Array<Record<string, unknown>> = [];
+  const res = await handleWssLbRequest(wsRequest("/finney"), {} as WssLbEnv, {
+    fetchImpl: poolsAndPosthogFetch(captured, { pools: [] }),
+  });
+  assert.equal(res.status, 503);
+  assert.equal(captured.length, 0);
+});
+
+test("an unhandled throw from the handler is a 500 with ONE $exception", async () => {
+  resetModuleState();
+  const wssLb = (await import("../workers/wss-lb.ts")).default;
+  const captured: Array<Record<string, unknown>> = [];
+  // The default export uses global fetch for capture; intercept it here and
+  // restore in finally (isolate:false makes a leak cross-file).
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    const href =
+      typeof input === "string"
+        ? input
+        : "url" in input
+          ? input.url
+          : String(input);
+    if (href.includes(POSTHOG_CAPTURE_PATH)) {
+      captured.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return { ok: true, status: 200 } as Response;
+    }
+    return { ok: true, status: 200, json: async () => POOLS } as Response;
+  }) as unknown as typeof fetch;
+  try {
+    const env = {
+      ...TELEMETRY_ENV,
+      // A binding that throws is a genuinely unhandled fault -- nothing on the
+      // rate-limit path expects it, unlike every deliberate catch in the file.
+      WSS_CONNECT_RATE_LIMITER: {
+        limit: async () => {
+          throw new TypeError("binding exploded");
+        },
+      },
+    } as unknown as WssLbEnv;
+    const waits: Promise<unknown>[] = [];
+    const res = await wssLb.fetch(wsRequest("/finney"), env, {
+      waitUntil: (p: Promise<unknown>) => waits.push(p),
+      passThroughOnException() {},
+    } as unknown as ExecutionContext);
+    assert.equal(res.status, 500);
+    assert.equal(
+      ((await res.json()) as { error: { code: string } }).error.code,
+      "internal_error",
+    );
+    await Promise.all(waits);
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0].event, "$exception");
+    const props = captured[0].properties as Record<string, unknown>;
+    assert.equal(props.route, "wss-lb-unhandled-exception");
+    const list = props.$exception_list as Array<Record<string, unknown>>;
+    assert.equal(list[0].type, "TypeError");
+
+    // Same crash again inside the window: 500 again, but no second event.
+    const res2 = await wssLb.fetch(wsRequest("/finney"), env, {
+      waitUntil: (p: Promise<unknown>) => waits.push(p),
+      passThroughOnException() {},
+    } as unknown as ExecutionContext);
+    assert.equal(res2.status, 500);
+    await Promise.all(waits);
+    assert.equal(captured.length, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("the default export also serves without an ExecutionContext (no waitUntil)", async () => {
+  resetModuleState();
+  const wssLb = (await import("../workers/wss-lb.ts")).default;
+  const captured: Array<Record<string, unknown>> = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    const href =
+      typeof input === "string"
+        ? input
+        : "url" in input
+          ? input.url
+          : String(input);
+    if (href.includes(POSTHOG_CAPTURE_PATH)) {
+      captured.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return { ok: true, status: 200 } as Response;
+    }
+    return { ok: true, status: 200, json: async () => POOLS } as Response;
+  }) as unknown as typeof fetch;
+  try {
+    const env = {
+      ...TELEMETRY_ENV,
+      WSS_CONNECT_RATE_LIMITER: {
+        limit: async () => {
+          throw new TypeError("binding exploded");
+        },
+      },
+    } as unknown as WssLbEnv;
+    // No ctx at all: capture still fires (the promise is simply left to the
+    // runtime), and the 500 still serves.
+    const res = await wssLb.fetch(wsRequest("/finney"), env);
+    assert.equal(res.status, 500);
+    // The unawaited capture resolves on the microtask queue; drain it before
+    // restoring global fetch (isolate:false makes a late write cross-file).
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0].event, "$exception");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
