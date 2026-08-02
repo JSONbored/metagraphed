@@ -2115,3 +2115,120 @@ test("broadcast: pings ALERTER_HUB unconditionally, unlike the per-session MCP l
   assert.equal(alerterHub.calls.length, 1);
   assert.equal(mcpHub.calls.length, 0);
 });
+
+// --- #8997: connection-lifecycle telemetry -----------------------------------
+//
+// Fourth and last of the four Durable Objects. This class is per-chain-event by
+// NATURE — broadcast() fans out on every firehose row — so instrumenting it the
+// way the other three were would make it the single largest new event source in
+// the project, on an account already ~30x over its PostHog free tier (#9004).
+//
+// So: connection open/close only. Bounded by how many clients connect, not by
+// how busy the chain is.
+
+function captureFirehoseTelemetry() {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  return {
+    posted,
+    routes: () =>
+      posted
+        .filter((p) => (p.body as Row).event === "usage_event")
+        .map((p) => ((p.body as Row).properties as Row).route),
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+const FIREHOSE_TELEMETRY_ENV = { POSTHOG_PROJECT_TOKEN: "phc_test_token" };
+
+test("#8997: an SSE connect and disconnect each emit one event", () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    const entry = { ip: "203.0.113.9" } as unknown as SseEntryLike;
+    hub.addSseClient(entry);
+    hub.removeSseClient(entry);
+    assert.deepEqual(cap.routes(), [
+      "chain-firehose-hub:sse-open",
+      "chain-firehose-hub:sse-close",
+    ]);
+  } finally {
+    cap.restore();
+  }
+});
+
+// removeSseClient is reached from FOUR paths — cancel, the lifetime timeout,
+// and both of broadcast()'s cleanup branches — so a double-remove must count
+// one disconnect, not four. The emit sits after the delete guard for exactly
+// this reason.
+test("#8997: a repeated remove counts one disconnect, not several", () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    const entry = { ip: "203.0.113.9" } as unknown as SseEntryLike;
+    hub.addSseClient(entry);
+    hub.removeSseClient(entry);
+    hub.removeSseClient(entry);
+    hub.removeSseClient(entry);
+    assert.equal(
+      cap.routes().filter((r) => r === "chain-firehose-hub:sse-close").length,
+      1,
+    );
+  } finally {
+    cap.restore();
+  }
+});
+
+// The half that keeps this affordable: nothing is emitted per broadcast, per
+// row, or per subscriber fan-out.
+test("#8997: a broadcast emits no telemetry", async () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    // No SSE client registered: broadcast still runs its full fan-out path,
+    // and the point is that the path itself emits nothing. Attaching a fake
+    // client would only add a stream controller to stub, not strengthen the
+    // assertion.
+    for (let i = 0; i < 10; i += 1) {
+      await hub.broadcast([
+        { table: "account_events", netuid: 7 } as unknown as Row,
+      ] as unknown as Parameters<ChainFirehoseHub["broadcast"]>[0]);
+    }
+    assert.deepEqual(cap.routes(), []);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: telemetry never fails a connection operation", () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("posthog unreachable");
+  }) as unknown as typeof fetch;
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    const entry = { ip: "203.0.113.9" } as unknown as SseEntryLike;
+    assert.doesNotThrow(() => hub.addSseClient(entry));
+    assert.equal(hub.sseClientsByIp.get("203.0.113.9"), 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

@@ -44,6 +44,7 @@ import {
   type Server as GraphqlWsServer,
   type WebSocket as GraphqlWsSocket,
 } from "graphql-ws";
+import { recordUsageEvent } from "../src/usage-telemetry.ts";
 import { resolveClientIp } from "./config.ts";
 import {
   GRAPHQL_MAX_COMPLEXITY,
@@ -1191,12 +1192,49 @@ export class ChainFirehoseHub implements DurableObject {
   // in BOTH this.sseClients (the existing global-cap membership set) and
   // this.sseClientsByIp (the per-IP sub-quota), together, so the two never
   // drift apart. `entry.ip` is set by handleSubscribe's SSE branch above.
+  /**
+   * Fire-and-forget telemetry. A Durable Object has no ExecutionContext, so
+   * this uses DurableObjectState.waitUntil where the runtime provides it and
+   * otherwise runs detached -- never awaited, and never able to fail a
+   * connection operation or a broadcast.
+   */
+  private emitTelemetry(route: string, ok: boolean): void {
+    try {
+      const pending = Promise.resolve(
+        recordUsageEvent(this.env, {
+          route: `chain-firehose-hub:${route}`,
+          ok,
+          // A connection open/close is an event, not a span of work -- there
+          // is no meaningful duration to report, and reporting 0 would be a
+          // fabricated measurement rather than an absent one.
+          durationMs: 0,
+        }),
+      ).catch(() => false);
+      (
+        this.state as unknown as { waitUntil?: (p: Promise<unknown>) => void }
+      ).waitUntil?.(pending);
+    } catch {
+      // Telemetry must never surface into the firehose path.
+    }
+  }
+
   addSseClient(entry: SseClientEntry) {
     this.sseClients.add(entry);
     this.sseClientsByIp.set(
       entry.ip,
       (this.sseClientsByIp.get(entry.ip) || 0) + 1,
     );
+    // #8997: CONNECTION LIFECYCLE ONLY. This class is per-chain-event by
+    // nature -- broadcast() fans out on every firehose row -- so instrumenting
+    // it the way the other three Durable Objects were instrumented would make
+    // it the single largest new event source in the project, on an account
+    // already ~30x over its PostHog free tier (#9004).
+    //
+    // A connection open/close is bounded by how many clients connect, not by
+    // how busy the chain is, and it is the signal that actually answers "is
+    // anyone consuming the firehose, and are they staying connected". Nothing
+    // is emitted per broadcast, per row, or per subscriber fan-out.
+    this.emitTelemetry("sse-open", true);
   }
 
   // #8364: assigns the next monotonic id to a broadcast payload and appends
@@ -1250,6 +1288,10 @@ export class ChainFirehoseHub implements DurableObject {
     clearInterval(entry.heartbeatTimer);
     clearTimeout(entry.lifetimeTimer);
     if (!this.sseClients.delete(entry)) return;
+    // Emitted AFTER the delete guard, so a double-remove (this method is
+    // reached from four separate paths -- cancel, the lifetime timeout, and
+    // both of broadcast()'s cleanup branches) counts one disconnect, not four.
+    this.emitTelemetry("sse-close", true);
     const count = this.sseClientsByIp.get(entry.ip);
     if (!count) return;
     if (count <= 1) {
