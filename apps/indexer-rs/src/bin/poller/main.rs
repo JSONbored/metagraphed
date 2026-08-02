@@ -160,9 +160,21 @@ async fn run() -> Result<()> {
     let rpc_url = std::env::var("EVENTS_RPC_URL")
         .unwrap_or_else(|_| "wss://archive.chain.opentensor.ai:443".to_string());
     // Fail fast on a missing DATABASE_URL instead of each job independently
-    // discovering it's unset on its first tick.
-    let db_url = std::env::var("DATABASE_URL").context("DATABASE_URL required")?;
-    eprintln!("poller: starting jobs (each connects its own chain + postgres client)");
+    // discovering it's unset on its first tick -- but ONLY when a job that
+    // actually writes Postgres is enabled.
+    //
+    // metagraphed#9146: three jobs (metagraph, subnet-hyperparams,
+    // account-identity) POST to Worker sync routes and hold no Postgres client
+    // at all, and those routes now persist to D1. That makes
+    // `POLLER_ONLY=metagraph,subnet-hyperparams,account-identity` a complete,
+    // Postgres-free deployment -- the shape that runs as a Cloudflare
+    // Container once the indexer box is gone. Demanding a DATABASE_URL it
+    // would never open was the only thing preventing it.
+    //
+    // Resolved AFTER `only` is parsed, so the requirement follows the enabled
+    // set rather than the binary's full job list.
+    let db_url_result = std::env::var("DATABASE_URL");
+    eprintln!("poller: starting jobs (each connects its own chain client)");
 
     let subnet_ownership_interval =
         Duration::from_secs(env_u64("SUBNET_OWNERSHIP_POLL_SECS").unwrap_or(300));
@@ -201,6 +213,27 @@ async fn run() -> Result<()> {
     if let Some(list) = &only {
         eprintln!("poller: POLLER_ONLY set, running only: {}", list.join(", "));
     }
+
+    // The five jobs that open a Postgres client. The other three POST to
+    // Worker sync routes; keep this list in step with the `db_url.clone()`
+    // call sites below.
+    const POSTGRES_JOBS: [&str; 5] = [
+        "subnet-ownership",
+        "self-health",
+        "account-balances",
+        "validator-nominators",
+        "self-stake",
+    ];
+    let needs_postgres = POSTGRES_JOBS.iter().any(|job| enabled(job));
+    let db_url = if needs_postgres {
+        db_url_result.context("DATABASE_URL required")?
+    } else {
+        // Never opened: no enabled job takes it. Empty rather than Option so
+        // the `db_url.clone()` call sites below stay unchanged -- they are all
+        // inside `enabled(...)` guards that are false in this branch.
+        eprintln!("poller: no Postgres-backed job enabled, DATABASE_URL not required");
+        String::new()
+    };
 
     // One tokio task per ENABLED job, each with its own name so a panic
     // reports which job died rather than an anonymous "a job panicked".
