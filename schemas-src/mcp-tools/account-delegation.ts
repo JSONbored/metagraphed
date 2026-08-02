@@ -6,6 +6,7 @@
 // looseness (neither the hand-written subnets items nor their nested
 // entries items declare a `required` array).
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -39,6 +40,8 @@ export const GetAccountChildrenOutputSchema = z
     account: z.string(),
     subnets: z.array(ChildSubnetSchema).nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetAccountChildrenOutput = z.infer<
@@ -75,6 +78,8 @@ export const GetAccountParentsOutputSchema = z
     account: z.string(),
     subnets: z.array(ParentSubnetSchema).nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetAccountParentsOutput = z.infer<

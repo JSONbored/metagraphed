@@ -17,6 +17,9 @@ export const EvmAddressMappingArtifactSchema = z
     h160: z.string(),
     ss58: z.string().nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type EvmAddressMappingArtifact = z.infer<

@@ -113,3 +113,21 @@ export const PROVENANCE_EXEMPT_FIELDS = new Set([
   "queried_at",
   "netuid",
 ]);
+
+/**
+ * Request echoes: a path segment handed back so a response is self-describing.
+ *
+ * PER SURFACE, not global, because the same name is not the same thing
+ * everywhere. `ss58` is the caller's own address echoed on
+ * /accounts/{ss58}/balance, and the ANSWER on /evm/address/{h160} — a
+ * name-keyed global exemption would have silently excused the one field that
+ * route exists to return. The first draft of this did exactly that, and
+ * tests/field-provenance.test.ts caught it (#9108).
+ */
+export const REQUEST_ECHO_FIELDS: Record<string, readonly string[]> = {
+  "/api/v1/accounts/{ss58}/balance": ["ss58"],
+  "/api/v1/accounts/{ss58}/root-claim": ["ss58"],
+  "/api/v1/accounts/{ss58}/children": ["account"],
+  "/api/v1/accounts/{ss58}/parents": ["account"],
+  "/api/v1/evm/address/{h160}": ["h160"],
+};

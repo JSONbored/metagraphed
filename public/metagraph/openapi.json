@@ -50,6 +50,12 @@
         "value": {
           "data": {
             "balance_tao": 0.5,
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "queried_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
@@ -84,6 +90,12 @@
         "value": {
           "data": {
             "account": "example",
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "queried_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "subnets": [
@@ -511,6 +523,12 @@
         "value": {
           "data": {
             "account": "example",
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "queried_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "subnets": [
@@ -814,6 +832,12 @@
               "subnets": [
                 1
               ]
+            },
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
             },
             "hotkeys": [
               {
@@ -4783,6 +4807,12 @@
       "EvmAddressMappingArtifactResponse": {
         "value": {
           "data": {
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "h160": "example",
             "queried_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -7771,6 +7801,12 @@
         "value": {
           "data": {
             "count": 1,
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "king": "example",
             "leaderboard": [
               {}
@@ -8702,6 +8738,12 @@
       "SubnetLeaseArtifactResponse": {
         "value": {
           "data": {
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "lease": {
               "accumulated_dividends_alpha": 0.5,
               "beneficiary": "example",
@@ -11220,6 +11262,47 @@
               }
             ]
           },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "queried_at": {
             "anyOf": [
               {
@@ -11241,7 +11324,8 @@
         },
         "required": [
           "schema_version",
-          "ss58"
+          "ss58",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -11250,6 +11334,47 @@
         "properties": {
           "account": {
             "type": "string"
+          },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "queried_at": {
             "anyOf": [
@@ -11324,7 +11449,8 @@
         },
         "required": [
           "schema_version",
-          "account"
+          "account",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -12643,6 +12769,47 @@
           "account": {
             "type": "string"
           },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "queried_at": {
             "anyOf": [
               {
@@ -12716,7 +12883,8 @@
         },
         "required": [
           "schema_version",
-          "account"
+          "account",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -13412,6 +13580,47 @@
               }
             ]
           },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "hotkeys": {
             "anyOf": [
               {
@@ -13485,7 +13694,8 @@
         },
         "required": [
           "schema_version",
-          "ss58"
+          "ss58",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -26178,6 +26388,47 @@
       "EvmAddressMappingArtifact": {
         "additionalProperties": {},
         "properties": {
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "h160": {
             "type": "string"
           },
@@ -26209,7 +26460,8 @@
         },
         "required": [
           "schema_version",
-          "h160"
+          "h160",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -36552,6 +36804,47 @@
             "minimum": 0,
             "type": "integer"
           },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "king": {
             "anyOf": [
               {
@@ -36634,7 +36927,8 @@
           "schema_version",
           "netuid",
           "count",
-          "leaderboard"
+          "leaderboard",
+          "field_sources"
         ],
         "type": "object"
       },
@@ -39958,6 +40252,47 @@
       "SubnetLeaseArtifact": {
         "additionalProperties": {},
         "properties": {
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "lease": {
             "anyOf": [
               {
@@ -40063,7 +40398,8 @@
         "required": [
           "schema_version",
           "netuid",
-          "leased"
+          "leased",
+          "field_sources"
         ],
         "type": "object"
       },

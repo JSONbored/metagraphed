@@ -9,6 +9,7 @@
 // the lease/history DATA_API route reads only the netuid path segment).
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const SubnetLeaseSchema = z
   .object({
@@ -31,6 +32,9 @@ export const SubnetLeaseArtifactSchema = z
     leased: z.boolean().nullable(),
     lease: SubnetLeaseSchema.nullable().optional(),
     queried_at: z.iso.datetime().nullable().optional(),
+    // #9108. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type SubnetLeaseArtifact = z.infer<typeof SubnetLeaseArtifactSchema>;

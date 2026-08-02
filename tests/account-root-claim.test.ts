@@ -10,6 +10,7 @@ import {
   loadAccountRootClaim,
   ROOT_CLAIM_KV_TTL,
   ROOT_CLAIM_NEGATIVE_KV_TTL,
+  ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
 } from "../src/account-root-claim.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -266,7 +267,13 @@ describe("loadAccountRootClaim", () => {
       }),
       SS58,
     );
-    assert.equal(payload, cached);
+    // Was assert.equal (same OBJECT identity). The loader now spreads the
+    // cached body and attaches provenance outside the cache (#9108), so the
+    // served record is a new object carrying the same values plus the map.
+    assert.deepEqual(payload, {
+      ...cached,
+      field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
+    });
     assert.equal(fetchSpy.mock.calls.length, 0);
   });
 

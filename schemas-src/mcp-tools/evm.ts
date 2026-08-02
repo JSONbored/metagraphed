@@ -10,6 +10,7 @@
 // here with the SAME strictness, not loosened to match the majority
 // convention.
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const H160Schema = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 
@@ -47,6 +48,8 @@ export const GetEvmAddressMappingOutputSchema = z
     h160: z.string(),
     ss58: z.string().nullable(),
     queried_at: z.string().nullable(),
+    // #9108 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .strict();
 export type GetEvmAddressMappingOutput = z.infer<

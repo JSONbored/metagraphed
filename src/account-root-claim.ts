@@ -23,6 +23,7 @@ import { blake2b } from "@noble/hashes/blake2.js";
 import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
+import type { FieldSources } from "./field-provenance.ts";
 
 export const ROOT_CLAIM_KV_TTL = 120; // seconds
 export const ROOT_CLAIM_NEGATIVE_KV_TTL = 10; // seconds
@@ -337,7 +338,11 @@ export interface RootClaimHotkeyRow {
   entries: RootClaimHotkeyEntry[];
 }
 
-export interface AccountRootClaimResult {
+/**
+ * The cacheable body -- exactly what goes into KV. `field_sources` is
+ * deliberately not part of it (#9108).
+ */
+export interface AccountRootClaimResultSnapshot {
   schema_version: 1;
   ss58: string;
   claim_type: RootClaimType | null;
@@ -350,10 +355,26 @@ export interface AccountRootClaimResult {
  * (120s / 10s negative). On RPC failure: claim_type/hotkeys are null
  * (schema-stable), never throws.
  */
-export async function loadAccountRootClaim(
+/**
+ * Where each published value came from (#9108).
+ *
+ * `claim_type` is one read. `hotkeys` is not: each row joins this account's
+ * `RootClaimableThreshold` and `RootClaimed` entries per hotkey and netuid, so
+ * it is an assembly of many reads rather than any single one.
+ */
+export interface AccountRootClaimResult extends AccountRootClaimResultSnapshot {
+  field_sources: typeof ACCOUNT_ROOT_CLAIM_FIELD_SOURCES;
+}
+
+export const ACCOUNT_ROOT_CLAIM_FIELD_SOURCES = {
+  claim_type: { kind: "measured", storage: "SubtensorModule.RootClaimType" },
+  hotkeys: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
+
+async function loadAccountRootClaimSnapshot(
   env: Env,
   ss58: string,
-): Promise<AccountRootClaimResult> {
+): Promise<AccountRootClaimResultSnapshot> {
   if (!isFinneySs58Address(ss58)) {
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
@@ -380,7 +401,7 @@ export async function loadAccountRootClaim(
   ]);
 
   if (!claimTypeRaw.ok || !stakingHotkeysRaw.ok || !ownedHotkeysRaw.ok) {
-    const payload: AccountRootClaimResult = {
+    const payload: AccountRootClaimResultSnapshot = {
       schema_version: 1,
       ss58,
       claim_type: null,
@@ -404,7 +425,7 @@ export async function loadAccountRootClaim(
   const ownedHotkeys = decodeAccountIdVec(ownedHotkeysRaw.hex);
 
   if (claimType == null || stakingHotkeys == null || ownedHotkeys == null) {
-    const payload: AccountRootClaimResult = {
+    const payload: AccountRootClaimResultSnapshot = {
       schema_version: 1,
       ss58,
       claim_type: null,
@@ -466,7 +487,7 @@ export async function loadAccountRootClaim(
   );
 
   if (hotkeyRows.some((row) => row == null)) {
-    const payload: AccountRootClaimResult = {
+    const payload: AccountRootClaimResultSnapshot = {
       schema_version: 1,
       ss58,
       claim_type: null,
@@ -485,7 +506,7 @@ export async function loadAccountRootClaim(
     return payload;
   }
 
-  const payload: AccountRootClaimResult = {
+  const payload: AccountRootClaimResultSnapshot = {
     schema_version: 1,
     ss58,
     claim_type: claimType,
@@ -504,4 +525,21 @@ export async function loadAccountRootClaim(
   }
 
   return payload;
+}
+
+/**
+ * The served record: the body above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob, and so REST,
+ * GraphQL and MCP all inherit it from one point rather than three call sites
+ * kept in step by hand (#9108).
+ */
+export async function loadAccountRootClaim(
+  env: Env,
+  ss58: string,
+): Promise<AccountRootClaimResult> {
+  return {
+    ...(await loadAccountRootClaimSnapshot(env, ss58)),
+    field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
+  };
 }

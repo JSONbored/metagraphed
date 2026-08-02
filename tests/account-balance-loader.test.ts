@@ -7,6 +7,7 @@ import {
   isFinneySs58Address,
   loadAccountBalance,
   systemAccountStorageKey,
+  ACCOUNT_BALANCE_FIELD_SOURCES,
 } from "../src/account-balance.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -269,7 +270,13 @@ describe("loadAccountBalance", () => {
     }) as unknown as typeof fetch;
     try {
       const data = await loadAccountBalance(mockEnv(env), SS58);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9108) -- attached outside
+      // the cache, so an entry written before the map existed still comes
+      // back with one.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: ACCOUNT_BALANCE_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       globalThis.fetch = orig;

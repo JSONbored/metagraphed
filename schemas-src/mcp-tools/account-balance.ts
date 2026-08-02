@@ -4,6 +4,7 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -22,6 +23,8 @@ export const GetAccountBalanceOutputSchema = z
     ss58: z.string(),
     balance_tao: z.number().nullable(),
     queried_at: z.string().nullable(),
+    // #9108 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetAccountBalanceOutput = z.infer<

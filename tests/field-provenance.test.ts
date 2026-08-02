@@ -23,6 +23,7 @@ import { describe, test } from "vitest";
 import { z } from "zod";
 import {
   PROVENANCE_EXEMPT_FIELDS,
+  REQUEST_ECHO_FIELDS,
   STORAGE_ITEM_PATTERN,
   type FieldSources,
 } from "../src/field-provenance.ts";
@@ -44,6 +45,24 @@ import { SUBNET_BURN_FIELD_SOURCES } from "../src/subnet-burn.ts";
 import { SUBNET_RECYCLED_FIELD_SOURCES } from "../src/subnet-recycled.ts";
 import { SubnetEconomicsSchema } from "../schemas-src/shared.ts";
 import { ECONOMICS_FIELD_SOURCES } from "../src/economics-field-sources.ts";
+import { AccountBalanceArtifactSchema } from "../schemas-src/routes/account-balance.ts";
+import { AccountRootClaimArtifactSchema } from "../schemas-src/routes/account-root-claim.ts";
+import { EvmAddressMappingArtifactSchema } from "../schemas-src/routes/network-singletons.ts";
+import { SubnetLeaseArtifactSchema } from "../schemas-src/routes/subnet-lease.ts";
+import {
+  AccountChildrenArtifactSchema,
+  AccountParentsArtifactSchema,
+} from "../schemas-src/routes/account-child-delegation.ts";
+import { ACCOUNT_BALANCE_FIELD_SOURCES } from "../src/account-balance.ts";
+import { ACCOUNT_ROOT_CLAIM_FIELD_SOURCES } from "../src/account-root-claim.ts";
+import { ADDRESS_MAPPING_FIELD_SOURCES } from "../src/address-mapping.ts";
+import { SUBNET_LEASE_FIELD_SOURCES } from "../src/subnet-lease.ts";
+import { SubnetConvictionArtifactSchema } from "../schemas-src/routes/subnet-conviction.ts";
+import { SUBNET_CONVICTION_FIELD_SOURCES } from "../src/subnet-conviction.ts";
+import {
+  ACCOUNT_CHILDREN_FIELD_SOURCES,
+  ACCOUNT_PARENTS_FIELD_SOURCES,
+} from "../src/child-hotkey-delegation.ts";
 
 /**
  * One surface's contract, paired with the map that claims to describe it.
@@ -82,6 +101,41 @@ const SURFACES: {
     sources: SUBNET_RECYCLED_FIELD_SOURCES,
   },
   {
+    name: "GET /api/v1/accounts/{ss58}/balance",
+    schema: AccountBalanceArtifactSchema,
+    sources: ACCOUNT_BALANCE_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/accounts/{ss58}/root-claim",
+    schema: AccountRootClaimArtifactSchema,
+    sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/accounts/{ss58}/children",
+    schema: AccountChildrenArtifactSchema,
+    sources: ACCOUNT_CHILDREN_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/accounts/{ss58}/parents",
+    schema: AccountParentsArtifactSchema,
+    sources: ACCOUNT_PARENTS_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/evm/address/{h160}",
+    schema: EvmAddressMappingArtifactSchema,
+    sources: ADDRESS_MAPPING_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/subnets/{netuid}/conviction",
+    schema: SubnetConvictionArtifactSchema,
+    sources: SUBNET_CONVICTION_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/subnets/{netuid}/lease",
+    schema: SubnetLeaseArtifactSchema,
+    sources: SUBNET_LEASE_FIELD_SOURCES,
+  },
+  {
     // The map describes the SUBNET ROW, not the artifact envelope -- same
     // relationship the emission pipeline's map has to its per-subnet rows.
     name: "GET /api/v1/economics (subnet row)",
@@ -106,20 +160,30 @@ const SURFACES: {
  */
 function provenanceRequiredFields(
   schema: z.ZodObject<z.ZodRawShape>,
+  route = "",
 ): string[] {
+  const echoes = new Set(REQUEST_ECHO_FIELDS[route] ?? []);
   return Object.keys(schema.shape).filter(
     (field) =>
-      field !== "field_sources" && !PROVENANCE_EXEMPT_FIELDS.has(field),
+      field !== "field_sources" &&
+      !PROVENANCE_EXEMPT_FIELDS.has(field) &&
+      !echoes.has(field),
   );
+}
+
+/** `GET /api/v1/x (note)` -> `/api/v1/x`, to look up that route's echoes. */
+function routeOf(name: string): string {
+  return name.replace(/^[A-Z]+ /, "").replace(/ \(.*\)$/, "");
 }
 
 describe("published field_sources maps match the fields they describe (#9078)", () => {
   for (const surface of SURFACES) {
     describe(surface.name, () => {
       test("every published field carries provenance", () => {
-        const undeclared = provenanceRequiredFields(surface.schema).filter(
-          (field) => !(field in surface.sources),
-        );
+        const undeclared = provenanceRequiredFields(
+          surface.schema,
+          routeOf(surface.name),
+        ).filter((field) => !(field in surface.sources));
         assert.deepEqual(
           undeclared,
           [],
@@ -128,7 +192,9 @@ describe("published field_sources maps match the fields they describe (#9078)", 
       });
 
       test("no provenance entry describes a field that is not served", () => {
-        const served = new Set(provenanceRequiredFields(surface.schema));
+        const served = new Set(
+          provenanceRequiredFields(surface.schema, routeOf(surface.name)),
+        );
         const orphans = Object.keys(surface.sources).filter(
           (field) => !served.has(field),
         );
@@ -247,6 +313,26 @@ describe("published field_sources maps match the fields they describe (#9078)", 
         );
       }
     });
+  });
+
+  test("the conviction leaderboard stays an extrapolation", () => {
+    // The load-bearing claim on that route, and the generic checks cannot make
+    // it: `measured` + a plausible-looking `SubtensorModule.SubnetLocks` passes
+    // every shape rule while asserting the chain published these numbers at
+    // this block. It did not -- each row is rolled forward from its own
+    // last_update, replicating roll_forward_lock. Verified by mutation that the
+    // generic rules alone let that through.
+    for (const field of ["leaderboard", "king", "count"] as const) {
+      assert.equal(
+        SUBNET_CONVICTION_FIELD_SOURCES[field].kind,
+        "reconstructed",
+        `${field} is rolled forward to queried_at_block, not read at it`,
+      );
+    }
+    // The inputs that make the extrapolation checkable ARE reads.
+    for (const field of ["unlock_rate", "maturity_rate"] as const) {
+      assert.equal(SUBNET_CONVICTION_FIELD_SOURCES[field].kind, "measured");
+    }
   });
 
   test("the three reconstructions on /network/parameters stay reconstructions", () => {

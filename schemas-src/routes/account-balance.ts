@@ -10,6 +10,7 @@
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const AccountBalanceArtifactSchema = z
   .object({
@@ -17,6 +18,9 @@ export const AccountBalanceArtifactSchema = z
     ss58: z.string(),
     balance_tao: z.number().nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type AccountBalanceArtifact = z.infer<

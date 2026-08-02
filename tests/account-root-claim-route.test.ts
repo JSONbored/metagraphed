@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { ACCOUNT_ROOT_CLAIM_FIELD_SOURCES } from "../src/account-root-claim.ts";
 import { test, vi, afterEach } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 
@@ -112,6 +113,10 @@ test("GET /accounts/{ss58}/root-claim serves from KV cache", async () => {
     {},
   );
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).data, cached);
+  // Cached body plus provenance (#9108), attached outside the cache.
+  assert.deepEqual((await res.json()).data, {
+    ...cached,
+    field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
+  });
   assert.equal(fetchSpy.mock.calls.length, 0);
 });
