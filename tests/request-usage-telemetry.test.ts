@@ -77,6 +77,30 @@ describe("usageRouteLabel", () => {
     assert.equal(label("/rpc/v1/anything"), null);
   });
 
+  // #9005: internal plumbing is not usage by any caller. The firehose ingest
+  // route alone emitted 177,894 usage_events in 24 hours -- 19% of the whole
+  // project's volume -- because it starts with /api/v1/ and so fell into the
+  // maskUsageRouteParams fallback.
+  test("skips internal machine-to-machine routes", () => {
+    assert.equal(label("/api/v1/internal/chain-firehose-ingest"), null);
+    assert.equal(label("/api/v1/internal/keys/usage"), null);
+    assert.equal(label("/api/v1/internal/anything/at/all"), null);
+  });
+
+  // The exclusion is prefix-scoped, so a real route that merely starts with
+  // the same letters must keep its label. Over-matching here would silently
+  // blind a public route rather than fail loudly.
+  test("does not skip public routes that merely look internal", () => {
+    assert.notEqual(label("/api/v1/internals"), null);
+    assert.notEqual(label("/api/v1/subnets/74/internal-notes"), null);
+  });
+
+  // #9005 retargeted the :hash and :ss58 cases off /api/v1/internal/, which is
+  // now excluded outright and so can no longer demonstrate masking. The
+  // masking behaviour under test is unchanged -- only the example path is,
+  // and /api/v1/webhooks/ is a better one anyway: it is a REAL out-of-contract
+  // route that reaches this fallback in production, which /api/v1/internal/
+  // no longer does.
   test("masks identifier-shaped segments on routes outside the contract", () => {
     assert.equal(label("/api/v1/ask"), "/api/v1/ask");
     assert.equal(
@@ -84,10 +108,13 @@ describe("usageRouteLabel", () => {
       "/api/v1/webhooks/subscriptions/:n",
     );
     assert.equal(
-      label("/api/v1/internal/0xdeadbeefcafe"),
-      "/api/v1/internal/:hash",
+      label("/api/v1/webhooks/deliveries/0xdeadbeefcafe"),
+      "/api/v1/webhooks/deliveries/:hash",
     );
-    assert.equal(label(`/api/v1/internal/${SS58}`), "/api/v1/internal/:ss58");
+    assert.equal(
+      label(`/api/v1/webhooks/owners/${SS58}`),
+      "/api/v1/webhooks/owners/:ss58",
+    );
   });
 });
 
