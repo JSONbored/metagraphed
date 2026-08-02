@@ -1392,6 +1392,12 @@ describe("classifyMcpErrorType", () => {
     ["rpc_method_blocked", "permission"],
     ["internal_error", "internal"],
     ["unknown_tool", "validation"],
+    // Added after production caught this one falling through to `internal`.
+    // The bare code has no underscore prefix, so the `_rate_limited$` rule did
+    // not match it. It is what requireAiRateLimit raises, i.e. the most common
+    // member of the family -- it simply had not occurred in the 7-day window
+    // the rest of this list was built from.
+    ["rate_limited", "rate_limited"],
   ];
 
   test("classifies every error code seen in production", () => {
@@ -1417,6 +1423,34 @@ describe("classifyMcpErrorType", () => {
       classifyMcpErrorType("provider_not_configured"),
       "missing_context",
     );
+  });
+
+  // The gap that shipped: every member of a family must be checked, not just
+  // the prefixed variants that happened to appear in a sample.
+  test("classifies every rate-limit variant, bare and prefixed", () => {
+    for (const code of [
+      "rate_limited",
+      "data_rate_limited",
+      "graphql_rate_limited",
+      "rpc_state_query_rate_limited",
+      "webhook_subscription_rate_limited",
+    ]) {
+      assert.equal(classifyMcpErrorType(code), "rate_limited", code);
+    }
+  });
+
+  test("classifies the codes an audit found falling through to internal", () => {
+    assert.equal(classifyMcpErrorType("insufficient_liquidity"), "validation");
+    assert.equal(classifyMcpErrorType("provider_error"), "api_5xx");
+    assert.equal(classifyMcpErrorType("provider_invalid_response"), "api_5xx");
+    assert.equal(classifyMcpErrorType("retired_artifact"), "missing_context");
+    assert.equal(classifyMcpErrorType("api_key_blocked"), "permission");
+  });
+
+  // `server_error` genuinely IS internal -- ours, not a dependency's -- so it
+  // must stay in the fallback bucket rather than being swept up by a rule.
+  test("leaves a genuinely internal code in the internal bucket", () => {
+    assert.equal(classifyMcpErrorType("server_error"), "internal");
   });
 
   test("rate-limit codes win over the unavailable rule", () => {

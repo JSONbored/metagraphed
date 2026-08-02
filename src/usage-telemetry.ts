@@ -287,6 +287,17 @@ export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
   path_not_declared: "missing_context",
   // Blocked by our own method policy, not by the upstream.
   rpc_method_blocked: "permission",
+  // The caller asked for more than the pool can fill — an input problem, not a
+  // fault. Reachable from get_subnet_stake_quote / get_stake_action_preview via
+  // computeStakeQuote's own code.
+  insufficient_liquidity: "validation",
+  // An adapter's upstream provider failed or answered with garbage. Both are
+  // somebody else's 5xx from the caller's side.
+  provider_error: "api_5xx",
+  provider_invalid_response: "api_5xx",
+  // The artifact existed and was withdrawn — the caller is missing context
+  // about what is current, not sending bad syntax.
+  retired_artifact: "missing_context",
   // The upstream answered, but with something unparseable — their fault.
   rpc_invalid_response: "api_5xx",
   // ...whereas an invalid *request* is the caller's.
@@ -305,7 +316,17 @@ export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
 const MCP_ERROR_TYPE_RULES: [RegExp, McpErrorType][] = [
   // Checked before `*_unavailable`, since `rpc_state_query_rate_limited` and
   // friends would otherwise fall through to the 5xx rule below.
-  [/_rate_limited$/, "rate_limited"],
+  //
+  // The `^rate_limited$` alternative is load-bearing and was MISSING. The bare
+  // code -- what `requireAiRateLimit` and every plain limiter raises, and by
+  // far the most common member of the family -- has no underscore prefix, so
+  // `_rate_limited$` alone did not match it and it fell through to `internal`.
+  // The unit tests did not catch it because the production sample they were
+  // built from contained `data_rate_limited` and `graphql_rate_limited` but no
+  // bare `rate_limited`: MCP AI rate limiting had not tripped during the
+  // measurement window. Found by tripping the live limiter and reading the
+  // emitted event.
+  [/^rate_limited$|_rate_limited$/, "rate_limited"],
   [/^timeout$|_timeout$/, "timeout"],
   [/^invalid_|^malformed_|_invalid$/, "validation"],
   // Our own dependency (a tier, a binding, an upstream provider) could not
@@ -313,6 +334,9 @@ const MCP_ERROR_TYPE_RULES: [RegExp, McpErrorType][] = [
   // 5xx, which is the bucket PostHog intends for it.
   [/_unavailable$|_unreachable$|^unavailable$/, "api_5xx"],
   [/_not_configured$|_missing$|_not_found$/, "missing_context"],
+  // Refused by our own policy rather than by a dependency (api_key_blocked;
+  // rpc_method_blocked is already named explicitly above).
+  [/_blocked$/, "permission"],
 ];
 
 /**
