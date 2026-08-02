@@ -5,9 +5,13 @@ description: >-
   PRs inline in the build job, and ui-preview-deploy.yml deploys fork PRs from the workflow_run
   trust boundary. It validates a built .output bundle, writes the preview Wrangler config HERE
   (never taken from the PR -- a fork cannot control bindings, routes, or vars; the untrusted
-  build's own generated wrangler.json is never read), uploads a 0%-traffic preview version (a
-  workers.dev URL; wrangler only uploads the bundle, it never executes it), and records the GitHub
-  Deployment + success status that loopover's review bot reads for the "after" screenshot. Callers
+  build's own generated wrangler.json is never read), uploads a 0%-traffic preview version
+  (wrangler only uploads the bundle, it never executes it), and records the GitHub
+  Deployment + success status that loopover's review bot reads for the "after" screenshot.
+  The upload produces NO browsable URL: metagraphed-ui has no workers.dev/preview domain
+  (#9044 -- the old zeronode.workers.dev address was removed, and it is not coming back), so
+  the deployment is recorded without an environment_url and the review bot gets a deployment
+  it can see but no page to screenshot. Callers
   must have Node available (actions/setup-node) before invoking, and keep their own
   failure()-gated step that records a `failure` deployment_status (that step is caller-specific:
   it must also catch failures of the caller's OWN earlier steps, which this action cannot see).
@@ -32,7 +36,10 @@ inputs:
     required: true
 outputs:
   preview_url:
-    description: The workers.dev preview URL the upload produced.
+    description: >-
+      Always empty today: metagraphed-ui has no workers.dev/preview domain, so the upload
+      emits no browsable URL (#9044). Kept as an output so callers' `environment.url` wiring
+      stays valid, and so restoring a preview domain needs no caller change.
     value: ${{ steps.upload.outputs.preview_url }}
 runs:
   using: composite
@@ -85,6 +92,13 @@ runs:
     # fork-built code at the production domain. Do not add a `routes` block to this preview config.
     # Deliberately NOT the wrangler.json the untrusted build step generated — a malicious PR could
     # otherwise smuggle bindings/vars through apps/ui/wrangler.jsonc.
+    #
+    # workers_dev/preview_urls are both false: metagraphed-ui serves only from its custom domain,
+    # and the workers.dev + preview domains are gone for good (#9044), so asking for them here
+    # would be a no-op request to re-provision exactly what was deliberately removed.
+    #
+    # This heredoc writes STRICT JSON (.json, not .jsonc) — wrangler rejects `#`/`//` comments in
+    # it with `InvalidSymbol`. Keep all commentary out here in the YAML.
     - name: Write trusted preview Wrangler config
       shell: bash
       run: |
@@ -92,8 +106,8 @@ runs:
         {
           "compatibility_date": "2026-07-17",
           "name": "metagraphed-ui",
-          "workers_dev": true,
-          "preview_urls": true,
+          "workers_dev": false,
+          "preview_urls": false,
           "compatibility_flags": ["nodejs_compat"],
           "placement": {
             "mode": "smart"
@@ -136,19 +150,26 @@ runs:
       run: |
         set -o pipefail
         out=$(wrangler versions upload --config "${{ inputs.dist-dir }}/server/wrangler.preview.json" 2>&1 | tee /dev/stderr)
-        # Take a workers.dev URL that belongs to the metagraphed-ui worker, so any other URL in the
-        # logs (or a changed output format) can't be recorded as the preview by mistake. Tolerant of
-        # the version-alias prefix (`<alias>-metagraphed-ui.<sub>.workers.dev`).
-        url=$(printf '%s\n' "$out" | grep -oiE 'https://[a-z0-9.-]+\.workers\.dev' | grep -i 'metagraphed-ui' | head -n1)
-        if [ -z "$url" ]; then
-          echo "::error::Could not parse an expected metagraphed-ui preview URL from wrangler output"
-          exit 1
-        fi
+        # metagraphed-ui has no workers.dev/preview domain, so there is normally NO URL to find
+        # (#9044). The upload is still the thing under test -- a real failure exits non-zero above,
+        # under `set -o pipefail`. A missing URL is expected and must not fail the job.
+        #
+        # Still parsed opportunistically so that restoring a preview domain needs no change here:
+        # match only a URL belonging to the metagraphed-ui worker, so any other URL in the logs
+        # can't be recorded as the preview by mistake. Tolerant of the version-alias prefix
+        # (`<alias>-metagraphed-ui.<sub>.workers.dev`).
+        url=$(printf '%s\n' "$out" | grep -oiE 'https://[a-z0-9.-]+\.workers\.dev' | grep -i 'metagraphed-ui' | head -n1 || true)
         echo "preview_url=$url" >> "$GITHUB_OUTPUT"
-        echo "Preview: $url"
+        if [ -n "$url" ]; then
+          echo "Preview: $url"
+        else
+          echo "::notice::Preview version uploaded; no browsable URL (metagraphed-ui has no workers.dev/preview domain)."
+        fi
 
+    # Unconditional: the upload above is what this records, and it now succeeds without
+    # producing a URL (#9044). Gating on preview_url would silently record nothing at all,
+    # leaving loopover's review bot with no deployment to react to.
     - name: Record deployment for loopover
-      if: ${{ steps.upload.outputs.preview_url != '' }}
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
         github-token: ${{ inputs.github-token }}
@@ -174,7 +195,13 @@ runs:
             deployment_id: deployment.data.id,
             state: "success",
             environment: `preview/pr-${prNumber}`,
-            environment_url: url,
-            description: "Preview ready",
+            // Omitted entirely when there is no URL -- the API rejects an empty string,
+            // and there is no browsable preview to point at (#9044).
+            ...(url ? { environment_url: url } : {}),
+            description: url ? "Preview ready" : "Preview version uploaded (no browsable URL)",
           });
-          core.notice(`Preview deployment recorded for PR #${prNumber}: ${url}`);
+          core.notice(
+            url
+              ? `Preview deployment recorded for PR #${prNumber}: ${url}`
+              : `Preview deployment recorded for PR #${prNumber} (no browsable URL).`,
+          );
