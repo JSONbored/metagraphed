@@ -499,3 +499,87 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(row.alpha_price_change_1m, null);
   });
 });
+
+// --- chain_state provenance -------------------------------------------------
+//
+// The regression these pin (fixed 2026-08-02): scripts/refresh-economics.ts
+// builds the LIVE KV tier and did not pass `chainState`, while
+// scripts/build-artifacts.ts built the R2 artifact and did. Because
+// resolveLiveEconomics prefers KV over R2, the KV blob shadowed the complete
+// artifact, and /api/v1/chain/emission-pipeline correctly refused to serve a
+// decomposition it could not pin to a block -- a 503 that failed `smoke:live`
+// and therefore the whole daily publish, for two days, while every publish step
+// itself succeeded.
+
+describe("buildEconomicsArtifact chain_state", () => {
+  const base = {
+    subnets: [] as Row[],
+    economicsByNetuid: new Map<number, Row>(),
+    generatedAt: "2026-08-02T00:00:00.000Z",
+    network: "finney",
+    capturedAt: "2026-08-02T00:00:00Z",
+    priceHistoryByNetuid: new Map<number, Row>(),
+  };
+
+  test("carries chain_state through when the snapshot pinned a block", () => {
+    const out = buildEconomicsArtifact({
+      ...base,
+      chainState: { block: 8_754_276, block_hash: "0xabc" },
+    } as Parameters<typeof buildEconomicsArtifact>[0]) as Row;
+    assert.deepEqual(out.chain_state, {
+      block: 8_754_276,
+      block_hash: "0xabc",
+    });
+  });
+
+  // Absent, NOT null: an absent key reads as "this run did not pin a block",
+  // where `chain_state: null` would read as "it pinned one and it was nothing".
+  // The emission-pipeline route distinguishes these, so the distinction is
+  // load-bearing rather than stylistic.
+  test("omits chain_state entirely on a degraded refresh", () => {
+    for (const chainState of [null, undefined]) {
+      const out = buildEconomicsArtifact({
+        ...base,
+        chainState,
+      } as Parameters<typeof buildEconomicsArtifact>[0]) as Row;
+      assert.equal(
+        "chain_state" in out,
+        false,
+        `expected chain_state absent for ${String(chainState)}`,
+      );
+    }
+  });
+});
+
+// A SOURCE-level check, deliberately. The bug above was not that
+// buildEconomicsArtifact mishandled chain_state -- the tests directly above
+// show it never did. It was that ONE OF ITS TWO CALLERS forgot to pass it, and
+// no behavioural test of either caller catches that: each writes a different
+// tier, both "work", and the two only disagree once a third component
+// (resolveLiveEconomics' KV-over-R2 precedence) puts them in conflict. The
+// invariant worth pinning is therefore about the call sites themselves.
+describe("both economics writers pin chain_state", () => {
+  const CALLERS = [
+    "scripts/refresh-economics.ts", // the live KV tier
+    "scripts/build-artifacts.ts", // the committed R2 artifact
+  ];
+
+  test("every buildEconomicsArtifact caller passes chainState", async () => {
+    const { readFile } = await import("node:fs/promises");
+    for (const caller of CALLERS) {
+      const source = await readFile(caller, "utf8");
+      assert.match(
+        source,
+        /buildEconomicsArtifact\(/,
+        `${caller} should call buildEconomicsArtifact`,
+      );
+      assert.match(
+        source,
+        /chainState:/,
+        `${caller} must pass chainState -- omitting it produces a blob with no ` +
+          `chain_state, and whichever tier that blob lands in will refuse to ` +
+          `serve /api/v1/chain/emission-pipeline`,
+      );
+    }
+  });
+});

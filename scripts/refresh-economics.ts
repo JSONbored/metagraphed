@@ -55,6 +55,14 @@ const economics = buildEconomicsArtifact({
   generatedAt: buildTimestamp(),
   network: native.network as string | null,
   capturedAt: native.captured_at as string | null,
+  // The block this capture's inputs were pinned to. build-artifacts.ts has
+  // always passed this for the R2 artifact; this path did not, which is what
+  // broke /api/v1/chain/emission-pipeline -- resolveLiveEconomics prefers the
+  // KV tier, so a blob written here WITHOUT chain_state shadows the complete
+  // R2 one, and the route correctly refuses to serve a decomposition it cannot
+  // pin to a block. Same expression as build-artifacts.ts, reading the same
+  // native snapshot, so the two writers can no longer disagree about it.
+  chainState: (native.chain_state as Row | null) ?? null,
   priceHistoryByNetuid,
 });
 // Match build-artifacts: economics.json carries the contract stamp, and
