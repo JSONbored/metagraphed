@@ -4,7 +4,7 @@
 // the module is the source of truth and this is its contract projection.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
-import { ChainStateSchema } from "../shared.ts";
+import { ChainStateSchema, FieldSourcesSchema } from "../shared.ts";
 
 /** A fraction of block emission. Null where stage 0 excluded the subnet. */
 const ShareSchema = z.number().nullable();
@@ -100,16 +100,10 @@ export const EMISSION_PIPELINE_BODY = {
     })
     .strict(),
   // Per-field kind + storage item, so a consumer cannot mistake OUR arithmetic
-  // for something the chain published.
-  field_sources: z.record(
-    z.string(),
-    z
-      .object({
-        kind: z.enum(["measured", "reconstructed"]),
-        storage: z.string().nullable(),
-      })
-      .strict(),
-  ),
+  // for something the chain published. The shape moved to ../shared.ts when
+  // the network singletons started publishing the same map (#9078) -- same
+  // record, same two kinds, just no longer declared in only one place.
+  field_sources: FieldSourcesSchema,
 } as const;
 
 export const EmissionPipelineArtifactSchema = z

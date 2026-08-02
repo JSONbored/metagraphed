@@ -195,6 +195,37 @@ export const ChainStateSchema = z
   .strict();
 export type ChainState = z.infer<typeof ChainStateSchema>;
 
+// Per-field provenance (#9078): every published value labelled `measured` --
+// with the pallet-qualified storage item behind it -- or `reconstructed`, our
+// own arithmetic over one or more measurements.
+//
+// ADR 0023 decision 5 introduced this on /api/v1/chain/emission-pipeline; it
+// lives here because it is now the shape EVERY surface publishing a
+// `field_sources` map uses, and a consumer should learn it once rather than
+// once per endpoint. src/field-provenance.ts is its runtime counterpart.
+//
+// A record rather than a fixed object: the key set is each route's own field
+// list, and pinning it here would mean re-declaring every route's shape twice.
+// tests/field-provenance.test.ts is what holds the keys to the served fields.
+export const FieldSourcesSchema = z
+  .record(
+    z.string(),
+    z
+      .object({
+        kind: z.enum(["measured", "reconstructed"]),
+        // Non-null exactly when kind is "measured". Null on a reconstruction
+        // is a positive statement, not an omission: for `block_emission_tao`
+        // it says we did NOT read the `BlockEmission` storage item, which is
+        // stale (#8747) and would otherwise look like the obvious source.
+        storage: z.string().nullable(),
+      })
+      .strict(),
+  )
+  .describe(
+    "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+  );
+export type FieldSources = z.infer<typeof FieldSourcesSchema>;
+
 // One concentration lens over a single value distribution (src/concentration.ts's
 // computeConcentration()) -- shared by SubnetPerformanceArtifact/
 // ChainPerformanceArtifact's incentive/dividends lenses AND

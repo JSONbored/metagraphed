@@ -9,6 +9,7 @@
 // equal (see list_accounts/get_top_holders in #8070).
 import { z } from "zod";
 import { ExtrinsicItemSchema } from "./shared.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const GetSudoInputSchema = z
   .object({
@@ -46,6 +47,8 @@ export const GetSudoKeyOutputSchema = z
     schema_version: z.int().optional(),
     hotkey: z.string().nullable(),
     queried_at: z.string().nullable(),
+    // #9078 provenance, mirroring SudoKeyArtifactSchema field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetSudoKeyOutput = z.infer<typeof GetSudoKeyOutputSchema>;

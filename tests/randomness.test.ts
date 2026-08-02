@@ -4,6 +4,7 @@ import {
   RANDOMNESS_KV_TTL,
   RANDOMNESS_NEGATIVE_KV_TTL,
   RANDOMNESS_RPC_TIMEOUT_MS,
+  RANDOMNESS_FIELD_SOURCES,
   loadRandomnessStatus,
 } from "../src/randomness.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -184,7 +185,13 @@ describe("loadRandomnessStatus", () => {
       },
       async () => {
         const data = await loadRandomnessStatus(env);
-        assert.deepEqual(data, cached);
+        // The cached body verbatim, PLUS provenance (#9078) — attached outside
+        // the cache, so an entry written before it existed still comes back
+        // with one instead of serving a 30s window with no provenance at all.
+        assert.deepEqual(data, {
+          ...cached,
+          field_sources: RANDOMNESS_FIELD_SOURCES,
+        });
         assert.equal(fetchCalled, false);
       },
     );

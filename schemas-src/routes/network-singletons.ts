@@ -9,6 +9,7 @@
 // SudoKeyArtifact components they replace.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const EvmAddressMappingArtifactSchema = z
   .object({
@@ -52,6 +53,12 @@ export const NetworkParametersArtifactSchema = z
     emission_gate_exponent: z.number().nullable().optional(),
     emission_gate_exponent_effective: z.number().nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9078. Required, not optional: it is attached outside the KV cache on
+    // every read (src/network-parameters.ts), so there is no response shape
+    // that legitimately lacks it. This route is why the map generalised --
+    // `block_emission_tao` and `emission_gate_exponent_effective` are both
+    // values we supply, and nothing else in the body says so.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type NetworkParametersArtifact = z.infer<
@@ -72,6 +79,9 @@ export const RandomnessArtifactSchema = z
     oldest_stored_round: z.int().nullable().optional(),
     stored_round_span: z.int().nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9078. `stored_round_span` is our subtraction of the two rounds above,
+    // not a retention window the beacon publishes.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type RandomnessArtifact = z.infer<typeof RandomnessArtifactSchema>;
@@ -86,6 +96,10 @@ export const SudoKeyArtifactSchema = z
     schema_version: z.int(),
     hotkey: z.string().nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9078. One field, one read -- published so that "all of it is measured"
+    // is something the response states rather than something a caller has to
+    // assume from the absence of a map.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type SudoKeyArtifact = z.infer<typeof SudoKeyArtifactSchema>;

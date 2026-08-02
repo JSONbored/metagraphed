@@ -27,6 +27,7 @@
 //     block count (7200, no TAO conversion).
 
 import { blockEmissionForIssuance } from "./block-emission.ts";
+import type { FieldSources } from "./field-provenance.ts";
 
 export const NETWORK_PARAMETERS_KV_TTL = 300; // seconds -- governance-adjustable, changes rarely but not never
 export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10; // seconds
@@ -217,7 +218,66 @@ async function fetchStorageU128(
   }
 }
 
-export interface NetworkParameters {
+/**
+ * Where each published value came from (#9078).
+ *
+ * Three reconstructions here, and they are the reason this route needed a map
+ * more than any other:
+ *
+ * - `block_emission_tao` / `block_emission_halvings` are derived from
+ *   `TotalIssuance`, NEVER read from the `BlockEmission` storage item, which
+ *   has been stale at 1.0 TAO since the first halving (#8747). The item exists
+ *   and would look like the obvious source; publishing `storage: null` says
+ *   plainly that we did not use it.
+ * - `emission_gate_exponent_effective` is `DEFAULT_EMISSION_GATE_EXPONENT`
+ *   whenever the storage item is unset, which is its current state on finney.
+ *   Without this map a caller sees `3` and has no way to learn it came from our
+ *   source tree rather than the chain — the `null` beside it in
+ *   `emission_gate_exponent` reads as missing data, not as the tell. It stays
+ *   reconstructed even when the item IS set and the two agree: which one it is
+ *   depends on chain state the caller cannot see, and a field whose kind flips
+ *   per response is not a contract.
+ *
+ * Everything else is one read, decoded. `stake_threshold_tao` divided by 1e9
+ * and `tao_weight` decoded from U64F64 are still that single read.
+ */
+export const NETWORK_PARAMETERS_FIELD_SOURCES = {
+  tao_weight: { kind: "measured", storage: "SubtensorModule.TaoWeight" },
+  stake_threshold_tao: {
+    kind: "measured",
+    storage: "SubtensorModule.StakeThreshold",
+  },
+  pending_childkey_cooldown_blocks: {
+    kind: "measured",
+    storage: "SubtensorModule.PendingChildKeyCooldown",
+  },
+  total_issuance_tao: {
+    kind: "measured",
+    storage: "SubtensorModule.TotalIssuance",
+  },
+  block_emission_tao: { kind: "reconstructed", storage: null },
+  block_emission_halvings: { kind: "reconstructed", storage: null },
+  emission_gate_bar: {
+    kind: "measured",
+    storage: "SubtensorModule.EmissionGateBar",
+  },
+  emission_bar_quantile: {
+    kind: "measured",
+    storage: "SubtensorModule.EmissionBarQuantile",
+  },
+  emission_gate_exponent: {
+    kind: "measured",
+    storage: "SubtensorModule.EmissionGateExponent",
+  },
+  emission_gate_exponent_effective: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
+
+/**
+ * The cacheable body: what the RPC reads produce, and exactly what goes into
+ * KV. `field_sources` is deliberately NOT part of it — see
+ * {@link loadNetworkParameters}.
+ */
+export interface NetworkParametersSnapshot {
   schema_version: 1;
   tao_weight: number | null;
   stake_threshold_tao: number | null;
@@ -242,6 +302,10 @@ export interface NetworkParameters {
   queried_at: string;
 }
 
+export interface NetworkParameters extends NetworkParametersSnapshot {
+  field_sources: typeof NETWORK_PARAMETERS_FIELD_SOURCES;
+}
+
 // Query the live global governance parameters. Uses METAGRAPH_CONTROL KV
 // (300s TTL) when present; each field is independently null on its own RPC
 // failure (schema-stable, never throws) -- three parallel reads against the
@@ -249,15 +313,15 @@ export interface NetworkParameters {
 // this codebase already relies on elsewhere). Positive-caches only when all
 // three succeed, so a partial failure doesn't cache a stale-looking result
 // for the full TTL.
-export async function loadNetworkParameters(
+async function loadNetworkParametersSnapshot(
   env: Env,
-): Promise<NetworkParameters> {
+): Promise<NetworkParametersSnapshot> {
   const cacheKey = "network:parameters";
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
     try {
-      const cached = await kv.get<NetworkParameters>(cacheKey, {
+      const cached = await kv.get<NetworkParametersSnapshot>(cacheKey, {
         type: "json",
       });
       if (cached) return cached;
@@ -348,7 +412,7 @@ export async function loadNetworkParameters(
     // whole response on the 10s negative TTL indefinitely.
     emissionGateExponentResult.state !== "failed";
 
-  const payload: NetworkParameters = {
+  const payload: NetworkParametersSnapshot = {
     schema_version: 1,
     tao_weight: taoWeight,
     stake_threshold_tao: stakeThresholdTao,
@@ -377,4 +441,23 @@ export async function loadNetworkParameters(
   }
 
   return payload;
+}
+
+/**
+ * The served governance parameters: the snapshot above plus its provenance map.
+ *
+ * Attached here, outside the loader, so the map never enters the KV blob — a
+ * correction to it takes effect on the next read rather than after the 300s
+ * TTL, and entries cached before #9078 don't come back without one. It is also
+ * the single point REST, GraphQL, and MCP all inherit provenance from, instead
+ * of three call sites kept in step by hand (src/emission-pipeline-surface.ts's
+ * header is about that exact failure mode).
+ */
+export async function loadNetworkParameters(
+  env: Env,
+): Promise<NetworkParameters> {
+  return {
+    ...(await loadNetworkParametersSnapshot(env)),
+    field_sources: NETWORK_PARAMETERS_FIELD_SOURCES,
+  };
 }

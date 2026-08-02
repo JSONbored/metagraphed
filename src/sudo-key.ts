@@ -11,11 +11,25 @@
 // that module's header for why @noble/hashes' blake2b is required over
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
 import { encodeAccountId32 } from "./ss58.ts";
+import type { FieldSources } from "./field-provenance.ts";
 
 type Row = Record<string, unknown>;
 
 const SUDO_KEY_STORAGE_KEY =
   "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b";
+
+/**
+ * Where each published value came from (#9078) — the key above, named.
+ *
+ * One field, one read. SS58-encoding the raw AccountId32 keeps it `measured`:
+ * the value is still that single storage read, rendered in the address format
+ * a caller can use, exactly as `stake_threshold_tao` stays measured across its
+ * rao-to-TAO division elsewhere.
+ */
+export const SUDO_KEY_FIELD_SOURCES = {
+  hotkey: { kind: "measured", storage: "Sudo.Key" },
+} as const satisfies FieldSources;
+
 export const SUDO_KEY_KV_TTL = 3600; // seconds — the sudo key changes extremely rarely
 export const SUDO_KEY_NEGATIVE_KV_TTL = 10; // seconds
 export const SUDO_KEY_RPC_TIMEOUT_MS = 5000;
@@ -37,7 +51,9 @@ function hexToBytes(hex: string): Uint8Array {
 // Query the live Sudo::Key holder. Uses METAGRAPH_CONTROL KV (1h TTL, same
 // binding as loadAccountBalance) when present; hotkey is null on RPC failure
 // or an unset sudo key (Optional<AccountId>) — schema-stable, never throws.
-export async function loadSudoKey(env: Env): Promise<Row> {
+//
+// Returns the CACHEABLE body only; loadSudoKey below adds the provenance map.
+async function loadSudoKeySnapshot(env: Env): Promise<Row> {
   const cacheKey = "sudo:key";
   const kv = env?.METAGRAPH_CONTROL;
 
@@ -98,4 +114,20 @@ export async function loadSudoKey(env: Env): Promise<Row> {
   }
 
   return payload;
+}
+
+/**
+ * The served sudo-key record: the snapshot above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob — at a 1h TTL
+ * that matters more here than anywhere else, and entries cached before #9078
+ * would otherwise come back with no provenance at all. It is also the single
+ * point all three surfaces (REST, GraphQL, MCP) inherit it from, rather than
+ * three call sites kept in step by hand.
+ */
+export async function loadSudoKey(env: Env): Promise<Row> {
+  return {
+    ...(await loadSudoKeySnapshot(env)),
+    field_sources: SUDO_KEY_FIELD_SOURCES,
+  };
 }

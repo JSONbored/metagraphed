@@ -4,6 +4,7 @@ import {
   NETWORK_PARAMETERS_KV_TTL,
   NETWORK_PARAMETERS_NEGATIVE_KV_TTL,
   NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+  NETWORK_PARAMETERS_FIELD_SOURCES,
   loadNetworkParameters,
 } from "../src/network-parameters.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -326,7 +327,14 @@ describe("loadNetworkParameters", () => {
       },
       async () => {
         const data = await loadNetworkParameters(env);
-        assert.deepEqual(data, cached);
+        // The cached body verbatim, PLUS provenance (#9078). field_sources is
+        // attached outside the cache, so an entry written before it existed
+        // still comes back with one and a correction to the map takes effect
+        // on the next read rather than after the 300s TTL.
+        assert.deepEqual(data, {
+          ...cached,
+          field_sources: NETWORK_PARAMETERS_FIELD_SOURCES,
+        });
         assert.equal(fetchCalled, false);
       },
     );

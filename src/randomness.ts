@@ -17,6 +17,8 @@
 // changes). Cross-checked against that module's already-verified
 // twox-storage-key.ts output at write time -- see tests/randomness.test.ts.
 
+import type { FieldSources } from "./field-provenance.ts";
+
 export const RANDOMNESS_KV_TTL = 30; // seconds -- pulses land ~3s apart, but this is a snapshot, not a feed
 export const RANDOMNESS_NEGATIVE_KV_TTL = 10; // seconds
 export const RANDOMNESS_RPC_TIMEOUT_MS = 5000;
@@ -76,12 +78,35 @@ async function fetchStorageU64(
   }
 }
 
-export interface RandomnessStatus {
+/**
+ * The cacheable body: what the RPC reads produce, and exactly what goes into
+ * KV. `field_sources` is deliberately NOT part of it — see
+ * {@link loadRandomnessStatus}.
+ */
+export interface RandomnessSnapshot {
   schema_version: 1;
   last_stored_round: number | null;
   oldest_stored_round: number | null;
   stored_round_span: number | null;
   queried_at: string;
+}
+
+/**
+ * Where each published value came from (#9078).
+ *
+ * `stored_round_span` is the one reconstruction here: it is `last - oldest + 1`,
+ * our subtraction of two reads, and there is no storage item that holds it. A
+ * consumer treating it as a chain-published retention window would be citing
+ * our arithmetic.
+ */
+export const RANDOMNESS_FIELD_SOURCES = {
+  last_stored_round: { kind: "measured", storage: "Drand.LastStoredRound" },
+  oldest_stored_round: { kind: "measured", storage: "Drand.OldestStoredRound" },
+  stored_round_span: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
+
+export interface RandomnessStatus extends RandomnessSnapshot {
+  field_sources: typeof RANDOMNESS_FIELD_SOURCES;
 }
 
 // Query the live randomness-beacon status. Uses METAGRAPH_CONTROL KV (30s
@@ -90,15 +115,13 @@ export interface RandomnessStatus {
 // same endpoint, matching network-parameters.ts's own batched-but-
 // independent-failure shape. Positive-caches only when both succeed, so a
 // partial failure doesn't cache a stale-looking result for the full TTL.
-export async function loadRandomnessStatus(
-  env: Env,
-): Promise<RandomnessStatus> {
+async function loadRandomnessSnapshot(env: Env): Promise<RandomnessSnapshot> {
   const cacheKey = "network:randomness";
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
     try {
-      const cached = await kv.get<RandomnessStatus>(cacheKey, {
+      const cached = await kv.get<RandomnessSnapshot>(cacheKey, {
         type: "json",
       });
       if (cached) return cached;
@@ -125,7 +148,7 @@ export async function loadRandomnessStatus(
     ? (lastStoredRound as number) - (oldestStoredRound as number) + 1
     : null;
 
-  const payload: RandomnessStatus = {
+  const payload: RandomnessSnapshot = {
     schema_version: 1,
     last_stored_round: lastStoredRound,
     oldest_stored_round: oldestStoredRound,
@@ -144,4 +167,24 @@ export async function loadRandomnessStatus(
   }
 
   return payload;
+}
+
+/**
+ * The served randomness status: the snapshot above plus its provenance map.
+ *
+ * The map is attached HERE rather than inside the loader, for two reasons.
+ * It stays out of the KV blob, so a change to the map takes effect on the next
+ * read instead of after a 30s TTL, and entries written before #9078 don't come
+ * back without one. And it is one attachment point for all three surfaces —
+ * REST, GraphQL, and MCP all read this function, so provenance parity is a
+ * property of the code rather than of three call sites kept in step by hand
+ * (the same reason src/emission-pipeline-surface.ts exists).
+ */
+export async function loadRandomnessStatus(
+  env: Env,
+): Promise<RandomnessStatus> {
+  return {
+    ...(await loadRandomnessSnapshot(env)),
+    field_sources: RANDOMNESS_FIELD_SOURCES,
+  };
 }
