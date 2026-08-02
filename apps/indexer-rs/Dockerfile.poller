@@ -1,0 +1,26 @@
+# The POLLER image for the Cloudflare Container deployment (#209 /
+# metagraphed#9146): identical build to ./Dockerfile, but with the poller as
+# the image CMD. The main Dockerfile keeps backfill's entrypoint as CMD and
+# selects the poller via docker_container `command:` on the box -- Cloudflare
+# Containers configure an image, not a command, so the selection has to live
+# in the image itself here. Two Dockerfiles sharing the build stanza verbatim
+# is the cost; a divergence would surface as a build failure, not a silent
+# behavioral difference, since both COPY the same two binaries.
+FROM rust:1-bookworm AS build
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo build --release --locked
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /app/target/release/poller /app/poller
+# Postgres-free job set only (metagraph, subnet-hyperparams,
+# account-identity): the three lanes that POST to Worker sync routes, which
+# persist to D1. The five Postgres-backed lanes stay disabled until they have
+# a Cloudflare-native sink -- see POSTGRES_JOBS in src/bin/poller/main.rs.
+ENV POLLER_ONLY="metagraph,subnet-hyperparams,account-identity"
+CMD ["/app/poller"]

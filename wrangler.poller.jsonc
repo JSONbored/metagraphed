@@ -1,0 +1,24 @@
+// The chain-state poller as a Cloudflare Container (#209): keeps one instance
+// of apps/indexer-rs's poller binary alive in its Postgres-free shape. See
+// workers/poller-container.ts for the liveness model and
+// apps/indexer-rs/Dockerfile.poller for why the CMD lives in the image.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metagraphed-poller",
+  "main": "workers/poller-container.ts",
+  "compatibility_date": "2026-06-06",
+  "containers": [
+    {
+      "class_name": "PollerContainer",
+      "image": "./apps/indexer-rs/Dockerfile.poller",
+      "max_instances": 1,
+      "instance_type": "basic"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "POLLER", "class_name": "PollerContainer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PollerContainer"] }],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true }
+}
