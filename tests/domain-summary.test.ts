@@ -188,7 +188,6 @@ describe("TAO-priced domain rollup (#9051)", () => {
     ];
     const out = buildDomainSummary("agents", subnets, economics);
     assert.equal(out.total_stake_tao, 400); // 100*2 + 400*0.5
-    assert.equal(out.unpriced_stake_alpha, 70);
     // Membership is unaffected by an unpriceable member.
     assert.equal(out.subnet_count, 3);
     assert.deepEqual(out.netuids, [1, 2, 3]);

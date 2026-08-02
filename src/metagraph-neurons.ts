@@ -410,11 +410,11 @@ interface ApyAccumulator {
 // A netuid with no resolvable price (no subnet_snapshots row yet, or a null
 // price cell) contributes NOTHING to the priced total -- never silently 1:1,
 // which would quietly re-create the old bug for exactly the rows where the
-// price is unknown. Its raw alpha accumulates separately and is published as
-// the `unpriced_stake_alpha`/`unpriced_emission_alpha` residuals, so a
-// consumer can always see how much of the position the priced figure does
-// not cover ("no figure" stays visible, mirroring the null-never-fabricated
-// convention used across this file).
+// price is unknown. That exclusion is a safety valve, not an expected state:
+// the economics tier carries alpha_price_tao for every subnet and
+// subnet_snapshots is written from it, so a miss is a data defect. Excluding
+// under-reports the total rather than mis-denominating it, which is the safe
+// direction to fail in.
 function priceForNetuid(
   netuid: number,
   priceByNetuid: Map<number, number | null>,
@@ -540,8 +540,6 @@ interface ValidatorAccumEntry {
   uidCount: number;
   stakeTotalRao: bigint;
   emissionTotalRao: bigint;
-  unpricedStakeAlphaRao: bigint;
-  unpricedEmissionAlphaRao: bigint;
   apyNumeratorRao: bigint;
   apyDenominatorRao: bigint;
   apyEligibleCount: number;
@@ -603,13 +601,6 @@ function buildGlobalValidatorEntry(
     root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
     alpha_stake_tao: roundTao(raoBigToTao(alphaStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
-    // The alpha the priced totals above do NOT cover (#9051): memberships on
-    // subnets with no resolvable alpha price. Raw cross-subnet alpha counts,
-    // published so the coverage of the priced figures is always visible.
-    unpriced_stake_alpha: roundTao(raoBigToTao(entry.unpricedStakeAlphaRao)),
-    unpriced_emission_alpha: roundTao(
-      raoBigToTao(entry.unpricedEmissionAlphaRao),
-    ),
     // #2549: from the separate validator_nominator_counts side table, joined
     // by hotkey. Null when that table has no row for this hotkey yet (cold
     // table, or a hotkey the last low-frequency scan hasn't covered) --
@@ -651,10 +642,27 @@ function applyStakeDominance(validators: Row[]): Row[] {
   }));
 }
 
+/** The explicit "there is nothing to price" map, for the cold/absent-tier
+ * fallbacks that build a schema-stable empty card from zero rows. Named rather
+ * than a bare `new Map()` at each call site so the intent is greppable and a
+ * real caller can never reach for it by accident (#9051). */
+export const NO_ALPHA_PRICES: Map<number, number | null> = new Map();
+
 export interface BuildGlobalValidatorsOptions {
   sort?: string;
   limit?: unknown;
-  priceByNetuid?: Map<number, number | null>;
+  /** netuid -> alpha_price_tao. REQUIRED, and deliberately not defaulted
+   * (#9051): an implicit empty map would silently price nothing, which for a
+   * cross-subnet sum means publishing raw alpha under a _tao name -- exactly
+   * the bug this exists to fix. A caller that cannot resolve prices must say
+   * so explicitly by passing an empty map, not by omitting the argument.
+   *
+   * Complete by construction: the economics tier carries alpha_price_tao for
+   * every subnet (129/129 including root at time of writing) and
+   * subnet_snapshots is written from it, so a netuid missing here is a data
+   * defect, not a normal state. Such a membership is EXCLUDED from the sums,
+   * which under-reports rather than mis-denominates -- the safe direction. */
+  priceByNetuid: Map<number, number | null>;
   featuredHotkeys?: Set<string>;
   identityByColdkey?: Map<string, Row>;
   nominatorCounts?: Map<string, number>;
@@ -668,11 +676,7 @@ export function buildGlobalValidators(
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     featuredHotkeys = new Set<string>(),
-    // netuid -> alpha_price_tao (#9051), latest-per-netuid from
-    // subnet_snapshots (loadAlphaPricesByNetuid). A cold/absent map prices
-    // nothing: every non-root membership lands in the unpriced_* residuals
-    // rather than being silently counted 1:1.
-    priceByNetuid = new Map<number, number | null>(),
+    priceByNetuid,
     identityByColdkey = new Map<string, Row>(),
     // hotkey -> nominator_count (#2549), sourced from the separate
     // validator_nominator_counts side table -- see that migration's own
@@ -690,7 +694,7 @@ export function buildGlobalValidators(
     // cold/absent map (e.g. the D1-retired fallback below, which never has one)
     // leaves every entry's realized_return_* null, never throws.
     realizedStakeByHotkey = new Map<string, Row>(),
-  }: BuildGlobalValidatorsOptions = {},
+  }: BuildGlobalValidatorsOptions,
 ): Row {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
     ? sort
@@ -730,8 +734,6 @@ export function buildGlobalValidators(
         uidCount: 0,
         stakeTotalRao: 0n,
         emissionTotalRao: 0n,
-        unpricedStakeAlphaRao: 0n,
-        unpricedEmissionAlphaRao: 0n,
         apyNumeratorRao: 0n,
         apyDenominatorRao: 0n,
         apyEligibleCount: 0,
@@ -763,10 +765,7 @@ export function buildGlobalValidators(
     // its own subnet's alpha price before joining the cross-subnet totals;
     // an unpriceable row lands in the residuals instead (see priceForNetuid).
     const price = priceForNetuid(netuid, priceByNetuid);
-    if (price == null) {
-      entry.unpricedStakeAlphaRao += toRaoBig(stake);
-      entry.unpricedEmissionAlphaRao += toRaoBig(emission);
-    } else {
+    if (price != null) {
       entry.stakeTotalRao += toRaoBig(stake * price);
       entry.emissionTotalRao += toRaoBig(emission * price);
       // Priced values in the APY blend too: Σemission/Σstake across subnets
@@ -940,8 +939,8 @@ export async function loadSubnetValidators(
 // (#9051), for the shared D1 fallback loaders below -- the D1 twin of
 // workers/data-api.ts's loadAlphaPricesByNetuid. Group-wise MAX join rather
 // than DISTINCT ON (SQLite has neither). A cold/absent table yields an empty
-// map, which prices nothing: every non-root row lands in the unpriced_*
-// residuals rather than being silently counted 1:1.
+// map, which prices nothing: every non-root row is excluded from the totals
+// rather than being silently counted 1:1.
 export async function loadD1AlphaPricesByNetuid(
   d1: D1Runner,
 ): Promise<Map<number, number | null>> {
@@ -1005,7 +1004,18 @@ export async function loadNeuron(
 
 export interface BuildValidatorDetailOptions {
   identityByColdkey?: Map<string, Row>;
-  priceByNetuid?: Map<number, number | null>;
+  /** netuid -> alpha_price_tao. REQUIRED, and deliberately not defaulted
+   * (#9051): an implicit empty map would silently price nothing, which for a
+   * cross-subnet sum means publishing raw alpha under a _tao name -- exactly
+   * the bug this exists to fix. A caller that cannot resolve prices must say
+   * so explicitly by passing an empty map, not by omitting the argument.
+   *
+   * Complete by construction: the economics tier carries alpha_price_tao for
+   * every subnet (129/129 including root at time of writing) and
+   * subnet_snapshots is written from it, so a netuid missing here is a data
+   * defect, not a normal state. Such a membership is EXCLUDED from the sums,
+   * which under-reports rather than mis-denominates -- the safe direction. */
+  priceByNetuid: Map<number, number | null>;
   nominatorCount?: number | null;
   tempoByNetuid?: Map<number, number>;
   realizedStake?: Row | null;
@@ -1024,10 +1034,7 @@ export function buildValidatorDetail(
   hotkey: unknown,
   {
     identityByColdkey = new Map<string, Row>(),
-    // netuid -> alpha_price_tao (#9051), same map and same semantics as
-    // buildGlobalValidators': a cold/absent map prices nothing and every
-    // non-root membership lands in the unpriced_* residuals.
-    priceByNetuid = new Map<number, number | null>(),
+    priceByNetuid,
     // #2549: from the separate validator_nominator_counts side table (looked
     // up by the caller, since this function has no DB access of its own).
     // Null when that table has no row for this hotkey yet -- never fabricated
@@ -1041,7 +1048,7 @@ export function buildValidatorDetail(
     // (#7228), from the neuron_daily rollup (loadRealizedStakeBaselines). Null
     // (the D1-retired fallback default) leaves every realized_return_* null.
     realizedStake = null,
-  }: BuildValidatorDetailOptions = {},
+  }: BuildValidatorDetailOptions,
 ): Row {
   const coldkeys = new Map<string, number>();
   let stakeTotalRao = 0n;
@@ -1051,8 +1058,6 @@ export function buildValidatorDetail(
   // already one of `rows`, no new ingestion needed.
   let rootStakeRao = 0n;
   let emissionTotalRao = 0n;
-  let unpricedStakeAlphaRao = 0n;
-  let unpricedEmissionAlphaRao = 0n;
   // Plain object (not three separate `let`s) so it can be passed directly to
   // the shared accumulateApyRow/finalizeApy helpers buildGlobalValidators
   // also uses (#2551) -- one accumulation implementation, not duplicated.
@@ -1094,10 +1099,7 @@ export function buildValidatorDetail(
     // unpriceable one lands in the residuals. Root prices at exactly 1, so
     // rootStakeRao stays the raw root leg either way.
     const price = priceForNetuid(netuid, priceByNetuid);
-    if (price == null) {
-      unpricedStakeAlphaRao += toRaoBig(stake);
-      unpricedEmissionAlphaRao += toRaoBig(emission);
-    } else {
+    if (price != null) {
       const rowStakeRao = toRaoBig(stake * price);
       stakeTotalRao += rowStakeRao;
       if (netuid === 0) rootStakeRao += rowStakeRao;
@@ -1154,10 +1156,6 @@ export function buildValidatorDetail(
     root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
     alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
-    // See buildGlobalValidatorEntry: the alpha the priced totals do not
-    // cover (#9051).
-    unpriced_stake_alpha: roundTao(raoBigToTao(unpricedStakeAlphaRao)),
-    unpriced_emission_alpha: roundTao(raoBigToTao(unpricedEmissionAlphaRao)),
     nominator_count: nominatorCount,
     ...finalizeApy(apyAcc),
     ...realizedReturns(stakeTotalRao, realizedStake),

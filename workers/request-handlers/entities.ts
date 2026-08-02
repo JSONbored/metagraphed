@@ -52,6 +52,7 @@ import {
   buildSubnetValidators,
   buildNeuronDetail,
   buildValidatorDetail,
+  NO_ALPHA_PRICES,
   overlayFeaturedValidators,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
@@ -980,6 +981,7 @@ export async function handleGlobalValidators(
       buildGlobalValidators([], {
         sort: parsed.sort,
         limit: parsed.limit,
+        priceByNetuid: NO_ALPHA_PRICES,
       }),
   )!;
   if (csvRequested(url, request)) {
@@ -1072,6 +1074,7 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
     buildAccountsList([], {
       sort: parsed.sort,
       limit: parsed.limit,
+      priceByNetuid: NO_ALPHA_PRICES,
     });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -1205,7 +1208,9 @@ export async function handleValidatorDetail(
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildValidatorDetail> | null) ??
-    buildValidatorDetail([], hotkey);
+    buildValidatorDetail([], hotkey, {
+      priceByNetuid: NO_ALPHA_PRICES,
+    });
   return envelopeResponse(
     request,
     {
@@ -4089,7 +4094,7 @@ export async function handleAccountPortfolio(
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildAccountPortfolio> | null) ??
-    buildAccountPortfolio([], ss58);
+    buildAccountPortfolio([], ss58, { priceByNetuid: NO_ALPHA_PRICES });
   return accountEnvelopeResponse(
     request,
     {

@@ -5195,14 +5195,10 @@ export interface components {
             ss58: string;
             stake_concentration: components["schemas"]["ConcentrationMetrics"];
             subnet_count: number;
-            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
             total_emission_tao: number;
-            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
             total_stake_tao: number;
-            /** @description Emission-side counterpart of unpriced_stake_alpha (#9051). */
-            unpriced_emission_alpha?: number;
-            /** @description The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. Optional on the wire: the api and data-api Workers deploy separately, so a tier response captured before this field shipped must still validate during the rollout window. */
-            unpriced_stake_alpha?: number;
             validator_count: number;
         } & {
             [key: string]: unknown;
@@ -5331,15 +5327,11 @@ export interface components {
                     stake_tao: number;
                     uid: number;
                 }[];
-                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
                 total_emission_tao: number;
-                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
                 total_stake_tao: number;
                 uid_count: number;
-                /** @description Emission-side counterpart of unpriced_stake_alpha (#9051). */
-                unpriced_emission_alpha?: number;
-                /** @description The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. Optional on the wire: the api and data-api Workers deploy separately, so a tier response captured before this field shipped must still validate during the rollout window. */
-                unpriced_stake_alpha?: number;
                 validator_count: number;
             }[];
             block_number?: number | null;
@@ -7081,10 +7073,8 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             total_emission_share: number | null;
-            /** @description This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051). A member with no resolvable price is excluded and reported in unpriced_stake_alpha. */
+            /** @description This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. The economics tier carries a price for every subnet, so a member without one is a data defect and is excluded from the total. */
             total_stake_tao: number | null;
-            /** @description The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. */
-            unpriced_stake_alpha: number | null;
         };
         EconomicsArtifact: {
             captured_at: string | null;
@@ -7746,15 +7736,11 @@ export interface components {
                     validator_trust: number | null;
                 }[];
                 take: number | null;
-                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
                 total_emission_tao: number;
-                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+                /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
                 total_stake_tao: number;
                 uid_count: number;
-                /** @description Emission-side counterpart of unpriced_stake_alpha (#9051). */
-                unpriced_emission_alpha?: number;
-                /** @description The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. Optional on the wire: the api and data-api Workers deploy separately, so a tier response captured before this field shipped must still validate during the rollout window. */
-                unpriced_stake_alpha?: number;
             }[];
         } & {
             [key: string]: unknown;
@@ -10859,14 +10845,10 @@ export interface components {
                 validator_trust: number | null;
             }[];
             take: number | null;
-            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
             total_emission_tao: number;
-            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
+            /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier. */
             total_stake_tao: number;
-            /** @description Emission-side counterpart of unpriced_stake_alpha (#9051). */
-            unpriced_emission_alpha?: number;
-            /** @description The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. Optional on the wire: the api and data-api Workers deploy separately, so a tier response captured before this field shipped must still validate during the rollout window. */
-            unpriced_stake_alpha?: number;
         } & {
             [key: string]: unknown;
         };
@@ -23468,8 +23450,6 @@ export interface operations {
                      *         "subnet_count": 1,
                      *         "total_emission_tao": 0.5,
                      *         "total_stake_tao": 0.5,
-                     *         "unpriced_emission_alpha": 0.5,
-                     *         "unpriced_stake_alpha": 0.5,
                      *         "validator_count": 1
                      *       },
                      *       "meta": {
@@ -31131,8 +31111,7 @@ export interface operations {
                      *             "schema_version": 1,
                      *             "subnet_count": 1,
                      *             "total_emission_share": 0.5,
-                     *             "total_stake_tao": 0.5,
-                     *             "unpriced_stake_alpha": 0.5
+                     *             "total_stake_tao": 0.5
                      *           }
                      *         ],
                      *         "schema_version": 1
@@ -31257,8 +31236,7 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
                      *         "total_emission_share": 0.5,
-                     *         "total_stake_tao": 0.5,
-                     *         "unpriced_stake_alpha": 0.5
+                     *         "total_stake_tao": 0.5
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -46905,9 +46883,7 @@ export interface operations {
                      *         ],
                      *         "take": 0.5,
                      *         "total_emission_tao": 0.5,
-                     *         "total_stake_tao": 0.5,
-                     *         "unpriced_emission_alpha": 0.5,
-                     *         "unpriced_stake_alpha": 0.5
+                     *         "total_stake_tao": 0.5
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

@@ -100,8 +100,6 @@ export interface AccountPortfolioResult {
   miner_count: number;
   total_stake_tao: number;
   total_emission_tao: number;
-  unpriced_stake_alpha: number;
-  unpriced_emission_alpha: number;
   overall_yield: number | null;
   stake_concentration: unknown;
   positions: AccountPortfolioPosition[];
@@ -113,13 +111,13 @@ export function buildAccountPortfolio(
   rows: Array<Record<string, unknown>> | null | undefined,
   ss58: string,
   {
-    // netuid -> alpha_price_tao (#9051). Root passes through at 1:1; a
-    // netuid with no resolvable price keeps its position row (per-position
-    // stake_tao/emission_tao/yield are single-subnet figures, untouched)
-    // but contributes to the unpriced_* residuals instead of the totals,
-    // overall_yield, and stake_concentration.
-    priceByNetuid = new Map<number, number | null>(),
-  }: { priceByNetuid?: Map<number, number | null> } = {},
+    // netuid -> alpha_price_tao (#9051). Root passes through at 1:1. A netuid
+    // with no resolvable price keeps its position row (per-position
+    // stake_tao/emission_tao/yield are single-subnet figures, untouched) but
+    // is excluded from the cross-subnet totals. REQUIRED, never defaulted --
+    // see BuildGlobalValidatorsOptions for why.
+    priceByNetuid,
+  }: { priceByNetuid: Map<number, number | null> },
 ): AccountPortfolioResult {
   const list = Array.isArray(rows) ? rows : [];
   const positions: AccountPortfolioPosition[] = [];
@@ -128,8 +126,6 @@ export function buildAccountPortfolio(
   let validatorCount = 0;
   let totalStake = 0;
   let totalEmission = 0;
-  let unpricedStake = 0;
-  let unpricedEmission = 0;
   let capturedAt: CaptureStamp | null = null;
   for (const row of list) {
     const netuid = toInt(row?.netuid);
@@ -152,10 +148,7 @@ export function buildAccountPortfolio(
             rowPrice >= 0
           ? rowPrice
           : null;
-    if (price == null) {
-      unpricedStake += stake;
-      unpricedEmission += emission;
-    } else {
+    if (price != null) {
       totalStake += stake * price;
       totalEmission += emission * price;
       pricedStakeByPosition.push(stake * price);
@@ -186,10 +179,6 @@ export function buildAccountPortfolio(
     miner_count: positions.length - validatorCount,
     total_stake_tao: round9(totalStake),
     total_emission_tao: round9(totalEmission),
-    // The alpha the priced totals do NOT cover (#9051) -- positions on
-    // subnets with no resolvable alpha price.
-    unpriced_stake_alpha: round9(unpricedStake),
-    unpriced_emission_alpha: round9(unpricedEmission),
     // Overall wallet return: priced emission per priced stake -- both sides
     // in TAO, so the ratio is dimensionally coherent for the first time
     // (#9051). Null with no priceable stake.

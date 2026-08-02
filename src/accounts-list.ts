@@ -118,8 +118,6 @@ interface AccountAccumulator {
   validatorCount: number;
   stakeTotalRao: bigint;
   emissionTotalRao: bigint;
-  unpricedStakeAlphaRao: bigint;
-  unpricedEmissionAlphaRao: bigint;
   latestCapturedAt: number | null;
   latestBlockNumber: number | null;
   subnets: AccountsListSubnetEntry[];
@@ -135,8 +133,6 @@ export interface AccountsListEntry {
   miner_count: number;
   total_stake_tao: number;
   total_emission_tao: number;
-  unpriced_stake_alpha: number;
-  unpriced_emission_alpha: number;
   latest_captured_at: string | null;
   latest_block_number: number | null;
   subnets: AccountsListSubnetEntry[];
@@ -173,13 +169,6 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
     miner_count: entry.uidCount - entry.validatorCount,
     total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
-    // The alpha the priced totals above do NOT cover (#9051): rows on
-    // subnets with no resolvable alpha price. See metagraph-neurons.ts's
-    // priceForNetuid for the full rationale.
-    unpriced_stake_alpha: roundTao(raoBigToTao(entry.unpricedStakeAlphaRao)),
-    unpriced_emission_alpha: roundTao(
-      raoBigToTao(entry.unpricedEmissionAlphaRao),
-    ),
     latest_captured_at: toIso(entry.latestCapturedAt),
     latest_block_number: entry.latestBlockNumber,
     subnets,
@@ -243,15 +232,13 @@ export function buildAccountsList(
   {
     sort = DEFAULT_ACCOUNTS_LIST_SORT,
     limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
-    // netuid -> alpha_price_tao (#9051). Same contract as
-    // buildGlobalValidators': a cold/absent map prices nothing -- every
-    // non-root row lands in the unpriced_* residuals, never counted 1:1.
-    priceByNetuid = new Map<number, number | null>(),
+    priceByNetuid,
   }: {
     sort?: string;
     limit?: number | string;
-    priceByNetuid?: Map<number, number | null>;
-  } = {},
+    /** REQUIRED, never defaulted -- see BuildGlobalValidatorsOptions (#9051). */
+    priceByNetuid: Map<number, number | null>;
+  },
 ): AccountsListResult {
   const normalizedSort = ACCOUNTS_LIST_SORTS.includes(sort)
     ? sort
@@ -294,8 +281,6 @@ export function buildAccountsList(
         validatorCount: 0,
         stakeTotalRao: 0n,
         emissionTotalRao: 0n,
-        unpricedStakeAlphaRao: 0n,
-        unpricedEmissionAlphaRao: 0n,
         latestCapturedAt: null,
         latestBlockNumber: null,
         subnets: [],
@@ -316,10 +301,7 @@ export function buildAccountsList(
     // unpriceable row lands in the residuals instead of the totals.
     const price =
       netuid === 0 ? 1 : nullablePositivePrice(priceByNetuid.get(netuid));
-    if (price == null) {
-      entry.unpricedStakeAlphaRao += toRaoBig(stake);
-      entry.unpricedEmissionAlphaRao += toRaoBig(emission);
-    } else {
+    if (price != null) {
       entry.stakeTotalRao += toRaoBig(stake * price);
       entry.emissionTotalRao += toRaoBig(emission * price);
     }
