@@ -311,3 +311,114 @@ test("unknown route and wrong method return 404", async () => {
   );
   assert.equal(wrongMethod.status, 404);
 });
+
+// --- #8997: subscription-lifecycle telemetry ---------------------------------
+//
+// This class had no telemetry at all, along with the other three Durable
+// Objects, so MCP subnet-status subscription lifecycle was invisible.
+
+function captureTelemetry() {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  return {
+    posted,
+    routes: () =>
+      posted
+        .filter((p) => (p.body as Row).event === "usage_event")
+        .map((p) => ((p.body as Row).properties as Row).route),
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+const TELEMETRY_ENV = {
+  POSTHOG_PROJECT_TOKEN: "phc_test_token",
+} as unknown as Env;
+
+test("#8997: a subscribe records one usage_event", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new SubnetStatusHub(stubState(), TELEMETRY_ENV);
+    const res = await hub.fetch(
+      jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+        sessionId: "session-1",
+        netuid: 42,
+      }),
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(cap.routes(), ["subnet-status-hub:subscribe"]);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: a rejected subscribe is recorded as a failure", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new SubnetStatusHub(stubState(), TELEMETRY_ENV);
+    const res = await hub.fetch(
+      jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+        netuid: 1,
+      }),
+    );
+    assert.equal(res.status, 400);
+    const props = (cap.posted[0].body as Row).properties as Row;
+    assert.equal(props.route, "subnet-status-hub:subscribe");
+    assert.equal(props.ok, false);
+  } finally {
+    cap.restore();
+  }
+});
+
+// /notify-changed fires on every subnet-status change, so its volume scales
+// with chain activity rather than user actions. On a project already ~30x over
+// its PostHog free tier (#9004) that is the one route here worth NOT counting —
+// this pins it as a decision rather than an oversight.
+test("#8997: /notify-changed is deliberately not instrumented", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new SubnetStatusHub(stubState(), TELEMETRY_ENV);
+    await hub.fetch(
+      jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+        sessionId: "session-1",
+        netuid: 42,
+      }),
+    );
+    const before = cap.routes().length;
+    for (let i = 0; i < 5; i += 1) {
+      await hub.fetch(
+        jsonRequest("https://subnet-status-hub.internal/notify-changed", {
+          netuid: 42,
+        }),
+      );
+    }
+    assert.equal(cap.routes().length, before);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: telemetry never fails the subscription", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("posthog unreachable");
+  }) as unknown as typeof fetch;
+  try {
+    const hub = new SubnetStatusHub(stubState(), TELEMETRY_ENV);
+    const res = await hub.fetch(
+      jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+        sessionId: "session-1",
+        netuid: 42,
+      }),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(hub.byNetuid.get(42)!.has("session-1"), true);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

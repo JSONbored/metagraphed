@@ -1,3 +1,5 @@
+import { recordUsageEvent } from "../src/usage-telemetry.ts";
+
 // SubnetStatusHub -- singleton Durable Object (idFromName("global")) that
 // owns the inverted netuid → MCP-session index for
 // `metagraph://subnet/{netuid}/status` subscriptions (#6034).
@@ -147,23 +149,62 @@ export class SubnetStatusHub implements DurableObject {
     });
   }
 
+  /**
+   * Fire-and-forget telemetry. A Durable Object has no ExecutionContext, so
+   * this uses DurableObjectState.waitUntil where the runtime provides it and
+   * otherwise runs detached -- never awaited, never able to fail a
+   * subscription operation.
+   */
+  private emitTelemetry(route: string, ok: boolean, startedAt: number): void {
+    try {
+      const pending = Promise.resolve(
+        recordUsageEvent(this.env, {
+          route: `subnet-status-hub:${route}`,
+          ok,
+          durationMs: Date.now() - startedAt,
+        }),
+      ).catch(() => false);
+      (
+        this.state as unknown as { waitUntil?: (p: Promise<unknown>) => void }
+      ).waitUntil?.(pending);
+    } catch {
+      // Telemetry must never surface into the subscription path.
+    }
+  }
+
   async fetch(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
-    if (url.pathname === "/mcp-subscribe" && request.method === "POST") {
-      return this.handleSubscribe(request);
-    }
-    if (url.pathname === "/mcp-unsubscribe" && request.method === "POST") {
-      return this.handleUnsubscribe(request);
-    }
-    if (
-      url.pathname === "/mcp-unsubscribe-session" &&
-      request.method === "POST"
-    ) {
-      return this.handleUnsubscribeSession(request);
-    }
+    const startedAt = Date.now();
+
+    // #8997: subscription lifecycle only. `/notify-changed` is excluded
+    // DELIBERATELY -- it fires on every subnet-status change, so its volume
+    // scales with chain activity rather than with user actions, and this
+    // project is ~30x over its PostHog free tier (#9004). Same call the
+    // McpSessionHub instrumentation made about its own /notify route.
+    //
+    // Closed table, not the pathname: a label built from a URL is the
+    // unbounded-cardinality shape #9001 removed elsewhere, and "internal
+    // today" is not a property that stays true by itself.
     if (url.pathname === "/notify-changed" && request.method === "POST") {
       return this.handleNotifyChanged(request);
+    }
+
+    const lifecycle: Record<string, () => Promise<Response>> = {
+      "/mcp-subscribe": () => this.handleSubscribe(request),
+      "/mcp-unsubscribe": () => this.handleUnsubscribe(request),
+      "/mcp-unsubscribe-session": () => this.handleUnsubscribeSession(request),
+    };
+    const handler =
+      request.method === "POST" ? lifecycle[url.pathname] : undefined;
+    if (handler) {
+      const response = await handler();
+      this.emitTelemetry(
+        url.pathname.replace("/mcp-", ""),
+        response.status < 400,
+        startedAt,
+      );
+      return response;
     }
     return new Response("not found", { status: 404 });
   }
