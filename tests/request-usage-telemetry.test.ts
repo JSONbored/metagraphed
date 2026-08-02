@@ -182,6 +182,48 @@ describe("withUsageTelemetry — #8963 dimensions", () => {
     assert.equal(event.statusClass, undefined);
   });
 
+  // #9004: a Cloudflare Worker subrequest sends NO User-Agent, so all of it
+  // landed in the "no client" bucket — ~93% of `block-detail`, the largest
+  // route in the project at 758,995 events/day. Identifying it took a live
+  // `wrangler tail` because the telemetry could not answer it; one Worker was
+  // 82% of that route.
+  test("attributes a Cloudflare Worker subrequest via cf-worker", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/blocks/8728537", {
+        headers: { "cf-worker": "zeronode.workers.dev" },
+      }),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("ok"),
+      spy,
+    );
+    // Prefixed, so a subrequest origin can never be confused with a
+    // UA-derived client name.
+    assert.equal(
+      (spy.events[0].event as Row).client,
+      "worker:zeronode.workers.dev",
+    );
+  });
+
+  // A real client behind a Worker proxy is more interesting than the proxy.
+  test("prefers the User-Agent when both are present", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/subnets", {
+        headers: {
+          "user-agent": "claude-code/2.1.220",
+          "cf-worker": "some-proxy.workers.dev",
+        },
+      }),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("ok"),
+      spy,
+    );
+    assert.equal((spy.events[0].event as Row).client, "claude-code");
+  });
+
   test("omits the client when the request carries no User-Agent", async () => {
     const spy = recorder();
     await withUsageTelemetry(
