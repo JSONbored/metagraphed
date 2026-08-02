@@ -91,6 +91,83 @@ describe("usageRouteLabel", () => {
   });
 });
 
+describe("withUsageTelemetry — #8963 dimensions", () => {
+  // Before these, usage_event carried route + ok + duration_ms at 6M
+  // events/month: no way to ask which method, whether a failure was the
+  // caller's or ours, or who generated the traffic.
+  test("records method, status class, and client alongside the route", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/subnets", {
+        method: "POST",
+        headers: { "user-agent": "claude-code/2.1.220" },
+      }),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("ok", { status: 201 }),
+      spy,
+    );
+    const event = spy.events[0].event as Row;
+    assert.equal(event.method, "POST");
+    assert.equal(event.statusClass, "2xx");
+    assert.equal(event.client, "claude-code");
+    assert.equal(event.ok, true);
+  });
+
+  // `ok` is status < 500, so a 404 and a 200 are both "ok" — which is correct
+  // (a route rejecting a bad request is not broken) but makes "are callers
+  // sending us garbage" unanswerable without the class.
+  test("separates a client error from a success that `ok` alone conflates", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("nope", { status: 404 }),
+      spy,
+    );
+    const event = spy.events[0].event as Row;
+    assert.equal(event.ok, true);
+    assert.equal(event.statusClass, "4xx");
+  });
+
+  test("still records method and client when the handler throws", async () => {
+    const spy = recorder();
+    await assert.rejects(() =>
+      withUsageTelemetry(
+        req("/api/v1/subnets", {
+          headers: { "user-agent": "mcporter/0.12.3" },
+        }),
+        CONFIGURED_ENV as unknown as Env,
+        fakeCtx(),
+        async () => {
+          throw new Error("handler blew up");
+        },
+        spy,
+      ),
+    );
+    const event = spy.events[0].event as Row;
+    assert.equal(event.ok, false);
+    assert.equal(event.method, "GET");
+    assert.equal(event.client, "mcporter");
+    // No response existed, so there is no class to report — omitted, not
+    // guessed at.
+    assert.equal(event.statusClass, undefined);
+  });
+
+  test("omits the client when the request carries no User-Agent", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("ok"),
+      spy,
+    );
+    assert.equal((spy.events[0].event as Row).client, undefined);
+  });
+});
+
 describe("withUsageTelemetry", () => {
   test("does no telemetry work when the deployment is unconfigured", async () => {
     const spy = recorder();

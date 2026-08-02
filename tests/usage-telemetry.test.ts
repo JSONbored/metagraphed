@@ -8,6 +8,7 @@ import {
   USAGE_EVENT_NAME,
   classifyMcpErrorType,
   isUsageTelemetryConfigured,
+  statusClassOf,
   recordAiGenerationEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
@@ -1586,5 +1587,72 @@ describe("recordMcpToolsListEvent", () => {
     } finally {
       globalThis.fetch = original;
     }
+  });
+});
+
+// ─── #8963: usage_event dimensions ─────────────────────────────────────────
+
+describe("statusClassOf", () => {
+  test("buckets a real status by its hundreds digit", () => {
+    assert.equal(statusClassOf(200), "2xx");
+    assert.equal(statusClassOf(204), "2xx");
+    assert.equal(statusClassOf(301), "3xx");
+    assert.equal(statusClassOf(404), "4xx");
+    assert.equal(statusClassOf(429), "4xx");
+    assert.equal(statusClassOf(500), "5xx");
+    assert.equal(statusClassOf(599), "5xx");
+  });
+
+  test("refuses anything that is not a status we could have produced", () => {
+    // A bucket that silently absorbed garbage would be worse than no bucket:
+    // it would look like real traffic in every breakdown.
+    for (const value of [99, 600, 0, -1, Number.NaN, "200", null, undefined]) {
+      assert.equal(statusClassOf(value), undefined, `status ${String(value)}`);
+    }
+  });
+});
+
+describe("usageEventProperties — #8963 dimensions", () => {
+  test("records method (uppercased), status class, and client", () => {
+    assert.deepEqual(
+      usageEventProperties({
+        route: "/api/v1/subnets",
+        ok: true,
+        durationMs: 12,
+        method: "get",
+        statusClass: "2xx",
+        client: "claude-code",
+      }),
+      {
+        route: "/api/v1/subnets",
+        ok: true,
+        duration_ms: 12,
+        method: "GET",
+        status_class: "2xx",
+        client: "claude-code",
+      },
+    );
+  });
+
+  test("omits each dimension when absent or blank, never defaulting one", () => {
+    assert.deepEqual(
+      usageEventProperties({
+        ok: true,
+        durationMs: 1,
+        method: "   ",
+        statusClass: "",
+        client: undefined,
+      }),
+      { ok: true, duration_ms: 1 },
+    );
+  });
+
+  test("caps an overlong client label like every other free-form field", () => {
+    const props = usageEventProperties({
+      ok: true,
+      durationMs: 1,
+      client: "x".repeat(300),
+    });
+    assert.equal(String(props!.client).length, 256);
   });
 });

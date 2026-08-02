@@ -20,6 +20,8 @@ import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,
   recordUsageEvent,
+  parseUserAgentClient,
+  statusClassOf,
   type UsageEvent,
 } from "../src/usage-telemetry.ts";
 import {
@@ -950,6 +952,13 @@ export async function withUsageTelemetry(
   }
 
   const startedAt = Date.now();
+  // #8963: request dimensions resolved once, up front, so they are recorded
+  // even when the handler throws (the finally block below still fires).
+  const method = request.method;
+  const client = parseUserAgentClient(
+    request.headers.get("user-agent"),
+  ).clientName;
+  let statusClass;
   let ok = false;
   // metagraphed#7733: errorResponse() (workers/http.ts) already sets this on
   // every REST error -- the same established code (invalid_query,
@@ -963,6 +972,10 @@ export async function withUsageTelemetry(
     // 4xx is a route correctly rejecting a bad request, not a broken route;
     // only 5xx (and a thrown handler, which leaves ok false) is a failure.
     ok = response.status < 500;
+    // Recorded alongside `ok`, not instead of it: `ok` folds every 4xx in with
+    // the successes (a route correctly rejecting a bad request is not a
+    // failure), which makes "are callers sending us garbage" unanswerable.
+    statusClass = statusClassOf(response.status);
     errorCode = response.headers.get("x-metagraph-error-code") ?? undefined;
     // metagraphed#7734: GraphQL execution errors are a spec-mandated 200
     // with a populated `errors` array (src/graphql.ts) -- status alone
@@ -982,6 +995,9 @@ export async function withUsageTelemetry(
       route,
       ok,
       durationMs: endedAt - startedAt,
+      method,
+      ...(statusClass ? { statusClass } : {}),
+      ...(client ? { client } : {}),
       ...(errorCode ? { errorCode } : {}),
     });
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
