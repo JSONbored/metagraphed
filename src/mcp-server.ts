@@ -12536,6 +12536,24 @@ async function enforceMcpRateLimit(
     env,
     MCP_TIERED_RATE_LIMIT,
   );
+  // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
+  // caller (accountId set). Matches workers/api.ts's "chain-events" label call.
+  //
+  // #8992: recorded for BOTH outcomes and BEFORE the rejection return, with the
+  // flag taken from the gate's own verdict -- so a throttled MCP request lands
+  // in rejected_count rather than vanishing. This used to sit AFTER the
+  // `!rateLimit.allowed` return, which meant a rate-limited /mcp request emitted
+  // nothing at all: no usage_event (usageRouteLabel excludes /mcp, see
+  // workers/api.ts:876), no $mcp_tool_call (rejected long before callTool), and
+  // no rejected_count either. MCP rate limiting was a control with zero
+  // observability.
+  //
+  // workers/api.ts:2224-2231 fixed exactly this for the DATA checkpoint in
+  // #8609; the MCP checkpoint was never brought into line. Same ordering here
+  // now, for the same reason.
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, "mcp", !rateLimit.allowed);
+  }
   if (!rateLimit.allowed) {
     // #8611: a blocked account gets 403 + its reason code. 429 would tell an
     // agent to retry shortly, which will never work and produces exactly the
@@ -12549,11 +12567,6 @@ async function enforceMcpRateLimit(
       rejection.status,
       rejection.headers,
     );
-  }
-  // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
-  // caller (accountId set). Matches workers/api.ts's "chain-events" label call.
-  if (rateLimit.accountId) {
-    recordApiKeyUsage(env, ctx, rateLimit.accountId, "mcp");
   }
   return null;
 }
