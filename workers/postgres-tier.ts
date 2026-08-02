@@ -70,12 +70,25 @@ async function capturePostgresTierFallback(
   });
 }
 
+// Flags whose DATA_API leg can serve from D1 (the dispatcher sits in
+// workers/data-api.ts ahead of its Hyperdrive gate). For these, a "d1" value
+// must still FORWARD to DATA_API -- the D1 SQL lives there, not here -- while
+// every other flag/value combination keeps the strict postgres-only gate. A
+// blanket "forward on d1" would be wrong: the health and subnet-snapshot
+// flags also hold "d1", but their D1 loaders live in THIS worker and their
+// data-api legs are Postgres-only.
+const DATA_API_D1_FLAGS = new Set<string>(["METAGRAPH_NEURONS_SOURCE"]);
+
 export async function tryPostgresTier(
   env: Env,
   request: Request,
   flagName: keyof Env,
 ): Promise<Record<string, unknown> | null> {
-  if (env[flagName] !== "postgres") return null;
+  const value = env[flagName];
+  const forwards =
+    value === "postgres" ||
+    (value === "d1" && DATA_API_D1_FLAGS.has(flagName as string));
+  if (!forwards) return null;
   if (!env.DATA_API) return markPostgresTierFallback();
   const upstreamRequest =
     request.method === "HEAD"
