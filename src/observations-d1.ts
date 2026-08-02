@@ -22,6 +22,7 @@
 // Absent binding => no-op, the same convention as every optional binding in
 // this codebase. Nothing here throws past its own boundary.
 import { rankedChecksCte, latencyStatColumns } from "./health-sql.ts";
+import { recordExceptionEvent } from "./usage-telemetry.ts";
 
 // The slice of the D1 API these writers use. Structural rather than the global
 // D1Database type so tests can hand in node:sqlite-backed fakes and the real
@@ -60,6 +61,7 @@ export async function persistProbesToD1(
   db: ObservationsDb | undefined,
   probed: Row[],
   runAt: number,
+  env?: Env | null,
 ): Promise<{ ok: boolean; reason?: string; batches?: number }> {
   if (!db?.prepare) return { ok: false, reason: "unavailable" };
   if (!Array.isArray(probed) || probed.length === 0) {
@@ -129,7 +131,13 @@ export async function persistProbesToD1(
   } catch (error) {
     // A failed history write must never take the probe sweep (or its KV serve
     // path) down with it -- log and report, exactly as the pre-flip code did.
+    // With Postgres gone these writes are the only durable copy of a probe,
+    // so the failure also lands in the $exception inbox, not just the logs.
     console.error("[persistProbesToD1]", String((error as Error)?.message));
+    await recordExceptionEvent(env, {
+      error,
+      route: "observations-d1-persist",
+    });
     return { ok: false, reason: "write_failed" };
   }
 }
@@ -143,6 +151,7 @@ export async function rollupUptimeDailyToD1(
   db: ObservationsDb | undefined,
   days: { date: string; start: number; end: number }[],
   runAt: number,
+  env?: Env | null,
 ): Promise<{ rolled: boolean; error?: string }> {
   if (!db?.prepare) return { rolled: false };
   const conflictColumns = `
@@ -199,6 +208,7 @@ export async function rollupUptimeDailyToD1(
     // invisibly, so the hourly cron's result must stay diagnosable.
     const message = String((error as Error)?.message ?? error);
     console.error("[rollupUptimeDailyToD1]", message);
+    await recordExceptionEvent(env, { error, route: "observations-d1-rollup" });
     return { rolled: false, error: message };
   }
 }
@@ -209,6 +219,7 @@ export async function rollupUptimeDailyToD1(
 export async function pruneChecksD1(
   db: ObservationsDb | undefined,
   cutoff: number,
+  env?: Env | null,
 ): Promise<{ pruned: boolean }> {
   if (!db?.prepare) return { pruned: false };
   try {
@@ -220,6 +231,7 @@ export async function pruneChecksD1(
     return { pruned: true };
   } catch (error) {
     console.error("[pruneChecksD1]", String((error as Error)?.message));
+    await recordExceptionEvent(env, { error, route: "observations-d1-prune" });
     return { pruned: false };
   }
 }
@@ -230,6 +242,7 @@ export async function pruneChecksD1(
 export async function upsertSubnetSnapshotsToD1(
   db: ObservationsDb | undefined,
   rows: Row[],
+  env?: Env | null,
 ): Promise<{ ok: boolean; reason?: string; batches?: number }> {
   if (!db?.prepare) return { ok: false, reason: "unavailable" };
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -311,6 +324,10 @@ export async function upsertSubnetSnapshotsToD1(
       "[upsertSubnetSnapshotsToD1]",
       String((error as Error)?.message),
     );
+    await recordExceptionEvent(env, {
+      error,
+      route: "observations-d1-snapshots",
+    });
     return { ok: false, reason: "write_failed" };
   }
 }

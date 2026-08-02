@@ -576,6 +576,7 @@ export async function runHealthProber(
     env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
     probed as unknown as Record<string, unknown>[],
     runAt,
+    env,
   );
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
@@ -838,6 +839,7 @@ export async function rollupDailyUptime(
     env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
     days,
     runAt,
+    env,
   );
   const result = await syncHealthUptimeRollupToPostgres(env, days, runAt);
   if (!result.synced && !d1Rollup.rolled) {
@@ -880,6 +882,7 @@ export async function pruneHealthHistory(
     await pruneChecksD1(
       env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
       cutoff,
+      env,
     );
   }
   return { pruned: true, cutoff };
@@ -1044,6 +1047,7 @@ export async function syncSubnetSnapshotToPostgres(
   await upsertSubnetSnapshotsToD1(
     env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
     rows as unknown as Record<string, unknown>[],
+    env,
   );
   try {
     const upstream = await env.DATA_API.fetch(
