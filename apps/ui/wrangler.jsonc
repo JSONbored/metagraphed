@@ -27,13 +27,15 @@
   // It was also a duplicate-content liability: the entire site indexable on two
   // hostnames, only one of which is canonical.
   //
-  // PR previews are unaffected -- .github/actions/deploy-ui-preview writes its
-  // own trusted wrangler.preview.json with workers_dev:true and uses
-  // `wrangler versions upload`, so it never reads this file.
-  //
-  // preview_urls is deliberately NOT set here: this change is about the
-  // production workers.dev ROUTE, and disabling version preview URLs is a
-  // separate concern with its own tradeoffs.
+  // #9044: the workers.dev and preview domains were subsequently removed from
+  // the metagraphed-ui worker itself, which is a stronger thing than this flag
+  // -- a worker-level removal that no config here or in the preview pipeline
+  // can override. So PR previews no longer produce a browsable URL at all:
+  // .github/actions/deploy-ui-preview still uploads a 0%-traffic version and
+  // records the Deployment, but with no environment_url. Restoring previews
+  // would mean re-enabling a preview domain in Cloudflare, not editing this
+  // file -- it never reads this config either way (it writes its own trusted
+  // wrangler.preview.json and uses `wrangler versions upload`).
   "workers_dev": false,
   // Run the SSR Worker in the Cloudflare PoP nearest the data it talks to
   // (api.metagraph.sh), not nearest the visitor — lowers SSR fetch latency.
