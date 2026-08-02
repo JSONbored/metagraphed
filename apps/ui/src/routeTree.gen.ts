@@ -40,6 +40,7 @@ import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ChainIndexRouteImport } from './routes/chain.index'
 import { Route as ChainAnalyticsRouteImport } from './routes/chain.analytics'
 import { Route as ChainBlocksRouteImport } from './routes/chain.blocks'
+import { Route as ChainEmissionsRouteImport } from './routes/chain.emissions'
 import { Route as ChainEventsRouteImport } from './routes/chain.events'
 import { Route as ChainExtrinsicsRouteImport } from './routes/chain.extrinsics'
 import { Route as ChainGovernanceRouteImport } from './routes/chain.governance'
@@ -218,6 +219,11 @@ const ChainBlocksRoute = ChainBlocksRouteImport.update({
   path: '/blocks',
   getParentRoute: () => ChainRoute,
 } as any)
+const ChainEmissionsRoute = ChainEmissionsRouteImport.update({
+  id: '/emissions',
+  path: '/emissions',
+  getParentRoute: () => ChainRoute,
+} as any)
 const ChainEventsRoute = ChainEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -356,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/analytics': typeof ChainAnalyticsRoute
   '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/emissions': typeof ChainEmissionsRoute
   '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
   '/chain/governance': typeof ChainGovernanceRoute
@@ -409,6 +416,7 @@ export interface FileRoutesByTo {
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/analytics': typeof ChainAnalyticsRoute
   '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/emissions': typeof ChainEmissionsRoute
   '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
   '/chain/governance': typeof ChainGovernanceRoute
@@ -465,6 +473,7 @@ export interface FileRoutesById {
   '/blocks/$ref': typeof BlocksRefRoute
   '/chain/analytics': typeof ChainAnalyticsRoute
   '/chain/blocks': typeof ChainBlocksRoute
+  '/chain/emissions': typeof ChainEmissionsRoute
   '/chain/events': typeof ChainEventsRoute
   '/chain/extrinsics': typeof ChainExtrinsicsRoute
   '/chain/governance': typeof ChainGovernanceRoute
@@ -522,6 +531,7 @@ export interface FileRouteTypes {
     | '/blocks/$ref'
     | '/chain/analytics'
     | '/chain/blocks'
+    | '/chain/emissions'
     | '/chain/events'
     | '/chain/extrinsics'
     | '/chain/governance'
@@ -575,6 +585,7 @@ export interface FileRouteTypes {
     | '/blocks/$ref'
     | '/chain/analytics'
     | '/chain/blocks'
+    | '/chain/emissions'
     | '/chain/events'
     | '/chain/extrinsics'
     | '/chain/governance'
@@ -630,6 +641,7 @@ export interface FileRouteTypes {
     | '/blocks/$ref'
     | '/chain/analytics'
     | '/chain/blocks'
+    | '/chain/emissions'
     | '/chain/events'
     | '/chain/extrinsics'
     | '/chain/governance'
@@ -923,6 +935,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChainBlocksRouteImport
       parentRoute: typeof ChainRoute
     }
+    '/chain/emissions': {
+      id: '/chain/emissions'
+      path: '/emissions'
+      fullPath: '/chain/emissions'
+      preLoaderRoute: typeof ChainEmissionsRouteImport
+      parentRoute: typeof ChainRoute
+    }
     '/chain/events': {
       id: '/chain/events'
       path: '/events'
@@ -1099,6 +1118,7 @@ const ApisRouteWithChildren = ApisRoute._addFileChildren(ApisRouteChildren)
 interface ChainRouteChildren {
   ChainAnalyticsRoute: typeof ChainAnalyticsRoute
   ChainBlocksRoute: typeof ChainBlocksRoute
+  ChainEmissionsRoute: typeof ChainEmissionsRoute
   ChainEventsRoute: typeof ChainEventsRoute
   ChainExtrinsicsRoute: typeof ChainExtrinsicsRoute
   ChainGovernanceRoute: typeof ChainGovernanceRoute
@@ -1109,6 +1129,7 @@ interface ChainRouteChildren {
 const ChainRouteChildren: ChainRouteChildren = {
   ChainAnalyticsRoute: ChainAnalyticsRoute,
   ChainBlocksRoute: ChainBlocksRoute,
+  ChainEmissionsRoute: ChainEmissionsRoute,
   ChainEventsRoute: ChainEventsRoute,
   ChainExtrinsicsRoute: ChainExtrinsicsRoute,
   ChainGovernanceRoute: ChainGovernanceRoute,

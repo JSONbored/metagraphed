@@ -1072,7 +1072,12 @@ jobs:
       - name: Bundle size budget (initial client JS, gzipped)
         working-directory: apps/ui
         env:
-          BUDGET_KB: 360
+          # Raised 360 -> 400 (#8745). Not because this PR needed it: main
+          # measured 352 KB and /chain/emissions took it to 353, since the page
+          # is a lazy route chunk and only its ~1 KB of shared query/type code
+          # lands in the initial load. Raised because 8 KB of headroom is not a
+          # budget, it is a tripwire on whichever PR happens to be next.
+          BUDGET_KB: 400
         run: |
           node --input-type=module <<'NODE'
           import { readdirSync, readFileSync } from "node:fs";

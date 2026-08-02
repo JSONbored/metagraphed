@@ -525,7 +525,7 @@ your PR adds a new API call on one of the checked routes (`/`, `/subnets/1`,
 `/endpoints`, `/status`, `/settings`, `/explorer`), re-record:
 `npm run test:e2e:record-har --workspace=apps/ui` against a running dev server.
 
-CI also gzip-measures the initial client JS for a cold `/` visit against a budget (currently 360 KB,
+CI also gzip-measures the initial client JS for a cold `/` visit against a budget (currently 400 KB,
 `.github/workflows/validate.yml`'s "Bundle size budget" step) — keep new dependencies/imports lean; if
 a real feature legitimately grows it, raise the budget deliberately in the same PR. If your PR also
 touches `packages/client` or `packages/ui-kit`, CI rebuilds each fresh and diffs against its committed

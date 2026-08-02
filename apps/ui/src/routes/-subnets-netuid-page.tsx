@@ -59,6 +59,7 @@ import { DevActivityPanel } from "@/components/metagraphed/dev-activity-panel";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
+import { SubnetEmissionPanel } from "@/components/metagraphed/subnet-emission-panel";
 import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
@@ -635,6 +636,17 @@ function EconomicsTabPanel({ netuid }: { netuid: number }) {
         info="Live chain economics from the Bittensor metagraph — emission share, alpha price, stake, validator/miner counts, and subnet volume."
       >
         <EconomicsPanel netuid={netuid} />
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="emission-pipeline"
+        title="Emission pipeline"
+        subtitle="Where this subnet's share of block emission is decided, and whether the TAO arrives as pool liquidity or chain buys."
+        info="GET /api/v1/chain/emission-pipeline — the v440 decomposition at one pinned block: price share, miner-burn reweighting, the Hill gate, and the final share of block emission. Every share is reconstructed from chain storage; the chain publishes the pipeline's inputs, not its output."
+      >
+        <QueryErrorBoundary>
+          <SubnetEmissionPanel netuid={netuid} />
+        </QueryErrorBoundary>
       </SectionAnchor>
 
       <SectionAnchor

@@ -125,6 +125,10 @@ import type {
   SudoKey,
   NetworkParameters,
   RuntimeTransition,
+  EmissionPipeline,
+  EmissionPipelineSubnet,
+  EmissionPipelineCheck,
+  EmissionPipelineFieldSource,
   RuntimeVersionHistory,
   Transfer,
   Candidate,
@@ -2313,6 +2317,135 @@ export const networkParametersQuery = () =>
       } as ApiResult<NetworkParameters>;
     },
     staleTime: STALE_LONG,
+  });
+
+// #8745 / #8744: the v440 emission pipeline. Every numeric field defaults to
+// null rather than 0 -- a subnet outside the pipeline (root, never-emitted)
+// genuinely has NO final share, and rendering that as 0 would make it
+// indistinguishable from a subnet the gate zeroed, which is a different fact
+// about the chain. `emission_enabled` is the one field that defaults to a
+// value (false): it is published, not reconstructed, and a missing boolean
+// here would leave every row's most load-bearing state unrenderable.
+function normalizeEmissionPipelineSubnet(raw: unknown): EmissionPipelineSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    ineligible_reason: firstString(raw.ineligible_reason) ?? null,
+    emission_share: firstFiniteNumber(raw.emission_share) ?? null,
+    miner_burned: firstFiniteNumber(raw.miner_burned) ?? null,
+    weighted_share: firstFiniteNumber(raw.weighted_share) ?? null,
+    gated_share: firstFiniteNumber(raw.gated_share) ?? null,
+    emission_enabled: raw.emission_enabled === true,
+    final_share: firstFiniteNumber(raw.final_share) ?? null,
+    gate_delta: firstFiniteNumber(raw.gate_delta) ?? null,
+    distance_to_bar: firstFiniteNumber(raw.distance_to_bar) ?? null,
+    tao_in_emission: firstFiniteNumber(raw.tao_in_emission) ?? null,
+    excess_tao: firstFiniteNumber(raw.excess_tao) ?? null,
+    tao_total: firstFiniteNumber(raw.tao_total) ?? null,
+    liquidity_fraction: firstFiniteNumber(raw.liquidity_fraction) ?? null,
+    alpha_in_emission: firstFiniteNumber(raw.alpha_in_emission) ?? null,
+    alpha_out_emission: firstFiniteNumber(raw.alpha_out_emission) ?? null,
+  };
+}
+
+function normalizeEmissionPipelineCheck(raw: unknown): EmissionPipelineCheck | null {
+  if (!isRecord(raw)) return null;
+  const name = firstString(raw.name);
+  if (name == null) return null;
+  return { name, ok: raw.ok === true, detail: firstString(raw.detail) ?? null };
+}
+
+function normalizeEmissionPipelineFieldSources(
+  raw: unknown,
+): Record<string, EmissionPipelineFieldSource> {
+  if (!isRecord(raw)) return {};
+  const out: Record<string, EmissionPipelineFieldSource> = {};
+  for (const [field, value] of Object.entries(raw)) {
+    if (!isRecord(value)) continue;
+    // Anything not explicitly "measured" is treated as reconstructed. That is
+    // the safe direction: over-claiming a value as read-from-chain when it was
+    // derived is the failure this provenance field exists to prevent.
+    out[field] = {
+      kind: value.kind === "measured" ? "measured" : "reconstructed",
+      storage: firstString(value.storage) ?? null,
+    };
+  }
+  return out;
+}
+
+export function normalizeEmissionPipeline(raw: unknown): EmissionPipeline {
+  const d = isRecord(raw) ? raw : {};
+  const chainState = isRecord(d.chain_state) ? d.chain_state : {};
+  const aggregate = isRecord(d.aggregate) ? d.aggregate : {};
+  const verification = isRecord(d.verification) ? d.verification : {};
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    chain_state: {
+      block: firstFiniteNumber(chainState.block) ?? null,
+      block_hash: firstString(chainState.block_hash) ?? null,
+      emission_bar_quantile: firstFiniteNumber(chainState.emission_bar_quantile) ?? null,
+      emission_gate_bar: firstFiniteNumber(chainState.emission_gate_bar) ?? null,
+      emission_gate_exponent: firstFiniteNumber(chainState.emission_gate_exponent) ?? null,
+      total_issuance_tao: firstFiniteNumber(chainState.total_issuance_tao) ?? null,
+    },
+    block_emission_tao: firstFiniteNumber(d.block_emission_tao) ?? null,
+    block_emission_halvings: firstFiniteNumber(d.block_emission_halvings) ?? null,
+    subnets: Array.isArray(d.subnets)
+      ? d.subnets.flatMap((row) => {
+          const subnet = normalizeEmissionPipelineSubnet(row);
+          return subnet ? [subnet] : [];
+        })
+      : [],
+    aggregate: {
+      eligible_count: firstFiniteNumber(aggregate.eligible_count) ?? null,
+      disabled_count: firstFiniteNumber(aggregate.disabled_count) ?? null,
+      tao_in_emission: firstFiniteNumber(aggregate.tao_in_emission) ?? null,
+      excess_tao: firstFiniteNumber(aggregate.excess_tao) ?? null,
+      tao_total: firstFiniteNumber(aggregate.tao_total) ?? null,
+      liquidity_fraction: firstFiniteNumber(aggregate.liquidity_fraction) ?? null,
+      total_final_share: firstFiniteNumber(aggregate.total_final_share) ?? null,
+    },
+    verification: {
+      // Absent verification is UNVERIFIED, never assumed good: this flag gates
+      // whether the page may present the numbers as fact.
+      verified: verification.verified === true,
+      checks: Array.isArray(verification.checks)
+        ? verification.checks.flatMap((row) => {
+            const check = normalizeEmissionPipelineCheck(row);
+            return check ? [check] : [];
+          })
+        : [],
+      subnet_share_tolerance: firstFiniteNumber(verification.subnet_share_tolerance) ?? null,
+      aggregate_tolerance_rao: firstString(verification.aggregate_tolerance_rao) ?? null,
+    },
+    field_sources: normalizeEmissionPipelineFieldSources(d.field_sources),
+  };
+}
+
+/**
+ * The v440 emission-pipeline decomposition (#8745). One request serves both
+ * the network view and any single subnet's panel — the payload is ~130 rows,
+ * so filtering client-side beats a second round trip, and the aggregate is
+ * network-wide regardless of any `netuid` filter anyway.
+ *
+ * STALE_MED, not STALE_SHORT: the underlying capture is pinned to one block by
+ * a periodic economics job, so polling faster than that only re-fetches the
+ * same pinned sample.
+ */
+export const emissionPipelineQuery = () =>
+  queryOptions({
+    queryKey: k("chain-emission-pipeline"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/emission-pipeline", { signal });
+      return {
+        data: normalizeEmissionPipeline(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<EmissionPipeline>;
+    },
+    staleTime: STALE_MED,
   });
 
 function normalizeRuntimeTransition(raw: unknown): RuntimeTransition | null {
