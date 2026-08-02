@@ -1008,6 +1008,35 @@ function maskUsageRouteParams(pathname: string) {
 }
 
 /**
+ * Who made this request, for the usage_event `client` dimension.
+ *
+ * #9004: a Cloudflare Worker subrequest sends NO User-Agent, so all of it
+ * landed in the "no client" bucket. That is not a rounding error here -- it was
+ * ~93% of `block-detail`, the single largest route in the project at 758,995
+ * events/day, and identifying it required a live `wrangler tail` because the
+ * telemetry could not answer it. One Worker (`zeronode.workers.dev`) turned out
+ * to be 82% of that route: ~380K requests/day, each one a Worker invocation, a
+ * Hyperdrive round-trip AND a PostHog event.
+ *
+ * Cloudflare sets `cf-worker` on Worker-to-Worker subrequests, so it is
+ * trustworthy (not caller-supplied) and low-cardinality (one value per calling
+ * Worker). Prefixed `worker:` so provenance rides with the value and a
+ * UA-derived name can never be confused with a subrequest origin -- the same
+ * discipline $mcp_client_name_source applies on the MCP side.
+ *
+ * User-Agent wins when both are present: a real client behind a Worker proxy is
+ * more interesting than the proxy.
+ */
+function resolveUsageClient(request: Request): string | undefined {
+  const fromUserAgent = parseUserAgentClient(
+    request.headers.get("user-agent"),
+  ).clientName;
+  if (fromUserAgent) return fromUserAgent;
+  const cfWorker = request.headers.get("cf-worker");
+  return cfWorker ? `worker:${cfWorker}` : undefined;
+}
+
+/**
  * Run the request pipeline and record exactly one usage event for it. Returns
  * the handler's response untouched, and never converts a telemetry failure into
  * a request failure: an unconfigured deployment skips the work entirely, and a
@@ -1049,9 +1078,7 @@ export async function withUsageTelemetry(
   // #8963: request dimensions resolved once, up front, so they are recorded
   // even when the handler throws (the finally block below still fires).
   const method = request.method;
-  const client = parseUserAgentClient(
-    request.headers.get("user-agent"),
-  ).clientName;
+  const client = resolveUsageClient(request);
   let statusClass;
   let ok = false;
   // metagraphed#7733: errorResponse() (workers/http.ts) already sets this on
