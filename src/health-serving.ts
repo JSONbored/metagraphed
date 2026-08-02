@@ -1450,14 +1450,6 @@ export function formatTrajectory({
   };
 }
 
-// One subnet's trajectory from the daily snapshots (shared by the REST route
-// and the MCP tool). D1 fully eliminated (2026-07-17): subnet_snapshots is
-// Postgres-only now (both callers try the Postgres tier first), so this is
-// only reached on a tier miss and always returns an empty trajectory.
-export async function loadSubnetTrajectory(netuid: unknown): Promise<Row> {
-  return formatTrajectory({ netuid, rows: [] });
-}
-
 // Long-term daily uptime series per surface, from surface_uptime_daily rows
 // {surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status}.
 // Groups by surface, sorts days ascending, and rolls a window-wide uptime_ratio

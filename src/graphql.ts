@@ -219,7 +219,6 @@ import {
   buildGlobalHealth,
   formatLeaderboards,
   LEADERBOARD_BOARDS,
-  loadSubnetTrajectory,
   mergeFreshness,
   overlayOverviewHealth,
   loadSubnetReliability,
@@ -410,6 +409,7 @@ import {
 } from "./neuron-history.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
+import { loadSubnetTrajectory } from "./analytics-live.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
@@ -2172,7 +2172,10 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/trajectory`),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      )) as Row | null) ?? (await loadSubnetTrajectory(netuid));
+      )) as Row | null) ??
+      (await loadSubnetTrajectory(netuid, {
+        db: context.env.METAGRAPH_HEALTH_DB,
+      }));
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6213,7 +6216,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same tier
@@ -6224,7 +6227,13 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/economics/trends", params),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       )) as Row | null) ??
-      (await loadEconomicsTrends({ windowLabel: label })).data;
+      (
+        await loadEconomicsTrends({
+          windowLabel: label,
+          windowDays: days,
+          db: context.env.METAGRAPH_HEALTH_DB,
+        })
+      ).data;
     // Normalized the same way blocks/validators/accounts are (schema-stable,
     // never a GraphQL error), so a malformed/partial Postgres-tier body still
     // satisfies the non-null EconomicsTrends! contract.

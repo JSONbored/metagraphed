@@ -5,11 +5,11 @@ import {
   formatIncidents,
   formatLeaderboards,
   formatTrajectory,
-  loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
   PROBE_CADENCE_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.ts";
+import { loadSubnetTrajectory } from "../src/analytics-live.ts";
 import {
   syncSubnetSnapshotToPostgres,
   writeSubnetSnapshot,

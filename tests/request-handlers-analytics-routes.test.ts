@@ -531,6 +531,71 @@ describe("handleUptime", () => {
     assert.deepEqual(body.data.surfaces, []);
   });
 
+  test("trajectory + economics-trends serve from the D1 binding on a tier miss", async () => {
+    const snapshotRow = {
+      snapshot_date: "2026-08-01",
+      completeness_score: 70,
+      surface_count: 5,
+      endpoint_count: 2,
+      validator_count: 64,
+      miner_count: 192,
+      total_stake_tao: 1234.5,
+      alpha_price_tao: 0.021,
+      emission_share: 0.0125,
+      tao_in_pool_tao: 400.5,
+      alpha_in_pool: 19000,
+      alpha_out_pool: 81000,
+      subnet_volume_tao: 55.25,
+    };
+    const env = mockEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({ all: async () => ({ results: [snapshotRow] }) }),
+        }),
+      },
+    });
+    const trajectory = await json(
+      await handleTrajectory(
+        req("/"),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/trajectory`),
+      ),
+    );
+    assert.equal(trajectory.data.point_count, 1);
+    const trends = await json(
+      await handleEconomicsTrends(
+        req("/"),
+        env,
+        url("/api/v1/economics/trends?window=30d"),
+      ),
+    );
+    assert.equal((trends.data.days as unknown[]).length, 1);
+  });
+
+  test("a throwing D1 binding degrades trajectory to the empty payload", async () => {
+    const env = mockEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => {
+              throw new Error("d1 down");
+            },
+          }),
+        }),
+      },
+    });
+    const body = await json(
+      await handleTrajectory(
+        req("/"),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/trajectory`),
+      ),
+    );
+    assert.equal(body.data.point_count, 0);
+  });
+
   test("serves day rows from the D1 binding on a tier miss", async () => {
     const rows = [
       {

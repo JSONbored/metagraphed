@@ -334,12 +334,16 @@
     // traffic yet" trade-off already accepted for the blocks/extrinsics flips
     // above; the self-hosted archive node's own backfill will not extend this
     // series further since subnet_snapshots is a daily rollup, not chain-
-    // derived. writeSubnetSnapshot's own D1 write is being retired in the same
-    // change that adds this flag (src/health-prober.ts) --
-    // syncSubnetSnapshotToPostgres is now the sole writer. tryPostgresTier
-    // still falls back to D1 on any failure, so this remains a single-flag
-    // revert (D1's copy is frozen from this point on, not actively wrong).
-    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE": "postgres",
+    // derived.
+    //
+    // FLIPPED BACK to "d1" (2026-08-02, box decommission), same move as
+    // METAGRAPH_HEALTH_SOURCE below: subnet_snapshots is dual-written to D1
+    // again by every snapshot sync since #9036, and the trajectory /
+    // economics-trends loaders read it there (#9070). Any non-"postgres"
+    // value makes tryPostgresTier return null instantly, with no doomed
+    // subrequest to a dead origin. Still a single-flag revert while the box
+    // lives.
+    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE": "d1",
     // health_trends / surface_checks / surface_uptime_daily / surface_status:
     // FLIPPED BACK to "d1" (2026-08-02, box decommission). "postgres" routed
     // these reads through DATA_API to the self-hosted box (flipped there
