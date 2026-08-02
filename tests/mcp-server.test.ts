@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import {
@@ -14633,6 +14633,175 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
         `${name}: ${JSON.stringify(validate.errors)}`,
       );
     }
+  });
+});
+
+describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres misses", () => {
+  // The six wired tools, each proving the SAME thing: with no Postgres flag
+  // set and R2 SQL configured, the lakehouse answer flows through the shared
+  // formatters into the tool result -- not the schema-stable empty the tools
+  // fell to before the tier existed. globalThis.fetch is the R2 SQL
+  // transport, restored after every test so the rest of this (large) file
+  // keeps the real one.
+  const LAKE_ENV = { R2_SQL_TOKEN: "cfut_test" };
+  const realFetch = globalThis.fetch;
+
+  const LAKE_BLOCK = {
+    block_number: 4200000,
+    block_hash: "0x" + "a".repeat(64),
+    parent_hash: "0x" + "b".repeat(64),
+    author: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    extrinsic_count: 5,
+    event_count: 12,
+    spec_version: 207,
+    observed_at: 1750009000000,
+  };
+  const LAKE_EXTRINSIC = {
+    block_number: 4200000,
+    extrinsic_index: 3,
+    extrinsic_hash: "0x" + "c".repeat(64),
+    signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    call_module: "SubtensorModule",
+    call_function: "set_weights",
+    call_args: null,
+    success: true,
+    fee_tao: 0.0005,
+    tip_tao: null,
+    observed_at: 1750009000000,
+  };
+
+  /** R2 SQL transport stub: one rows-array per successive query. */
+  function lakeFetch(...responses: unknown[][]) {
+    const queries: string[] = [];
+    let call = 0;
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+      call += 1;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return queries;
+  }
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  test("list_blocks serves the lakehouse feed with data-api's cursor token", async () => {
+    const queries = lakeFetch([LAKE_BLOCK]);
+    const res = await callTool("list_blocks", { limit: 1 }, { env: LAKE_ENV });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.blocks.length, 1);
+    assert.equal(data.blocks[0].block_number, 4200000);
+    assert.equal(data.next_cursor, "1750009000000.4200000");
+    assert.match(queries[0]!, /FROM chain\.blocks/);
+  });
+
+  test("get_block resolves a height from the lakehouse", async () => {
+    lakeFetch([LAKE_BLOCK]);
+    const res = await callTool(
+      "get_block",
+      { ref: "4200000" },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.block.block_number, 4200000);
+  });
+
+  test("list_block_extrinsics serves one block's extrinsics", async () => {
+    const queries = lakeFetch([LAKE_EXTRINSIC]);
+    const res = await callTool(
+      "list_block_extrinsics",
+      { ref: "4200000", limit: 5 },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.extrinsics.length, 1);
+    assert.equal(data.extrinsics[0].extrinsic_index, 3);
+    assert.match(queries[0]!, /block_number = 4200000/);
+  });
+
+  test("list_extrinsics expresses every filter and skips the tier on call_hash", async () => {
+    const queries = lakeFetch([LAKE_EXTRINSIC]);
+    const res = await callTool(
+      "list_extrinsics",
+      {
+        limit: 5,
+        signer: LAKE_EXTRINSIC.signer,
+        call_module: "SubtensorModule",
+        success: true,
+        block_start: 100,
+      },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.extrinsics.length, 1);
+    assert.match(queries[0]!, /signer = '5G9hfkx/);
+    assert.match(queries[0]!, /call_module = 'SubtensorModule'/);
+    assert.match(queries[0]!, /success = TRUE/);
+    assert.match(queries[0]!, /block_number >= 100/);
+
+    // call_hash matches inside call_args, which the lakehouse cannot
+    // express: the tier is skipped entirely, leaving the schema-stable empty.
+    const queries2 = lakeFetch([LAKE_EXTRINSIC]);
+    const gated = await callTool(
+      "list_extrinsics",
+      {
+        limit: 5,
+        call_module: "SubtensorModule",
+        call_hash: "0x" + "d".repeat(64),
+      },
+      { env: LAKE_ENV },
+    );
+    assert.equal(gated.body.result.structuredContent.extrinsics.length, 0);
+    assert.equal(queries2.length, 0, "tier never queried under call_hash");
+  });
+
+  test("get_extrinsic resolves a composite ref and embeds formatted events", async () => {
+    const queries = lakeFetch(
+      [LAKE_EXTRINSIC],
+      [
+        {
+          block_number: 4200000,
+          event_index: 0,
+          extrinsic_index: 3,
+          event_kind: "WeightsSet",
+          hotkey: LAKE_EXTRINSIC.signer,
+          coldkey: null,
+          netuid: 7,
+          uid: 3,
+          amount_tao: null,
+          alpha_amount: null,
+          observed_at: 1750009000000,
+        },
+      ],
+    );
+    const res = await callTool(
+      "get_extrinsic",
+      { ref: "4200000-3" },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.extrinsic.block_number, 4200000);
+    assert.equal(data.events.length, 1);
+    assert.equal(data.events[0].event_kind, "WeightsSet");
+    assert.match(queries[1]!, /FROM chain\.account_events/);
+  });
+
+  test("get_account_extrinsics filters by signer from the lakehouse", async () => {
+    const queries = lakeFetch([LAKE_EXTRINSIC]);
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: LAKE_EXTRINSIC.signer, limit: 5 },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.extrinsics.length, 1);
+    assert.match(queries[0]!, /signer = '5G9hfkx/);
   });
 });
 

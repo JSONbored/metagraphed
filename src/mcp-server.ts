@@ -219,6 +219,16 @@ import {
   tryPostgresTier,
 } from "../workers/postgres-tier.ts";
 import {
+  loadBlockColdTier,
+  loadBlockFeedColdTier,
+} from "./blocks-cold-tier.ts";
+import {
+  loadAccountExtrinsicsColdTier,
+  loadBlockExtrinsicsColdTier,
+  loadExtrinsicColdTier,
+  loadExtrinsicFeedColdTier,
+} from "./extrinsics-cold-tier.ts";
+import {
   handleRpcProxyRequest,
   graphqlRateLimited,
 } from "../workers/request-handlers/rpc-proxy.ts";
@@ -8140,6 +8150,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
+        (await loadAccountExtrinsicsColdTier(ctx.env, ss58, {
+          limit,
+          offset,
+          cursor,
+          blockStart,
+          blockEnd,
+        })) ??
         buildAccountExtrinsics([], ss58, {
           limit,
           offset,
@@ -8351,6 +8368,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_BLOCKS_SOURCE",
         )) ??
+        (await loadBlockFeedColdTier(ctx.env, {
+          limit,
+          offset,
+          cursor,
+          author,
+          specVersion,
+          blockStart,
+          blockEnd,
+          from,
+          to,
+          minExtrinsics,
+          minEvents,
+        } as never)) ??
         buildBlockFeed([], {
           limit,
           offset,
@@ -8380,7 +8410,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/blocks/${encodeURIComponent(ref)}`),
           "METAGRAPH_BLOCKS_SOURCE",
-        )) ?? buildBlock(undefined, ref)
+        )) ??
+        (await loadBlockColdTier(ctx.env, ref)) ??
+        buildBlock(undefined, ref)
       );
     },
   },
@@ -8419,7 +8451,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           },
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ?? { data: buildBlockExtrinsics([], ref, null, { limit, offset }) };
+      )) ?? {
+        // Lazily built only when the Postgres tier missed, mirroring REST's
+        // handleBlockExtrinsics.
+        data:
+          (await loadBlockExtrinsicsColdTier(ctx.env, ref, {
+            limit,
+            offset,
+          })) ?? buildBlockExtrinsics([], ref, null, { limit, offset }),
+      };
       return data;
     },
   },
@@ -8485,17 +8525,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // Validated for REST-parity but, like the D1 filters they used to bound, have
       // nothing left to filter now that extrinsics is retired (#4772) --
       // buildExtrinsicFeed([]) below never sees them.
-      optionalString(args, "signer");
-      optionalString(args, "call_module");
-      optionalString(args, "call_function");
-      optionalString(args, "call_hash");
-      optionalString(args, "cursor");
-      optionalNonNegativeInt(args, "block");
-      optionalSuccessFilter(args);
-      optionalNonNegativeInt(args, "block_start");
-      optionalNonNegativeInt(args, "block_end");
-      optionalNonNegativeInt(args, "from");
-      optionalNonNegativeInt(args, "to");
+      const signer = optionalString(args, "signer");
+      const callModule = optionalString(args, "call_module");
+      const callFunction = optionalString(args, "call_function");
+      const callHash = optionalString(args, "call_hash");
+      const cursor = optionalString(args, "cursor");
+      const block = optionalNonNegativeInt(args, "block");
+      const success = optionalSuccessFilter(args);
+      const blockStart = optionalNonNegativeInt(args, "block_start");
+      const blockEnd = optionalNonNegativeInt(args, "block_end");
+      const from = optionalNonNegativeInt(args, "from");
+      const to = optionalNonNegativeInt(args, "to");
       // Mirrors REST's handleExtrinsics: try Postgres first (#4694), fall back to
       // the schema-stable empty feed now that extrinsics' D1 write path is
       // retired (#4772) and the table is dropped in production -- same
@@ -8507,6 +8547,27 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           mcpExtrinsicsListRequest(args),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
+        // call_hash matches inside call_args, which the lakehouse cannot
+        // express -- its presence skips the tier entirely rather than
+        // ignoring the filter (same gate as REST's handleExtrinsics).
+        (callHash == null
+          ? await loadExtrinsicFeedColdTier(ctx.env, {
+              limit: clampLimit(args?.limit, 50, 100),
+              offset: Number.isFinite(args?.offset)
+                ? Math.max(0, Math.floor(args.offset as number))
+                : 0,
+              cursor,
+              signer,
+              module: callModule,
+              callFunction,
+              success,
+              block,
+              blockStart,
+              blockEnd,
+              from,
+              to,
+            })
+          : null) ??
         buildExtrinsicFeed([], {
           limit: clampLimit(args?.limit, 50, 100),
           offset: Number.isFinite(args?.offset)
@@ -8541,7 +8602,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpExtrinsicDetailRequest(ref),
           "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ?? buildExtrinsic(undefined, ref)
+        )) ??
+        (await loadExtrinsicColdTier(ctx.env, ref)) ??
+        buildExtrinsic(undefined, ref)
       );
     },
   },
