@@ -1,0 +1,61 @@
+name: Resync registry (full)
+
+# The scheduled counterpart to sync-registry-to-postgres.yml's merge-triggered
+# fast path. That workflow keeps the human-authored half of the registry tables
+# (subnets with a registry/subnets/<slug>.json file) fresh within seconds of a
+# merge. This one keeps the MACHINE-DISCOVERED half fresh: subnets with no
+# manual file yet, and candidate-promoted surfaces layered onto existing ones --
+# content that changes on the native-chain-snapshot / candidate-verification
+# cadence rather than on a git commit, so a scheduled full resync is the right
+# mechanism for it. It also self-heals anything the fast path missed (a failed
+# run, a manual edit), since it is a full idempotent upsert rather than a diff.
+#
+# RESTORED FROM THE INDEXER BOX. Retired in #5673 when a 6-hourly systemd timer
+# on the indexer box took it over; that box is being decommissioned, so it comes
+# back here on the same cadence it had in both places.
+#
+# The storage behind the endpoint changed (a self-hosted Postgres then, D1 now)
+# but the endpoint did not: the script POSTs to the registry-sync Worker over
+# HTTPS. There is no Tailscale, SSH, or direct network path from this workflow
+# to the database -- it only ever needs the shared secret and the public
+# endpoint.
+#
+# With no REGISTRY_SYNC_SECRET configured the script no-ops cleanly.
+on:
+  schedule:
+    - cron: "0 */6 * * *" # matches the existing 6h data-publish cadence
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resync-registry-postgres
+  cancel-in-progress: false
+
+jobs:
+  resync:
+    name: Full resync (community + machine-generated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # bounded by registry size, not by chain work
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Full resync
+        env:
+          REGISTRY_SYNC_SECRET: ${{ secrets.REGISTRY_SYNC_SECRET }}
+        run: node scripts/backfill-registry-postgres.ts
