@@ -853,3 +853,146 @@ test("MCP_SESSION_MAX_STREAM_DURATION_MS and MCP_SESSION_IDLE_TTL_MS are the doc
   assert.equal(MCP_SESSION_MAX_STREAM_DURATION_MS, 5 * 60 * 1000);
   assert.equal(MCP_SESSION_IDLE_TTL_MS, 30 * 60 * 1000);
 });
+
+// --- #8997: session-lifecycle telemetry -------------------------------------
+//
+// This class was entirely uninstrumented — no telemetry import, zero capture
+// calls — along with the other three Durable Objects. SSE stream open/close,
+// subscription lifecycle and idle expiry were all invisible, on the one class
+// that owns the streaming half of an advertised capability
+// (MCP_CAPABILITIES declares resources.subscribe: true).
+//
+// recordUsageEvent posts through globalThis.fetch, so capturing that is how a
+// plain-Node test observes it without changing the source's shape.
+
+function telemetryEnv(extra: Row = {}) {
+  return mockEnv({ POSTHOG_PROJECT_TOKEN: "phc_test_token", ...extra });
+}
+
+function captureCaptures() {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  return {
+    posted,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+test("#8997: a subscribe records one usage_event for the session route", async () => {
+  const cap = captureCaptures();
+  try {
+    const hub = new McpSessionHub(
+      stubState(),
+      telemetryEnv({ CHAIN_FIREHOSE_HUB: fakeChainFirehoseHubBinding() }),
+    );
+    const res = await hub.fetch(
+      jsonRequest("https://hub.internal/subscribe", {
+        sessionId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+      }),
+    );
+    assert.equal(res.status, 200);
+    await vi.waitFor(() => assert.ok(cap.posted.length >= 1));
+
+    const usage = cap.posted.find(
+      (p) => (p.body as Row).event === "usage_event",
+    );
+    assert.ok(usage, "expected a usage_event");
+    const props = (usage!.body as Row).properties as Row;
+    assert.equal(props.route, "mcp-session-hub:subscribe");
+    assert.equal(props.ok, true);
+    assert.equal(typeof props.duration_ms, "number");
+  } finally {
+    cap.restore();
+  }
+});
+
+// /notify fires once per resource update per subscribed session, so its volume
+// scales with chain activity rather than user actions. On a project already far
+// over its free-tier allowance (#9004) that is the one route here worth NOT
+// counting — and this pins that as a decision rather than an oversight.
+test("#8997: /notify is deliberately not instrumented", async () => {
+  const cap = captureCaptures();
+  try {
+    const hub = new McpSessionHub(
+      stubState(),
+      telemetryEnv({ CHAIN_FIREHOSE_HUB: fakeChainFirehoseHubBinding() }),
+    );
+    await hub.fetch(
+      jsonRequest("https://hub.internal/subscribe", {
+        sessionId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+      }),
+    );
+    const before = cap.posted.length;
+
+    for (let i = 0; i < 5; i += 1) {
+      await hub.fetch(
+        jsonRequest("https://hub.internal/notify", {
+          uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+        }),
+      );
+    }
+
+    const routes = cap.posted
+      .slice(before)
+      .map((p) => ((p.body as Row).properties as Row)?.route);
+    assert.deepEqual(
+      routes.filter((r) => r === "mcp-session-hub:notify"),
+      [],
+    );
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: an action against a terminated session records a failure", async () => {
+  const cap = captureCaptures();
+  try {
+    const hub = new McpSessionHub(
+      stubState({ terminated: true }),
+      telemetryEnv({ CHAIN_FIREHOSE_HUB: fakeChainFirehoseHubBinding() }),
+    );
+    const res = await hub.fetch(
+      jsonRequest("https://hub.internal/subscribe", {
+        sessionId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+      }),
+    );
+    assert.equal(res.status, 404);
+    await vi.waitFor(() => assert.ok(cap.posted.length >= 1));
+    const props = (cap.posted[0].body as Row).properties as Row;
+    assert.equal(props.route, "mcp-session-hub:subscribe");
+    assert.equal(props.ok, false);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: telemetry never fails the session operation", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("posthog unreachable");
+  }) as unknown as typeof fetch;
+  try {
+    const hub = new McpSessionHub(
+      stubState(),
+      telemetryEnv({ CHAIN_FIREHOSE_HUB: fakeChainFirehoseHubBinding() }),
+    );
+    const res = await hub.fetch(
+      jsonRequest("https://hub.internal/subscribe", {
+        sessionId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+      }),
+    );
+    assert.equal(res.status, 200);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
