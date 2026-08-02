@@ -1,3 +1,4 @@
+import { ECONOMICS_FIELD_SOURCES } from "../src/economics-field-sources.ts";
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
@@ -5833,6 +5834,15 @@ async function handleApiRequest(
     !Array.isArray(responseData)
   ) {
     const patch: Row = {};
+    // #9106: economics is the one response whose fields do NOT share a read
+    // instant -- some come off the bulk runtime call at its own height, some
+    // from storage pinned to chain_state.block, and two are the SAME chain item
+    // read at both. Attached here rather than baked into the artifact: the blob
+    // is written by a Python producer and mirrored into KV and R2, so baking it
+    // would put one declaration in three writers.
+    if (matched.id === "economics") {
+      patch.field_sources = ECONOMICS_FIELD_SOURCES;
+    }
     if (effectivePublishedAt && "generated_at" in responseData) {
       patch.generated_at = effectivePublishedAt;
     }

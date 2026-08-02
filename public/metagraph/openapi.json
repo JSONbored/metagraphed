@@ -4284,6 +4284,12 @@
               "total_issuance_tao": 0.5
             },
             "contract_version": "2026-06-29.1",
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "generated_at": "2026-06-01T00:00:00.000Z",
             "network": "example",
             "notes": "Example description.",
@@ -24038,6 +24044,47 @@
           "contract_version": {
             "type": "string"
           },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "generated_at": {
             "type": "string"
           },
@@ -24774,6 +24821,13 @@
                   "enum": [
                     "measured",
                     "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
                   ],
                   "type": "string"
                 },
@@ -29667,6 +29721,13 @@
                   ],
                   "type": "string"
                 },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
                 "storage": {
                   "anyOf": [
                     {
@@ -30871,6 +30932,13 @@
                   "enum": [
                     "measured",
                     "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
                   ],
                   "type": "string"
                 },
@@ -35536,6 +35604,13 @@
                   "enum": [
                     "measured",
                     "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
                   ],
                   "type": "string"
                 },
@@ -42347,6 +42422,13 @@
                   ],
                   "type": "string"
                 },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
                 "storage": {
                   "anyOf": [
                     {
@@ -44228,6 +44310,13 @@
                   "enum": [
                     "measured",
                     "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
                   ],
                   "type": "string"
                 },

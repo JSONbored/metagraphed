@@ -7177,6 +7177,16 @@ export interface components {
                 total_issuance_tao: number;
             };
             contract_version?: string;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             generated_at: string;
             network: string | null;
             notes?: string | string[];
@@ -7278,6 +7288,8 @@ export interface components {
                 [key: string]: {
                     /** @enum {string} */
                     kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
                     storage: string | null;
                 };
             };
@@ -8173,6 +8185,8 @@ export interface components {
                 [key: string]: {
                     /** @enum {string} */
                     kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
                     storage: string | null;
                 };
             };
@@ -8427,6 +8441,8 @@ export interface components {
                 [key: string]: {
                     /** @enum {string} */
                     kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
                     storage: string | null;
                 };
             };
@@ -9362,6 +9378,8 @@ export interface components {
                 [key: string]: {
                     /** @enum {string} */
                     kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
                     storage: string | null;
                 };
             };
@@ -10429,6 +10447,8 @@ export interface components {
                 [key: string]: {
                     /** @enum {string} */
                     kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
                     storage: string | null;
                 };
             };
@@ -10730,6 +10750,8 @@ export interface components {
                 [key: string]: {
                     /** @enum {string} */
                     kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
                     storage: string | null;
                 };
             };
@@ -13337,6 +13359,12 @@ export interface operations {
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "example",
                      *         "notes": "Example description.",
@@ -31763,6 +31791,12 @@ export interface operations {
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "example",
                      *         "notes": "Example description.",

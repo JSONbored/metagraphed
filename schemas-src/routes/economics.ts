@@ -8,7 +8,11 @@
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
-import { ChainStateSchema, SubnetEconomicsSchema } from "../shared.ts";
+import {
+  ChainStateSchema,
+  FieldSourcesSchema,
+  SubnetEconomicsSchema,
+} from "../shared.ts";
 
 // TAO amounts here are lossless fixed 9-decimal (rao-precision) strings, not
 // numbers -- a JSON number is only exact to 2^53-1 (~9,007,199 TAO at rao
@@ -23,6 +27,10 @@ export const EconomicsArtifactSchema = ArtifactBaseSchema.extend({
   // Optional, never null: absent means this refresh pinned no block (#8744).
   chain_state: ChainStateSchema.optional(),
   subnets: z.array(SubnetEconomicsSchema),
+  // #9106: per-field provenance for the SUBNET ROW shape above. Attached at
+  // serve time (workers/api.ts), so it is optional here -- the committed R2
+  // artifact and the KV blob do not carry it.
+  field_sources: FieldSourcesSchema.optional(),
   summary: z
     .object({
       registration_open_count: z.int().min(0),

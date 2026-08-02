@@ -213,6 +213,12 @@ export const FieldSourcesSchema = z
     z
       .object({
         kind: z.enum(["measured", "reconstructed"]),
+        // #9106. Optional, and absent on every surface whose fields share one
+        // read instant. Present on /api/v1/economics, whose bulk-call fields
+        // and pinned storage reads happen at different heights -- including
+        // two that are the SAME chain item at both. Absent on a reconstruction
+        // spanning instants means "no single instant applies", not "unknown".
+        read_at: z.enum(["capture", "chain_state.block"]).optional(),
         // Non-null exactly when kind is "measured". Null on a reconstruction
         // is a positive statement, not an omission: for `block_emission_tao`
         // it says we did NOT read the `BlockEmission` storage item, which is

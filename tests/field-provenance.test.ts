@@ -42,6 +42,8 @@ import {
 } from "../schemas-src/routes/subnet-registration-cost.ts";
 import { SUBNET_BURN_FIELD_SOURCES } from "../src/subnet-burn.ts";
 import { SUBNET_RECYCLED_FIELD_SOURCES } from "../src/subnet-recycled.ts";
+import { SubnetEconomicsSchema } from "../schemas-src/shared.ts";
+import { ECONOMICS_FIELD_SOURCES } from "../src/economics-field-sources.ts";
 
 /**
  * One surface's contract, paired with the map that claims to describe it.
@@ -78,6 +80,13 @@ const SURFACES: {
     name: "GET /api/v1/subnets/{netuid}/recycled",
     schema: SubnetRecycledArtifactSchema,
     sources: SUBNET_RECYCLED_FIELD_SOURCES,
+  },
+  {
+    // The map describes the SUBNET ROW, not the artifact envelope -- same
+    // relationship the emission pipeline's map has to its per-subnet rows.
+    name: "GET /api/v1/economics (subnet row)",
+    schema: SubnetEconomicsSchema,
+    sources: ECONOMICS_FIELD_SOURCES,
   },
   {
     // The map describes the per-subnet ROW, not the artifact envelope — the
@@ -165,6 +174,80 @@ describe("published field_sources maps match the fields they describe (#9078)", 
       });
     });
   }
+
+  // #9106. `read_at` exists for exactly one reason, so it gets asserted
+  // directly rather than left to the generic per-surface checks.
+  describe("the economics read instants", () => {
+    test("the two same-item pairs are distinguished, not conflated", () => {
+      // alpha_price_tao and moving_price_pinned are the SAME chain item read at
+      // two heights, and exist separately BECAUSE they disagree. A map that
+      // labelled them identically would assert they are interchangeable --
+      // worse than publishing nothing.
+      for (const [capture, pinned] of [
+        ["alpha_price_tao", "moving_price_pinned"],
+        ["registration_allowed", "registration_allowed_pinned"],
+      ] as const) {
+        const a = ECONOMICS_FIELD_SOURCES[capture];
+        const b = ECONOMICS_FIELD_SOURCES[pinned];
+        assert.equal(a.read_at, "capture", `${capture} is the bulk-call read`);
+        assert.equal(
+          b.read_at,
+          "chain_state.block",
+          `${pinned} is the pinned read`,
+        );
+        assert.notEqual(
+          a.read_at,
+          b.read_at,
+          `${capture} and ${pinned} must not claim the same instant`,
+        );
+      }
+      // And the price pair really is one chain item, seen from both sides.
+      assert.equal(
+        ECONOMICS_FIELD_SOURCES.moving_price_pinned.storage,
+        "SubtensorModule.SubnetMovingPrice",
+      );
+    });
+
+    test("only the surface that mixes instants declares one", () => {
+      // Every other map must stay silent: a read_at on a single-instant
+      // response would imply the others are different, which they are not.
+      for (const surface of SURFACES) {
+        const labelled = Object.entries(surface.sources).filter(
+          ([, source]) => source.read_at !== undefined,
+        );
+        const expected = surface.name.startsWith("GET /api/v1/economics");
+        assert.equal(
+          labelled.length > 0,
+          expected,
+          `${surface.name} ${expected ? "must" : "must not"} declare read_at`,
+        );
+      }
+    });
+
+    test("a reconstruction spanning instants declares none", () => {
+      // The price changes combine the capture-instant price with a DAILY
+      // rollup, so no single instant is true of them. Absent must mean "no
+      // single instant applies" -- if one of these ever gained a read_at it
+      // would be claiming a precision it does not have.
+      // Read through the PUBLISHED shape, not the literal type. `as const`
+      // narrows these four to a type with no `read_at` at all -- which is the
+      // compiler agreeing with the assertion, but leaves nothing to assert
+      // against. A JSON consumer sees the wider shape, so the check does too.
+      const published = ECONOMICS_FIELD_SOURCES as FieldSources;
+      for (const field of [
+        "alpha_price_change_1h",
+        "alpha_price_change_1d",
+        "alpha_price_change_7d",
+        "alpha_price_change_1m",
+      ]) {
+        assert.equal(
+          published[field].read_at,
+          undefined,
+          `${field} spans instants and must not claim one`,
+        );
+      }
+    });
+  });
 
   test("the three reconstructions on /network/parameters stay reconstructions", () => {
     // Named rather than left to the generic checks above: these are the three
