@@ -27,6 +27,7 @@ import {
 } from "./hyperdrive-sync-retry.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { maskRouteParams } from "../src/route-label.ts";
 import {
   newSpanId,
   newTraceId,
@@ -11609,11 +11610,22 @@ async function dispatchDataApiRequest(
       // Log internally (Wrangler observability) but NEVER leak DB error details
       // (schema, table, or connection info) to API clients.
       console.error("data-api query failed:", err);
-      // url.pathname (not a static tag) -- this catch is the generic
+      // The failing route (not a static tag) -- this catch is the generic
       // fallback for the WHOLE route dispatcher above, so the actual
       // failing route is the only thing that makes the PostHog $exception
       // event useful.
-      await captureDataApiError(err, url.pathname, env);
+      //
+      // #9001: MASKED, because the raw pathname made every identifier its own
+      // fingerprint. Live in production this produced a separate error-tracking
+      // issue per block height --
+      //
+      //   /api/v1/blocks/8675340:Error  1
+      //   /api/v1/blocks/8673156:Error  1
+      //   /api/v1/blocks/8648718:Error  1
+      //
+      // -- one occurrence each, forever, which hides the very pattern the
+      // fingerprint exists to surface. `/api/v1/blocks/:n` groups them.
+      await captureDataApiError(err, maskRouteParams(url.pathname), env);
       return json({ error: "data query failed" }, 502);
     }
     // No sql.end() here: Hyperdrive automatically cleans up the connection
@@ -11801,7 +11813,12 @@ export default {
       return dispatchDataApiRequest(request, env);
     }
     const startedAt = Date.now();
-    const route = new URL(request.url).pathname;
+    // #9001: masked, like the $exception route above. A span NAME is the
+    // primary grouping key in any tracing backend, so a raw pathname makes
+    // per-route latency unaggregatable -- `/api/v1/subnets/123/conviction`
+    // and `/api/v1/subnets/124/conviction` would never be compared.
+    // workers/api.ts has always used the low-cardinality route id here.
+    const route = maskRouteParams(new URL(request.url).pathname);
     let ok = true;
     try {
       const response = await dispatchDataApiRequest(request, env);
