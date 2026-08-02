@@ -3767,6 +3767,13 @@ function clampLimit(raw: string | number | null | undefined) {
 // full minute across it, which is a chain halt rather than a query concern.
 const CHAIN_BLOCK_MS_CEILING = 60_000;
 
+// #8970: how far back from max(observed_at) to look for max(block_number).
+// Only ever a chunk-exclusion bound -- see the head lookup's own comment for
+// why this window can never be empty, and therefore never turns a live chain
+// into a "cold store" answer. An hour is slack for block_number/observed_at
+// ordering skew (backfill, reorg), not a liveness assumption.
+const CHAIN_HEAD_LOOKBACK_MS = 3_600_000;
+
 function clampStatsBlocks(raw: string | number | null | undefined) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 1000;
@@ -10447,11 +10454,51 @@ async function dispatchDataApiRequest(
           // block_number remains the EXACT filter -- the semantics of
           // ?blocks=N are unchanged. observed_at is a deliberate superset whose
           // only job is to let Timescale skip chunks.
-          const [head] = await sql`
-          SELECT max(block_number) AS block_number, max(observed_at) AS observed_at
+          // #8970 round two. The single-statement head lookup this replaces --
+          //
+          //   SELECT max(block_number), max(observed_at) FROM chain_events
+          //
+          // -- was itself unbounded on the partition column, so it inherited the
+          // exact problem it was added to solve. Measured against production
+          // after the first fix shipped, it took 9.06s and /api/v1/chain-events
+          // /stats was STILL a deterministic 502 (289 of 290 requests failed on
+          // 2026-08-01). The scan moved; it did not go away.
+          //
+          // The two aggregates have wildly different costs, which is why they
+          // are now two statements:
+          //
+          //   max(observed_at)                             179 ms
+          //   max(block_number)                          5,432 ms
+          //   max(block_number) bounded on observed_at      56 ms
+          //
+          // observed_at is the partition column with idx_ce_observed on it, so
+          // its max is a single index probe. block_number is only the leading
+          // column of the PER-CHUNK primary key, so an unbounded max must probe
+          // all 112 chunks -- and the 10 compressed ones cannot answer from an
+          // index at all.
+          //
+          // So: resolve the timestamp head first (cheap), then find the block
+          // head within a bounded window of it (chunk-excluded, cheap).
+          //
+          // The window CANNOT come up empty, which is what makes the cold-store
+          // branch below still mean "cold store" rather than "chain paused":
+          // the row holding max(observed_at) trivially satisfies
+          // `observed_at >= that same max - anything non-negative`, so the
+          // bounded query always sees at least that row. The hour of slack is
+          // for rows whose block_number ordering skews slightly from their
+          // observed_at ordering (backfill, reorg), not for liveness.
+          const [tsHead] = await sql`
+          SELECT max(observed_at) AS observed_at
           FROM chain_events`;
-          const headBlock = numberOrNull(head?.block_number);
-          const headObservedAt = numberOrNull(head?.observed_at);
+          const headObservedAt = numberOrNull(tsHead?.observed_at);
+          const [blockHead] =
+            headObservedAt == null
+              ? [undefined]
+              : await sql`
+          SELECT max(block_number) AS block_number
+          FROM chain_events
+          WHERE observed_at >= ${headObservedAt - CHAIN_HEAD_LOOKBACK_MS}`;
+          const headBlock = numberOrNull(blockHead?.block_number);
           // A cold/empty store has no head to anchor on: answer with the same
           // schema-stable empty shape the sibling routes use rather than
           // running an unanchored scan.
