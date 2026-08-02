@@ -68,6 +68,13 @@
     // AI/VECTORIZE bindings are present, the routes serve live; otherwise they
     // return 503 ai_unavailable. Flip to "false" to instantly disable.
     "METAGRAPH_ENABLE_AI": "true",
+    // Raw chain capture (#9111): ON. Opt-in by construction so a deploy can
+    // never start capturing before migrations/d1/0006_raw_capture.sql exists
+    // -- that table holds the watermark the whole no-gap guarantee rests on.
+    // Applied to the production D1 before this flip. Flip to anything but
+    // "true" to stop the lane; the watermark persists, so re-enabling resumes
+    // exactly where it stopped rather than skipping the interval.
+    "RAW_CAPTURE_ENABLED": "true",
     // D1 -> Postgres serving-cutover flags (ADR 0013 Sequencing step 3, the
     // deploy/README.md "Serving cutover" runbook). Set to "postgres" to route
     // /api/v1/blocks(/{ref}), /api/v1/extrinsics(/{ref}), or
