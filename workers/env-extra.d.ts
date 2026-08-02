@@ -36,6 +36,15 @@ interface Env {
   EMISSION_GATE_SYNC_SECRET?: string;
   FULLNODE_RPC_ORIGINS?: string;
   GITHUB_OAUTH_CLIENT_SECRET?: string;
+  /** Authenticates the daily github-signals cron's ~476 GitHub reads
+   * (src/github-signals-sync.ts) -- a fine-grained PAT with public-repo
+   * read-only metadata access, set via `wrangler secret put
+   * GITHUB_SIGNALS_TOKEN`. Its OWN secret rather than sharing GITHUB_TOKEN
+   * below: the radar deliberately tolerates running unauthenticated (it
+   * reports null upstreams when throttled), while this lane must NOT -- an
+   * unauthenticated capture would mass-`unreachable` the published artifact,
+   * so an unset token here is a loud no-op, never a degraded run. */
+  GITHUB_SIGNALS_TOKEN?: string;
   /** #8702: authenticates the upgrade radar's twice-hourly GitHub reads
    * (releases + BITs). Unauthenticated GitHub allows 60 requests/hour per IP
    * against Cloudflare's SHARED egress addresses -- a budget we neither

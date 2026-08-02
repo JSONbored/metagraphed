@@ -19,9 +19,8 @@ name: Sync contract artifacts
 # moment the drift can first exist -- with a daily schedule as a backstop for
 # anything that lands while a run is skipped or fails.
 #
-# Same auto-PR shape as sync-operational-surfaces.yml and
-# sync-github-signals.yml: regenerate, open a PR only when something actually
-# differs, stay silent otherwise.
+# Same auto-PR shape as sync-operational-surfaces.yml: regenerate, open a PR
+# only when something actually differs, stay silent otherwise.
 on:
   push:
     branches:
@@ -65,11 +64,12 @@ jobs:
         run: npm ci
 
       # The real build, exactly as a contributor or CI runs it. It does not
-      # re-capture github-signals (that is sync-github-signals.yml's job, on
-      # its own cadence), so this run compares generated output against the
-      # SAME committed inputs main already has -- a diff here means the
-      # committed artifacts are genuinely stale, not that upstream data moved
-      # underneath them.
+      # re-capture github-signals (the Worker cron owns that lane now -- see
+      # src/github-signals-sync.ts -- and without Cloudflare credentials in
+      # this job's env the build reads the committed seed, never the store),
+      # so this run compares generated output against the SAME committed
+      # inputs main already has -- a diff here means the committed artifacts
+      # are genuinely stale, not that upstream data moved underneath them.
       - name: Build
         run: npm run build
 
