@@ -13,6 +13,7 @@ import {
   recordAiGenerationEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
+  normalizeExceptionMessage,
   recordMcpToolCallEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
@@ -1993,5 +1994,66 @@ describe("recordAiDegradedEvent", () => {
     } finally {
       globalThis.fetch = original;
     }
+  });
+});
+
+// #9019: PostHog's Error Tracking groups Issues by the exception MESSAGE, not
+// by our $exception_fingerprint. Hyperdrive names each pooled connection in its
+// error text, so every dropped connection minted a new Issue — ~15 near-
+// identical single-occurrence rows for one fault, burying the ones that matter.
+describe("normalizeExceptionMessage", () => {
+  test("collapses per-connection Hyperdrive hosts into one message", () => {
+    const a = normalizeExceptionMessage(
+      "write CONNECTION_CLOSED 1f462de30803897f4c87cfe341e93970.hyperdrive.local:5432",
+    );
+    const b = normalizeExceptionMessage(
+      "write CONNECTION_CLOSED 5c01896f5cccb129888261dcc240daee.hyperdrive.local:5432",
+    );
+    assert.equal(a, b);
+    assert.equal(
+      a,
+      "write CONNECTION_CLOSED <connection>.hyperdrive.local:5432",
+    );
+  });
+
+  // The half that stops this being a footgun. A relation name IS the diagnostic
+  // content — normalizing it would have merged #8960's five distinct drifted
+  // objects into one indistinguishable Issue, which is the opposite of the goal.
+  test("leaves identifiers that ARE the diagnosis alone", () => {
+    for (const msg of [
+      'relation "api_usage_rollup" does not exist',
+      'relation "tao_usd_index" does not exist',
+      'column "tao_in_emission_tao" does not exist',
+    ]) {
+      assert.equal(normalizeExceptionMessage(msg), msg);
+    }
+    // ...and they stay distinct from each other.
+    assert.notEqual(
+      normalizeExceptionMessage('relation "api_usage_rollup" does not exist'),
+      normalizeExceptionMessage('relation "tao_usd_index" does not exist'),
+    );
+  });
+
+  test("leaves unrelated messages untouched", () => {
+    for (const msg of [
+      "canceling statement due to statement timeout",
+      "DATA_API returned 502",
+      "",
+    ]) {
+      assert.equal(normalizeExceptionMessage(msg), msg);
+    }
+  });
+
+  // A short hex run is not a connection id, and a hyperdrive-looking host that
+  // is not hex must not be rewritten either — the pattern is narrow on purpose.
+  test("does not over-match", () => {
+    assert.equal(
+      normalizeExceptionMessage("connect abc.hyperdrive.local:5432"),
+      "connect abc.hyperdrive.local:5432",
+    );
+    assert.equal(
+      normalizeExceptionMessage("deadbeef.example.com failed"),
+      "deadbeef.example.com failed",
+    );
   });
 });

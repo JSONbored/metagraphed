@@ -814,6 +814,38 @@ export interface ExceptionEvent {
   errorCode?: string;
 }
 
+/**
+ * Collapse volatile identifiers in an exception message so PostHog's Error
+ * Tracking groups occurrences of the SAME fault into one Issue.
+ *
+ * #9019: PostHog groups Issues by the message, not by our
+ * $exception_fingerprint (which is already correctly bucketed -- one
+ * fingerprint, many payloads). Hyperdrive names each pooled connection in its
+ * error text:
+ *
+ *   write CONNECTION_CLOSED 1f462de30803897f4c87cfe341e93970.hyperdrive.local:5432
+ *   write CONNECTION_CLOSED 5c01896f5cccb129888261dcc240daee.hyperdrive.local:5432
+ *
+ * so every dropped connection minted a new Issue, most with one occurrence,
+ * burying the ones that matter. Same "one issue per occurrence" pathology
+ * #9001 removed from our own route labels, arriving through a different door.
+ *
+ * NARROW, NAMED PATTERNS ONLY -- deliberately not a blanket hex-strip. A
+ * message like `relation "api_usage_rollup" does not exist` must survive
+ * verbatim: the identifier IS the diagnostic content there, and normalizing it
+ * would have merged the five distinct drifted objects of #8960 into one
+ * indistinguishable Issue. The test asserts that directly.
+ *
+ * Lossless in the only sense that matters: a Hyperdrive connection id is a
+ * per-connection handle that never recurs, so nothing is diagnosable from it.
+ */
+export function normalizeExceptionMessage(message: string): string {
+  return message.replace(
+    /\b[0-9a-f]{16,}\.hyperdrive\.local\b/gi,
+    "<connection>.hyperdrive.local",
+  );
+}
+
 function exceptionListEntry(error: unknown): {
   type: string;
   entry: Record<string, unknown>;
@@ -822,7 +854,8 @@ function exceptionListEntry(error: unknown): {
   const type =
     sanitizeLabel(isError && error.name ? error.name : "Error") ?? "Error";
   const rawMessage = isError ? error.message : String(error);
-  const value = sanitizeLabel(rawMessage) ?? "(no message)";
+  const value =
+    sanitizeLabel(normalizeExceptionMessage(rawMessage)) ?? "(no message)";
   const frames =
     isError && typeof error.stack === "string"
       ? parseStackFrames(error.stack)
