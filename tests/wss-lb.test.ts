@@ -16,10 +16,14 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "vitest";
 import {
   dialUpstream,
+  exceedsFrameCap,
   handleWssLbRequest,
+  healthResponse,
   loadPools,
+  pipe,
   type WssLbEnv,
 } from "../workers/wss-lb.ts";
+import { MAX_RPC_BODY_BYTES } from "../deploy/wss-lb/src/rpc-policy.ts";
 
 const POOLS = {
   pools: [
@@ -81,15 +85,64 @@ afterEach(() => {
   delete (globalThis as Record<string, unknown>).WebSocketPair;
 });
 
-test("health endpoint reports the configured networks", async () => {
-  const res = await handleWssLbRequest(
-    new Request("https://wss.metagraph.sh/health"),
-    {} as WssLbEnv,
-  );
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as { ok: boolean; networks: string[] };
-  assert.equal(body.ok, true);
-  assert.deepEqual(body.networks, ["finney", "test"]);
+// /healthz is the path the live Railway service actually served and the one
+// railway.json's healthcheckPath points at, so it is the contract an existing
+// monitor is pointed at -- all three aliases are pinned so a future tidy-up
+// cannot quietly drop it again.
+for (const path of ["/healthz", "/health", "/"]) {
+  test(`${path} reports the configured networks and their pool depth`, async () => {
+    const res = await handleWssLbRequest(
+      new Request(`https://wss.metagraph.sh${path}`),
+      {} as WssLbEnv,
+      { fetchImpl: poolsFetch() },
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      stale: boolean;
+      networks: string[];
+      pools: Record<string, number>;
+    };
+    assert.equal(body.ok, true);
+    assert.equal(body.stale, false);
+    assert.deepEqual(body.networks, ["finney", "test"]);
+    // finney has the two POOLS endpoints; test has none. A partially-serving
+    // proxy is still serving -- see healthResponse's "every, not any" comment.
+    assert.deepEqual(body.pools, { finney: 2, test: 0 });
+  });
+}
+
+// The whole point of restoring the status-code signal: an unreachable registry
+// means selection cannot produce an upstream for ANY network, and a monitor must
+// be able to see that. A flat 200 here would report the outage as healthy.
+test("health is 503 when the pools artifact is unreachable", async () => {
+  const res = await healthResponse({} as WssLbEnv, poolsFetch(null, false));
+  assert.equal(res.status, 503);
+  const body = (await res.json()) as { ok: boolean; stale: boolean };
+  assert.equal(body.ok, false);
+  assert.equal(body.stale, true);
+});
+
+// Distinct from the unreachable case above: the registry answered, it just has
+// nothing eligible. `stale` separates the two so a monitor can tell them apart.
+test("health is 503, but not stale, when every network's pool is empty", async () => {
+  const res = await healthResponse({} as WssLbEnv, poolsFetch({ pools: [] }));
+  assert.equal(res.status, 503);
+  const body = (await res.json()) as {
+    ok: boolean;
+    stale: boolean;
+    pools: Record<string, number>;
+  };
+  assert.equal(body.ok, false);
+  assert.equal(body.stale, false);
+  assert.deepEqual(body.pools, { finney: 0, test: 0 });
+});
+
+// A body field that reported a background refresh loop this Worker does not
+// have would be invented. Pinned so it is not "helpfully" added back as a 0.
+test("health omits last_refresh_ms rather than inventing one", async () => {
+  const res = await healthResponse({} as WssLbEnv, poolsFetch());
+  assert.equal("last_refresh_ms" in ((await res.json()) as object), false);
 });
 
 test("an unknown network is 404, not a failed dial", async () => {
@@ -214,6 +267,91 @@ test("dialUpstream rewrites wss:// to https:// for the upgrade fetch", async () 
   }) as unknown as typeof fetch;
   await dialUpstream("wss://node.example/path", 1000, capture);
   assert.equal(seen, "https://node.example/path");
+});
+
+// The Node service got this cap from `new WebSocketServer({ maxPayload })`,
+// which counted WIRE BYTES. A character count would let a multi-byte body
+// through at up to 4x the cap, so each of the four decision paths is pinned.
+test("exceedsFrameCap measures binary frames by byte length", () => {
+  assert.equal(exceedsFrameCap(new ArrayBuffer(MAX_RPC_BODY_BYTES)), false);
+  assert.equal(exceedsFrameCap(new ArrayBuffer(MAX_RPC_BODY_BYTES + 1)), true);
+});
+
+test("exceedsFrameCap rejects a string longer than the cap without encoding", () => {
+  assert.equal(exceedsFrameCap("a".repeat(MAX_RPC_BODY_BYTES + 1)), true);
+});
+
+test("exceedsFrameCap admits a short frame without encoding", () => {
+  assert.equal(exceedsFrameCap('{"jsonrpc":"2.0"}'), false);
+});
+
+// The case a character count gets wrong: under the cap in characters, over it in
+// UTF-8 bytes. This is the path that actually needs the encode.
+test("exceedsFrameCap counts multi-byte characters as their byte length", () => {
+  // 3 bytes each in UTF-8, so comfortably over the cap while well under it in
+  // characters -- String.length would wave this through.
+  const wide = "一".repeat(MAX_RPC_BODY_BYTES / 2);
+  assert.ok(wide.length < MAX_RPC_BODY_BYTES);
+  assert.equal(exceedsFrameCap(wide), true);
+  // Same encode path, but genuinely under the cap once measured in bytes. The
+  // length has to land in the window where neither shortcut can decide it:
+  // above MAX/4 (so 4-bytes-per-char cannot rule it out) and at or below MAX/3
+  // (so 3-bytes-per-char keeps it under). 20,000 sits inside that window.
+  const narrow = "一".repeat(20_000);
+  assert.ok(narrow.length <= MAX_RPC_BODY_BYTES);
+  assert.ok(narrow.length * 4 > MAX_RPC_BODY_BYTES);
+  assert.equal(exceedsFrameCap(narrow), false);
+});
+
+// A recording socket -- FakeSocket's addEventListener is a no-op, so it cannot
+// drive pipe()'s handlers.
+class PipeSocket {
+  listeners: Record<string, ((event: unknown) => void)[]> = {};
+  sent: (string | ArrayBuffer)[] = [];
+  closedWith: { code?: number; reason?: string } | null = null;
+  addEventListener(type: string, fn: (event: unknown) => void) {
+    (this.listeners[type] ||= []).push(fn);
+  }
+  emit(type: string, event: unknown) {
+    for (const fn of this.listeners[type] || []) fn(event);
+  }
+  send(data: string | ArrayBuffer) {
+    this.sent.push(data);
+  }
+  close(code?: number, reason?: string) {
+    this.closedWith = { code, reason };
+  }
+}
+
+test("pipe forwards a client frame under the cap", () => {
+  const client = new PipeSocket();
+  const upstream = new PipeSocket();
+  pipe(client as unknown as WebSocket, upstream as unknown as WebSocket);
+  client.emit("message", { data: '{"id":1}' });
+  assert.deepEqual(upstream.sent, ['{"id":1}']);
+  assert.equal(client.closedWith, null);
+});
+
+// 1009 (message too big), and the frame must NOT reach the upstream -- the
+// whole point of the cap is that we absorb the abuse instead of relaying it.
+test("pipe closes with 1009 on an oversized client frame", () => {
+  const client = new PipeSocket();
+  const upstream = new PipeSocket();
+  pipe(client as unknown as WebSocket, upstream as unknown as WebSocket);
+  client.emit("message", { data: "a".repeat(MAX_RPC_BODY_BYTES + 1) });
+  assert.deepEqual(upstream.sent, []);
+  assert.equal(client.closedWith?.code, 1009);
+  assert.equal(upstream.closedWith?.code, 1009);
+});
+
+// The upstream direction is deliberately uncapped (responses come from our own
+// health-checked pool, not from the client), but it must still relay.
+test("pipe relays upstream frames back to the client", () => {
+  const client = new PipeSocket();
+  const upstream = new PipeSocket();
+  pipe(client as unknown as WebSocket, upstream as unknown as WebSocket);
+  upstream.emit("message", { data: '{"result":1}' });
+  assert.deepEqual(client.sent, ['{"result":1}']);
 });
 
 test("loadPools accepts both the enveloped and bare artifact shapes", async () => {

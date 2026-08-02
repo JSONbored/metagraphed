@@ -1,0 +1,90 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metagraphed-wss-lb",
+  "main": "workers/wss-lb.ts",
+  "compatibility_date": "2026-06-06",
+  "workers_dev": false,
+  "preview_urls": false,
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA",
+  },
+  "upload_source_maps": true,
+  // This is the only signal left once the box-side Prometheus/Alertmanager pair
+  // goes away with the indexer host, so it is on at full sampling: a WSS proxy
+  // that stops finding upstreams is otherwise indistinguishable from an idle one.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
+  // WHY A FOURTH WORKER RATHER THAN A ROUTE ON `metagraphed`.
+  //
+  // Consolidating into the main Worker is the default preference here, and it
+  // does not work for this one: that Worker has an `assets` binding, and a path
+  // outside its `run_worker_first` allowlist is answered by the asset handler
+  // without the Worker ever running. Verified against production rather than
+  // assumed -- api.metagraph.sh/finney returns an empty 404 with no
+  // content-type, where every Worker-served 404 on that host returns the JSON
+  // error envelope. Since the public contract is `wss.metagraph.sh/{network}`
+  // (`/finney`, `/test` -- already documented and already in clients' configs),
+  // folding it in would mean adding each network name to `run_worker_first`,
+  // which is host-blind: it would also claim `/finney` and `/test` on
+  // api.metagraph.sh and metagraph.sh, for a Worker that has no business
+  // serving them there.
+  //
+  // Secondary, and the reason this would still be the call if the assets
+  // problem were solved: `metagraphed` redeploys on essentially every merge,
+  // while this service's routing logic has changed once since it was written.
+  // Long-lived WebSocket sessions and the repo's highest-churn deploy target do
+  // not belong on the same Worker.
+  //
+  // This is not new sprawl -- it retires the Railway service and the Railway
+  // dependency with it, so the deployed service count goes DOWN by moving here.
+  //
+  // No `placement: smart` on purpose: that optimizes a subrequest-heavy request
+  // for proximity to the ORIGIN, and this Worker's job is to hold a socket open
+  // next to the CLIENT after a single upgrade fetch. Default placement is right.
+  // A zone ROUTE, not a `custom_domain`. Both would serve this hostname, and the
+  // route is what makes the move off Railway reversible: `wss.metagraph.sh`
+  // already had a proxied CNAME at the Railway service, and a custom domain
+  // wants to own that DNS record (attaching one 409s against the existing
+  // record, and taking it over means a propagation window with the hostname
+  // resolving nowhere). A route is evaluated at the edge BEFORE the origin is
+  // reached, so publishing it moves traffic to this Worker instantly with the
+  // record untouched -- and deleting it puts traffic straight back on Railway,
+  // with no DNS change in either direction.
+  "routes": [{ "pattern": "wss.metagraph.sh/*", "zone_name": "metagraph.sh" }],
+  "vars": {
+    "METAGRAPHED_API": "https://api.metagraph.sh",
+    "NETWORKS": "finney,test",
+    "MAX_BLOCK_LAG": "50",
+    "HANDSHAKE_TIMEOUT_MS": "5000",
+  },
+  // Per-IP connect control, carrying over the Railway service's CONNECT_RATE_LIMIT
+  // (30 attempts / 60s). Its OTHER budget -- MAX_CONNECTIONS_PER_IP, a concurrent
+  // count -- deliberately does not come with it: that worked only because Railway
+  // ran a single process, and an in-memory counter spread over many isolates in
+  // many colos would enforce nothing while looking like it did. A Rate Limiting
+  // binding is the only thing here that counts across isolates.
+  //
+  // Absent binding => not enforced, the same fail-open posture every limiter in
+  // this repo has, and deliberately so for an availability-shaped service.
+  "ratelimits": [
+    {
+      "name": "WSS_CONNECT_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
+  ],
+}

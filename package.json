@@ -126,6 +126,8 @@
     "deploy:data-api:preview": "scripts/deploy-worker-with-sourcemaps.sh wrangler.data.jsonc --preview",
     "deploy:registry-sync-api": "scripts/deploy-worker-with-sourcemaps.sh wrangler.registry.jsonc",
     "deploy:registry-sync-api:preview": "scripts/deploy-worker-with-sourcemaps.sh wrangler.registry.jsonc --preview",
+    "deploy:wss-lb": "scripts/deploy-worker-with-sourcemaps.sh wrangler.wss-lb.jsonc",
+    "deploy:wss-lb:preview": "scripts/deploy-worker-with-sourcemaps.sh wrangler.wss-lb.jsonc --preview",
     "smoke:live": "node scripts/smoke-live-api.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
