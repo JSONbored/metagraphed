@@ -518,14 +518,14 @@ describe("buildEconomicsArtifact chain_state", () => {
     generatedAt: "2026-08-02T00:00:00.000Z",
     network: "finney",
     capturedAt: "2026-08-02T00:00:00Z",
-    priceHistoryByNetuid: new Map<number, Row>(),
+    priceHistoryByNetuid: new Map<number, Row[]>(),
   };
 
   test("carries chain_state through when the snapshot pinned a block", () => {
     const out = buildEconomicsArtifact({
       ...base,
       chainState: { block: 8_754_276, block_hash: "0xabc" },
-    } as Parameters<typeof buildEconomicsArtifact>[0]) as Row;
+    }) as Row;
     assert.deepEqual(out.chain_state, {
       block: 8_754_276,
       block_hash: "0xabc",
@@ -538,10 +538,7 @@ describe("buildEconomicsArtifact chain_state", () => {
   // load-bearing rather than stylistic.
   test("omits chain_state entirely on a degraded refresh", () => {
     for (const chainState of [null, undefined]) {
-      const out = buildEconomicsArtifact({
-        ...base,
-        chainState,
-      } as Parameters<typeof buildEconomicsArtifact>[0]) as Row;
+      const out = buildEconomicsArtifact({ ...base, chainState }) as Row;
       assert.equal(
         "chain_state" in out,
         false,
