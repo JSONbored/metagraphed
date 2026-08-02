@@ -9,6 +9,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.ts";
+import { PRIMARY_DOMAIN, REPOSITORY_URL } from "../src/contracts.ts";
+import { MCP_SERVER_INFO } from "../src/mcp-server.ts";
 import {
   MCP_SERVER_VERSION,
   MCP_TOOLS,
@@ -252,15 +254,45 @@ assert.equal(
   MCP_SERVER_VERSION,
   "serverInfo.version must match the MCP_SERVER_VERSION constant",
 );
-// The MCP Registry listing (server.json) must advertise the same version the
-// live server reports, so registry discovery and a direct connect agree.
-const serverManifestVersion = JSON.parse(
-  readFileSync("server.json", "utf8"),
-).version;
+// The MCP Registry listing (server.json) is a SECOND published description of
+// this server, and it must not disagree with the first.
+//
+// Only the version was pinned here. Title, endpoint and repository were
+// hand-copied literals that happened to be right -- and a registry listing
+// disagreeing with the live endpoint is precisely the defect ADR 0027 was
+// written about (#8967: the card advertised `authentication: "none"` while
+// /mcp was a live OAuth 2.1 protected resource). Every field below is asserted
+// against the SAME constant the worker-computed card renders from, so a
+// listing refresh cannot drift from what the server actually is.
+//
+// `name` is deliberately NOT compared: the registry namespaces it
+// ("io.github.JSONbored/metagraphed") while the server reports "metagraphed".
+// Those differ on purpose.
+const serverManifest = JSON.parse(readFileSync("server.json", "utf8")) as Row;
 assert.equal(
-  serverManifestVersion,
+  serverManifest.version,
   MCP_SERVER_VERSION,
   "server.json version (MCP Registry listing) must match MCP_SERVER_VERSION",
+);
+assert.equal(
+  serverManifest.title,
+  MCP_SERVER_INFO.title,
+  "server.json title must match MCP_SERVER_INFO.title (the title the server card renders)",
+);
+assert.equal(
+  (serverManifest.remotes as Row[])?.[0]?.url,
+  `https://${PRIMARY_DOMAIN}/mcp`,
+  "server.json must point registry consumers at the endpoint the server actually serves",
+);
+assert.equal(
+  (serverManifest.remotes as Row[])?.[0]?.type,
+  "streamable-http",
+  "server.json transport must match the card's declared transport",
+);
+assert.equal(
+  (serverManifest.repository as Row)?.url,
+  REPOSITORY_URL,
+  "server.json repository must match the repository the server card publishes",
 );
 assert.ok(
   init.body.result.capabilities.tools,
