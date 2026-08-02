@@ -1742,6 +1742,30 @@ export function annotationsForTool(tool: {
   );
 }
 
+/**
+ * The tools that refuse an anonymous caller (#9070).
+ *
+ * ADR 0027 clause 3 said authentication buys throughput, not reach. #9009 made
+ * that partly false by adding the credential store, whose three tools require
+ * an identity to bind a stored secret to — the first privileged capability on
+ * `/mcp`. Until now that requirement lived only inside
+ * `requireCredentialStore`, so the sole way for a client to learn it was to
+ * call a tool and be refused.
+ *
+ * Declared here rather than inferred from the handlers, because "does this
+ * code path eventually reach an auth check" is not something to derive from a
+ * function body and then publish as a contract. The list cannot go stale
+ * regardless: `tests/mcp-tool-auth-declaration.test.ts` probes every tool
+ * anonymously and fails if the declared set and the enforced set differ in
+ * EITHER direction — an undeclared tool that refuses anonymous callers is a
+ * missing declaration, and a declared tool that serves them is a false one.
+ */
+export const AUTH_REQUIRED_TOOL_NAMES = new Set([
+  "store_surface_credential",
+  "list_surface_credentials",
+  "delete_surface_credential",
+]);
+
 /** Exported for the annotation regression test. Derived from the hint itself
  * rather than from the override table's key set: since #9009 the table also
  * carries closed-world write annotations, so "has an override" and "leaves
@@ -11920,6 +11944,18 @@ export function listToolDefinitions() {
       // tools that leave our infrastructure are named in
       // TOOL_ANNOTATIONS_BY_NAME, and a tool may still override inline.
       annotations: annotationsForTool(tool as { name: string }),
+      // #9070: which tools need an authenticated caller. Published because
+      // otherwise the ONLY way to discover it is to call one and be refused --
+      // and an agent that has to fail to learn a precondition will usually
+      // just stop rather than go and authenticate.
+      //
+      // `_meta` rather than `annotations`, because `annotations` is the MCP
+      // spec's own fixed vocabulary (readOnlyHint/destructiveHint/…) and a
+      // custom key inside it would be a claim the spec does not define.
+      // `_meta` is the sanctioned extension point.
+      ...(AUTH_REQUIRED_TOOL_NAMES.has(tool.name as string)
+        ? { _meta: { "metagraph.sh/auth_required": true } }
+        : {}),
     };
   });
 }
