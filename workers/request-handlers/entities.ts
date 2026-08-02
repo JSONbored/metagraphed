@@ -168,6 +168,7 @@ import {
 } from "../../src/account-identity-cold-tier.ts";
 import { loadAccountEntitiesColdTier } from "../../src/subnet-ownership-cold-tier.ts";
 import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
+import { loadTopHoldersFromArtifact } from "../../src/top-holders-artifact.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
@@ -1234,6 +1235,13 @@ export async function handleTopHoldersList(
       request,
       "METAGRAPH_TOP_HOLDERS_SOURCE",
     )) as ReturnType<typeof buildTopHoldersList> | null) ??
+    // The materialized final answer: the route's inputs are frozen snapshots
+    // of the decommissioned box, so the query's one-time result IS the live
+    // result. See src/top-holders-artifact.ts.
+    (await loadTopHoldersFromArtifact(env, {
+      sort: parsed.sort,
+      limit: parsed.limit,
+    })) ??
     buildTopHoldersList([], {
       sort: parsed.sort,
       limit: parsed.limit,

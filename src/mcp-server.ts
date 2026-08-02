@@ -232,6 +232,7 @@ import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
 } from "./events-cold-tier.ts";
+import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
@@ -8912,7 +8913,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_TOP_HOLDERS_SOURCE",
-        )) ?? buildTopHoldersList([], { sort, limit })
+        )) ??
+        (await loadTopHoldersFromArtifact(ctx.env, { sort, limit })) ??
+        buildTopHoldersList([], { sort, limit })
       );
     },
   },
