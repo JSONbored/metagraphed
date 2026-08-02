@@ -188,21 +188,25 @@ For no-auth GET surfaces with captured samples, use fixtures:
 curl -sS 'https://api.metagraph.sh/metagraph/fixtures/{surface_id}.json'
 ```
 
-MCP equivalents:
+MCP equivalents. Note the two calls use different surfaces, because schema and
+fixture are different properties: `get_api_schema` needs a surface that actually
+publishes a machine-readable contract (an `openapi` surface), while `get_fixture`
+needs one with a captured no-auth sample.
 
 ```bash
 curl -sS 'https://api.metagraph.sh/mcp' \
   -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_api_schema","arguments":{"surface_id":"allways-api-health"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_api_schema","arguments":{"surface_id":"sn-1-apex-orchestrator-openapi"}}}'
 
 curl -sS 'https://api.metagraph.sh/mcp' \
   -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_fixture","arguments":{"surface_id":"allways-api-health"}}}'
 ```
 
-If the schema or fixture is absent, say that plainly and fall back to the
-service's `base_url`, `auth` metadata, and generated snippets. Do not invent a
-request shape.
+Asking `get_api_schema` for a surface that publishes no contract is not an
+error on your side -- it returns `not_found`, and the honest response is to say
+so. If the schema or fixture is absent, fall back to the service's `base_url`,
+`auth` metadata, and generated snippets. Do not invent a request shape.
 
 ## 4. Make the first call
 
