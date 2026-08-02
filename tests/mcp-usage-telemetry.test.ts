@@ -712,3 +712,96 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
     }
   });
 });
+
+// #8999: find_subnet_for_task falls back from semantic to keyword search on any
+// AI failure. Falling back is correct; falling back SILENTLY was not — the agent
+// asked for semantic matching on intent and got keyword matching, with nothing
+// in the response saying so. recordAiDegradedEvent already existed and was
+// already used for the rate-limited case in src/ai-search.ts; the largest
+// consumer of semantic search simply never called it.
+describe("MCP semantic-search degradation (ai_degraded)", () => {
+  function degradedRecorder() {
+    const events: Row[] = [];
+    return {
+      events,
+      recordAiDegradedEvent(env: unknown, event: unknown) {
+        events.push({ env, event });
+        return true;
+      },
+    };
+  }
+
+  // AI enabled, and the vector query rejects — the outage shape.
+  const brokenAiEnv = () => ({
+    ...CONFIGURED_ENV,
+    METAGRAPH_ENABLE_AI: "true",
+    AI: {
+      run: () =>
+        Promise.resolve({ data: [new Array(1024).fill(0.02)] }) as Promise<Row>,
+    },
+    VECTORIZE: { query: () => Promise.reject(new Error("vectorize exploded")) },
+  });
+
+  test("emits ai_degraded when semantic search fails", async () => {
+    const spy = degradedRecorder();
+    await callMcp(
+      toolCall("find_subnet_for_task", { task: "summarize a document" }),
+      brokenAiEnv(),
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordAiDegradedEvent: spy.recordAiDegradedEvent,
+      },
+    );
+
+    assert.equal(spy.events.length, 1);
+    const event = spy.events[0].event as Row;
+    assert.equal(event.reason, "semantic_search_failed");
+    // Surface names the caller, so an MCP-originated degradation is separable
+    // from the REST /api/v1/ask path that shares the underlying helper.
+    assert.equal(event.surface, "find_subnet_for_task");
+  });
+
+  // The tool must still answer. A degradation event that came with a broken
+  // response would just be a worse error.
+  test("the tool still returns a keyword-mode answer", async () => {
+    const payload = await callMcp(
+      toolCall("find_subnet_for_task", { task: "summarize a document" }),
+      brokenAiEnv(),
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordAiDegradedEvent: () => true,
+      },
+    );
+    assert.equal(payload.result.isError, false);
+  });
+
+  // No degradation when AI is off: that is a configuration, not a fault, and
+  // emitting for it would make the signal meaningless on the deployments where
+  // keyword search is simply the intended mode.
+  test("does not emit when AI is disabled", async () => {
+    const spy = degradedRecorder();
+    await callMcp(
+      toolCall("find_subnet_for_task", { task: "summarize a document" }),
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordAiDegradedEvent: spy.recordAiDegradedEvent,
+      },
+    );
+    assert.deepEqual(spy.events, []);
+  });
+
+  test("a recorder that throws never surfaces into the tool result", async () => {
+    const payload = await callMcp(
+      toolCall("find_subnet_for_task", { task: "summarize a document" }),
+      brokenAiEnv(),
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordAiDegradedEvent: () => {
+          throw new Error("recorder exploded");
+        },
+      },
+    );
+    assert.equal(payload.result.isError, false);
+  });
+});
