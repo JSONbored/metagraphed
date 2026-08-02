@@ -28,9 +28,35 @@
  */
 export type FieldSourceKind = "measured" | "reconstructed";
 
+/**
+ * When a value was read, for a response whose fields do NOT share one instant.
+ *
+ * Most responses do share one and omit this entirely. `/api/v1/economics` does
+ * not: some fields come off the bulk `get_all_metagraphs_info` runtime call at
+ * ITS own height, and others from `state_queryStorageAt` pinned to
+ * `chain_state.block`. Two of them are the same chain item read at both --
+ * `alpha_price_tao` and `moving_price_pinned`, whose whole reason for existing
+ * separately is that they disagree. Without this key the map would label both
+ * `measured` / `SubnetMovingPrice` and assert they are interchangeable, which
+ * is worse than saying nothing.
+ *
+ * `capture` is the bulk call's own height, published on the row as `block`.
+ */
+export type FieldReadInstant = "capture" | "chain_state.block";
+
 /** One published field's provenance. */
 export interface FieldSource {
   kind: FieldSourceKind;
+  /**
+   * Which instant this value was read at.
+   *
+   * Omitted when the response has only one instant (every surface but
+   * economics), and omitted on a reconstruction whose inputs genuinely span
+   * instants -- `alpha_price_change_*` combines the live price with a daily
+   * history rollup, so no single instant is true of it. Absent therefore means
+   * "no single instant applies", never "unknown".
+   */
+  read_at?: FieldReadInstant;
   /**
    * The pallet-qualified storage item behind a measurement
    * (`SubtensorModule.TaoWeight`, `Drand.LastStoredRound`), and null for
@@ -55,14 +81,22 @@ export interface FieldSource {
 export type FieldSources = Record<string, FieldSource>;
 
 /**
- * A measurement's `storage` must name a pallet and an item — `Pallet.Item`,
- * both PascalCase.
+ * A measurement's `storage` must name a qualified chain read: either a storage
+ * item (`SubtensorModule.MinerBurned`) or a runtime-API method
+ * (`SubnetInfoRuntimeApi.get_all_metagraphs_info`).
+ *
+ * The second form was added for economics (#9106). Its bulk fields did not come
+ * from a storage item at all -- they came off a runtime API that may compute
+ * rather than read -- so naming an item for them would be a claim the producer
+ * does not support. Both forms are qualified by their pallet/API, which is what
+ * makes the value checkable; only the member's casing differs.
  *
  * Exported because the enforcement test asserts against it rather than
  * re-deriving the rule: a test that carries its own copy of the shape it is
  * checking proves the copies agree, not that the shape is right.
  */
-export const STORAGE_ITEM_PATTERN = /^[A-Z][A-Za-z0-9]*\.[A-Z][A-Za-z0-9]*$/;
+export const STORAGE_ITEM_PATTERN =
+  /^[A-Z][A-Za-z0-9]*\.([A-Z][A-Za-z0-9]*|[a-z][A-Za-z0-9_]*)$/;
 
 /**
  * Field names every provenance map leaves out: the response's own metadata,
