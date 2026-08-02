@@ -10,7 +10,9 @@ import {
   MAX_MCP_BODY_BYTES,
   listToolDefinitions,
   handleMcpRequest,
+  markMcpTierDegraded,
 } from "../src/mcp-server.ts";
+import { currentPostgresTierFallbackGeneration } from "../workers/postgres-tier.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.ts";
@@ -10165,6 +10167,100 @@ describe("MCP economics + metagraph data tools", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /boolean/);
+  });
+
+  // #9120: a data-tier miss is invisible on this surface unless the dispatcher
+  // says so. MCP results carry no headers, so #9114's x-metagraph-degraded
+  // cannot reach an agent, and MCP handlers bypass withEdgeCache where that
+  // label is applied -- they call tryPostgresTier directly, at 126 sites.
+  //
+  // Both directions. An unmarked degraded result is the bug. A marked healthy
+  // result is a false alarm that teaches agents to ignore the field, which is
+  // the same bug one step later.
+  describe("degraded-tier marker (#9120)", () => {
+    // Tier flags on with no DATA_API bound: every tier read degrades.
+    const degradedEnv = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+    };
+
+    test("a tier miss is marked, whichever tool it happened in", async () => {
+      const unmarked: string[] = [];
+      for (const [name, args] of [
+        ["get_subnet_metagraph", { netuid: 7 }],
+        ["list_blocks", { limit: 1 }],
+        ["get_chain_calls", { window: "7d" }],
+      ] as [string, Row][]) {
+        const res = await callTool(name, args, { env: degradedEnv });
+        const out = res.body.result.structuredContent as Row;
+        if (out?.degraded?.reason !== "tier_unavailable") unmarked.push(name);
+      }
+      assert.deepEqual(
+        unmarked,
+        [],
+        `these returned an empty payload from a tier miss without saying so: ${unmarked.join(", ")}`,
+      );
+    });
+
+    test("a non-object payload is passed through untouched", () => {
+      // A tool returning an array or a scalar has nowhere to put the marker
+      // without changing its published shape. None of the tier-backed tools do
+      // today, so this guard is unreachable through dispatch -- exercised
+      // directly rather than left uncovered, since a `v8 ignore` here would
+      // hide a real branch (the codecov/patch gate counts it either way).
+      const stale = currentPostgresTierFallbackGeneration() - 1;
+      for (const payload of [[1, 2], "text", 42, null]) {
+        assert.deepEqual(
+          markMcpTierDegraded(payload, stale),
+          payload,
+          `${JSON.stringify(payload)} must pass through unchanged`,
+        );
+      }
+      // ...while a plain object at the same stale generation IS marked, so the
+      // case above is a shape guard and not the marker being broken.
+      assert.deepEqual(markMcpTierDegraded({ a: 1 }, stale), {
+        a: 1,
+        degraded: { reason: "tier_unavailable" },
+      });
+    });
+
+    test("the SAME tool with a healthy tier is NOT marked", async () => {
+      // The same call, with a working DATA_API. Deliberately the same tool
+      // rather than some unrelated one: it isolates the tier outcome as the
+      // only difference, and it cannot go vacuous.
+      //
+      // The first draft of this asserted on get_contracts, which returns
+      // isError:true without a built artifact tree -- an error result never
+      // reaches the marker at all, so the test passed no matter what the
+      // marker did. The mutation that marks unconditionally caught it.
+      const res = await callTool(
+        "get_subnet_metagraph",
+        { netuid: 7 },
+        {
+          env: {
+            METAGRAPH_NEURONS_SOURCE: "postgres",
+            DATA_API: {
+              fetch: async () =>
+                Response.json({
+                  schema_version: 1,
+                  netuid: 7,
+                  neuron_count: 1,
+                  neurons: [{ uid: 0, hotkey: "5Hot", coldkey: "5Cold" }],
+                }),
+            },
+          },
+        },
+      );
+      const out = res.body.result.structuredContent as Row;
+      assert.equal(res.body.result.isError, false);
+      assert.equal(out.neuron_count, 1, "the tier body must be what is served");
+      assert.equal(
+        out.degraded,
+        undefined,
+        "a measured result must not claim to be degraded",
+      );
+    });
   });
 
   // #9082. The `fields` enum these three tools publish is decorative at
