@@ -52,6 +52,11 @@
 // unlike ChainFirehoseHub, nothing here needs WebSocketPair, so there is no
 // v8-ignored branch in this file.
 
+import {
+  recordExceptionEvent,
+  recordUsageEvent,
+} from "../src/usage-telemetry.ts";
+
 import { parseSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
@@ -106,6 +111,26 @@ export function formatMcpSseEvent(
 ): string {
   return `id: ${sequence}\ndata: ${JSON.stringify(notification)}\n\n`;
 }
+
+// #8997: this class was entirely uninstrumented -- no telemetry import, zero
+// capture calls -- along with the other three Durable Objects. That made MCP
+// session lifecycle a black box: SSE stream open/close, subscription
+// lifecycle, and idle expiry were all invisible, on the one class that owns
+// the streaming half of an advertised capability (MCP_CAPABILITIES declares
+// resources.subscribe: true).
+//
+// WHAT IS DELIBERATELY NOT INSTRUMENTED: /notify. It fires once per resource
+// update per subscribed session, so it is the one route here whose volume
+// scales with chain activity rather than with user actions -- and this project
+// is already ~30x over its PostHog free-tier allowance (#9004). Every other
+// route is at most a few events per session. Lifecycle is the signal worth
+// paying for; a per-event counter is not.
+const SESSION_HUB_ROUTES: Record<string, string> = {
+  "/subscribe": "subscribe",
+  "/unsubscribe": "unsubscribe",
+  "/stream": "stream",
+  "/terminate": "terminate",
+};
 
 export class McpSessionHub implements DurableObject {
   state: DurableObjectState;
@@ -165,9 +190,44 @@ export class McpSessionHub implements DurableObject {
     await this.state.storage.setAlarm(Date.now() + MCP_SESSION_IDLE_TTL_MS);
   }
 
+  /**
+   * Fire-and-forget telemetry. A Durable Object has no ExecutionContext, so
+   * this uses DurableObjectState.waitUntil when the runtime provides it and
+   * otherwise lets the promise run detached -- never awaited, and never able
+   * to fail the session operation that produced it.
+   */
+  private emit(record: () => Promise<unknown>): void {
+    try {
+      const pending = Promise.resolve(record()).catch(() => false);
+      (
+        this.state as unknown as {
+          waitUntil?: (p: Promise<unknown>) => void;
+        }
+      ).waitUntil?.(pending);
+    } catch {
+      // Telemetry must never surface into the session path.
+    }
+  }
+
+  private recordRoute(route: string, ok: boolean, startedAt: number): void {
+    this.emit(() =>
+      recordUsageEvent(this.env, {
+        route: `mcp-session-hub:${route}`,
+        ok,
+        durationMs: Date.now() - startedAt,
+      }),
+    );
+  }
+
   async fetch(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
+    const startedAt = Date.now();
+    // Closed set, from the table above -- the pathname is internal, but a
+    // label built from a URL is exactly the unbounded-cardinality shape #9001
+    // removed elsewhere, and "internal today" is not a property that stays
+    // true by itself.
+    const routeLabel = SESSION_HUB_ROUTES[url.pathname];
 
     if (this.terminated && url.pathname !== "/notify") {
       // A notification for an already-terminated session is a harmless,
@@ -175,28 +235,43 @@ export class McpSessionHub implements DurableObject {
       // hadn't yet been told to forget this session) -- every OTHER route
       // (subscribe/unsubscribe/stream/terminate) is a real client action
       // against a session that no longer exists.
+      // A real client action against a session that no longer exists -- the
+      // one 404 here that means something went wrong for a caller.
+      if (routeLabel) this.recordRoute(routeLabel, false, startedAt);
       return new Response(JSON.stringify({ error: "session terminated" }), {
         status: 404,
         headers: { "content-type": "application/json" },
       });
     }
 
-    if (url.pathname === "/subscribe" && request.method === "POST") {
-      return this.handleSubscribe(request);
-    }
-    if (url.pathname === "/unsubscribe" && request.method === "POST") {
-      return this.handleUnsubscribe(request);
-    }
-    if (url.pathname === "/stream" && request.method === "GET") {
-      return this.handleStream(url);
-    }
+    const handled = async (): Promise<Response | null> => {
+      if (url.pathname === "/subscribe" && request.method === "POST") {
+        return this.handleSubscribe(request);
+      }
+      if (url.pathname === "/unsubscribe" && request.method === "POST") {
+        return this.handleUnsubscribe(request);
+      }
+      if (url.pathname === "/stream" && request.method === "GET") {
+        return this.handleStream(url);
+      }
+      if (url.pathname === "/terminate" && request.method === "POST") {
+        return this.handleTerminate(request);
+      }
+      return null;
+    };
+
+    // /notify stays outside the instrumented path entirely (see the comment on
+    // SESSION_HUB_ROUTES) -- it is not merely unlabelled, it is not timed.
     if (url.pathname === "/notify" && request.method === "POST") {
       return this.handleNotify(request);
     }
-    if (url.pathname === "/terminate" && request.method === "POST") {
-      return this.handleTerminate(request);
+
+    const response = await handled();
+    if (!response) return new Response("not found", { status: 404 });
+    if (routeLabel) {
+      this.recordRoute(routeLabel, response.status < 400, startedAt);
     }
-    return new Response("not found", { status: 404 });
+    return response;
   }
 
   async handleSubscribe(request: Request): Promise<Response> {
@@ -318,9 +393,20 @@ export class McpSessionHub implements DurableObject {
     try {
       this.streamController?.enqueue(new TextEncoder().encode(frame));
       this.pendingUris.delete(uri);
-    } catch {
+    } catch (error) {
       // stream already closed/errored -- leave it pending for the next open
       this.streamController = null;
+      // #8997: the client silently stops receiving server-initiated messages,
+      // and nothing anywhere said so. Bounded, not a storm risk: clearing
+      // streamController above means handleNotify takes the pendingUris branch
+      // from here on, so this fires at most once per opened stream.
+      this.emit(() =>
+        recordExceptionEvent(this.env, {
+          error,
+          route: "mcp-session-hub:deliver",
+          errorCode: "upstream_unavailable",
+        }),
+      );
     }
   }
 
@@ -474,6 +560,11 @@ export class McpSessionHub implements DurableObject {
   // just because a client never explicitly unsubscribed/terminated.
   async alarm(): Promise<void> {
     await this.hydrate();
+    // Idle expiry, distinct from a client DELETE: same terminate path, but the
+    // session ended because nobody came back, which is the fact worth counting
+    // separately when reasoning about session lifetimes.
+    const startedAt = Date.now();
+    this.recordRoute("expire", true, startedAt);
     await this.handleTerminate(
       new Request("https://mcp-session-hub.internal/terminate", {
         method: "POST",
