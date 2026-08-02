@@ -2741,8 +2741,8 @@ const rootValue = {
       neuron_count: data.neuron_count ?? 0,
       validator_count: data.validator_count ?? 0,
       miner_count: data.miner_count ?? 0,
-      total_stake_tao: data.total_stake_tao ?? null,
-      total_emission_tao: data.total_emission_tao ?? null,
+      total_stake_alpha: data.total_stake_alpha ?? null,
+      total_emission_alpha: data.total_emission_alpha ?? null,
       subnet_yield: data.subnet_yield ?? null,
       mean_yield: data.mean_yield ?? null,
       median_yield: data.median_yield ?? null,
@@ -2903,7 +2903,7 @@ const rootValue = {
       captured_at: data.captured_at ?? null,
       neuron_count: data.neuron_count ?? 0,
       idle_neuron_count: data.idle_neuron_count ?? 0,
-      idle_stake_tao: data.idle_stake_tao ?? 0,
+      idle_stake_alpha: data.idle_stake_alpha ?? 0,
     };
   },
 
@@ -7036,7 +7036,7 @@ const rootValue = {
       schema_version: data.schema_version ?? 1,
       captured_at: data.captured_at ?? null,
       subnet_count: data.subnet_count ?? 0,
-      total_idle_stake_tao: data.total_idle_stake_tao ?? 0,
+      total_idle_stake_alpha: data.total_idle_stake_alpha ?? 0,
       subnets: data.subnets || [],
     };
   },

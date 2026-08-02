@@ -1764,7 +1764,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/idle-stake (no static file).",
+      "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/idle-stake (no static file).",
       "id": "chain-idle-stake",
       "path": "/metagraph/chain/idle-stake.json",
       "retirement": null,

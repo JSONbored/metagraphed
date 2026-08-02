@@ -2691,12 +2691,12 @@
             "subnets": [
               {
                 "idle_neuron_count": 1,
-                "idle_stake_tao": 0.5,
+                "idle_stake_alpha": 0.5,
                 "netuid": 7,
                 "neuron_count": 1
               }
             ],
-            "total_idle_stake_tao": 0.5
+            "total_idle_stake_alpha": 0.5
           },
           "meta": {
             "artifact_path": "example",
@@ -4252,7 +4252,7 @@
                 "alpha_out_pool": 0.5,
                 "alpha_price_tao": 0.5,
                 "emission_share": 0.5,
-                "max_stake_tao": 0.5,
+                "max_stake_alpha": 0.5,
                 "max_uids": 1,
                 "max_validators": 1,
                 "miner_count": 1,
@@ -4265,7 +4265,7 @@
                 "slug": "example-subnet",
                 "subnet_volume_tao": 0.5,
                 "tao_in_pool_tao": 0.5,
-                "total_stake_tao": 0.5,
+                "total_stake_alpha": 0.5,
                 "validator_count": 1
               }
             ],
@@ -4276,7 +4276,7 @@
               "total_miners": 1,
               "total_network_value_tao": "327838334.635978200",
               "total_root_value_tao": "327838334.635978200",
-              "total_stake_tao": "327838334.635978200",
+              "total_stake_alpha": "327838334.635978200",
               "total_validators": 1,
               "with_economics_count": 1
             }
@@ -4347,7 +4347,7 @@
         }
       },
       "EconomicsTrendsCsv": {
-        "value": "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share\r\n2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752"
+        "value": "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share\r\n2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752"
       },
       "EmissionPipelineArtifactResponse": {
         "value": {
@@ -7779,7 +7779,7 @@
               "emission_share": 0.5,
               "excess_tao": 0.5,
               "first_emission_block": 5000000,
-              "max_stake_tao": 0.5,
+              "max_stake_alpha": 0.5,
               "max_uids": 1,
               "max_validators": 1,
               "miner_burned_fraction": 0.5,
@@ -7799,7 +7799,7 @@
               "subtoken_enabled": false,
               "tao_in_emission_tao": 0.5,
               "tao_in_pool_tao": 0.5,
-              "total_stake_tao": 0.5,
+              "total_stake_alpha": 0.5,
               "validator_count": 1
             },
             "endpoints": [
@@ -8552,7 +8552,7 @@
           "data": {
             "captured_at": "2026-06-01T00:00:00.000Z",
             "idle_neuron_count": 1,
-            "idle_stake_tao": 0.5,
+            "idle_stake_alpha": 0.5,
             "netuid": 7,
             "neuron_count": 1,
             "schema_version": 1
@@ -8721,20 +8721,20 @@
             "end_date": "2026-06-01",
             "movers": [
               {
-                "emission_delta_tao": 0.5,
-                "emission_end_tao": 0.5,
+                "emission_delta_alpha": 0.5,
+                "emission_end_alpha": 0.5,
                 "emission_pct_change": 0.5,
                 "emission_share_pct": 0.5,
-                "emission_start_tao": 0.5,
+                "emission_start_alpha": 0.5,
                 "netuid": 7,
                 "neurons_delta": 1,
                 "neurons_end": 1,
                 "neurons_start": 1,
-                "stake_delta_tao": 0.5,
-                "stake_end_tao": 0.5,
+                "stake_delta_alpha": 0.5,
+                "stake_end_alpha": 0.5,
                 "stake_pct_change": 0.5,
                 "stake_share_pct": 0.5,
-                "stake_start_tao": 0.5,
+                "stake_start_alpha": 0.5,
                 "validators_delta": 1,
                 "validators_end": 1,
                 "validators_start": 1
@@ -8743,12 +8743,12 @@
             "network": {
               "gainers": 1,
               "losers": 1,
-              "total_emission_delta_tao": "-1234567.891234500",
-              "total_emission_end_tao": "327838334.635978200",
-              "total_emission_start_tao": "327838334.635978200",
-              "total_stake_delta_tao": "-1234567.891234500",
-              "total_stake_end_tao": "327838334.635978200",
-              "total_stake_start_tao": "327838334.635978200",
+              "total_emission_delta_alpha": "-1234567.891234500",
+              "total_emission_end_alpha": "327838334.635978200",
+              "total_emission_start_alpha": "327838334.635978200",
+              "total_stake_delta_alpha": "-1234567.891234500",
+              "total_stake_end_alpha": "327838334.635978200",
+              "total_stake_start_alpha": "327838334.635978200",
               "total_validators_delta": 1,
               "total_validators_end": 1,
               "total_validators_start": 1,
@@ -10223,7 +10223,7 @@
         }
       },
       "SubnetTrajectoryCsv": {
-        "value": "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao\r\n2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45"
+        "value": "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_alpha,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao\r\n2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45"
       },
       "SubnetTurnoverArtifactResponse": {
         "value": {
@@ -10458,8 +10458,8 @@
             "p90_yield": 0.4,
             "schema_version": 1,
             "subnet_yield": 0.266666667,
-            "total_emission_tao": 4,
-            "total_stake_tao": 15,
+            "total_emission_alpha": 4,
+            "total_stake_alpha": 15,
             "validator_count": 1
           },
           "meta": {
@@ -19001,7 +19001,7 @@
                   "minimum": 0,
                   "type": "integer"
                 },
-                "idle_stake_tao": {
+                "idle_stake_alpha": {
                   "minimum": 0,
                   "type": "number"
                 },
@@ -19020,13 +19020,13 @@
                 "netuid",
                 "neuron_count",
                 "idle_neuron_count",
-                "idle_stake_tao"
+                "idle_stake_alpha"
               ],
               "type": "object"
             },
             "type": "array"
           },
-          "total_idle_stake_tao": {
+          "total_idle_stake_alpha": {
             "minimum": 0,
             "type": "number"
           }
@@ -19034,7 +19034,7 @@
         "required": [
           "schema_version",
           "subnet_count",
-          "total_idle_stake_tao",
+          "total_idle_stake_alpha",
           "subnets"
         ],
         "type": "object"
@@ -21744,7 +21744,7 @@
                             }
                           ]
                         },
-                        "total_stake_tao": {
+                        "total_stake_alpha": {
                           "anyOf": [
                             {
                               "type": "number"
@@ -23982,7 +23982,7 @@
                     }
                   ]
                 },
-                "max_stake_tao": {
+                "max_stake_alpha": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -24147,7 +24147,7 @@
                     }
                   ]
                 },
-                "total_stake_tao": {
+                "total_stake_alpha": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -24170,7 +24170,7 @@
                 "alpha_out_pool",
                 "alpha_price_tao",
                 "emission_share",
-                "max_stake_tao",
+                "max_stake_alpha",
                 "max_uids",
                 "max_validators",
                 "miner_count",
@@ -24183,7 +24183,7 @@
                 "slug",
                 "subnet_volume_tao",
                 "tao_in_pool_tao",
-                "total_stake_tao",
+                "total_stake_alpha",
                 "validator_count"
               ],
               "type": "object"
@@ -24220,7 +24220,7 @@
                 "pattern": "^\\d+\\.\\d{9}$",
                 "type": "string"
               },
-              "total_stake_tao": {
+              "total_stake_alpha": {
                 "pattern": "^\\d+\\.\\d{9}$",
                 "type": "string"
               },
@@ -24242,7 +24242,7 @@
               "total_miners",
               "total_network_value_tao",
               "total_root_value_tao",
-              "total_stake_tao",
+              "total_stake_alpha",
               "total_validators",
               "with_economics_count"
             ],
@@ -24321,7 +24321,7 @@
                   "minimum": 0,
                   "type": "integer"
                 },
-                "total_stake_tao": {
+                "total_stake_alpha": {
                   "anyOf": [
                     {
                       "pattern": "^\\d+\\.\\d{9}$",
@@ -36799,7 +36799,7 @@
                   }
                 ]
               },
-              "max_stake_tao": {
+              "max_stake_alpha": {
                 "anyOf": [
                   {
                     "type": "number"
@@ -36964,7 +36964,7 @@
                   }
                 ]
               },
-              "total_stake_tao": {
+              "total_stake_alpha": {
                 "anyOf": [
                   {
                     "type": "number"
@@ -36987,7 +36987,7 @@
               "alpha_out_pool",
               "alpha_price_tao",
               "emission_share",
-              "max_stake_tao",
+              "max_stake_alpha",
               "max_uids",
               "max_validators",
               "miner_count",
@@ -37000,7 +37000,7 @@
               "slug",
               "subnet_volume_tao",
               "tao_in_pool_tao",
-              "total_stake_tao",
+              "total_stake_alpha",
               "validator_count"
             ],
             "type": "object"
@@ -37890,7 +37890,7 @@
                 "snapshot_date": {
                   "type": "string"
                 },
-                "total_emission_tao": {
+                "total_emission_alpha": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -37900,7 +37900,7 @@
                     }
                   ]
                 },
-                "total_stake_tao": {
+                "total_stake_alpha": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -38938,7 +38938,7 @@
             "minimum": 0,
             "type": "integer"
           },
-          "idle_stake_tao": {
+          "idle_stake_alpha": {
             "minimum": 0,
             "type": "number"
           },
@@ -38963,7 +38963,7 @@
           "netuid",
           "neuron_count",
           "idle_neuron_count",
-          "idle_stake_tao"
+          "idle_stake_alpha"
         ],
         "type": "object"
       },
@@ -39868,10 +39868,10 @@
             "items": {
               "additionalProperties": false,
               "properties": {
-                "emission_delta_tao": {
+                "emission_delta_alpha": {
                   "type": "number"
                 },
-                "emission_end_tao": {
+                "emission_end_alpha": {
                   "type": "number"
                 },
                 "emission_pct_change": {
@@ -39896,7 +39896,7 @@
                     }
                   ]
                 },
-                "emission_start_tao": {
+                "emission_start_alpha": {
                   "type": "number"
                 },
                 "netuid": {
@@ -39919,10 +39919,10 @@
                   "minimum": 0,
                   "type": "integer"
                 },
-                "stake_delta_tao": {
+                "stake_delta_alpha": {
                   "type": "number"
                 },
-                "stake_end_tao": {
+                "stake_end_alpha": {
                   "type": "number"
                 },
                 "stake_pct_change": {
@@ -39947,7 +39947,7 @@
                     }
                   ]
                 },
-                "stake_start_tao": {
+                "stake_start_alpha": {
                   "type": "number"
                 },
                 "validators_delta": {
@@ -39968,14 +39968,14 @@
               },
               "required": [
                 "netuid",
-                "stake_start_tao",
-                "stake_end_tao",
-                "stake_delta_tao",
+                "stake_start_alpha",
+                "stake_end_alpha",
+                "stake_delta_alpha",
                 "stake_pct_change",
                 "stake_share_pct",
-                "emission_start_tao",
-                "emission_end_tao",
-                "emission_delta_tao",
+                "emission_start_alpha",
+                "emission_end_alpha",
+                "emission_delta_alpha",
                 "emission_pct_change",
                 "emission_share_pct",
                 "validators_start",
@@ -40002,27 +40002,27 @@
                 "minimum": 0,
                 "type": "integer"
               },
-              "total_emission_delta_tao": {
+              "total_emission_delta_alpha": {
                 "pattern": "^-?\\d+\\.\\d{9}$",
                 "type": "string"
               },
-              "total_emission_end_tao": {
+              "total_emission_end_alpha": {
                 "pattern": "^\\d+\\.\\d{9}$",
                 "type": "string"
               },
-              "total_emission_start_tao": {
+              "total_emission_start_alpha": {
                 "pattern": "^\\d+\\.\\d{9}$",
                 "type": "string"
               },
-              "total_stake_delta_tao": {
+              "total_stake_delta_alpha": {
                 "pattern": "^-?\\d+\\.\\d{9}$",
                 "type": "string"
               },
-              "total_stake_end_tao": {
+              "total_stake_end_alpha": {
                 "pattern": "^\\d+\\.\\d{9}$",
                 "type": "string"
               },
-              "total_stake_start_tao": {
+              "total_stake_start_alpha": {
                 "pattern": "^\\d+\\.\\d{9}$",
                 "type": "string"
               },
@@ -40048,12 +40048,12 @@
               }
             },
             "required": [
-              "total_stake_start_tao",
-              "total_stake_end_tao",
-              "total_stake_delta_tao",
-              "total_emission_start_tao",
-              "total_emission_end_tao",
-              "total_emission_delta_tao",
+              "total_stake_start_alpha",
+              "total_stake_end_alpha",
+              "total_stake_delta_alpha",
+              "total_emission_start_alpha",
+              "total_emission_end_alpha",
+              "total_emission_delta_alpha",
               "total_validators_start",
               "total_validators_end",
               "total_validators_delta",
@@ -42629,7 +42629,7 @@
                     }
                   ]
                 },
-                "total_stake_tao": {
+                "total_stake_alpha": {
                   "anyOf": [
                     {
                       "type": "number"
@@ -43542,10 +43542,10 @@
               }
             ]
           },
-          "total_emission_tao": {
+          "total_emission_alpha": {
             "type": "number"
           },
-          "total_stake_tao": {
+          "total_stake_alpha": {
             "type": "number"
           },
           "validator_count": {
@@ -43562,8 +43562,8 @@
           "neuron_count",
           "validator_count",
           "miner_count",
-          "total_stake_tao",
-          "total_emission_tao",
+          "total_stake_alpha",
+          "total_emission_alpha",
           "subnet_yield",
           "mean_yield",
           "median_yield",
@@ -47403,7 +47403,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -48470,7 +48470,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -48707,7 +48707,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -48908,7 +48908,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -48923,7 +48923,7 @@
                 "alpha_price_tao",
                 "block",
                 "emission_share",
-                "max_stake_tao",
+                "max_stake_alpha",
                 "max_uids",
                 "max_validators",
                 "miner_count",
@@ -48933,7 +48933,7 @@
                 "open_slots",
                 "registration_cost_tao",
                 "subnet_volume_tao",
-                "total_stake_tao",
+                "total_stake_alpha",
                 "validator_count"
               ],
               "type": "string"
@@ -49200,7 +49200,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -49431,7 +49431,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -49732,7 +49732,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -49941,7 +49941,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -50634,7 +50634,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -50892,7 +50892,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -51502,7 +51502,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -51741,7 +51741,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -52190,7 +52190,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -52603,7 +52603,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -52900,7 +52900,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -53246,7 +53246,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -53660,7 +53660,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -53900,7 +53900,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -54187,7 +54187,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -54523,7 +54523,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -54754,7 +54754,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -55072,7 +55072,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -55274,7 +55274,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -55570,7 +55570,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -55974,7 +55974,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -56521,7 +56521,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -57113,7 +57113,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -57481,7 +57481,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -57711,7 +57711,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -59618,7 +59618,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -60141,7 +60141,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -65191,7 +65191,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -66916,7 +66916,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
+        "summary": "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
         "tags": [
           "chain",
           "analytics"
@@ -69514,7 +69514,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -69735,7 +69735,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -70141,7 +70141,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -70156,7 +70156,7 @@
                 "alpha_price_tao",
                 "block",
                 "emission_share",
-                "max_stake_tao",
+                "max_stake_alpha",
                 "max_uids",
                 "max_validators",
                 "miner_count",
@@ -70166,7 +70166,7 @@
                 "open_slots",
                 "registration_cost_tao",
                 "subnet_volume_tao",
-                "total_stake_tao",
+                "total_stake_alpha",
                 "validator_count"
               ],
               "type": "string"
@@ -70554,7 +70554,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -70769,7 +70769,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -71054,7 +71054,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -71247,7 +71247,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -74404,7 +74404,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -74797,7 +74797,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -75043,7 +75043,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -75324,7 +75324,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -76053,7 +76053,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -76276,7 +76276,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -76693,7 +76693,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -77205,7 +77205,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -77486,7 +77486,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -77816,7 +77816,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -78214,7 +78214,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -78438,7 +78438,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -78709,7 +78709,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -79029,7 +79029,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -79244,7 +79244,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -79763,7 +79763,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -79949,7 +79949,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -80309,7 +80309,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -80697,7 +80697,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -81304,7 +81304,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -82100,7 +82100,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -82612,7 +82612,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -82826,7 +82826,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -83087,7 +83087,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -86613,7 +86613,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -88467,7 +88467,7 @@
             }
           },
           {
-            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,

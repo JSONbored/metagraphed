@@ -20,7 +20,7 @@ export const GetSubnetIdleStakeOutputSchema = z
     captured_at: z.string().nullable().optional(),
     neuron_count: z.int(),
     idle_neuron_count: z.int(),
-    idle_stake_tao: z.number(),
+    idle_stake_alpha: z.number(),
   })
   .passthrough();
 export type GetSubnetIdleStakeOutput = z.infer<

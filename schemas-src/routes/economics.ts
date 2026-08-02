@@ -31,7 +31,7 @@ export const EconomicsArtifactSchema = ArtifactBaseSchema.extend({
       total_miners: z.int().min(0),
       total_network_value_tao: RaoPrecisionTaoStringSchema,
       total_root_value_tao: RaoPrecisionTaoStringSchema,
-      total_stake_tao: RaoPrecisionTaoStringSchema,
+      total_stake_alpha: RaoPrecisionTaoStringSchema,
       total_validators: z.int().min(0),
       with_economics_count: z.int().min(0),
     })
@@ -75,7 +75,7 @@ export const EconomicsQuerySchema = z
         "open_slots",
         "registration_cost_tao",
         "subnet_volume_tao",
-        "total_stake_tao",
+        "total_stake_alpha",
         "validator_count",
       ])
       .optional(),

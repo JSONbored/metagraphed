@@ -32,7 +32,7 @@ const ECONOMICS_SORT_FIELDS = [
   "open_slots",
   "registration_cost_tao",
   "subnet_volume_tao",
-  "total_stake_tao",
+  "total_stake_alpha",
   "validator_count",
 ] as const;
 

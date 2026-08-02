@@ -94,12 +94,12 @@ export function buildSubnetIdleStake(
     captured_at: newestCapturedAt(list),
     neuron_count: list.length,
     idle_neuron_count: idleNeuronCount,
-    idle_stake_tao: Math.round(raoBigToTao(idleStakeRao) * 1e9) / 1e9,
+    idle_stake_alpha: Math.round(raoBigToTao(idleStakeRao) * 1e9) / 1e9,
   };
 }
 
 // Network-wide rollup: every subnet's own idle-stake scorecard, ranked by
-// idle_stake_tao descending, plus the network total -- mirrors src/chain-
+// idle_stake_alpha descending, plus the network total -- mirrors src/chain-
 // alpha-volume.ts's own per-subnet-groupby-then-rollup shape over src/
 // alpha-volume.ts's per-subnet scorecard.
 export function buildChainIdleStake(rows: Row[] | null | undefined): Row {
@@ -130,15 +130,15 @@ export function buildChainIdleStake(rows: Row[] | null | undefined): Row {
         netuid,
         neuron_count: entry.neuronCount,
         idle_neuron_count: entry.idleNeuronCount,
-        idle_stake_tao: Math.round(raoBigToTao(entry.idleStakeRao) * 1e9) / 1e9,
+        idle_stake_alpha: Math.round(raoBigToTao(entry.idleStakeRao) * 1e9) / 1e9,
       };
     })
-    .sort((a, b) => b.idle_stake_tao - a.idle_stake_tao || a.netuid - b.netuid);
+    .sort((a, b) => b.idle_stake_alpha - a.idle_stake_alpha || a.netuid - b.netuid);
   return {
     schema_version: 1,
     captured_at: newestCapturedAt(list),
     subnet_count: subnets.length,
-    total_idle_stake_tao:
+    total_idle_stake_alpha:
       Math.round(raoBigToTao(totalIdleStakeRao) * 1e9) / 1e9,
     subnets,
   };

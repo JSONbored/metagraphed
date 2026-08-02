@@ -1055,14 +1055,14 @@ const ECONOMIC_BOARD_SPECS: EconomicBoardSpec[] = [
     metric: (row) => finiteOrNull(row.emission_share),
     project: (row, emissionShare) => ({
       emission_share: emissionShare,
-      total_stake_tao: finiteOrNull(row.total_stake_tao),
+      total_stake_alpha: finiteOrNull(row.total_stake_tao),
       validator_count: finiteOrNull(row.validator_count),
       miner_count: finiteOrNull(row.miner_count),
     }),
     eligible: (entry) => (entry.emission_share as number) > 0,
     tiebreak: (a, b) =>
-      ((b.total_stake_tao as number) ?? -1) -
-      ((a.total_stake_tao as number) ?? -1),
+      ((b.total_stake_alpha as number) ?? -1) -
+      ((a.total_stake_alpha as number) ?? -1),
   },
   {
     // Open validator permits — the validator's first question.
@@ -1403,7 +1403,7 @@ export function formatTrajectory({
       // existed / when economics was unavailable that day.
       validator_count: roundInt(row.validator_count),
       miner_count: roundInt(row.miner_count),
-      total_stake_tao: toFiniteOrNull(row.total_stake_tao),
+      total_stake_alpha: toFiniteOrNull(row.total_stake_tao),
       alpha_price_tao: toFiniteOrNull(row.alpha_price_tao),
       emission_share: toFiniteOrNull(row.emission_share),
       // Pool liquidity + volume (#2552) — reserves are a point-in-time chain

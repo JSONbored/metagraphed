@@ -2438,7 +2438,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold. */
+        /** Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_alpha descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold. */
         get: operations["chainIdleStake"];
         put?: never;
         post?: never;
@@ -6464,13 +6464,13 @@ export interface components {
             subnet_count: number;
             subnets: ({
                 idle_neuron_count: number;
-                idle_stake_tao: number;
+                idle_stake_alpha: number;
                 netuid: number;
                 neuron_count: number;
             } & {
                 [key: string]: unknown;
             })[];
-            total_idle_stake_tao: number;
+            total_idle_stake_alpha: number;
         } & {
             [key: string]: unknown;
         };
@@ -6912,7 +6912,7 @@ export interface components {
                     open_slots?: number | null;
                     registration_allowed?: boolean;
                     registration_cost_tao?: number | null;
-                    total_stake_tao?: number | null;
+                    total_stake_alpha?: number | null;
                     validator_count?: number;
                 } | null;
                 found: boolean;
@@ -7283,7 +7283,7 @@ export interface components {
                 emission_share: number | null;
                 excess_tao?: number | null;
                 first_emission_block?: number | null;
-                max_stake_tao: number | null;
+                max_stake_alpha: number | null;
                 max_uids: number;
                 max_validators: number;
                 miner_burned_fraction?: number | null;
@@ -7303,7 +7303,7 @@ export interface components {
                 subtoken_enabled?: boolean | null;
                 tao_in_emission_tao?: number | null;
                 tao_in_pool_tao: number | null;
-                total_stake_tao: number | null;
+                total_stake_alpha: number | null;
                 validator_count: number;
             }[];
             summary: {
@@ -7313,7 +7313,7 @@ export interface components {
                 total_miners: number;
                 total_network_value_tao: string;
                 total_root_value_tao: string;
-                total_stake_tao: string;
+                total_stake_alpha: string;
                 total_validators: number;
                 with_economics_count: number;
             };
@@ -7329,7 +7329,7 @@ export interface components {
                 miner_count?: number | null;
                 snapshot_date: string;
                 subnet_count: number;
-                total_stake_tao?: string | null;
+                total_stake_alpha?: string | null;
                 validator_count?: number | null;
             }[];
             schema_version: number;
@@ -9650,7 +9650,7 @@ export interface components {
                 emission_share: number | null;
                 excess_tao?: number | null;
                 first_emission_block?: number | null;
-                max_stake_tao: number | null;
+                max_stake_alpha: number | null;
                 max_uids: number;
                 max_validators: number;
                 miner_burned_fraction?: number | null;
@@ -9670,7 +9670,7 @@ export interface components {
                 subtoken_enabled?: boolean | null;
                 tao_in_emission_tao?: number | null;
                 tao_in_pool_tao: number | null;
-                total_stake_tao: number | null;
+                total_stake_alpha: number | null;
                 validator_count: number;
             };
             endpoints?: components["schemas"]["EndpointResource"][];
@@ -9833,8 +9833,8 @@ export interface components {
             points: {
                 neuron_count?: number | null;
                 snapshot_date: string;
-                total_emission_tao?: number | null;
-                total_stake_tao?: number | null;
+                total_emission_alpha?: number | null;
+                total_stake_alpha?: number | null;
                 validator_count?: number | null;
             }[];
             schema_version: number;
@@ -9960,7 +9960,7 @@ export interface components {
         SubnetIdleStakeArtifact: {
             captured_at?: string | null;
             idle_neuron_count: number;
-            idle_stake_tao: number;
+            idle_stake_alpha: number;
             netuid: number;
             neuron_count: number;
             schema_version: number;
@@ -10109,20 +10109,20 @@ export interface components {
         SubnetMoversArtifact: {
             end_date: string | null;
             movers: {
-                emission_delta_tao: number;
-                emission_end_tao: number;
+                emission_delta_alpha: number;
+                emission_end_alpha: number;
                 emission_pct_change: number | null;
                 emission_share_pct: number | null;
-                emission_start_tao: number;
+                emission_start_alpha: number;
                 netuid: number;
                 neurons_delta: number;
                 neurons_end: number;
                 neurons_start: number;
-                stake_delta_tao: number;
-                stake_end_tao: number;
+                stake_delta_alpha: number;
+                stake_end_alpha: number;
                 stake_pct_change: number | null;
                 stake_share_pct: number | null;
-                stake_start_tao: number;
+                stake_start_alpha: number;
                 validators_delta: number;
                 validators_end: number;
                 validators_start: number;
@@ -10130,12 +10130,12 @@ export interface components {
             network: {
                 gainers: number;
                 losers: number;
-                total_emission_delta_tao: string;
-                total_emission_end_tao: string;
-                total_emission_start_tao: string;
-                total_stake_delta_tao: string;
-                total_stake_end_tao: string;
-                total_stake_start_tao: string;
+                total_emission_delta_alpha: string;
+                total_emission_end_alpha: string;
+                total_emission_start_alpha: string;
+                total_stake_delta_alpha: string;
+                total_stake_end_alpha: string;
+                total_stake_start_alpha: string;
                 total_validators_delta: number;
                 total_validators_end: number;
                 total_validators_start: number;
@@ -10585,7 +10585,7 @@ export interface components {
                 subnet_volume_tao?: number | null;
                 surface_count?: number | null;
                 tao_in_pool_tao?: number | null;
-                total_stake_tao?: number | null;
+                total_stake_alpha?: number | null;
                 validator_count?: number | null;
             } & {
                 [key: string]: unknown;
@@ -10715,8 +10715,8 @@ export interface components {
             p90_yield: number | null;
             schema_version: number;
             subnet_yield: number | null;
-            total_emission_tao: number;
-            total_stake_tao: number;
+            total_emission_alpha: number;
+            total_stake_alpha: number;
             validator_count: number;
         };
         /** @description Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup. */
@@ -12717,7 +12717,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -13659,7 +13659,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -13864,7 +13864,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -14005,8 +14005,8 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
                 /** @description Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope. */
@@ -14055,7 +14055,7 @@ export interface operations {
                      *             "alpha_out_pool": 0.5,
                      *             "alpha_price_tao": 0.5,
                      *             "emission_share": 0.5,
-                     *             "max_stake_tao": 0.5,
+                     *             "max_stake_alpha": 0.5,
                      *             "max_uids": 1,
                      *             "max_validators": 1,
                      *             "miner_count": 1,
@@ -14068,7 +14068,7 @@ export interface operations {
                      *             "slug": "example-subnet",
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
-                     *             "total_stake_tao": 0.5,
+                     *             "total_stake_alpha": 0.5,
                      *             "validator_count": 1
                      *           }
                      *         ],
@@ -14079,7 +14079,7 @@ export interface operations {
                      *           "total_miners": 1,
                      *           "total_network_value_tao": "327838334.635978200",
                      *           "total_root_value_tao": "327838334.635978200",
-                     *           "total_stake_tao": "327838334.635978200",
+                     *           "total_stake_alpha": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         }
@@ -14177,7 +14177,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -14333,7 +14333,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -14516,7 +14516,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -14680,7 +14680,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -15310,7 +15310,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -15448,7 +15448,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -15978,7 +15978,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -16241,7 +16241,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -16520,7 +16520,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -16823,7 +16823,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -16988,7 +16988,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -17156,7 +17156,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -17376,7 +17376,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -17590,7 +17590,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -17733,7 +17733,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -17945,7 +17945,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -18087,7 +18087,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -18383,7 +18383,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -18511,7 +18511,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -18762,7 +18762,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -18917,7 +18917,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -19125,7 +19125,7 @@ export interface operations {
                      *           "emission_share": 0.5,
                      *           "excess_tao": 0.5,
                      *           "first_emission_block": 5000000,
-                     *           "max_stake_tao": 0.5,
+                     *           "max_stake_alpha": 0.5,
                      *           "max_uids": 1,
                      *           "max_validators": 1,
                      *           "miner_burned_fraction": 0.5,
@@ -19145,7 +19145,7 @@ export interface operations {
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
-                     *           "total_stake_tao": 0.5,
+                     *           "total_stake_alpha": 0.5,
                      *           "validator_count": 1
                      *         },
                      *         "endpoints": [
@@ -19498,7 +19498,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -19870,7 +19870,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -20185,7 +20185,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -20317,7 +20317,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -22419,7 +22419,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -22791,7 +22791,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -27642,7 +27642,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -29285,12 +29285,12 @@ export interface operations {
                      *         "subnets": [
                      *           {
                      *             "idle_neuron_count": 1,
-                     *             "idle_stake_tao": 0.5,
+                     *             "idle_stake_alpha": 0.5,
                      *             "netuid": 7,
                      *             "neuron_count": 1
                      *           }
                      *         ],
-                     *         "total_idle_stake_tao": 0.5
+                     *         "total_idle_stake_alpha": 0.5
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -31985,7 +31985,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -32187,7 +32187,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -32573,8 +32573,8 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
                 /** @description Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope. */
@@ -32620,7 +32620,7 @@ export interface operations {
                      *             "alpha_out_pool": 0.5,
                      *             "alpha_price_tao": 0.5,
                      *             "emission_share": 0.5,
-                     *             "max_stake_tao": 0.5,
+                     *             "max_stake_alpha": 0.5,
                      *             "max_uids": 1,
                      *             "max_validators": 1,
                      *             "miner_count": 1,
@@ -32633,7 +32633,7 @@ export interface operations {
                      *             "slug": "example-subnet",
                      *             "subnet_volume_tao": 0.5,
                      *             "tao_in_pool_tao": 0.5,
-                     *             "total_stake_tao": 0.5,
+                     *             "total_stake_alpha": 0.5,
                      *             "validator_count": 1
                      *           }
                      *         ],
@@ -32644,7 +32644,7 @@ export interface operations {
                      *           "total_miners": 1,
                      *           "total_network_value_tao": "327838334.635978200",
                      *           "total_root_value_tao": "327838334.635978200",
-                     *           "total_stake_tao": "327838334.635978200",
+                     *           "total_stake_alpha": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         }
@@ -32795,7 +32795,7 @@ export interface operations {
                         data?: components["schemas"]["EconomicsTrendsArtifact"];
                     };
                     /**
-                     * @example snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share
+                     * @example snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share
                      *     2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752
                      */
                     "text/csv": string;
@@ -32858,7 +32858,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -33011,7 +33011,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -33191,7 +33191,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -33352,7 +33352,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -35398,7 +35398,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -35667,7 +35667,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -35798,7 +35798,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -36063,7 +36063,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "downtime_ms" | "incident_count" | "netuid" | "surface_id";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -36791,7 +36791,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -37051,7 +37051,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -37325,7 +37325,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -37733,7 +37733,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -37895,7 +37895,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -38060,7 +38060,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -38277,7 +38277,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -38488,7 +38488,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -38628,7 +38628,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -38837,7 +38837,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -38976,7 +38976,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -39532,7 +39532,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -39657,7 +39657,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -40023,7 +40023,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -40175,7 +40175,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -40378,7 +40378,7 @@ export interface operations {
                      *           "emission_share": 0.5,
                      *           "excess_tao": 0.5,
                      *           "first_emission_block": 5000000,
-                     *           "max_stake_tao": 0.5,
+                     *           "max_stake_alpha": 0.5,
                      *           "max_uids": 1,
                      *           "max_validators": 1,
                      *           "miner_burned_fraction": 0.5,
@@ -40398,7 +40398,7 @@ export interface operations {
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
                      *           "tao_in_pool_tao": 0.5,
-                     *           "total_stake_tao": 0.5,
+                     *           "total_stake_alpha": 0.5,
                      *           "validator_count": 1
                      *         },
                      *         "endpoints": [
@@ -40853,7 +40853,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -41513,7 +41513,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -41949,7 +41949,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -42079,7 +42079,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -42294,7 +42294,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -43324,7 +43324,7 @@ export interface operations {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "idle_neuron_count": 1,
-                     *         "idle_stake_tao": 0.5,
+                     *         "idle_stake_alpha": 0.5,
                      *         "netuid": 7,
                      *         "neuron_count": 1,
                      *         "schema_version": 1
@@ -46126,7 +46126,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
@@ -46322,7 +46322,7 @@ export interface operations {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
                     /**
-                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao
+                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_alpha,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao
                      *     2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45
                      */
                     "text/csv": string;
@@ -47174,8 +47174,8 @@ export interface operations {
                      *         "p90_yield": 0.4,
                      *         "schema_version": 1,
                      *         "subnet_yield": 0.266666667,
-                     *         "total_emission_tao": 4,
-                     *         "total_stake_tao": 15,
+                     *         "total_emission_alpha": 4,
+                     *         "total_stake_alpha": 15,
                      *         "validator_count": 1
                      *       },
                      *       "meta": {
@@ -47407,20 +47407,20 @@ export interface operations {
                      *         "end_date": "2026-06-01",
                      *         "movers": [
                      *           {
-                     *             "emission_delta_tao": 0.5,
-                     *             "emission_end_tao": 0.5,
+                     *             "emission_delta_alpha": 0.5,
+                     *             "emission_end_alpha": 0.5,
                      *             "emission_pct_change": 0.5,
                      *             "emission_share_pct": 0.5,
-                     *             "emission_start_tao": 0.5,
+                     *             "emission_start_alpha": 0.5,
                      *             "netuid": 7,
                      *             "neurons_delta": 1,
                      *             "neurons_end": 1,
                      *             "neurons_start": 1,
-                     *             "stake_delta_tao": 0.5,
-                     *             "stake_end_tao": 0.5,
+                     *             "stake_delta_alpha": 0.5,
+                     *             "stake_end_alpha": 0.5,
                      *             "stake_pct_change": 0.5,
                      *             "stake_share_pct": 0.5,
-                     *             "stake_start_tao": 0.5,
+                     *             "stake_start_alpha": 0.5,
                      *             "validators_delta": 1,
                      *             "validators_end": 1,
                      *             "validators_start": 1
@@ -47429,12 +47429,12 @@ export interface operations {
                      *         "network": {
                      *           "gainers": 1,
                      *           "losers": 1,
-                     *           "total_emission_delta_tao": "-1234567.891234500",
-                     *           "total_emission_end_tao": "327838334.635978200",
-                     *           "total_emission_start_tao": "327838334.635978200",
-                     *           "total_stake_delta_tao": "-1234567.891234500",
-                     *           "total_stake_end_tao": "327838334.635978200",
-                     *           "total_stake_start_tao": "327838334.635978200",
+                     *           "total_emission_delta_alpha": "-1234567.891234500",
+                     *           "total_emission_end_alpha": "327838334.635978200",
+                     *           "total_emission_start_alpha": "327838334.635978200",
+                     *           "total_stake_delta_alpha": "-1234567.891234500",
+                     *           "total_stake_end_alpha": "327838334.635978200",
+                     *           "total_stake_start_alpha": "327838334.635978200",
                      *           "total_validators_delta": 1,
                      *           "total_validators_end": 1,
                      *           "total_validators_start": 1,
@@ -47775,7 +47775,7 @@ export interface operations {
                 fields?: string;
                 limit?: number;
                 cursor?: number;
-                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";

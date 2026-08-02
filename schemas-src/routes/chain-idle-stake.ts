@@ -10,14 +10,14 @@ export const ChainIdleStakeArtifactSchema = z
     schema_version: z.int(),
     captured_at: z.string().nullable().optional(),
     subnet_count: z.int().min(0),
-    total_idle_stake_tao: z.number().min(0),
+    total_idle_stake_alpha: z.number().min(0),
     subnets: z.array(
       z
         .object({
           netuid: z.int().min(0),
           neuron_count: z.int().min(0),
           idle_neuron_count: z.int().min(0),
-          idle_stake_tao: z.number().min(0),
+          idle_stake_alpha: z.number().min(0),
         })
         .passthrough(),
     ),
