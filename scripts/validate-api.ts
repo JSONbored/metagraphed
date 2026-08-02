@@ -353,7 +353,7 @@ const checks: [string, (body: Row) => void][] = [
       assert.equal(body.data.netuid, 7);
       assert.equal(typeof body.data.neuron_count, "number");
       assert.equal(typeof body.data.idle_neuron_count, "number");
-      assert.equal(typeof body.data.idle_stake_tao, "number");
+      assert.equal(typeof body.data.idle_stake_alpha, "number");
     },
   ],
   [
@@ -1447,7 +1447,7 @@ const checks: [string, (body: Row) => void][] = [
     (body) => {
       assert.equal(body.data.schema_version, 1);
       assert.equal(typeof body.data.subnet_count, "number");
-      assert.equal(typeof body.data.total_idle_stake_tao, "number");
+      assert.equal(typeof body.data.total_idle_stake_alpha, "number");
       assert.equal(Array.isArray(body.data.subnets), true);
     },
   ],
