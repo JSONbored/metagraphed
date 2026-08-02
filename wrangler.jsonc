@@ -386,6 +386,13 @@
     // GitHub OAuth Client ID is meant to appear in the authorize URL a
     // browser is redirected to, same as any public OAuth client_id.
     // GITHUB_OAUTH_CLIENT_SECRET is a wrangler secret, set separately.
+    // #204: the firehose head poller (ChainFirehoseHub.alarm). Enabled in
+    // production -- the box-side relay is gone, this IS the ingest source for
+    // the blocks lane. Flip to "false" to stop the alarm chain within one tick
+    // (kill switch; the alarm re-arms but exits immediately).
+    "CHAIN_HEAD_POLL_ENABLED": "true",
+    "CHAIN_HEAD_RPC_URL": "https://archive.chain.opentensor.ai",
+    "CHAIN_HEAD_POLL_INTERVAL_MS": "6000",
     "GITHUB_OAUTH_CLIENT_ID": "Ov23liz4NzqUvC8YrKMS",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent

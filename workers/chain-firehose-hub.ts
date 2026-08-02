@@ -44,6 +44,11 @@ import {
   type Server as GraphqlWsServer,
   type WebSocket as GraphqlWsSocket,
 } from "graphql-ws";
+import {
+  fetchBlockAt,
+  fetchHeadNumber,
+  heightsToEmit,
+} from "../src/head-poller.ts";
 import { recordUsageEvent } from "../src/usage-telemetry.ts";
 import { resolveClientIp } from "./config.ts";
 import {
@@ -910,6 +915,20 @@ export class ChainFirehoseHub implements DurableObject {
     if (url.pathname === "/subscribe") {
       return this.handleSubscribe(request, url);
     }
+    // #204: arm (or re-arm) the head poller. Called from the main worker's
+    // 15-minute cron as a self-healing bootstrap -- if the alarm chain ever
+    // dies (deploy, DO eviction mid-error), the next cron tick restarts it.
+    // Idempotent: an already-scheduled alarm is left alone.
+    if (url.pathname === "/poll-start" && request.method === "POST") {
+      const existing = await this.state.storage.getAlarm();
+      if (existing === null) {
+        await this.state.storage.setAlarm(Date.now() + 1000);
+      }
+      return new Response(
+        JSON.stringify({ ok: true, armed: existing === null }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
     if (url.pathname === "/latest") {
       return new Response(JSON.stringify({ payload: this.latestPayload }), {
         status: 200,
@@ -933,6 +952,55 @@ export class ChainFirehoseHub implements DurableObject {
       });
     }
     return new Response("not found", { status: 404 });
+  }
+
+  // #204: the head poller. With the box-side relay gone, the hub polls the
+  // public archive endpoint itself -- blocks lane only (the other three lanes
+  // need SCALE decode, which is the Containers indexer's job, #209). Each new
+  // block is BOTH broadcast (the stream every subscriber already speaks) and
+  // written to D1's blocks_head (durable from the moment it is seen). The
+  // alarm always re-arms, error or not: a poller that stops on one bad RPC
+  // response is an outage, one that skips a tick is a hiccup.
+  async alarm(): Promise<void> {
+    const interval = Number(this.env.CHAIN_HEAD_POLL_INTERVAL_MS) || 6000;
+    try {
+      if (this.env.CHAIN_HEAD_POLL_ENABLED !== "true") return; // kill switch
+      const rpcUrl =
+        this.env.CHAIN_HEAD_RPC_URL || "https://archive.chain.opentensor.ai";
+      const lastSeen =
+        (await this.state.storage.get<number>("head:last_seen")) ?? null;
+      const head = await fetchHeadNumber(rpcUrl);
+      for (const height of heightsToEmit(lastSeen, head)) {
+        const block = await fetchBlockAt(rpcUrl, height);
+        await this.broadcast(block as unknown as ChainFirehoseIngestPayload);
+        const db = this.env.METAGRAPH_HEALTH_DB;
+        if (db?.prepare) {
+          await db
+            .prepare(
+              `INSERT INTO blocks_head (block_number, block_hash, parent_hash, extrinsic_count, observed_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(block_number) DO UPDATE SET
+                 block_hash=excluded.block_hash,
+                 parent_hash=excluded.parent_hash,
+                 extrinsic_count=excluded.extrinsic_count,
+                 observed_at=excluded.observed_at`,
+            )
+            .bind(
+              block.block_number,
+              block.block_hash,
+              block.parent_hash,
+              block.extrinsic_count,
+              block.observed_at,
+            )
+            .run();
+        }
+        await this.state.storage.put("head:last_seen", block.block_number);
+      }
+    } catch (error) {
+      console.error("[head-poller]", String((error as Error)?.message));
+    } finally {
+      await this.state.storage.setAlarm(Date.now() + interval);
+    }
   }
 
   async handleIngest(request: Request): Promise<Response> {

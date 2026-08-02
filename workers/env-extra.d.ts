@@ -101,3 +101,11 @@ interface Env {
   WALLET_SESSION_SECRET?: string;
   WATCH_TRIGGER_TOKEN_SECRET?: string;
 }
+
+// #204 head poller (ChainFirehoseHub.alarm) -- vars are optional so local/CI
+// (no wrangler vars) type-checks; the kill switch defaults to off.
+interface Env {
+  CHAIN_HEAD_POLL_ENABLED?: string;
+  CHAIN_HEAD_RPC_URL?: string;
+  CHAIN_HEAD_POLL_INTERVAL_MS?: string;
+}

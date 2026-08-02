@@ -1484,6 +1484,24 @@ async function dispatchScheduled(
     const body = await response.json();
     return { ok: response.ok, status: response.status, body };
   }
+  // #204: self-healing bootstrap for the firehose head poller, piggybacked on
+  // the 15-minute probe tick. Idempotent (an armed alarm is left alone), and
+  // best-effort -- the probe sweep must never fail because the hub was cold.
+  if (env.CHAIN_FIREHOSE_HUB) {
+    try {
+      const hub = env.CHAIN_FIREHOSE_HUB.get(
+        env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+      );
+      await hub.fetch("https://firehose.internal/poll-start", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error(
+        "[head-poller-bootstrap]",
+        String((error as Error)?.message),
+      );
+    }
+  }
   return runHealthProber(env, ctx);
 }
 
