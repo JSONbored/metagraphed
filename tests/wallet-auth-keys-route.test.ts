@@ -3,10 +3,12 @@
 // handleApiKeyVerify/handleAccountTierPromote functions, reworked onto Unkey
 // 2026-07-19). A dedicated test file (not folded into the already
 // 7500+-line tests/data-api.test.ts), mirroring
-// tests/alert-triggers-route.test.ts's shape: its OWN postgres mock (a
-// simple per-test queue), scoped only to this file (vi.mock is
-// per-test-file). Unkey's own HTTP calls (src/unkey-client.ts) are stubbed
-// via global fetch, same per-test-queue shape as the postgres mock.
+// tests/alert-triggers-route.test.ts's shape: its OWN queue-shaped D1 fake
+// (tests/user-state-d1-queue.ts) bound as METAGRAPH_HEALTH_DB -- every route
+// in this file runs on the user-state D1 since the accounts-d1 port, so no
+// postgres-module mock remains here. Unkey's own HTTP calls
+// (src/unkey-client.ts) are stubbed via global fetch, same per-test-queue
+// shape as the D1 fake.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
@@ -16,35 +18,12 @@ import {
 } from "@scure/sr25519";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { createSessionToken } from "../src/wallet-auth.ts";
+import { createQueueD1 } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
 
-const mockQueue = vi.hoisted(() => ({ current: [] as Row[][] }));
-const sqlCalls = vi.hoisted(
-  () => [] as Array<{ text: string; values: unknown[] }>,
-);
-const failNextQuery = vi.hoisted(() => ({ error: null as Error | null }));
-
-vi.mock("postgres", () => ({
-  default: () => {
-    function sql(strings: TemplateStringsArray, ...values: unknown[]) {
-      let text = strings[0];
-      for (let i = 0; i < values.length; i += 1) text += "?" + strings[i + 1];
-      sqlCalls.push({ text, values });
-      if (failNextQuery.error) {
-        const err = failNextQuery.error;
-        failNextQuery.error = null;
-        return Promise.reject(err);
-      }
-      return Promise.resolve(
-        mockQueue.current.length ? mockQueue.current.shift() : [],
-      );
-    }
-    sql.begin = (cb: (sql: unknown) => unknown) => cb(sql);
-    sql.end = () => Promise.resolve();
-    sql.json = (value: unknown) => value;
-    return sql;
-  },
-}));
+const mockQueue = { current: [] as Row[][] };
+const sqlCalls = [] as Array<{ text: string; values: unknown[] }>;
+const failNextQuery = { error: null as Error | null };
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -69,7 +48,7 @@ const UNKEY_API_ID = "api_test123";
 
 function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
-    HYPERDRIVE: { connectionString: "postgres://mock" },
+    METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
     METAGRAPH_CONTROL: createFakeKv(),
     WALLET_SESSION_SECRET: SESSION_SECRET,
     UNKEY_ROOT_KEY,
@@ -1224,10 +1203,8 @@ test("internal quota: a spend larger than the whole day is rejected WITHOUT touc
 
 test("internal quota: an allowed spend upserts atomically and reports the new balance", async () => {
   const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
-  // BIGINT comes back from postgres.js as a STRING (#8607's exact trap): if it
-  // reached the arithmetic uncoerced, `"100" + 25` would concatenate to
-  // "10025", blow past the limit and reject a request that is well inside it.
-  mockQueue.current = [[{ spent: "125", current: "125" }]];
+  // The guarded upsert's RETURNING row: the post-spend balance.
+  mockQueue.current = [[{ units_spent: 125 }]];
   const res = await fetchRoute(
     quotaReq({ account_id: 7, cost: 25, limit: 1000 }),
     env,
@@ -1235,17 +1212,20 @@ test("internal quota: an allowed spend upserts atomically and reports the new ba
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.allowed, true);
-  assert.equal(body.used, 125, "a number, not the string postgres returned");
+  assert.equal(body.used, 125);
   assert.equal(body.remaining, 875);
   const call = sqlCalls.find((c) => /api_quota_daily/.test(c.text));
   assert.ok(call, "issued the upsert");
-  // One statement, one round trip -- the guard and the balance read are a CTE,
-  // not a read-then-write race.
+  // The spend is one guarded statement -- the reject rule lives in SQL, not
+  // in a read-then-write race.
   assert.ok(/ON CONFLICT \(account_id, day\) DO UPDATE/.test(call!.text));
   assert.ok(
-    /WHERE q\.units_spent \+ EXCLUDED\.units_spent <= \?/.test(call!.text),
+    /WHERE api_quota_daily\.units_spent \+ EXCLUDED\.units_spent <= \?/.test(
+      call!.text,
+    ),
     "the reject-spends-nothing rule is enforced in SQL, not after the write",
   );
+  // The allowed path never needs the follow-up balance read.
   assert.equal(
     sqlCalls.filter((c) => /api_quota_daily/.test(c.text)).length,
     1,
@@ -1254,8 +1234,11 @@ test("internal quota: an allowed spend upserts atomically and reports the new ba
 
 test("internal quota: a spend the guard rejected reports the UNCHANGED balance", async () => {
   const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
-  // DO UPDATE did not fire, so `attempt` is empty and only `current` comes back.
-  mockQueue.current = [[{ spent: null, current: "995" }]];
+  // DO UPDATE did not fire, so the upsert RETURNING is empty; the balance for
+  // the 429's headers comes from the follow-up SELECT (SQLite has no
+  // data-modifying CTE to read it in the same statement -- enforcement is
+  // still the single guarded upsert).
+  mockQueue.current = [[], [{ units_spent: 995 }]];
   const res = await fetchRoute(
     quotaReq({ account_id: 7, cost: 25, limit: 1000 }),
     env,
@@ -1267,14 +1250,15 @@ test("internal quota: a spend the guard rejected reports the UNCHANGED balance",
 });
 
 test("internal quota: a degenerate empty result set does not reject the caller", async () => {
-  // The CTE always yields exactly one row in practice -- if no row existed the
-  // INSERT cannot conflict, so `spent` is never null on a cold start. This is
-  // the defensive path for a driver that hands back nothing at all (a
-  // connection reset mid-statement). Treating "I don't know" as over-quota
-  // would 429 a paying caller on a database hiccup, so it reads as zero spent
-  // and lets the request through, matching every other fail-open branch.
+  // In practice the upsert always fires on an in-limit spend -- if no row
+  // existed the INSERT cannot conflict, so its RETURNING is never empty on a
+  // cold start. This is the defensive path for a store that hands back
+  // nothing at all AND has no balance row to read. Treating "I don't know"
+  // as over-quota would 429 a paying caller on a database hiccup, so it reads
+  // as zero spent and lets the request through, matching every other
+  // fail-open branch.
   const env = baseEnv({ API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN });
-  mockQueue.current = [[]];
+  mockQueue.current = [[], []];
   const res = await fetchRoute(
     quotaReq({ account_id: 7, cost: 1, limit: 10 }),
     env,
@@ -1298,10 +1282,10 @@ test("internal quota: a database failure surfaces as 502 so the caller fails OPE
   assert.equal(res.status, 502);
 });
 
-test("internal quota: 503 when hyperdrive is unbound", async () => {
+test("internal quota: 503 when the D1 binding is unbound", async () => {
   const env = baseEnv({
     API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
-    HYPERDRIVE: undefined,
+    METAGRAPH_HEALTH_DB: undefined,
   });
   const res = await fetchRoute(
     quotaReq({ account_id: 7, cost: 1, limit: 10 }),
@@ -1937,10 +1921,10 @@ test("usage rollup: a bucket with no keyed_count counts as fully keyless", async
   assert.ok(call!.values.includes(0), "keyed_count defaulted to 0");
 });
 
-test("usage rollup READ: 503 when hyperdrive is unbound", async () => {
+test("usage rollup READ: 503 when the D1 binding is unbound", async () => {
   const env = baseEnv({
     API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
-    HYPERDRIVE: undefined,
+    METAGRAPH_HEALTH_DB: undefined,
   });
   const res = await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET"), env);
   assert.equal(res.status, 503);
@@ -2212,8 +2196,8 @@ test("tier promote: reports keys_failed when an Unkey update call fails", async 
   assert.equal(body.keys_failed, 1);
 });
 
-test("keys: 503 when the Hyperdrive binding is unavailable", async () => {
-  const env = baseEnv({ HYPERDRIVE: undefined });
+test("keys: 503 when the D1 binding is unavailable", async () => {
+  const env = baseEnv({ METAGRAPH_HEALTH_DB: undefined });
   const token = await sessionToken();
   const res = await fetchRoute(
     req("/api/v1/keys", {

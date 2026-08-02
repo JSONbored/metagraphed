@@ -3,31 +3,17 @@
 // only via the DATA_API service binding from src/github-oauth.ts's
 // callback handler (see that module's own test file for the OAuth-flow
 // side). Mirrors tests/wallet-auth-keys-route.test.ts's shape: its own
-// per-test postgres mock queue, scoped only to this file (vi.mock is
-// per-test-file).
+// per-test queue-shaped D1 fake (tests/user-state-d1-queue.ts), scoped only
+// to this file -- github_accounts lives on the user-state D1 since the
+// accounts-d1 port.
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
-import type { AnyFn, Row } from "./row-type.ts";
+import { beforeEach, test } from "vitest";
+import { createQueueD1 } from "./user-state-d1-queue.ts";
+import type { Row } from "./row-type.ts";
 
-const mockQueue = vi.hoisted((): { current: Row[] } => ({ current: [] }));
-const sqlCalls = vi.hoisted((): Row[] => []);
-
-vi.mock("postgres", () => ({
-  default: () => {
-    function sql(strings: TemplateStringsArray, ...values: unknown[]) {
-      let text = strings[0];
-      for (let i = 0; i < values.length; i += 1) text += "?" + strings[i + 1];
-      sqlCalls.push({ text, values });
-      return Promise.resolve(
-        mockQueue.current.length ? mockQueue.current.shift() : [],
-      );
-    }
-    sql.begin = (cb: AnyFn) => cb(sql);
-    sql.end = () => Promise.resolve();
-    sql.json = (value: unknown) => value;
-    return sql;
-  },
-}));
+const mockQueue: { current: Row[][] } = { current: [] };
+const sqlCalls: Array<{ text: string; values: unknown[] }> = [];
+const failNextQuery = { error: null as Error | null };
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -38,7 +24,7 @@ const INTERNAL_TOKEN = "test-lookup-token";
 
 function baseEnv(overrides = {}) {
   return {
-    HYPERDRIVE: { connectionString: "postgres://mock" },
+    METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
     API_KEY_LOOKUP_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,
   };
@@ -47,6 +33,7 @@ function baseEnv(overrides = {}) {
 beforeEach(() => {
   mockQueue.current = [];
   sqlCalls.length = 0;
+  failNextQuery.error = null;
 });
 
 function req(body: Row, token: string | null = INTERNAL_TOKEN) {

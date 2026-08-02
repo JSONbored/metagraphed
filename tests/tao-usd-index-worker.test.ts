@@ -1,10 +1,11 @@
 // Tests for the TAO/USD ingestion tick on the data Worker (#8600).
 //
-// Kept out of tests/data-api.test.ts on purpose: that file's postgres mock
-// carries a large shared result queue tuned to its own routes, and a cron path
-// that must observe an EMPTY `RETURNING` (the ON CONFLICT no-op) would have to
-// fight it. This file mocks postgres and fetch narrowly instead, so what each
-// test asserts about the tick is not entangled with a route it never calls.
+// Kept out of tests/data-api.test.ts on purpose: that file's mocks carry a
+// large shared result queue tuned to its own routes, and a cron path that
+// must observe an EMPTY `RETURNING` (the ON CONFLICT no-op) would have to
+// fight it. This file fakes the user-state D1 binding (tao_usd_index's home
+// since the accounts-d1 port) and fetch narrowly instead, so what each test
+// asserts about the tick is not entangled with a route it never calls.
 //
 // The batch fixture is the same real capture the aggregator tests use —
 // Ethereum mainnet block 25,650,836, 2026-07-31.
@@ -12,26 +13,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Row } from "./row-type.ts";
 
-const sqlCalls = vi.hoisted((): { text: string; values: unknown[] }[] => []);
+const sqlCalls: { text: string; values: unknown[] }[] = [];
 /** What the next `RETURNING` yields. Empty models the ON CONFLICT no-op. */
-const returning = vi.hoisted(() => ({
-  current: [{ block_number: 1 }] as Row[],
-}));
-const writeFailure = vi.hoisted(() => ({ error: null as Error | null }));
+const returning = { current: [{ block_number: 1 }] as Row[] };
+const writeFailure = { error: null as Error | null };
 
-vi.mock("postgres", () => ({
-  default: () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function sql(strings: any, ...values: any[]) {
-      let text = strings[0];
-      for (let i = 0; i < values.length; i += 1) text += "?" + strings[i + 1];
-      sqlCalls.push({ text, values });
-      if (writeFailure.error) return Promise.reject(writeFailure.error);
-      return Promise.resolve(returning.current);
-    }
-    return sql;
+// The runner's whole D1 surface: prepare(text).bind(...).all().
+const fakeD1 = {
+  prepare(text: string) {
+    return {
+      bind(...values: unknown[]) {
+        return {
+          async all() {
+            sqlCalls.push({ text, values });
+            if (writeFailure.error) throw writeFailure.error;
+            return { results: returning.current };
+          },
+        };
+      },
+    };
   },
-}));
+};
 
 const {
   decodeBlockHeader,
@@ -44,7 +46,7 @@ const { rowFromBatch } = await import("../src/tao-usd-ingest.ts");
 
 const ETH_RPC_URL = "https://eth-rpc.example/test";
 const env = {
-  HYPERDRIVE: { connectionString: "postgres://mock" },
+  METAGRAPH_HEALTH_DB: fakeD1,
   ETH_RPC_URL,
 } as unknown as Parameters<typeof ingestTaoUsdIndex>[0];
 const ctx = { waitUntil() {} } as unknown as ExecutionContext;
@@ -166,13 +168,12 @@ describe("writeTaoUsdIndexRow", () => {
     response: LIVE_BATCH,
   })!;
 
-  it("writes the provenance as cast jsonb, not an opaque parameter", () => {
-    // With fetch_types:false postgres.js has no OIDs to infer from, so the
-    // explicit ::jsonb is what makes the column type unambiguous.
+  it("writes the provenance as JSON text into the pools column", () => {
+    // The D1 schema's `pools` is TEXT holding JSON -- the writer stringifies,
+    // and the bound value must be the parseable JSON text itself.
     return writeTaoUsdIndexRow(env, row).then(() => {
       expect(sqlCalls).toHaveLength(1);
       expect(sqlCalls[0].text).toContain("INSERT INTO tao_usd_index");
-      expect(sqlCalls[0].text).toContain("::jsonb");
       expect(sqlCalls[0].text).toContain(
         "ON CONFLICT (block_number, observed_at) DO NOTHING",
       );
@@ -206,7 +207,7 @@ describe("the ingestion tick", () => {
     const { fetchMock } = stubRpc([]);
     await expect(
       ingestTaoUsdIndex({
-        HYPERDRIVE: env.HYPERDRIVE,
+        METAGRAPH_HEALTH_DB: fakeD1,
       } as unknown as typeof env),
     ).resolves.toEqual({
       ok: false,
