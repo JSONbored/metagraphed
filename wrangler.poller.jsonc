@@ -12,13 +12,13 @@
       "class_name": "PollerContainer",
       "image": "./apps/indexer-rs/Dockerfile.poller",
       "max_instances": 1,
-      "instance_type": "basic"
-    }
+      "instance_type": "basic",
+    },
   ],
   "durable_objects": {
-    "bindings": [{ "name": "POLLER", "class_name": "PollerContainer" }]
+    "bindings": [{ "name": "POLLER", "class_name": "PollerContainer" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PollerContainer"] }],
   "triggers": { "crons": ["*/5 * * * *"] },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
 }
