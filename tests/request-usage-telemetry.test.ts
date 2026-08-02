@@ -70,6 +70,46 @@ describe("usageRouteLabel", () => {
     assert.equal(label("/mcp/session"), null);
   });
 
+  // #8996: the auth surface had no usage telemetry at all, because none of it
+  // lives under /api/v1/. ADR 0027 established that /mcp is a live OAuth 2.1
+  // protected resource and that authentication buys throughput rather than
+  // reach — and the next question that invites is "does anyone actually
+  // authenticate?", which was unanswerable.
+  test("labels the OAuth auth surface", () => {
+    assert.equal(label("/authorize"), "oauth-authorize");
+    assert.equal(label("/oauth/callback/github"), "oauth-callback");
+    assert.equal(
+      label("/.well-known/oauth-protected-resource"),
+      "oauth-protected-resource",
+    );
+    assert.equal(
+      label("/.well-known/oauth-protected-resource/mcp"),
+      "oauth-protected-resource",
+    );
+    assert.equal(
+      label("/.well-known/oauth-authorization-server"),
+      "oauth-authorization-server",
+    );
+  });
+
+  // A CLOSED LIST, not a `/.well-known/` prefix. A prefix would also sweep in
+  // the agent-tools and server-card documents, which are crawler traffic in the
+  // thousands per day — and this project is ~30x over its PostHog free tier
+  // (#9004), so "instrument the auth surface" must not quietly become
+  // "instrument every crawler fetch". /health is out for the same reason: our
+  // own prober hits it every minute.
+  test("does NOT sweep in the crawler-facing discovery documents", () => {
+    for (const p of [
+      "/.well-known/mcp/server-card.json",
+      "/.well-known/agent-tools/index.json",
+      "/.well-known/agent-tools/openai.json",
+      "/.well-known/api-catalog",
+      "/health",
+    ]) {
+      assert.equal(label(p), null, p);
+    }
+  });
+
   test("skips traffic that is not API usage", () => {
     assert.equal(label("/"), null);
     assert.equal(label("/favicon.ico"), null);
