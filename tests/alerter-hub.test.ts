@@ -1912,3 +1912,116 @@ test("deliverAlertMatch: webpush refuses a stored subscription with an unusable 
   // Nothing was ever sent.
   assert.equal(fetchFn.mock.calls.length, 0);
 });
+
+// --- #8997: delivery-failure telemetry ---------------------------------------
+//
+// This class had no telemetry at all, along with the other three Durable
+// Objects. A delivery hub that silently stops delivering is the classic DO
+// failure, and it was invisible.
+//
+// FAILURES ONLY, deliberately. evaluate() runs once per chain event, so a
+// per-evaluation (or even per-delivery) event would scale with chain activity
+// on a project already ~33x over its PostHog free tier (#9004). A failed
+// delivery is bounded by how often an endpoint is actually broken.
+
+function captureTelemetry() {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  return {
+    posted,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+const TELEMETRY_ENV = { POSTHOG_PROJECT_TOKEN: "phc_test_token" };
+
+test("#8997: a FAILED delivery emits one usage_event", async () => {
+  const cap = captureTelemetry();
+  try {
+    const deliver = vi.fn().mockResolvedValue(false);
+    const hub = new AlerterHub(STATE, mockEnv(TELEMETRY_ENV), { deliver });
+    hub.triggers = [triggerRow({ netuid: 7 })];
+    hub.triggersLoadedAt = Date.now();
+    await hub.evaluate({ table: "account_events", netuid: 7 });
+
+    const usage = cap.posted.filter(
+      (p) => (p.body as Row).event === "usage_event",
+    );
+    assert.equal(usage.length, 1);
+    const props = (usage[0].body as Row).properties as Row;
+    assert.equal(props.route, "alerter-hub:deliver");
+    assert.equal(props.ok, false);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: a REJECTED delivery counts as a failure too", async () => {
+  const cap = captureTelemetry();
+  try {
+    const deliver = vi
+      .fn()
+      .mockRejectedValue(new Error("endpoint unreachable"));
+    const hub = new AlerterHub(STATE, mockEnv(TELEMETRY_ENV), { deliver });
+    hub.triggers = [triggerRow({ netuid: 7 })];
+    hub.triggersLoadedAt = Date.now();
+    await hub.evaluate({ table: "account_events", netuid: 7 });
+
+    const usage = cap.posted.filter(
+      (p) => (p.body as Row).event === "usage_event",
+    );
+    assert.equal(usage.length, 1);
+    assert.equal(
+      ((usage[0].body as Row).properties as Row).route,
+      "alerter-hub:deliver",
+    );
+  } finally {
+    cap.restore();
+  }
+});
+
+// The half that keeps this affordable: a SUCCESSFUL delivery is silent.
+test("#8997: a successful delivery emits nothing", async () => {
+  const cap = captureTelemetry();
+  try {
+    const deliver = vi.fn().mockResolvedValue(true);
+    const hub = new AlerterHub(STATE, mockEnv(TELEMETRY_ENV), { deliver });
+    hub.triggers = [
+      triggerRow({ id: "1", netuid: 7 }),
+      triggerRow({ id: "2", netuid: 7 }),
+    ];
+    hub.triggersLoadedAt = Date.now();
+    await hub.evaluate({ table: "account_events", netuid: 7 });
+
+    assert.deepEqual(
+      cap.posted.filter((p) => (p.body as Row).event === "usage_event"),
+      [],
+    );
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#8997: telemetry never fails the evaluation", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("posthog unreachable");
+  }) as unknown as typeof fetch;
+  try {
+    const deliver = vi.fn().mockResolvedValue(false);
+    const hub = new AlerterHub(STATE, mockEnv(TELEMETRY_ENV), { deliver });
+    hub.triggers = [triggerRow({ netuid: 7 })];
+    hub.triggersLoadedAt = Date.now();
+    const result = await hub.evaluate({ table: "account_events", netuid: 7 });
+    // ChainFirehoseHub's broadcast() awaits this — it must still resolve.
+    assert.equal(result.matched, 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
