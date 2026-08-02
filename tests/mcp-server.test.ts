@@ -210,9 +210,16 @@ describe("MCP tool registry", () => {
         assert.ok(allowed.has(key), `${def.name}: unexpected key ${key}`);
       }
       assert.ok(def.name && def.title && def.description && def.inputSchema);
-      // Every tool is read-only with no side effects (clients may auto-run).
-      assert.equal(def.annotations.readOnlyHint, true, `${def.name}`);
-      assert.equal(def.annotations.destructiveHint, false, `${def.name}`);
+      // #8964: every tool EXCEPT call_subnet_surface is read-only with no side
+      // effects, so clients may auto-run it. call_subnet_surface proxies a
+      // caller-supplied method, body, and credential to a third-party host and
+      // is annotated accordingly — this assertion previously claimed otherwise
+      // for all 207 tools, which is the defect that issue fixed. Its full
+      // annotation block is pinned in tests/mcp-tool-annotations.test.ts.
+      if (def.name !== "call_subnet_surface") {
+        assert.equal(def.annotations.readOnlyHint, true, `${def.name}`);
+        assert.equal(def.annotations.destructiveHint, false, `${def.name}`);
+      }
       // Every tool declares a compilable object outputSchema for its structuredContent.
       assert.equal(
         typeof def.outputSchema,

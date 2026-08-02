@@ -188,6 +188,7 @@ import {
   recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpToolCallEvent,
+  recordMcpToolsListEvent,
   recordUsageEvent,
 } from "./usage-telemetry.ts";
 import {
@@ -1366,10 +1367,19 @@ interface McpCtx {
   // for every anonymous call -- recordX's own `deps.distinctId ?? <anonymous
   // fallback>` handles that case, this module never invents a fallback itself.
   distinctId?: string;
+  // #8963: transport-level client identity, parsed from the User-Agent in
+  // buildContext. This server is stateless and session-optional, so for the
+  // ~80% of production tool calls that arrive with no Mcp-Session-Id there is
+  // nothing to link them back to an initialize handshake -- the User-Agent is
+  // the only client signal a tools/call request carries. Always tagged as
+  // `user_agent`-sourced when emitted, never presented as MCP clientInfo.
+  clientName?: string;
+  clientVersion?: string;
   recordUsageEvent?: AnyFn;
   chainSignersCache?: Map<string, unknown>;
   recordMcpToolCallEvent?: AnyFn;
   recordMcpInitializeEvent?: AnyFn;
+  recordMcpToolsListEvent?: AnyFn;
   recordExceptionEvent?: AnyFn;
 }
 
@@ -1551,12 +1561,116 @@ export const MCP_REGISTRY_META = {
 // tools are read-only registry queries with no side effects, so a client may
 // safely auto-run them. openWorldHint is true — they reflect live, externally-
 // controlled subnet state.
+// ─── Tool behaviour annotations (#8964) ────────────────────────────────────
+//
+// Annotations are not decoration: agent harnesses read them to decide what is
+// safe to invoke without asking a human first. Until #8964 every one of the
+// 207 tools shared a single block claiming readOnly + non-destructive +
+// idempotent + OPEN-world, which was wrong in both directions —
+// `call_subnet_surface` advertised itself read-only while forwarding
+// caller-supplied POST/PUTs and credentials to third-party hosts, and 187
+// tools that never leave our own R2/KV/DATA_API claimed open-world, diluting
+// the one signal an agent could use to tell "reads our registry" from "talks
+// to the internet".
+//
+// The three blocks below are the complete vocabulary; every tool resolves to
+// exactly one of them via TOOL_ANNOTATIONS_BY_NAME plus the closed-world
+// default. They are declared centrally rather than inline on each of the 207
+// literals deliberately: these are safety claims, and having every non-default
+// claim reviewable in one screen is worth more than co-locating each with its
+// handler. A tool may still override inline (`annotations:` on its own
+// definition) and that always wins.
+
+/** Reads only metagraphed's own storage (R2 artifacts, KV, the DATA_API
+ * service binding). The honest default — true for 187 of 207 tools. */
 const READ_ONLY_TOOL_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+/** Read-only in effect, but reaches a host we do not operate — the public
+ * Bittensor RPC, Workers AI/Vectorize, a third-party RPC pool, or a
+ * catalogued subnet surface. Still safe to call unprompted; an agent that
+ * cares about egress, latency, or somebody else's rate limits needs to know. */
+const OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
   openWorldHint: true,
 };
+
+/** Proxies a caller-controlled request — arbitrary method, body, and
+ * credential — to a third-party host. Not read-only, not idempotent, and
+ * capable of destructive effect on a system that is not ours. */
+const PROXY_WRITE_TOOL_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+/**
+ * The 20 tools that leave metagraphed infrastructure. Everything absent from
+ * this map is closed-world read-only.
+ *
+ * KEEP THIS IN SYNC when adding a tool that calls `fetch` against anything
+ * other than our own bindings — tests/mcp-tool-annotations.test.ts fails the
+ * build if a tool reaches a known outbound helper without being listed here.
+ */
+const TOOL_ANNOTATIONS_BY_NAME: Record<
+  string,
+  typeof READ_ONLY_TOOL_ANNOTATIONS
+> = {
+  // Caller-supplied method + body + credential forwarded to a third-party
+  // subnet host (src/call-subnet-surface.ts). The reason #8964 exists.
+  call_subnet_surface: PROXY_WRITE_TOOL_ANNOTATIONS,
+
+  // Live POST to the public Finney RPC entrypoint on a KV-cache miss.
+  get_account_balance: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_account_children: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_account_parents: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_account_root_claim: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_account_snapshot: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_evm_address_mapping: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_network_parameters: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_randomness_status: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_subnet_burn: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_subnet_lease: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_subnet_recycled: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_sudo_key: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // Two live RPC POSTs (mainnet + testnet) on a cache miss.
+  get_runtime: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // Postgres-shaped at this layer, but its DATA_API route resolves
+  // conviction rates via a live Finney RPC call (workers/data-api.ts).
+  get_subnet_conviction: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // Read-only method allowlist, but POSTs to third-party operators' nodes.
+  call_rpc: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // Issues a real request to the catalogued surface's own host.
+  verify_integration: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // Cloudflare Workers AI + Vectorize.
+  ask: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  semantic_search: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // Escape hatch: resolves the same live-RPC loaders as the get_* tools above.
+  query_graphql: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+};
+
+/** The annotation block one tool advertises. Inline `annotations:` wins, then
+ * the central table, then the closed-world read-only default. */
+export function annotationsForTool(tool: {
+  name: string;
+  annotations?: typeof READ_ONLY_TOOL_ANNOTATIONS;
+}) {
+  return (
+    tool.annotations ||
+    TOOL_ANNOTATIONS_BY_NAME[tool.name] ||
+    READ_ONLY_TOOL_ANNOTATIONS
+  );
+}
+
+/** Exported for the annotation regression test. */
+export const OPEN_WORLD_TOOL_NAMES = Object.keys(TOOL_ANNOTATIONS_BY_NAME);
 
 export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
@@ -11268,8 +11382,10 @@ export function listToolDefinitions() {
       // outputSchema (optional) lets a client validate the structuredContent the
       // tool returns; included only when the tool declares one.
       ...(outputSchema ? { outputSchema } : {}),
-      // Behaviour hints: all tools are read-only by default; a tool may override.
-      annotations: tool.annotations || READ_ONLY_TOOL_ANNOTATIONS,
+      // Behaviour hints (#8964): closed-world read-only by default; the 20
+      // tools that leave our infrastructure are named in
+      // TOOL_ANNOTATIONS_BY_NAME, and a tool may still override inline.
+      annotations: annotationsForTool(tool as { name: string }),
     };
   });
 }
@@ -11885,8 +12001,35 @@ async function callTool(params: Row, ctx: McpCtx) {
     sessionId: ctx?.sessionId,
     parameters: params?.arguments,
     response: result?.structuredContent,
+    // #8963: the same structuredContent.error.code usage_event already
+    // threads above, projected onto PostHog's $mcp_error_type by
+    // classifyMcpErrorType inside the recorder. Omitted on success.
+    ...(result.isError
+      ? { errorCode: result?.structuredContent?.error?.code }
+      : {}),
+    ...mcpAttributionFor(ctx),
   });
   return result;
+}
+
+// #8963: the client/server attribution every $mcp_* event carries. Server
+// identity comes from the same constants that feed serverInfo and
+// server.json, so an event can always be pinned to the deploy that emitted
+// it. The client half is User-Agent-derived (see McpCtx.clientName) and is
+// always labelled as such -- an MCP-declared clientInfo name only exists on
+// the initialize handshake, which most tool calls have no session to reach.
+function mcpAttributionFor(ctx: McpCtx) {
+  return {
+    serverName: MCP_SERVER_INFO.name,
+    serverVersion: MCP_SERVER_VERSION,
+    ...(ctx?.clientName
+      ? {
+          clientName: ctx.clientName,
+          clientVersion: ctx.clientVersion,
+          clientNameSource: "user_agent" as const,
+        }
+      : {}),
+  };
 }
 
 /**
@@ -11912,6 +12055,22 @@ function scheduleToolUsageEvent(ctx: McpCtx, event: Row) {
 function scheduleMcpToolCallEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpToolCallEvent ?? recordMcpToolCallEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+// #8963: tools/list was previously the one MCP method that produced no
+// telemetry at all -- a registry crawler that only enumerated the catalogue
+// was indistinguishable from no traffic. Same waitUntil/no-throw discipline
+// as every scheduler here.
+function scheduleMcpToolsListEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record = ctx?.recordMcpToolsListEvent ?? recordMcpToolsListEvent;
     const pending = Promise.resolve(
       record(ctx?.env, event, { distinctId: ctx?.distinctId }),
     ).catch(() => false);
@@ -12106,15 +12265,25 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           clientName: params?.clientInfo?.name,
           clientVersion: params?.clientInfo?.version,
           sessionId: ctx?.sessionId,
+          serverName: MCP_SERVER_INFO.name,
+          serverVersion: MCP_SERVER_VERSION,
         });
         return isNotification ? null : rpcResult(id, result);
       }
       case "ping":
         return isNotification ? null : rpcResult(id, {});
-      case "tools/list":
-        return isNotification
-          ? null
-          : rpcResult(id, { tools: listToolDefinitions() });
+      case "tools/list": {
+        const tools = listToolDefinitions();
+        // Recorded for a notification too: the discovery happened either way,
+        // and dropping it would undercount exactly the crawler traffic this
+        // event exists to make visible.
+        scheduleMcpToolsListEvent(ctx, {
+          toolCount: tools.length,
+          sessionId: ctx?.sessionId,
+          ...mcpAttributionFor(ctx),
+        });
+        return isNotification ? null : rpcResult(id, { tools });
+      }
       case "tools/call": {
         const result = await callTool(params, ctx);
         return isNotification ? null : rpcResult(id, result);
@@ -12210,11 +12379,16 @@ function buildContext(request: Request, env: Env, deps: Row) {
     typeof githubLogin === "string" && githubLogin
       ? `github:${githubLogin}`
       : undefined;
+  const { clientName, clientVersion } = parseUserAgentClient(
+    request.headers.get("user-agent"),
+  );
   return {
     env,
     domain,
     sessionId: isValidMcpSessionId(rawSessionId) ? rawSessionId : null,
     clientIp: mcpClientKey(request),
+    clientName,
+    clientVersion,
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
     // The Worker's ExecutionContext, when the caller has one to give: only the
@@ -12231,6 +12405,7 @@ function buildContext(request: Request, env: Env, deps: Row) {
     // to exercise. Same test-injection convention as recordUsageEvent above.
     recordMcpToolCallEvent: deps.recordMcpToolCallEvent,
     recordMcpInitializeEvent: deps.recordMcpInitializeEvent,
+    recordMcpToolsListEvent: deps.recordMcpToolsListEvent,
     recordExceptionEvent: deps.recordExceptionEvent,
   };
 }
@@ -12256,6 +12431,36 @@ function jsonResponse(
 
 function mcpClientKey(request: Request) {
   return resolveClientIp(request);
+}
+
+// #8963: best-effort client identity from the User-Agent, for the tool calls
+// that carry no session to link back to an initialize handshake. MCP HTTP
+// clients send a conventional `name/version` first token (claude-code/2.1.220,
+// mcporter/0.12.3, python-httpx/0.27.0), so the first token before any space
+// is split on its last "/". Anything that doesn't fit that shape yields a name
+// with no version rather than a guess. Capped well under the telemetry
+// module's own label cap so a hostile UA can't dominate a payload.
+const MAX_USER_AGENT_CLIENT_CHARS = 80;
+
+export function parseUserAgentClient(userAgent: unknown): {
+  clientName?: string;
+  clientVersion?: string;
+} {
+  if (typeof userAgent !== "string") return {};
+  const token = userAgent.trim().split(/\s+/)[0] ?? "";
+  if (!token) return {};
+  const slash = token.lastIndexOf("/");
+  // A leading "/" (or a bare "/") leaves no name -- treat the whole token as
+  // the name rather than emitting an empty one.
+  const name = slash > 0 ? token.slice(0, slash) : token;
+  const version = slash > 0 ? token.slice(slash + 1) : "";
+  if (!name) return {};
+  return {
+    clientName: name.slice(0, MAX_USER_AGENT_CLIENT_CHARS),
+    ...(version
+      ? { clientVersion: version.slice(0, MAX_USER_AGENT_CLIENT_CHARS) }
+      : {}),
+  };
 }
 
 async function enforceMcpRateLimit(

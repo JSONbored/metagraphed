@@ -6,11 +6,13 @@ import {
   POSTHOG_PROJECT_TOKEN_ENV,
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
+  classifyMcpErrorType,
   isUsageTelemetryConfigured,
   recordAiGenerationEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpToolCallEvent,
+  recordMcpToolsListEvent,
   recordUsageEvent,
   resolvePostHogHost,
   usageEventProperties,
@@ -667,6 +669,10 @@ describe("recordMcpInitializeEvent", () => {
     assert.equal(calls[0].body.event, "$mcp_initialize");
     assert.deepEqual(calls[0].body.properties, {
       $mcp_client_name: "claude-code",
+      // #8963: the handshake is the one place an MCP-declared client identity
+      // is authoritative, so it is labelled as such rather than as the
+      // User-Agent guess a tool call has to fall back on.
+      $mcp_client_name_source: "client_info",
       $mcp_client_version: "1.2.3",
       $session_id: "sess-1",
     });
@@ -1348,6 +1354,233 @@ describe("recordAiGenerationEvent", () => {
     globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
     try {
       const recorded = await recordAiGenerationEvent(CONFIGURED, BASE);
+      assert.equal(recorded, true);
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+// Shared by the #8963 blocks below — same shape as the per-describe constant
+// the earlier suites declare locally.
+const CONFIGURED_8963 = {
+  [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+} as unknown as Env;
+
+// ─── #8963: the completed $mcp_* property contract ─────────────────────────
+
+describe("classifyMcpErrorType", () => {
+  // Every code observed on a real failing tool call in production over the 7
+  // days to 2026-08-01, with the bucket it must land in. This is the list the
+  // issue's acceptance criterion is about: a breakdown by $mcp_error_type has
+  // to be meaningful for the failures that actually happen, not for a
+  // hypothetical vocabulary.
+  const PRODUCTION_CODES: [string, string][] = [
+    ["not_found", "missing_context"],
+    ["tier_unavailable", "api_5xx"],
+    ["data_rate_limited", "rate_limited"],
+    ["invalid_params", "validation"],
+    ["upstream_unavailable", "api_5xx"],
+    ["unsupported_content_type", "validation"],
+    ["auth_required", "permission"],
+    ["emission_pipeline_unavailable", "api_5xx"],
+    ["rpc_invalid_request", "validation"],
+    ["rpc_method_blocked", "permission"],
+    ["internal_error", "internal"],
+    ["unknown_tool", "validation"],
+  ];
+
+  test("classifies every error code seen in production", () => {
+    for (const [code, expected] of PRODUCTION_CODES) {
+      assert.equal(classifyMcpErrorType(code), expected, `code ${code}`);
+    }
+  });
+
+  test("classifies the long tail by naming convention", () => {
+    // These reach toolError from helper modules that mint their own codes and
+    // are the reason the classifier is not a hand-maintained lookup alone.
+    assert.equal(
+      classifyMcpErrorType("account_balances_sync_unavailable"),
+      "api_5xx",
+    );
+    assert.equal(classifyMcpErrorType("provider_unreachable"), "api_5xx");
+    assert.equal(
+      classifyMcpErrorType("webhook_subscription_rate_limited"),
+      "rate_limited",
+    );
+    assert.equal(classifyMcpErrorType("invalid_direction"), "validation");
+    assert.equal(
+      classifyMcpErrorType("provider_not_configured"),
+      "missing_context",
+    );
+  });
+
+  test("rate-limit codes win over the unavailable rule", () => {
+    // rpc_state_query_rate_limited matches neither rule cleanly if the 5xx
+    // pattern is checked first — precedence is load-bearing here.
+    assert.equal(
+      classifyMcpErrorType("rpc_state_query_rate_limited"),
+      "rate_limited",
+    );
+  });
+
+  test("never leaves a failure unclassified", () => {
+    for (const value of [
+      undefined,
+      null,
+      "",
+      "   ",
+      42,
+      "something_nobody_has_written_yet",
+    ]) {
+      assert.equal(classifyMcpErrorType(value), "internal");
+    }
+  });
+});
+
+describe("recordMcpToolCallEvent — #8963 properties", () => {
+  test("stamps error type, error code, client and server attribution", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      {
+        toolName: "get_subnet_ownership_history",
+        isError: true,
+        durationMs: 37,
+        errorCode: "tier_unavailable",
+        clientName: "claude-code",
+        clientVersion: "2.1.220",
+        clientNameSource: "user_agent",
+        serverName: "metagraphed",
+        serverVersion: "1.78.12",
+      } as McpToolCallEvent,
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const props = calls[0].body.properties;
+    assert.equal(props.$mcp_error_type, "api_5xx");
+    assert.equal(props.$mcp_error_code, "tier_unavailable");
+    assert.equal(props.$mcp_client_name, "claude-code");
+    assert.equal(props.$mcp_client_name_source, "user_agent");
+    assert.equal(props.$mcp_client_version, "2.1.220");
+    assert.equal(props.$mcp_server_name, "metagraphed");
+    assert.equal(props.$mcp_server_version, "1.78.12");
+    assert.equal(props.$mcp_duration_ms, 37);
+  });
+
+  test("emits no error classification on a successful call", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      { toolName: "get_subnet", isError: false, durationMs: 5 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const props = calls[0].body.properties;
+    assert.ok(!("$mcp_error_type" in props));
+    assert.ok(!("$mcp_error_code" in props));
+  });
+
+  test("classifies an error with no code rather than dropping it", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      { toolName: "get_subnet", isError: true, durationMs: 5 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const props = calls[0].body.properties;
+    assert.equal(props.$mcp_error_type, "internal");
+    assert.ok(!("$mcp_error_code" in props));
+  });
+
+  // Cloudflare Workers freeze Date.now() between I/O operations, so a call
+  // that rejects before doing any I/O measures exactly 0 — a fabricated value,
+  // not a fast call. 15% of production error events carried this zero.
+  test("omits duration entirely when the clock never advanced", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      { toolName: "get_subnet", isError: true, durationMs: 0 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(!("$mcp_duration_ms" in calls[0].body.properties));
+  });
+
+  test("still records a genuine sub-millisecond duration once rounded up", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      { toolName: "get_subnet", isError: false, durationMs: 0.6 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$mcp_duration_ms, 1);
+  });
+});
+
+describe("recordMcpToolsListEvent", () => {
+  test("posts $mcp_tools_list with the advertised tool count", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordMcpToolsListEvent(
+      CONFIGURED_8963,
+      {
+        toolCount: 207,
+        sessionId: " sess-9 ",
+        clientName: "mcpregistry",
+        clientNameSource: "user_agent",
+        serverName: "metagraphed",
+        serverVersion: "1.78.12",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls[0].body.event, "$mcp_tools_list");
+    assert.deepEqual(calls[0].body.properties, {
+      $mcp_tools_count: 207,
+      $mcp_client_name: "mcpregistry",
+      $mcp_client_name_source: "user_agent",
+      $mcp_server_name: "metagraphed",
+      $mcp_server_version: "1.78.12",
+      $session_id: "sess-9",
+    });
+  });
+
+  test("omits a nonsensical tool count", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolsListEvent(
+      CONFIGURED_8963,
+      { toolCount: Number.NaN },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(!("$mcp_tools_count" in calls[0].body.properties));
+  });
+
+  test("is a no-op without a configured project token", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordMcpToolsListEvent(
+      mockEnv({}),
+      { toolCount: 1 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls.length, 0);
+  });
+
+  test("swallows a transport failure", async () => {
+    const recorded = await recordMcpToolsListEvent(
+      CONFIGURED_8963,
+      { toolCount: 1 },
+      { fetch: fakeFetch({ throws: true }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls: Row[] = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      const recorded = await recordMcpToolsListEvent(CONFIGURED_8963, {
+        toolCount: 1,
+      });
       assert.equal(recorded, true);
       assert.equal(calls.length, 1);
     } finally {
