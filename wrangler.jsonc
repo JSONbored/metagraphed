@@ -271,14 +271,25 @@
     // them indiscriminately, so an unsampled firehose takes $exception down
     // with it. Sampling the firehose is what keeps the error inbox alive.
     //
-    // At the rates below:
-    //   block-detail   465K x 0.01 = ~4.7K/day
-    //   everything else 80K x 0.2  = ~16K/day
-    //   -> ~21K/day = ~630K/month, plus ~60K/month of unsampled MCP events
-    //      and ~6K/month of $exception: ~700K/month, ~30% under the tier.
-    // Re-derive these two numbers when the traffic shape moves again (it has
-    // twice: chain-firehose-ingest, then block-detail).
-    "POSTHOG_USAGE_SAMPLE_RATE": "0.2",
+    // RE-TUNED 2026-08-02 against MEASURED post-sampling volume, not the
+    // pre-sampling estimate. The first pass used 0.2 and projected ~630K/month;
+    // one hour live measured 29K events/day = 0.87M/month for usage_event
+    // ALONE, which lands on the ceiling once MCP and $exception are added.
+    //
+    // The estimate was wrong in a specific way worth recording: it sized the
+    // tail from a 6-hour window taken DURING the box quiesce, when
+    // chain-firehose-ingest traffic was absent. `block-detail` behaved exactly
+    // as designed (79 captures standing in for 7,900 requests), but a dozen
+    // tail routes at ~1-3K events/day each -- /api/v1/chain/stream,
+    // block-extrinsics, block-chain-events, health, subnets, block-events,
+    // subnet-ohlc -- add up to far more than the 80K/day assumed.
+    //
+    // At 0.05 the same measured traffic projects to ~10.8K/day = ~325K/month,
+    // plus ~60K/month unsampled MCP and a few K of $exception: ~400K/month,
+    // roughly 60% under the tier with room for growth. A tail route still
+    // yields hundreds of captures a day, which is ample for trend work.
+    // Re-derive from measurement -- not estimate -- when traffic shape moves.
+    "POSTHOG_USAGE_SAMPLE_RATE": "0.05",
     "POSTHOG_USAGE_SAMPLE_RATES": "{\"block-detail\":0.01}",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
