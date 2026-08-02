@@ -181,7 +181,9 @@ export interface CaptureResult {
   watermark: number;
   /** How far behind the head the watermark is once the tick settles. */
   behind: number;
-  /** Present when the tick stopped early; the run is retried next tick. */
+  /** Present when the tick stopped early; the run is retried next tick.
+   * `stoppedAt` and `reason` are always set together — a stop without a
+   * recorded cause would be indistinguishable from a clean finish. */
   stoppedAt?: number;
   reason?: string;
 }

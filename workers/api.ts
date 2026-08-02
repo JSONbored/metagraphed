@@ -344,6 +344,7 @@ import {
   semanticSearch,
 } from "../src/ai-search.ts";
 import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
+import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
 import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
 import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
@@ -388,6 +389,7 @@ import {
   UPGRADE_RADAR_CRON,
   EMBEDDING_SYNC_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
+  RAW_CAPTURE_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
@@ -1321,6 +1323,7 @@ function cronLabel(cron: string): string {
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
+  if (cron === RAW_CAPTURE_CRON) return "raw-capture";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
     return "operational-surfaces-sync";
   if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) return "schema-snapshots-sync";
@@ -1464,6 +1467,13 @@ async function dispatchScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === RAW_CAPTURE_CRON) {
+    // Gap-free capture of raw extrinsic/event bytes into R2, replacing what
+    // the decommissioned indexer box used to produce. Durable-first on
+    // purpose: the bytes land before anything decodes them, because decode is
+    // re-runnable and a missed block is not. See src/raw-chain-capture.ts.
+    return runRawCaptureSync(env);
   }
   if (cron === GITHUB_SIGNALS_SYNC_CRON) {
     // #233 pattern: daily GitHub dev-signal capture written straight to the

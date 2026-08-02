@@ -46,6 +46,12 @@ export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
 // that collides with none of the crons above. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const GITHUB_SIGNALS_SYNC_CRON = "20 6 * * *";
+// Raw chain capture (extrinsics/events bytes -> R2), every 5 minutes. The
+// chain produces ~5 blocks/minute and a tick captures up to 150, so this
+// out-runs head by ~6x -- a backlog DRAINS rather than merely holding, which
+// is what lets the lane heal an outage instead of just surviving one. See
+// src/raw-chain-capture.ts for the no-gap guarantee itself.
+export const RAW_CAPTURE_CRON = "*/5 * * * *";
 
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2
