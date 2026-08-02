@@ -3444,6 +3444,102 @@ export interface ChainRegistrations {
   subnets: ChainRegistrationsSubnet[];
 }
 
+/**
+ * The v440 emission pipeline from GET /api/v1/chain/emission-pipeline (#8744).
+ *
+ * Every share here is a POINT SAMPLE at `chain_state.block`, not a window
+ * average — the chain publishes the pipeline's inputs, not its output, so most
+ * of these fields are reconstructed rather than read (`field_sources` says
+ * which is which). `verification.verified: false` means the reconstruction did
+ * not reproduce the chain and the numbers must not be presented as fact.
+ */
+export interface EmissionPipelineChainState {
+  block: number | null;
+  block_hash: string | null;
+  emission_bar_quantile: number | null;
+  emission_gate_bar: number | null;
+  emission_gate_exponent: number | null;
+  total_issuance_tao: number | null;
+}
+
+/**
+ * One subnet's decomposition. Three genuinely distinct states share this
+ * shape and must not be conflated in the UI:
+ *
+ * - **eligible** — `ineligible_reason: null`, `emission_enabled: true`.
+ * - **disabled** — `emission_enabled: false`. Receives nothing BY SWITCH, which
+ *   is not the same as competing and receiving little.
+ * - **ineligible** — `ineligible_reason` set (`root`, `never_emitted`). Outside
+ *   the pipeline entirely, so `final_share`/`distance_to_bar` are null rather
+ *   than zero. Root is `emission_enabled: true` AND ineligible, so the two
+ *   axes are independent.
+ */
+export interface EmissionPipelineSubnet {
+  netuid: number;
+  ineligible_reason: string | null;
+  /** Stage 1: the published price share (`emission_share`), before any gate. */
+  emission_share: number | null;
+  miner_burned: number | null;
+  weighted_share: number | null;
+  gated_share: number | null;
+  emission_enabled: boolean;
+  /** The share of block emission actually received. Null when ineligible. */
+  final_share: number | null;
+  /** final_share − emission_share: what the pipeline gave or took. */
+  gate_delta: number | null;
+  distance_to_bar: number | null;
+  /** TAO arriving as pool liquidity injection. */
+  tao_in_emission: number | null;
+  /** TAO arriving as chain buys. Zero here does NOT mean "receiving nothing". */
+  excess_tao: number | null;
+  tao_total: number | null;
+  liquidity_fraction: number | null;
+  alpha_in_emission: number | null;
+  alpha_out_emission: number | null;
+}
+
+export interface EmissionPipelineAggregate {
+  /** Subnets inside the pipeline — excludes every `ineligible_reason` row,
+   * including one that is ALSO emission-disabled, which is why this plus
+   * `disabled_count` need not equal the row count. */
+  eligible_count: number | null;
+  disabled_count: number | null;
+  tao_in_emission: number | null;
+  excess_tao: number | null;
+  tao_total: number | null;
+  liquidity_fraction: number | null;
+  total_final_share: number | null;
+}
+
+export interface EmissionPipelineCheck {
+  name: string;
+  ok: boolean;
+  detail: string | null;
+}
+
+export interface EmissionPipelineVerification {
+  verified: boolean;
+  checks: EmissionPipelineCheck[];
+  subnet_share_tolerance: number | null;
+  aggregate_tolerance_rao: string | null;
+}
+
+export interface EmissionPipelineFieldSource {
+  kind: "measured" | "reconstructed";
+  storage: string | null;
+}
+
+export interface EmissionPipeline {
+  schema_version: number;
+  chain_state: EmissionPipelineChainState;
+  block_emission_tao: number | null;
+  block_emission_halvings: number | null;
+  subnets: EmissionPipelineSubnet[];
+  aggregate: EmissionPipelineAggregate;
+  verification: EmissionPipelineVerification;
+  field_sources: Record<string, EmissionPipelineFieldSource>;
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;

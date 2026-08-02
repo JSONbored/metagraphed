@@ -514,6 +514,11 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     subtitle: "Stake flow, concentration and emission trends across the network",
     eyebrow: "Explorer",
   },
+  "/chain/emissions": {
+    title: "Emissions",
+    subtitle: "Where each block's TAO goes, decomposed per subnet",
+    eyebrow: "Explorer",
+  },
   "/chain/blocks": {
     title: "Blocks",
     subtitle: "Recent Bittensor blocks, extrinsics and events",
