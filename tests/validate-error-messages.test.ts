@@ -21,10 +21,33 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, afterEach, describe, test } from "vitest";
+import { afterAll, afterEach, describe, test, vi } from "vitest";
 import { listJsonFiles, readJson } from "../scripts/lib.ts";
 import { createRepoSandbox } from "./helpers/repo-sandbox.ts";
 import type { Row } from "./row-type.ts";
+
+// Every test here spawns a validator as a BLOCKING subprocess, so its wall
+// time is whatever a loaded machine gives it -- not what the work costs.
+// Measured on a 12-core machine: `node scripts/validate-schemas.ts` takes
+// ~2.0s idle and **7.2-7.4s** under 4x CPU oversubscription, which is what a
+// full parallel suite looks like. Vitest's 5s default sits inside that band,
+// so this file failed a full local `npm test` with a bare "Test timed out in
+// 5000ms" while passing in ~1.2s when run alone.
+//
+// CI never saw it: `test:ci` (scripts/run-ci-tests.ts) passes
+// `--testTimeout=30000` for exactly this class of test, and vitest.config.ts's
+// comment says so. But `npm test` is plain `vitest run`, as is running one
+// file in an editor -- so the timeout belonged to the runner invocation rather
+// than to the tests that need it, and every other way of running the suite was
+// quietly wrong.
+//
+// Declaring it here makes the file correct under any runner, and matches
+// tests/public-safety.test.ts's SCANNER_TEST_TIMEOUT_MS precedent. 30s is what
+// CI already grants -- ~4x the measured loaded worst case -- so this changes no
+// CI behaviour, it just stops depending on a flag only one npm script passes.
+const VALIDATOR_TEST_TIMEOUT_MS = 30_000;
+
+vi.setConfig({ testTimeout: VALIDATOR_TEST_TIMEOUT_MS });
 
 // The validate-schemas cases below mutate a real registry/subnets file in place
 // (the script re-scans the whole registry, so there is no isolated-fixture
