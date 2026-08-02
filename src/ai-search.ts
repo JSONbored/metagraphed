@@ -13,7 +13,11 @@
 import type { StorageReadResult } from "../workers/storage.ts";
 import type { TieredRateLimitConfig } from "../workers/tiered-rate-limit.ts";
 import { buildTierPolicies } from "./api-tiers.ts";
-import { recordAiGenerationEvent } from "./usage-telemetry.ts";
+import {
+  recordAiDegradedEvent,
+  recordAiEmbeddingEvent,
+  recordAiGenerationEvent,
+} from "./usage-telemetry.ts";
 
 // Best free Workers AI models (verified available on the account):
 // - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
@@ -30,6 +34,11 @@ export const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 // (checked 2026-07-24) -- update alongside ASK_MODEL if the model ever changes.
 const ASK_PROVIDER = "cloudflare_workers_ai";
 const ASK_TRACE_NAME = "ask";
+// #8965: distinct trace names so the three AI entry points are separable in
+// PostHog. semantic_search embeds but never completes; embedding_sync is the
+// daily cron.
+const SEMANTIC_TRACE_NAME = "semantic_search";
+const EMBED_SYNC_TRACE_NAME = "embedding_sync";
 const ASK_MODEL_INPUT_USD_PER_MILLION = 0.27;
 const ASK_MODEL_OUTPUT_USD_PER_MILLION = 0.85;
 export const VECTORIZE_INDEX_NAME = "metagraphed-registry-v2";
@@ -107,11 +116,23 @@ export const AI_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
 // binding is not configured) -> allow. Never throws. Still used by the MCP AI
 // tool path (src/mcp-server.ts); the REST AI endpoints now use the tiered
 // AI_TIERED_RATE_LIMIT above via applyTieredRateLimit.
-export async function withinRateLimit(env: Env, key: string): Promise<boolean> {
+export async function withinRateLimit(
+  env: Env,
+  key: string,
+  surface?: string,
+): Promise<boolean> {
   if (!env?.AI_RATE_LIMITER?.limit) return true;
   try {
     const outcome = await env.AI_RATE_LIMITER.limit({ key });
-    return outcome?.success !== false;
+    const allowed = outcome?.success !== false;
+    // #8965: a refused caller was previously pure silence -- indistinguishable
+    // from nobody asking. Emitted as its own degraded-path event rather than a
+    // failed $ai_generation, because no model call happened and folding it into
+    // the generation error rate would misreport both errors and cost.
+    if (!allowed) {
+      await recordAiDegradedEvent(env, { reason: "rate_limited", surface });
+    }
+    return allowed;
   } catch {
     return true;
   }
@@ -318,9 +339,35 @@ export async function runEmbeddingSync(
   const removed = Object.keys(previous).filter((id) => !currentIds.has(id));
 
   let embedded = 0;
+  // #8965: one trace per sync run, one $ai_embedding per batch. Workers AI
+  // bills per call, so `inputCount` (the batch size) is what makes the daily
+  // cron's cost comparable to a single query-time embedding.
+  const syncTraceId = crypto.randomUUID();
   for (const batch of chunk(pending, EMBED_BATCH_SIZE)) {
+    const batchStartedAt = Date.now();
     const response = await env.AI.run(EMBED_MODEL, {
       text: batch.map((entry) => embeddingText(entry.doc)),
+    }).catch(async (error: unknown) => {
+      await recordAiEmbeddingEvent(env, {
+        provider: ASK_PROVIDER,
+        model: EMBED_MODEL,
+        traceId: syncTraceId,
+        traceName: EMBED_SYNC_TRACE_NAME,
+        latencyMs: Date.now() - batchStartedAt,
+        isError: true,
+        inputCount: batch.length,
+        error,
+      });
+      throw error;
+    });
+    await recordAiEmbeddingEvent(env, {
+      provider: ASK_PROVIDER,
+      model: EMBED_MODEL,
+      traceId: syncTraceId,
+      traceName: EMBED_SYNC_TRACE_NAME,
+      latencyMs: Date.now() - batchStartedAt,
+      isError: false,
+      inputCount: batch.length,
     });
     const data = Array.isArray(response?.data) ? response.data : [];
     // Upsert (and record the new hash for) ONLY entries that produced a valid
@@ -371,12 +418,47 @@ export async function runEmbeddingSync(
   };
 }
 
-async function embedQuery(env: Env, text: string): Promise<number[]> {
-  const response = await env.AI.run(EMBED_MODEL, { text: [text] });
+// #8965: one $ai_embedding per query-time embedding. `telemetry.traceId` is
+// what makes an `ask` read as a single trace — the same id is handed to the
+// $ai_generation that this vector's retrieval ultimately feeds, so PostHog
+// shows embedding → completion as one pipeline instead of two unrelated events.
+async function embedQuery(
+  env: Env,
+  text: string,
+  telemetry: { traceId?: string; traceName?: string; distinctId?: string } = {},
+): Promise<number[]> {
+  const startedAt = Date.now();
+  const record = (isError: boolean, error?: unknown) =>
+    recordAiEmbeddingEvent(
+      env,
+      {
+        provider: ASK_PROVIDER,
+        model: EMBED_MODEL,
+        traceId: telemetry.traceId,
+        traceName: telemetry.traceName,
+        latencyMs: Date.now() - startedAt,
+        isError,
+        inputCount: 1,
+        ...(error === undefined ? {} : { error }),
+      },
+      { distinctId: telemetry.distinctId },
+    );
+
+  const response = await env.AI.run(EMBED_MODEL, { text: [text] }).catch(
+    async (error: unknown) => {
+      await record(true, error);
+      throw error;
+    },
+  );
   const vector = response?.data?.[0];
   if (!Array.isArray(vector)) {
-    throw new Error("embedding model returned no vector");
+    const error = new Error("embedding model returned no vector");
+    // A malformed response is a failed embedding, not a successful one — the
+    // caller throws either way, and the event must agree.
+    await record(true, error);
+    throw error;
   }
+  await record(false);
   return vector;
 }
 
@@ -506,7 +588,9 @@ export async function semanticSearch(
     SEMANTIC_MAX_LIMIT,
   );
   const types = normalizeSemanticTypes(options.type);
-  const vector = await embedQuery(env, q);
+  const vector = await embedQuery(env, q, {
+    traceName: SEMANTIC_TRACE_NAME,
+  });
   const matches = await retrieveMatches(env, vector, limit, types);
   const results = matches.map(mapMatch);
   return { query: q, count: results.length, results, model: EMBED_MODEL };
@@ -646,7 +730,16 @@ export async function askQuestion(
   }
   const topK = clampLimit(options.topK, ASK_CONTEXT_COUNT, ASK_CONTEXT_COUNT);
   const types = normalizeSemanticTypes(options.type);
-  const vector = await embedQuery(env, q);
+  // #8965: one trace id spans the whole ask pipeline -- query embedding,
+  // Vectorize retrieval, and the completion below -- so PostHog renders it as
+  // the pipeline it is. Previously each $ai_generation minted its own id and
+  // the embedding emitted nothing at all.
+  const traceId = crypto.randomUUID();
+  const vector = await embedQuery(env, q, {
+    traceId,
+    traceName: ASK_TRACE_NAME,
+    distinctId: deps.distinctId,
+  });
   const matches = await retrieveMatches(env, vector, topK, types);
   const citations: AskCitation[] = matches.map((match, i) => {
     const metadata = (match?.metadata || {}) as Record<string, unknown>;
@@ -684,6 +777,7 @@ export async function askQuestion(
       {
         provider: ASK_PROVIDER,
         model: ASK_MODEL,
+        traceId,
         traceName: ASK_TRACE_NAME,
         latencyMs: Date.now() - generationStart,
         isError: true,
@@ -703,6 +797,7 @@ export async function askQuestion(
     {
       provider: ASK_PROVIDER,
       model: ASK_MODEL,
+      traceId,
       traceName: ASK_TRACE_NAME,
       latencyMs: Date.now() - generationStart,
       isError: false,

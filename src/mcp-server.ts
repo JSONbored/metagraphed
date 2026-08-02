@@ -2624,7 +2624,9 @@ function mcpAiClientKey(ctx: McpCtx, scope: string) {
 }
 
 async function requireAiRateLimit(ctx: McpCtx, scope: string) {
-  if (await withinRateLimit(ctx.env, mcpAiClientKey(ctx, scope))) return;
+  // #8965: `scope` doubles as the degraded-path surface label, so a
+  // rate-limited caller is attributable to the tool that refused them.
+  if (await withinRateLimit(ctx.env, mcpAiClientKey(ctx, scope), scope)) return;
   throw toolError(
     "rate_limited",
     "Too many AI requests. Please retry shortly.",

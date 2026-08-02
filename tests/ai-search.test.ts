@@ -931,6 +931,39 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
     }
   }
 
+  // #8965: askQuestion now emits an $ai_embedding for the query embedding
+  // BEFORE the $ai_generation, so these assertions select by event name
+  // instead of assuming the generation is the only (or first) capture.
+  const generationOf = (calls: Row[]) =>
+    calls.find((call) => call.event === "$ai_generation") as Row;
+  const embeddingOf = (calls: Row[]) =>
+    calls.find((call) => call.event === "$ai_embedding") as Row;
+
+  // #8965 acceptance: an `ask` must read as ONE pipeline in PostHog, not as
+  // unrelated events. Before this, the embedding emitted nothing and each
+  // generation minted its own trace id.
+  test("the query embedding and the completion share one trace id", async () => {
+    const calls: Row[] = [];
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: stubAi(),
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await askQuestion(mockEnv(env), "Which subnet does images?");
+    });
+    const embedding = embeddingOf(calls);
+    const generation = generationOf(calls);
+    assert.ok(embedding, "an $ai_embedding must be emitted for the query");
+    assert.ok(generation, "an $ai_generation must be emitted for the answer");
+    assert.equal(
+      embedding.properties.$ai_trace_id,
+      generation.properties.$ai_trace_id,
+    );
+    assert.equal(embedding.properties.$ai_trace_name, "ask");
+    assert.equal(embedding.properties.$ai_input_count, 1);
+  });
+
   test("records a well-formed $ai_generation event with token/cost metadata on success", async () => {
     const calls: Row[] = [];
     await withGlobalFetch(fetchSpy(calls), async () => {
@@ -941,8 +974,8 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
       };
       await askQuestion(mockEnv(env), "Which subnet does images?");
     });
-    assert.equal(calls.length, 1);
-    const { event, properties } = calls[0];
+    assert.equal(calls.length, 2);
+    const { event, properties } = generationOf(calls);
     assert.equal(event, "$ai_generation");
     assert.equal(properties.$ai_model, ASK_MODEL);
     assert.equal(properties.$ai_provider, "cloudflare_workers_ai");
@@ -989,7 +1022,7 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
       };
       await askQuestion(mockEnv(env), "Which subnet does images?");
     });
-    const { properties } = calls[0];
+    const { properties } = generationOf(calls);
     assert.equal(properties.$ai_input_tokens, 0);
     assert.equal(properties.$ai_output_tokens, 0);
     assert.equal("$ai_input_cost_usd" in properties, false);
@@ -1019,8 +1052,10 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
         /Workers AI unavailable/,
       );
     });
-    assert.equal(calls.length, 1);
-    const { properties } = calls[0];
+    // #8965: one $ai_embedding for the query embedding, then the
+    // $ai_generation for the completion — one trace, two events.
+    assert.equal(calls.length, 2);
+    const { properties } = generationOf(calls);
     assert.equal(properties.$ai_is_error, true);
     assert.equal(properties.$ai_http_status, 500);
     assert.equal(properties.$ai_error, "Error: Workers AI unavailable");
@@ -1059,8 +1094,10 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
         { distinctId: "github:octocat" },
       );
     });
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].distinct_id, "github:octocat");
+    // #8965: one $ai_embedding for the query embedding, then the
+    // $ai_generation for the completion — one trace, two events.
+    assert.equal(calls.length, 2);
+    assert.equal(generationOf(calls).distinct_id, "github:octocat");
   });
 
   test("attributes a failed $ai_generation event to the passed-in distinctId", async () => {
@@ -1091,8 +1128,10 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
         ),
       );
     });
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].distinct_id, "github:octocat");
+    // #8965: one $ai_embedding for the query embedding, then the
+    // $ai_generation for the completion — one trace, two events.
+    assert.equal(calls.length, 2);
+    assert.equal(generationOf(calls).distinct_id, "github:octocat");
   });
 
   test("falls back to the shared anonymous distinct_id when no distinctId is passed", async () => {
@@ -1105,7 +1144,7 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
       };
       await askQuestion(mockEnv(env), "Which subnet does images?");
     });
-    assert.equal(calls[0].distinct_id, USAGE_EVENT_DISTINCT_ID);
+    assert.equal(generationOf(calls).distinct_id, USAGE_EVENT_DISTINCT_ID);
   });
 });
 

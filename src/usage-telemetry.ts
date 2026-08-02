@@ -907,6 +907,154 @@ export interface AiGenerationEvent {
   error?: unknown;
 }
 
+/** A degraded AI path (#8965): work the caller asked for that never reached a
+ * model. Deliberately NOT a $ai_generation with isError — a rate-limited call
+ * made no model request, so counting it as a failed generation would corrupt
+ * both the error rate and the cost figures. Mirrors loopover's
+ * `selfhost_ai_degraded` precedent. */
+export interface AiDegradedEvent {
+  /** Why the path degraded, from a fixed set this codebase defines. */
+  reason: "rate_limited" | "ai_disabled" | "ai_unconfigured";
+  /** Which entry point was refused (`ask`, `semantic_search`). */
+  surface?: string;
+}
+
+/**
+ * Record one degraded-AI-path event as `ai_degraded` (#8965). Same no-throw,
+ * no-op-when-unconfigured contract as every recorder here.
+ */
+export async function recordAiDegradedEvent(
+  env: Env | null | undefined,
+  event: AiDegradedEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    const reason = sanitizeLabel(event?.reason);
+    if (reason === undefined) return false;
+
+    const properties: Record<string, unknown> = { reason };
+    const surface = sanitizeLabel(event.surface);
+    if (surface !== undefined) properties.surface = surface;
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "ai_degraded",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/** One embedding call (#8965). PostHog's `$ai_embedding` shares the
+ * generation contract's shape minus the completion half — no output tokens, no
+ * output choices, no completion cost. */
+export interface AiEmbeddingEvent {
+  provider: string;
+  model: string;
+  /** Ties the query-time embedding to the retrieval and completion it feeds,
+   * so one `ask` reads as a single trace rather than three unrelated events.
+   * The cron sync mints one trace per run. */
+  traceId?: string;
+  traceName?: string;
+  latencyMs: number;
+  isError: boolean;
+  inputTokens?: number;
+  /** How many texts were embedded in this call — 1 for a query, a batch size
+   * for the cron sync. Workers AI bills per call, so a 200-document batch and a
+   * single query are not comparable without it. */
+  inputCount?: number;
+  error?: unknown;
+}
+
+/**
+ * Capture one embedding call as a PostHog `$ai_embedding` event (#8965). Same
+ * no-throw, no-op-when-unconfigured contract as recordAiGenerationEvent.
+ *
+ * No cost is reported. Workers AI bills embeddings in neurons, not per token,
+ * and there is no published neuron→USD rate stable enough to hard-code the way
+ * ASK_MODEL's per-million-token prices are (see ai-search.ts). Emitting a
+ * fabricated $ai_total_cost_usd would poison the same cost dashboards the
+ * generation events feed honestly, so the call count and token count are
+ * reported and the cost column is left genuinely empty.
+ */
+export async function recordAiEmbeddingEvent(
+  env: Env | null | undefined,
+  event: AiEmbeddingEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    if (typeof event.isError !== "boolean") return false;
+    if (
+      typeof event.latencyMs !== "number" ||
+      !Number.isFinite(event.latencyMs) ||
+      event.latencyMs < 0
+    ) {
+      return false;
+    }
+
+    const properties: Record<string, unknown> = {
+      $ai_trace_id: event.traceId ?? crypto.randomUUID(),
+      $ai_model: sanitizeLabel(event.model) ?? "unknown",
+      $ai_provider: sanitizeLabel(event.provider) ?? "unknown",
+      // PostHog reports latency in SECONDS, as with $ai_generation.
+      $ai_latency: event.latencyMs / 1000,
+      $ai_http_status: event.isError ? 500 : 200,
+      $ai_input_tokens: Number.isFinite(event.inputTokens)
+        ? event.inputTokens
+        : 0,
+      $ai_is_error: event.isError,
+    };
+
+    const traceName = sanitizeLabel(event.traceName);
+    if (traceName !== undefined) properties.$ai_trace_name = traceName;
+
+    if (
+      Number.isFinite(event.inputCount) &&
+      (event.inputCount as number) >= 0
+    ) {
+      properties.$ai_input_count = Math.round(event.inputCount as number);
+    }
+
+    if (event.isError) {
+      const { type, entry } = exceptionListEntry(event.error);
+      properties.$ai_error = `${type}: ${entry.value}`;
+    }
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$ai_embedding",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Capture one LLM call as a PostHog `$ai_generation` event. Same no-throw,
  * no-op-when-unconfigured contract as recordUsageEvent/recordExceptionEvent.
