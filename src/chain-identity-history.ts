@@ -13,11 +13,16 @@
 
 import { formatIdentityHistoryEntry } from "./subnet-identity-history.ts";
 
-// Analytics-feed limit convention copied from the chain-calls / chain-signers feeds
-// (parseLimitParam with defaultLimit: 50, maxLimit: 200 — the recent-events feed
-// sizing): default 50 changes, capped at 200.
-export const CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT = 50;
-export const CHAIN_IDENTITY_HISTORY_LIMIT_MAX = 200;
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+} from "./route-limits.ts";
+export {
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+};
 
 // Clamp a raw limit into [1, MAX], falling back to the default when absent/blank/
 // non-finite. The Worker handler validates + REJECTS an out-of-range value with a

@@ -8,6 +8,14 @@
 
 import { median, percentile } from "./lib/stats.ts";
 
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  CHAIN_TURNOVER_LIMIT_DEFAULT,
+  CHAIN_TURNOVER_LIMIT_MAX,
+} from "./route-limits.ts";
+export { CHAIN_TURNOVER_LIMIT_DEFAULT, CHAIN_TURNOVER_LIMIT_MAX };
+
 // The neuron_daily columns the handler reads — its D1 read contract. `hotkey` is public
 // metagraph vocabulary, not a secret; kept next to its consumer so the handler stays a thin SELECT.
 export const CHAIN_TURNOVER_READ_COLUMNS =
@@ -21,9 +29,6 @@ export const CHAIN_TURNOVER_WINDOWS: Record<string, number> = {
   "90d": 90,
 };
 export const DEFAULT_CHAIN_TURNOVER_WINDOW = "30d";
-
-export const CHAIN_TURNOVER_LIMIT_DEFAULT = 20;
-export const CHAIN_TURNOVER_LIMIT_MAX = 100;
 
 // Round a retention ratio (a finite 0..1 jaccard result) to a stable precision WITHOUT
 // letting a sub-perfect ratio round up to an exact 1 — the same anti-overstatement invariant

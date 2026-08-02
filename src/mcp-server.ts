@@ -6365,7 +6365,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
       "top membership rows. Sort by subnet_count (default), uid_count, " +
       "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
-      "or stake_dominance; limit caps the list (default 20, max 100). Use it to " +
+      `or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, ` +
+      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Use it to ` +
       "find operators spanning many subnets or dominating network stake. Mirrors " +
       "GET /api/v1/validators.",
     inputSchema: z.toJSONSchema(ListGlobalValidatorsInputSchema, {

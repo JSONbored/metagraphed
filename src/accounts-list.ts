@@ -28,6 +28,14 @@
 // a new gap this route introduces.
 
 import { loadD1AlphaPricesByNetuid } from "./metagraph-neurons.ts";
+
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+  ACCOUNTS_LIST_LIMIT_MAX,
+} from "./route-limits.ts";
+export { ACCOUNTS_LIST_LIMIT_DEFAULT, ACCOUNTS_LIST_LIMIT_MAX };
 const RAO_PER_TAO = 1e9;
 
 export const ACCOUNTS_LIST_SORTS = [
@@ -40,8 +48,6 @@ export const ACCOUNTS_LIST_SORTS = [
   "last_active",
 ];
 export const DEFAULT_ACCOUNTS_LIST_SORT = "total_stake";
-export const ACCOUNTS_LIST_LIMIT_DEFAULT = 20;
-export const ACCOUNTS_LIST_LIMIT_MAX = 100;
 // Cap the per-account subnets[] slice the same way buildGlobalValidators caps
 // GlobalValidatorSubnet — an account registered on 100+ subnets should not
 // balloon this leaderboard's payload; the account-portfolio/validator-detail

@@ -1,3 +1,7 @@
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
+export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // Cross-subnet momentum ("movers"): rank every subnet by how much its stake, emission,
 // and validator set changed between a window's start and end neuron_daily snapshots.
 // Pure shaping (computeMovers/buildMovers) + a thin D1 loader (loadSubnetMovers); the
@@ -22,9 +26,6 @@ export const DEFAULT_MOVERS_WINDOW = "30d";
 // Rankable metrics: the signed delta to sort the leaderboard by.
 export const MOVERS_SORTS = ["stake", "emission", "validators", "neurons"];
 export const DEFAULT_MOVERS_SORT = "stake";
-
-export const MOVERS_LIMIT_DEFAULT = 20;
-export const MOVERS_LIMIT_MAX = 100;
 
 // 1 TAO = 1e9 rao. Round every TAO output to rao precision; IEEE-754 noise below the rao
 // floor is artifact (mirrors the rounding the turnover/history scorecards apply).

@@ -15,6 +15,14 @@ import {
   type FieldProjectionResult,
 } from "./field-projection.ts";
 
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+} from "./route-limits.ts";
+export { GLOBAL_VALIDATOR_LIMIT_DEFAULT, GLOBAL_VALIDATOR_LIMIT_MAX };
+
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
@@ -120,13 +128,6 @@ export const GLOBAL_VALIDATOR_SORTS = [
   "uid_count",
 ];
 export const DEFAULT_GLOBAL_VALIDATOR_SORT = "subnet_count";
-export const GLOBAL_VALIDATOR_LIMIT_DEFAULT = 20;
-// #8251: raised 100 -> 2000 so the validators directory can serve the FULL
-// validator set (~1,014 live) in one request for client-side virtualization,
-// with headroom for growth. ~115KB/100 rows uncompressed (measured live), so
-// a full fetch is ~1.2MB pre-gzip -- acceptable for a once-per-visit, cached,
-// short-stale directory read.
-export const GLOBAL_VALIDATOR_LIMIT_MAX = 2000;
 const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
 const RAO_PER_TAO = 1e9;
 
