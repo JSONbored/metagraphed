@@ -1,3 +1,10 @@
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+} from "./route-limits.ts";
+export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 // Balance-based top-holder leaderboard (#6741/#6743) -- the coldkey/balance-
 // centric counterpart to src/accounts-list.ts (hotkey/neuron-centric,
 // explicitly missing the Free/Total columns this route exists to add — see
@@ -29,8 +36,6 @@ export const TOP_HOLDERS_SORTS = [
   "net_flow_90d",
 ];
 export const DEFAULT_TOP_HOLDERS_SORT = "total_tao";
-export const TOP_HOLDERS_LIMIT_DEFAULT = 20;
-export const TOP_HOLDERS_LIMIT_MAX = 100;
 
 function toIso(ms: unknown): string | null {
   if (ms == null) return null;

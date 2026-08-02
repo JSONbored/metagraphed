@@ -10,6 +10,17 @@ import {
 } from "../workers/request-params.ts";
 import { resolvePriceAtTx, type PriceBasis } from "./price-at-tx.ts";
 
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+} from "./route-limits.ts";
+export {
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+};
+
 // The SubtensorModule events the poller indexes — entity-relevant only, which
 // keeps volume ~1 MB/day (not ~100 MB/day). Kept in sync with fetch-events.py
 // EXTRACTORS; positional field order verified against live finney (2026-06-21).
@@ -106,8 +117,6 @@ export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {
   "90d": 90,
 };
 export const DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW = "30d";
-export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT = 10;
-export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX = 50;
 
 const EVENT_KIND_CATEGORIES: Record<string, string> = {
   NeuronRegistered: "registration",

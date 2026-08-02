@@ -2,6 +2,21 @@ import { artifactStorageTierForPath } from "./artifact-storage.ts";
 import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
+import {
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+  ACCOUNTS_LIST_LIMIT_MAX,
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+  CHAIN_TURNOVER_LIMIT_MAX,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+} from "./route-limits.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -1860,7 +1875,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "chain-identity-history",
     "/metagraph/chain/identity-history.json",
-    "Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to a ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file).",
+    `Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to a ?limit (default ${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}, max ${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file).`,
     "ChainIdentityHistoryArtifact",
     COMPUTED_LIVE,
   ),
@@ -2847,7 +2862,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/movers",
     "/metagraph/subnets/movers.json",
-    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+    `Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default ${MOVERS_LIMIT_DEFAULT}, max ${MOVERS_LIMIT_MAX}). Computed live from the neuron_daily D1 rollup.`,
     "short",
     ["subnets", "analytics"],
     csvRouteQuery([
@@ -2864,7 +2879,7 @@ export const API_ROUTES = [
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 100 },
+        schema: { type: "integer", minimum: 1, maximum: MOVERS_LIMIT_MAX },
       },
     ]),
     [],
@@ -2874,7 +2889,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators",
     "/metagraph/validators.json",
-    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
+    `Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Computed live from the neurons D1 tier.`,
     "short",
     ["validators", "analytics"],
     csvRouteQuery([
@@ -2895,7 +2910,11 @@ export const API_ROUTES = [
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 100 },
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
+        },
       },
     ]),
     [],
@@ -2905,7 +2924,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts",
     "/metagraph/accounts.json",
-    "Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.",
+    `Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default ${ACCOUNTS_LIST_LIMIT_DEFAULT}, max ${ACCOUNTS_LIST_LIMIT_MAX}). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.`,
     "short",
     ["accounts", "analytics"],
     csvRouteQuery([
@@ -2926,7 +2945,11 @@ export const API_ROUTES = [
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 100 },
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: ACCOUNTS_LIST_LIMIT_MAX,
+        },
       },
     ]),
     [],
@@ -2936,7 +2959,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/top-holders",
     "/metagraph/top-holders.json",
-    "Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys.",
+    `Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default ${TOP_HOLDERS_LIMIT_DEFAULT}, max ${TOP_HOLDERS_LIMIT_MAX}). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys.`,
     "short",
     ["accounts", "analytics"],
     csvRouteQuery([
@@ -2949,7 +2972,7 @@ export const API_ROUTES = [
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 100 },
+        schema: { type: "integer", minimum: 1, maximum: TOP_HOLDERS_LIMIT_MAX },
       },
     ]),
     [],
@@ -3121,7 +3144,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/event-summary",
     "/metagraph/subnets/{netuid}/event-summary.json",
-    "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+    `Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default ${SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT}, max ${SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX}). Computed live from the account_events D1 tier.`,
     "short",
     ["subnets", "analytics"],
     [
@@ -3129,7 +3152,14 @@ export const API_ROUTES = [
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 50 } },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+        },
+      },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
@@ -4293,10 +4323,19 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/identity-history",
     "/metagraph/chain/identity-history.json",
-    "Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold.",
+    `Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default ${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}, max ${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold.`,
     "short",
     ["chain", "analytics"],
-    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } }],
+    [
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+        },
+      },
+    ],
     [],
   ),
   route(
@@ -4336,7 +4375,11 @@ export const API_ROUTES = [
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 100 },
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: CHAIN_TURNOVER_LIMIT_MAX,
+        },
       },
     ]),
     [],
