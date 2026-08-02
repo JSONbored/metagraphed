@@ -31,6 +31,8 @@
 
 import { ErrorTracking } from "@posthog/core";
 
+import { registerModuleStateReset } from "./module-state-registry.ts";
+
 /** Env var holding the PostHog project API token (wrangler secret). */
 export const POSTHOG_PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN";
 
@@ -44,6 +46,136 @@ export const USAGE_EVENT_DISTINCT_ID = "metagraphed-worker";
 
 /** PostHog event name owned by this wrapper — do not emit it elsewhere. */
 export const USAGE_EVENT_NAME = "usage_event";
+
+// --- usage_event sampling (free-tier budget) ---------------------------------
+//
+// WHY SAMPLE AT ALL. `usage_event` is one capture per request and ~99.7% of
+// this project's PostHog volume: measured 2026-08-02, ~545K/day (16.4M/month)
+// against a 1M/MONTH free tier. Exceeding the tier does not bill -- it DROPS
+// events, and it drops them indiscriminately, which means an unsampled
+// usage_event firehose would silently take `$exception` down with it. Sampling
+// the firehose is what protects the error inbox.
+//
+// WHY NOT ONE FLAT RATE. The traffic shape is extreme: `block-detail` alone is
+// 85.5% of all usage events (116,362 of 136,088 in a 6-hour window). A single
+// rate low enough to fit the budget would leave the entire long tail
+// statistically empty while that one route still dominated the sample. So the
+// default rate governs the tail and a per-route map governs the head.
+//
+// WHY A MAP RATHER THAN A NAMED VAR PER ROUTE (the shape tracing.ts uses for
+// its two surfaces): the hot route MOVES. It was
+// /api/v1/internal/chain-firehose-ingest (#9005 excluded it), then
+// `block-detail` (#9004). A JSON map keeps re-tuning a config change instead
+// of a code change.
+//
+// WHAT IS NEVER SAMPLED, on purpose:
+//   - FAILURES (`ok: false`). They are a rounding error by volume and the
+//     entire point of the dataset when something breaks; dropping 80% of a
+//     rare failure is how an incident becomes invisible.
+//   - MCP tool calls (`mcpTool` set). Low-volume (~2K/day across every MCP
+//     event) and the product's core signal -- ADR 0027's "does anyone actually
+//     authenticate/call tools?" question cannot be answered from a sample.
+//
+// HOW TO COUNT SAMPLED DATA. Every capture that was subject to a rate below 1
+// carries `sample_rate`, so the honest aggregate is a WEIGHTED one:
+//     SELECT sum(1 / coalesce(toFloat(properties.sample_rate), 1)) ...
+// rather than count(). Unsampled captures omit the property entirely (so the
+// coalesce is what makes one query correct across both), which also keeps the
+// payload and every pre-existing dashboard query unchanged when sampling is
+// off.
+
+/** Fallback sample rate for usage_event, as a wrangler var (e.g. "0.2"). */
+export const POSTHOG_USAGE_SAMPLE_RATE_ENV = "POSTHOG_USAGE_SAMPLE_RATE";
+
+/** Per-route overrides, a JSON object of route label -> rate (e.g.
+ * `{"block-detail":0.01}`). Routes absent from the map use the default. */
+export const POSTHOG_USAGE_SAMPLE_RATES_ENV = "POSTHOG_USAGE_SAMPLE_RATES";
+
+// Unsampled by default, and deliberately so: a Math.random() gate cannot be
+// no-op'd by isUsageTelemetryConfigured the way every other capture here can
+// (that only checks for a token), so an on-by-default rate would make every
+// existing test that mocks fetch with a real token and asserts an exact call
+// count randomly flaky. Requiring an explicit rate keeps test call-count
+// assertions deterministic by construction (no test sets these vars) while a
+// real deployment sets them once, in wrangler.jsonc. Same reasoning, and the
+// same default, as POSTHOG_TRACES_SAMPLE_RATE in src/tracing.ts.
+const DEFAULT_USAGE_SAMPLE_RATE = 1;
+
+// Single-entry memo of the parsed override map, keyed on the raw var text so
+// it re-parses if the value ever differs -- a per-request JSON.parse at this
+// module's call volume is pure waste.
+//
+// Registered with the module-state registry because this IS observable across
+// test files under `isolate: false`, even though the memo returns the same
+// answer for the same input: the malformed-map console.error below fires once
+// per distinct raw value, so without a reset a second file's identical
+// malformed map would stay silent and its assertion would fail depending on
+// file order.
+let usageSampleRatesRaw: string | undefined;
+let usageSampleRatesParsed: Record<string, number> = {};
+
+registerModuleStateReset("src/usage-telemetry.ts", () => {
+  usageSampleRatesRaw = undefined;
+  usageSampleRatesParsed = {};
+});
+
+function parseRate(value: unknown): number | undefined {
+  // An empty or whitespace-only var is UNSET, not zero. Number("") is 0,
+  // which is a perfectly valid rate meaning "sample nothing" -- so without
+  // this guard, a var set to "" (a stray wrangler edit, a CI secret that
+  // resolved to nothing) would silently take usage telemetry entirely dark
+  // while every other signal looked healthy.
+  if (typeof value === "string" && !value.trim()) return undefined;
+  const rate = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1) return undefined;
+  return rate;
+}
+
+function usageSampleRatesByRoute(
+  env: Env | null | undefined,
+): Record<string, number> {
+  const raw = env?.[POSTHOG_USAGE_SAMPLE_RATES_ENV];
+  if (typeof raw !== "string" || !raw.trim()) return {};
+  if (raw === usageSampleRatesRaw) return usageSampleRatesParsed;
+  const parsed: Record<string, number> = {};
+  try {
+    const map = JSON.parse(raw) as Record<string, unknown>;
+    if (map && typeof map === "object" && !Array.isArray(map)) {
+      for (const [route, value] of Object.entries(map)) {
+        const rate = parseRate(value);
+        if (rate !== undefined) parsed[route] = rate;
+      }
+    }
+  } catch {
+    // A malformed map must never take telemetry (or the request) down: fall
+    // back to the default rate for every route, and say so once per isolate.
+    console.error(
+      `[usage-telemetry] ${POSTHOG_USAGE_SAMPLE_RATES_ENV} is not valid JSON; using the default rate for every route`,
+    );
+  }
+  usageSampleRatesRaw = raw;
+  usageSampleRatesParsed = parsed;
+  return parsed;
+}
+
+/** The sample rate that applies to one usage event: 1 for anything never
+ * sampled (failures, MCP tool calls), otherwise the route override, otherwise
+ * the deployment default. */
+export function resolveUsageSampleRate(
+  env: Env | null | undefined,
+  event: UsageEvent,
+): number {
+  if (event.ok === false) return 1;
+  if (sanitizeLabel(event.mcpTool) !== undefined) return 1;
+  const route = sanitizeLabel(event.route);
+  if (route !== undefined) {
+    const override = usageSampleRatesByRoute(env)[route];
+    if (override !== undefined) return override;
+  }
+  return (
+    parseRate(env?.[POSTHOG_USAGE_SAMPLE_RATE_ENV]) ?? DEFAULT_USAGE_SAMPLE_RATE
+  );
+}
 
 // Cap free-form string fields so a buggy caller can't ship unbounded payloads.
 const MAX_LABEL_CHARS = 256;
@@ -92,6 +224,9 @@ export interface RecordUsageEventDeps {
   fetch?: typeof fetch;
   /** Override distinct_id (tests). */
   distinctId?: string;
+  /** Injectable [0,1) source for the sampling gate (tests) -- keeps a
+   * sampled deployment's behavior deterministic under assertion. */
+  random?: () => number;
 }
 
 // #8963: best-effort client identity from the User-Agent, for the tool calls
@@ -213,6 +348,18 @@ export async function recordUsageEvent(
 
     const properties = usageEventProperties(event);
     if (!properties) return false;
+
+    // Sampling gate. Applied AFTER the shape validation above so a malformed
+    // event is still reported as not-recorded for the same reason it always
+    // was, never as "sampled out".
+    const sampleRate = resolveUsageSampleRate(env, event);
+    if (sampleRate < 1) {
+      const random = deps.random ?? Math.random;
+      if (random() >= sampleRate) return false;
+      // The weight rides with the event so a count can be scaled back up --
+      // see this module's sampling header for the weighted-aggregate query.
+      properties.sample_rate = sampleRate;
+    }
 
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
