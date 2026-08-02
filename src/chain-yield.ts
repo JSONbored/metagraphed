@@ -189,9 +189,19 @@ export function buildChainYield(
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
     }
+    const netuid = subnetNetuid(row?.netuid);
+    // Root (netuid 0) is excluded from every aggregate below (#9040). A root
+    // neuron's stake_tao/emission_tao are genuine TAO, not a subnet's alpha
+    // token, so including root would mix TAO into the cross-subnet alpha sums
+    // AND put a TAO numerator over a mostly-alpha denominator in the three
+    // yield ratios. Live proof: at block 8755038 root held 6,613,430 TAO --
+    // 1.94% of the published total_stake_alpha -- against 9.54 emission, a
+    // low-return block dragging the network denominator with it. Dropped
+    // before `netuids`/`neuronCount` too, so subnet_count and neuron_count
+    // describe exactly the population the totals were computed over.
+    if (netuid === 0) continue;
     const stake = nullableTao(row?.stake_tao);
     if (stake == null) continue;
-    const netuid = subnetNetuid(row?.netuid);
     if (netuid != null) netuids.add(netuid);
     neuronCount += 1;
     const emission = nullableTao(row?.emission_tao);
@@ -248,15 +258,20 @@ export function buildChainYield(
   };
 }
 
-// Shared D1 loader (mirrors handleChainYield + loadChainPerformance): read EVERY
-// subnet's neurons in one pass, no netuid filter, and shape them into the network
-// yield artifact. Exported for the MCP tool.
+// Shared D1 loader (mirrors handleChainYield + loadChainPerformance): read every
+// non-root subnet's neurons in one pass and shape them into the network yield
+// artifact. Exported for the MCP tool. The `netuid != 0` predicate is an I/O
+// saving only -- buildChainYield drops root rows itself (#9040), so a caller
+// passing unfiltered rows still gets a root-free aggregate.
 export async function loadChainYield(
   d1: (
     sql: string,
     params: unknown[],
   ) => Promise<Array<Record<string, unknown>>>,
 ): Promise<ChainYieldResult> {
-  const rows = await d1(`SELECT ${CHAIN_YIELD_READ_COLUMNS} FROM neurons`, []);
+  const rows = await d1(
+    `SELECT ${CHAIN_YIELD_READ_COLUMNS} FROM neurons WHERE netuid != 0`,
+    [],
+  );
   return buildChainYield(rows);
 }

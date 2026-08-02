@@ -4538,8 +4538,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     name: "get_chain_yield",
     title: "Get network-wide emission yield (return rate)",
     description:
-      "Fetch the network-wide emission-yield scorecard aggregated across ALL " +
-      "subnets' neurons: the aggregate network return (total emission / total " +
+      "Fetch the network-wide emission-yield scorecard aggregated across every " +
+      "NON-ROOT subnet's neurons (root/netuid 0 is excluded: its stake is TAO, " +
+      "not a subnet alpha token, so including it would mix denominations): the " +
+      "aggregate network return (total emission / total " +
       "stake), the same split by validator vs miner role, and the count/mean/" +
       "median/min/max plus p10–p90 spread of the per-neuron emission/stake return, " +
       "and the subnet_count the snapshot spans. The network-level companion of " +

@@ -82,6 +82,45 @@ describe("buildChainYield", () => {
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
+  // #9040: a root neuron's stake_tao/emission_tao are genuine TAO, not a
+  // subnet alpha token, so root must not reach the cross-subnet alpha totals
+  // or the yield ratios built from them. These pin the exclusion at the
+  // builder, the one point REST, GraphQL and MCP all funnel through -- a
+  // caller that hands over unfiltered rows still gets a root-free aggregate.
+  const ROOT_ROW = {
+    validator_permit: 1,
+    stake_tao: 6_613_430,
+    emission_tao: 9.5,
+    netuid: 0,
+    captured_at: 1_750_000_000_000,
+  };
+
+  test("drops root (netuid 0) rows from every total, count and ratio", () => {
+    const withRoot = buildChainYield([ROOT_ROW, ...ROWS]);
+    const withoutRoot = buildChainYield(ROWS);
+    assert.deepEqual(withRoot, withoutRoot);
+    // Specifically: root's 6.6M TAO never lands in the alpha sum, and it is
+    // not counted as one of the subnets the aggregate spans.
+    assert.equal(withRoot.total_stake_alpha, 1600);
+    assert.equal(withRoot.subnet_count, 2);
+    assert.equal(withRoot.neuron_count, 4);
+    assert.equal(withRoot.validator_count, 2);
+    assert.equal(withRoot.network_yield, 0.05);
+  });
+
+  test("a root-only snapshot yields the schema-stable zeroed card", () => {
+    const out = buildChainYield([ROOT_ROW]);
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.total_stake_alpha, 0);
+    assert.equal(out.total_emission_alpha, 0);
+    assert.equal(out.network_yield, null);
+    assert.equal(out.distribution, null);
+    // captured_at is the SNAPSHOT stamp, read before the root check, so a
+    // root row still dates the card rather than leaving it null.
+    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+  });
+
   test("aggregate network return and the validator/miner split", () => {
     const out = buildChainYield(ROWS);
     assert.equal(out.total_stake_alpha, 1600);
@@ -277,7 +316,10 @@ describe("buildChainYield", () => {
         validator_permit: 0,
         stake_tao: stakeTao,
         emission_tao: 0,
-        netuid: i % 129,
+        // Non-root netuids only (1..128): this test is about float drift, and
+        // root rows are dropped outright (#9040), which would silently shrink
+        // the sum under test rather than exercise the rao accumulation.
+        netuid: (i % 128) + 1,
         captured_at: 1_750_000_000_000,
       });
       expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
@@ -289,7 +331,7 @@ describe("buildChainYield", () => {
     assert.equal(out.total_stake_alpha, Math.round(expectedTotal * 1e9) / 1e9);
   });
 
-  test("loadChainYield issues one un-filtered SELECT and shapes it", async () => {
+  test("loadChainYield reads every non-root subnet in one SELECT and shapes it", async () => {
     let seen: Row | undefined;
     const d1 = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
@@ -297,7 +339,9 @@ describe("buildChainYield", () => {
     };
     const out = await loadChainYield(d1);
     assert.match(seen!.sql, /FROM neurons/);
-    assert.doesNotMatch(seen!.sql, /WHERE netuid/); // network-wide: no filter
+    // Root is filtered in SQL to avoid reading rows the builder would drop
+    // anyway (#9040) -- the correctness guarantee lives in buildChainYield.
+    assert.match(seen!.sql, /WHERE netuid != 0/);
     assert.deepEqual(seen!.params, []);
     assert.equal(out.subnet_count, 2);
     assert.equal(out.network_yield, 0.05);

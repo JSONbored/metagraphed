@@ -10900,7 +10900,7 @@ async function dispatchDataApiRequest(
             >[]
           >`
           SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
-          FROM neurons`;
+          FROM neurons WHERE netuid != 0`;
           return json(buildChainYield(rows));
         }
 

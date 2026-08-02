@@ -6818,10 +6818,11 @@ export interface components {
             network_yield: number | null;
             neuron_count: number;
             schema_version: number;
+            /** @description How many subnets the aggregate spans. Root (netuid 0) is NOT one of them and is excluded from every figure below (#9040): root stake is TAO, not a subnet alpha token. */
             subnet_count: number;
-            /** @description Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
+            /** @description Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
             total_emission_alpha?: number;
-            /** @description Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Use it as the denominator of the yields below, not as a TAO figure. */
+            /** @description Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure. */
             total_stake_alpha?: number;
             validator_count?: number;
             validator_yield?: number | null;

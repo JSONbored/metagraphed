@@ -27,7 +27,12 @@ const YieldDistributionSchema = z
 export const ChainYieldArtifactSchema = z
   .object({
     schema_version: z.int(),
-    subnet_count: z.int().min(0),
+    subnet_count: z
+      .int()
+      .min(0)
+      .describe(
+        "How many subnets the aggregate spans. Root (netuid 0) is NOT one of them and is excluded from every figure below (#9040): root stake is TAO, not a subnet alpha token.",
+      ),
     neuron_count: z.int().min(0),
     validator_count: z.int().min(0).optional(),
     miner_count: z.int().min(0).optional(),
@@ -36,13 +41,13 @@ export const ChainYieldArtifactSchema = z
       .number()
       .optional()
       .describe(
-        "Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Use it as the denominator of the yields below, not as a TAO figure.",
+        "Sum of every neuron's stake across every NON-ROOT subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count, not a TAO value (renamed from total_stake_tao in #8803). Root (netuid 0) is excluded because root stake is genuine TAO and would mix denominations into this sum (#9040). Use it as the denominator of the yields below, not as a TAO figure.",
       ),
     total_emission_alpha: z
       .number()
       .optional()
       .describe(
-        "Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid.",
+        "Sum of every neuron's emission across every NON-ROOT subnet, alpha-denominated for the same reason as total_stake_alpha and excluding root for the same reason (#8803, #9040). Alpha/alpha keeps the *_yield ratios below dimensionally valid.",
       ),
     network_yield: z.number().nullable(),
     validator_yield: z.number().nullable().optional(),
