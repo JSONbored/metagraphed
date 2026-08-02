@@ -26,6 +26,13 @@ import {
   type ProbeSurface,
 } from "./health-probe-core.ts";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
+import {
+  persistProbesToD1,
+  pruneChecksD1,
+  rollupUptimeDailyToD1,
+  upsertSubnetSnapshotsToD1,
+  type ObservationsDb,
+} from "./observations-d1.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   recordSubnetIdentityChanges,
@@ -561,6 +568,15 @@ export async function runHealthProber(
     await notifySubnetStatusChanged(env, changedNetuids);
   }
   await syncHealthChecksToPostgres(env, probed);
+  // Dual-write (box decommission): the same observations land in D1, each
+  // store independently best-effort -- see src/observations-d1.ts's header.
+  // When the Postgres sync above starts no-op'ing (box gone), this is simply
+  // the copy that keeps accumulating; nothing about this sweep changes.
+  await persistProbesToD1(
+    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+    probed as unknown as Record<string, unknown>[],
+    runAt,
+  );
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed)
@@ -811,11 +827,28 @@ export async function rollupDailyUptime(
   const now = overrides.now || (() => Date.now());
   const runAt = now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
+  // Dual rollup (box decommission): D1 computes its own rollup from its own
+  // surface_checks via the resurrected rank-CTE SQL, exactly as it did before
+  // the 2026-07-16 retirement; Postgres computes its own from ITS copy, as it
+  // has since #4832. Independently best-effort in both directions. The caller's
+  // rolled-before-prune contract is satisfied when EITHER store rolled: each
+  // prune below is likewise per-store, and blocking D1's prune on a dead
+  // Postgres (or vice versa) would freeze the surviving store's retention.
+  const d1Rollup = await rollupUptimeDailyToD1(
+    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+    days,
+    runAt,
+  );
   const result = await syncHealthUptimeRollupToPostgres(env, days, runAt);
-  if (!result.synced) {
+  if (!result.synced && !d1Rollup.rolled) {
     return { rolled: false, reason: result.reason };
   }
-  return { rolled: true, days: days.map((d) => d.date) };
+  return {
+    rolled: true,
+    days: days.map((d) => d.date),
+    d1_rolled: d1Rollup.rolled,
+    postgres_rolled: result.synced === true,
+  };
 }
 
 // Hourly maintenance cron: prune time-series rows older than the retention
@@ -828,11 +861,27 @@ export async function rollupDailyUptime(
 // wholesale. Only the Postgres-side prune remains.
 export async function pruneHealthHistory(
   env: Env,
-  overrides: { now?: () => number; retentionMs?: number } = {},
+  overrides: {
+    now?: () => number;
+    retentionMs?: number;
+    // Dual-write (box decommission): the D1 raw-checks prune is gated on
+    // D1'S OWN rollup having succeeded this tick -- the caller passes
+    // rollupDailyUptime's d1_rolled through. The combined `rolled` flag is
+    // not enough: Postgres having rolled says nothing about D1's daily rows,
+    // and deleting D1's raw window without D1's aggregate would silently
+    // orphan the one store that survives the box.
+    pruneD1Checks?: boolean;
+  } = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
   await syncRpcProxyEventsPruneToPostgres(env, cutoff);
+  if (overrides.pruneD1Checks === true) {
+    await pruneChecksD1(
+      env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+      cutoff,
+    );
+  }
   return { pruned: true, cutoff };
 }
 
@@ -988,6 +1037,14 @@ export async function syncSubnetSnapshotToPostgres(
       };
     });
   if (!rows.length) return { synced: false, reason: "no_rows" };
+  // Dual-write (box decommission): the same rows land in D1 first, best-effort
+  // and independent of the Postgres POST below -- this function is the one
+  // place the snapshot rows exist fully built, so despite the "ToPostgres"
+  // name it is now the snapshot sync boundary for both stores.
+  await upsertSubnetSnapshotsToD1(
+    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+    rows as unknown as Record<string, unknown>[],
+  );
   try {
     const upstream = await env.DATA_API.fetch(
       new Request(

@@ -2193,6 +2193,11 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.deepEqual(result, {
       rolled: true,
       days: ["2026-06-13", "2026-06-12"],
+      // Dual-write: no METAGRAPH_HEALTH_DB binding in this env, so D1 did not
+      // roll -- and `rolled` stays true on the Postgres side alone, which is
+      // exactly the independence the dual-write promises.
+      d1_rolled: false,
+      postgres_rolled: true,
     });
   });
 
