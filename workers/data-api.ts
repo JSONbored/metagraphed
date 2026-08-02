@@ -26,6 +26,7 @@ import {
   syncBeginWithConnectionRetry,
 } from "./hyperdrive-sync-retry.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import {
   newSpanId,
   newTraceId,
@@ -407,13 +408,97 @@ import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 // latency on an already-failing request, not silent event loss.
 // recordExceptionEvent is a safe no-op with no configured token, so this
 // can't newly break any of this file's existing tests.
-async function captureDataApiError(err: unknown, route: string, env: Env) {
+// #8985: schema drift is one bit of information that recurs on every request.
+//
+// Postgres reports a missing table as SQLSTATE 42P01 and a missing column as
+// 42703. When a migration has not reached production, EVERY request down that
+// path raises the identical error -- and capturing each one produced 868,689
+// $exception events for `api_usage_rollup` alone (#8960), still running at
+// ~5,100/hour. That is real event spend, and it drowned the other errors: the
+// `date >= integer` bug (#8961) sat underneath this noise floor for days.
+//
+// So drift is captured ONCE per isolate per (route, relation) rather than per
+// request. The first occurrence still produces a full $exception carrying the
+// relation name, so nothing is hidden; the 5,000th adds nothing. console.error
+// below stays unconditional -- per-request detail is cheap in logs.
+const SCHEMA_DRIFT_SQLSTATES = new Set(["42P01", "42703"]);
+
+// Isolate-scoped. Workers isolates live minutes to hours, so this collapses a
+// per-request storm to a handful per hour across the fleet without ever
+// silencing a NEW drift (a different relation, or the same one on a different
+// route, is a different key and captures again).
+const capturedSchemaDrift = new Set<string>();
+
+// Required by src/module-state-registry.ts's contract: under `isolate: false`
+// every test file in a worker shares one module registry, so a Set that
+// remembers "already captured" across files would make one file's drift
+// suppress another file's expected capture.
+//
+// NOTE this is registered despite scripts/validate-module-state-resets.ts
+// NOT flagging it. That validator's COLLECTION_DECL regex matches `new Set(`
+// and this declaration is `new Set<string>(`, so every generically-typed
+// module-level collection is invisible to it. The gap is real (see #8988) --
+// this reset is here because the state genuinely leaks, not because the gate
+// demanded it.
+registerModuleStateReset("workers/data-api.ts", () => {
+  capturedSchemaDrift.clear();
+});
+
+/** The stable SQLSTATE of a postgres.js error, when it has one. */
+function pgSqlState(err: unknown): string | undefined {
+  const code = (err as { code?: unknown } | null | undefined)?.code;
+  return typeof code === "string" ? code : undefined;
+}
+
+/**
+ * True when this error has already been captured for this route+relation in
+ * this isolate, i.e. capturing it again would add no information. Records the
+ * key as a side effect on first sight.
+ */
+export function shouldSkipDriftCapture(err: unknown, route: string): boolean {
+  const sqlState = pgSqlState(err);
+  if (!sqlState || !SCHEMA_DRIFT_SQLSTATES.has(sqlState)) return false;
+  // Reaching here means err carried a string `code`, so it is necessarily a
+  // non-null object -- no optional chaining below, which would only add a
+  // branch that can never be taken.
+  //
+  // postgres.js exposes the offending relation on the error; fall back to the
+  // message so two different missing relations never collapse onto one key.
+  // Collapsing them would make the dedupe worse than the storm: the second
+  // missing relation on a route would go unreported for the isolate's life.
+  const drift = err as { table_name?: unknown; message?: unknown };
+  const relation = drift.table_name ?? drift.message ?? "";
+  const key = `${route}|${sqlState}|${String(relation)}`;
+  if (capturedSchemaDrift.has(key)) return true;
+  capturedSchemaDrift.add(key);
+  return false;
+}
+
+/**
+ * Capture a data-api failure as a PostHog $exception.
+ *
+ * Resolves true when the error was captured and false when it was suppressed
+ * as already-seen schema drift. Every caller ignores the result -- it exists so
+ * the dedupe branch is OBSERVABLE in a test without mocking the telemetry
+ * module. recordExceptionEvent is a no-op without a configured token, so
+ * "was it captured" is otherwise indistinguishable from "was it skipped", and
+ * the branch that suppresses 868K events would ship untested.
+ */
+async function captureDataApiError(
+  err: unknown,
+  route: string,
+  env: Env,
+): Promise<boolean> {
+  if (shouldSkipDriftCapture(err, route)) return false;
   await recordExceptionEvent(env, {
     error: err,
     route,
     errorCode: "internal_error",
   });
+  return true;
 }
+
+export { captureDataApiError as captureDataApiErrorForTest };
 
 const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
