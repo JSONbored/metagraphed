@@ -204,6 +204,12 @@ describe("MCP tool registry", () => {
       "title",
       "annotations",
       "outputSchema",
+      // #9070: the "this tool needs an authenticated caller" flag. In `_meta`
+      // rather than `annotations` because `annotations` is the MCP spec's own
+      // closed vocabulary. Present only on the tools that declare it; the
+      // declaration is held equal to real behaviour by
+      // tests/mcp-tool-auth-declaration.test.ts.
+      "_meta",
     ]);
     for (const def of defs) {
       for (const key of Object.keys(def)) {
