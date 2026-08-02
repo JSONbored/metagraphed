@@ -17,7 +17,6 @@ import {
   recordMcpToolCallEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
-  resolvePostHogChunkId,
   resolvePostHogHost,
   statusClassOf,
   usageEventProperties,
@@ -750,79 +749,27 @@ describe("recordMcpInitializeEvent", () => {
 // $exception fixture, not just the docs page -- see the module's own header
 // comment for the sources. These tests pin that shape so a future refactor
 // can't silently drift from it.
-// #9045: PostHog can only resolve a minified frame back to source if the frame
-// carries the chunk id of the sourcemap it was uploaded under. `posthog-cli
-// sourcemap inject` publishes that id at runtime on globalThis._posthogChunkIds,
-// keyed by the stack of an Error built inside the chunk.
-describe("resolvePostHogChunkId", () => {
-  test("returns the id when exactly one chunk registered itself", () => {
-    assert.equal(
-      resolvePostHogChunkId({
-        _posthogChunkIds: {
-          "Error\n    at index.js:1:1": "019fc1c0-8505-7612-a464-f3a75098a9ea",
-        },
-      }),
-      "019fc1c0-8505-7612-a464-f3a75098a9ea",
-    );
-  });
-
-  test("collapses repeat registrations of the SAME chunk to that one id", () => {
-    // One bundle can register under more than one key (the injected IIFE runs
-    // per isolate); identical ids are still unambiguous.
-    assert.equal(
-      resolvePostHogChunkId({
-        _posthogChunkIds: { a: "chunk-1", b: "chunk-1" },
-      }),
-      "chunk-1",
-    );
-  });
-
-  test("returns undefined for several DISTINCT chunks rather than guessing", () => {
-    // Guessing here would resolve frames against the wrong sourcemap, which is
-    // worse than leaving them minified.
-    assert.equal(
-      resolvePostHogChunkId({
-        _posthogChunkIds: { a: "chunk-1", b: "chunk-2" },
-      }),
-      undefined,
-    );
-  });
-
-  test("returns undefined when the marker is absent or unusable", () => {
-    assert.equal(resolvePostHogChunkId({}), undefined);
-    assert.equal(resolvePostHogChunkId({ _posthogChunkIds: {} }), undefined);
-    assert.equal(
-      resolvePostHogChunkId(
-        // A non-object marker must not throw its way out of a telemetry path.
-        { _posthogChunkIds: "nope" } as unknown as Parameters<
-          typeof resolvePostHogChunkId
-        >[0],
-      ),
-      undefined,
-    );
-    assert.equal(
-      resolvePostHogChunkId({ _posthogChunkIds: { a: "" } }),
-      undefined,
-    );
-    assert.equal(
-      resolvePostHogChunkId(
-        null as unknown as Parameters<typeof resolvePostHogChunkId>[0],
-      ),
-      undefined,
-    );
-  });
-});
-
 describe("recordExceptionEvent", () => {
-  test("stamps every frame with the running bundle's chunk id when injected", async () => {
-    // Mutating a real global: this suite runs with isolate:false, so the
-    // cleanup below is what keeps the marker from leaking into sibling files.
+  test("stamps frames with the chunk id of the file they came from", async () => {
+    // Models production faithfully: `posthog-cli sourcemap inject` prepends an
+    // IIFE that registers globalThis._posthogChunkIds[<a stack captured INSIDE
+    // the bundle>] = <uuid>. @posthog/core keys that map BY FILENAME (#9068),
+    // which is strictly stronger than the single-chunk-only helper #9048
+    // hand-wrote -- so the registration stack and the thrown error's frames
+    // must name the same file, exactly as they do in a real deploy.
     const scope = globalThis as { _posthogChunkIds?: Record<string, string> };
     const before = scope._posthogChunkIds;
-    scope._posthogChunkIds = { "Error\n    at data-api.js:1:1": "chunk-abc" };
+    scope._posthogChunkIds = {
+      "Error\n    at Object.<anonymous> (/bundle/data-api.js:1:1)":
+        "019fc1c0-8505-7612-a464-f3a75098a9ea",
+    };
     try {
+      const error = new Error("boom");
+      error.stack =
+        "Error: boom\n" +
+        "    at handler (/bundle/data-api.js:93344:18)\n" +
+        "    at fetch (/bundle/data-api.js:18040:61)";
       const calls: Row[] = [];
-      const error = new RangeError("boom");
       await recordExceptionEvent(
         CONFIGURED,
         { error, route: "test-route" },
@@ -831,7 +778,9 @@ describe("recordExceptionEvent", () => {
       const frames =
         calls[0].body.properties.$exception_list[0].stacktrace.frames;
       assert.ok(frames.length > 0);
-      for (const frame of frames) assert.equal(frame.chunk_id, "chunk-abc");
+      for (const frame of frames) {
+        assert.equal(frame.chunk_id, "019fc1c0-8505-7612-a464-f3a75098a9ea");
+      }
     } finally {
       if (before === undefined) delete scope._posthogChunkIds;
       else scope._posthogChunkIds = before;
@@ -897,14 +846,20 @@ describe("recordExceptionEvent", () => {
     assert.equal(list.length, 1);
     assert.equal(list[0].type, "RangeError");
     assert.equal(list[0].value, "boom");
-    assert.deepEqual(list[0].mechanism, { handled: true, synthetic: false });
+    // `type` comes from @posthog/core's builder (#9068); handled/synthetic are
+    // the hint we pass in.
+    assert.deepEqual(list[0].mechanism, {
+      handled: true,
+      synthetic: false,
+      type: "generic",
+    });
     assert.equal(list[0].stacktrace.type, "raw");
     assert.ok(list[0].stacktrace.frames.length > 0);
     for (const frame of list[0].stacktrace.frames) {
-      // The marker that makes PostHog SYMBOLICATE the frame rather than
-      // take it at face value -- see ExceptionStackFrame (#9045).
+      // The marker that makes PostHog SYMBOLICATE the frame rather than take
+      // it at face value (#9045). Now emitted by @posthog/core's parser
+      // (#9068) rather than set by hand, so it cannot drift.
       assert.equal(frame.platform, "node:javascript");
-      assert.equal(frame.lang, "javascript");
       assert.equal(typeof frame.function, "string");
     }
 
@@ -985,11 +940,15 @@ describe("recordExceptionEvent", () => {
     assert.equal(frame.colno, 13);
   });
 
-  test("never drops an unparseable stack line -- it becomes a frame with just raw text", async () => {
-    const fakeStack =
-      "Error: boom\n" + "    something unusual, not a normal V8 frame\n";
+  test("drops an unparseable stack line rather than emitting a junk frame", async () => {
+    // BEHAVIOUR CHANGE (#9068): the hand-written parser kept any line it could
+    // not parse as a pseudo-frame whose `function` was the raw text.
+    // @posthog/core's parser drops it. That is the better contract -- a frame
+    // with no file/line/col cannot be symbolicated and only adds noise to the
+    // Issue -- and it is now the library's to maintain, not ours.
     const error = new Error("boom");
-    error.stack = fakeStack;
+    error.stack =
+      "Error: boom\n" + "    something unusual, not a normal V8 frame\n";
 
     const calls: Row[] = [];
     await recordExceptionEvent(
@@ -999,14 +958,9 @@ describe("recordExceptionEvent", () => {
     );
     const frames =
       calls[0].body.properties.$exception_list[0].stacktrace.frames;
-    assert.equal(frames.length, 1);
-    assert.equal(frames[0].platform, "node:javascript");
-    assert.equal(frames[0].lang, "javascript");
-    assert.equal(
-      frames[0].function,
-      "something unusual, not a normal V8 frame",
-    );
-    assert.equal("filename" in frames[0], false);
+    assert.equal(frames.length, 0);
+    // The exception itself still reports fully -- only the junk frame is gone.
+    assert.equal(calls[0].body.properties.$exception_list[0].value, "boom");
   });
 
   test("caps the number of stack frames sent", async () => {
@@ -1025,7 +979,10 @@ describe("recordExceptionEvent", () => {
     );
     const frames =
       calls[0].body.properties.$exception_list[0].stacktrace.frames;
-    assert.ok(frames.length <= 30);
+    // @posthog/core's STACKTRACE_FRAME_LIMIT (#9068); was 30 when we capped it
+    // ourselves.
+    assert.ok(frames.length <= 50);
+    assert.ok(frames.length > 0);
   });
 
   test("handles a thrown non-Error value without crashing", async () => {
@@ -1039,7 +996,10 @@ describe("recordExceptionEvent", () => {
     const entry = calls[0].body.properties.$exception_list[0];
     assert.equal(entry.type, "Error");
     assert.equal(entry.value, "just a string");
-    assert.deepEqual(entry.stacktrace.frames, []);
+    // A thrown string has no stack, so @posthog/core's StringCoercer omits
+    // `stacktrace` entirely (#9068) rather than emitting an empty frame list
+    // the way our hand-written shaper did. Omission is the honest shape.
+    assert.equal(entry.stacktrace, undefined);
   });
 
   test("falls back to a generic type/message when an Error has a blank name/message", async () => {
