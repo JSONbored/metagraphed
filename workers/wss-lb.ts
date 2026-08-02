@@ -35,6 +35,11 @@ import {
   type PoolsArtifact,
 } from "../deploy/wss-lb/src/select.ts";
 import { MAX_RPC_BODY_BYTES } from "../deploy/wss-lb/src/rpc-policy.ts";
+import {
+  recordExceptionEvent,
+  recordUsageEvent,
+} from "../src/usage-telemetry.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
 export interface WssLbEnv {
   // Where the pools artifact is read from. Not hardcoded so a staging
@@ -44,6 +49,12 @@ export interface WssLbEnv {
   NETWORKS?: string;
   MAX_BLOCK_LAG?: string;
   HANDSHAKE_TIMEOUT_MS?: string;
+  // PostHog wiring, matching every other Worker (secret + optional host
+  // override). Absent => capture is a no-op, the same
+  // isUsageTelemetryConfigured contract src/usage-telemetry.ts gives the
+  // main Workers.
+  POSTHOG_PROJECT_TOKEN?: string;
+  POSTHOG_HOST?: string;
   // Optional. Absent => no per-IP limiting (fail open, see header).
   WSS_CONNECT_RATE_LIMITER?: {
     limit(o: { key: string }): Promise<{ success: boolean }>;
@@ -77,6 +88,85 @@ function json(body: unknown, status: number): Response {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Condition-level PostHog capture (#9046).
+//
+// Deliberately NOT a blanket catch-capture: every catch block in this file is
+// an availability-shaped fallback by design (pool fetch -> null, failed dial
+// -> try next, teardown races -> already gone), and capturing those would
+// manufacture noise out of routine failovers. What reaches PostHog is the two
+// CONDITIONS that mean the proxy is not doing its one job -- a client asked
+// for an upstream and none could be produced -- plus any genuinely unhandled
+// exception from the fetch handler.
+//
+// Rate-bounded per isolate: a dead-pool incident makes EVERY connect hit the
+// same condition, and the point is "this is happening", not one event per
+// attempt -- unbounded capture during an outage is how a free PostHog tier
+// gets eaten (#9004). One event per condition per isolate per window; the
+// cross-isolate multiplier is bounded by however many isolates Cloudflare is
+// running, which for this Worker's traffic is small.
+const CONDITION_EVENT_WINDOW_MS = 5 * 60 * 1000;
+const conditionLastSentMs = new Map<string, number>();
+registerModuleStateReset("workers/wss-lb.ts", () => {
+  conditionLastSentMs.clear();
+});
+
+/** True at most once per `label` per window per isolate. Exported for tests. */
+export function shouldEmitCondition(
+  label: string,
+  nowMs: number = Date.now(),
+): boolean {
+  const last = conditionLastSentMs.get(label);
+  if (last !== undefined && nowMs - last < CONDITION_EVENT_WINDOW_MS) {
+    return false;
+  }
+  conditionLastSentMs.set(label, nowMs);
+  return true;
+}
+
+// The `route` labels this Worker emits under. Stable, enumerable, and never
+// derived from request data -- they are the query key in PostHog.
+const CONDITION_ROUTES = {
+  noUpstream: "wss-lb-no-upstream",
+  allUnreachable: "wss-lb-all-upstreams-unreachable",
+} as const;
+
+// Fire-and-forget capture of one availability condition as a usage_event.
+// recordUsageEvent itself never throws and no-ops without a token, so the
+// serving path cannot be hurt from here. `waitUntil` keeps the capture alive
+// past the response without delaying it; absent (tests, direct calls) the
+// promise is simply left to the runtime.
+function captureCondition(
+  env: WssLbEnv,
+  route: string,
+  network: string,
+  durationMs: number,
+  errorCode: string,
+  fetchImpl: typeof fetch,
+  waitUntil?: (p: Promise<unknown>) => void,
+): void {
+  if (!shouldEmitCondition(route)) return;
+  const pending = recordUsageEvent(
+    env as unknown as Env,
+    {
+      route,
+      ok: false,
+      durationMs,
+      statusClass: "5xx",
+      errorCode,
+      // `client` carries the network rather than a UA bucket: which pool
+      // dried up is the actionable dimension here, and it is a two-value
+      // enum.
+      client: network,
+    },
+    // The one fetch this Worker uses everywhere, so tests exercising the
+    // condition paths intercept the PostHog POST the same way they already
+    // intercept the pools read.
+    { fetch: fetchImpl },
+  );
+  waitUntil?.(pending);
 }
 
 // Read the pools artifact through the edge cache. A failure here is NOT fatal
@@ -268,10 +358,12 @@ export async function handleWssLbRequest(
   deps: {
     fetchImpl?: typeof fetch;
     makeUpgradeResponse?: (client: WebSocket, upstreamHost: string) => Response;
+    waitUntil?: (p: Promise<unknown>) => void;
   } = {},
 ): Promise<Response> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const makeUpgradeResponse = deps.makeUpgradeResponse ?? upgradeResponse;
+  const startedMs = Date.now();
   const url = new URL(request.url);
 
   // /healthz is the DEPLOYED contract -- it is what railway.json's
@@ -340,6 +432,20 @@ export async function handleWssLbRequest(
     maxBlockLag: intOf(env.MAX_BLOCK_LAG, DEFAULT_MAX_BLOCK_LAG),
   });
   if (!upstreams.length) {
+    // The condition the config comment names as the reason full-sampled logs
+    // are on: a proxy that stops finding upstreams. `pools === null` (artifact
+    // unfetchable) and an empty selection (artifact fine, every endpoint
+    // filtered out) share the client-facing 503 but are distinct faults --
+    // the error_code dimension keeps them distinguishable in PostHog.
+    captureCondition(
+      env,
+      CONDITION_ROUTES.noUpstream,
+      network,
+      Date.now() - startedMs,
+      pools === null ? "pool_unfetchable" : "no_healthy_upstream",
+      fetchImpl,
+      deps.waitUntil,
+    );
     return json(
       {
         ok: false,
@@ -370,6 +476,15 @@ export async function handleWssLbRequest(
   // Every candidate failed its handshake -- the pool believes they are healthy
   // but none would talk to us. That is a different condition from an empty pool
   // and gets its own code so it is diagnosable from the client side.
+  captureCondition(
+    env,
+    CONDITION_ROUTES.allUnreachable,
+    network,
+    Date.now() - startedMs,
+    "all_upstreams_unreachable",
+    fetchImpl,
+    deps.waitUntil,
+  );
   return json(
     {
       ok: false,
@@ -383,7 +498,40 @@ export async function handleWssLbRequest(
 }
 
 export default {
-  fetch(request: Request, env: WssLbEnv): Promise<Response> {
-    return handleWssLbRequest(request, env);
+  async fetch(
+    request: Request,
+    env: WssLbEnv,
+    ctx?: ExecutionContext,
+  ): Promise<Response> {
+    const waitUntil = ctx ? ctx.waitUntil.bind(ctx) : undefined;
+    try {
+      return await handleWssLbRequest(request, env, { waitUntil });
+    } catch (error) {
+      // A genuinely UNHANDLED throw -- every expected failure above already
+      // degrades to a typed JSON error. This is the third condition #9046
+      // names, and the only $exception this Worker emits. Same per-isolate
+      // bound as the availability conditions: a crash loop is one event per
+      // window, not one per request.
+      if (shouldEmitCondition("wss-lb-unhandled-exception")) {
+        // Two statements, not `waitUntil?.(record...())`: an optional call
+        // short-circuits its ARGUMENT too, so the one-liner would silently
+        // skip the capture whenever ctx is absent.
+        const pending = recordExceptionEvent(env as unknown as Env, {
+          error,
+          route: "wss-lb-unhandled-exception",
+        });
+        waitUntil?.(pending);
+      }
+      return json(
+        {
+          ok: false,
+          error: {
+            code: "internal_error",
+            message: "Unexpected proxy error.",
+          },
+        },
+        500,
+      );
+    }
   },
 };
