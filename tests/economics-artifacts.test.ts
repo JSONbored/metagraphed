@@ -312,7 +312,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(row.slug, "sn-1");
     assert.equal(artifact.summary.subnet_count, 1);
     assert.equal(artifact.summary.with_economics_count, 1);
-    assert.equal(artifact.summary.total_stake_tao, "1000.000000000");
+    assert.equal(artifact.summary.total_stake_alpha, "1000.000000000");
     assert.equal(artifact.summary.total_validators, 9);
     assert.equal(artifact.summary.total_miners, 200);
     assert.equal(artifact.summary.registration_open_count, 1);

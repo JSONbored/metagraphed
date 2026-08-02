@@ -2364,7 +2364,7 @@ test("GET /api/v1/validators returns the network-wide validator leaderboard with
   expect(body.sort).toBe("subnet_count");
   expect(body.limit).toBe(20);
   expect(body.validators[0].hotkey).toBe("5Hot");
-  expect(body.validators[0].total_stake_tao).toBe(456.7);
+  expect(body.validators[0].total_stake_alpha).toBe(456.7);
 });
 
 test("GET /api/v1/validators sets featured per hotkey, matched against featured_validators", async () => {
@@ -2847,7 +2847,7 @@ test("GET /api/v1/subnets/:netuid/idle-stake shapes the live idle-stake scorecar
   expect(body.netuid).toBe(4);
   expect(body.neuron_count).toBe(2);
   expect(body.idle_neuron_count).toBe(1);
-  expect(body.idle_stake_tao).toBe(456.7);
+  expect(body.idle_stake_alpha).toBe(456.7);
   expect(queryText()).toContain("FROM neurons WHERE netuid =");
 });
 
@@ -2857,7 +2857,7 @@ test("GET /api/v1/chain/idle-stake shapes the network-wide idle-stake rollup", a
   expect(res.status).toBe(200);
   const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
-  expect(body.total_idle_stake_tao).toBe(456.7);
+  expect(body.total_idle_stake_alpha).toBe(456.7);
   expect(queryText()).toContain("FROM neurons");
   expect(queryText()).not.toContain("WHERE netuid");
 });

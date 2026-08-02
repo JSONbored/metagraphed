@@ -36,7 +36,7 @@ test("formatTrajectory carries economic fields in the time series (#1307)", () =
   assert.equal(latest.date, "2026-06-21");
   assert.equal(latest.validator_count, 10);
   assert.equal(latest.miner_count, 246);
-  assert.equal(latest.total_stake_tao, 2600000);
+  assert.equal(latest.total_stake_alpha, 2600000);
   assert.equal(latest.alpha_price_tao, 0.05);
   assert.equal(latest.emission_share, 0.011);
   // structural fields still present.
@@ -49,7 +49,7 @@ test("formatTrajectory nulls economics on pre-migration rows", () => {
     rows: [{ snapshot_date: "2026-06-01", completeness_score: 70 }],
   });
   assert.equal((out as Row).points[0].validator_count, null);
-  assert.equal((out as Row).points[0].total_stake_tao, null);
+  assert.equal((out as Row).points[0].total_stake_alpha, null);
   assert.equal((out as Row).points[0].alpha_price_tao, null);
 });
 

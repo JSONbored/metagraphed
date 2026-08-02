@@ -90,7 +90,7 @@ describe("handleSubnetIdleStake", () => {
     assert.equal(body.data.captured_at, null);
     assert.equal(body.data.neuron_count, 0);
     assert.equal(body.data.idle_neuron_count, 0);
-    assert.equal(body.data.idle_stake_tao, 0);
+    assert.equal(body.data.idle_stake_alpha, 0);
     await assertValidComponent("SubnetIdleStakeArtifact", body.data);
   });
 });
@@ -116,7 +116,7 @@ describe("handleChainIdleStake", () => {
     );
     assert.equal(body.data.captured_at, null);
     assert.equal(body.data.subnet_count, 0);
-    assert.equal(body.data.total_idle_stake_tao, 0);
+    assert.equal(body.data.total_idle_stake_alpha, 0);
     assert.deepEqual(body.data.subnets, []);
     await assertValidComponent("ChainIdleStakeArtifact", body.data);
   });

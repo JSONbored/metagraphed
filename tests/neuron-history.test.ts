@@ -141,11 +141,11 @@ describe("history builders", () => {
       ],
       7,
     ) as Row;
-    assert.equal(out.points[0].total_stake_tao, 0.3);
-    assert.equal(out.points[0].total_emission_tao, 3.01);
+    assert.equal(out.points[0].total_stake_alpha, 0.3);
+    assert.equal(out.points[0].total_emission_alpha, 3.01);
     // A null SUM (cold/sparse day) stays null, never coerced to 0.
-    assert.equal(out.points[1].total_stake_tao, null);
-    assert.equal(out.points[1].total_emission_tao, null);
+    assert.equal(out.points[1].total_stake_alpha, null);
+    assert.equal(out.points[1].total_emission_alpha, null);
   });
 
   test("buildNeuronHistory defaults window + per-point captured_at/block_number to null", () => {
@@ -248,8 +248,8 @@ describe("history builders", () => {
     assert.equal(out.window, null);
     assert.equal(out.points[0].neuron_count, null);
     assert.equal(out.points[0].validator_count, null);
-    assert.equal(out.points[0].total_stake_tao, null);
-    assert.equal(out.points[0].total_emission_tao, null);
+    assert.equal(out.points[0].total_stake_alpha, null);
+    assert.equal(out.points[0].total_emission_alpha, null);
   });
 
   test("buildSubnetHistory coerces string-typed aggregate counts to integers", () => {
@@ -326,7 +326,7 @@ describe("history builders", () => {
     const [recent] = out.days;
     assert.equal(recent.snapshot_date, "2026-06-02");
     assert.equal(recent.subnet_count, 2);
-    assert.equal(recent.total_stake_tao, "400.000000000");
+    assert.equal(recent.total_stake_alpha, "400.000000000");
     // (0.02·300 + 0.06·100)/400 = 0.03 weighted; median([0.02,0.06]) = 0.04.
     assert.equal(recent.alpha_price_tao_weighted, 0.03);
     assert.equal(recent.alpha_price_tao_median, 0.04);
@@ -397,7 +397,7 @@ describe("history builders", () => {
     assert.equal(day.alpha_price_tao_weighted, 0.1);
     // Both prices count toward the unweighted median → median([0.1,0.5]) = 0.3.
     assert.equal(day.alpha_price_tao_median, 0.3);
-    assert.equal(day.total_stake_tao, "200.000000000");
+    assert.equal(day.total_stake_alpha, "200.000000000");
     assert.equal(day.window, undefined);
   });
 
@@ -424,7 +424,7 @@ describe("history builders", () => {
     // Blank row contributes nothing: aggregates match the single real row, not
     // a 0-inflated/deflated blend.
     assert.equal(day.subnet_count, 2);
-    assert.equal(day.total_stake_tao, "200.000000000");
+    assert.equal(day.total_stake_alpha, "200.000000000");
     assert.equal(day.alpha_price_tao_weighted, 0.1);
     assert.equal(day.alpha_price_tao_median, 0.1);
     assert.equal(day.validator_count, 3);
@@ -511,11 +511,11 @@ describe("stake aggregates surface when the rolled rows carry stake (P7)", () =>
       64,
       { window: "30d" },
     ) as Row;
-    assert.equal(out.points[0].total_stake_tao, 150);
-    assert.equal(out.points[0].total_emission_tao, 3);
+    assert.equal(out.points[0].total_stake_alpha, 150);
+    assert.equal(out.points[0].total_emission_alpha, 3);
     // The backfilled day keeps emission but nulls stake (the production gap).
-    assert.equal(out.points[1].total_stake_tao, null);
-    assert.equal(out.points[1].total_emission_tao, 3);
+    assert.equal(out.points[1].total_stake_alpha, null);
+    assert.equal(out.points[1].total_emission_alpha, 3);
   });
 
   test("buildConcentrationHistory: stake metrics null on a null-stake day, populated otherwise", () => {

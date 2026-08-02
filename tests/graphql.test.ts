@@ -894,7 +894,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
         summary: {
           subnet_count: 1,
           with_economics_count: 1,
-          total_stake_tao: "1000.000000000",
+          total_stake_alpha: "1000.000000000",
           total_validators: 9,
           total_miners: 200,
           registration_open_count: 1,
@@ -3057,7 +3057,7 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
             registration_cost_tao: 0.5,
             registration_allowed: true,
             emission_share: 0.1,
-            total_stake_tao: 1000,
+            total_stake_alpha: 1000,
             validator_count: 10,
             max_validators: 64,
             miner_count: 50,
@@ -3073,7 +3073,7 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
             registration_cost_tao: 0.2,
             registration_allowed: false,
             emission_share: 0.3,
-            total_stake_tao: 2000,
+            total_stake_alpha: 2000,
             validator_count: 64,
             max_validators: 64,
             miner_count: 100,
@@ -3089,7 +3089,7 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
             registration_cost_tao: 0.1,
             registration_allowed: true,
             emission_share: 0.05,
-            total_stake_tao: 500,
+            total_stake_alpha: 500,
             validator_count: 5,
             max_validators: 64,
             miner_count: 10,
@@ -3211,7 +3211,7 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
     // fields = 55 > 50.
     const { status, body } = await gql(
       `{ subnets { items {
-          economics { netuid emission_share alpha_market_cap_tao open_slots max_uids miner_count validator_count total_stake_tao }
+          economics { netuid emission_share alpha_market_cap_tao open_slots max_uids miner_count validator_count total_stake_alpha }
           endpoints { id status kind url latency_ms last_ok score }
           health { status ok_count failed_count degraded_count unknown_count surface_count avg_latency_ms }
           surfaces { id key kind status url provider name }
@@ -6170,7 +6170,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
 describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback)", () => {
   const trajectoryQuery = `{ subnet_trajectory(netuid: 3) {
     schema_version netuid point_count
-    points { date completeness_score surface_count total_stake_tao }
+    points { date completeness_score surface_count total_stake_alpha }
     deltas { window from_date to_date completeness_score tao_in_pool_tao }
   } }`;
 
@@ -6181,7 +6181,7 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
     endpoint_count: 2,
     validator_count: null,
     miner_count: null,
-    total_stake_tao: 100,
+    total_stake_alpha: 100,
     alpha_price_tao: null,
     emission_share: null,
     tao_in_pool_tao: 10,
@@ -6628,7 +6628,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.equal(item.hotkey, "5Account");
     assert.equal(item.coldkey, "5Coldkey");
     assert.equal(item.subnet_count, 2);
-    assert.equal(item.total_stake_tao, 1500);
+    assert.equal(item.total_stake_alpha, 1500);
     assert.equal(item.stake_dominance, 0.42);
     assert.deepEqual(item.subnets, [
       { netuid: 1, uid: 5, stake_tao: 1000, emission_tao: 5 },
@@ -7391,7 +7391,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
     assert.equal(status, 200);
     const p = body.data.account_portfolio;
     assert.equal(p.subnet_count, 2);
-    assert.equal(p.total_stake_tao, 1500);
+    assert.equal(p.total_stake_alpha, 1500);
     assert.equal(p.stake_concentration.holders, 2);
     assert.equal(p.positions[0].netuid, 3);
     assert.equal(p.positions[0].role, "validator");
@@ -9430,7 +9430,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.ok(paths[0].endsWith(`/validators/${HOTKEY_A}`));
     assert.equal(body.data.compare_validators.netuid, 3);
     assert.equal(
-      body.data.compare_validators.validators[0].total_stake_tao,
+      body.data.compare_validators.validators[0].total_stake_alpha,
       42,
     );
   });
@@ -12646,7 +12646,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     const c = body.data.subnet_idle_stake;
     assert.equal(c.neuron_count, 200);
     assert.equal(c.idle_neuron_count, 30);
-    assert.equal(c.idle_stake_tao, 1234.5);
+    assert.equal(c.idle_stake_alpha, 1234.5);
     assert.equal(c.captured_at, "2026-07-01T00:00:00.000Z");
   });
 
@@ -12889,10 +12889,10 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     assert.equal(captured.url.searchParams.get("window"), "7d");
     const h = body.data.subnet_history;
     assert.equal(h.point_count, 1);
-    assert.equal(h.points[0].total_stake_tao, 1000.5);
+    assert.equal(h.points[0].total_stake_alpha, 1000.5);
     assert.equal(h.points[0].neuron_count, 200);
     assert.equal(h.points[0].validator_count, 64);
-    assert.equal(h.points[0].total_emission_tao, 12.25);
+    assert.equal(h.points[0].total_emission_alpha, 12.25);
   });
 
   test("subnet_history: a partial tier body degrades to the resolver defaults", async () => {
@@ -15835,7 +15835,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     const day = body.data.economics_trends.days[0];
     assert.equal(day.snapshot_date, "2026-07-01");
     assert.equal(day.subnet_count, 3);
-    assert.equal(day.total_stake_tao, "1000.000000000");
+    assert.equal(day.total_stake_alpha, "1000.000000000");
     assert.equal(day.alpha_price_tao_weighted, 0.06);
     assert.equal(day.validator_count, 12);
     assert.equal(day.miner_count, 200);
@@ -21653,7 +21653,7 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
     assert.equal(status, 200);
     assert.equal(capturedUrl!.pathname, "/api/v1/chain/idle-stake");
     assert.equal(body.data.chain_idle_stake.subnet_count, 1);
-    assert.equal(body.data.chain_idle_stake.total_idle_stake_tao, 12.5);
+    assert.equal(body.data.chain_idle_stake.total_idle_stake_alpha, 12.5);
     assert.equal(body.data.chain_idle_stake.subnets[0].netuid, 7);
   });
 
@@ -21665,7 +21665,7 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
     const { status, body } = await gql(query, env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_idle_stake.subnet_count, 0);
-    assert.equal(body.data.chain_idle_stake.total_idle_stake_tao, 0);
+    assert.equal(body.data.chain_idle_stake.total_idle_stake_alpha, 0);
     assert.deepEqual(body.data.chain_idle_stake.subnets, []);
   });
 
