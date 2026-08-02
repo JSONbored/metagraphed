@@ -20,7 +20,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { overlayRpcPoolEligibility } from "../src/health-serving.ts";
-import { RpcPoolSchema } from "../schemas-src/routes/providers-rpc.ts";
+import {
+  RpcPoolSchema,
+  RpcPoolsArtifactSchema,
+} from "../schemas-src/routes/providers-rpc.ts";
 
 /**
  * A baked pool endpoint, field-for-field in the shape RpcPoolEndpointSchema
@@ -160,6 +163,72 @@ describe("the rpc-pool overlay produces what RpcPoolSchema declares (#9138)", ()
         "actually emit have diverged -- a missing value makes the route serve " +
         "responses its own schema rejects, an extra one stops the enum " +
         "catching that",
+    );
+  });
+
+  // ── The artifact level, for the same reason (#9142) ──────────────────────
+  //
+  // The serve path rewrites TWO fields, not one. The same overlay that labels
+  // each endpoint `live-cron-prober` also relabels the artifact's own `source`
+  // to match -- and RpcPoolsArtifactSchema declared only the two build-time
+  // literals, so /api/v1/rpc/pools served a second value its contract forbade.
+  //
+  // It stayed hidden through #9138 because the audit that found the first one
+  // reported a single error per route: fixing `health_source` is what revealed
+  // `source`. Checking one level and not the other is how that repeats.
+  test("the artifact-level source the serve path emits is declared", () => {
+    // The rewrite lives in workers/api.ts's rpc-pools case rather than in an
+    // exported function, so the value is asserted against the schema directly.
+    // Keep this string identical to that call site.
+    const SERVE_TIME_SOURCE = "live-cron-prober";
+    const declared = new Set(
+      (
+        RpcPoolsArtifactSchema.shape.source as unknown as {
+          unwrap: () => { options: string[] };
+        }
+      ).unwrap().options,
+    );
+    assert.ok(
+      declared.has(SERVE_TIME_SOURCE),
+      `workers/api.ts relabels data.source to "${SERVE_TIME_SOURCE}" when it ` +
+        "overlays the cron snapshot, so the route serves a value its own " +
+        "schema rejects unless this enum declares it",
+    );
+    assert.deepEqual(
+      [...declared].sort(),
+      // Build-time literals from buildEndpointPoolArtifact, plus the one the
+      // serve path adds. Equality, so an unreachable value cannot be parked
+      // here to keep the check quiet.
+      [
+        "endpoint-resource-probes",
+        "live-cron-prober",
+        "rpc-endpoint-probes",
+      ].sort(),
+      "the declared data.source vocabulary and what the build and serve paths " +
+        "can actually emit have diverged",
+    );
+  });
+
+  test("an overlaid artifact parses whole, not just to its first error", () => {
+    // #9142's real lesson: /api/v1/rpc/pools had TWO violations and the audit
+    // reported one. Parse the full envelope shape so a second problem cannot
+    // hide behind the first.
+    const artifact = {
+      schema_version: 1,
+      generated_at: "2026-08-02T09:00:00.000Z",
+      source: "live-cron-prober",
+      operational_observed_at: "2026-08-02T09:00:00.000Z",
+      pools: [
+        overlayRpcPoolEligibility(bakedPool([bakedEndpoint("a")]), {
+          endpoints: [liveReading("a")],
+        }),
+      ],
+    };
+    const parsed = RpcPoolsArtifactSchema.safeParse(artifact);
+    assert.ok(
+      parsed.success,
+      "the overlaid artifact does not satisfy its own schema: " +
+        (parsed.success ? "" : JSON.stringify(parsed.error.issues)),
     );
   });
 });

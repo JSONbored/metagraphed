@@ -34027,7 +34027,8 @@
           "source": {
             "enum": [
               "endpoint-resource-probes",
-              "rpc-endpoint-probes"
+              "rpc-endpoint-probes",
+              "live-cron-prober"
             ],
             "type": "string"
           }

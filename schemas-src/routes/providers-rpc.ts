@@ -261,8 +261,22 @@ export const RpcPoolsArtifactSchema = ArtifactBaseSchema.extend({
   // `source` (either literal, never omitted) -- this batch's own schema
   // never declared it. Purely additive (ArtifactBase is .passthrough(), so
   // this was already tolerated, just undocumented).
+  // The first two are what the BUILD emits (buildEndpointPoolArtifact).
+  // `live-cron-prober` is what the SERVE path relabels it to: workers/api.ts's
+  // rpc-pools case overlays the 15-minute cron snapshot and rewrites `source`
+  // to match, honestly -- the served health really did come from the prober
+  // rather than from the build. Only this schema was never told, so the route
+  // served a value its own contract forbade (#9142, the artifact-level twin of
+  // #9138's per-endpoint health_source).
+  //
+  // No fourth value can reach a 200: the overlay's else-branch sets data=null
+  // and the route serves nothing.
   source: z
-    .enum(["endpoint-resource-probes", "rpc-endpoint-probes"])
+    .enum([
+      "endpoint-resource-probes",
+      "rpc-endpoint-probes",
+      "live-cron-prober",
+    ])
     .optional(),
   disabled_proxy_contract: z
     .object({
