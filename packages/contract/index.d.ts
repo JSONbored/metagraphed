@@ -5016,6 +5016,16 @@ export interface components {
         };
         AccountBalanceArtifact: {
             balance_tao?: number | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             queried_at?: string | null;
             schema_version: number;
             ss58: string;
@@ -5024,6 +5034,16 @@ export interface components {
         };
         AccountChildrenArtifact: {
             account: string;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             queried_at?: string | null;
             schema_version: number;
             subnets?: {
@@ -5229,6 +5249,16 @@ export interface components {
         };
         AccountParentsArtifact: {
             account: string;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             queried_at?: string | null;
             schema_version: number;
             subnets?: {
@@ -5351,6 +5381,16 @@ export interface components {
                 kind: "Swap" | "Keep" | "KeepSubnets";
                 subnets?: number[];
             } | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             hotkeys?: {
                 entries: {
                     claimable_rate: number;
@@ -7560,6 +7600,16 @@ export interface components {
             [key: string]: unknown;
         };
         EvmAddressMappingArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             h160: string;
             queried_at?: string | null;
             schema_version: number;
@@ -9514,6 +9564,16 @@ export interface components {
         };
         SubnetConvictionArtifact: {
             count: number;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             king?: string | null;
             leaderboard: {
                 conviction?: number;
@@ -10022,6 +10082,16 @@ export interface components {
             website_url?: string | null;
         };
         SubnetLeaseArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             lease?: ({
                 accumulated_dividends_alpha?: number | null;
                 beneficiary: string;
@@ -18855,6 +18925,12 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "count": 1,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "king": "example",
                      *         "leaderboard": [
                      *           {}
@@ -22409,6 +22485,12 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "balance_tao": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
@@ -22513,6 +22595,12 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "subnets": [
@@ -23615,6 +23703,12 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "subnets": [
@@ -24220,6 +24314,12 @@ export interface operations {
                      *           "subnets": [
                      *             1
                      *           ]
+                     *         },
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
                      *         },
                      *         "hotkeys": [
                      *           {
@@ -32686,6 +32786,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "h160": "example",
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -40628,6 +40734,12 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "count": 1,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "king": "example",
                      *         "leaderboard": [
                      *           {}
@@ -42754,6 +42866,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "lease": {
                      *           "accumulated_dividends_alpha": 0.5,
                      *           "beneficiary": "example",

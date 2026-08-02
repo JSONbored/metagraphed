@@ -6,6 +6,7 @@ import {
   ADDRESS_MAPPING_RPC_TIMEOUT_MS,
   H160_PATTERN,
   loadAddressMapping,
+  ADDRESS_MAPPING_FIELD_SOURCES,
 } from "../src/address-mapping.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
@@ -161,7 +162,13 @@ describe("loadAddressMapping", () => {
     }) as unknown as typeof fetch;
     try {
       const data = await loadAddressMapping(mockEnv(env), H160);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9108) -- attached outside
+      // the cache, so an entry written before the map existed still comes
+      // back with one instead of serving a full TTL without it.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: ADDRESS_MAPPING_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       globalThis.fetch = orig;

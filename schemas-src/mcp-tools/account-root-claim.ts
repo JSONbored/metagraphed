@@ -4,6 +4,7 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -46,6 +47,8 @@ export const GetAccountRootClaimOutputSchema = z
     claim_type: RootClaimTypeSchema.nullable().optional(),
     hotkeys: z.array(RootClaimHotkeySchema).nullable().optional(),
     queried_at: z.string().nullable(),
+    // #9108 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetAccountRootClaimOutput = z.infer<

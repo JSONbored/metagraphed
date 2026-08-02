@@ -5,6 +5,7 @@
 // Zod schema to reuse. Modeled fresh, shallow, from the hand-written
 // literals they replace.
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const GetSubnetOwnershipHistoryInputSchema = z
   .object({
@@ -65,6 +66,8 @@ export const GetSubnetConvictionOutputSchema = z
     king: z.string().nullable().optional(),
     count: z.int(),
     leaderboard: z.array(ConvictionLeaderboardEntrySchema),
+    // #9108 provenance, mirroring the REST artifact field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetSubnetConvictionOutput = z.infer<

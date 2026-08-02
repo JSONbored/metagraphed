@@ -19,6 +19,7 @@
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const RootClaimTypeSchema = z
   .object({
@@ -50,6 +51,9 @@ export const AccountRootClaimArtifactSchema = z
     claim_type: RootClaimTypeSchema.nullable().optional(),
     hotkeys: z.array(RootClaimHotkeySchema).nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type AccountRootClaimArtifact = z.infer<

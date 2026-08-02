@@ -36,6 +36,7 @@
 
 import { encodeAccountId32 } from "./ss58.ts";
 import { isU16Netuid } from "./subnet-recycled.ts";
+import type { FieldSources } from "./field-provenance.ts";
 import {
   twox64ConcatU16StorageKey,
   twox64ConcatU32StorageKey,
@@ -188,7 +189,19 @@ export function decodeSubnetLease(hex: unknown): Row | null {
 // decoded this request (transient RPC failure, or a race between the two
 // sequential reads if the lease was terminated in between) -- callers
 // should treat that as "retry", not "no lease".
-export async function loadSubnetLease(env: Env, netuid: number): Promise<Row> {
+/**
+ * Where each published value came from (#9108).
+ *
+ * `lease` is the decoded `SubnetLeases` record. `leased` is ours: it reports
+ * whether `SubnetUidToLeaseId` resolved at all, which is a fact about the
+ * lookup rather than a value the chain stores.
+ */
+export const SUBNET_LEASE_FIELD_SOURCES = {
+  leased: { kind: "reconstructed", storage: null },
+  lease: { kind: "measured", storage: "SubtensorModule.SubnetLeases" },
+} as const satisfies FieldSources;
+
+async function loadSubnetLeaseSnapshot(env: Env, netuid: number): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
@@ -304,4 +317,18 @@ export async function loadSubnetLease(env: Env, netuid: number): Promise<Row> {
   }
 
   return payload;
+}
+
+/**
+ * The served record: the body above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob, and so REST,
+ * GraphQL and MCP all inherit it from one point rather than three call sites
+ * kept in step by hand (#9108).
+ */
+export async function loadSubnetLease(env: Env, netuid: number): Promise<Row> {
+  return {
+    ...(await loadSubnetLeaseSnapshot(env, netuid)),
+    field_sources: SUBNET_LEASE_FIELD_SOURCES,
+  };
 }

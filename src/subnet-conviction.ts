@@ -1,4 +1,4 @@
-// Live subnet-ownership-contest ("conviction") leaderboard (#6638, part of
+import type { FieldSources } from "./field-provenance.ts"; // Live subnet-ownership-contest ("conviction") leaderboard (#6638, part of
 // the conviction/ownership-contest tracker epic #4302) -- rolls each
 // captured subnet_locks row forward from its own last_update to "now" using
 // the CURRENT (live-queried) UnlockRate/MaturityRate, replicating the
@@ -192,6 +192,30 @@ function combineSubAggregates(
 // governance values (never hardcode -- see module header); `now` is the
 // current block height. Empty/absent rows -> the schema-stable empty-
 // leaderboard shape, never a 404 -- most subnets have no active challengers.
+/**
+ * Where each published value came from (#9108).
+ *
+ * The strongest `reconstructed` case in the catalogue, and the reason this
+ * route needed a map more than the all-measured ones. Every leaderboard row is
+ * an EXTRAPOLATION: each captured `subnet_locks` row is rolled forward from its
+ * own `last_update` to now, replicating the pallet's `roll_forward_lock`, using
+ * the live rates below. The chain never published these numbers at this moment
+ * -- we computed what it would say.
+ *
+ * The two rates and the block ARE measured: they are read live, and they are
+ * what makes the extrapolation checkable by someone who wants to redo it.
+ */
+export const SUBNET_CONVICTION_FIELD_SOURCES = {
+  queried_at_block: { kind: "measured", storage: "System.Number" },
+  unlock_rate: { kind: "measured", storage: "SubtensorModule.UnlockRate" },
+  maturity_rate: { kind: "measured", storage: "SubtensorModule.MaturityRate" },
+  // Rolled forward to `queried_at_block`, not read at it.
+  leaderboard: { kind: "reconstructed", storage: null },
+  // The top of that leaderboard, so it inherits the extrapolation.
+  king: { kind: "reconstructed", storage: null },
+  count: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
+
 export function buildSubnetConviction(
   rows: Row[] | null | undefined,
   netuid: unknown,
@@ -220,6 +244,9 @@ export function buildSubnetConviction(
   return {
     schema_version: 1,
     netuid,
+    // Attached here rather than at a call site: this builder is the one place
+    // the artifact exists fully formed, and REST/GraphQL/MCP all go through it.
+    field_sources: SUBNET_CONVICTION_FIELD_SOURCES,
     queried_at_block: now ?? null,
     unlock_rate: unlockRate ?? null,
     maturity_rate: maturityRate ?? null,

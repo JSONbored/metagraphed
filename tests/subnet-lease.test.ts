@@ -6,6 +6,7 @@ import {
   SUBNET_LEASE_RPC_TIMEOUT_MS,
   decodeSubnetLease,
   loadSubnetLease,
+  SUBNET_LEASE_FIELD_SOURCES,
 } from "../src/subnet-lease.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -491,7 +492,13 @@ describe("loadSubnetLease", () => {
     }) as unknown as typeof fetch;
     try {
       const data = await loadSubnetLease(env, 3);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9108) -- attached outside
+      // the cache, so an entry written before the map existed still comes
+      // back with one instead of serving a full TTL without it.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: SUBNET_LEASE_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       globalThis.fetch = orig;

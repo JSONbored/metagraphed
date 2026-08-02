@@ -7,6 +7,7 @@ import {
   decodeProportionAccountList,
   loadAccountChildren,
   loadAccountParents,
+  ACCOUNT_CHILDREN_FIELD_SOURCES,
 } from "../src/child-hotkey-delegation.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -405,7 +406,13 @@ describe("loadAccountChildren", () => {
     });
     try {
       const data = await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9108) -- attached outside
+      // the cache, so an entry written before the map existed still comes
+      // back with one instead of serving a full TTL without it.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: ACCOUNT_CHILDREN_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       restore();

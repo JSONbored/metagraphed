@@ -6,6 +6,7 @@
 // netuid path segment).
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const SubnetConvictionEntrySchema = z
   .object({
@@ -26,6 +27,9 @@ export const SubnetConvictionArtifactSchema = z
     king: z.string().nullable().optional(),
     count: z.int().min(0),
     leaderboard: z.array(SubnetConvictionEntrySchema),
+    // #9108. Every leaderboard row is an extrapolation to `queried_at_block`,
+    // not a reading at it -- this is where the response says so.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type SubnetConvictionArtifact = z.infer<

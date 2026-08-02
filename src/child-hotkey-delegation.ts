@@ -40,6 +40,7 @@ import { blake2b } from "@noble/hashes/blake2.js";
 import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
+import type { FieldSources } from "./field-provenance.ts";
 
 export const CHILD_HOTKEY_KV_TTL = 120; // seconds -- live chain state, same profile as subnet-lease.ts
 export const CHILD_HOTKEY_NEGATIVE_KV_TTL = 10; // seconds
@@ -293,7 +294,11 @@ async function loadDelegationEntries(
   return rows;
 }
 
-export interface ChildHotkeyGraphResult {
+/**
+ * The cacheable body -- exactly what goes into KV. `field_sources` is
+ * deliberately not part of it (#9108).
+ */
+export interface ChildHotkeyGraphSnapshot {
   schema_version: 1;
   account: string;
   subnets: DelegationRow[] | null;
@@ -306,7 +311,7 @@ async function loadChildHotkeyGraph(
   itemName: string,
   counterpartKey: string,
   cacheKeyPrefix: string,
-): Promise<ChildHotkeyGraphResult> {
+): Promise<ChildHotkeyGraphSnapshot> {
   if (!isFinneySs58Address(ss58)) {
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
@@ -317,7 +322,7 @@ async function loadChildHotkeyGraph(
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached as ChildHotkeyGraphResult;
+      if (cached) return cached as ChildHotkeyGraphSnapshot;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
@@ -332,7 +337,7 @@ async function loadChildHotkeyGraph(
   );
   const ok = rows !== null;
 
-  const payload: ChildHotkeyGraphResult = {
+  const payload: ChildHotkeyGraphSnapshot = {
     schema_version: 1,
     account: ss58,
     subnets: ok
@@ -360,18 +365,78 @@ async function loadChildHotkeyGraph(
 // hotkey currently delegates stake-weight to. `subnets: null` on RPC
 // failure; `subnets: []` when the hotkey genuinely has no children anywhere
 // (the common case) -- schema-stable, never throws on a live-RPC failure.
-export async function loadAccountChildren(
+/**
+ * Where each published value came from (#9108).
+ *
+ * `subnets` is `reconstructed`, not a read of ChildKeys. The chain
+ * stores one entry per (hotkey, netuid); this groups every entry for the
+ * account by subnet and attaches the take rate charged. The rows are made of
+ * chain readings, but the shape is ours -- and `reconstructed` with
+ * `storage: null` is the honest way to say "assembled from many reads" rather
+ * than naming one item and implying a single lookup produced it.
+ */
+export interface ChildHotkeyGraphResult extends ChildHotkeyGraphSnapshot {
+  field_sources: FieldSources;
+}
+
+export const ACCOUNT_CHILDREN_FIELD_SOURCES = {
+  subnets: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
+
+async function loadAccountChildrenSnapshot(
   env: Env,
   ss58: string,
-): Promise<ChildHotkeyGraphResult> {
+): Promise<ChildHotkeyGraphSnapshot> {
   return loadChildHotkeyGraph(env, ss58, "ChildKeys", "child", "children");
 }
 
 // Query every parent hotkey currently delegating stake-weight to this
 // hotkey. Same shape as loadAccountChildren, reading ParentKeys instead.
+/**
+ * Where each published value came from (#9108).
+ *
+ * `subnets` is `reconstructed`, not a read of ParentKeys. The chain
+ * stores one entry per (hotkey, netuid); this groups every entry for the
+ * account by subnet and attaches the take rate charged. The rows are made of
+ * chain readings, but the shape is ours -- and `reconstructed` with
+ * `storage: null` is the honest way to say "assembled from many reads" rather
+ * than naming one item and implying a single lookup produced it.
+ */
+export const ACCOUNT_PARENTS_FIELD_SOURCES = {
+  subnets: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
+
+async function loadAccountParentsSnapshot(
+  env: Env,
+  ss58: string,
+): Promise<ChildHotkeyGraphSnapshot> {
+  return loadChildHotkeyGraph(env, ss58, "ParentKeys", "parent", "parents");
+}
+
+/**
+ * The served delegation graph plus its provenance map, attached outside the
+ * loader so it never enters the KV blob (#9108).
+ */
+export async function loadAccountChildren(
+  env: Env,
+  ss58: string,
+): Promise<ChildHotkeyGraphResult> {
+  return {
+    ...(await loadAccountChildrenSnapshot(env, ss58)),
+    field_sources: ACCOUNT_CHILDREN_FIELD_SOURCES,
+  };
+}
+
+/**
+ * The served delegation graph plus its provenance map, attached outside the
+ * loader so it never enters the KV blob (#9108).
+ */
 export async function loadAccountParents(
   env: Env,
   ss58: string,
 ): Promise<ChildHotkeyGraphResult> {
-  return loadChildHotkeyGraph(env, ss58, "ParentKeys", "parent", "parents");
+  return {
+    ...(await loadAccountParentsSnapshot(env, ss58)),
+    field_sources: ACCOUNT_PARENTS_FIELD_SOURCES,
+  };
 }

@@ -7,6 +7,7 @@ import {
   CONTRACT_VERSION,
   compileRoutePattern,
 } from "../src/contracts.ts";
+import { buildSubnetConviction } from "../src/subnet-conviction.ts";
 import { handleRequest } from "../workers/api.ts";
 import {
   createLocalArtifactEnv,
@@ -209,17 +210,18 @@ const env = createLocalArtifactEnv({
         );
       }
       if (/^\/api\/v1\/subnets\/\d+\/conviction$/.test(pathname)) {
+        // Built by the SAME builder workers/data-api.ts calls, not hand-written
+        // -- which is what the comment above this block already promised. The
+        // literal version silently omitted `field_sources` when #9108 added it,
+        // so the mock asserted a shape production does not serve.
         return new Response(
-          JSON.stringify({
-            schema_version: 1,
-            netuid: 7,
-            queried_at_block: 8647000,
-            unlock_rate: 934866,
-            maturity_rate: 311622,
-            king: null,
-            count: 0,
-            leaderboard: [],
-          }),
+          JSON.stringify(
+            buildSubnetConviction([], 7, {
+              now: 8647000,
+              unlockRate: 934866,
+              maturityRate: 311622,
+            }),
+          ),
           { status: 200, headers },
         );
       }

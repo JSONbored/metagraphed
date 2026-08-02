@@ -10,6 +10,7 @@
 // is audited, zero-dependency, pure JS, and verified working in workerd
 // (wrangler dev) with output identical to node:crypto's blake2b512.
 import { blake2b } from "@noble/hashes/blake2.js";
+import type { FieldSources } from "./field-provenance.ts";
 
 const SS58_BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -197,7 +198,11 @@ export function accountInfoTotalRao(
   return null;
 }
 
-export interface AccountBalanceResult {
+/**
+ * The cacheable body -- exactly what goes into KV. `field_sources` is
+ * deliberately not part of it (#9108).
+ */
+export interface AccountBalanceResultSnapshot {
   schema_version: 1;
   ss58: string;
   balance_tao: number | null;
@@ -206,10 +211,26 @@ export interface AccountBalanceResult {
 
 // Query live balance for one finney ss58. Uses METAGRAPH_CONTROL KV (60s TTL) when
 // present; balance_tao is null on RPC failure (schema-stable, never throws).
-export async function loadAccountBalance(
+/**
+ * Where each published value came from (#9108).
+ *
+ * One field, one read: the account's free + reserved balance off
+ * `System::Account`. Not the Subtensor pallet -- this is the base-layer
+ * balance, which is why the item names `System` rather than `SubtensorModule`,
+ * and why it is real TAO rather than any subnet's alpha.
+ */
+export interface AccountBalanceResult extends AccountBalanceResultSnapshot {
+  field_sources: typeof ACCOUNT_BALANCE_FIELD_SOURCES;
+}
+
+export const ACCOUNT_BALANCE_FIELD_SOURCES = {
+  balance_tao: { kind: "measured", storage: "System.Account" },
+} as const satisfies FieldSources;
+
+async function loadAccountBalanceSnapshot(
   env: Env,
   ss58: string,
-): Promise<AccountBalanceResult> {
+): Promise<AccountBalanceResultSnapshot> {
   const cacheKey = `balance:${ss58}`;
   const kv = env?.METAGRAPH_CONTROL;
 
@@ -264,7 +285,7 @@ export async function loadAccountBalance(
     // RPC fetch failed — balance_tao stays null.
   }
 
-  const payload: AccountBalanceResult = {
+  const payload: AccountBalanceResultSnapshot = {
     schema_version: 1,
     ss58,
     balance_tao: balanceTao,
@@ -282,4 +303,21 @@ export async function loadAccountBalance(
   }
 
   return payload;
+}
+
+/**
+ * The served record: the body above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob, and so REST,
+ * GraphQL and MCP all inherit it from one point rather than three call sites
+ * kept in step by hand (#9108).
+ */
+export async function loadAccountBalance(
+  env: Env,
+  ss58: string,
+): Promise<AccountBalanceResult> {
+  return {
+    ...(await loadAccountBalanceSnapshot(env, ss58)),
+    field_sources: ACCOUNT_BALANCE_FIELD_SOURCES,
+  };
 }

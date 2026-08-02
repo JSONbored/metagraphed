@@ -13,6 +13,7 @@
 // identical endpoint). Mirrors src/sudo-key.ts's live-RPC + KV-cache shape.
 import { encodeAccountId32 } from "./ss58.ts";
 import { functionSelector } from "./evm-precompiles.ts";
+import type { FieldSources } from "./field-provenance.ts";
 
 const ADDRESS_MAPPING_PRECOMPILE_ADDRESS =
   "0x000000000000000000000000000000000000080c";
@@ -41,7 +42,11 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-export interface AddressMappingResult {
+/**
+ * The cacheable body -- exactly what goes into KV. `field_sources` is
+ * deliberately not part of it (#9108).
+ */
+export interface AddressMappingResultSnapshot {
   schema_version: 1;
   h160: string;
   ss58: string | null;
@@ -53,10 +58,28 @@ export interface AddressMappingResult {
 // ss58 is null on RPC failure only -- into_account_id is a total function
 // (every H160 maps to SOME AccountId), so unlike loadSudoKey there is no
 // legitimate "unset" case to distinguish from failure.
-export async function loadAddressMapping(
+/**
+ * Where each published value came from (#9108).
+ *
+ * Read through the `AddressMapping` EVM precompile (0x...080c), NOT a storage
+ * item -- there is no key to read, because the mapping is a pure function of
+ * the H160 (`R::AddressMapping::into_account_id`). Naming the precompile is the
+ * honest answer: it says the value was computed by the chain's own code rather
+ * than looked up, which is a different guarantee from a storage read and a
+ * different one again from our arithmetic.
+ */
+export interface AddressMappingResult extends AddressMappingResultSnapshot {
+  field_sources: typeof ADDRESS_MAPPING_FIELD_SOURCES;
+}
+
+export const ADDRESS_MAPPING_FIELD_SOURCES = {
+  ss58: { kind: "measured", storage: "AddressMapping.addressMapping" },
+} as const satisfies FieldSources;
+
+async function loadAddressMappingSnapshot(
   env: Env,
   h160: string,
-): Promise<AddressMappingResult> {
+): Promise<AddressMappingResultSnapshot> {
   const normalized = h160.toLowerCase();
   const cacheKey = `evm-address-mapping:${normalized}`;
   const kv = env?.METAGRAPH_CONTROL;
@@ -103,7 +126,7 @@ export async function loadAddressMapping(
     // RPC fetch failed -- ss58 stays null.
   }
 
-  const payload: AddressMappingResult = {
+  const payload: AddressMappingResultSnapshot = {
     schema_version: 1,
     h160: normalized,
     ss58,
@@ -123,4 +146,21 @@ export async function loadAddressMapping(
   }
 
   return payload;
+}
+
+/**
+ * The served record: the body above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob, and so REST,
+ * GraphQL and MCP all inherit it from one point rather than three call sites
+ * kept in step by hand (#9108).
+ */
+export async function loadAddressMapping(
+  env: Env,
+  h160: string,
+): Promise<AddressMappingResult> {
+  return {
+    ...(await loadAddressMappingSnapshot(env, h160)),
+    field_sources: ADDRESS_MAPPING_FIELD_SOURCES,
+  };
 }

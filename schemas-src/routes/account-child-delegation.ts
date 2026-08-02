@@ -13,6 +13,7 @@
 // hand-edited component keys become fully orphaned.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 const ChildDelegationEntrySchema = z
   .object({
@@ -35,6 +36,9 @@ export const AccountChildrenArtifactSchema = z
     account: z.string(),
     subnets: z.array(ChildDelegationSubnetSchema).nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type AccountChildrenArtifact = z.infer<
@@ -67,6 +71,9 @@ export const AccountParentsArtifactSchema = z
     account: z.string(),
     subnets: z.array(ParentDelegationSubnetSchema).nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #9108. Required: attached outside the KV cache on every read, so no
+    // response shape legitimately lacks it.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type AccountParentsArtifact = z.infer<
