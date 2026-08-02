@@ -1537,6 +1537,18 @@ async function dispatchScheduled(
     // identical trigger-only POST the GH Actions workflow used to make over the
     // public internet, and dispatches it internally through the existing
     // DATA_API service-binding proxy (handleRollupAccountEventsDailyProxy).
+    if (env.METAGRAPH_ACCOUNT_EVENTS_SOURCE !== "postgres") {
+      // The rollup writes account_events_daily in the box's Postgres. With
+      // that tier retired the write target no longer exists, and an hourly
+      // POST into a dead service would log an error and burn a PostHog
+      // $exception forever. Skipping is a deliberate state, same contract as
+      // the missing-secret skip below.
+      return {
+        ok: false,
+        skipped: true,
+        reason: "account_events postgres tier retired",
+      };
+    }
     if (!env.ROLLUP_SYNC_SECRET) {
       return {
         ok: false,

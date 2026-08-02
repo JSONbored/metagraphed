@@ -212,8 +212,14 @@
     // archive node reaching steady-state, ~51% synced as of 2026-07-10).
     // See #4669's tracking-issue comment thread for the full shape-
     // reconciliation writeup.
-    "METAGRAPH_BLOCKS_SOURCE": "postgres",
-    "METAGRAPH_EXTRINSICS_SOURCE": "postgres",
+    // "retired" (any value but "postgres") short-circuits tryPostgresTier: the
+    // self-hosted box is gone, so a "postgres" flag would cost every request a
+    // doomed Hyperdrive attempt plus a PostHog $exception before reaching the
+    // same fallback. Explorer routes (blocks/extrinsics/events/sudo) serve
+    // from the lakehouse cold tiers; the remaining families serve schema-
+    // stable empties until their D1 ports / projections land.
+    "METAGRAPH_BLOCKS_SOURCE": "retired",
+    "METAGRAPH_EXTRINSICS_SOURCE": "retired",
     // account_events: RE-FLIPPED to "postgres" 2026-07-10 alongside the other
     // two, same connection-affinity fix (#4686). No shape-parity risk (#4696)
     // regardless -- account_events is 11 scalar Postgres columns with its own
@@ -224,7 +230,7 @@
     // readers (account summary, transfers, subnet events, leaderboard/
     // turnover/analytics) remain D1-only, portable one at a time under this
     // same flag in follow-up work.
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "postgres",
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "retired",
     // neurons/neuron_daily (#4771): FLIPPED to "postgres" 2026-07-10, after a
     // live parity pass. refresh-metagraph.yml's real daily-cron run (not just
     // a manual trigger) synced 30,323 rows into a Postgres that started
@@ -238,13 +244,13 @@
     // unambiguous proof the new pipeline (workers/data-api.ts's
     // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
-    "METAGRAPH_NEURONS_SOURCE": "postgres",
+    "METAGRAPH_NEURONS_SOURCE": "retired",
     // top-holders (#6741/#6743): no D1 predecessor ever existed for this route
     // (account_balances/nominator_positions are Postgres-only tables) -- this
     // flag exists purely to reuse tryPostgresTier's proven fail-closed-to-
     // empty-leaderboard behavior on a DATA_API outage, not for an actual
     // tier migration. Always "postgres" from this route's first deploy.
-    "METAGRAPH_TOP_HOLDERS_SOURCE": "postgres",
+    "METAGRAPH_TOP_HOLDERS_SOURCE": "retired",
     // self-health (#8318): same situation as top-holders above -- self_health_*
     // are Postgres-only tables written by the indexer box's poller, with no D1
     // predecessor and no other tier to fall back to. The flag exists to reuse
@@ -253,7 +259,7 @@
     // component unmeasured) is exactly right: we genuinely have no readings in
     // that moment, and claiming "operational" would be a lie told by an
     // outage. Always "postgres" from this route's first deploy.
-    "METAGRAPH_SELF_HEALTH_SOURCE": "postgres",
+    "METAGRAPH_SELF_HEALTH_SOURCE": "retired",
     // #9000: MCP trace sampling at 1.0. Tracing has been wired into four
     // Workers since #7768 and emitted ZERO spans in 30 days because the rate
     // defaults to 0 and was set nowhere.
@@ -310,7 +316,7 @@
     // "unlimited" sentinel, wider than Postgres BIGINT's signed range --
     // widened to NUMERIC (#4843) before this flip. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
-    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "postgres",
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "retired",
     // account_identity (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-account-identity.yml's real
     // workflow_dispatch run synced all 455 accounts (Postgres started
@@ -323,7 +329,7 @@
     // latest-only upsert and the history hash (#4849) before this flip.
     // tryPostgresTier still falls back to D1 on any failure, so this remains
     // a single-flag revert.
-    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "postgres",
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "retired",
     // subnet_identity_history (#4832 gap-closure, final table): FLIPPED to
     // "postgres" 2026-07-11, after a live parity pass with an unexpected
     // finding -- D1's own write path (recordSubnetIdentityChanges) had never
@@ -340,7 +346,7 @@
     // tryPostgresTier still falls back to D1 on any failure, so this remains
     // a single-flag revert -- though note D1's fallback is currently a no-op
     // for reads (empty) until that bug is fixed.
-    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "postgres",
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "retired",
     // rpc_proxy_events (#4832 gap-closure follow-up): FLIPPED to "postgres"
     // 2026-07-12, after a one-time historical backfill closed the only gap --
     // D1 had 70 rows (wrangler d1 execute, confirmed the same day), Postgres
@@ -356,7 +362,7 @@
     // rolling 30-day slice, so there is no long-tail history to lose by
     // switching the read tier. tryPostgresTier still falls back to D1 on any
     // failure, so this remains a single-flag revert.
-    "METAGRAPH_RPC_USAGE_SOURCE": "postgres",
+    "METAGRAPH_RPC_USAGE_SOURCE": "retired",
     // subnet_snapshots (D1 retirement, 2026-07-16): FLIPPED to "postgres".
     // Both handleTrajectory and handleEconomicsTrends
     // (workers/request-handlers/analytics-routes.ts) already wired
@@ -414,7 +420,7 @@
     // behave the same as the already-live /subnets/{netuid}/ownership-history
     // route reading the same table, but that equivalence hasn't been
     // independently verified the way the other flags' comments document.
-    "METAGRAPH_SUBNET_OWNERSHIP_SOURCE": "postgres",
+    "METAGRAPH_SUBNET_OWNERSHIP_SOURCE": "retired",
     // GitHub OAuth App for MCP/API auth (metagraphed#7151) -- identity check
     // only (no repo-scoped permissions requested), plugged into our own
     // OAuth 2.1 authorization server (@cloudflare/workers-oauth-provider) as
