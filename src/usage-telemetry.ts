@@ -164,6 +164,146 @@ function sanitizeLabel(value: unknown): string | undefined {
     : trimmed;
 }
 
+// ─── $mcp_error_type projection (#8963) ────────────────────────────────────
+//
+// PostHog's MCP Analytics dashboards group failures by $mcp_error_type, whose
+// vocabulary is a small fixed set. This codebase already carries a richer,
+// developer-defined error code on every failed tool result
+// (structuredContent.error.code — see toolError in src/mcp-server.ts), so the
+// projection below is the only missing piece: it maps OUR code onto THEIR
+// bucket. Nothing here invents classification the tool path didn't already
+// have.
+//
+// Two layers, deliberately:
+//
+//   1. EXPLICIT — every code the MCP tool path is known to raise, mapped by
+//      hand. This is the authoritative layer; when a code's bucket is not
+//      obvious from its name, it belongs here.
+//   2. CONVENTION — suffix/prefix rules over this codebase's own naming
+//      habits (`*_unavailable`, `*_rate_limited`, `invalid_*`). The code
+//      vocabulary is open-ended by design: helpers outside mcp-server.ts
+//      (health-history-mcp.ts, stake-quote.ts, the per-domain sync modules)
+//      each mint their own codes and propagate them through toolError, and
+//      new ones land without touching this file. A hand-maintained list
+//      alone would silently degrade every new code to `internal`; the rules
+//      keep the long tail classified.
+//
+// Anything neither layer recognizes falls back to `internal`, which is
+// PostHog's own documented catch-all bucket.
+
+/** PostHog's fixed $mcp_error_type vocabulary. */
+export type McpErrorType =
+  | "validation"
+  | "permission"
+  | "api_4xx"
+  | "missing_context"
+  | "rate_limited"
+  | "api_5xx"
+  | "timeout"
+  | "internal";
+
+/**
+ * Layer 1: codes whose bucket is not derivable from the name, or where the
+ * naming convention would derive the WRONG bucket. Keep alphabetical.
+ */
+export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
+  // A caller offering a credential the target surface has no slot for is a
+  // malformed request, not an authorization failure — the call would fail
+  // identically with a perfectly valid credential.
+  credential_not_supported: "validation",
+  forbidden: "permission",
+  auth_required: "permission",
+  internal_error: "internal",
+  // "This surface exists but declares no callable path/schema" — the caller
+  // is missing context about the target, not sending bad syntax.
+  no_schema: "missing_context",
+  not_callable: "missing_context",
+  not_found: "missing_context",
+  path_not_declared: "missing_context",
+  // Blocked by our own method policy, not by the upstream.
+  rpc_method_blocked: "permission",
+  // The upstream answered, but with something unparseable — their fault.
+  rpc_invalid_response: "api_5xx",
+  // ...whereas an invalid *request* is the caller's.
+  rpc_invalid_request: "validation",
+  rpc_upstream_error: "api_5xx",
+  // A tools/call naming a tool this server does not register. Classified as
+  // validation rather than missing_context: `name` is an argument of the
+  // tools/call request, and the caller can fix it from tools/list alone.
+  unknown_tool: "validation",
+  unsupported_content_type: "validation",
+};
+
+/**
+ * Layer 2: naming-convention rules, in precedence order. First match wins.
+ */
+const MCP_ERROR_TYPE_RULES: [RegExp, McpErrorType][] = [
+  // Checked before `*_unavailable`, since `rpc_state_query_rate_limited` and
+  // friends would otherwise fall through to the 5xx rule below.
+  [/_rate_limited$/, "rate_limited"],
+  [/^timeout$|_timeout$/, "timeout"],
+  [/^invalid_|^malformed_|_invalid$/, "validation"],
+  // Our own dependency (a tier, a binding, an upstream provider) could not
+  // serve the call. From the caller's side this is indistinguishable from a
+  // 5xx, which is the bucket PostHog intends for it.
+  [/_unavailable$|_unreachable$|^unavailable$/, "api_5xx"],
+  [/_not_configured$|_missing$|_not_found$/, "missing_context"],
+];
+
+/**
+ * Project one internal tool-error code onto PostHog's $mcp_error_type bucket.
+ * Never returns undefined — an unrecognized code is `internal`, so a failure
+ * is never silently unclassified in the dashboards.
+ */
+export function classifyMcpErrorType(code: unknown): McpErrorType {
+  if (typeof code !== "string") return "internal";
+  const normalized = code.trim().toLowerCase();
+  if (!normalized) return "internal";
+  const explicit = MCP_ERROR_TYPE_BY_CODE[normalized];
+  if (explicit) return explicit;
+  for (const [pattern, type] of MCP_ERROR_TYPE_RULES) {
+    if (pattern.test(normalized)) return type;
+  }
+  return "internal";
+}
+
+/**
+ * Stamp client + server attribution onto an outgoing $mcp_* property bag
+ * (#8963). Shared by every event in the family so a breakdown by client or by
+ * deploy version behaves identically whichever event it starts from.
+ */
+function assignMcpAttribution(
+  properties: Record<string, unknown>,
+  event: {
+    clientName?: string;
+    clientVersion?: string;
+    clientNameSource?: McpClientNameSource;
+  } & McpServerIdentity,
+): void {
+  const clientName = sanitizeLabel(event.clientName);
+  if (clientName !== undefined) {
+    properties["$mcp_client_name"] = clientName;
+    // Provenance rides with the value, never separately — an unlabelled
+    // client name would be indistinguishable from an MCP-declared one.
+    if (event.clientNameSource) {
+      properties["$mcp_client_name_source"] = event.clientNameSource;
+    }
+  }
+
+  const clientVersion = sanitizeLabel(event.clientVersion);
+  if (clientVersion !== undefined) {
+    properties["$mcp_client_version"] = clientVersion;
+  }
+
+  const serverName = sanitizeLabel(event.serverName);
+  if (serverName !== undefined) properties["$mcp_server_name"] = serverName;
+
+  const serverVersion = sanitizeLabel(event.serverVersion);
+  if (serverVersion !== undefined) {
+    properties["$mcp_server_version"] = serverVersion;
+  }
+}
+
 // MCP Analytics events (#7737). Emit PostHog's canonical $mcp_* event family
 // so PostHog's built-in MCP Analytics dashboards work out of the box.
 // Implemented via the same raw-fetch pattern as recordUsageEvent — posthog-
@@ -235,11 +375,44 @@ function boundedMcpPayload(value: unknown): unknown {
   };
 }
 
+/** Server identity stamped on every $mcp_* event (#8963), so a regression can
+ * be pinned to the deploy that introduced it. Set by the MCP server from the
+ * same constants that feed serverInfo / server.json. */
+export interface McpServerIdentity {
+  serverName?: string;
+  serverVersion?: string;
+}
+
+/** Where a client name came from (#8963). `client_info` is the MCP handshake's
+ * own clientInfo.name and is authoritative; `user_agent` is derived from the
+ * HTTP User-Agent because this server is stateless and ~80% of production
+ * tool calls arrive with no Mcp-Session-Id to link them back to an
+ * initialize. Recorded alongside the name so a dashboard can tell an
+ * MCP-declared identity from a transport-level guess. */
+export type McpClientNameSource = "client_info" | "user_agent";
+
 /** Inputs for a single MCP tool-call analytics event. */
-export interface McpToolCallEvent {
+export interface McpToolCallEvent extends McpServerIdentity {
   toolName?: string;
   isError: boolean;
+  /**
+   * Elapsed wall-clock ms. Cloudflare Workers freeze Date.now() between I/O
+   * operations, so a call that rejects before performing any I/O measures
+   * exactly 0 — indistinguishable from a genuinely instant call. Pass the
+   * measured value; recordMcpToolCallEvent OMITS the property when it is 0
+   * rather than reporting a fabricated zero (see JSONbored/loopover#10279).
+   */
   durationMs: number;
+  /**
+   * The internal tool-error code from structuredContent.error.code. Projected
+   * onto $mcp_error_type by classifyMcpErrorType; also emitted verbatim as
+   * $mcp_error_code so the coarse bucket can be drilled into. Only meaningful
+   * when isError is true.
+   */
+  errorCode?: string;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
   /** Mcp-Session-Id header value; omitted from the payload when absent. */
   sessionId?: string | null;
   /**
@@ -252,10 +425,23 @@ export interface McpToolCallEvent {
 }
 
 /** Inputs for an MCP initialize-handshake analytics event. */
-export interface McpInitializeEvent {
+export interface McpInitializeEvent extends McpServerIdentity {
   clientName?: string;
   clientVersion?: string;
   /** Mcp-Session-Id header value; omitted from the payload when absent. */
+  sessionId?: string | null;
+}
+
+/** Inputs for an MCP `tools/list` analytics event (#8963). Discovery traffic —
+ * registry crawlers listing the catalogue — is otherwise invisible: before
+ * this event existed, a client that only ever called tools/list produced no
+ * record at all. */
+export interface McpToolsListEvent extends McpServerIdentity {
+  /** How many tools the response advertised. */
+  toolCount?: number;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
   sessionId?: string | null;
 }
 
@@ -282,11 +468,28 @@ export async function recordMcpToolCallEvent(
 
     const properties: Record<string, unknown> = {
       $mcp_is_error: event.isError,
-      $mcp_duration_ms: Math.min(Math.round(event.durationMs), 86_400_000),
     };
+
+    // Duration honesty (#8963): a 0 here means Date.now() never advanced,
+    // which on Workers means no I/O happened — the call is unmeasurable, not
+    // instantaneous. Omit the property entirely so percentile math and the
+    // "fast call" bucket are computed only over real measurements. See the
+    // durationMs doc comment on McpToolCallEvent.
+    const durationMs = Math.min(Math.round(event.durationMs), 86_400_000);
+    if (durationMs > 0) properties["$mcp_duration_ms"] = durationMs;
 
     const toolName = sanitizeLabel(event.toolName);
     if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
+
+    // Failure classification (#8963). Emitted only on failure: an
+    // $mcp_error_type on a successful call would poison every breakdown.
+    if (event.isError) {
+      const errorCode = sanitizeLabel(event.errorCode);
+      if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
+      properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+    }
+
+    assignMcpAttribution(properties, event);
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
@@ -331,14 +534,13 @@ export async function recordMcpInitializeEvent(
   try {
     if (!isUsageTelemetryConfigured(env)) return false;
 
-    const properties: Record<string, string | number | boolean> = {};
+    const properties: Record<string, unknown> = {};
 
-    const clientName = sanitizeLabel(event.clientName);
-    if (clientName !== undefined) properties["$mcp_client_name"] = clientName;
-
-    const clientVersion = sanitizeLabel(event.clientVersion);
-    if (clientVersion !== undefined)
-      properties["$mcp_client_version"] = clientVersion;
+    // clientInfo from the handshake itself is always authoritative here.
+    assignMcpAttribution(properties, {
+      ...event,
+      clientNameSource: event.clientName ? "client_info" : undefined,
+    });
 
     if (typeof event.sessionId === "string" && event.sessionId.trim()) {
       properties["$session_id"] = event.sessionId.trim();
@@ -353,6 +555,55 @@ export async function recordMcpInitializeEvent(
         body: JSON.stringify({
           api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
           event: "$mcp_initialize",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Emit a PostHog `$mcp_tools_list` event via the capture endpoint (#8963).
+ * Same no-throw contract as recordUsageEvent.
+ */
+export async function recordMcpToolsListEvent(
+  env: Env | null | undefined,
+  event: McpToolsListEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    if (
+      typeof event.toolCount === "number" &&
+      Number.isFinite(event.toolCount) &&
+      event.toolCount >= 0
+    ) {
+      properties["$mcp_tools_count"] = Math.round(event.toolCount);
+    }
+
+    assignMcpAttribution(properties, event);
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$mcp_tools_list",
           distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
           properties,
         }),
