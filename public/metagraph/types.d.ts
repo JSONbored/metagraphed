@@ -11514,6 +11514,7 @@ export interface operations {
         parameters: {
             query?: {
                 sort?: "total_tao" | "free_tao" | "delegated_tao";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -12333,14 +12334,18 @@ export interface operations {
     candidatesByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 id?: string;
                 confidence?: "low" | "medium" | "high";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -12474,6 +12479,7 @@ export interface operations {
     emissionPipelineByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
             };
             header?: never;
@@ -13037,13 +13043,18 @@ export interface operations {
     coverageDepthByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 tier?: "agent-ready" | "machine-usable" | "candidate-review" | "needs-evidence" | "hard-blocked" | "missing-interface";
                 agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
                 blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
@@ -13244,11 +13255,15 @@ export interface operations {
     curationByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
@@ -13385,11 +13400,16 @@ export interface operations {
     economicsByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 registration_allowed?: "true" | "false";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
@@ -13560,14 +13580,18 @@ export interface operations {
     endpointIncidentsByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 severity?: "critical" | "warning" | "info";
                 state?: "active" | "resolved";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
@@ -13722,8 +13746,11 @@ export interface operations {
                 max_eligible_count?: number;
                 min_endpoint_count?: number;
                 max_endpoint_count?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -13896,6 +13923,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
                 provider?: string;
@@ -13905,8 +13933,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -14068,9 +14099,13 @@ export interface operations {
     evidenceByNetwork: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -14572,11 +14607,15 @@ export interface operations {
     gapsByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
@@ -14708,13 +14747,17 @@ export interface operations {
     healthHistoryByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -15236,15 +15279,20 @@ export interface operations {
     profilesByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 subnet_type?: "root" | "application";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
@@ -15506,8 +15554,11 @@ export interface operations {
                 id?: string;
                 kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
                 authority?: "community" | "official" | "provider-claimed" | "registry-observed";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
@@ -15777,6 +15828,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
@@ -15785,8 +15837,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -16082,14 +16137,18 @@ export interface operations {
     reviewAdapterCandidatesByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 candidate_api_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 reason_codes?: string;
                 recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
@@ -16251,10 +16310,15 @@ export interface operations {
                 evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
@@ -16415,14 +16479,19 @@ export interface operations {
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 review_state?: string;
                 manual_review_required?: "true" | "false";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
@@ -16634,15 +16703,20 @@ export interface operations {
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 manual_review_required?: "true" | "false";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
@@ -16851,12 +16925,16 @@ export interface operations {
     reviewGapsByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -16992,14 +17070,18 @@ export interface operations {
     reviewProfileCompletenessByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 confidence?: "low" | "medium" | "high";
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 native_name_quality?: "chain" | "placeholder" | "empty";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
@@ -17201,6 +17283,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
                 provider?: string;
@@ -17210,8 +17293,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -17352,8 +17438,11 @@ export interface operations {
                 max_eligible_count?: number;
                 min_endpoint_count?: number;
                 max_endpoint_count?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -17646,10 +17735,15 @@ export interface operations {
         parameters: {
             query?: {
                 type?: "subnet" | "surface" | "provider";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
@@ -17774,10 +17868,15 @@ export interface operations {
         parameters: {
             query?: {
                 type?: "subnet" | "surface" | "provider";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
@@ -18026,9 +18125,13 @@ export interface operations {
     sourceSnapshotsByNetwork: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
@@ -18158,6 +18261,7 @@ export interface operations {
     subnetsByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 netuids?: string;
                 coverage_level?: "native-only" | "manifested" | "probed";
@@ -18165,6 +18269,7 @@ export interface operations {
                 domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
                 status?: "active" | "inactive";
                 subnet_type?: "root" | "application";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
                 min_block?: number;
                 max_block?: number;
@@ -18182,8 +18287,11 @@ export interface operations {
                 max_surface_count?: number;
                 min_tempo?: number;
                 max_tempo?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
@@ -18647,6 +18755,7 @@ export interface operations {
     subnetAxonRemovalsByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -18763,8 +18872,11 @@ export interface operations {
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 id?: string;
                 confidence?: "low" | "medium" | "high";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -19020,6 +19132,7 @@ export interface operations {
     subnetDeregistrationsByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -19141,8 +19254,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -19307,7 +19423,9 @@ export interface operations {
     subnetEventSummaryByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Maximum number of rows to return in one page (at most 50). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
             };
             header?: never;
@@ -19455,9 +19573,13 @@ export interface operations {
     subnetEvidenceByNetwork: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -19588,8 +19710,11 @@ export interface operations {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -19801,8 +19926,11 @@ export interface operations {
     subnetHyperparametersHistoryByNetwork: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -20883,6 +21011,7 @@ export interface operations {
     subnetPrometheusByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -20994,6 +21123,7 @@ export interface operations {
     subnetRegistrationsByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -21105,6 +21235,7 @@ export interface operations {
     subnetServingByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -21216,6 +21347,7 @@ export interface operations {
     subnetStakeMovesByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -21327,6 +21459,7 @@ export interface operations {
     subnetStakeTransfersByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -21444,8 +21577,11 @@ export interface operations {
                 auth_required?: "true" | "false";
                 public_safe?: "true" | "false";
                 rate_limited?: "true" | "false";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -21580,6 +21716,7 @@ export interface operations {
     subnetWeightsByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -21691,6 +21828,7 @@ export interface operations {
     subnetWeightSettersByNetwork: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -21812,6 +21950,7 @@ export interface operations {
     surfacesByNetwork: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
@@ -21819,8 +21958,11 @@ export interface operations {
                 auth_required?: "true" | "false";
                 public_safe?: "true" | "false";
                 rate_limited?: "true" | "false";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -22070,6 +22212,7 @@ export interface operations {
         parameters: {
             query?: {
                 sort?: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -22353,6 +22496,7 @@ export interface operations {
     accountAxonRemovals: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
             };
             header?: never;
@@ -22702,6 +22846,7 @@ export interface operations {
         parameters: {
             query?: {
                 counterparty?: string;
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -22856,6 +23001,7 @@ export interface operations {
     accountDeregistrations: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
             };
             header?: never;
@@ -23086,11 +23232,15 @@ export interface operations {
         parameters: {
             query?: {
                 kind?: string;
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 block_start?: number;
                 block_end?: number;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -23214,8 +23364,11 @@ export interface operations {
             query?: {
                 block_start?: number;
                 block_end?: number;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -23337,10 +23490,13 @@ export interface operations {
     accountHistory: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 from?: string;
                 to?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
             };
             header?: never;
@@ -23565,8 +23721,11 @@ export interface operations {
     accountIdentityHistory: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -24061,6 +24220,7 @@ export interface operations {
     accountPrometheus: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
             };
             header?: never;
@@ -24178,6 +24338,7 @@ export interface operations {
     accountRegistrations: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
             };
             header?: never;
@@ -24423,6 +24584,7 @@ export interface operations {
     accountServing: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
             };
             header?: never;
@@ -24540,6 +24702,7 @@ export interface operations {
     accountStakeFlow: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 direction?: "all" | "in" | "out";
             };
@@ -24670,6 +24833,7 @@ export interface operations {
     accountStakeMoves: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
             };
             header?: never;
@@ -24900,6 +25064,7 @@ export interface operations {
     accountSubnetPositionHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
             };
             header?: never;
@@ -25028,8 +25193,11 @@ export interface operations {
                 direction?: "all" | "sent" | "received";
                 block_start?: number;
                 block_end?: number;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -25152,6 +25320,7 @@ export interface operations {
     accountWeightSetters: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -25270,6 +25439,7 @@ export interface operations {
         parameters: {
             query?: {
                 sort?: "total_tao" | "free_tao" | "delegated_tao";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -26045,8 +26215,11 @@ export interface operations {
     blocksFeed: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 author?: string;
                 spec_version?: number;
@@ -26402,7 +26575,9 @@ export interface operations {
     blockEvents: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
             };
             header?: never;
@@ -26517,7 +26692,9 @@ export interface operations {
     blockExtrinsics: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
             };
             header?: never;
@@ -26922,14 +27099,18 @@ export interface operations {
     candidates: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 id?: string;
                 confidence?: "low" | "medium" | "high";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -27064,8 +27245,10 @@ export interface operations {
                 method?: string;
                 block?: number;
                 extrinsic?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 before?: number;
+                /** @description Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -27293,6 +27476,7 @@ export interface operations {
     chainActivity: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
                 /** @description Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope. */
                 format?: "json" | "csv";
@@ -27415,6 +27599,7 @@ export interface operations {
     chainAlphaVolume: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -27568,7 +27753,9 @@ export interface operations {
     chainAxonRemovals: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -27709,8 +27896,10 @@ export interface operations {
     chainCalls: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
                 group_by?: "module" | "module_function";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope. */
@@ -28007,7 +28196,9 @@ export interface operations {
     chainDeregistrations: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -28148,6 +28339,7 @@ export interface operations {
     emissionPipeline: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
             };
             header?: never;
@@ -28306,7 +28498,9 @@ export interface operations {
     chainFees: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers). */
@@ -28440,6 +28634,7 @@ export interface operations {
     chainIdentityHistory: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
             };
             header?: never;
@@ -28825,7 +29020,9 @@ export interface operations {
     chainPrometheus: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -28966,7 +29163,9 @@ export interface operations {
     chainRegistrations: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -29107,7 +29306,9 @@ export interface operations {
     chainServing: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -29248,8 +29449,10 @@ export interface operations {
     chainSigners: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
                 sort?: "tx_count" | "total_fee_tao";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 call_module?: string;
                 /** @description Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope. */
@@ -29372,7 +29575,9 @@ export interface operations {
     chainStakeFlow: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the per-subnet capital-flow leaderboard as text/csv; `json` (default) keeps the response envelope (which also carries the network rollup + net-flow distribution). */
                 format?: "json" | "csv";
@@ -29517,7 +29722,9 @@ export interface operations {
     chainStakeMoves: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -29658,7 +29865,9 @@ export interface operations {
     chainStakeTransfers: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -29799,7 +30008,9 @@ export interface operations {
     chainTransferPairs: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 sort?: "volume" | "count";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -29927,7 +30138,9 @@ export interface operations {
     chainTransfers: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -30067,7 +30280,9 @@ export interface operations {
     chainTurnover: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -30210,7 +30425,9 @@ export interface operations {
     chainWeights: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -30351,7 +30568,9 @@ export interface operations {
     chainWeightSetters: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -30864,6 +31083,7 @@ export interface operations {
         parameters: {
             query?: {
                 hotkeys?: string;
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
             };
             header?: never;
@@ -31266,13 +31486,18 @@ export interface operations {
     coverageDepth: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 tier?: "agent-ready" | "machine-usable" | "candidate-review" | "needs-evidence" | "hard-blocked" | "missing-interface";
                 agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
                 blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
@@ -31470,11 +31695,15 @@ export interface operations {
     curation: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
@@ -31856,11 +32085,16 @@ export interface operations {
     economics: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 registration_allowed?: "true" | "false";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
@@ -32028,6 +32262,7 @@ export interface operations {
     economicsTrends: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -32144,14 +32379,18 @@ export interface operations {
     endpointIncidents: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 severity?: "critical" | "warning" | "info";
                 state?: "active" | "resolved";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
@@ -32303,8 +32542,11 @@ export interface operations {
                 max_eligible_count?: number;
                 min_endpoint_count?: number;
                 max_endpoint_count?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -32474,6 +32716,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
                 provider?: string;
@@ -32483,8 +32726,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -32643,9 +32889,13 @@ export interface operations {
     evidence: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -32882,8 +33132,11 @@ export interface operations {
     extrinsicsFeed: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 block?: number;
                 signer?: string;
@@ -34693,11 +34946,15 @@ export interface operations {
     gaps: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
@@ -34826,8 +35083,11 @@ export interface operations {
     governanceConfigChanges: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 block?: number;
                 call_function?: string;
@@ -34963,10 +35223,14 @@ export interface operations {
     health: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
@@ -35091,13 +35355,17 @@ export interface operations {
     healthHistory: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -35359,10 +35627,15 @@ export interface operations {
     incidents: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "downtime_ms" | "incident_count" | "netuid" | "surface_id";
@@ -36094,15 +36367,20 @@ export interface operations {
     profiles: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 subnet_type?: "root" | "application";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
@@ -36361,8 +36639,11 @@ export interface operations {
                 id?: string;
                 kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
                 authority?: "community" | "official" | "provider-claimed" | "registry-observed";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
@@ -36627,6 +36908,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
@@ -36635,8 +36917,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -36801,6 +37086,7 @@ export interface operations {
         parameters: {
             query?: {
                 board?: "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing" | "most-reliable" | "open-slots" | "cheapest-registration" | "highest-emission" | "validator-headroom" | "biggest-alpha-gain-1d" | "biggest-alpha-gain-7d";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
             };
             header?: never;
@@ -37037,14 +37323,18 @@ export interface operations {
     reviewAdapterCandidates: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 candidate_api_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 reason_codes?: string;
                 recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
@@ -37203,10 +37493,15 @@ export interface operations {
                 evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
@@ -37364,14 +37659,19 @@ export interface operations {
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 review_state?: string;
                 manual_review_required?: "true" | "false";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
@@ -37580,15 +37880,20 @@ export interface operations {
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 manual_review_required?: "true" | "false";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
@@ -37794,12 +38099,16 @@ export interface operations {
     reviewGaps: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -37932,14 +38241,18 @@ export interface operations {
     reviewProfileCompleteness: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 confidence?: "low" | "medium" | "high";
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 native_name_quality?: "chain" | "placeholder" | "empty";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
@@ -38138,6 +38451,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
                 provider?: string;
@@ -38147,8 +38461,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -38286,8 +38603,11 @@ export interface operations {
                 max_eligible_count?: number;
                 min_endpoint_count?: number;
                 max_endpoint_count?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -38455,6 +38775,7 @@ export interface operations {
     rpcUsage: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -38840,10 +39161,15 @@ export interface operations {
         parameters: {
             query?: {
                 type?: "subnet" | "surface" | "provider";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
@@ -38965,10 +39291,15 @@ export interface operations {
         parameters: {
             query?: {
                 type?: "subnet" | "surface" | "provider";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
@@ -39086,7 +39417,9 @@ export interface operations {
     searchSemantic: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Maximum number of rows to return in one page. Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: string;
             };
             header?: never;
@@ -39451,9 +39784,13 @@ export interface operations {
     sourceSnapshots: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
@@ -39580,6 +39917,7 @@ export interface operations {
     subnets: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 netuids?: string;
                 coverage_level?: "native-only" | "manifested" | "probed";
@@ -39587,6 +39925,7 @@ export interface operations {
                 domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
                 status?: "active" | "inactive";
                 subnet_type?: "root" | "application";
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
                 min_block?: number;
                 max_block?: number;
@@ -39604,8 +39943,11 @@ export interface operations {
                 max_surface_count?: number;
                 min_tempo?: number;
                 max_tempo?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
@@ -40064,6 +40406,7 @@ export interface operations {
     subnetAxonRemovals: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -40288,8 +40631,11 @@ export interface operations {
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 id?: string;
                 confidence?: "low" | "medium" | "high";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -40601,6 +40947,7 @@ export interface operations {
     subnetConcentrationHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -40835,6 +41182,7 @@ export interface operations {
     subnetDeregistrations: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -40954,8 +41302,11 @@ export interface operations {
                 max_latency_ms?: number;
                 min_score?: number;
                 max_score?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -41118,7 +41469,9 @@ export interface operations {
     subnetEventSummary: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Maximum number of rows to return in one page (at most 50). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
             };
             header?: never;
@@ -41267,7 +41620,9 @@ export interface operations {
                 kind?: string;
                 block_start?: number;
                 block_end?: number;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -41389,9 +41744,13 @@ export interface operations {
     subnetEvidence: {
         parameters: {
             query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -41520,8 +41879,11 @@ export interface operations {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -41735,8 +42097,11 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -41877,6 +42242,7 @@ export interface operations {
     subnetHealthIncidents: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -42004,6 +42370,7 @@ export interface operations {
     subnetHealthPercentiles: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -42250,6 +42617,7 @@ export interface operations {
     subnetHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
             };
             header?: never;
@@ -42500,8 +42868,11 @@ export interface operations {
     subnetHyperparametersHistory: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -42623,8 +42994,11 @@ export interface operations {
     subnetIdentityHistory: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -43084,6 +43458,7 @@ export interface operations {
         parameters: {
             query?: {
                 validator_permit?: "true";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -43207,6 +43582,7 @@ export interface operations {
     subnetNeuron: {
         parameters: {
             query?: {
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
             };
             header?: never;
@@ -43336,6 +43712,7 @@ export interface operations {
     subnetNeuronHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
             };
             header?: never;
@@ -44163,6 +44540,7 @@ export interface operations {
     subnetPerformanceHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -44698,6 +45076,7 @@ export interface operations {
     subnetPrometheus: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -44917,6 +45296,7 @@ export interface operations {
     subnetRegistrations: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -45026,6 +45406,7 @@ export interface operations {
     subnetServing: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -45135,6 +45516,7 @@ export interface operations {
     subnetStakeFlow: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 direction?: "all" | "in" | "out";
             };
@@ -45246,6 +45628,7 @@ export interface operations {
     subnetStakeMoves: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -45470,6 +45853,7 @@ export interface operations {
     subnetStakeTransfers: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -45585,8 +45969,11 @@ export interface operations {
                 auth_required?: "true" | "false";
                 public_safe?: "true" | "false";
                 rate_limited?: "true" | "false";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -45838,6 +46225,7 @@ export interface operations {
     subnetTurnover: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
                 changes?: "true";
             };
@@ -45981,6 +46369,7 @@ export interface operations {
     subnetUptime: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `90d`, `1y`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "90d" | "1y";
                 min_samples?: number;
             };
@@ -46116,6 +46505,7 @@ export interface operations {
     subnetValidators: {
         parameters: {
             query?: {
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -46354,6 +46744,7 @@ export interface operations {
     subnetWeights: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -46463,6 +46854,7 @@ export interface operations {
     subnetWeightSetters: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
             };
             header?: never;
@@ -46725,6 +47117,7 @@ export interface operations {
     subnetYieldHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -46843,8 +47236,10 @@ export interface operations {
     subnetMovers: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 sort?: "stake" | "emission" | "validators" | "neurons";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -46993,8 +47388,11 @@ export interface operations {
     sudoCalls: {
         parameters: {
             query?: {
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: string;
                 block?: number;
                 call_function?: string;
@@ -47237,6 +47635,7 @@ export interface operations {
     surfaces: {
         parameters: {
             query?: {
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
@@ -47244,8 +47643,11 @@ export interface operations {
                 auth_required?: "true" | "false";
                 public_safe?: "true" | "false";
                 rate_limited?: "true" | "false";
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -47490,6 +47892,7 @@ export interface operations {
         parameters: {
             query?: {
                 sort?: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -47802,6 +48205,7 @@ export interface operations {
     validatorHistory: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
             };
             header?: never;
@@ -47917,9 +48321,12 @@ export interface operations {
     validatorNominators: {
         parameters: {
             query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
                 sort?: "net_staked" | "gross_staked" | "last_activity";
+                /** @description Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
                 limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
                 coldkey?: string;
             };
