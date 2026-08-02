@@ -1,0 +1,72 @@
+name: Check SafeMode
+
+# Watches for SafeMode -- the emergency chain pause -- ever being used (#8696).
+# Zero alerts is the CORRECT steady state: it means nothing has gone wrong, not
+# that the monitor is broken. The script prints a summary every run for exactly
+# that reason, and this workflow surfaces it in the job summary so a healthy run
+# is still legible at a glance. Same shape as check-emission-drift.yml.
+#
+# WHY IT KEYS ON SUCCESS. #8697's audit concluded SafeMode had "never been
+# called" and proposed alerting on first use. That census ran 2026-07-29 against
+# an index that did not yet reach genesis (the backfill completed 2026-08-02);
+# re-running it found one call -- block 4,222,830, force_release_deposit,
+# FAILED, from an unprivileged signer. Alerting on activity would fire on a
+# years-old rejected transaction on its very first run, which is how a monitor
+# teaches its reader to ignore it. Keying on success also makes the baseline
+# empty BY CONSTRUCTION, so no magic block number has to be carried and no
+# re-index can resurface that row through it.
+#
+# It reads STORAGE as well as history: SafeMode can be entered by root with no
+# signed SafeMode extrinsic ever appearing, so SafeMode.EnteredUntil is the
+# authoritative "are we paused right now" signal.
+on:
+  schedule:
+    # Hourly. An emergency pause is not something to learn about a day late, and
+    # the job is two reads.
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-safe-mode
+  cancel-in-progress: false
+
+jobs:
+  safe-mode:
+    name: Check SafeMode against live chain state
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check SafeMode against live chain state
+        env:
+          # A repo variable, not a secret: both endpoints are public, and
+          # pinning them here keeps them reviewable rather than hidden in
+          # settings. Same convention and defaults as check-emission-drift.yml.
+          SAFE_MODE_RPC_URL: ${{ vars.EMISSION_DRIFT_RPC_URL || 'https://archive.chain.opentensor.ai' }}
+          LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
+        run: |
+          node scripts/check-safe-mode.ts | tee safe-mode.log
+          {
+            echo '## SafeMode'
+            echo '```json'
+            cat safe-mode.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
