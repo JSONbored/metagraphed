@@ -3774,6 +3774,14 @@ const CHAIN_BLOCK_MS_CEILING = 60_000;
 // ordering skew (backfill, reorg), not a liveness assumption.
 const CHAIN_HEAD_LOOKBACK_MS = 3_600_000;
 
+// #8968: how far either side of a block's observed_at to look for its
+// neighbours. Only ever a chunk-exclusion bound -- 24h is roughly 7,200 blocks
+// at Bittensor's ~12s target, so it is a vast superset of "the adjacent block"
+// and can only fail to contain a neighbour across a day-long gap. The blocks
+// table is gap-free from genesis to head, and the fallback below covers the
+// case anyway.
+const BLOCK_NEIGHBOUR_WINDOW_MS = 86_400_000;
+
 function clampStatsBlocks(raw: string | number | null | undefined) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 1000;
@@ -6779,15 +6787,58 @@ async function dispatchDataApiRequest(
           let prev = null;
           let next = null;
           const resolvedNumber = numberOrNull(rows[0]?.block_number);
+          const resolvedObservedAt = numberOrNull(rows[0]?.observed_at);
           if (resolvedNumber != null) {
-            const nbr = await sql<
-              { prev: string | null; next: string | null }[]
-            >`
+            // #8968: `blocks` is a TimescaleDB hypertable partitioned on
+            // observed_at, and this prev/next navigation filtered ONLY on
+            // block_number -- so it excluded no chunks and probed all 312.
+            // Third instance of the same defect after chain-events/stats
+            // (#8970) and its head lookup (#9011).
+            //
+            // Measured on the live hypertable: 261ms unloaded. That is
+            // survivable alone, but the client sets statement_timeout=3000ms
+            // and the indexer runs concurrent COPY/INSERT into `blocks` (78s
+            // and 29s statements observed live), so under write contention it
+            // blows the timeout and returns a 502. 127 statement timeouts in
+            // three hours, on the single busiest route in the project --
+            // block-detail is 758,995 usage_events/day.
+            //
+            // The block row already carries observed_at, so the window comes
+            // free. Symmetric on purpose: block_number and observed_at are
+            // ordered together in practice but not by constraint (a backfill
+            // writes old heights with new observed_at), so bounding prev only
+            // "below" would be assuming an invariant nothing enforces.
+            const nbr =
+              resolvedObservedAt == null
+                ? null
+                : await sql<{ prev: string | null; next: string | null }[]>`
+            SELECT
+              (SELECT MAX(block_number) FROM blocks
+                WHERE block_number < ${resolvedNumber}
+                  AND observed_at BETWEEN ${resolvedObservedAt - BLOCK_NEIGHBOUR_WINDOW_MS}
+                                      AND ${resolvedObservedAt + BLOCK_NEIGHBOUR_WINDOW_MS}) AS prev,
+              (SELECT MIN(block_number) FROM blocks
+                WHERE block_number > ${resolvedNumber}
+                  AND observed_at BETWEEN ${resolvedObservedAt - BLOCK_NEIGHBOUR_WINDOW_MS}
+                                      AND ${resolvedObservedAt + BLOCK_NEIGHBOUR_WINDOW_MS}) AS next`;
+            prev = nbr?.[0]?.prev ?? null;
+            next = nbr?.[0]?.next ?? null;
+            // Correctness floor. A null on ONE side is the honest answer at
+            // genesis (no prev) and at the head (no next), so it is accepted.
+            // Both null means either an isolated block or no window at all --
+            // fall back to the unbounded scan rather than claim a block has no
+            // neighbours in either direction, which would be a false statement
+            // rather than a slow one.
+            if (prev == null && next == null) {
+              const fallback = await sql<
+                { prev: string | null; next: string | null }[]
+              >`
             SELECT
               (SELECT MAX(block_number) FROM blocks WHERE block_number < ${resolvedNumber}) AS prev,
               (SELECT MIN(block_number) FROM blocks WHERE block_number > ${resolvedNumber}) AS next`;
-            prev = nbr[0]?.prev ?? null;
-            next = nbr[0]?.next ?? null;
+              prev = fallback[0]?.prev ?? null;
+              next = fallback[0]?.next ?? null;
+            }
           }
           return json(buildBlock(rows[0], ref, { prev, next }));
         }
