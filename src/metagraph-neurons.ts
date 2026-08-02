@@ -398,6 +398,34 @@ interface ApyAccumulator {
   apyEligibleCount: number;
 }
 
+// Per-netuid TAO pricing for the cross-subnet sums (#9051, the Group B half
+// of #8945). A neuron's stake_tao/emission_tao on any netuid != 0 are that
+// subnet's ALPHA token (#2550), so summing rows across subnets used to add
+// root's genuine TAO to ~128 mutually-incomparable alpha counts under a
+// `_tao` name. Every cross-subnet aggregate in this file now converts each
+// row through its own subnet's alpha_price_tao first (root passes through at
+// 1:1 -- root stake IS TAO), the same per-netuid join #8803 established for
+// account positions' delegated_tao.
+//
+// A netuid with no resolvable price (no subnet_snapshots row yet, or a null
+// price cell) contributes NOTHING to the priced total -- never silently 1:1,
+// which would quietly re-create the old bug for exactly the rows where the
+// price is unknown. Its raw alpha accumulates separately and is published as
+// the `unpriced_stake_alpha`/`unpriced_emission_alpha` residuals, so a
+// consumer can always see how much of the position the priced figure does
+// not cover ("no figure" stays visible, mirroring the null-never-fabricated
+// convention used across this file).
+function priceForNetuid(
+  netuid: number,
+  priceByNetuid: Map<number, number | null>,
+): number | null {
+  if (netuid === 0) return 1;
+  const price = priceByNetuid.get(netuid);
+  return typeof price === "number" && Number.isFinite(price) && price >= 0
+    ? price
+    : null;
+}
+
 // Estimated annualized yield (#2551): mutates `acc` (either a
 // buildGlobalValidators per-hotkey entry or buildValidatorDetail's local
 // accumulator) with one subnet-membership row's contribution to
@@ -512,6 +540,8 @@ interface ValidatorAccumEntry {
   uidCount: number;
   stakeTotalRao: bigint;
   emissionTotalRao: bigint;
+  unpricedStakeAlphaRao: bigint;
+  unpricedEmissionAlphaRao: bigint;
   apyNumeratorRao: bigint;
   apyDenominatorRao: bigint;
   apyEligibleCount: number;
@@ -541,6 +571,10 @@ function buildGlobalValidatorEntry(
   // split needs no new ingestion, just separating the existing rao-precision
   // total by whether a root membership row exists. Rao-BigInt subtraction
   // (not float) keeps it exact, mirroring stakeTotalRao's own accumulation.
+  // Since #9051 stakeTotalRao is TAO-PRICED; root's leg passes through the
+  // pricing at exactly 1:1, so subtracting the raw root row still yields the
+  // priced alpha leg -- alpha_stake_tao is now genuinely TAO, the current
+  // market value of the non-root delegations the priced total covers.
   const rootSubnet = entry.subnets.find((s) => s.netuid === 0) ?? null;
   const rootStakeRao = rootSubnet
     ? toRaoBig(rootSubnet.stake_tao as number)
@@ -569,6 +603,13 @@ function buildGlobalValidatorEntry(
     root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
     alpha_stake_tao: roundTao(raoBigToTao(alphaStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
+    // The alpha the priced totals above do NOT cover (#9051): memberships on
+    // subnets with no resolvable alpha price. Raw cross-subnet alpha counts,
+    // published so the coverage of the priced figures is always visible.
+    unpriced_stake_alpha: roundTao(raoBigToTao(entry.unpricedStakeAlphaRao)),
+    unpriced_emission_alpha: roundTao(
+      raoBigToTao(entry.unpricedEmissionAlphaRao),
+    ),
     // #2549: from the separate validator_nominator_counts side table, joined
     // by hotkey. Null when that table has no row for this hotkey yet (cold
     // table, or a hotkey the last low-frequency scan hasn't covered) --
@@ -613,6 +654,7 @@ function applyStakeDominance(validators: Row[]): Row[] {
 export interface BuildGlobalValidatorsOptions {
   sort?: string;
   limit?: unknown;
+  priceByNetuid?: Map<number, number | null>;
   featuredHotkeys?: Set<string>;
   identityByColdkey?: Map<string, Row>;
   nominatorCounts?: Map<string, number>;
@@ -626,6 +668,11 @@ export function buildGlobalValidators(
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     featuredHotkeys = new Set<string>(),
+    // netuid -> alpha_price_tao (#9051), latest-per-netuid from
+    // subnet_snapshots (loadAlphaPricesByNetuid). A cold/absent map prices
+    // nothing: every non-root membership lands in the unpriced_* residuals
+    // rather than being silently counted 1:1.
+    priceByNetuid = new Map<number, number | null>(),
     identityByColdkey = new Map<string, Row>(),
     // hotkey -> nominator_count (#2549), sourced from the separate
     // validator_nominator_counts side table -- see that migration's own
@@ -683,6 +730,8 @@ export function buildGlobalValidators(
         uidCount: 0,
         stakeTotalRao: 0n,
         emissionTotalRao: 0n,
+        unpricedStakeAlphaRao: 0n,
+        unpricedEmissionAlphaRao: 0n,
         apyNumeratorRao: 0n,
         apyDenominatorRao: 0n,
         apyEligibleCount: 0,
@@ -710,9 +759,28 @@ export function buildGlobalValidators(
     }
     entry.netuids.add(netuid);
     entry.uidCount += 1;
-    entry.stakeTotalRao += toRaoBig(stake);
-    entry.emissionTotalRao += toRaoBig(emission);
-    accumulateApyRow(entry, netuid, stake, emission, tempoByNetuid);
+    // TAO-priced accumulation (#9051): each membership row converts through
+    // its own subnet's alpha price before joining the cross-subnet totals;
+    // an unpriceable row lands in the residuals instead (see priceForNetuid).
+    const price = priceForNetuid(netuid, priceByNetuid);
+    if (price == null) {
+      entry.unpricedStakeAlphaRao += toRaoBig(stake);
+      entry.unpricedEmissionAlphaRao += toRaoBig(emission);
+    } else {
+      entry.stakeTotalRao += toRaoBig(stake * price);
+      entry.emissionTotalRao += toRaoBig(emission * price);
+      // Priced values in the APY blend too: Σemission/Σstake across subnets
+      // is only a coherent stake-weighted rate when both sums share one
+      // denomination. An unpriceable membership is excluded, matching the
+      // helper's own unresolved-tempo exclusion rule.
+      accumulateApyRow(
+        entry,
+        netuid,
+        stake * price,
+        emission * price,
+        tempoByNetuid,
+      );
+    }
     if (trust != null) {
       entry.validatorTrustTotal += trust;
       entry.validatorTrustCount += 1;
@@ -868,6 +936,35 @@ export async function loadSubnetValidators(
   return buildSubnetValidators(rows, netuid);
 }
 
+// netuid -> latest alpha_price_tao from the D1 subnet_snapshots mirror
+// (#9051), for the shared D1 fallback loaders below -- the D1 twin of
+// workers/data-api.ts's loadAlphaPricesByNetuid. Group-wise MAX join rather
+// than DISTINCT ON (SQLite has neither). A cold/absent table yields an empty
+// map, which prices nothing: every non-root row lands in the unpriced_*
+// residuals rather than being silently counted 1:1.
+export async function loadD1AlphaPricesByNetuid(
+  d1: D1Runner,
+): Promise<Map<number, number | null>> {
+  try {
+    const rows = await d1(
+      "SELECT s.netuid, s.alpha_price_tao FROM subnet_snapshots s " +
+        "JOIN (SELECT netuid, MAX(snapshot_date) AS snapshot_date " +
+        "FROM subnet_snapshots GROUP BY netuid) latest " +
+        "ON latest.netuid = s.netuid AND latest.snapshot_date = s.snapshot_date",
+      [],
+    );
+    const map = new Map<number, number | null>();
+    for (const row of rows) {
+      const netuid = nonNegativeInt(row?.netuid);
+      if (netuid == null) continue;
+      map.set(netuid, nullableNumber(row?.alpha_price_tao));
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 // No identityByColdkey passed here (#5234): account_identity's D1 write path
 // is retired -- Postgres is the only actively-written copy -- so this D1
 // fallback deliberately serves a stable coldkey_identity:{has_identity:false,
@@ -881,14 +978,17 @@ export async function loadGlobalValidators(
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   }: { sort?: string; limit?: unknown } = {},
 ): Promise<Row> {
-  const rows = await d1(
-    "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
-      "stake_tao, block_number, captured_at FROM neurons " +
-      "WHERE validator_permit = 1 AND hotkey IS NOT NULL " +
-      "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
-    [],
-  );
-  return buildGlobalValidators(rows, { sort, limit });
+  const [rows, priceByNetuid] = await Promise.all([
+    d1(
+      "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
+        "stake_tao, block_number, captured_at FROM neurons " +
+        "WHERE validator_permit = 1 AND hotkey IS NOT NULL " +
+        "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
+      [],
+    ),
+    loadD1AlphaPricesByNetuid(d1),
+  ]);
+  return buildGlobalValidators(rows, { sort, limit, priceByNetuid });
 }
 
 export async function loadNeuron(
@@ -905,6 +1005,7 @@ export async function loadNeuron(
 
 export interface BuildValidatorDetailOptions {
   identityByColdkey?: Map<string, Row>;
+  priceByNetuid?: Map<number, number | null>;
   nominatorCount?: number | null;
   tempoByNetuid?: Map<number, number>;
   realizedStake?: Row | null;
@@ -923,6 +1024,10 @@ export function buildValidatorDetail(
   hotkey: unknown,
   {
     identityByColdkey = new Map<string, Row>(),
+    // netuid -> alpha_price_tao (#9051), same map and same semantics as
+    // buildGlobalValidators': a cold/absent map prices nothing and every
+    // non-root membership lands in the unpriced_* residuals.
+    priceByNetuid = new Map<number, number | null>(),
     // #2549: from the separate validator_nominator_counts side table (looked
     // up by the caller, since this function has no DB access of its own).
     // Null when that table has no row for this hotkey yet -- never fabricated
@@ -946,6 +1051,8 @@ export function buildValidatorDetail(
   // already one of `rows`, no new ingestion needed.
   let rootStakeRao = 0n;
   let emissionTotalRao = 0n;
+  let unpricedStakeAlphaRao = 0n;
+  let unpricedEmissionAlphaRao = 0n;
   // Plain object (not three separate `let`s) so it can be passed directly to
   // the shared accumulateApyRow/finalizeApy helpers buildGlobalValidators
   // also uses (#2551) -- one accumulation implementation, not duplicated.
@@ -982,11 +1089,27 @@ export function buildValidatorDetail(
     }
     const stake = numberOrZero(row?.stake_tao);
     const emission = numberOrZero(row?.emission_tao);
-    const rowStakeRao = toRaoBig(stake);
-    stakeTotalRao += rowStakeRao;
-    if (netuid === 0) rootStakeRao += rowStakeRao;
-    emissionTotalRao += toRaoBig(emission);
-    accumulateApyRow(apyAcc, netuid, stake, emission, tempoByNetuid);
+    // TAO-priced accumulation (#9051), mirroring buildGlobalValidators: each
+    // membership converts through its own subnet's alpha price; an
+    // unpriceable one lands in the residuals. Root prices at exactly 1, so
+    // rootStakeRao stays the raw root leg either way.
+    const price = priceForNetuid(netuid, priceByNetuid);
+    if (price == null) {
+      unpricedStakeAlphaRao += toRaoBig(stake);
+      unpricedEmissionAlphaRao += toRaoBig(emission);
+    } else {
+      const rowStakeRao = toRaoBig(stake * price);
+      stakeTotalRao += rowStakeRao;
+      if (netuid === 0) rootStakeRao += rowStakeRao;
+      emissionTotalRao += toRaoBig(emission * price);
+      accumulateApyRow(
+        apyAcc,
+        netuid,
+        stake * price,
+        emission * price,
+        tempoByNetuid,
+      );
+    }
     const trust = nullableNumber(row?.validator_trust);
     if (trust != null) {
       validatorTrustTotal += trust;
@@ -1031,6 +1154,10 @@ export function buildValidatorDetail(
     root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
     alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
+    // See buildGlobalValidatorEntry: the alpha the priced totals do not
+    // cover (#9051).
+    unpriced_stake_alpha: roundTao(raoBigToTao(unpricedStakeAlphaRao)),
+    unpriced_emission_alpha: roundTao(raoBigToTao(unpricedEmissionAlphaRao)),
     nominator_count: nominatorCount,
     ...finalizeApy(apyAcc),
     ...realizedReturns(stakeTotalRao, realizedStake),
@@ -1047,11 +1174,14 @@ export async function loadValidatorDetail(
   d1: D1Runner,
   hotkey: unknown,
 ): Promise<Row> {
-  const rows = await d1(
-    `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
-    [hotkey],
-  );
-  return buildValidatorDetail(rows, hotkey);
+  const [rows, priceByNetuid] = await Promise.all([
+    d1(
+      `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+      [hotkey],
+    ),
+    loadD1AlphaPricesByNetuid(d1),
+  ]);
+  return buildValidatorDetail(rows, hotkey, { priceByNetuid });
 }
 
 // The buildValidatorDetail fields a stake-decision comparison actually reads

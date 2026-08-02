@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  buildAccountsList,
+  buildAccountsList as buildAccountsListRaw,
   loadAccountsList,
   ACCOUNTS_LIST_SORTS,
   DEFAULT_ACCOUNTS_LIST_SORT,
@@ -27,6 +27,24 @@ const ROW = {
 };
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
+
+// #9051: buildAccountsList TAO-prices its cross-subnet sums through
+// priceByNetuid. These tests predate that and assert raw-sum arithmetic, so
+// the wrapper injects UNIT prices (every netuid at 1) -- same numbers, now
+// through the priced code path. The "#9051" block at the end passes real
+// non-unit prices and asserts the conversion and the residuals.
+const UNIT_PRICES = new Map<number, number | null>(
+  Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
+);
+function buildAccountsList(
+  rows: unknown,
+  options?: Parameters<typeof buildAccountsListRaw>[1],
+) {
+  return buildAccountsListRaw(rows as Array<Record<string, unknown>>, {
+    priceByNetuid: UNIT_PRICES,
+    ...options,
+  });
+}
 
 describe("buildAccountsList", () => {
   test("groups accounts across subnets, including non-validator (miner) rows", () => {
@@ -389,6 +407,15 @@ describe("loadAccountsList", () => {
   test("reads every hotkey (no validator_permit filter) and shapes it", async () => {
     let captured: { sql: string; params: unknown[] } | undefined;
     const d1 = async (sql: string, params: unknown[]) => {
+      // #9051: the loader now also issues a subnet_snapshots price read --
+      // answer it separately so the assertions below still pin the neurons
+      // query rather than whichever read happened to land last.
+      if (sql.includes("subnet_snapshots")) {
+        return [
+          { netuid: 1, alpha_price_tao: 1 },
+          { netuid: 2, alpha_price_tao: 1 },
+        ];
+      }
       captured = { sql, params };
       return [
         { ...ROW, hotkey: "hk-a", validator_permit: 0 },
@@ -529,5 +556,30 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 404);
+  });
+});
+
+// #9051: same TAO-pricing contract as the validator leaderboard.
+describe("TAO-priced accounts leaderboard (#9051)", () => {
+  test("prices each row through its subnet, residualizing the priceless ones", () => {
+    const data = buildAccountsListRaw(
+      [
+        { ...ROW, netuid: 0, hotkey: "hk", stake_tao: 10, emission_tao: 1 },
+        { ...ROW, netuid: 1, hotkey: "hk", stake_tao: 400, emission_tao: 20 },
+        { ...ROW, netuid: 5, hotkey: "hk", stake_tao: 60, emission_tao: 6 },
+      ],
+      {
+        priceByNetuid: new Map<number, number | null>([
+          [1, 0.25],
+          [5, null],
+        ]),
+      },
+    );
+    const acct = data.accounts[0] as unknown as Record<string, number>;
+    assert.equal(acct.total_stake_tao, 110); // 10 root + 400*0.25
+    assert.equal(acct.total_emission_tao, 6); // 1 + 20*0.25
+    assert.equal(acct.unpriced_stake_alpha, 60);
+    assert.equal(acct.unpriced_emission_alpha, 6);
+    assert.equal(acct.subnet_count, 3); // membership footprint is unaffected
   });
 });

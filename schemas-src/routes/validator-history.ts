@@ -9,7 +9,12 @@ const ValidatorHistoryPointSchema = z
   .object({
     snapshot_date: z.string(),
     subnet_count: z.int().min(0).nullable(),
-    total_stake_tao: z.number().nullable(),
+    total_stake_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum.",
+      ),
     total_emission_tao: z.number().nullable(),
     rewards_per_1000_tao: z.number().nullable(),
   })

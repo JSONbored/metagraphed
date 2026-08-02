@@ -3173,7 +3173,10 @@ export const SDL = /* GraphQL */ `
     domain: String!
     subnet_count: Int!
     netuids: [Int!]!
+    "Member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051). A member with no resolvable price is excluded and reported in unpriced_stake_alpha."
     total_stake_tao: Float!
+    "The alpha the priced total does NOT cover (#9051)."
+    unpriced_stake_alpha: Float
     total_emission_share: Float!
     "Within-domain emission HHI; null when the domain has no members."
     emission_concentration: Float
@@ -3742,10 +3745,16 @@ export const SDL = /* GraphQL */ `
     subnet_count: Int
     uid_count: Int
     take: Float
+    "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1). Memberships with no resolvable price are excluded and reported in unpriced_stake_alpha."
     total_stake_tao: Float
     root_stake_tao: Float
+    "The non-root leg of total_stake_tao, TAO-priced (#9051): the market value of the alpha delegations the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao."
     alpha_stake_tao: Float
     total_emission_tao: Float
+    "The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao."
+    unpriced_stake_alpha: Float
+    "Emission-side counterpart of unpriced_stake_alpha (#9051)."
+    unpriced_emission_alpha: Float
     nominator_count: Int
     apy_estimate: Float
     apy_estimate_eligible_subnet_count: Int
@@ -3889,8 +3898,14 @@ export const SDL = /* GraphQL */ `
     uid_count: Int
     validator_count: Int
     miner_count: Int
+    "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1). Memberships with no resolvable price are excluded and reported in unpriced_stake_alpha."
     total_stake_tao: Float
     total_emission_tao: Float
+    "The alpha the TAO-priced totals do NOT cover (#9051)."
+    unpriced_stake_alpha: Float
+    "Emission-side counterpart of unpriced_stake_alpha (#9051)."
+    unpriced_emission_alpha: Float
+    "This account's share of the network's TAO-priced registered stake (#9051)."
     stake_dominance: Float
     latest_captured_at: String
     latest_block_number: Int
@@ -4367,9 +4382,14 @@ export const SDL = /* GraphQL */ `
     position_count: Int!
     validator_count: Int!
     miner_count: Int!
+    "Cross-subnet total in genuine TAO (#9051): each position converts through its own subnet's latest alpha_price_tao (root at 1:1). Positions with no resolvable price are excluded and reported in unpriced_stake_alpha."
     total_stake_tao: Float!
     total_emission_tao: Float!
-    "Total emission over total stake across every position; null when total stake is 0."
+    "The alpha the TAO-priced totals do NOT cover (#9051)."
+    unpriced_stake_alpha: Float!
+    "Emission-side counterpart of unpriced_stake_alpha (#9051)."
+    unpriced_emission_alpha: Float!
+    "Priced emission per priced stake -- both sides TAO (#9051); null when no priceable stake."
     overall_yield: Float
     "How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions."
     stake_concentration: ConcentrationMetrics

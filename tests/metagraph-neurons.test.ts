@@ -54,11 +54,23 @@ function buildSubnetValidators(
 ): Row {
   return buildSubnetValidatorsRaw(rows as Row[], netuid, options) as Row;
 }
+// #9051: the cross-subnet sums are TAO-priced through priceByNetuid, and a
+// priceless map routes every non-root row into the unpriced_* residuals.
+// These wrappers default to UNIT prices (every netuid at 1) so the existing
+// accumulation/identity/APY tests keep their pre-#9051 arithmetic while still
+// running through the priced code path; the dedicated "#9051" tests below
+// pass real non-unit prices and assert the conversions and residuals.
+const UNIT_PRICES = new Map<number, number | null>(
+  Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
+);
 function buildGlobalValidators(
   rows: unknown,
   options?: Parameters<typeof buildGlobalValidatorsRaw>[1],
 ): Row {
-  return buildGlobalValidatorsRaw(rows as Row[], options) as Row;
+  return buildGlobalValidatorsRaw(rows as Row[], {
+    priceByNetuid: UNIT_PRICES,
+    ...options,
+  }) as Row;
 }
 function buildNeuronDetail(
   row: unknown,
@@ -76,7 +88,10 @@ function buildValidatorDetail(
   hotkey: unknown,
   options?: Parameters<typeof buildValidatorDetailRaw>[2],
 ): Row {
-  return buildValidatorDetailRaw(rows as Row[], hotkey, options) as Row;
+  return buildValidatorDetailRaw(rows as Row[], hotkey, {
+    priceByNetuid: UNIT_PRICES,
+    ...options,
+  }) as Row;
 }
 function composeValidatorComparison(
   details: unknown,
@@ -1589,7 +1604,10 @@ describe("metagraph-neurons builders", () => {
       const stakeTao = 1234.987654321 + i * 0.000000001;
       rows.push({
         ...ROW,
-        netuid: i,
+        // Bounded netuids (#9051): UNIT_PRICES covers 0..299, and this test is
+        // about float drift in the rao accumulation -- an out-of-range netuid
+        // would silently divert rows to the unpriced residual instead.
+        netuid: i % 250,
         uid: 0,
         hotkey: "hk-precision",
         stake_tao: stakeTao,
@@ -1864,6 +1882,15 @@ describe("metagraph-neurons loaders", () => {
     let seenParams = null;
     const data = await loadGlobalValidators(
       async (sql, params) => {
+        // #9051: the loader now ALSO issues a subnet_snapshots price read --
+        // answer it separately so the neurons assertions below still pin the
+        // neurons query, and so both fixture subnets carry a real price.
+        if (sql.includes("subnet_snapshots")) {
+          return [
+            { netuid: 1, alpha_price_tao: 1 },
+            { netuid: 2, alpha_price_tao: 1 },
+          ];
+        }
         seenSql = sql;
         seenParams = params;
         return [
@@ -1900,6 +1927,14 @@ describe("metagraph-neurons loaders", () => {
     let seenSql = "";
     let seenParams = null;
     const data = await loadValidatorDetail(async (sql, params) => {
+      // #9051: see loadGlobalValidators above -- answer the price read
+      // separately so the assertions pin the neurons query.
+      if (sql.includes("subnet_snapshots")) {
+        return [
+          { netuid: 1, alpha_price_tao: 1 },
+          { netuid: 2, alpha_price_tao: 1 },
+        ];
+      }
       seenSql = sql;
       seenParams = params;
       return [
@@ -2239,5 +2274,201 @@ describe("composeValidatorComparison (#6035)", () => {
     assert.equal(out.netuid, null);
     assert.equal(out.validator_count, 0);
     assert.deepEqual(out.validators, []);
+  });
+});
+
+// #9051: the cross-subnet sums are TAO-priced through each subnet's own
+// alpha_price_tao. What is pinned here: the conversion itself (non-unit
+// prices), root's exact 1:1 passthrough, the unpriced residuals (excluded,
+// never silently 1:1), and the total = root + alpha identity under pricing.
+describe("TAO-priced cross-subnet sums (#9051)", () => {
+  const PRICES = new Map<number, number | null>([
+    [1, 0.5],
+    [2, 0.02],
+    [3, null], // a subnet whose snapshot carries no price
+  ]);
+
+  test("buildGlobalValidators prices each membership through its own subnet", () => {
+    const data = buildGlobalValidators(
+      [
+        // Root: 100 TAO, passes through at exactly 1:1.
+        {
+          netuid: 0,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 100,
+          emission_tao: 2,
+        },
+        // SN1: 1000 alpha at 0.5 TAO/alpha = 500 TAO.
+        {
+          netuid: 1,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 1000,
+          emission_tao: 10,
+        },
+        // SN2: 5000 alpha at 0.02 = 100 TAO.
+        {
+          netuid: 2,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 5000,
+          emission_tao: 50,
+        },
+        // SN3: priceless -- excluded from every priced figure, lands in the residuals.
+        {
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 777,
+          emission_tao: 7,
+        },
+      ],
+      { priceByNetuid: PRICES },
+    );
+    const v = data.validators[0] as Record<string, number>;
+    assert.equal(v.total_stake_tao, 700); // 100 + 500 + 100
+    assert.equal(v.root_stake_tao, 100);
+    assert.equal(v.alpha_stake_tao, 600); // priced alpha legs only
+    assert.equal(v.total_emission_tao, 2 + 5 + 1); // 2 + 10*0.5 + 50*0.02
+    assert.equal(v.unpriced_stake_alpha, 777);
+    assert.equal(v.unpriced_emission_alpha, 7);
+    // The priceless subnet still counts as a membership -- exclusion is from
+    // the SUMS, not from the validator's footprint.
+    assert.equal(v.subnet_count, 4);
+  });
+
+  test("stake_dominance is a ratio of PRICED totals", () => {
+    const data = buildGlobalValidators(
+      [
+        {
+          netuid: 1,
+          uid: 0,
+          hotkey: "big",
+          coldkey: "ck",
+          stake_tao: 1000,
+          emission_tao: 0,
+        },
+        {
+          netuid: 2,
+          uid: 0,
+          hotkey: "small",
+          coldkey: "ck",
+          stake_tao: 5000,
+          emission_tao: 0,
+        },
+      ],
+      { priceByNetuid: PRICES },
+    );
+    // Priced: big = 500 TAO, small = 100 TAO. Under the old mixed sum the
+    // 5000-alpha hotkey would have LOOKED 5x larger; priced, it is 5x smaller.
+    const byHotkey = Object.fromEntries(
+      (data.validators as Array<Record<string, unknown>>).map((v) => [
+        v.hotkey,
+        v,
+      ]),
+    );
+    // stake_dominance carries the module's 6dp round(), so compare rounded.
+    assert.equal(
+      (byHotkey.big as Record<string, number>).stake_dominance,
+      0.833333,
+    );
+    assert.equal(
+      (byHotkey.small as Record<string, number>).stake_dominance,
+      0.166667,
+    );
+  });
+
+  test("buildValidatorDetail: same conversion, and total = root + alpha exactly", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          netuid: 0,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 40,
+          emission_tao: 0,
+        },
+        {
+          netuid: 1,
+          uid: 1,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 200,
+          emission_tao: 0,
+        },
+        {
+          netuid: 3,
+          uid: 2,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 9,
+          emission_tao: 1,
+        },
+      ],
+      "hk",
+      { priceByNetuid: PRICES },
+    );
+    assert.equal(data.total_stake_tao, 140); // 40 + 200*0.5
+    assert.equal(data.root_stake_tao, 40);
+    assert.equal(data.alpha_stake_tao, 100);
+    assert.equal(
+      data.total_stake_tao,
+      (data.root_stake_tao as number) + (data.alpha_stake_tao as number),
+    );
+    assert.equal(data.unpriced_stake_alpha, 9);
+    assert.equal(data.unpriced_emission_alpha, 1);
+  });
+
+  test("an EMPTY price map prices nothing but root -- never a silent 1:1", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          netuid: 0,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 5,
+          emission_tao: 0,
+        },
+        {
+          netuid: 7,
+          uid: 1,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 1_000_000,
+          emission_tao: 3,
+        },
+      ],
+      "hk",
+      { priceByNetuid: new Map() },
+    );
+    assert.equal(data.total_stake_tao, 5); // root only
+    assert.equal(data.unpriced_stake_alpha, 1_000_000);
+    assert.equal(data.unpriced_emission_alpha, 3);
+  });
+
+  test("a zero price is a real price (drained pool), not an unpriced miss", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          netuid: 9,
+          uid: 0,
+          hotkey: "hk",
+          coldkey: "ck",
+          stake_tao: 500,
+          emission_tao: 0,
+        },
+      ],
+      "hk",
+      { priceByNetuid: new Map([[9, 0]]) },
+    );
+    assert.equal(data.total_stake_tao, 0); // valued at zero...
+    assert.equal(data.unpriced_stake_alpha, 0); // ...NOT unpriced
   });
 });

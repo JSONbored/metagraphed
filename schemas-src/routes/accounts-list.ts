@@ -45,8 +45,30 @@ const AccountsListEntrySchema = z
     uid_count: z.int().min(0),
     validator_count: z.int().min(0),
     miner_count: z.int().min(0),
-    total_stake_tao: z.number().min(0),
-    total_emission_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier.",
+      ),
+    total_emission_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier.",
+      ),
+    unpriced_stake_alpha: z
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        "The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. Optional on the wire: the api and data-api Workers deploy separately, so a tier response captured before this field shipped must still validate during the rollout window.",
+      ),
+    unpriced_emission_alpha: z
+      .number()
+      .min(0)
+      .optional()
+      .describe("Emission-side counterpart of unpriced_stake_alpha (#9051)."),
     stake_dominance: z.number().min(0).max(1).nullable(),
     latest_captured_at: z.string().nullable(),
     latest_block_number: z.int().nullable(),

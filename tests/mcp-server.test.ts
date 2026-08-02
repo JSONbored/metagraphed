@@ -12522,8 +12522,20 @@ describe("MCP economics + metagraph data tools", () => {
       },
       "/metagraph/economics.json": {
         subnets: [
-          { netuid: 1, total_stake_alpha: 100, emission_share: 0.4 },
-          { netuid: 2, total_stake_alpha: 50, emission_share: 0.1 },
+          // #9051: alpha_price_tao at 1 keeps this rollup's arithmetic
+          // while running through the TAO-pricing path.
+          {
+            netuid: 1,
+            total_stake_alpha: 100,
+            alpha_price_tao: 1,
+            emission_share: 0.4,
+          },
+          {
+            netuid: 2,
+            total_stake_alpha: 50,
+            alpha_price_tao: 1,
+            emission_share: 0.1,
+          },
         ],
       },
     });
