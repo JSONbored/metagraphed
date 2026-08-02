@@ -5,14 +5,26 @@
 // them straight to PostHog's public capture API with fetch.
 // Nothing outside this file should construct a raw PostHog event.
 //
-// This module deliberately does NOT import `posthog-node`. That SDK is built
-// for long-lived Node servers (batching, flush intervals, shutdown draining) —
-// none of which survives a Workers isolate anyway — and it costs ~40 KiB
-// gzipped in the bundle. The Worker entry is already within a few KiB of
-// Cloudflare's 1 MiB script limit (scripts/worker-bundle-budget.ts), so
-// importing it here pushes the deployable bundle past the limit outright.
-// One fetch to the documented capture endpoint does the same job at zero
-// bundle cost, and fetch is the platform-native transport here.
+// This module does not import `posthog-node`, and the reason is NARROWER than
+// it used to claim. The old rationale was that the SDK's ~40 KiB "pushes the
+// deployable bundle past the limit outright", because the Worker entry was
+// "already within a few KiB of Cloudflare's 1 MiB script limit". Both halves
+// were wrong (#9059): Cloudflare's gzipped limit is 10 MB on Workers Paid,
+// not 1 MiB, and this entry measures ~531 KiB — about 5% of budget. The SDK
+// was always affordable, and that false constraint is what justified hand-
+// writing a PostHog client here for as long as it stood.
+//
+// What remains true is only the runtime-shape argument: posthog-node is built
+// for a long-lived Node process (background batching, flush intervals,
+// shutdown draining), none of which survives a Workers isolate that may be
+// evicted between requests — a batched event is a dropped event here. The
+// usage/AI-event capture below is therefore one fetch per event to the
+// documented capture endpoint, which is the platform-native transport.
+//
+// That argument does NOT extend to EXCEPTION capture, where the SDK's value
+// is the frame/stack shaping rather than its transport (see #9048: months of
+// unsymbolicated stacks from a hand-maintained wire shape). Bundle size is no
+// longer a reason to hand-roll anything.
 //
 // Safe no-op when POSTHOG_PROJECT_TOKEN is unset — self-hosters / local / CI
 // see zero behavior change. Never throws.
