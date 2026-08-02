@@ -1104,6 +1104,7 @@ import {
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildGlobalValidators,
+  NO_ALPHA_PRICES,
   buildValidatorDetail,
   composeValidatorComparison,
   GLOBAL_VALIDATOR_SORTS,
@@ -6284,7 +6285,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/validators", { sort, limit }),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildGlobalValidators([], { sort, limit })
+        )) ??
+        buildGlobalValidators([], {
+          sort,
+          limit,
+          priceByNetuid: NO_ALPHA_PRICES,
+        })
       );
     },
   },
@@ -6313,7 +6319,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             `/api/v1/validators/${encodeURIComponent(hotkey)}`,
           ),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildValidatorDetail([], hotkey)
+        )) ??
+        buildValidatorDetail([], hotkey, { priceByNetuid: NO_ALPHA_PRICES })
       );
     },
   },
@@ -6360,7 +6367,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               `/api/v1/validators/${encodeURIComponent(hotkey)}`,
             ),
             "METAGRAPH_NEURONS_SOURCE",
-          )) ?? buildValidatorDetail([], hotkey),
+          )) ??
+            buildValidatorDetail([], hotkey, {
+              priceByNetuid: NO_ALPHA_PRICES,
+            }),
         );
       }
       return composeValidatorComparison(details, { netuid });
@@ -7365,7 +7375,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildAccountPortfolio([], ss58)
+        )) ??
+        buildAccountPortfolio([], ss58, {
+          priceByNetuid: NO_ALPHA_PRICES,
+        })
       );
     },
   },
@@ -7452,7 +7465,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
             "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildAccountPortfolio([], ss58)),
+          ).then(
+            (data) =>
+              data ??
+              buildAccountPortfolio([], ss58, {
+                priceByNetuid: NO_ALPHA_PRICES,
+              }),
+          ),
           tryPostgresTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
@@ -8618,7 +8637,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/accounts", { sort, limit }),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildAccountsList([], { sort, limit })
+        )) ??
+        buildAccountsList([], {
+          sort,
+          limit,
+          priceByNetuid: NO_ALPHA_PRICES,
+        })
       );
     },
   },

@@ -51,6 +51,7 @@ import {
 } from "../../src/analytics-live.ts";
 import {
   buildValidatorDetail,
+  NO_ALPHA_PRICES,
   composeValidatorComparison,
 } from "../../src/metagraph-neurons.ts";
 import {
@@ -1072,7 +1073,9 @@ export async function handleCompareValidators(
         validatorDetailRequest(request, hotkey),
         "METAGRAPH_NEURONS_SOURCE",
       )) as ReturnType<typeof buildValidatorDetail> | null) ??
-      buildValidatorDetail([], hotkey);
+      buildValidatorDetail([], hotkey, {
+        priceByNetuid: NO_ALPHA_PRICES,
+      });
     details.push(detail);
     if (
       detail.captured_at &&

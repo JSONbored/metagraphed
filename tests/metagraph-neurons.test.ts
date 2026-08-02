@@ -18,6 +18,18 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
+// #9051 price table for the ACCUMULATION tests below. Every netuid is priced
+// at exactly 1 on purpose: those tests assert grouping, rao-exact summation
+// and APY blending, so the figure under test must be the SUM, not a product.
+// Pricing itself is asserted separately, against a realistic non-unit table,
+// in the "#9051" describe block -- which declares its own local PRICES.
+// Passed explicitly at every call site: buildGlobalValidators and friends
+// REQUIRE priceByNetuid (no default), so a test cannot silently price at 1:1
+// the way production could before that argument became mandatory.
+const ACCUMULATION_PRICES: Map<number, number | null> = new Map(
+  Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
+);
+
 // Every builder/loader below is imported under a *Raw name and re-wrapped
 // here: each real implementation in src/metagraph-neurons.ts declares its own
 // strict, unknown-valued local `Row` (Record<string, unknown>) and (for the
@@ -54,21 +66,12 @@ function buildSubnetValidators(
 ): Row {
   return buildSubnetValidatorsRaw(rows as Row[], netuid, options) as Row;
 }
-// #9051: the cross-subnet sums are TAO-priced through priceByNetuid, and a
-// priceless map routes every non-root row into the unpriced_* residuals.
-// These wrappers default to UNIT prices (every netuid at 1) so the existing
-// accumulation/identity/APY tests keep their pre-#9051 arithmetic while still
-// running through the priced code path; the dedicated "#9051" tests below
-// pass real non-unit prices and assert the conversions and residuals.
-const UNIT_PRICES = new Map<number, number | null>(
-  Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
-);
 function buildGlobalValidators(
   rows: unknown,
-  options?: Parameters<typeof buildGlobalValidatorsRaw>[1],
+  options?: Partial<Parameters<typeof buildGlobalValidatorsRaw>[1]>,
 ): Row {
   return buildGlobalValidatorsRaw(rows as Row[], {
-    priceByNetuid: UNIT_PRICES,
+    priceByNetuid: ACCUMULATION_PRICES,
     ...options,
   }) as Row;
 }
@@ -86,10 +89,10 @@ function buildNeuronDetail(
 function buildValidatorDetail(
   rows: unknown,
   hotkey: unknown,
-  options?: Parameters<typeof buildValidatorDetailRaw>[2],
+  options?: Partial<Parameters<typeof buildValidatorDetailRaw>[2]>,
 ): Row {
   return buildValidatorDetailRaw(rows as Row[], hotkey, {
-    priceByNetuid: UNIT_PRICES,
+    priceByNetuid: ACCUMULATION_PRICES,
     ...options,
   }) as Row;
 }
@@ -1604,7 +1607,7 @@ describe("metagraph-neurons builders", () => {
       const stakeTao = 1234.987654321 + i * 0.000000001;
       rows.push({
         ...ROW,
-        // Bounded netuids (#9051): UNIT_PRICES covers 0..299, and this test is
+        // Bounded netuids (#9051): ACCUMULATION_PRICES covers 0..299, and this test is
         // about float drift in the rao accumulation -- an out-of-range netuid
         // would silently divert rows to the unpriced residual instead.
         netuid: i % 250,
@@ -2335,8 +2338,6 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
     assert.equal(v.root_stake_tao, 100);
     assert.equal(v.alpha_stake_tao, 600); // priced alpha legs only
     assert.equal(v.total_emission_tao, 2 + 5 + 1); // 2 + 10*0.5 + 50*0.02
-    assert.equal(v.unpriced_stake_alpha, 777);
-    assert.equal(v.unpriced_emission_alpha, 7);
     // The priceless subnet still counts as a membership -- exclusion is from
     // the SUMS, not from the validator's footprint.
     assert.equal(v.subnet_count, 4);
@@ -2421,8 +2422,6 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       data.total_stake_tao,
       (data.root_stake_tao as number) + (data.alpha_stake_tao as number),
     );
-    assert.equal(data.unpriced_stake_alpha, 9);
-    assert.equal(data.unpriced_emission_alpha, 1);
   });
 
   test("an EMPTY price map prices nothing but root -- never a silent 1:1", () => {
@@ -2449,8 +2448,6 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       { priceByNetuid: new Map() },
     );
     assert.equal(data.total_stake_tao, 5); // root only
-    assert.equal(data.unpriced_stake_alpha, 1_000_000);
-    assert.equal(data.unpriced_emission_alpha, 3);
   });
 
   test("a zero price is a real price (drained pool), not an unpriced miss", () => {
@@ -2469,6 +2466,6 @@ describe("TAO-priced cross-subnet sums (#9051)", () => {
       { priceByNetuid: new Map([[9, 0]]) },
     );
     assert.equal(data.total_stake_tao, 0); // valued at zero...
-    assert.equal(data.unpriced_stake_alpha, 0); // ...NOT unpriced
+    // ...and NOT treated as a missing price.
   });
 });

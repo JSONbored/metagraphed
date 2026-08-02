@@ -28,20 +28,24 @@ const ROW = {
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
-// #9051: buildAccountsList TAO-prices its cross-subnet sums through
-// priceByNetuid. These tests predate that and assert raw-sum arithmetic, so
-// the wrapper injects UNIT prices (every netuid at 1) -- same numbers, now
-// through the priced code path. The "#9051" block at the end passes real
-// non-unit prices and asserts the conversion and the residuals.
-const UNIT_PRICES = new Map<number, number | null>(
+// #9051 price table for the ACCUMULATION tests below. Every netuid is priced
+// at exactly 1 on purpose: those tests assert grouping, rao-exact summation
+// and APY blending, so the figure under test must be the SUM, not a product.
+// Pricing itself is asserted separately, against a realistic non-unit table,
+// in the "#9051" describe block -- which declares its own local PRICES.
+// Passed explicitly at every call site: buildGlobalValidators and friends
+// REQUIRE priceByNetuid (no default), so a test cannot silently price at 1:1
+// the way production could before that argument became mandatory.
+const ACCUMULATION_PRICES: Map<number, number | null> = new Map(
   Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
 );
+
 function buildAccountsList(
   rows: unknown,
-  options?: Parameters<typeof buildAccountsListRaw>[1],
+  options?: Partial<Parameters<typeof buildAccountsListRaw>[1]>,
 ) {
   return buildAccountsListRaw(rows as Array<Record<string, unknown>>, {
-    priceByNetuid: UNIT_PRICES,
+    priceByNetuid: ACCUMULATION_PRICES,
     ...options,
   });
 }
@@ -578,8 +582,6 @@ describe("TAO-priced accounts leaderboard (#9051)", () => {
     const acct = data.accounts[0] as unknown as Record<string, number>;
     assert.equal(acct.total_stake_tao, 110); // 10 root + 400*0.25
     assert.equal(acct.total_emission_tao, 6); // 1 + 20*0.25
-    assert.equal(acct.unpriced_stake_alpha, 60);
-    assert.equal(acct.unpriced_emission_alpha, 6);
     assert.equal(acct.subnet_count, 3); // membership footprint is unaffected
   });
 });

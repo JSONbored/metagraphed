@@ -343,6 +343,14 @@ import {
   buildAgentReadiness,
 } from "../scripts/lib/build-readiness.ts";
 import { listToolDefinitions } from "../src/mcp-server.ts";
+
+// #9051: the cross-subnet builders REQUIRE a price map (no default), so these
+// schema-shape checks pass an explicit one rather than relying on an implicit
+// 1:1 that production can no longer do either.
+const SCHEMA_PRICES: Map<number, number | null> = new Map(
+  Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
+);
+
 import {
   HealthHistoryArtifactSchema,
   BulkHealthTrendsArtifactSchema,
@@ -1033,7 +1041,7 @@ describe("batch 4 (#8058) route artifact schemas parse real builder output", () 
       block_number: 8454388,
       captured_at: 1750000000000,
     };
-    const data = buildAccountsList([row]);
+    const data = buildAccountsList([row], { priceByNetuid: SCHEMA_PRICES });
     const parsed = AccountsListArtifactSchema.parse(data);
     assert.ok(parsed);
   });
@@ -1112,7 +1120,9 @@ describe("batch 4 (#8058) route artifact schemas parse real builder output", () 
       dividends: 0.4,
       captured_at: 1750000000000,
     };
-    const data = buildAccountPortfolio([row], "5Hk");
+    const data = buildAccountPortfolio([row], "5Hk", {
+      priceByNetuid: SCHEMA_PRICES,
+    });
     const parsed = AccountPortfolioArtifactSchema.parse(data);
     assert.ok(parsed);
   });
@@ -2741,7 +2751,7 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
           validator_trust: 0.8,
         }),
       ],
-      { sort: "subnet_count", limit: 10 },
+      { sort: "subnet_count", limit: 10, priceByNetuid: SCHEMA_PRICES },
     );
     const parsed = GlobalValidatorsArtifactSchema.parse(out);
     assert.ok(parsed);
@@ -2785,6 +2795,7 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
         { ...VALIDATOR_ROW, netuid: 8, uid: 1, hotkey: "hk-a", stake_tao: 500 },
       ],
       "hk-a",
+      { priceByNetuid: SCHEMA_PRICES },
     );
     const parsed = ValidatorDetailArtifactSchema.parse(out);
     assert.ok(parsed);
@@ -2806,10 +2817,12 @@ describe("batch 7 (#8061) route artifact schemas parse real builder output", () 
         },
       ],
       "hk-a",
+      { priceByNetuid: SCHEMA_PRICES },
     );
     const detailB = buildValidatorDetail(
       [{ ...VALIDATOR_ROW, netuid: 3, uid: 1, hotkey: "hk-b", stake_tao: 500 }],
       "hk-b",
+      { priceByNetuid: SCHEMA_PRICES },
     );
     const out = composeValidatorComparison([detailA, detailB], { netuid: 3 });
     const parsed = CompareValidatorsArtifactSchema.parse(out);

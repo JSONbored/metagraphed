@@ -3560,8 +3560,8 @@ async function loadSubnetTempos(sql: postgres.TransactionSql, env: Env) {
 // projection handleDeregRiskSnapshot already reads, and the same
 // savepoint-isolated-failure shape as loadSubnetTempos above: a
 // subnet_snapshots read failure degrades to an empty map -- every non-root
-// row then lands in the unpriced_* residuals rather than failing the route
-// or silently re-creating the mixed-denomination sums this exists to fix.
+// row is then excluded from the totals rather than failing the route or
+// silently re-creating the mixed-denomination sums this exists to fix.
 // DAILY-cadence table, so prices can lag up to ~24h behind the live
 // economics tier; acceptable for leaderboard/portfolio valuation.
 async function loadAlphaPricesByNetuid(
@@ -3665,8 +3665,8 @@ async function loadRealizedStakeBaselines(
           // movement), not a mixed-denomination stake-unit delta. Root
           // (netuid 0) prices at 1; a non-root day-row with no matching
           // subnet_snapshots price multiplies to NULL, which SUM() skips --
-          // the same excluded-not-1:1 rule the builder's unpriced_*
-          // residuals apply on the current side.
+          // the same excluded-not-1:1 rule the builder applies on the
+          // current side.
           return hotkey
             ? sql<BaselineRow[]>`
             WITH daily AS (

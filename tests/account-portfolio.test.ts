@@ -8,22 +8,27 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
-// #9051: buildAccountPortfolio TAO-prices its cross-subnet totals through
-// priceByNetuid. These tests predate that and assert raw-sum arithmetic, so
-// the wrapper injects UNIT prices -- same numbers, priced code path. The
-// "#9051" block at the end passes real non-unit prices.
-const UNIT_PRICES = new Map<number, number | null>(
+// #9051 price table for the ACCUMULATION tests below. Every netuid is priced
+// at exactly 1 on purpose: those tests assert grouping, rao-exact summation
+// and APY blending, so the figure under test must be the SUM, not a product.
+// Pricing itself is asserted separately, against a realistic non-unit table,
+// in the "#9051" describe block -- which declares its own local PRICES.
+// Passed explicitly at every call site: buildGlobalValidators and friends
+// REQUIRE priceByNetuid (no default), so a test cannot silently price at 1:1
+// the way production could before that argument became mandatory.
+const ACCUMULATION_PRICES: Map<number, number | null> = new Map(
   Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
 );
+
 function buildAccountPortfolio(
   rows: unknown,
   ss58: string,
-  options?: Parameters<typeof buildAccountPortfolioRaw>[2],
+  options?: Partial<Parameters<typeof buildAccountPortfolioRaw>[2]>,
 ) {
   return buildAccountPortfolioRaw(
     rows as Array<Record<string, unknown>>,
     ss58,
-    { priceByNetuid: UNIT_PRICES, ...options },
+    { priceByNetuid: ACCUMULATION_PRICES, ...options },
   );
 }
 
@@ -317,8 +322,9 @@ describe("TAO-priced portfolio totals (#9051)", () => {
     );
     assert.equal(out.total_stake_tao, 450); // 50 + 800*0.5
     assert.equal(out.total_emission_tao, 25); // 5 + 40*0.5
-    assert.equal(out.unpriced_stake_alpha, 12);
-    assert.equal(out.unpriced_emission_alpha, 3);
+    // The priceless position is EXCLUDED from the totals (no residual field:
+    // the economics tier prices every subnet, so a miss is a data defect, and
+    // under-reporting beats mis-denominating).
     // overall_yield is priced/priced -- dimensionally coherent (25/450).
     assert.equal(out.overall_yield, Math.round((25 / 450) * 1e9) / 1e9);
     // Per-position stake_tao stays the RAW single-subnet figure: it is that

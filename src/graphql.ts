@@ -293,6 +293,7 @@ import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
+  NO_ALPHA_PRICES,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   GLOBAL_VALIDATOR_SORTS,
@@ -1603,7 +1604,9 @@ function validatorNode(validator: Row) {
 // `{}` -- merged here with the cold-safe base the same way accountSummaryNode
 // normalizes a bad upstream body into the schema-stable zero card.
 function validatorDetailNode(data: Row, hotkey: string) {
-  const base = buildValidatorDetail([], hotkey);
+  const base = buildValidatorDetail([], hotkey, {
+    priceByNetuid: NO_ALPHA_PRICES,
+  });
   const raw = data && typeof data === "object" ? data : {};
   return validatorNode({
     ...base,
@@ -3775,7 +3778,10 @@ const rootValue = {
             `/api/v1/validators/${encodeURIComponent(hotkey)}`,
           ),
           "METAGRAPH_NEURONS_SOURCE",
-        )) as Row | null) ?? buildValidatorDetail([], hotkey),
+        )) as Row | null) ??
+          buildValidatorDetail([], hotkey, {
+            priceByNetuid: NO_ALPHA_PRICES,
+          }),
       );
     }
     return composeValidatorComparison(details, { netuid: netuid ?? null });
@@ -4846,6 +4852,7 @@ const rootValue = {
         buildGlobalValidators([], {
           sort: requestedSort,
           limit: GLOBAL_VALIDATOR_LIMIT_MAX,
+          priceByNetuid: NO_ALPHA_PRICES,
         }),
     )! as Row;
     const nodes = (data.validators || []).map(validatorNode);
@@ -5093,6 +5100,7 @@ const rootValue = {
       buildAccountsList([], {
         sort: requestedSort,
         limit: safeLimit,
+        priceByNetuid: NO_ALPHA_PRICES,
       });
     return {
       items: data.accounts || [],
@@ -5251,7 +5259,10 @@ const rootValue = {
           `/api/v1/accounts/${encodeURIComponent(ss58)}/portfolio`,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ?? buildAccountPortfolio([], ss58);
+      )) as Row | null) ??
+      buildAccountPortfolio([], ss58, {
+        priceByNetuid: NO_ALPHA_PRICES,
+      });
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -5262,10 +5273,6 @@ const rootValue = {
       miner_count: data.miner_count ?? 0,
       total_stake_tao: data.total_stake_tao ?? 0,
       total_emission_tao: data.total_emission_tao ?? 0,
-      // #9051 -- the movers lesson (#9039): an explicit projection must move
-      // in the same PR as the SDL, or a non-null field resolves null.
-      unpriced_stake_alpha: data.unpriced_stake_alpha ?? 0,
-      unpriced_emission_alpha: data.unpriced_emission_alpha ?? 0,
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,
       positions: data.positions || [],

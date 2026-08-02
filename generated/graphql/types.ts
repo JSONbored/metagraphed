@@ -204,13 +204,9 @@ export type AccountEntry = {
   /** Per-subnet stake/emission rows for this account, capped at the top 10 by stake. */
   subnets: Array<AccountSubnet>;
   total_emission_tao?: Maybe<Scalars['Float']['output']>;
-  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1). Memberships with no resolvable price are excluded and reported in unpriced_stake_alpha. */
+  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1), rather than summing incomparable per-subnet alpha tokens. A membership whose subnet has no price row is excluded. */
   total_stake_tao?: Maybe<Scalars['Float']['output']>;
   uid_count?: Maybe<Scalars['Int']['output']>;
-  /** Emission-side counterpart of unpriced_stake_alpha (#9051). */
-  unpriced_emission_alpha?: Maybe<Scalars['Float']['output']>;
-  /** The alpha the TAO-priced totals do NOT cover (#9051). */
-  unpriced_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -375,12 +371,8 @@ export type AccountPortfolio = {
   stake_concentration?: Maybe<ConcentrationMetrics>;
   subnet_count: Scalars['Int']['output'];
   total_emission_tao: Scalars['Float']['output'];
-  /** Cross-subnet total in genuine TAO (#9051): each position converts through its own subnet's latest alpha_price_tao (root at 1:1). Positions with no resolvable price are excluded and reported in unpriced_stake_alpha. */
+  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1), rather than summing incomparable per-subnet alpha tokens. A membership whose subnet has no price row is excluded. */
   total_stake_tao: Scalars['Float']['output'];
-  /** Emission-side counterpart of unpriced_stake_alpha (#9051). */
-  unpriced_emission_alpha: Scalars['Float']['output'];
-  /** The alpha the TAO-priced totals do NOT cover (#9051). */
-  unpriced_stake_alpha: Scalars['Float']['output'];
   validator_count: Scalars['Int']['output'];
 };
 
@@ -1835,10 +1827,8 @@ export type DomainSummary = {
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   total_emission_share: Scalars['Float']['output'];
-  /** Member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051). A member with no resolvable price is excluded and reported in unpriced_stake_alpha. */
+  /** Member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. */
   total_stake_tao: Scalars['Float']['output'];
-  /** The alpha the priced total does NOT cover (#9051). */
-  unpriced_stake_alpha?: Maybe<Scalars['Float']['output']>;
 };
 
 export type EconomicsList = {
@@ -5412,13 +5402,9 @@ export type Validator = {
   subnets: Array<ValidatorSubnet>;
   take?: Maybe<Scalars['Float']['output']>;
   total_emission_tao?: Maybe<Scalars['Float']['output']>;
-  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1). Memberships with no resolvable price are excluded and reported in unpriced_stake_alpha. */
+  /** Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1), rather than summing incomparable per-subnet alpha tokens. A membership whose subnet has no price row is excluded. */
   total_stake_tao?: Maybe<Scalars['Float']['output']>;
   uid_count?: Maybe<Scalars['Int']['output']>;
-  /** Emission-side counterpart of unpriced_stake_alpha (#9051). */
-  unpriced_emission_alpha?: Maybe<Scalars['Float']['output']>;
-  /** The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. */
-  unpriced_stake_alpha?: Maybe<Scalars['Float']['output']>;
 };
 
 /** Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators. */
@@ -6315,8 +6301,6 @@ export type AccountEntryResolvers<ContextType = GqlContext, ParentType extends R
   total_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  unpriced_emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  unpriced_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -6455,8 +6439,6 @@ export type AccountPortfolioResolvers<ContextType = GqlContext, ParentType exten
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  unpriced_emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  unpriced_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -7613,7 +7595,6 @@ export type DomainSummaryResolvers<ContextType = GqlContext, ParentType extends 
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_emission_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  unpriced_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type EconomicsListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EconomicsList'] = ResolversParentTypes['EconomicsList']> = ResolversObject<{
@@ -9358,8 +9339,6 @@ export type ValidatorResolvers<ContextType = GqlContext, ParentType extends Reso
   total_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  unpriced_emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  unpriced_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ValidatorComparisonResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorComparison'] = ResolversParentTypes['ValidatorComparison']> = ResolversObject<{
