@@ -113,7 +113,8 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
     --release-name "$RELEASE_NAME" \
     --release-version "$RELEASE_VERSION"
 
-  # Phase 3: ship the EXACT injected file -- --no-bundle skips wrangler's
+  # Phases 3-4 below: upload the sourcemap, then ship the EXACT injected
+  # file -- --no-bundle skips wrangler's
   # own esbuild step (which would otherwise rebuild from source and discard
   # the marker just injected above). ENTRY_JS is the single flat bundle
   # wrangler's own build produces for these Workers (no code-splitting for
@@ -121,18 +122,28 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # rather than hardcoded per-Worker, since each of the 3 configs' `main`
   # basename differs.
   ENTRY_JS=$(find "$OUTDIR" -maxdepth 1 -name '*.js')
+
+  # Phase 3: upload the sourcemap BEFORE the deploy ships traffic. This
+  # order is load-bearing: PostHog symbolicates at INGEST, so an error
+  # captured in the seconds between a deploy and its map upload fails with
+  # "No sourcemap uploaded for chunk id: ..." and stays minified forever --
+  # and a fresh deploy is precisely when new-code errors (plus the
+  # "Durable Object reset because its code was updated" wave every DO
+  # deploy emits from in-flight work) are most likely. Both were observed
+  # live on 2026-08-02's deploys. Uploading first is safe: the map + chunk
+  # id are fully determined by phase 2's inject, and an upload for a deploy
+  # that subsequently fails is inert (its chunk id never serves traffic).
+  npx @posthog/cli sourcemap upload \
+    --directory "$OUTDIR" \
+    --release-name "$RELEASE_NAME" \
+    --release-version "$RELEASE_VERSION"
+
+  # Phase 4: ship the EXACT injected bundle the map above describes.
   npx wrangler "${WRANGLER_SUBCOMMAND[@]}" \
     "$ENTRY_JS" \
     --config "$CONFIG" \
     --no-bundle \
     --message "$COMMIT_SHA"
-
-  # Phase 4: upload, now safe -- $OUTDIR's injected bundle IS what phase 3
-  # actually deployed, so this correctly resolves real production traces.
-  npx @posthog/cli sourcemap upload \
-    --directory "$OUTDIR" \
-    --release-name "$RELEASE_NAME" \
-    --release-version "$RELEASE_VERSION"
 else
   npx wrangler "${WRANGLER_SUBCOMMAND[@]}" \
     --config "$CONFIG" \
