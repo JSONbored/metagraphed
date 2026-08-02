@@ -12992,6 +12992,50 @@ function rpcError(id: unknown, code: number, message: string) {
 }
 
 // Build the MCP processing context from the Worker request + injected deps.
+/**
+ * The caller's PostHog `distinct_id` (#9054), or undefined when the request
+ * carries no identity at all.
+ *
+ * Precedence, strongest first:
+ *
+ * 1. **`github:<login>`** — a GitHub identity the OAuth provider itself already
+ *    validated (metagraphed#7153). A real, durable person.
+ * 2. **`mcp-session:<id>`** — the client-generated Streamable HTTP session id.
+ *    Not a person, and deliberately not presented as one: it is a stable handle
+ *    for one client's run, which is the granularity that makes "how many
+ *    distinct callers" answerable at all.
+ * 3. **undefined** — no session either. `recordX`'s own anonymous-fallback
+ *    constant is the single place that decision lives, so this never invents one.
+ *
+ * Why this is worth doing and why it stops here: every anonymous caller
+ * previously collapsed onto that one fallback constant, so 13,193 of 13,365
+ * tool calls in a 14-day window shared a single `distinct_id` and no
+ * per-caller figure from this project meant anything. Session coverage is
+ * 76.9% once the 2026-07-29 outage day is excluded, so keying on the session
+ * recovers most of it **from data already on the wire** -- no IP, no
+ * User-Agent fingerprint, nothing newly collected or stored. Attributing the
+ * remaining ~23% would mean fingerprinting, which is a real privacy tradeoff
+ * and is deliberately not made here.
+ *
+ * Both forms are namespaced for the same reason `github:` always was: two
+ * identity systems must never be able to mint the same id. A session id is
+ * `[\x21-\x7E]{1,128}` (`isValidMcpSessionId`) and so CAN contain a colon --
+ * the prefix is what keeps `mcp-session:github:someone` from colliding with
+ * the GitHub namespace.
+ */
+export function mcpDistinctId(
+  githubLogin: unknown,
+  sessionId: string | null | undefined,
+): string | undefined {
+  if (typeof githubLogin === "string" && githubLogin) {
+    return `github:${githubLogin}`;
+  }
+  if (typeof sessionId === "string" && sessionId) {
+    return `mcp-session:${sessionId}`;
+  }
+  return undefined;
+}
+
 function buildContext(
   request: Request,
   env: Env,
@@ -13019,17 +13063,15 @@ function buildContext(
   // recordX's own anonymous-fallback constant is the single place that
   // decision lives, not duplicated here.
   const githubLogin = deps.executionCtx?.props?.githubLogin;
-  const distinctId =
-    typeof githubLogin === "string" && githubLogin
-      ? `github:${githubLogin}`
-      : undefined;
+  const sessionId = isValidMcpSessionId(rawSessionId) ? rawSessionId : null;
+  const distinctId = mcpDistinctId(githubLogin, sessionId);
   const { clientName, clientVersion } = parseUserAgentClient(
     request.headers.get("user-agent"),
   );
   return {
     env,
     domain,
-    sessionId: isValidMcpSessionId(rawSessionId) ? rawSessionId : null,
+    sessionId,
     clientIp: mcpClientKey(request),
     clientName,
     clientVersion,
@@ -13485,6 +13527,18 @@ export async function handleMcpRequest(
   // below needs the SAME value the initialize event reported, or the header and
   // the telemetry would disagree about which session was created.
   ctx.pendingSessionId = pendingMcpSessionId(body);
+  // #9054: a canonical `initialize` carries NO inbound session -- obtaining one
+  // is the entire point of the call -- so buildContext above resolved no
+  // distinct_id for it. Attribute it to the session it is CREATING, which is
+  // the same value mintMcpSessionHeaderIfNeeded hands back, so the handshake
+  // and the tool calls that follow it land on one identity instead of the
+  // handshake vanishing into the anonymous constant. Never overrides an
+  // already-resolved identity: a GitHub login outranks a session (see
+  // mcpDistinctId), and an inbound session id is the one the client is
+  // actually using.
+  if (!ctx.distinctId && ctx.pendingSessionId) {
+    ctx.distinctId = mcpDistinctId(undefined, ctx.pendingSessionId);
+  }
 
   // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but cap
   // older-client compatibility so one HTTP request cannot fan out unboundedly.

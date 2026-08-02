@@ -4,7 +4,7 @@ import {
   POSTHOG_PROJECT_TOKEN_ENV,
   USAGE_EVENT_DISTINCT_ID,
 } from "../src/usage-telemetry.ts";
-import { handleMcpRequest } from "../src/mcp-server.ts";
+import { handleMcpRequest, mcpDistinctId } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const CONFIGURED_ENV = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" };
@@ -1044,5 +1044,153 @@ describe("MCP initialize session id (#8994)", () => {
     );
     assert.equal(response.headers.get("mcp-session-id"), null);
     assert.equal(spy.events.length, 0);
+  });
+});
+
+// #9054: every anonymous caller previously collapsed onto ONE distinct_id --
+// 13,193 of 13,365 tool calls in a 14-day window shared the anonymous fallback
+// constant, so no per-caller figure from the analytics project meant anything.
+// The Streamable HTTP session id is already on the wire on ~77% of calls, so
+// keying on it recovers most of that attribution without collecting anything
+// new. These tests assert the identity that actually reaches PostHog, at the
+// fetch boundary, rather than the intermediate ctx field.
+describe("MCP caller attribution (#9054)", () => {
+  async function postedEvents(
+    body: unknown,
+    headers: Row = {},
+    deps: Row = {},
+  ) {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push(JSON.parse(init!.body as string));
+      return { ok: true };
+    }) as typeof fetch;
+    const executionCtx = fakeExecutionCtx();
+    try {
+      await handleMcpRequest(
+        new Request("https://api.metagraph.sh/mcp", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            ...headers,
+          },
+          body: JSON.stringify(body),
+        }),
+        CONFIGURED_ENV as never,
+        makeDeps({ executionCtx, ...deps }),
+      );
+      await Promise.all(executionCtx.scheduled);
+    } finally {
+      globalThis.fetch = original;
+    }
+    return posted;
+  }
+
+  const SESSION = "3f1c2b90-0a4d-4c7e-9a11-2b7d6e5f4c31";
+
+  test("a session-carrying call is attributed to its session, not the shared constant", async () => {
+    const posted = await postedEvents(toolCall(TOOL), {
+      "mcp-session-id": SESSION,
+    });
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.ok(call, "$mcp_tool_call should be posted");
+    assert.equal(call.distinct_id, `mcp-session:${SESSION}`);
+    assert.notEqual(call.distinct_id, USAGE_EVENT_DISTINCT_ID);
+  });
+
+  // The 23% with no session must still be recorded — losing the event would be
+  // a worse outcome than an uncountable one.
+  test("a sessionless call still records, on the anonymous constant", async () => {
+    const posted = await postedEvents(toolCall(TOOL));
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.ok(call);
+    assert.equal(call.distinct_id, USAGE_EVENT_DISTINCT_ID);
+  });
+
+  // A canonical initialize carries no inbound session — obtaining one is the
+  // point of the call — so without this it lands on the anonymous constant and
+  // the handshake can never be joined to the tool calls it precedes.
+  test("initialize is attributed to the session it creates", async () => {
+    const posted = await postedEvents({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: { protocolVersion: "2025-06-18" },
+    });
+    const init = posted.find((p) => p.event === "$mcp_initialize");
+    assert.ok(init, "$mcp_initialize should be posted");
+    assert.match(init.distinct_id, /^mcp-session:/);
+    // The identity must be the session the response actually hands back, or
+    // the handshake and the calls that follow it land on different ids.
+    assert.equal(
+      init.distinct_id,
+      `mcp-session:${init.properties.$session_id}`,
+    );
+  });
+
+  test("a GitHub identity outranks the session", async () => {
+    const posted = await postedEvents(
+      toolCall(TOOL),
+      { "mcp-session-id": SESSION },
+      {
+        executionCtx: {
+          ...fakeExecutionCtx(),
+          props: { githubLogin: "octocat" },
+        },
+      },
+    );
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.ok(call);
+    assert.equal(call.distinct_id, "github:octocat");
+  });
+
+  // A malformed header is not an identity. Accepting it would let a caller
+  // mint arbitrary distinct_ids, including ones shaped like another namespace.
+  test("a malformed session header is not treated as an identity", async () => {
+    const posted = await postedEvents(toolCall(TOOL), {
+      "mcp-session-id": "not a valid session id",
+    });
+    const call = posted.find((p) => p.event === "$mcp_tool_call");
+    assert.ok(call);
+    assert.equal(call.distinct_id, USAGE_EVENT_DISTINCT_ID);
+  });
+});
+
+// The resolver in isolation. The end-to-end tests above prove the wiring; this
+// pins the precedence and the namespacing rule, which is the part a future
+// identity system has to respect.
+describe("mcpDistinctId precedence (#9054)", () => {
+  test("GitHub beats session beats nothing", () => {
+    assert.equal(mcpDistinctId("octocat", "s1"), "github:octocat");
+    assert.equal(mcpDistinctId(undefined, "s1"), "mcp-session:s1");
+    assert.equal(mcpDistinctId(undefined, null), undefined);
+    assert.equal(mcpDistinctId(undefined, undefined), undefined);
+  });
+
+  test("a non-string or empty login is not an identity", () => {
+    assert.equal(mcpDistinctId("", "s1"), "mcp-session:s1");
+    assert.equal(mcpDistinctId(42, "s1"), "mcp-session:s1");
+    assert.equal(mcpDistinctId(null, "s1"), "mcp-session:s1");
+    assert.equal(mcpDistinctId({}, null), undefined);
+  });
+
+  test("an empty session is not an identity", () => {
+    assert.equal(mcpDistinctId(undefined, ""), undefined);
+  });
+
+  // A session id may legally contain a colon (isValidMcpSessionId allows any
+  // printable ASCII), so without the prefix a caller could send
+  // `github:someone` as their session and mint a GitHub-namespaced identity.
+  test("namespacing stops a session id from impersonating another namespace", () => {
+    assert.equal(
+      mcpDistinctId(undefined, "github:someone"),
+      "mcp-session:github:someone",
+    );
+    assert.notEqual(
+      mcpDistinctId(undefined, "github:someone"),
+      "github:someone",
+    );
   });
 });
