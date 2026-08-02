@@ -53,9 +53,12 @@ import {
   type QueryError,
 } from "../list-query.ts";
 import {
+  currentD1ReadFailureGeneration,
+  loadGlobalIncidentRows,
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
+  type ObservationsReadDb,
 } from "../../src/analytics-live.ts";
 import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.ts";
 import {
@@ -593,11 +596,20 @@ export async function handleHealthTrends(
       // through to the pure formatter with no rows (never a live D1 query),
       // so it's always marked a fallback (never edge-cache a schema-stable
       // empty payload).
-      usedFallback = true;
+      // Only an EMPTY payload is barred from the edge cache — no D1 binding,
+      // or a D1 read that failed mid-load (tracked by the failure generation,
+      // the same contract the Postgres tier uses). A D1-served response
+      // carries real rows and caches like any tier hit (the pre-elimination
+      // behavior this route always had).
+      const d1Generation = currentD1ReadFailureGeneration();
       const meta = await readHealthMetaKv(env);
       data = await loadSubnetHealthTrends(netuid, {
         observedAt: meta?.last_run_at || null,
+        db: env.METAGRAPH_HEALTH_DB,
       } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
+      usedFallback =
+        !env.METAGRAPH_HEALTH_DB ||
+        currentD1ReadFailureGeneration() !== d1Generation;
     }
     const response = await envelopeResponse(
       cacheRequest,
@@ -649,12 +661,17 @@ export async function handleHealthPercentiles(
         // A Postgres-tier miss now falls straight through to the pure
         // formatter with no rows (never a live D1 query), so it's always
         // marked a fallback (mirrors handleHealthTrends).
-        usedFallback = true;
+        // Cacheable when D1-served — see handleHealthTrends' comment.
+        const d1Generation = currentD1ReadFailureGeneration();
         const meta = await readHealthMetaKv(env);
         data = await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
+          db: env.METAGRAPH_HEALTH_DB,
         } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
+        usedFallback =
+          !env.METAGRAPH_HEALTH_DB ||
+          currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -704,12 +721,17 @@ export async function handleHealthIncidents(
         // A Postgres-tier miss now falls straight through to the pure
         // formatter with no rows (never a live D1 query), so it's always
         // marked a fallback (mirrors handleHealthTrends / handleHealthPercentiles).
-        usedFallback = true;
+        // Cacheable when D1-served — see handleHealthTrends' comment.
+        const d1Generation = currentD1ReadFailureGeneration();
         const meta = await readHealthMetaKv(env);
         data = await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
+          db: env.METAGRAPH_HEALTH_DB,
         } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
+        usedFallback =
+          !env.METAGRAPH_HEALTH_DB ||
+          currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -740,16 +762,23 @@ export async function handleHealthIncidents(
 // miss, so it always returns the schema-stable empty payload.
 export async function loadGlobalIncidentsLedger(
   env: Env,
-  { label = "7d" }: { label?: string } = {},
+  { label = "7d", days = 7 }: { label?: string; days?: number } = {},
 ) {
+  // D1 reads resurrected (2026-08-02, box decommission): the rows come from
+  // the dual-written surface_checks copy in D1 — no binding, no rows, which
+  // is exactly the empty stub this was between 2026-07-17 and now.
+  const incidentRows = await loadGlobalIncidentRows(
+    env.METAGRAPH_HEALTH_DB as unknown as ObservationsReadDb,
+    days,
+  );
   const meta = await readHealthMetaKv(env);
   const data = formatGlobalIncidents({
     window: label,
     observedAt: meta?.last_run_at || null,
-    incidentRows: [],
+    incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
   });
-  return { data, incidentRows: [] };
+  return { data, incidentRows };
 }
 
 /**
@@ -773,7 +802,7 @@ export async function loadGlobalIncidentsLedger(
 export async function resolveGlobalIncidents(
   request: Request,
   env: Env,
-  { label = "7d" }: { label?: string } = {},
+  { label = "7d", days = 7 }: { label?: string; days?: number } = {},
 ): Promise<{ data: Record<string, unknown>; isFallback: boolean }> {
   const tiered = (await tryPostgresTier(
     env,
@@ -781,10 +810,16 @@ export async function resolveGlobalIncidents(
     "METAGRAPH_HEALTH_SOURCE",
   )) as Record<string, unknown> | null;
   if (tiered) return { data: tiered, isFallback: false };
-  const result = await loadGlobalIncidentsLedger(env, { label });
+  const d1Generation = currentD1ReadFailureGeneration();
+  const result = await loadGlobalIncidentsLedger(env, { label, days });
   return {
     data: result.data as unknown as Record<string, unknown>,
-    isFallback: true,
+    // Only an EMPTY ledger counts as a fallback for caching purposes — no D1
+    // binding, or a D1 read failure mid-load. A D1-served ledger carries
+    // real rows.
+    isFallback:
+      !env.METAGRAPH_HEALTH_DB ||
+      currentD1ReadFailureGeneration() !== d1Generation,
   };
 }
 
@@ -832,10 +867,11 @@ export async function handleGlobalIncidents(
   if ("error" in windowResult) {
     return analyticsQueryError(windowResult.error);
   }
-  const { label } = windowResult;
+  const { label, days } = windowResult;
   // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
   const { data, isFallback } = await resolveGlobalIncidents(request, env, {
     label,
+    days,
   });
   // Page/sort/filter the window-scoped `surfaces` ledger through the shared
   // list-query engine (#6571). `window` is this route's own scope param, already

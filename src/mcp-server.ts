@@ -4114,6 +4114,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         )) ??
         (await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
+          db: ctx.env.METAGRAPH_HEALTH_DB,
         }))
       );
     },
@@ -4182,6 +4183,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         (await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
+          db: ctx.env.METAGRAPH_HEALTH_DB,
         }))
       );
     },
@@ -4222,6 +4224,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         (await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
+          db: ctx.env.METAGRAPH_HEALTH_DB,
         }))
       );
     },
@@ -5947,6 +5950,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         ((await loadSubnetUptime(netuid, {
           window: window ?? undefined,
           observedAt: await mcpObservedAt(ctx),
+          db: ctx.env.METAGRAPH_HEALTH_DB,
         })) as Row)
       );
     },
@@ -6139,7 +6143,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed!;
+      const { label, days } = parsed!;
       const data =
         (await tryPostgresTier(
           ctx.env,
@@ -6155,7 +6159,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         )) ??
         (await loadGlobalIncidents({
           windowLabel: label,
+          windowDays: days,
           observedAt: await mcpObservedAt(ctx),
+          db: ctx.env.METAGRAPH_HEALTH_DB,
         }));
       return applyGlobalIncidentsListQuery(
         data as Record<string, unknown>,
@@ -9782,7 +9788,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         async loadIncidents() {
           return loadGlobalIncidents({
             windowLabel: "30d",
+            windowDays: 30,
             observedAt: await mcpObservedAt(ctx),
+            db: ctx.env.METAGRAPH_HEALTH_DB,
           });
         },
       });

@@ -12,19 +12,98 @@ import {
   formatPercentiles,
   formatTrends,
   formatUptime,
+  INCIDENT_GAP_MS,
+  MIN_INCIDENT_SAMPLES,
 } from "./health-serving.ts";
 import {
+  dailyLatencyColumns,
+  latencyStatColumns,
+  rankedChecksCte,
+} from "./health-sql.ts";
+import {
   ANALYTICS_WINDOWS,
+  DAY_MS,
   HEALTH_TREND_WINDOWS,
+  MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
+  MAX_UPTIME_ROWS,
   SS58_ADDRESS_PATTERN,
   UPTIME_WINDOWS,
 } from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 
 export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
+
+// --- D1 read tier (box decommission, the read half of #9036's dual-write) ----
+//
+// D1 reads resurrected 2026-08-02: the 2026-07-17 elimination that emptied
+// these loaders assumed the self-hosted Postgres would keep serving; that box
+// is now gone, and the observation tables live in D1 again (backfilled to
+// exact parity + dual-written since #9036). Each health loader takes an
+// optional `db` — the METAGRAPH_HEALTH_DB binding — and runs the exact
+// pre-elimination SQL against it; with no binding (tests, self-hosters) the
+// loader keeps its schema-stable empty behavior, byte-identical to before
+// this change. The Postgres tier stays first in every route for now; when
+// it misses (or its flag is off), the D1 read replaces what used to be a
+// guaranteed-empty payload.
+//
+// The read slice of the D1 API these loaders use — structural (mirroring
+// ObservationsDb, the write slice in observations-d1.ts) so tests can hand
+// in node:sqlite-backed fakes and the real binding both.
+export interface ObservationsReadDb {
+  prepare(sql: string): {
+    bind(...values: unknown[]): {
+      all(): Promise<{ results?: unknown[] } | unknown>;
+    };
+  };
+}
+
+// A failed D1 read degrades to zero rows, and the payload built from those
+// zero rows must never be edge-cached as fresh — the same contract the
+// Postgres tier enforces via its own fallback generation
+// (workers/postgres-tier.ts). Handlers snapshot this before a loader call
+// and treat a changed generation as a fallback.
+let d1ReadFailureGeneration = 0;
+
+registerModuleStateReset("src/analytics-live.ts", () => {
+  d1ReadFailureGeneration = 0;
+});
+
+export function currentD1ReadFailureGeneration(): number {
+  return d1ReadFailureGeneration;
+}
+
+// Contained D1 read: any failure (no binding, bad SQL against a drifted
+// schema, a D1 outage) degrades to zero rows — these are serving paths, and
+// the schema-stable empty payload has been their floor since 2026-07-17.
+// console.error keeps the failure diagnosable in the tail without making a
+// read failure a route failure.
+async function d1All(
+  db: ObservationsReadDb | null | undefined,
+  sql: string,
+  params: unknown[],
+): Promise<Record<string, unknown>[]> {
+  if (!db?.prepare) return [];
+  try {
+    const outcome = await db
+      .prepare(sql)
+      .bind(...params)
+      .all();
+    // D1 wraps rows in { results }; a node:sqlite-backed test fake returns
+    // the array directly. Accept both, and anything else is zero rows.
+    const rows = Array.isArray(outcome)
+      ? outcome
+      : (outcome as { results?: unknown[] })?.results;
+    return (Array.isArray(rows) ? rows : []) as Record<string, unknown>[];
+  } catch (error) {
+    d1ReadFailureGeneration += 1;
+    console.error("[analytics-d1]", String((error as Error)?.message));
+    return [];
+  }
+}
 
 export interface SubnetMetaEntry {
   slug: string | null;
@@ -211,18 +290,69 @@ function compareDimensionsFromTokens(tokens: unknown[]): string[] | null {
   return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
 }
 
-// D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only now
-// (REST/GraphQL/MCP all try the Postgres tier first) -- this loader is only
-// reached on a tier miss, so it always returns the schema-stable empty shape.
+// D1 reads resurrected (2026-08-02, box decommission): surface_uptime_daily
+// is dual-written to D1, and this loader reads it there when a `db` binding
+// is supplied — the pre-elimination query, unchanged. Without a binding it
+// keeps the schema-stable empty shape a Postgres-tier miss has served since
+// 2026-07-17.
 export async function loadSubnetUptime(
   netuid: number,
   {
     window = "90d",
     observedAt = null,
     now = null,
-  }: { window?: string; observedAt?: unknown; now?: string | null } = {},
+    minSamples = null,
+    db = null,
+  }: {
+    window?: string;
+    observedAt?: unknown;
+    now?: string | null;
+    minSamples?: number | null;
+    db?: ObservationsReadDb | null;
+  } = {},
 ): Promise<unknown> {
   const windowParam = Object.hasOwn(UPTIME_WINDOWS, window) ? window : "90d";
+  // Optional min_samples floor: drop low-sample day rows (daily probe count
+  // below the threshold, incl. zero-sample "unknown" days) via HAVING,
+  // mirroring the REST /uptime route (#2700). Null → no filter.
+  const sampleFloor =
+    Number.isInteger(minSamples) && (minSamples as number) >= 0
+      ? minSamples
+      : null;
+  const days = UPTIME_WINDOWS[windowParam] as number;
+  const cutoff = new Date(Date.now() - days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    db,
+    `SELECT MAX(surface_id) AS surface_id,
+            COALESCE(surface_key, surface_id) AS surface_key,
+            day,
+            SUM(samples) AS samples,
+            SUM(ok_count) AS ok_count,
+            CASE
+              WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
+              ELSE NULL
+            END AS uptime_ratio,
+            ${dailyLatencyColumns({ roundedAvg: true })},
+            MAX(p50_latency_ms) AS p50,
+            MAX(p95_latency_ms) AS p95,
+            MAX(p99_latency_ms) AS p99,
+            CASE
+              WHEN SUM(samples) = 0 THEN 'unknown'
+              WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
+              WHEN SUM(ok_count) = 0 THEN 'failed'
+              ELSE 'degraded'
+            END AS status
+     FROM surface_uptime_daily
+     WHERE netuid = ? AND day >= ?
+     GROUP BY COALESCE(surface_key, surface_id), day
+     ${sampleFloor !== null ? "HAVING SUM(samples) >= ?\n     " : ""}ORDER BY day DESC
+     LIMIT ?`,
+    sampleFloor !== null
+      ? [netuid, cutoff, sampleFloor, MAX_UPTIME_ROWS]
+      : [netuid, cutoff, MAX_UPTIME_ROWS],
+  );
   // formatUptime (health-serving.ts, not yet converted) infers its
   // observedAt/now default-param types as exactly `null` from their `= null`
   // defaults -- the untyped-default-parameter inference gap.
@@ -230,7 +360,7 @@ export async function loadSubnetUptime(
     netuid,
     window: windowParam,
     observedAt,
-    rows: [],
+    rows,
     now: now || new Date().toISOString(),
   } as unknown as Parameters<typeof formatUptime>[0]);
 }
@@ -239,15 +369,39 @@ export async function loadSubnetUptime(
 // ranked-dedup CTE shared with the percentiles/incidents routes. The windows are
 // independent reads, so they run in parallel rather than serializing an
 // await-in-loop — same shape as REST's handleHealthTrends, which this mirrors.
-// D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
-// loader is only reached on a Postgres-tier miss, so every window is empty.
+// D1 reads resurrected (2026-08-02): surface_checks is dual-written to D1;
+// with a `db` binding each window runs the pre-elimination query there,
+// without one every window stays empty (the 2026-07-17 floor).
 export async function loadSubnetHealthTrends(
   netuid: number,
-  { observedAt = null }: { observedAt?: unknown } = {},
+  {
+    observedAt = null,
+    db = null,
+  }: { observedAt?: unknown; db?: ObservationsReadDb | null } = {},
 ): Promise<Record<string, unknown>> {
+  const nowMs = Date.now();
+  const windowRows = await Promise.all(
+    Object.entries(HEALTH_TREND_WINDOWS).map(
+      async ([label, days]): Promise<[string, unknown[]]> => {
+        const rows = await d1All(
+          db,
+          `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+           SELECT MAX(surface_id) AS surface_id,
+                  surface_key,
+                  COUNT(*) AS total,
+                  SUM(ok) AS ok_count,
+                  ${latencyStatColumns({ includeMinMax: false })}
+           FROM ranked
+           GROUP BY surface_key`,
+          [netuid, nowMs - (days as number) * DAY_MS],
+        );
+        return [label, rows];
+      },
+    ),
+  );
   const windows: Record<string, unknown[]> = {};
-  for (const label of Object.keys(HEALTH_TREND_WINDOWS)) {
-    windows[label] = [];
+  for (const [label, rows] of windowRows) {
+    windows[label] = rows;
   }
   return formatTrends({ netuid, observedAt, windows });
 }
@@ -258,21 +412,39 @@ export async function loadSubnetHealthTrends(
 // the get_subnet_health_percentiles MCP tool share one read path (mirrors
 // loadSubnetHealthTrends, #2335). Defensively defaults an unknown window to 7d;
 // cold/empty D1 → a schema-stable surfaces:[] payload.
-// D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
-// loader is only reached on a Postgres-tier miss, so rows are always empty.
+// D1 reads resurrected (2026-08-02): with a `db` binding this runs the
+// pre-elimination surface_checks percentile query; without one, rows stay
+// empty (the 2026-07-17 floor).
 export async function loadSubnetPercentiles(
   netuid: number,
   {
     window = "7d",
     observedAt = null,
-  }: { window?: string; observedAt?: unknown } = {},
+    db = null,
+  }: {
+    window?: string;
+    observedAt?: unknown;
+    db?: ObservationsReadDb | null;
+  } = {},
 ): Promise<Record<string, unknown>> {
   const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const days = ANALYTICS_WINDOWS[windowParam] as number;
+  const rows = await d1All(
+    db,
+    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+       SELECT MAX(surface_id) AS surface_id,
+              surface_key,
+              ${latencyStatColumns()}
+       FROM ranked
+       GROUP BY surface_key
+       HAVING MAX(lat_cnt) > 0`,
+    [netuid, Date.now() - days * DAY_MS],
+  );
   return formatPercentiles({
     netuid,
     window: windowParam,
     observedAt,
-    rows: [],
+    rows,
   });
 }
 
@@ -283,38 +455,179 @@ export async function loadSubnetPercentiles(
 // formatting live here so the REST handler (handleHealthIncidents) and the
 // get_subnet_health_incidents MCP tool share one read path (mirrors
 // loadSubnetPercentiles). Unknown window → 7d; cold/empty D1 → surfaces:[].
-// D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
-// loader is only reached on a Postgres-tier miss, so both row sets are empty.
+// D1 reads resurrected (2026-08-02): with a `db` binding both row sets run
+// the pre-elimination surface_checks queries (SLA rollup + gap-island
+// incident grouping); without one both stay empty (the 2026-07-17 floor).
 export async function loadSubnetIncidents(
   netuid: number,
   {
     window = "7d",
     observedAt = null,
-  }: { window?: string; observedAt?: unknown } = {},
+    db = null,
+  }: {
+    window?: string;
+    observedAt?: unknown;
+    db?: ObservationsReadDb | null;
+  } = {},
 ): Promise<Record<string, unknown>> {
   const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const since =
+    Date.now() - (ANALYTICS_WINDOWS[windowParam] as number) * DAY_MS;
+  const [slaRows, incidentRows] = await Promise.all([
+    d1All(
+      db,
+      `SELECT MAX(surface_id) AS surface_id,
+              COALESCE(surface_key, surface_id) AS surface_key,
+              COUNT(*) AS total,
+              SUM(ok) AS ok_count
+       FROM surface_checks
+       WHERE netuid = ? AND checked_at >= ?
+       GROUP BY COALESCE(surface_key, surface_id)`,
+      [netuid, since],
+    ),
+    // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
+    // incident threshold) into one incident row, then cap per surface_key so one
+    // flappy endpoint cannot starve sibling surfaces in the same subnet.
+    d1All(
+      db,
+      `WITH checks AS (
+         SELECT COALESCE(surface_key, surface_id) AS surface_key,
+                surface_id,
+                checked_at,
+                ok,
+                checked_at - LAG(checked_at)
+                  OVER (
+                    PARTITION BY COALESCE(surface_key, surface_id)
+                    ORDER BY checked_at
+                  ) AS gap
+         FROM surface_checks
+         WHERE netuid = ? AND checked_at >= ?
+       ),
+       grouped AS (
+         SELECT surface_key, surface_id, checked_at, ok,
+                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                  OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
+         FROM checks
+       ),
+       incidents AS (
+         SELECT MAX(surface_id) AS surface_id,
+                surface_key,
+                MIN(checked_at) AS started_at,
+                MAX(checked_at) AS ended_at,
+                COUNT(*) AS failed_samples
+         FROM grouped
+         WHERE ok = 0
+         GROUP BY surface_key, grp
+         HAVING COUNT(*) >= ?
+       )
+       SELECT surface_id,
+              surface_key,
+              started_at,
+              ended_at,
+              failed_samples
+       FROM (
+         SELECT surface_id,
+                surface_key,
+                started_at,
+                ended_at,
+                failed_samples,
+                ROW_NUMBER() OVER (
+                  PARTITION BY surface_key
+                  ORDER BY started_at
+                ) AS rn
+         FROM incidents
+       ) ranked
+       WHERE rn <= ?
+       ORDER BY surface_id, started_at`,
+      [netuid, since, INCIDENT_GAP_MS, MIN_INCIDENT_SAMPLES, MAX_INCIDENT_ROWS],
+    ),
+  ]);
   return formatIncidents({
     netuid,
     window: windowParam,
     observedAt,
-    slaRows: [],
-    incidentRows: [],
+    slaRows,
+    incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
   });
 }
 
-// D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
-// loader is only reached on a Postgres-tier miss, so incidentRows is empty.
+// D1 reads resurrected (2026-08-02): with a `db` binding this runs the
+// pre-elimination cross-subnet incident query over surface_checks; without
+// one incidentRows stays empty (the 2026-07-17 floor).
 export async function loadGlobalIncidents({
   windowLabel = "7d",
+  windowDays = 7,
   observedAt = null,
-}: { windowLabel?: string; observedAt?: unknown } = {}): Promise<unknown> {
+  db = null,
+}: {
+  windowLabel?: string;
+  windowDays?: number;
+  observedAt?: unknown;
+  db?: ObservationsReadDb | null;
+} = {}): Promise<unknown> {
+  const incidentRows = await loadGlobalIncidentRows(db, windowDays);
   return formatGlobalIncidents({
     window: windowLabel,
     observedAt,
-    incidentRows: [],
+    incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
   });
+}
+
+// The raw cross-subnet incident rows behind loadGlobalIncidents — exported
+// separately because the REST/feeds incident ledger
+// (workers/request-handlers/analytics.ts's loadGlobalIncidentsLedger) needs
+// the rows alongside the formatted payload, not just the payload.
+export async function loadGlobalIncidentRows(
+  db: ObservationsReadDb | null | undefined,
+  windowDays = 7,
+): Promise<Record<string, unknown>[]> {
+  const since = Date.now() - windowDays * DAY_MS;
+  return d1All(
+    db,
+    `WITH recent_checks AS (
+       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
+       FROM surface_checks
+       WHERE checked_at >= ?
+       ORDER BY checked_at DESC
+       LIMIT ?
+     ),
+     checks AS (
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
+              checked_at - LAG(checked_at)
+                OVER (
+                  PARTITION BY netuid, surface_key
+                  ORDER BY checked_at
+                ) AS gap
+       FROM recent_checks
+     ),
+     grouped AS (
+       SELECT netuid, surface_key, surface_id, checked_at, ok,
+              SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
+       FROM checks
+     )
+     SELECT netuid,
+            MAX(surface_id) AS surface_id,
+            surface_key,
+            MIN(checked_at) AS started_at,
+            MAX(checked_at) AS ended_at,
+            COUNT(*) AS failed_samples
+     FROM grouped
+     WHERE ok = 0
+     GROUP BY netuid, surface_key, grp
+     HAVING COUNT(*) >= ?
+     ORDER BY started_at DESC
+     LIMIT ?`,
+    [
+      since,
+      MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+      INCIDENT_GAP_MS,
+      MIN_INCIDENT_SAMPLES,
+      MAX_INCIDENT_ROWS,
+    ],
+  );
 }
 
 // D1 fully eliminated (2026-07-17): surface_status/subnet_snapshots/

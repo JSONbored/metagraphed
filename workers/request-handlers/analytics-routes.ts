@@ -42,7 +42,9 @@ import { economicsCurrentKvReader } from "./analytics.ts";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
+  currentD1ReadFailureGeneration,
   growthRowsFromSamples,
+  loadSubnetUptime,
   parseCompareDimensions,
   parseCompareHotkeys,
   parseCompareNetuids,
@@ -382,8 +384,10 @@ export async function handleUptime(
   // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
   // as the bulk-trends/trends/percentiles/incidents routes in analytics.ts,
   // flipped to "postgres" in wrangler.jsonc -- see that flag's own header
-  // comment there). D1 fully eliminated (2026-07-17): a tier miss now always
-  // falls through to the schema-stable empty payload (never a live D1 query).
+  // comment there). D1 reads resurrected (2026-08-02, box decommission): a
+  // tier miss now reads the dual-written surface_uptime_daily copy in D1
+  // through loadSubnetUptime; with no binding that loader degrades to the
+  // same schema-stable empty payload this served since 2026-07-17.
   let isFallback = false;
   let data = (await tryPostgresTier(
     env,
@@ -391,15 +395,22 @@ export async function handleUptime(
     "METAGRAPH_HEALTH_SOURCE",
   )) as ReturnType<typeof formatUptime> | null;
   if (!data) {
-    isFallback = true;
+    // Cacheable when D1-served — only an empty payload (no binding, or a D1
+    // read failure mid-load) is barred from the edge cache (see
+    // handleHealthTrends in analytics.ts).
+    const d1Generation = currentD1ReadFailureGeneration();
     const healthMeta = await readHealthMetaKv(env);
-    data = formatUptime({
-      netuid,
+    data = (await loadSubnetUptime(netuid, {
       window: windowParam,
       observedAt: healthMeta?.last_run_at || null,
-      rows: [],
-      now: new Date().toISOString(),
-    } as unknown as Parameters<typeof formatUptime>[0]);
+      minSamples: minSamplesResult.value ?? null,
+      db: env.METAGRAPH_HEALTH_DB,
+    } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
+      typeof formatUptime
+    >;
+    isFallback =
+      !env.METAGRAPH_HEALTH_DB ||
+      currentD1ReadFailureGeneration() !== d1Generation;
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(

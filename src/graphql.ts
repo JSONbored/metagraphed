@@ -4015,6 +4015,7 @@ const rootValue = {
       (await loadSubnetPercentiles(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
+        db: context.env.METAGRAPH_HEALTH_DB,
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -4297,6 +4298,7 @@ const rootValue = {
       (await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
+        db: context.env.METAGRAPH_HEALTH_DB,
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -7340,6 +7342,7 @@ const rootValue = {
       )) as Row | null) ??
       (await loadSubnetHealthTrends(netuid, {
         observedAt: await loadObservedAt(context),
+        db: context.env.METAGRAPH_HEALTH_DB,
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -7491,6 +7494,7 @@ const rootValue = {
       ((await loadSubnetUptime(netuid, {
         window: windowParam,
         observedAt: await loadObservedAt(context),
+        db: context.env.METAGRAPH_HEALTH_DB,
       })) as Row);
     return {
       schema_version: data.schema_version ?? 1,
