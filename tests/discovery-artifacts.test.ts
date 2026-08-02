@@ -108,7 +108,9 @@ describe("Discovery artifacts", () => {
     const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
     assert.match(authMd, /public by default and\s+read-only/i);
     // Anonymous access still works: the thing that must never silently change.
-    assert.match(authMd, /No authentication is \*required\*/i);
+    // Emphasis-agnostic: prettier normalizes *required* to _required_, and the
+    // claim is what matters, not which marker markdown ends up with.
+    assert.match(authMd, /No authentication is [*_]required[*_]/i);
     assert.match(authMd, /callable anonymously/i);
     // ...and the optional half is discoverable rather than denied.
     assert.match(authMd, /optional and additive/i);

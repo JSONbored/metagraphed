@@ -1,7 +1,7 @@
 # Authentication
 
 The metagraphed API at `api.metagraph.sh` is **public by default and
-read-only**. No authentication is *required* for any endpoint — every tool and
+read-only**. No authentication is _required_ for any endpoint — every tool and
 route is callable anonymously.
 
 Authentication is **optional and additive**: it raises rate limits. It does not
@@ -33,13 +33,12 @@ request is not challenged** — it is served.
 ## Rate limits
 
 Anonymous limits apply per client IP; a valid key raises them per account.
+Each entry below is anonymous → keyed.
 
-| surface | anonymous | with a key |
-| --- | --- | --- |
-| REST + artifact reads | unmetered (cached at the edge) | unmetered |
-| RPC proxy (`/rpc/v1/*`) | 100 / 60s | higher, per tier |
-| MCP endpoint (`POST /mcp`) | 100 / 60s | 500 / 60s, higher on paid tiers |
-| AI routes (`/api/v1/ask`, `/api/v1/search/semantic`) | 20 / 60s | higher, per tier |
+- REST + artifact reads: unmetered either way (cached at the edge)
+- RPC proxy (`/rpc/v1/*`): 100 / 60s → higher, per tier
+- MCP endpoint (`POST /mcp`): 100 / 60s → 500 / 60s, higher on paid tiers
+- AI routes (`/api/v1/ask`, `/api/v1/search/semantic`): 20 / 60s → higher, per tier
 
 Keyed accounts are also subject to a cost-weighted daily quota.
 
