@@ -515,7 +515,7 @@ bundle-size-budget check, in that order — run the same locally before pushing:
 npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
 npm run typecheck --workspace=apps/ui  # auto-builds packages/client first (pretypecheck) -- no separate step needed
 npm test --workspace=apps/ui
-npm run build --workspace=apps/ui      # MUST precede test:e2e since #8928 — see below
+npm run build:worker --workspace=apps/ui  # MUST precede test:e2e since #8928 — see below
 npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwright install --with-deps chromium (once)
 ```
 
@@ -523,7 +523,11 @@ npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwrigh
 `wrangler dev` rather than `npm run dev`: the sweep loads 26 routes x 4 viewports, and Vite's
 dev server compiled each route on first hit, making that step ~48% of the whole `ui` job. It
 also means the check now exercises the bundle that actually ships, so prod-only breakage the
-dev server hid is in scope. `test:e2e` fails with no `.output/` present — build first.
+dev server hid is in scope.
+
+Use **`build:worker`**, not `build`. A plain `npm run build` emits `.output/` with no Worker
+entry; the cloudflare-module preset (which CI and production use) emits **`dist/`**. `test:e2e`
+serves `dist/server/wrangler.json` and fails without it.
 
 This does NOT change Phase C2's screenshot workflow below, which still uses `npm run dev` on
 purpose: those are contributor-facing before/after captures, not a CI gate.
