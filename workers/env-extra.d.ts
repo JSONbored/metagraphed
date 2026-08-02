@@ -71,6 +71,19 @@ interface Env {
   METAGRAPH_ICON_ALLOWED_HOSTS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
   METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN?: string;
+  /**
+   * #9009: AES-256-GCM key material (via SHA-256) for the MCP
+   * surface-credential store (src/mcp-surface-credentials.ts). These are
+   * third-party secrets belonging to the CALLER, not to us, so KV holds only
+   * ciphertext -- a KV snapshot without this secret yields nothing.
+   *
+   * Unset, the store refuses every operation with a typed
+   * `surface_credential_store_unavailable` rather than degrading to plaintext
+   * or silently accepting a credential it cannot persist. Rotating it
+   * invalidates every stored registration (they become undecryptable and read
+   * as absent), which is the intended blast radius for a key rotation.
+   */
+  MCP_SURFACE_CREDENTIAL_SECRET?: string;
   NEURON_DAILY_BACKFILL_SECRET?: string;
   NEURONS_SYNC_SECRET?: string;
   NOMINATOR_POSITIONS_SYNC_SECRET?: string;

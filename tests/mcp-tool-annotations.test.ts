@@ -89,17 +89,52 @@ describe("MCP tool annotations", () => {
     }
   });
 
-  // Only call_subnet_surface may claim non-read-only. If another mutating tool
-  // lands, this test failing is the intended prompt to give it a truthful
-  // block rather than to widen the list reflexively.
-  test("call_subnet_surface is the only non-read-only tool", () => {
+  // The non-read-only set is enumerated, not bounded by a count: if another
+  // mutating tool lands, this test failing is the intended prompt to give it a
+  // truthful block rather than to widen the list reflexively.
+  //
+  // #9009 added two: the credential store's writer and its deleter. Both write
+  // only to our own KV, under the authenticated caller's own identity — hence
+  // closed-world, unlike call_subnet_surface, which forwards a caller-supplied
+  // write to somebody else's host.
+  test("the non-read-only tools are exactly the known mutators", () => {
     const mutating = definitions
       .filter(
         (def) =>
           (def.annotations as Record<string, unknown>)?.readOnlyHint !== true,
       )
       .map((def) => def.name);
-    assert.deepEqual(mutating, ["call_subnet_surface"]);
+    assert.deepEqual(mutating, [
+      "call_subnet_surface",
+      "store_surface_credential",
+      "delete_surface_credential",
+    ]);
+  });
+
+  // #9009: a credential-store write must never advertise open-world. An agent
+  // reading these hints should be able to tell "writes a secret into
+  // metagraphed's own storage" from "sends a secret to a third-party host" —
+  // that distinction is the entire point of moving credentials out of tool
+  // arguments, and an inflated hint here would erase it.
+  test("credential-store tools are closed-world", () => {
+    for (const name of [
+      "store_surface_credential",
+      "list_surface_credentials",
+      "delete_surface_credential",
+    ]) {
+      const annotations = byName.get(name)?.annotations as Record<
+        string,
+        unknown
+      >;
+      assert.ok(annotations, `${name} must be registered`);
+      assert.equal(annotations.openWorldHint, false, `${name} is closed-world`);
+    }
+    const deleteAnnotations = byName.get("delete_surface_credential")
+      ?.annotations as Record<string, unknown>;
+    assert.equal(deleteAnnotations.destructiveHint, true);
+    const listAnnotations = byName.get("list_surface_credentials")
+      ?.annotations as Record<string, unknown>;
+    assert.equal(listAnnotations.readOnlyHint, true);
   });
 });
 

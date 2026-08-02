@@ -1694,3 +1694,484 @@ describe("not_callable vs not_found (#8652)", () => {
     );
   });
 });
+
+// #9009: the session-bound credential store. The tool-level half -- the three
+// new tools, the resolution order inside call_subnet_surface, and the
+// deprecation notice. tests/mcp-surface-credentials.test.ts covers the
+// storage module (encryption at rest, identity isolation, TTL clamping).
+describe("surface credential store (#9009)", () => {
+  // Map-backed KV double, same shape as tests/mcp-surface-credentials.ts's.
+  // An empty secret models an unprovisioned deployment: `MCP_SURFACE_
+  // CREDENTIAL_SECRET` unset arrives as undefined, which is falsy the same way.
+  function credentialEnv(secret = "test-secret") {
+    const store = new Map<string, { value: string; metadata?: unknown }>();
+    return {
+      store,
+      METAGRAPH_CONTROL: {
+        get: async (key: string) => {
+          const entry = store.get(key);
+          return entry ? JSON.parse(entry.value) : null;
+        },
+        put: async (
+          key: string,
+          value: string,
+          options?: { metadata?: unknown },
+        ) => {
+          store.set(key, { value, metadata: options?.metadata });
+        },
+        delete: async (key: string) => {
+          store.delete(key);
+        },
+        list: async (options?: { prefix?: string }) => ({
+          keys: [...store.entries()]
+            .filter(([name]) => name.startsWith(options?.prefix ?? ""))
+            .map(([name, entry]) => ({ name, metadata: entry.metadata })),
+          list_complete: true,
+        }),
+      },
+      MCP_SURFACE_CREDENTIAL_SECRET: secret,
+    };
+  }
+
+  // An authenticated call. The OAuth path (props.accountId) is used because it
+  // needs no key-verification round trip -- resolveSurfaceCredentialIdentity
+  // treats it and the mg_-key path identically, which is the point of keying
+  // on the shared rpc_accounts id. Pass accountId: null for anonymous.
+  async function callAs(
+    accountId: number | null,
+    name: string,
+    args: Row,
+    env: Row,
+    fetchImpl?: typeof fetch,
+  ) {
+    const of = globalThis.fetch;
+    globalThis.fetch =
+      fetchImpl ??
+      (async () =>
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }));
+    try {
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name, arguments: args },
+          }),
+        }),
+        env as unknown as Env,
+        {
+          ...deps,
+          executionCtx:
+            accountId === null ? undefined : { props: { accountId } },
+        },
+      );
+      return ((await response.json()) as Row).result as Row;
+    } finally {
+      globalThis.fetch = of;
+    }
+  }
+
+  const errorCode = (result: Row) =>
+    ((result.structuredContent as Row).error as Row).code;
+
+  test("a registered credential is resolved without a tool argument", async () => {
+    const env = credentialEnv();
+    const stored = await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential: "Bearer abc123",
+      },
+      env,
+    );
+    assert.equal(stored.isError, false);
+    assert.equal((stored.structuredContent as Row).stored, true);
+    assert.equal((stored.structuredContent as Row).replaced, false);
+
+    let sentHeader: string | undefined;
+    const called = await callAs(
+      7,
+      "call_subnet_surface",
+      { surface_id: "x:api:6" },
+      env,
+      async (_url, init) => {
+        sentHeader = (init!.headers as Record<string, string>).Authorization;
+        return new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    assert.equal(called.isError, false);
+    assert.equal(sentHeader, "Bearer abc123");
+    const body = called.structuredContent as Row;
+    assert.equal(body.credential_source, "stored");
+    // A resolved-from-store call is the target state, so it must NOT carry a
+    // deprecation notice -- warning on the path we want people to move to
+    // would train agents to ignore the notice entirely.
+    assert.equal(body.credential_deprecation, undefined);
+  });
+
+  test("a signature bundle registers and resolves as a bundle", async () => {
+    const env = credentialEnv();
+    await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:12",
+        credential: {
+          "X-Hotkey": "5F...",
+          "X-Timestamp": "1",
+          "X-Signature": "0xabc",
+        },
+      },
+      env,
+    );
+    let sentHeaders: Record<string, string> | undefined;
+    const called = await callAs(
+      7,
+      "call_subnet_surface",
+      { surface_id: "x:api:12" },
+      env,
+      async (_url, init) => {
+        sentHeaders = init!.headers as Record<string, string>;
+        return new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    assert.equal(called.isError, false);
+    assert.equal(sentHeaders!["X-Hotkey"], "5F...");
+    assert.equal(sentHeaders!["X-Signature"], "0xabc");
+  });
+
+  // The deprecation window's shape: an authenticated caller passing the
+  // secret in-band is TOLD, not rejected, and their explicit argument still
+  // wins over whatever is stored -- silently preferring stale stored state
+  // over an argument the caller just typed would be its own bug.
+  test("an in-band credential still wins for an authenticated caller, with a notice", async () => {
+    const env = credentialEnv();
+    await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential: "Bearer stored",
+      },
+      env,
+    );
+    let sentHeader: string | undefined;
+    const called = await callAs(
+      7,
+      "call_subnet_surface",
+      { surface_id: "x:api:6", credential: "Bearer in-band" },
+      env,
+      async (_url, init) => {
+        sentHeader = (init!.headers as Record<string, string>).Authorization;
+        return new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    assert.equal(sentHeader, "Bearer in-band");
+    const body = called.structuredContent as Row;
+    assert.equal(body.credential_source, "argument");
+    assert.match(body.credential_deprecation as string, /deprecated/);
+  });
+
+  // ADR 0027 Model B: this cleanup must not shrink anonymous reach. An
+  // anonymous caller's in-band credential is the SUPPORTED mechanism, not a
+  // deprecated one, so telling them it is deprecated would be false.
+  test("an anonymous caller keeps the in-band argument, with no notice", async () => {
+    const env = credentialEnv();
+    let sentHeader: string | undefined;
+    const called = await callAs(
+      null,
+      "call_subnet_surface",
+      { surface_id: "x:api:6", credential: "Bearer anon" },
+      env,
+      async (_url, init) => {
+        sentHeader = (init!.headers as Record<string, string>).Authorization;
+        return new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    assert.equal(sentHeader, "Bearer anon");
+    const body = called.structuredContent as Row;
+    assert.equal(body.credential_source, "argument");
+    assert.equal(body.credential_deprecation, undefined);
+  });
+
+  test("an authenticated caller with nothing stored still gets auth_required", async () => {
+    const env = credentialEnv();
+    const called = await callAs(
+      7,
+      "call_subnet_surface",
+      { surface_id: "x:api:6" },
+      env,
+    );
+    assert.equal(called.isError, true);
+    assert.equal(errorCode(called), "auth_required");
+    assert.match(called.content[0].text, /store_surface_credential/);
+  });
+
+  test("the store tools refuse an anonymous caller", async () => {
+    const env = credentialEnv();
+    for (const [name, args] of [
+      ["store_surface_credential", { surface_id: "x:api:6", credential: "x" }],
+      ["list_surface_credentials", {}],
+      ["delete_surface_credential", { surface_id: "x:api:6" }],
+    ] as [string, Row][]) {
+      const result = await callAs(null, name, args, env);
+      assert.equal(result.isError, true, `${name} must refuse`);
+      assert.equal(errorCode(result), "auth_required");
+    }
+  });
+
+  test("the store tools refuse an unprovisioned deployment", async () => {
+    const env = credentialEnv("");
+    const result = await callAs(
+      7,
+      "store_surface_credential",
+      { surface_id: "x:api:6", credential: "x" },
+      env,
+    );
+    assert.equal(result.isError, true);
+    assert.equal(errorCode(result), "surface_credential_store_unavailable");
+  });
+
+  // A call_subnet_surface on an unprovisioned deployment must not become an
+  // error just because the store is missing -- the in-band argument is still
+  // a complete way to call the surface.
+  test("an unprovisioned store leaves call_subnet_surface working in-band", async () => {
+    const env = credentialEnv("");
+    const called = await callAs(
+      7,
+      "call_subnet_surface",
+      { surface_id: "x:api:6", credential: "Bearer abc" },
+      env,
+    );
+    assert.equal(called.isError, false);
+  });
+
+  test("storing against a surface that needs no credential is refused", async () => {
+    const env = credentialEnv();
+    const result = await callAs(
+      7,
+      "store_surface_credential",
+      { surface_id: "x:api:1", credential: "x" },
+      env,
+    );
+    assert.equal(result.isError, true);
+    assert.equal(errorCode(result), "invalid_params");
+    assert.match(result.content[0].text, /does not require a credential/);
+  });
+
+  test("storing against a malformed or unknown surface id is refused", async () => {
+    const env = credentialEnv();
+    const malformed = await callAs(
+      7,
+      "store_surface_credential",
+      { surface_id: "not a surface id!", credential: "x" },
+      env,
+    );
+    assert.equal(errorCode(malformed), "invalid_params");
+    const unknown = await callAs(
+      7,
+      "store_surface_credential",
+      { surface_id: "x:api:999", credential: "x" },
+      env,
+    );
+    assert.equal(errorCode(unknown), "not_found");
+  });
+
+  test("a malformed credential is rejected at registration, not at call time", async () => {
+    const env = credentialEnv();
+    for (const credential of ["", {}, { a: "" }, { a: 5 }, [] as unknown]) {
+      const result = await callAs(
+        7,
+        "store_surface_credential",
+        { surface_id: "x:api:6", credential },
+        env,
+      );
+      assert.equal(
+        result.isError,
+        true,
+        `${JSON.stringify(credential)} must be refused`,
+      );
+      assert.equal(errorCode(result), "invalid_params");
+    }
+  });
+
+  test("list and delete round-trip through the tools", async () => {
+    const env = credentialEnv();
+    await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential: "Bearer abc123",
+        ttl_seconds: 3600,
+      },
+      env,
+    );
+
+    const listed = await callAs(7, "list_surface_credentials", {}, env);
+    assert.equal(listed.isError, false);
+    const listBody = listed.structuredContent as Row;
+    assert.equal(listBody.count, 1);
+    // The listing is metadata only -- no tool in this family ever hands a
+    // credential value back, including to the caller who stored it.
+    assert.ok(!JSON.stringify(listBody).includes("abc123"));
+    assert.equal((listBody.credentials as Row[])[0].surface_id, "x:api:6");
+
+    const deleted = await callAs(
+      7,
+      "delete_surface_credential",
+      { surface_id: "x:api:6" },
+      env,
+    );
+    assert.equal((deleted.structuredContent as Row).deleted, true);
+
+    const again = await callAs(
+      7,
+      "delete_surface_credential",
+      { surface_id: "x:api:6" },
+      env,
+    );
+    assert.equal((again.structuredContent as Row).deleted, false);
+
+    const empty = await callAs(7, "list_surface_credentials", {}, env);
+    assert.equal((empty.structuredContent as Row).count, 0);
+  });
+
+  test("one caller's registration is invisible to another", async () => {
+    const env = credentialEnv();
+    await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential: "Bearer sevens",
+      },
+      env,
+    );
+    const otherList = await callAs(8, "list_surface_credentials", {}, env);
+    assert.equal((otherList.structuredContent as Row).count, 0);
+    const otherCall = await callAs(
+      8,
+      "call_subnet_surface",
+      { surface_id: "x:api:6" },
+      env,
+    );
+    assert.equal(errorCode(otherCall), "auth_required");
+  });
+
+  test("re-registering reports the replacement", async () => {
+    const env = credentialEnv();
+    await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential: "one",
+      },
+      env,
+    );
+    const second = await callAs(
+      7,
+      "store_surface_credential",
+      {
+        surface_id: "x:api:6",
+        credential: "two",
+      },
+      env,
+    );
+    assert.equal((second.structuredContent as Row).replaced, true);
+  });
+
+  // The OTHER authentication door. Every test above binds via the OAuth
+  // props; this one goes through the mg_-key path, where the identity is
+  // resolved by the tiered rate-limit gate rather than the OAuth provider.
+  // Both must land on the same `account:<id>` — that equivalence is the whole
+  // reason the store keys on the shared rpc_accounts id instead of on
+  // whichever mechanism the caller used, and if it ever broke, a caller would
+  // silently lose access to their own registrations by switching clients.
+  test("an mg_ key resolves the same identity as the OAuth props", async () => {
+    const env = credentialEnv();
+    const key = "mg_test_key_0123456789abcdef";
+    // Prime the key-validation cache (src/api-key-validation.ts) so the gate
+    // resolves the key without a live Unkey round trip.
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(key),
+    );
+    const hash = [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+    env.store.set(`api-key-lookup:${hash}`, {
+      value: JSON.stringify({ found: true, tier: "free", accountId: 7 }),
+    });
+
+    // Registered through the OAuth door as account 7…
+    await callAs(
+      7,
+      "store_surface_credential",
+      { surface_id: "x:api:6", credential: "Bearer abc123" },
+      env,
+    );
+
+    // …and resolved through the mg_-key door, same account.
+    const of = globalThis.fetch;
+    let sentHeader: string | undefined;
+    globalThis.fetch = async (_url, init) => {
+      sentHeader = (init!.headers as Record<string, string>).Authorization;
+      return new Response("{}", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${key}`,
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "call_subnet_surface",
+              arguments: { surface_id: "x:api:6" },
+            },
+          }),
+        }),
+        env as unknown as Env,
+        deps,
+      );
+      const result = ((await response.json()) as Row).result as Row;
+      assert.equal(result.isError, false);
+      assert.equal(sentHeader, "Bearer abc123");
+      assert.equal(
+        (result.structuredContent as Row).credential_source,
+        "stored",
+      );
+    } finally {
+      globalThis.fetch = of;
+    }
+  });
+});

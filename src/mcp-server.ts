@@ -902,7 +902,24 @@ import {
   VerifyIntegrationOutputSchema,
   CallSubnetSurfaceInputSchema,
   CallSubnetSurfaceOutputSchema,
+  StoreSurfaceCredentialInputSchema,
+  StoreSurfaceCredentialOutputSchema,
+  ListSurfaceCredentialsInputSchema,
+  ListSurfaceCredentialsOutputSchema,
+  DeleteSurfaceCredentialInputSchema,
+  DeleteSurfaceCredentialOutputSchema,
 } from "../schemas-src/mcp-tools/ai-integration.ts";
+import {
+  deleteSurfaceCredential,
+  isSurfaceCredentialStoreConfigured,
+  listSurfaceCredentials,
+  loadSurfaceCredential,
+  resolveSurfaceCredentialIdentity,
+  storeSurfaceCredential,
+  type ConfiguredSurfaceCredentialEnv,
+  type StoredSurfaceCredential,
+  type SurfaceCredentialEnv,
+} from "./mcp-surface-credentials.ts";
 import {
   buildChainConcentration,
   buildConcentration,
@@ -1343,6 +1360,13 @@ const asMcpLoaderCtx = (ctx: McpCtx) =>
     readArtifact: (env: Env, path: string) => Promise<never>;
   };
 
+// #9009: the surface-credential store reads two bindings off Env
+// (METAGRAPH_CONTROL, MCP_SURFACE_CREDENTIAL_SECRET) and declares them
+// against its own minimal KV shape, so it stays unit-testable with a
+// Map-backed fake. Same narrowing convention as asMcpLoaderCtx above.
+const asCredentialStoreEnv = (env: Env) =>
+  env as unknown as SurfaceCredentialEnv;
+
 // The per-request context buildMcpContext assembles for every tool handler:
 // env + domain + optional session/telemetry plumbing, plus the artifact/KV
 // readers the fetch entry injects (kept loose since direct-call tests build
@@ -1361,6 +1385,11 @@ interface McpCtx {
   // to verify the bearer token anyway. Optional because every direct-call test
   // builds a context without going through that gate.
   authTier?: string;
+  // #9009: the rpc_accounts id behind a verified mg_ key, from the same gate
+  // that resolved authTier. Null/undefined for an anonymous caller. Together
+  // with executionCtx.props.accountId (the OAuth path) this is what the
+  // surface-credential store binds a registration to.
+  accountId?: string | null;
   readArtifact?: AnyFn;
   readHealthKv?: AnyFn;
   // props: set by @cloudflare/workers-oauth-provider on the ExecutionContext
@@ -1627,9 +1656,30 @@ const PROXY_WRITE_TOOL_ANNOTATIONS = {
   openWorldHint: true,
 };
 
+/** Writes to metagraphed's OWN storage on behalf of the authenticated caller
+ * (#9009's credential store). Not a read, but the write is confined to that
+ * caller's own records here — it reaches nothing external and destroys
+ * nothing the caller did not just ask to replace. */
+const SELF_STORAGE_WRITE_TOOL_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+/** Same, but the write removes state. Idempotent (deleting twice leaves the
+ * same end state) yet genuinely destructive, so an agent should confirm. */
+const SELF_STORAGE_DELETE_TOOL_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
 /**
- * The 20 tools that leave metagraphed infrastructure. Everything absent from
- * this map is closed-world read-only.
+ * Every tool whose annotations differ from the closed-world read-only default:
+ * the 20 that leave metagraphed infrastructure, plus the credential-store
+ * writers (#9009). Everything absent from this map is closed-world read-only.
  *
  * KEEP THIS IN SYNC when adding a tool that calls `fetch` against anything
  * other than our own bindings — tests/mcp-tool-annotations.test.ts fails the
@@ -1670,6 +1720,12 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   semantic_search: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   // Escape hatch: resolves the same live-RPC loaders as the get_* tools above.
   query_graphql: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+
+  // #9009: writes to METAGRAPH_CONTROL KV, nothing external.
+  // list_surface_credentials is absent deliberately — it only reads, so the
+  // closed-world read-only default is already the truthful block for it.
+  store_surface_credential: SELF_STORAGE_WRITE_TOOL_ANNOTATIONS,
+  delete_surface_credential: SELF_STORAGE_DELETE_TOOL_ANNOTATIONS,
 };
 
 /** The annotation block one tool advertises. Inline `annotations:` wins, then
@@ -1685,8 +1741,13 @@ export function annotationsForTool(tool: {
   );
 }
 
-/** Exported for the annotation regression test. */
-export const OPEN_WORLD_TOOL_NAMES = Object.keys(TOOL_ANNOTATIONS_BY_NAME);
+/** Exported for the annotation regression test. Derived from the hint itself
+ * rather than from the override table's key set: since #9009 the table also
+ * carries closed-world write annotations, so "has an override" and "leaves
+ * our infrastructure" are no longer the same question. */
+export const OPEN_WORLD_TOOL_NAMES = Object.entries(TOOL_ANNOTATIONS_BY_NAME)
+  .filter(([, annotations]) => annotations.openWorldHint === true)
+  .map(([name]) => name);
 
 export const MCP_INSTRUCTIONS =
   "metagraphed is the operational + integration registry for Bittensor subnets: " +
@@ -2133,6 +2194,116 @@ async function uncallableSurfaceError(
       `Surface ids are not derivable from a naming pattern -- use ` +
       `list_subnet_surfaces or list_surfaces to discover a real one.`,
   );
+}
+
+// ─── Surface-credential store helpers (#9009) ──────────────────────────────
+
+/**
+ * The caller's store identity, or a typed refusal.
+ *
+ * Two distinct failures, and collapsing them would be a real usability loss:
+ * an ANONYMOUS caller needs to be told to authenticate (and that the in-band
+ * argument still works for them), while an authenticated caller hitting an
+ * unprovisioned deployment needs to know the fault is ours, not theirs. Both
+ * fail closed -- there is no path here that silently stores nothing and
+ * reports success.
+ */
+function requireCredentialStore(ctx: McpCtx): {
+  identity: string;
+  storeEnv: ConfiguredSurfaceCredentialEnv;
+} {
+  const identity = resolveSurfaceCredentialIdentity(ctx);
+  if (!identity) {
+    throw toolError(
+      "auth_required",
+      "The surface-credential store is only available to authenticated " +
+        "callers -- a stored secret has to be bound to an identity, and an " +
+        "anonymous request has none. Send an `Authorization: Bearer` header " +
+        "with an mg_ API key or an OAuth access token, or keep passing " +
+        "`credential` in-band on each call_subnet_surface call.",
+    );
+  }
+  const storeEnv = asCredentialStoreEnv(ctx.env);
+  if (!isSurfaceCredentialStoreConfigured(storeEnv)) {
+    throw toolError(
+      "surface_credential_store_unavailable",
+      "The surface-credential store is not provisioned on this deployment. " +
+        "Pass `credential` in-band on each call_subnet_surface call instead.",
+    );
+  }
+  return { identity, storeEnv };
+}
+
+/**
+ * Resolve the surface a registration targets, refusing one that would never
+ * be used: a surface that takes no credential, or a scheme this server cannot
+ * attach a credential to at all. Storing against either would accept a secret
+ * and then silently never send it — the worst outcome for a tool whose whole
+ * purpose is handling secrets carefully.
+ */
+async function requireCredentialStoreSurface(
+  ctx: McpCtx,
+  surfaceId: string,
+): Promise<Row> {
+  if (!SURFACE_ID_PATTERN.test(surfaceId)) {
+    throw toolError("invalid_params", "Invalid surface_id format.");
+  }
+  const surface = await findCataloguedSurface(ctx, surfaceId);
+  if (!surface) throw await uncallableSurfaceError(ctx, surfaceId);
+  if (!surface.auth_required) {
+    throw toolError(
+      "invalid_params",
+      `Surface "${surfaceId}" does not require a credential, so storing one ` +
+        `for it would have no effect.`,
+    );
+  }
+  return surface;
+}
+
+/**
+ * Narrow the schema-validated `credential` argument to the two shapes the
+ * store persists, rejecting an object with a non-string value up front rather
+ * than at call time — the same validation call_subnet_surface applies to a
+ * scheme:signature bundle, moved to registration so a bad bundle fails when
+ * it is stored instead of on some later call.
+ */
+function normalizeSurfaceCredentialArgument(
+  credential: unknown,
+): StoredSurfaceCredential {
+  if (typeof credential === "string") {
+    if (!credential) {
+      throw toolError("invalid_params", "`credential` must not be empty.");
+    }
+    return credential;
+  }
+  if (
+    !credential ||
+    typeof credential !== "object" ||
+    Array.isArray(credential)
+  ) {
+    throw toolError(
+      "invalid_params",
+      "`credential` must be a non-empty string or a {name: value} object.",
+    );
+  }
+  const entries = Object.entries(credential as Record<string, unknown>);
+  if (entries.length === 0) {
+    throw toolError(
+      "invalid_params",
+      "`credential` object must have at least one entry.",
+    );
+  }
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of entries) {
+    if (typeof value !== "string" || value.length === 0) {
+      throw toolError(
+        "invalid_params",
+        `\`credential.${key}\` must be a non-empty string.`,
+      );
+    }
+    normalized[key] = value;
+  }
+  return normalized;
 }
 
 // The netuid embedded in a conventional `sn-<netuid>-…` surface id, or null
@@ -10461,7 +10632,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf and never stores or reuses one past this single call.",
+      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call.",
     inputSchema: z.toJSONSchema(CallSubnetSurfaceInputSchema, {
       target: "draft-2020-12",
     }),
@@ -10532,25 +10703,59 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (!surface) {
         throw await uncallableSurfaceError(ctx, args.surface_id);
       }
-      const hasStringCredentialArg =
+      const hasInBandStringCredential =
         typeof args?.credential === "string" && args.credential.length > 0;
-      const hasObjectCredentialArg =
+      const hasInBandObjectCredential =
         args?.credential !== null &&
         typeof args?.credential === "object" &&
         !Array.isArray(args?.credential);
-      const hasCredentialArg = hasStringCredentialArg || hasObjectCredentialArg;
-      if (hasCredentialArg && !surface.auth_required) {
+      const hasInBandCredential =
+        hasInBandStringCredential || hasInBandObjectCredential;
+      if (hasInBandCredential && !surface.auth_required) {
         throw toolError(
           "invalid_params",
           "`credential` was supplied but this surface does not require one.",
         );
       }
+      // #9009: an authenticated caller can register a credential once
+      // (store_surface_credential) instead of passing it as a tool argument
+      // on every call -- a tool argument travels through client logs, the
+      // conversation transcript, and the analytics parameter capture. The
+      // in-band argument still WINS when both exist (an explicit argument
+      // must never be silently overridden by stale stored state) and stays
+      // fully supported for anonymous callers, per ADR 0027's Model B: this
+      // cleanup must not remove anonymous reach as a side effect.
+      const storeIdentity = resolveSurfaceCredentialIdentity(ctx);
+      let resolvedCredential: StoredSurfaceCredential | undefined =
+        hasInBandCredential
+          ? (args.credential as StoredSurfaceCredential)
+          : undefined;
+      let credentialSource: "argument" | "stored" | undefined =
+        hasInBandCredential ? "argument" : undefined;
+      if (surface.auth_required && !hasInBandCredential && storeIdentity) {
+        const stored = await loadSurfaceCredential(
+          asCredentialStoreEnv(ctx.env),
+          storeIdentity,
+          surface.surface_id,
+        );
+        if (stored) {
+          resolvedCredential = stored;
+          credentialSource = "stored";
+        }
+      }
+      const hasStringCredentialArg =
+        typeof resolvedCredential === "string" && resolvedCredential.length > 0;
+      const hasObjectCredentialArg =
+        resolvedCredential !== null &&
+        typeof resolvedCredential === "object" &&
+        !Array.isArray(resolvedCredential);
+      const hasCredentialArg = hasStringCredentialArg || hasObjectCredentialArg;
       let credentialPlacement;
       if (surface.auth_required) {
         if (!hasCredentialArg) {
           throw toolError(
             "auth_required",
-            "This surface requires a credential. Supply `credential` (see this tool's description for the required format), or use list_subnet_apis / how_do_i_call to see how to call it directly.",
+            "This surface requires a credential. Supply `credential` (see this tool's description for the required format), register one first with store_surface_credential if you are authenticated, or use list_subnet_apis / how_do_i_call to see how to call it directly.",
           );
         }
         const scheme = surface.auth?.scheme;
@@ -10578,7 +10783,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           credentialPlacement = {
             location,
             name,
-            value: args.credential as string,
+            value: resolvedCredential as string,
           };
         } else if (scheme === "signature") {
           const names = Array.isArray(surface.auth?.names)
@@ -10604,7 +10809,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             );
           }
           // hasObjectCredentialArg already proved this at runtime.
-          const credentialObj = args.credential as Record<string, unknown>;
+          const credentialObj = resolvedCredential as Record<string, unknown>;
           const suppliedNames = Object.keys(credentialObj);
           const missing = names.filter(
             (n: unknown) => !suppliedNames.includes(n as string),
@@ -10832,7 +11037,114 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         body: result.body,
         truncated: result.truncated,
         ...(result.parse_error ? { parse_error: result.parse_error } : {}),
+        ...(credentialSource ? { credential_source: credentialSource } : {}),
+        // #9009: the deprecation window. An authenticated caller still passing
+        // the secret in-band gets told, per call, that the stored path exists
+        // -- the argument is not rejected for them yet. Anonymous callers see
+        // nothing: for them the argument is the supported mechanism, not a
+        // deprecated one, so warning them would be false.
+        ...(hasInBandCredential && storeIdentity
+          ? {
+              credential_deprecation:
+                "Passing `credential` as a tool argument is deprecated for authenticated callers: it travels through client logs and the conversation transcript. Register it once with store_surface_credential and omit the argument.",
+            }
+          : {}),
       };
+    },
+  },
+  // ─── Surface-credential store (#9009) ────────────────────────────────────
+  //
+  // Three tools, one purpose: give an authenticated caller somewhere to put an
+  // auth_required surface's secret ONCE, so call_subnet_surface stops needing
+  // it as a tool argument. They are deliberately gated on authentication —
+  // there is no anonymous identity to bind a stored secret to, and inventing
+  // one (an IP, a session id) would create a credential any other caller
+  // behind the same address could resolve. This is the first privileged
+  // capability on /mcp, which is exactly the trigger ADR 0027 clause 4
+  // describes.
+  {
+    name: "store_surface_credential",
+    title: "Register a credential for an auth-required subnet surface",
+    description:
+      "Store one credential for a catalogued auth_required surface, bound to " +
+      "YOUR authenticated identity, so later call_subnet_surface invocations " +
+      "resolve it without you passing it as a tool argument (where it would " +
+      "land in client logs and the conversation transcript). Requires " +
+      "authentication: send an `Authorization: Bearer` header with an mg_ API " +
+      "key or an OAuth access token -- anonymous callers have no identity to " +
+      "bind to and must keep passing `credential` in-band on each call. The " +
+      "value is encrypted at rest and never returned by any tool, including " +
+      "list_surface_credentials. Supply the same shape call_subnet_surface " +
+      "expects for that surface: one string for bearer/api-key/basic schemes, " +
+      "or a {name: value} bundle for scheme:signature. Expires after " +
+      "ttl_seconds (default 30 days). Storing again for the same surface " +
+      "replaces the previous value.",
+    inputSchema: z.toJSONSchema(StoreSurfaceCredentialInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof StoreSurfaceCredentialInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const { identity, storeEnv } = requireCredentialStore(ctx);
+      const surface = await requireCredentialStoreSurface(ctx, args.surface_id);
+      const credential = normalizeSurfaceCredentialArgument(args.credential);
+      const { expiresAt, replaced } = await storeSurfaceCredential(
+        storeEnv,
+        identity,
+        surface.surface_id,
+        credential,
+        args.ttl_seconds,
+      );
+      return {
+        surface_id: surface.surface_id,
+        stored: true,
+        expires_at: expiresAt,
+        replaced,
+      };
+    },
+  },
+  {
+    name: "list_surface_credentials",
+    title: "List your registered surface credentials",
+    description:
+      "List the surfaces YOU have registered a credential for with " +
+      "store_surface_credential: surface_id, credential shape, when it was " +
+      "stored, and when it expires. Never returns a credential value -- it " +
+      "reads only non-secret metadata and does not decrypt anything. " +
+      "Requires authentication; an anonymous caller has no registrations to " +
+      "list.",
+    inputSchema: z.toJSONSchema(ListSurfaceCredentialsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(_args: Row, ctx: McpCtx) {
+      const { identity, storeEnv } = requireCredentialStore(ctx);
+      const credentials = await listSurfaceCredentials(storeEnv, identity);
+      return { credentials, count: credentials.length };
+    },
+  },
+  {
+    name: "delete_surface_credential",
+    title: "Delete one of your registered surface credentials",
+    description:
+      "Remove the credential YOU registered for one surface. Requires " +
+      "authentication. Returns deleted:false when nothing was registered for " +
+      "that surface (already expired, already deleted, or never stored) -- " +
+      "not an error, so a cleanup pass is idempotent.",
+    inputSchema: z.toJSONSchema(DeleteSurfaceCredentialInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof DeleteSurfaceCredentialInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const { identity, storeEnv } = requireCredentialStore(ctx);
+      const deleted = await deleteSurfaceCredential(
+        storeEnv,
+        identity,
+        args.surface_id,
+      );
+      return { surface_id: args.surface_id, deleted };
     },
   },
   {
@@ -11530,6 +11842,16 @@ const TOOL_OUTPUT_SCHEMAS = {
   call_subnet_surface: z.toJSONSchema(CallSubnetSurfaceOutputSchema, {
     target: "draft-2020-12",
   }),
+  store_surface_credential: z.toJSONSchema(StoreSurfaceCredentialOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_surface_credentials: z.toJSONSchema(ListSurfaceCredentialsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  delete_surface_credential: z.toJSONSchema(
+    DeleteSurfaceCredentialOutputSchema,
+    { target: "draft-2020-12" },
+  ),
 };
 
 export function listToolDefinitions() {
@@ -12670,7 +12992,13 @@ function rpcError(id: unknown, code: number, message: string) {
 }
 
 // Build the MCP processing context from the Worker request + injected deps.
-function buildContext(request: Request, env: Env, deps: Row, authTier: string) {
+function buildContext(
+  request: Request,
+  env: Env,
+  deps: Row,
+  authTier: string,
+  accountId: string | null = null,
+) {
   let domain;
   try {
     domain = new URL(request.url).host || PRIMARY_DOMAIN;
@@ -12709,6 +13037,10 @@ function buildContext(request: Request, env: Env, deps: Row, authTier: string) {
     // verified the bearer token. Carried on the context so the $mcp_* emission
     // chokepoint can label the event without a second key verification.
     authTier,
+    // #9009: the same gate's resolved account id, for the surface-credential
+    // store's identity binding. The resolver reads this first and falls back
+    // to executionCtx.props.accountId (the OAuth path).
+    accountId,
     // #8994: set by handleMcpRequest for a single `initialize`, before
     // dispatch, so the initialize event can report the session it creates.
     // Declared here (not only assigned later) so the inferred context type
@@ -12784,7 +13116,11 @@ async function enforceMcpRateLimit(
   request: Request,
   env: Env,
   ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
-): Promise<{ rejection: Response | null; authTier: string }> {
+): Promise<{
+  rejection: Response | null;
+  authTier: string;
+  accountId: string | null;
+}> {
   // #8520: tiered rate limiting via the shared applyTieredRateLimit helper
   // (workers/tiered-rate-limit.ts), mirroring workers/api.ts's DATA checkpoint.
   // Anonymous callers keep the existing IP-keyed 100/60s ceiling unchanged; a
@@ -12817,6 +13153,10 @@ async function enforceMcpRateLimit(
   // or the literal "anonymous". No fallback needed, and inventing one would
   // hide a future shape change rather than surface it.
   const authTier = rateLimit.tier;
+  // #9009: the same verified identity, carried forward so the surface-
+  // credential tools can bind a registration without a second key
+  // verification -- the same reasoning that made authTier a return value.
+  const accountId = rateLimit.accountId ? String(rateLimit.accountId) : null;
   if (!rateLimit.allowed) {
     // #8611: a blocked account gets 403 + its reason code. 429 would tell an
     // agent to retry shortly, which will never work and produces exactly the
@@ -12827,6 +13167,7 @@ async function enforceMcpRateLimit(
     })!;
     return {
       authTier,
+      accountId,
       rejection: jsonResponse(
         rpcError(null, RPC_INVALID_REQUEST, rejection.message),
         rejection.status,
@@ -12834,7 +13175,7 @@ async function enforceMcpRateLimit(
       ),
     };
   }
-  return { rejection: null, authTier };
+  return { rejection: null, authTier, accountId };
 }
 
 function bodyTooLargeResponse() {
@@ -13100,7 +13441,7 @@ export async function handleMcpRequest(
   env: Env = {} as unknown as Env,
   deps: Row = {},
 ) {
-  const { rejection, authTier } = await enforceMcpRateLimit(
+  const { rejection, authTier, accountId } = await enforceMcpRateLimit(
     request,
     env,
     deps.executionCtx,
@@ -13139,7 +13480,7 @@ export async function handleMcpRequest(
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;
 
-  const ctx = buildContext(request, env, deps, authTier);
+  const ctx = buildContext(request, env, deps, authTier, accountId);
   // Generated here, not inside dispatchMessage: mintMcpSessionHeaderIfNeeded
   // below needs the SAME value the initialize event reported, or the header and
   // the telemetry would disagree about which session was created.
