@@ -66,17 +66,26 @@ test("a genuine dispatch-level fault reaches PostHog as $exception, tagged mcp-d
     await readResourceExpectingDispatchFault({
       [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
     });
-    assert.equal(posted.length, 1);
-    assert.equal(posted[0].body.event, "$exception");
+    // #8993 made every protocol method emit a usage_event, so this path now
+    // posts twice. Filter by event rather than counting posts: what this test
+    // is about is the $exception, and asserting a total made it fail the
+    // moment an unrelated, correct event was added alongside it.
+    const exceptions = posted.filter((p) => p.body.event === "$exception");
+    assert.equal(exceptions.length, 1);
     assert.equal(
-      posted[0].body.properties.route,
+      exceptions[0].body.properties.route,
       "mcp-dispatch:resources/read",
     );
-    assert.equal(posted[0].body.properties.error_code, "internal_error");
+    assert.equal(exceptions[0].body.properties.error_code, "internal_error");
     assert.equal(
-      posted[0].body.properties.$exception_list[0].value,
+      exceptions[0].body.properties.$exception_list[0].value,
       "R2 get failed",
     );
+    // ...and the protocol event rode along, recorded as a failure.
+    const usage = posted.filter((p) => p.body.event === "usage_event");
+    assert.equal(usage.length, 1);
+    assert.equal(usage[0].body.properties.route, "mcp:resources/read");
+    assert.equal(usage[0].body.properties.ok, false);
   } finally {
     globalThis.fetch = original;
   }
@@ -109,7 +118,14 @@ test("a handled toolError (e.g. an unknown resource URI) never reaches PostHog",
     );
     const body = (await response.json()) as Row;
     assert.equal(body.error?.code, -32602);
-    assert.equal(posted.length, 0);
+    // A handled toolError still posts NO $exception -- that is the invariant
+    // this test exists for. It does now post the #8993 protocol usage_event,
+    // which is the point of that change: a bad-params outcome is still a
+    // dispatched request and should be counted as one.
+    assert.deepEqual(
+      posted.filter((p) => p.body.event === "$exception"),
+      [],
+    );
   } finally {
     globalThis.fetch = original;
   }

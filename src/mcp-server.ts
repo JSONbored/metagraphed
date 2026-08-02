@@ -12214,6 +12214,71 @@ function scheduleToolUsageEvent(ctx: McpCtx, event: Row) {
   }
 }
 
+// #8993: one usage_event per dispatched MCP protocol method.
+//
+// Before this, 9 of the 14 cases in dispatchMessage's switch emitted NOTHING:
+// every resources/* method (including resources/subscribe, which we advertise
+// in MCP_CAPABILITIES), both prompts/* methods, ping, both notifications/*,
+// and the unknown-method default. Only initialize, tools/list and tools/call
+// were visible, so any claim about "MCP usage" was really a claim about tool
+// calls alone -- and whether agents read resources or pull prompts at all was
+// unanswerable.
+//
+// Instrumented at the DISPATCH LOOP rather than per case, deliberately. The
+// per-case version of this fix would have left the next method added to the
+// switch silent by default, which is exactly how the current gap opened. Here
+// a new case is instrumented by existing.
+//
+// tools/call is excluded because it already emits its own usage_event through
+// scheduleToolUsageEvent, carrying mcp_tool -- emitting here too would double
+// count every tool call, which is the mistake usageRouteLabel's /mcp exclusion
+// (workers/api.ts) exists to avoid.
+const MCP_SELF_INSTRUMENTED_METHODS = new Set(["tools/call"]);
+
+// The methods the switch actually handles. `method` is caller-supplied, so it
+// CANNOT go into a label unchecked -- an unknown method is folded into one
+// `mcp:unknown` bucket instead. Without this an agent (or a scanner) sending
+// random method names would mint a new route label per request, which is the
+// unbounded-cardinality defect #9001 just removed from the data-api's span and
+// exception labels. Getting it right in one place and wrong in the next is how
+// that class of bug survives.
+const MCP_LABELLED_METHODS = new Set([
+  "initialize",
+  "ping",
+  "tools/list",
+  "tools/call",
+  "resources/list",
+  "resources/templates/list",
+  "resources/read",
+  "resources/subscribe",
+  "resources/unsubscribe",
+  "prompts/list",
+  "prompts/get",
+  "notifications/initialized",
+  "notifications/cancelled",
+]);
+
+function mcpMethodLabel(method: string): string {
+  return MCP_LABELLED_METHODS.has(method) ? method : "unknown";
+}
+
+function scheduleMcpProtocolUsageEvent(
+  ctx: McpCtx,
+  method: string,
+  ok: boolean,
+  durationMs: number,
+) {
+  if (MCP_SELF_INSTRUMENTED_METHODS.has(method)) return;
+  scheduleToolUsageEvent(ctx, {
+    // Namespaced so a protocol method can never collide with a REST route id.
+    route: `mcp:${mcpMethodLabel(method)}`,
+    ok,
+    durationMs,
+    client: ctx?.clientName,
+    authTier: ctx?.authTier,
+  });
+}
+
 function scheduleMcpToolCallEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpToolCallEvent ?? recordMcpToolCallEvent;
@@ -12429,6 +12494,13 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
 
   const { method, params } = message;
 
+  // #8993: the dispatch chokepoint. `ok` starts true and is falsified by the
+  // catch and by the unknown-method default -- an unknown method returns
+  // rpcError without throwing, so timing alone would have recorded it as a
+  // success.
+  const startedAt = Date.now();
+  let dispatchOk = true;
+
   try {
     switch (method) {
       case "initialize": {
@@ -12497,12 +12569,14 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       case "notifications/cancelled":
         return null;
       default:
+        dispatchOk = false;
         return isNotification
           ? null
           : rpcError(id, RPC_METHOD_NOT_FOUND, `Unknown method: ${method}`);
     }
   } catch (rawError) {
     const error = rawError as Row;
+    dispatchOk = false;
     if (isNotification) return null;
     // A toolError thrown by a protocol method (resources/read, prompts/get) is a
     // bad-params condition, not an internal fault — surface it as -32602.
@@ -12521,6 +12595,16 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
     });
     console.error("MCP dispatch failed:", error);
     return rpcError(id, RPC_INTERNAL_ERROR, "Internal error.");
+  } finally {
+    // finally, not per-return: the switch returns from inside every case, so
+    // any per-case emission would have to be repeated 14 times and would still
+    // miss the next case someone adds.
+    scheduleMcpProtocolUsageEvent(
+      ctx,
+      method,
+      dispatchOk,
+      Date.now() - startedAt,
+    );
   }
 }
 

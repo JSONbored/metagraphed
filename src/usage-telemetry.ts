@@ -54,6 +54,14 @@ export interface UsageEvent {
   /** Coarse caller bucket from the User-Agent (name only, no version), so
    * traffic is attributable without the high-cardinality raw header. */
   client?: string;
+  /**
+   * #8993: "anonymous", or the tier of a verified mg_ key, on the MCP protocol
+   * paths (ADR 0027). Declared HERE and not only on McpToolCallEvent because
+   * scheduleToolUsageEvent takes a loose Row -- an undeclared field typechecks
+   * at every call site and is then silently dropped by the property assembly
+   * below, which is the exact class of miss the repo has hit before.
+   */
+  authTier?: string;
   // metagraphed#7726: one of the fixed literal codes a `toolError`-style
   // helper produces (e.g. "invalid_params", "auth_required",
   // "credential_not_supported", "upstream_unavailable", "internal_error") --
@@ -158,6 +166,9 @@ export function usageEventProperties(
 
   const client = sanitizeLabel(event.client);
   if (client !== undefined) properties.client = client;
+
+  const authTier = sanitizeLabel(event.authTier);
+  if (authTier !== undefined) properties.auth_tier = authTier;
 
   return properties;
 }
