@@ -6501,6 +6501,21 @@ async function dispatchDataApiRequest(
       prepare: false,
       fetch_types: false,
       idle_timeout: 10,
+      // BOUNDS THE CONNECT, which nothing else here does. statement_timeout
+      // (set per-transaction below) only starts counting once a connection
+      // EXISTS, and idle_timeout governs a connection already established --
+      // neither constrains the dial itself. postgres.js defaults
+      // connect_timeout to 30s, and the read dispatcher retries with a FRESH
+      // client per attempt (MAX_CONNECTION_RETRY_ATTEMPTS = 2 => three
+      // attempts), so an unreachable origin could burn ~90s before any route
+      // returned. A Worker dies long before that, and the caller sees a
+      // subrequest rejection rather than the schema-stable empty payload
+      // tryPostgresTier exists to give them.
+      //
+      // 5s is well above healthy Hyperdrive dial latency and far below the
+      // point where waiting is more useful than degrading: a caller is better
+      // served by a fast, honest empty payload than by a slow one.
+      connect_timeout: 5,
       types: {
         bigIntSafeJson: {
           to: 114,
