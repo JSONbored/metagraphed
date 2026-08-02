@@ -335,8 +335,15 @@ CREATE TABLE IF NOT EXISTS neuron_daily (
   block_number     BIGINT,
   captured_at      BIGINT NOT NULL,
   updated_at       BIGINT NOT NULL,
+  take             REAL,
   PRIMARY KEY (netuid, uid, snapshot_date)
 );
+-- Same schema drift as `neurons` above (fixed 2026-07-19): handleNeuronsSync
+-- (workers/data-api.ts) writes `take` into neuron_daily via the same
+-- NEURON_INSERT_COLUMNS list, but this table's CREATE TABLE never carried the
+-- column and never got the matching ALTER. Same no-op-on-fresh-deploy
+-- convention as the neurons fix.
+ALTER TABLE neuron_daily ADD COLUMN IF NOT EXISTS take REAL;
 -- #2083: covering index for per-subnet history aggregation (avoid per-row heap fetch).
 CREATE INDEX IF NOT EXISTS idx_nd_netuid_date ON neuron_daily (netuid, snapshot_date, uid)
   INCLUDE (stake_tao, incentive, dividends, emission_tao);
