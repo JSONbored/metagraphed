@@ -139,6 +139,14 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     limit: search.limit,
     kind: search.kind || undefined,
     provider: search.provider || undefined,
+    // Sent to the API, not applied over the loaded page. These were
+    // client-side, which meant ?auth=required filtered the 25 rows the first
+    // page happened to contain -- 6 of the 1,184 surfaces that actually match.
+    // A filter that silently under-reports by 99% reads as a working filter.
+    auth_required:
+      search.auth === "required" ? "true" : search.auth === "none" ? "false" : undefined,
+    public_safe: search.public_safe ? "true" : undefined,
+    rate_limited: search.rate_limited ? "true" : undefined,
   };
 
   const {
