@@ -33,18 +33,44 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
  * A concrete request path for a route template.
  *
  * The router's predicate matches real paths, so a template has to be
- * instantiated before it can be asked about. Values are only required to be
- * shape-valid — the predicate is purely structural.
+ * instantiated before it can be asked about — and the substituted value must
+ * be one the router's OWN regex accepts, not merely one that looks plausible.
+ *
+ * That distinction is not pedantic; it is the bug this function used to have.
+ * The predicate is not "purely structural": `BLOCK_DETAIL_PATH_PATTERN` wants
+ * `\d+|0x<64 hex>` and `EXTRINSIC_DETAIL_PATH_PATTERN` wants
+ * `0x<64 hex>|<block>-<index>`. `{ref}` was substituted as `"1-0"` — the
+ * EXTRINSIC composite form, on a BLOCKS route — and `{hash}` fell through to
+ * the catch-all `"x"`. Both failed to match, so the predicate correctly
+ * answered "not mainnet-only" about paths that do not exist, and five route
+ * templates were annotated `mainnet_only: false` while the live router 404s
+ * them on testnet for every real ref.
+ *
+ * The "every substituted path is one the router can actually route" test below
+ * holds this honest: a substituted path the router matches nothing for now
+ * fails the suite instead of quietly producing a wrong answer.
  */
 function concretePath(template: string): string {
   const ss58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-  return template
-    .replace("{netuid}", "1")
-    .replace("{ss58}", ss58)
-    .replace("{hotkey}", ss58)
-    .replace("{h160}", "0x0000000000000000000000000000000000000000")
-    .replace("{ref}", "1-0")
-    .replace(/\{[^}]+\}/g, "x");
+  return (
+    template
+      .replace("{netuid}", "1")
+      .replace("{ss58}", ss58)
+      .replace("{hotkey}", ss58)
+      .replace("{h160}", "0x0000000000000000000000000000000000000000")
+      // A BLOCK ref: a block number. Never the "<block>-<index>" form, which
+      // belongs to extrinsics and matches no blocks route.
+      .replace("{ref}", "5870000")
+      // An EXTRINSIC ref in its canonical composite form (the guaranteed
+      // -present id; the 0x hash is best-effort/nullable).
+      .replace("{hash}", "5870000-3")
+      // A neuron uid is numeric, and an ISO date is a date. Both fell through
+      // to the catch-all "x" below and matched nothing, for the same reason
+      // {ref} and {hash} did.
+      .replace(/\{uid\}/g, "0")
+      .replace("{date}", "2026-08-01")
+      .replace(/\{[^}]+\}/g, "x")
+  );
 }
 
 describe("network alias set (#8698)", () => {
@@ -137,6 +163,56 @@ describe("network alias set (#8698)", () => {
 });
 
 describe("mainnet-only annotation (#8698)", () => {
+  // The precondition the whole suite below rests on, and the one that was
+  // missing. Every parameterized template must instantiate to a path the live
+  // router can actually route; otherwise `isMainnetOnlyApiPath` is being asked
+  // about a URL that does not exist, and its perfectly correct "no" is
+  // recorded as the route's public annotation.
+  //
+  // Checked by round-tripping through the real request handler rather than by
+  // re-listing the router's regexes here: a copy of those patterns in the test
+  // would drift from the originals exactly as silently as the substitutions
+  // did.
+  //
+  // The discriminator is the router's own no-match message, NOT the 404 status.
+  // Both "nothing matched this path" and "this route matched but the entity is
+  // absent" are 404s in this env — `/api/v1/providers/x` reaches its handler
+  // and 404s only because no such provider exists in the local artifact fixture,
+  // which is a fine substitution. Only the first case means the predicate is
+  // being asked about a URL that cannot exist.
+  const ROUTER_NO_MATCH = "No API route matched this path.";
+
+  test("every substituted path is one the router can actually route", async () => {
+    const { handleRequest } = await import("../workers/api.ts");
+    const { createLocalArtifactEnv } = await import("../scripts/lib.ts");
+    const env = createLocalArtifactEnv() as unknown as Env;
+
+    const unroutable: string[] = [];
+    for (const route of API_ROUTES) {
+      if (!route.path.includes("{")) continue;
+      const concrete = concretePath(route.path);
+      const response = await handleRequest(
+        new Request(`https://api.metagraph.sh${concrete}`),
+        env,
+        {},
+      );
+      if (response.status !== 404) continue;
+      const body = await response.text();
+      if (body.includes(ROUTER_NO_MATCH)) {
+        unroutable.push(`${route.path} -> ${concrete}`);
+      }
+    }
+
+    assert.deepEqual(
+      unroutable,
+      [],
+      "these templates instantiate to paths the router does not match, so every " +
+        "assertion made about them below is answered about a URL that does not " +
+        "exist -- fix concretePath's substitution, not this list:\n" +
+        unroutable.join("\n"),
+    );
+  });
+
   test("every route's annotation equals the router's actual behaviour", () => {
     // THE load-bearing test. Both directions, so neither a missing annotation
     // nor a stale one can survive.
