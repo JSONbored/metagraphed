@@ -139,6 +139,12 @@ import {
   loadBlockFeedColdTier,
   loadBlockColdTier,
 } from "../../src/blocks-cold-tier.ts";
+import {
+  loadAccountExtrinsicsColdTier,
+  loadBlockExtrinsicsColdTier,
+  loadExtrinsicColdTier,
+  loadExtrinsicFeedColdTier,
+} from "../../src/extrinsics-cold-tier.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
@@ -3846,6 +3852,13 @@ export async function handleAccountExtrinsics(
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildAccountExtrinsics> | null) ??
+    (await loadAccountExtrinsicsColdTier(env, ss58, {
+      limit: parsedLimit,
+      offset: parsedOffset,
+      cursor: url.searchParams.get("cursor"),
+      blockStart: url.searchParams.get("block_start"),
+      blockEnd: url.searchParams.get("block_end"),
+    })) ??
     buildAccountExtrinsics([], ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -4961,7 +4974,11 @@ export async function handleBlockExtrinsics(
     request,
     "METAGRAPH_EXTRINSICS_SOURCE",
   )) as { data: ReturnType<typeof buildBlockExtrinsics> } | null) ?? {
-    data: buildBlockExtrinsics([], ref, null, { limit, offset }),
+    // Only built when the Postgres tier missed: `??` evaluates its right side
+    // lazily, so the lakehouse is not queried on the hot path.
+    data:
+      (await loadBlockExtrinsicsColdTier(env, ref, { limit, offset })) ??
+      buildBlockExtrinsics([], ref, null, { limit, offset }),
   };
   // CSV reuses handleExtrinsics's transform + columns — buildBlockExtrinsics maps
   // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
@@ -5113,6 +5130,30 @@ export async function handleExtrinsics(request: Request, env: Env, url: URL) {
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
+    // call_hash has no column in the lakehouse table, so that filter cannot be
+    // expressed there. Skipping the tier entirely when it is present is the
+    // only honest option -- passing it through would silently ignore the
+    // filter and return every extrinsic as though it matched.
+    (callHashRaw === null
+      ? await loadExtrinsicFeedColdTier(env, {
+          limit,
+          offset,
+          // Every filter this route accepts is passed through -- a filter the
+          // tier does not receive is a filter it silently ignores, which is
+          // the one failure mode worse than declining. The tier validates
+          // each one and declines the whole query on anything unsafe.
+          cursor: sp.get("cursor"),
+          signer: sp.get("signer"),
+          module: callModule,
+          callFunction: sp.get("call_function"),
+          success: successRaw === null ? null : successRaw === "true",
+          block: sp.get("block"),
+          blockStart: sp.get("block_start"),
+          blockEnd: sp.get("block_end"),
+          from: sp.get("from"),
+          to: sp.get("to"),
+        })
+      : null) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -5469,6 +5510,7 @@ export async function handleExtrinsic(request: Request, env: Env, ref: string) {
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildExtrinsic> | null) ??
+    (await loadExtrinsicColdTier(env, ref)) ??
     buildExtrinsic(undefined, ref);
   return envelopeResponse(
     request,
