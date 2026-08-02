@@ -661,6 +661,10 @@
       // 06:20 UTC cadence it ran on) -- see GITHUB_SIGNALS_SYNC_CRON in
       // workers/config.ts and src/github-signals-sync.ts's header.
       "20 6 * * *",
+      // */5 = raw chain capture (extrinsic/event bytes -> R2). Out-runs the
+      // chain ~6x so an outage backlog drains; see RAW_CAPTURE_CRON in
+      // workers/config.ts and src/raw-chain-capture.ts's no-gap guarantee.
+      "*/5 * * * *",
       // #9096, the remaining three machine-data lanes, each replacing a
       // retired commit-a-file workflow on the cadence that workflow ran:
       //   47      = hourly operational-surfaces derivation (was

@@ -138,3 +138,10 @@ interface Env {
   CHAIN_HEAD_RPC_URL?: string;
   CHAIN_HEAD_POLL_INTERVAL_MS?: string;
 }
+
+// Raw chain capture (src/raw-chain-capture.ts). Kill switch is opt-IN: an
+// unset value means the lane does not run, so a deploy can never start
+// capturing before the migration that creates its watermark table.
+interface Env {
+  RAW_CAPTURE_ENABLED?: string;
+}
