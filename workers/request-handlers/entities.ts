@@ -149,6 +149,20 @@ import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
 } from "../../src/events-cold-tier.ts";
+import {
+  loadSubnetHyperparamsColdTier,
+  loadSubnetHyperparamsHistoryColdTier,
+} from "../../src/subnet-hyperparams-cold-tier.ts";
+import {
+  loadChainIdentityHistoryColdTier,
+  loadSubnetIdentityHistoryColdTier,
+} from "../../src/subnet-identity-cold-tier.ts";
+import {
+  loadAccountIdentityColdTier,
+  loadAccountIdentityHistoryColdTier,
+} from "../../src/account-identity-cold-tier.ts";
+import { loadAccountEntitiesColdTier } from "../../src/subnet-ownership-cold-tier.ts";
+import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
@@ -822,6 +836,10 @@ export async function handleSubnetHyperparams(
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
     )) as ReturnType<typeof buildSubnetHyperparams> | null) ??
+    // Lakehouse cold tier (src/subnet-hyperparams-cold-tier.ts): the frozen
+    // verified snapshot through the SAME formatter, so the payload is
+    // identical whichever tier answered.
+    (await loadSubnetHyperparamsColdTier(env, netuid)) ??
     buildSubnetHyperparams(null, netuid);
   return envelopeResponse(
     request,
@@ -868,6 +886,13 @@ export async function handleSubnetHyperparamsHistory(
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
     )) as ReturnType<typeof buildSubnetHyperparamsHistory> | null) ??
+    // Lakehouse cold tier: same formatter, data-api's exact cursor token, so
+    // a page started on one tier finishes correctly on the other.
+    (await loadSubnetHyperparamsHistoryColdTier(env, netuid, {
+      limit,
+      offset,
+      cursor: url.searchParams.get("cursor"),
+    })) ??
     buildSubnetHyperparamsHistory([], netuid, {
       limit,
       offset,
@@ -1511,6 +1536,13 @@ export async function handleSubnetIdentityHistory(
       request,
       "METAGRAPH_SUBNET_IDENTITY_SOURCE",
     )) as ReturnType<typeof buildSubnetIdentityHistory> | null) ??
+    // Lakehouse cold tier: same formatter, data-api's exact cursor token, so
+    // a page started on one tier finishes correctly on the other.
+    (await loadSubnetIdentityHistoryColdTier(env, netuid, {
+      limit,
+      offset,
+      cursor: url.searchParams.get("cursor"),
+    })) ??
     buildSubnetIdentityHistory([], netuid, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
@@ -1775,6 +1807,9 @@ export async function handleChainIdentityHistory(
       request,
       "METAGRAPH_SUBNET_IDENTITY_SOURCE",
     )) as ReturnType<typeof buildChainIdentityHistory> | null) ??
+    // Lakehouse cold tier (src/subnet-identity-cold-tier.ts): the frozen
+    // verified history through the SAME formatter as the Postgres tier.
+    (await loadChainIdentityHistoryColdTier(env, { limit })) ??
     buildChainIdentityHistory([], { limit });
   return envelopeResponse(
     request,
@@ -1812,7 +1847,12 @@ export async function handleSelfHealth(request: Request, env: Env, url: URL) {
       env,
       request,
       "METAGRAPH_SELF_HEALTH_SOURCE",
-    )) as ReturnType<typeof buildSelfHealth> | null) ?? buildSelfHealth([], []);
+    )) as ReturnType<typeof buildSelfHealth> | null) ??
+    // Lakehouse cold tier (src/self-health-cold-tier.ts): the preserved
+    // daily rollup with NO current readings -- the poller died with the box,
+    // so current_ok stays null ("unmeasured") rather than a synthesized tick.
+    (await loadSelfHealthColdTier(env)) ??
+    buildSelfHealth([], []);
   return envelopeResponse(
     request,
     {
@@ -3580,7 +3620,13 @@ export async function handleAccountEntities(
       "METAGRAPH_SUBNET_OWNERSHIP_SOURCE" as keyof Env,
     ),
   ]);
-  const data = ownershipData ?? buildAccountEntities(coldkey, { entities: [] });
+  const data =
+    ownershipData ??
+    // Lakehouse cold tier (src/subnet-ownership-cold-tier.ts): the SAME
+    // SubnetOwnerChanged stream from chain.chain_events, through the SAME
+    // formatter -- the labels join below applies identically to every tier.
+    (await loadAccountEntitiesColdTier(env, coldkey)) ??
+    buildAccountEntities(coldkey, { entities: [] });
   const artifactEntities = entitiesArtifact.ok
     ? ((entitiesArtifact.data as Record<string, unknown> | undefined)
         ?.entities as Array<Record<string, unknown>> | undefined)
@@ -4275,6 +4321,10 @@ export async function handleAccountIdentity(
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
     )) as ReturnType<typeof buildAccountIdentity> | null) ??
+    // Lakehouse cold tier (src/account-identity-cold-tier.ts): the frozen
+    // verified snapshot through the SAME formatter, so the payload is
+    // identical whichever tier answered.
+    (await loadAccountIdentityColdTier(env, ss58)) ??
     buildAccountIdentity(null, ss58);
   return envelopeResponse(
     request,
@@ -4315,6 +4365,13 @@ export async function handleAccountIdentityHistory(
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
     )) as ReturnType<typeof buildAccountIdentityHistory> | null) ??
+    // Lakehouse cold tier: same formatter, data-api's exact cursor token, so
+    // a page started on one tier finishes correctly on the other.
+    (await loadAccountIdentityHistoryColdTier(env, ss58, {
+      limit,
+      offset,
+      cursor: url.searchParams.get("cursor"),
+    })) ??
     buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
