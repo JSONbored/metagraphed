@@ -135,6 +135,10 @@ import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
+import {
+  loadBlockFeedFromR2Sql,
+  loadBlockFromR2Sql,
+} from "../../src/r2-sql-blocks.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
@@ -4821,12 +4825,27 @@ export async function handleBlocks(request: Request, env: Env, url: URL) {
   }
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
+  // #9115: when the Postgres tier misses (the self-hosted box is gone), read
+  // the same history from the R2 lakehouse before falling back to an empty
+  // page. Both tiers feed the SAME buildBlockFeed formatter, so the payload is
+  // identical whichever answered.
   const data =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildBlockFeed> | null) ??
+    (await loadBlockFeedFromR2Sql(env, {
+      limit,
+      offset,
+      cursor: url.searchParams.get("cursor"),
+      author: url.searchParams.get("author"),
+      specVersion: url.searchParams.get("spec_version"),
+      blockStart: url.searchParams.get("block_start"),
+      blockEnd: url.searchParams.get("block_end"),
+      minExtrinsics: url.searchParams.get("min_extrinsics"),
+      minEvents: url.searchParams.get("min_events"),
+    } as never)) ??
     buildBlockFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -4889,12 +4908,16 @@ export async function handleBlocksSummary(
 export async function handleBlock(request: Request, env: Env, ref: string) {
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
+  // #9115: same lakehouse fallback as the feed above; buildBlock is shared, so
+  // a block served from R2 is byte-identical to one served from Postgres.
   const data =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_BLOCKS_SOURCE",
-    )) as ReturnType<typeof buildBlock> | null) ?? buildBlock(undefined, ref);
+    )) as ReturnType<typeof buildBlock> | null) ??
+    (await loadBlockFromR2Sql(env, ref)) ??
+    buildBlock(undefined, ref);
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
   // on the short profile so clients re-check when the block lands.
   const cacheProfile = data.block ? "static" : "short";
