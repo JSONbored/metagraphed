@@ -169,3 +169,40 @@ export async function writeNeuronSnapshotToD1(
   if (statements.length) await db.batch(statements);
   return { statements: statements.length };
 }
+
+/**
+ * Write one historical backfill batch to D1, atomically.
+ *
+ * The daily-history half of writeNeuronSnapshotToD1 and nothing else:
+ * a backfill walks PAST snapshot_dates, so it must NEVER touch `neurons`
+ * (latest-only) or run the prune -- handleNeuronDailyBackfill's own header
+ * explains why that invariant exists, and it is store-independent. The same
+ * captured_at staleness guard makes an overlapping or replayed backfill a
+ * no-op rather than a regression.
+ */
+export async function writeNeuronDailyBackfillToD1(
+  db: D1Like,
+  {
+    dailyRows,
+    positionRows,
+  }: Pick<NeuronSnapshotWrite, "dailyRows" | "positionRows">,
+): Promise<{ statements: number }> {
+  const statements: D1PreparedStatement[] = [
+    ...chunkStatements(
+      db,
+      "neuron_daily",
+      NEURON_DAILY_COLUMNS,
+      ["netuid", "uid", "snapshot_date"],
+      dailyRows,
+    ),
+    ...chunkStatements(
+      db,
+      "account_position_daily",
+      ACCOUNT_POSITION_DAILY_COLUMNS,
+      ["account", "netuid", "snapshot_date"],
+      positionRows,
+    ),
+  ];
+  if (statements.length) await db.batch(statements);
+  return { statements: statements.length };
+}

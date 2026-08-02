@@ -633,9 +633,13 @@ import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
+  NEURON_COLUMNS,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
-import { writeNeuronSnapshotToD1 } from "../src/neurons-d1-write.ts";
+import {
+  writeNeuronDailyBackfillToD1,
+  writeNeuronSnapshotToD1,
+} from "../src/neurons-d1-write.ts";
 import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
@@ -872,6 +876,20 @@ function stripClientSnapshotDate(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return row;
   const { snapshot_date: _snapshotDate, ...rest } = row;
   return rest;
+}
+
+// --- Neurons-family READS on D1 (box decommission; migrations/d1/0007) ------
+//
+// The WRITE path already lives on D1 (#9157's dual-write in handleNeuronsSync
+// below: D1 required, Postgres only while HYPERDRIVE exists). Reads switch
+// separately, on METAGRAPH_NEURONS_SOURCE -- the SAME flag the main Worker's
+// tryPostgresTier callers already gate on: "postgres" keeps every read below
+// on the box exactly as it was; any other value serves the neurons family
+// (neurons / neuron_daily / account_position_daily) from the bounded D1
+// database instead. Both lanes ship together so the read cutover is a flag
+// flip, not a deploy.
+function neuronsServedFromD1(env: Env) {
+  return env.METAGRAPH_NEURONS_SOURCE !== "postgres";
 }
 
 async function handleNeuronsSync(request: Request, env: Env) {
@@ -1229,9 +1247,6 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
       401,
     );
   }
-  if (!env.HYPERDRIVE?.connectionString) {
-    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-  }
 
   const raw = await request.text();
   if (utf8Bytes(raw).length > NEURONS_SYNC_MAX_BODY_BYTES) {
@@ -1296,6 +1311,41 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
       captured_at: row.captured_at,
       updated_at: row.updated_at,
     }));
+
+  // Same dual-write shape as handleNeuronsSync's #9157 port, minus the
+  // `neurons` write and the prune this handler must never run (see the
+  // header comment above -- that invariant is store-independent). D1 is the
+  // binding this path REQUIRES (it is also how the operator replays the
+  // box's neuron_daily/account_position_daily history into D1); Postgres is
+  // written only while HYPERDRIVE still exists, so nothing here changes at
+  // wipe. Checked after validation for the same 400-before-503 reasoning as
+  // the sync handler.
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+  let d1Statements = 0;
+  try {
+    ({ statements: d1Statements } = await writeNeuronDailyBackfillToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeNeuronDailyBackfillToD1
+      >[0],
+      { dailyRows, positionRows },
+    ));
+  } catch (err) {
+    console.error("data-api neuron-daily-backfill D1 write failed:", err);
+    await captureDataApiError(err, "neuron-daily-backfill-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({
+      ok: true,
+      neuron_daily_written: dailyRows.length,
+      account_position_daily_written: positionRows.length,
+      stores: ["d1"],
+      d1_statements: d1Statements,
+    });
+  }
 
   try {
     return await syncBeginWithConnectionRetry(
@@ -1365,6 +1415,8 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
           ok: true,
           neuron_daily_written: dailyRows.length,
           account_position_daily_written: positionRows.length,
+          stores: ["d1", "postgres"],
+          d1_statements: d1Statements,
         });
       },
     );
@@ -4743,9 +4795,18 @@ async function handleDeregRiskSnapshot(request: Request, env: Env) {
         sql<
           Pick<SubnetHyperparams, "netuid" | "immunity_period">[]
         >`SELECT netuid, immunity_period FROM subnet_hyperparams`,
-        sql<
-          Pick<Neurons, "netuid" | "hotkey" | "registered_at_block">[]
-        >`SELECT netuid, hotkey, registered_at_block FROM neurons
+        // The immune-neuron scan reads `neurons`, which lives on D1 once
+        // METAGRAPH_NEURONS_SOURCE moves off "postgres" (migrations/d1/
+        // 0007_neurons.sql); this handler's other three reads stay on
+        // their own Postgres tiers.
+        neuronsServedFromD1(env)
+          ? (createD1Sql(env.METAGRAPH_HEALTH_DB)`
+              SELECT netuid, hotkey, registered_at_block FROM neurons
+              WHERE is_immunity_period = 1 AND hotkey IS NOT NULL
+                AND registered_at_block IS NOT NULL` as Promise<Row[]>)
+          : sql<
+              Pick<Neurons, "netuid" | "hotkey" | "registered_at_block">[]
+            >`SELECT netuid, hotkey, registered_at_block FROM neurons
             WHERE is_immunity_period = TRUE AND hotkey IS NOT NULL
               AND registered_at_block IS NOT NULL`,
         sql<
@@ -6576,6 +6637,814 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
   );
 }
 
+// --- Neurons-family D1 read routes (box decommission; migrations/d1/0007) --
+//
+// The D1 twins of every neurons/neuron_daily/account_position_daily read in
+// dispatchReadRoutes below, matched BEFORE the Hyperdrive client is even
+// constructed when METAGRAPH_NEURONS_SOURCE has moved off "postgres" (see
+// neuronsServedFromD1's own header). Each twin mirrors its Postgres route's
+// param handling and column list exactly; only the dialect moves:
+//   - no ::casts (snapshot_date is already TEXT 'YYYY-MM-DD'; SQLite compares
+//     it lexicographically, which for ISO dates IS date order)
+//   - validator_permit = TRUE            -> = 1 (INTEGER 0/1 schema)
+//   - SUM(validator_permit::int)         -> SUM(validator_permit)
+//   - DISTINCT ON (k) ... ORDER BY k, d  -> ROW_NUMBER() OVER (PARTITION BY
+//     k ORDER BY d DESC) = 1, or a group-wise-MAX join (SQLite has no
+//     DISTINCT ON)
+//   - MAX(snapshot_date) - N::int        -> date(MAX(snapshot_date),
+//     '-N days')
+//
+// Cross-tier joins: subnet_snapshots has a live D1 home (migrations/d1/
+// 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
+// The remaining enrichment side tables (featured_validators,
+// validator_nominator_counts, subnet_hyperparams' tempo/immunity_period,
+// account_identity) have NO D1 home yet -- their families are frozen or port
+// separately -- so the twins pass each builder the same degraded value that
+// loader's own Postgres catch branch already produces (empty set/map, null),
+// rather than issuing a query that can only ever throw. Wire the real reads
+// in when those tables land on D1.
+type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
+
+// The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
+// alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
+// degrade-to-empty-map failure contract (every non-root row is then excluded
+// from the totals rather than counted 1:1).
+async function loadAlphaPricesByNetuidD1(
+  sql: D1Sql,
+  env: Env,
+): Promise<Map<number, number | null>> {
+  try {
+    const rows = await sql`
+      SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao
+      FROM subnet_snapshots s
+      JOIN (
+        SELECT netuid, MAX(snapshot_date) AS snapshot_date
+        FROM subnet_snapshots GROUP BY netuid
+      ) latest
+        ON latest.netuid = s.netuid AND latest.snapshot_date = s.snapshot_date`;
+    return new Map(
+      rows.map((row) => [
+        Number(row.netuid),
+        row.alpha_price_tao == null ? null : Number(row.alpha_price_tao),
+      ]),
+    );
+  } catch (err) {
+    console.error("subnet_snapshots alpha-price query failed:", err);
+    await captureDataApiError(err, "subnet-snapshots-alpha-price-query", env);
+    return new Map();
+  }
+}
+
+// The D1 twin of loadRealizedStakeBaselines (#7228/#9051): per-hotkey
+// baseline TAO-priced stake ~1d/1w/1m back from neuron_daily. The Postgres
+// original's `SELECT DISTINCT ON (hotkey) ... ORDER BY hotkey,
+// snapshot_date DESC` (newest qualifying day per hotkey) becomes a
+// ROW_NUMBER() window over the same daily CTE. Same failure contract: any
+// error degrades every realized_return_* to null via an empty map.
+async function loadRealizedStakeBaselinesD1(
+  sql: D1Sql,
+  { hotkey = null }: { hotkey?: string | null },
+  env: Env,
+) {
+  const windows = Object.entries(REALIZED_RETURN_WINDOWS);
+  try {
+    const perWindow = await Promise.all(
+      windows.map(([, days]) => {
+        const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
+          .toISOString()
+          .slice(0, 10);
+        const floor = new Date(
+          Date.now() -
+            (days + REALIZED_RETURN_BASELINE_TOLERANCE_DAYS) * ANALYTICS_DAY_MS,
+        )
+          .toISOString()
+          .slice(0, 10);
+        const text =
+          `WITH daily AS (
+            SELECT nd.hotkey AS hotkey, nd.snapshot_date AS snapshot_date,
+              SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS stake_tao
+            FROM neuron_daily nd
+            LEFT JOIN subnet_snapshots s
+              ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+            WHERE nd.validator_permit = 1` +
+          (hotkey ? " AND nd.hotkey = ?" : "") +
+          ` AND nd.snapshot_date <= ? AND nd.snapshot_date >= ?
+            GROUP BY nd.hotkey, nd.snapshot_date
+          ), ranked AS (
+            SELECT hotkey, stake_tao,
+              ROW_NUMBER() OVER (PARTITION BY hotkey ORDER BY snapshot_date DESC) AS rn
+            FROM daily
+          )
+          SELECT hotkey, stake_tao AS baseline_stake_tao FROM ranked WHERE rn = 1`;
+        return sql.unsafe(
+          text,
+          hotkey ? [hotkey, cutoff, floor] : [cutoff, floor],
+        );
+      }),
+    );
+    const byHotkey = new Map();
+    windows.forEach(([key], i) => {
+      for (const row of perWindow[i]) {
+        if (row?.hotkey == null) continue;
+        const entry = byHotkey.get(row.hotkey) ?? {
+          d1: null,
+          d7: null,
+          d30: null,
+        };
+        entry[key] = numberOrNull(row.baseline_stake_tao);
+        byHotkey.set(row.hotkey, entry);
+      }
+    });
+    return byHotkey;
+  } catch (err) {
+    console.error("neuron_daily realized-return baseline query failed:", err);
+    await captureDataApiError(err, "realized-return-baseline-query", env);
+    return new Map();
+  }
+}
+
+// The D1 twin of loadNeuronStakeByHotkeys (#5233/#6769): neurons.stake_tao
+// for every (hotkey, netuid) an account's nominator positions reference.
+// Called from INSIDE the Postgres dispatcher (the positions route's primary
+// nominator_positions table stays on its own tier), so it builds its own
+// runner from env rather than taking a D1Sql. Same degrade-to-empty-map
+// contract as the Postgres loader.
+async function loadNeuronStakeByHotkeysD1(env: Env, hotkeys: string[]) {
+  if (hotkeys.length === 0) return new Map();
+  try {
+    const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+    const placeholders = hotkeys.map(() => "?").join(", ");
+    const rows = await sql.unsafe(
+      `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
+      hotkeys,
+    );
+    return stakeByHotkeyNetuid(rows);
+  } catch (err) {
+    console.error("neurons stake-by-hotkey join query failed:", err);
+    await captureDataApiError(err, "neurons-stake-by-hotkey-query", env);
+    return new Map();
+  }
+}
+
+// Pure matcher: resolves a pathname to its D1 route handler (or null for
+// every non-neurons-family route, which then flows to the Postgres
+// dispatcher unchanged). Split from execution so the caller can check the
+// binding exactly once, after a route has actually matched.
+function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
+  // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
+  // the same name below. immunity_period comes from subnet_hyperparams,
+  // which has no D1 home: null is loadSubnetImmunityPeriod's own degraded
+  // value (formatNeuron then omits the immunity-window fields).
+  const subnetMetagraph = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/metagraph$/,
+  );
+  if (subnetMetagraph) {
+    return async (sql) => {
+      const netuid = Number(subnetMetagraph[1]);
+      const validatorsOnly =
+        url.searchParams.get("validator_permit") === "true";
+      const rows = validatorsOnly
+        ? await sql.unsafe(
+            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY uid`,
+            [netuid],
+          )
+        : await sql.unsafe(
+            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
+            [netuid],
+          );
+      return json(buildSubnetMetagraph(rows, netuid, { immunityPeriod: null }));
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/neurons/:uid/history -- checked before the
+  // non-history detail match below would swallow... (distinct regexes, but
+  // kept adjacent for the same reading order as the Postgres dispatcher).
+  const neuronHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/,
+  );
+  if (neuronHistoryMatch) {
+    return async (sql) => {
+      const netuid = Number(neuronHistoryMatch[1]);
+      const uid = Number(neuronHistoryMatch[2]);
+      const cutoff = windowCutoffDate(
+        url,
+        HISTORY_WINDOWS,
+        DEFAULT_HISTORY_WINDOW,
+      );
+      const rows = cutoff
+        ? await sql`
+          SELECT snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          FROM neuron_daily
+          WHERE netuid = ${netuid} AND uid = ${uid} AND snapshot_date >= ${cutoff}
+          ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+        : await sql`
+          SELECT snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          FROM neuron_daily
+          WHERE netuid = ${netuid} AND uid = ${uid}
+          ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+      return json(
+        buildNeuronHistory(rows, netuid, uid, {
+          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/neurons/:uid
+  const neuronDetail = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/,
+  );
+  if (neuronDetail) {
+    return async (sql) => {
+      const netuid = Number(neuronDetail[1]);
+      const uid = Number(neuronDetail[2]);
+      const rows = await sql.unsafe(
+        `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
+        [netuid, uid],
+      );
+      return json(
+        buildNeuronDetail(rows[0] ?? null, netuid, { immunityPeriod: null }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/validators. featured_validators has no D1
+  // home (it stays a maintainer-toggled Postgres side table until its own
+  // port): the empty set is loadFeaturedHotkeys's own degraded value.
+  const subnetValidators = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/validators$/,
+  );
+  if (subnetValidators) {
+    return async (sql) => {
+      const netuid = Number(subnetValidators[1]);
+      const rows = await sql.unsafe(
+        `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC, uid ASC`,
+        [netuid],
+      );
+      return json(
+        buildSubnetValidators(rows, netuid, { featuredHotkeys: new Set() }),
+      );
+    };
+  }
+
+  // GET /api/v1/validators/:hotkey/history
+  const validatorHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/validators\/([^/]+)\/history$/,
+  );
+  if (validatorHistoryMatch) {
+    return async (sql) => {
+      const hotkey = decodeURIComponent(validatorHistoryMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        HISTORY_WINDOWS,
+        DEFAULT_HISTORY_WINDOW,
+      );
+      const rows = cutoff
+        ? await sql`
+          SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
+            SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_stake_tao,
+            SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_emission_tao
+          FROM neuron_daily nd
+          LEFT JOIN subnet_snapshots s
+            ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+          WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = 1 AND nd.snapshot_date >= ${cutoff}
+          GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+        : await sql`
+          SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
+            SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_stake_tao,
+            SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_emission_tao
+          FROM neuron_daily nd
+          LEFT JOIN subnet_snapshots s
+            ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+          WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = 1
+          GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+      return json(
+        buildValidatorHistory(rows, hotkey, {
+          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/validators?sort=&limit=. The nominator-count, tempo and
+  // identity joins keep their Postgres loaders' degraded values (no D1
+  // homes); prices and realized-return baselines port for real.
+  if (url.pathname === "/api/v1/validators") {
+    return async (sql, env) => {
+      const sortParam = url.searchParams.get("sort");
+      const sort =
+        sortParam !== null && GLOBAL_VALIDATOR_SORTS.includes(sortParam)
+          ? sortParam
+          : DEFAULT_GLOBAL_VALIDATOR_SORT;
+      const limitParam = Number(url.searchParams.get("limit"));
+      const limit =
+        Number.isInteger(limitParam) &&
+        limitParam >= 1 &&
+        limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
+          ? limitParam
+          : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
+      const [rows, realizedStakeByHotkey, priceByNetuid] = await Promise.all([
+        sql`
+          SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
+          FROM neurons WHERE validator_permit = 1 AND hotkey IS NOT NULL
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+        loadRealizedStakeBaselinesD1(sql, {}, env),
+        loadAlphaPricesByNetuidD1(sql, env),
+      ]);
+      return json(
+        buildGlobalValidators(rows, {
+          sort,
+          limit,
+          priceByNetuid,
+          featuredHotkeys: new Set(),
+          identityByColdkey: new Map(),
+          nominatorCounts: new Map(),
+          tempoByNetuid: new Map(),
+          realizedStakeByHotkey,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/validators/:hotkey
+  const validatorDetail = url.pathname.match(
+    /^\/api\/v1\/validators\/([^/]+)$/,
+  );
+  if (validatorDetail) {
+    return async (sql, env) => {
+      const hotkey = decodeURIComponent(validatorDetail[1]);
+      const [rows, realizedByHotkey, priceByNetuid] = await Promise.all([
+        sql.unsafe(
+          `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+          [hotkey],
+        ),
+        loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
+        loadAlphaPricesByNetuidD1(sql, env),
+      ]);
+      return json(
+        buildValidatorDetail(rows, hotkey, {
+          identityByColdkey: new Map(),
+          priceByNetuid,
+          nominatorCount: null,
+          tempoByNetuid: new Map(),
+          realizedStake: realizedByHotkey.get(hotkey) ?? null,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/concentration/history -- before the plain
+  // /concentration match, same as the Postgres dispatcher's ordering.
+  const concentrationHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/,
+  );
+  if (concentrationHistoryMatch) {
+    return async (sql) => {
+      const netuid = Number(concentrationHistoryMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        CONCENTRATION_HISTORY_WINDOWS,
+        DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+      );
+      const rows = await sql`
+        SELECT snapshot_date, stake_tao, emission_tao
+        FROM neuron_daily
+        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+        ORDER BY snapshot_date DESC LIMIT ${CONCENTRATION_HISTORY_ROW_CAP}`;
+      return json(
+        buildConcentrationHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            CONCENTRATION_HISTORY_WINDOWS,
+            DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/concentration
+  const subnetConcentration = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/concentration$/,
+  );
+  if (subnetConcentration) {
+    return async (sql) => {
+      const netuid = Number(subnetConcentration[1]);
+      const rows = await sql`
+        SELECT stake_tao, emission_tao, coldkey, validator_permit, captured_at
+        FROM neurons WHERE netuid = ${netuid}`;
+      return json(buildConcentration(rows, netuid));
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/performance/history
+  const performanceHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
+  );
+  if (performanceHistoryMatch) {
+    return async (sql) => {
+      const netuid = Number(performanceHistoryMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        PERFORMANCE_HISTORY_WINDOWS,
+        DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+      );
+      const rows = await sql`
+        SELECT snapshot_date, incentive, dividends, trust, consensus, validator_permit, active
+        FROM neuron_daily
+        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+        ORDER BY snapshot_date DESC LIMIT ${PERFORMANCE_HISTORY_ROW_CAP}`;
+      return json(
+        buildSubnetPerformanceHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            PERFORMANCE_HISTORY_WINDOWS,
+            DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/performance
+  const subnetPerformance = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/performance$/,
+  );
+  if (subnetPerformance) {
+    return async (sql) => {
+      const netuid = Number(subnetPerformance[1]);
+      const rows = await sql`
+        SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, captured_at
+        FROM neurons WHERE netuid = ${netuid}`;
+      return json(buildSubnetPerformance(rows, netuid));
+    };
+  }
+
+  // GET /api/v1/chain/concentration
+  if (url.pathname === "/api/v1/chain/concentration") {
+    return async (sql) => {
+      const rows = await sql`
+        SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
+        FROM neurons`;
+      return json(buildChainConcentration(rows));
+    };
+  }
+
+  // GET /api/v1/chain/performance
+  if (url.pathname === "/api/v1/chain/performance") {
+    return async (sql) => {
+      const rows = await sql`
+        SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
+        FROM neurons`;
+      return json(buildChainPerformance(rows));
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/idle-stake
+  const subnetIdleStake = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/idle-stake$/,
+  );
+  if (subnetIdleStake) {
+    return async (sql) => {
+      const netuid = Number(subnetIdleStake[1]);
+      const rows = await sql`
+        SELECT stake_tao, dividends, captured_at FROM neurons WHERE netuid = ${netuid}`;
+      return json(buildSubnetIdleStake(rows, netuid));
+    };
+  }
+
+  // GET /api/v1/chain/idle-stake
+  if (url.pathname === "/api/v1/chain/idle-stake") {
+    return async (sql) => {
+      const rows = await sql`
+        SELECT stake_tao, dividends, netuid, captured_at FROM neurons`;
+      return json(buildChainIdleStake(rows));
+    };
+  }
+
+  // GET /api/v1/chain/yield
+  if (url.pathname === "/api/v1/chain/yield") {
+    return async (sql) => {
+      const rows = await sql`
+        SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
+        FROM neurons WHERE netuid != 0`;
+      return json(buildChainYield(rows));
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/yield/history -- before the plain /yield
+  // match, same ordering rationale as concentration above.
+  const yieldHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
+  );
+  if (yieldHistoryMatch) {
+    return async (sql) => {
+      const netuid = Number(yieldHistoryMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        YIELD_HISTORY_WINDOWS,
+        DEFAULT_YIELD_HISTORY_WINDOW,
+      );
+      const rows = await sql`
+        SELECT snapshot_date, validator_permit, stake_tao, emission_tao
+        FROM neuron_daily
+        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+        ORDER BY snapshot_date DESC LIMIT ${YIELD_HISTORY_ROW_CAP}`;
+      return json(
+        buildSubnetYieldHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            YIELD_HISTORY_WINDOWS,
+            DEFAULT_YIELD_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= YIELD_HISTORY_ROW_CAP,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/yield
+  const subnetYield = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/yield$/);
+  if (subnetYield) {
+    return async (sql) => {
+      const netuid = Number(subnetYield[1]);
+      const rows = await sql`
+        SELECT uid, hotkey, validator_permit, stake_tao, emission_tao, captured_at, block_number
+        FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
+      return json(buildSubnetYield(rows, netuid));
+    };
+  }
+
+  // GET /api/v1/accounts/:ss58/portfolio
+  const acctPortfolio = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/portfolio$/,
+  );
+  if (acctPortfolio) {
+    return async (sql, env) => {
+      const ss58 = decodeURIComponent(acctPortfolio[1]);
+      const rows = await sql`
+        SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
+        FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
+      const priceByNetuid = await loadAlphaPricesByNetuidD1(sql, env);
+      return json(buildAccountPortfolio(rows, ss58, { priceByNetuid }));
+    };
+  }
+
+  // GET /api/v1/accounts/:ss58/subnets -- neurons-derived (the live
+  // registration snapshot), so it moves with the family.
+  const acctSubnets = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/subnets$/,
+  );
+  if (acctSubnets) {
+    return async (sql) => {
+      const ss58 = decodeURIComponent(acctSubnets[1]);
+      const rows = await sql`
+        SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
+        WHERE hotkey = ${ss58} ORDER BY netuid`;
+      return json(buildAccountSubnets(rows, ss58));
+    };
+  }
+
+  // GET /api/v1/accounts/:ss58/subnets/:netuid/history -- the
+  // account_position_daily reader (#4832 gap-closure), ported with its
+  // sibling tables since the same neurons-sync write maintains it.
+  const positionHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/subnets\/(\d+)\/history$/,
+  );
+  if (positionHistoryMatch) {
+    return async (sql) => {
+      const ss58 = decodeURIComponent(positionHistoryMatch[1]);
+      const netuid = Number(positionHistoryMatch[2]);
+      const cutoff = windowCutoffDate(
+        url,
+        HISTORY_WINDOWS,
+        DEFAULT_HISTORY_WINDOW,
+      );
+      const rows = cutoff
+        ? await sql`
+          SELECT snapshot_date, captured_at, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao
+          FROM account_position_daily
+          WHERE account = ${ss58} AND netuid = ${netuid} AND snapshot_date >= ${cutoff}
+          ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+        : await sql`
+          SELECT snapshot_date, captured_at, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao
+          FROM account_position_daily
+          WHERE account = ${ss58} AND netuid = ${netuid}
+          ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+      return json(
+        buildAccountPositionHistory(rows, ss58, netuid, {
+          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/accounts?sort=&limit=
+  if (url.pathname === "/api/v1/accounts") {
+    return async (sql, env) => {
+      const sortParam = url.searchParams.get("sort") || undefined;
+      const limitRaw = url.searchParams.get("limit");
+      const limit =
+        limitRaw == null || limitRaw === ""
+          ? ACCOUNTS_LIST_LIMIT_DEFAULT
+          : Number(limitRaw);
+      const [rows, priceByNetuid] = await Promise.all([
+        sql`
+          SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
+          FROM neurons WHERE hotkey IS NOT NULL
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+        loadAlphaPricesByNetuidD1(sql, env),
+      ]);
+      return json(
+        buildAccountsList(rows, {
+          sort: sortParam ?? DEFAULT_ACCOUNTS_LIST_SORT,
+          limit,
+          priceByNetuid,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/history
+  const subnetHistoryMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/history$/,
+  );
+  if (subnetHistoryMatch) {
+    return async (sql) => {
+      const netuid = Number(subnetHistoryMatch[1]);
+      const cutoff = windowCutoffDate(
+        url,
+        HISTORY_WINDOWS,
+        DEFAULT_HISTORY_WINDOW,
+      );
+      // validator_permit is already INTEGER 0/1 here, so the Postgres
+      // branch's ::int cast simply disappears.
+      const rows = cutoff
+        ? await sql`
+          SELECT snapshot_date, COUNT(*) AS neuron_count,
+            SUM(validator_permit) AS validator_count,
+            SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+          FROM neuron_daily
+          WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+          GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+        : await sql`
+          SELECT snapshot_date, COUNT(*) AS neuron_count,
+            SUM(validator_permit) AS validator_count,
+            SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+          FROM neuron_daily
+          WHERE netuid = ${netuid}
+          GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+      return json(
+        buildSubnetHistory(rows, netuid, {
+          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/chain/turnover?window=&limit=. The Postgres branch anchors
+  // the window with `MAX(snapshot_date) - ${days}::int`; SQLite's native
+  // equivalent is date(MAX(snapshot_date), '-N days') -- the exact idiom the
+  // pre-#4772 D1 route used. An empty table leaves the subquery NULL, the
+  // >= comparison matches nothing, and the same schema-stable empty shape
+  // falls out.
+  if (url.pathname === "/api/v1/chain/turnover") {
+    return async (sql) => {
+      const windowParam =
+        url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
+      const windowLabel = Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)
+        ? windowParam
+        : DEFAULT_CHAIN_TURNOVER_WINDOW;
+      const days = CHAIN_TURNOVER_WINDOWS[windowLabel];
+      const limitRaw = url.searchParams.get("limit");
+      const limit =
+        limitRaw == null || limitRaw === ""
+          ? CHAIN_TURNOVER_LIMIT_DEFAULT
+          : Number(limitRaw);
+      const bounds = await sql`
+        SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
+        FROM neuron_daily
+        WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${days} days`}) FROM neuron_daily)`;
+      const startDate = (bounds[0]?.start_date ?? null) as string | null;
+      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      let rows: Row[] = [];
+      if (startDate != null && endDate != null && startDate !== endDate) {
+        rows = await sql`
+          SELECT snapshot_date, netuid, hotkey, validator_permit
+          FROM neuron_daily
+          WHERE validator_permit = 1 AND snapshot_date IN (${startDate}, ${endDate})`;
+      }
+      return json(
+        buildChainTurnover(rows, {
+          window: windowLabel,
+          startDate,
+          endDate,
+          limit,
+        }),
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/:netuid/turnover?window=&changes=
+  const turnoverMatch = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/turnover$/,
+  );
+  if (turnoverMatch) {
+    return async (sql) => {
+      const netuid = Number(turnoverMatch[1]);
+      const windowParam =
+        url.searchParams.get("window") || DEFAULT_HISTORY_WINDOW;
+      const windowLabel = Object.hasOwn(HISTORY_WINDOWS, windowParam)
+        ? windowParam
+        : DEFAULT_HISTORY_WINDOW;
+      const windowDays = HISTORY_WINDOWS[windowLabel];
+      const includeChanges = url.searchParams.get("changes") === "true";
+      const bounds =
+        windowDays == null
+          ? await sql`
+            SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
+            FROM neuron_daily WHERE netuid = ${netuid}`
+          : await sql`
+            SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
+            FROM neuron_daily
+            WHERE netuid = ${netuid}
+              AND snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${windowDays} days`}) FROM neuron_daily WHERE netuid = ${netuid})`;
+      const startDate = (bounds[0]?.start_date ?? null) as string | null;
+      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      const rows =
+        startDate == null || endDate == null
+          ? []
+          : await sql`
+            SELECT snapshot_date, uid, hotkey, validator_permit
+            FROM neuron_daily
+            WHERE netuid = ${netuid} AND snapshot_date IN (${startDate}, ${endDate})
+            ORDER BY snapshot_date ASC, uid ASC`;
+      const turnoverOptions = { window: windowLabel, startDate, endDate };
+      const data = buildTurnover(rows, netuid, turnoverOptions);
+      return json(
+        includeChanges
+          ? {
+              ...data,
+              changes: turnoverChangeDetail(
+                buildTurnoverChanges(rows, netuid, turnoverOptions),
+              ),
+            }
+          : data,
+      );
+    };
+  }
+
+  // GET /api/v1/subnets/movers?window=&sort=&limit=
+  if (url.pathname === "/api/v1/subnets/movers") {
+    return async (sql) => {
+      const windowParam =
+        url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+      const windowLabel = Object.hasOwn(MOVERS_WINDOWS, windowParam)
+        ? windowParam
+        : DEFAULT_MOVERS_WINDOW;
+      const days = MOVERS_WINDOWS[windowLabel];
+      const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+      const limitRaw = url.searchParams.get("limit");
+      const limit =
+        limitRaw == null || limitRaw === ""
+          ? MOVERS_LIMIT_DEFAULT
+          : Number(limitRaw);
+      const bounds = await sql`
+        SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
+        FROM neuron_daily
+        WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${days} days`}) FROM neuron_daily)`;
+      const startDate = (bounds[0]?.start_date ?? null) as string | null;
+      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      let startRows: Row[] = [];
+      let endRows: Row[] = [];
+      if (startDate != null && endDate != null && startDate !== endDate) {
+        const rows = await sql`
+          SELECT netuid, snapshot_date, COUNT(*) AS neuron_count,
+            SUM(validator_permit) AS validator_count,
+            SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+          FROM neuron_daily
+          WHERE snapshot_date IN (${startDate}, ${endDate})
+          GROUP BY netuid, snapshot_date`;
+        startRows = rows.filter((row) => row.snapshot_date === startDate);
+        endRows = rows.filter((row) => row.snapshot_date === endDate);
+      }
+      return json(
+        buildMovers(startRows, endRows, {
+          window: windowLabel,
+          startDate,
+          endDate,
+          sort: sortParam,
+          limit,
+        }),
+      );
+    };
+  }
+
+  return null;
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -6841,6 +7710,32 @@ async function dispatchDataApiRequest(
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
+
+    // Neurons-family reads on D1 (box decommission) -- matched BEFORE the
+    // Hyperdrive gate, because once the flag has moved off "postgres" these
+    // routes must keep serving with no HYPERDRIVE binding at all. Every
+    // other route falls through to the Postgres dispatcher unchanged. Same
+    // catch envelope as that dispatcher's own (log + masked-route capture +
+    // an opaque 502 that never leaks DB detail).
+    if (neuronsServedFromD1(env)) {
+      const neuronsD1Handler = matchNeuronsD1Route(url);
+      if (neuronsD1Handler) {
+        if (!env.METAGRAPH_HEALTH_DB) {
+          return json({ error: "d1 binding unavailable" }, 503);
+        }
+        try {
+          return await neuronsD1Handler(
+            createD1Sql(env.METAGRAPH_HEALTH_DB),
+            env,
+          );
+        } catch (err) {
+          console.error("data-api neurons D1 query failed:", err);
+          await captureDataApiError(err, maskRouteParams(url.pathname), env);
+          return json({ error: "data query failed" }, 502);
+        }
+      }
+    }
+
     if (!env.HYPERDRIVE?.connectionString) {
       return json({ error: "hyperdrive binding unavailable" }, 503);
     }
@@ -7509,12 +8404,21 @@ async function dispatchDataApiRequest(
               return Number(b.event_index) - Number(a.event_index);
             })
             .slice(0, ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1);
-          const regRows = await sql<
-            Pick<
-              Neurons,
-              "netuid" | "uid" | "stake_tao" | "validator_permit" | "active"
-            >[]
-          >`
+          // The registrations card reads `neurons`, which lives on D1 once
+          // METAGRAPH_NEURONS_SOURCE moves off "postgres" (migrations/d1/
+          // 0007_neurons.sql) -- the rest of this route's tables
+          // (account_events/extrinsics) stay on their own tier, so only this
+          // one query switches lanes.
+          const regRows: Row[] = neuronsServedFromD1(env)
+            ? await createD1Sql(env.METAGRAPH_HEALTH_DB)`
+          SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
+          WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`
+            : await sql<
+                Pick<
+                  Neurons,
+                  "netuid" | "uid" | "stake_tao" | "validator_permit" | "active"
+                >[]
+              >`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
           // All-time signing aggregates (#8822): COUNT/MAX/SUM over every
@@ -8000,14 +8904,64 @@ async function dispatchDataApiRequest(
             ACCOUNT_WEIGHT_SETTERS_WINDOWS,
             DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
           );
-          const rows = await sql<
-            {
-              netuid: AccountEvents["netuid"];
-              weight_sets: string;
-              first_observed: AccountEvents["observed_at"] | null;
-              last_observed: AccountEvents["observed_at"] | null;
-            }[]
-          >`
+          let rows: Row[];
+          if (neuronsServedFromD1(env)) {
+            // `neurons` lives on D1 once the tier flag moves off "postgres"
+            // (migrations/d1/0007_neurons.sql), so the original single
+            // statement's `FROM neurons n JOIN account_events e ON e.netuid
+            // = n.netuid AND e.uid = n.uid WHERE n.hotkey = $1` branch can
+            // no longer run in one database. Row-set-equivalent
+            // decomposition: the join only ever mapped this hotkey to its
+            // registered (netuid, uid) slots, so read those from D1 first,
+            // then filter account_events with a tuple IN over them. No
+            // slots -> the second UNION branch matches nothing, so it is
+            // dropped entirely.
+            const slots = await createD1Sql(env.METAGRAPH_HEALTH_DB)`
+              SELECT netuid, uid FROM neurons WHERE hotkey = ${address}`;
+            const params: (string | number)[] = [
+              address,
+              WEIGHTS_EVENT_KIND,
+              cutoff,
+            ];
+            let text = `
+          SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed,
+                 MAX(observed_at) AS last_observed
+          FROM (
+            SELECT netuid, observed_at FROM account_events
+            WHERE hotkey = $1 AND event_kind = $2 AND observed_at >= $3`;
+            if (slots.length > 0) {
+              // Explicit-cast scalar placeholders, same fetch_types:false
+              // reasoning as the neurons-sync prune's VALUES list.
+              const slotPlaceholders = slots
+                .map((_, i) => `($${i * 2 + 4}::int, $${i * 2 + 5}::int)`)
+                .join(", ");
+              text += `
+            UNION ALL
+            SELECT e.netuid, e.observed_at
+            FROM account_events e
+            WHERE e.event_kind = $2 AND e.observed_at >= $3
+              AND (e.hotkey IS NULL OR e.hotkey = '')
+              AND (e.netuid, e.uid) IN (${slotPlaceholders})`;
+              params.push(
+                ...slots.flatMap((slot) => [
+                  Number(slot.netuid),
+                  Number(slot.uid),
+                ]),
+              );
+            }
+            text += `
+          ) sub
+          GROUP BY netuid`;
+            rows = await sql.unsafe(text, params);
+          } else {
+            rows = await sql<
+              {
+                netuid: AccountEvents["netuid"];
+                weight_sets: string;
+                first_observed: AccountEvents["observed_at"] | null;
+                last_observed: AccountEvents["observed_at"] | null;
+              }[]
+            >`
           SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed,
                  MAX(observed_at) AS last_observed
           FROM (
@@ -8021,6 +8975,7 @@ async function dispatchDataApiRequest(
               AND (e.hotkey IS NULL OR e.hotkey = '')
           ) sub
           GROUP BY netuid`;
+          }
           return json({
             data: buildAccountWeightSetters(rows, address, {
               window: windowLabelFor(
@@ -11341,11 +12296,20 @@ async function dispatchDataApiRequest(
         if (acctPositions) {
           const ss58 = decodeURIComponent(acctPositions[1]);
           const positionRows = await loadNominatorPositions(sql, ss58, env);
-          const hotkeyNetuidStake = await loadNeuronStakeByHotkeys(
-            sql,
-            distinctHotkeys(positionRows),
-            env,
-          );
+          // The stake side of the join reads `neurons`, which lives on D1
+          // once METAGRAPH_NEURONS_SOURCE moves off "postgres";
+          // nominator_positions itself stays on this tier, so only the
+          // stake lookup switches lanes.
+          const hotkeyNetuidStake = neuronsServedFromD1(env)
+            ? await loadNeuronStakeByHotkeysD1(
+                env,
+                distinctHotkeys(positionRows),
+              )
+            : await loadNeuronStakeByHotkeys(
+                sql,
+                distinctHotkeys(positionRows),
+                env,
+              );
           return json(
             buildAccountPositions(positionRows, hotkeyNetuidStake, ss58),
           );
