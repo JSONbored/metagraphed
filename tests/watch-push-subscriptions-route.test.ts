@@ -3,35 +3,19 @@
 // watch-token authorized) and handleInternalPushSubscription (AlerterHub-only,
 // internal-token gated).
 //
-// Own postgres mock, scoped to this file, mirroring
-// tests/wallet-auth-keys-route.test.ts's shape (vi.mock is per-test-file).
+// Own queue-shaped D1 fake (tests/user-state-d1-queue.ts), scoped to this
+// file, mirroring tests/wallet-auth-keys-route.test.ts's shape --
+// watch_push_subscriptions lives on the user-state D1 since the accounts-d1
+// port, so the old postgres-module mock is gone from this file.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
+import { createQueueD1 } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
 
-const mockQueue = vi.hoisted(() => ({ current: [] as Row[][] }));
-const sqlCalls = vi.hoisted(
-  () => [] as Array<{ text: string; values: unknown[] }>,
-);
-
-vi.mock("postgres", () => ({
-  default: () => {
-    function sql(strings: TemplateStringsArray, ...values: unknown[]) {
-      let text = strings[0];
-      for (let i = 0; i < values.length; i += 1) text += "?" + strings[i + 1];
-      sqlCalls.push({ text, values });
-      return Promise.resolve(
-        mockQueue.current.length ? mockQueue.current.shift() : [],
-      );
-    }
-    sql.begin = (cb: (sql: unknown) => unknown) => cb(sql);
-    sql.end = () => Promise.resolve();
-    sql.json = (value: unknown) => value;
-    sql.unsafe = () => Promise.resolve([]);
-    return sql;
-  },
-}));
+const mockQueue = { current: [] as Row[][] };
+const sqlCalls = [] as Array<{ text: string; values: unknown[] }>;
+const failNextQuery = { error: null as Error | null };
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -53,7 +37,7 @@ const AUTH = Buffer.from(Array.from({ length: 16 }, (_, i) => i))
 
 function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
-    HYPERDRIVE: { connectionString: "postgres://mock" },
+    METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
     WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
     ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,

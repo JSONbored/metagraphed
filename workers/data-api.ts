@@ -3958,10 +3958,133 @@ function coerceEvent(row: Row) {
 // OWN owner_token instead (returned once, at creation) -- there is no public
 // view, unlike webhook subscriptions, because `destination` can itself be a
 // bearer credential (a Discord incoming-webhook URL). All shared, no-I/O
-// validation lives in src/alert-triggers.ts; everything here is Postgres
+// validation lives in src/alert-triggers.ts; everything here is D1
 // plumbing + auth gates.
 
+// --- User-state D1 runner ---------------------------------------------------
+//
+// The user-state tables (accounts, API keys, usage accounting, alert
+// triggers, push subscriptions, TAO/USD index) live on the bounded D1
+// database (migrations/d1/0004_user_state.sql), not the chain-data Postgres
+// tier -- they are the box's last functional tenants and D1 is exactly their
+// lane (small, transactional, user/config state). The runner below is a
+// tagged-template shim over D1's prepare/bind/all so the ~40 existing call
+// sites keep their postgres.js-era shape: `sql\`SELECT ... ${value}\``
+// becomes prepare("SELECT ... ?").bind(value).all() and resolves to the
+// result rows.
+//
+// Bind-value coercion replaces what the postgres.js driver (and its
+// sql.json()) used to do implicitly: booleans become 0/1 (the schema's
+// INTEGER CHECK columns), undefined becomes NULL, and arrays/plain objects
+// are stringified into the TEXT-holding-JSON columns that replaced
+// text[]/jsonb. Readers of those JSON columns parse at the consumption site
+// via parseJsonColumn below.
+
+type D1SqlRows = Record<string, unknown>[];
+interface D1Sql {
+  (strings: TemplateStringsArray, ...values: unknown[]): Promise<D1SqlRows>;
+  /** Positional-placeholder escape hatch, mirroring postgres.js's
+   * sql.unsafe(text, params) -- used only where the statement text is built
+   * dynamically (the matched-write-back's `IN (?, ?, ...)` expansion). */
+  unsafe(text: string, values?: unknown[]): Promise<D1SqlRows>;
+}
+
+function coerceD1BindValue(value: unknown): unknown {
+  if (value === undefined) return null;
+  if (value === true) return 1;
+  if (value === false) return 0;
+  if (Array.isArray(value) || (value !== null && typeof value === "object")) {
+    return JSON.stringify(value);
+  }
+  return value;
+}
+
+// Exported for tests/data-api-user-state-d1.test.ts, which exercises the
+// bind-coercion contract directly against a real SQLite database (routes
+// cannot produce every input shape -- e.g. an undefined bind -- but the
+// runner's contract still covers them).
+export function createD1Sql(db: D1Database): D1Sql {
+  const run = async (text: string, values: unknown[]): Promise<D1SqlRows> => {
+    const result = await db
+      .prepare(text)
+      .bind(...values.map(coerceD1BindValue))
+      .all();
+    return (result.results ?? []) as D1SqlRows;
+  };
+  const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
+    run(strings.join("?"), values)) as D1Sql;
+  sql.unsafe = (text: string, values: unknown[] = []) => run(text, values);
+  return sql;
+}
+
+/** A TEXT column holding JSON (the D1 translation of Postgres text[]/jsonb),
+ * parsed where the row value is consumed. Null-safe; a non-string value
+ * passes through untouched (it is already parsed -- e.g. a PATCH body field
+ * merged over the row), and unparseable text degrades to null rather than
+ * throwing inside a read path. */
+function parseJsonColumn(value: unknown): unknown {
+  if (typeof value !== "string") return value ?? null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+/** The schema's INTEGER-0/1 booleans, back to real booleans for the shared
+ * view/validation helpers (src/alert-triggers.ts) whose checks -- `active !==
+ * false`, `success === true` -- predate the port and expect JS booleans. */
+function d1Bool(value: unknown): boolean {
+  return value === true || value === 1;
+}
+
+/** One chain_alert_triggers row, D1 shape -> the shape every consumer
+ * (ownerAlertTriggerView, evaluatorAlertTriggerView,
+ * mergeAlertTriggerUpdateBody, validateAlertTriggerInput) already expects:
+ * table_filter/condition parsed from their TEXT-JSON columns, active a real
+ * boolean. */
+function normalizeAlertTriggerRow(row: Row): Row;
+function normalizeAlertTriggerRow(row: Row | undefined): Row | null;
+function normalizeAlertTriggerRow(row: Row | undefined): Row | null {
+  if (!row) return null;
+  return {
+    ...row,
+    table_filter: parseJsonColumn(row.table_filter),
+    condition: parseJsonColumn(row.condition),
+    active: d1Bool(row.active),
+  };
+}
+
+/** One chain_alert_deliveries row: success is INTEGER 0/1 on D1, and
+ * deliveryRecordView's `success === true` check needs the boolean. */
+function normalizeDeliveryRow(row: Row): Row {
+  return { ...row, success: d1Bool(row.success) };
+}
+
 async function withAlertTriggersSql(
+  env: Env,
+  fn: (sql: D1Sql) => Promise<Response>,
+) {
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+  const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+  try {
+    return await fn(sql);
+  } catch (err) {
+    console.error("data-api alert-triggers write failed:", err);
+    await captureDataApiError(err, "alert-triggers", env);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
+// The ONE handler that reached through withAlertTriggersSql to CHAIN tables
+// (blocks/subnet_hyperparams/neurons/subnet_snapshots) is
+// handleDeregRiskSnapshot -- those tables stay on the Postgres tier, so it
+// keeps a Postgres client of its own while every user-state route above/below
+// runs on D1. Same degrade/catch envelope withAlertTriggersSql used before
+// the port.
+async function withDeregRiskSql(
   env: Env,
   fn: (sql: postgres.Sql) => Promise<Response>,
 ) {
@@ -4145,12 +4268,12 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
     return writeJson({ error: validated.error }, 400);
   }
 
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     if (ownerSs58) {
-      const [{ count }] = await sql`
-        SELECT COUNT(*)::int AS count FROM chain_alert_triggers
+      const counted = await sql`
+        SELECT COUNT(*) AS count FROM chain_alert_triggers
         WHERE owner_ss58 = ${ownerSs58} AND active`;
-      if (count >= WATCH_TRIGGERS_MAX_PER_ADDRESS) {
+      if (Number(counted[0]?.count ?? 0) >= WATCH_TRIGGERS_MAX_PER_ADDRESS) {
         return writeJson(
           {
             error: `this address already has ${WATCH_TRIGGERS_MAX_PER_ADDRESS} active triggers -- the maximum per verified address. Delete one to create another.`,
@@ -4170,13 +4293,13 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
         (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, active, owner_ss58, created_at, updated_at)
       VALUES (
         ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
-        ${v.account}, ${v.minAmountTao}, ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
+        ${v.account}, ${v.minAmountTao}, ${v.condition ?? null},
         ${v.channel}, ${v.destination}, ${v.active}, ${ownerSs58}, ${now}, ${now}
       )
       RETURNING *`;
     return writeJson(
       {
-        ...ownerAlertTriggerView(row),
+        ...ownerAlertTriggerView(normalizeAlertTriggerRow(row)),
         // Returned ONCE at creation; store it to read/update/delete this
         // trigger. It is never echoed back on any later GET.
         owner_token: ownerToken,
@@ -4190,13 +4313,16 @@ async function handleAlertTriggerGet(request: Request, env: Env, id: string) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const [row] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!row) return writeJson({ error: "no such trigger" }, 404);
-    const authError = requireAlertTriggerOwner(request, row.owner_token);
+    const authError = requireAlertTriggerOwner(
+      request,
+      row.owner_token as string | null,
+    );
     if (authError) return authError;
-    return writeJson(ownerAlertTriggerView(row));
+    return writeJson(ownerAlertTriggerView(normalizeAlertTriggerRow(row)));
   });
 }
 
@@ -4255,11 +4381,7 @@ function mergeAlertTriggerUpdateBody(existing: Row, body: Row): Row {
   };
 }
 
-async function runAlertTriggerUpdate(
-  sql: postgres.Sql,
-  id: string,
-  merged: Row,
-) {
+async function runAlertTriggerUpdate(sql: D1Sql, id: string, merged: Row) {
   const validated = validateAlertTriggerInput(merged);
   if (!validated.ok) {
     return writeJson({ error: validated.error }, 400);
@@ -4274,14 +4396,14 @@ async function runAlertTriggerUpdate(
       event_kind = ${v.eventKind},
       account = ${v.account},
       min_amount_tao = ${v.minAmountTao},
-      condition = ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
+      condition = ${v.condition ?? null},
       channel = ${v.channel},
       destination = ${v.destination},
       active = ${v.active},
       updated_at = ${now}
     WHERE id = ${id}
     RETURNING *`;
-  return writeJson(ownerAlertTriggerView(row));
+  return writeJson(ownerAlertTriggerView(normalizeAlertTriggerRow(row)));
 }
 
 async function handleAlertTriggerUpdate(
@@ -4297,13 +4419,19 @@ async function handleAlertTriggerUpdate(
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
-    const authError = requireAlertTriggerOwner(request, existing.owner_token);
+    const authError = requireAlertTriggerOwner(
+      request,
+      existing.owner_token as string | null,
+    );
     if (authError) return authError;
-    const merged = mergeAlertTriggerUpdateBody(existing, body);
+    const merged = mergeAlertTriggerUpdateBody(
+      normalizeAlertTriggerRow(existing),
+      body,
+    );
     return runAlertTriggerUpdate(sql, id, merged);
   });
 }
@@ -4316,11 +4444,14 @@ async function handleAlertTriggerDelete(
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
-    const authError = requireAlertTriggerOwner(request, existing.owner_token);
+    const authError = requireAlertTriggerOwner(
+      request,
+      existing.owner_token as string | null,
+    );
     if (authError) return authError;
     await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
     return writeJson({ id, deleted: true });
@@ -4351,9 +4482,13 @@ async function handleAlertTriggersActiveList(request: Request, env: Env) {
       401,
     );
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const rows = await sql`SELECT * FROM chain_alert_triggers WHERE active`;
-    return writeJson({ triggers: rows.map(evaluatorAlertTriggerView) });
+    return writeJson({
+      triggers: rows.map((row) =>
+        evaluatorAlertTriggerView(normalizeAlertTriggerRow(row)),
+      ),
+    });
   });
 }
 
@@ -4399,22 +4534,17 @@ async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
       400,
     );
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const now = Date.now();
-    // Plain scalar positional binds via sql.unsafe, NOT a bound JS array
-    // (`id = ANY($1)`) -- see the neurons-sync prune query's own comment
-    // (handleNeuronsSync, above) for why: this Worker's Hyperdrive
-    // fetch_types:false setting breaks postgres.js's automatic
-    // ARRAY-literal serialization, while scalar binds are unaffected.
-    // $1 is the shared `now` timestamp; $2.. are the (already
-    // isValidAlertTriggerId-validated) ids.
-    const placeholders = ids
-      .map((_: unknown, i: number) => `$${i + 2}::bigint`)
-      .join(", ");
+    // Plain scalar positional binds via sql.unsafe -- the statement text is
+    // built dynamically (one `?` per already-isValidAlertTriggerId-validated
+    // id), which a tagged template can't express. The first bind is the
+    // shared `now` timestamp.
+    const placeholders = ids.map(() => "?").join(", ");
     const updated = await sql.unsafe(
       `UPDATE chain_alert_triggers
        SET match_count = match_count + 1,
-           last_matched_at = $1::bigint
+           last_matched_at = ?
        WHERE id IN (${placeholders})
        RETURNING id`,
       [now, ...ids],
@@ -4473,7 +4603,7 @@ async function handleAlertTriggersDeliveryLogWrite(request: Request, env: Env) {
       400,
     );
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     // Distinct trigger ids touched by this batch -- pruned to the most
     // recent ALERT_TRIGGER_DELIVERY_LOG_RETAIN rows each, after every insert
     // in the batch lands, so a single request never leaves a trigger's
@@ -4551,7 +4681,7 @@ async function handleDeregRiskSnapshot(request: Request, env: Env) {
       401,
     );
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withDeregRiskSql(env, async (sql: postgres.Sql) => {
     const [[block], hyperparamsRows, immuneNeurons, subnetRows] =
       await Promise.all([
         sql<
@@ -4687,12 +4817,16 @@ async function requireVerifiedWatchSs58(
 async function handleWatchTriggersList(request: Request, env: Env) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const rows = await sql`
       SELECT * FROM chain_alert_triggers
       WHERE owner_ss58 = ${auth.ss58}
       ORDER BY created_at DESC`;
-    return writeJson({ triggers: rows.map(ownerAlertTriggerView) });
+    return writeJson({
+      triggers: rows.map((row) =>
+        ownerAlertTriggerView(normalizeAlertTriggerRow(row)),
+      ),
+    });
   });
 }
 
@@ -4711,13 +4845,16 @@ async function handleWatchTriggerUpdate(
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
       return writeJson({ error: "no such trigger" }, 404);
     }
-    const merged = mergeAlertTriggerUpdateBody(existing, body);
+    const merged = mergeAlertTriggerUpdateBody(
+      normalizeAlertTriggerRow(existing),
+      body,
+    );
     return runAlertTriggerUpdate(sql, id, merged);
   });
 }
@@ -4732,7 +4869,7 @@ async function handleWatchTriggerDelete(
   }
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
@@ -4753,7 +4890,7 @@ async function handleWatchTriggerDeliveries(
   }
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
@@ -4764,7 +4901,11 @@ async function handleWatchTriggerDeliveries(
       WHERE trigger_id = ${id}
       ORDER BY delivered_at DESC
       LIMIT ${ALERT_TRIGGER_DELIVERY_LOG_RETAIN}`;
-    return writeJson({ deliveries: rows.map(deliveryRecordView) });
+    return writeJson({
+      deliveries: rows.map((row) =>
+        deliveryRecordView(normalizeDeliveryRow(row)),
+      ),
+    });
   });
 }
 
@@ -4825,7 +4966,7 @@ function pushSubscriptionView(row: Record<string, unknown>) {
 async function handleWatchPushSubscriptionsList(request: Request, env: Env) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     const rows = await sql`
       SELECT id, endpoint, user_agent, created_at, last_used_at
       FROM watch_push_subscriptions
@@ -4878,7 +5019,7 @@ async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
       : null;
   const now = Date.now();
 
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     // Read the OWNER, not just existence. An endpoint is globally unique, so
     // without this check a verified address could POST an endpoint already
     // registered to someone else and the upsert below would silently reassign
@@ -4902,7 +5043,7 @@ async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
     // make a routine key rotation look like "device limit reached".
     if (existing.length === 0) {
       const count = await sql`
-        SELECT COUNT(*)::int AS n FROM watch_push_subscriptions
+        SELECT COUNT(*) AS n FROM watch_push_subscriptions
         WHERE address = ${auth.ss58}`;
       const n = Number(count[0]?.n ?? 0);
       if (n >= WATCH_PUSH_MAX_DEVICES_PER_ADDRESS) {
@@ -4950,7 +5091,7 @@ async function handleWatchPushSubscriptionDelete(
   }
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+  return withAlertTriggersSql(env, async (sql) => {
     // Scoped by address: another address' id returns the same 404 a
     // nonexistent one does (the anti-oracle posture the trigger routes use).
     const rows = await sql`
@@ -4998,7 +5139,7 @@ async function handleInternalPushSubscription(
   if (request.method === "GET") {
     const endpoint = url.searchParams.get("endpoint") || "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
-    return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    return withAlertTriggersSql(env, async (sql) => {
       const rows = await sql`
         SELECT endpoint, p256dh, auth FROM watch_push_subscriptions
         WHERE endpoint = ${endpoint}`;
@@ -5027,7 +5168,7 @@ async function handleInternalPushSubscription(
     }
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
-    return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
+    return withAlertTriggersSql(env, async (sql) => {
       await sql`DELETE FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
       // Idempotent: pruning an already-pruned device is a success, not a 404
       // -- the caller is fire-and-forget and must never see a spurious error.
@@ -5103,16 +5244,12 @@ const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
 async function withAccountsSql<T>(
   env: Env,
-  fn: (sql: postgres.Sql) => Promise<T>,
+  fn: (sql: D1Sql) => Promise<T>,
 ): Promise<T | Response> {
-  if (!env.HYPERDRIVE?.connectionString) {
-    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
   }
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
+  const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
   try {
     return await fn(sql);
   } catch (err) {
@@ -5120,8 +5257,6 @@ async function withAccountsSql<T>(
     await captureDataApiError(err, "wallet-auth-keys", env);
     return writeJson({ error: "write failed" }, 502);
   }
-  // No sql.end() -- same Hyperdrive-cleans-up-on-invocation-end convention
-  // withAlertTriggersSql documents above.
 }
 
 const ACCOUNT_ROUTES_MAX_BODY_BYTES = 4096;
@@ -5242,7 +5377,7 @@ async function handleWalletVerify(request: Request, env: Env) {
       result.code === "challenge_store_unavailable" ? 503 : 401,
     );
   }
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const now = Date.now();
     const [account] = await sql`
       INSERT INTO rpc_accounts (ss58, created_at, last_login_at)
@@ -5250,8 +5385,8 @@ async function handleWalletVerify(request: Request, env: Env) {
       ON CONFLICT (ss58) DO UPDATE SET last_login_at = ${now}
       RETURNING id, ss58, tier`;
     const sessionToken = await createSessionToken(sessionSecret, {
-      accountId: account.id,
-      ss58: account.ss58,
+      accountId: Number(account.id),
+      ss58: String(account.ss58),
     });
     return writeJson({
       session_token: sessionToken,
@@ -5379,7 +5514,7 @@ async function handleGithubAccountUpsert(request: Request, env: Env) {
       400,
     );
   }
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const now = Date.now();
     const [account] = await sql`
       INSERT INTO github_accounts (github_user_id, github_login, created_at, last_login_at)
@@ -5458,7 +5593,7 @@ async function handleAccountKeyCreate(request: Request, env: Env) {
     }
   }
 
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     // The session's signature already proved this account row exists at
     // verify time; a missing row here means it was removed since -- decline
     // rather than mint an orphaned key. Tier is the account's OWN tier
@@ -5507,7 +5642,7 @@ async function handleAccountKeysList(request: Request, env: Env) {
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const rows = await sql`
       SELECT unkey_key_id AS key_id, tier, created_at, revoked_at, last_used_at
       FROM api_keys
@@ -5532,7 +5667,7 @@ async function handleAccountKeyRevoke(
   if (!UNKEY_KEY_ID_PATTERN.test(keyId)) {
     return writeJson({ error: "malformed key id" }, 400);
   }
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     // Ownership check BEFORE ever calling Unkey -- a key_id that exists but
     // belongs to a different account gets the SAME 404 a nonexistent one
     // would (no existence oracle across accounts, same posture as
@@ -5603,7 +5738,7 @@ async function handleApiKeyVerify(request: Request, env: Env) {
     return writeJson({ valid: false, code: "NOT_FOUND" });
   }
   if (result.valid) {
-    void withAccountsSql(env, async (sql: postgres.Sql) => {
+    void withAccountsSql(env, async (sql) => {
       await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE unkey_key_id = ${result.keyId}`;
     });
   }
@@ -5657,7 +5792,7 @@ async function handleApiKeyUsageIncrement(request: Request, env: Env) {
     return writeJson({ error: "provide account_id and route" }, 400);
   }
   try {
-    await withAccountsSql(env, async (sql: postgres.Sql) => {
+    await withAccountsSql(env, async (sql) => {
       const day = new Date().toISOString().slice(0, 10);
       await sql`
         INSERT INTO api_key_usage_daily
@@ -5738,37 +5873,32 @@ async function handleApiQuotaSpend(request: Request, env: Env) {
     return writeJson(applyQuotaSpend(0, cost, limit, now));
   }
 
-  const result = await withAccountsSql(env, async (sql: postgres.Sql) => {
-    // One statement, one round trip, atomic. The upsert's WHERE guard is
-    // applyQuotaSpend's reject rule expressed as a conflict predicate: when
-    // the new total would exceed the limit the DO UPDATE does not fire, so no
-    // rows come back from `attempt` AND the counter is left untouched. The
-    // second sub-select then reports the unchanged balance for the 429's
-    // headers -- it reads the statement's own snapshot, which is the correct
-    // pre-spend value precisely because the rejected update never ran.
-    const rows = await sql<{ spent: string | null; current: string | null }[]>`
-      WITH attempt AS (
-        INSERT INTO api_quota_daily AS q (account_id, day, units_spent, updated_at)
-        VALUES (${accountId}, ${day}, ${cost}, now())
-        ON CONFLICT (account_id, day) DO UPDATE
-          SET units_spent = q.units_spent + EXCLUDED.units_spent,
-              updated_at = now()
-          WHERE q.units_spent + EXCLUDED.units_spent <= ${limit}
-        RETURNING units_spent
-      )
-      SELECT
-        (SELECT units_spent FROM attempt) AS spent,
-        (SELECT units_spent FROM api_quota_daily
-           WHERE account_id = ${accountId} AND day = ${day}) AS current`;
-    // units_spent is BIGINT, and postgres.js hands BIGINT back as a STRING to
-    // avoid silently truncating past 2^53. Comparing that string to a number
-    // is the exact bug that made session tokens unusable in #8607 -- coerce
-    // once, here, rather than letting a string reach the arithmetic.
-    const row = rows[0];
-    if (row?.spent != null) {
-      return applyQuotaSpend(Number(row.spent) - cost, cost, limit, now);
+  const result = await withAccountsSql(env, async (sql) => {
+    // The SPEND is one guarded upsert -- atomic on its own. The WHERE guard
+    // is applyQuotaSpend's reject rule expressed as a conflict predicate:
+    // when the new total would exceed the limit the DO UPDATE does not fire,
+    // so no rows come back AND the counter is left untouched. (The Postgres
+    // version wrapped this in a data-modifying CTE to also read the rejected
+    // balance in the same snapshot; SQLite has no data-modifying CTEs, so the
+    // reject path reads the unchanged balance in a follow-up SELECT --
+    // enforcement is still the single guarded statement, only the 429's
+    // advisory `spent` readout could in principle race a concurrent spend.)
+    const attempt = await sql`
+      INSERT INTO api_quota_daily (account_id, day, units_spent, updated_at)
+      VALUES (${accountId}, ${day}, ${cost}, ${now})
+      ON CONFLICT (account_id, day) DO UPDATE
+        SET units_spent = api_quota_daily.units_spent + EXCLUDED.units_spent,
+            updated_at = ${now}
+        WHERE api_quota_daily.units_spent + EXCLUDED.units_spent <= ${limit}
+      RETURNING units_spent`;
+    const spent = attempt[0]?.units_spent;
+    if (spent != null) {
+      return applyQuotaSpend(Number(spent) - cost, cost, limit, now);
     }
-    return applyQuotaSpend(Number(row?.current ?? 0), cost, limit, now);
+    const [current] = await sql`
+      SELECT units_spent FROM api_quota_daily
+      WHERE account_id = ${accountId} AND day = ${day}`;
+    return applyQuotaSpend(Number(current?.units_spent ?? 0), cost, limit, now);
   });
   return result instanceof Response ? result : writeJson(result);
 }
@@ -5814,7 +5944,7 @@ async function handleUsageRollupIncrement(request: Request, env: Env) {
   const buckets = Array.isArray(body?.buckets) ? body.buckets : [];
   if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
   try {
-    await withAccountsSql(env, async (sql: postgres.Sql) => {
+    await withAccountsSql(env, async (sql) => {
       for (const bucket of buckets as Row[]) {
         const day = typeof bucket?.day === "string" ? bucket.day : null;
         const family =
@@ -5880,7 +6010,7 @@ async function handleUsageRollupRead(request: Request, env: Env) {
     .slice(0, 10);
   const groupBy =
     url.searchParams.get("group_by") === "shape" ? "shape" : "family";
-  const result = await withAccountsSql(env, async (sql: postgres.Sql) => {
+  const result = await withAccountsSql(env, async (sql) => {
     const rows =
       groupBy === "shape"
         ? await sql`
@@ -5968,7 +6098,7 @@ async function handleAccountTierPromote(request: Request, env: Env) {
   if (!ss58 || !tier) {
     return writeJson({ error: "provide ss58 and tier" }, 400);
   }
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const [account] = await sql`
       UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
     if (!account) return writeJson({ error: "no such account" }, 404);
@@ -5978,7 +6108,7 @@ async function handleAccountTierPromote(request: Request, env: Env) {
       WHERE account_id = ${account.id} AND revoked_at IS NULL`;
     const results = await Promise.all(
       keys.map((row) =>
-        updateUnkeyKeyTier(env, { keyId: row.unkey_key_id, tier }),
+        updateUnkeyKeyTier(env, { keyId: String(row.unkey_key_id), tier }),
       ),
     );
     const failedCount = results.filter((r) => !r.ok).length;
@@ -6008,7 +6138,7 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  * Best-effort: a KV hiccup must not fail the block itself. The row is the
  * source of truth and the next refresh will pick it up.
  */
-async function refreshBlocklistSnapshot(env: Env, sql: postgres.Sql) {
+async function refreshBlocklistSnapshot(env: Env, sql: D1Sql) {
   const rows = await sql`
     SELECT account_id, reason_code, blocked_at
     FROM api_key_blocks
@@ -6090,7 +6220,7 @@ async function handleApiKeyBlock(request: Request, env: Env) {
   const note = typeof body?.note === "string" ? body.note.slice(0, 2000) : null;
   const blockedBy =
     typeof body?.blocked_by === "string" ? body.blocked_by.slice(0, 200) : null;
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     // ON CONFLICT DO NOTHING against the one-active-block-per-account partial
     // unique index: blocking an already-blocked account is a no-op rather than
     // an error, so an ops action that gets retried or double-clicked stays
@@ -6133,7 +6263,7 @@ async function handleApiKeyUnblock(request: Request, env: Env) {
       400,
     );
   }
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const [row] = await sql`
       UPDATE api_key_blocks
       SET unblocked_at = ${Date.now()}, unblocked_note = ${note.slice(0, 2000)}
@@ -6165,9 +6295,9 @@ async function handleApiKeyAnomalies(request: Request, env: Env) {
   const since = new Date(Date.now() - days * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const usage = await sql`
-      SELECT account_id, day::text AS day, route, request_count
+      SELECT account_id, day, route, request_count
       FROM api_key_usage_daily
       WHERE day >= ${since}
       ORDER BY account_id, day`;
@@ -6240,7 +6370,7 @@ async function handleAccountKeyStatus(request: Request, env: Env) {
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const [row] = await sql`
       SELECT reason_code, blocked_at FROM api_key_blocks
       WHERE account_id = ${session.accountId} AND unblocked_at IS NULL
@@ -6266,7 +6396,7 @@ async function handleAccountKeyUsage(request: Request, env: Env, url: URL) {
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql: postgres.Sql) => {
+  return withAccountsSql(env, async (sql) => {
     const since = new Date(
       Date.now() - USAGE_DASHBOARD_WINDOW_DAYS * 24 * 60 * 60 * 1000,
     )
@@ -6281,18 +6411,20 @@ async function handleAccountKeyUsage(request: Request, env: Env, url: URL) {
     const byRoute = new Map<string, { count: number; rejected: number }>();
     for (const row of rows) {
       const count = Number(row.request_count);
-      // rejected_count is BIGINT -> a STRING from postgres.js (#8607's trap),
-      // and the column is new, so an un-migrated row yields null. Both coerce
-      // to 0 rather than NaN, which would poison every total downstream.
+      // rejected_count was added after the table's first rows landed, so an
+      // un-migrated row yields null. Coerce to 0 rather than NaN, which
+      // would poison every total downstream (#8607's trap).
       const rejected = Number(row.rejected_count ?? 0) || 0;
-      const day = byDay.get(row.day) ?? { count: 0, rejected: 0 };
+      const dayKey = String(row.day);
+      const day = byDay.get(dayKey) ?? { count: 0, rejected: 0 };
       day.count += count;
       day.rejected += rejected;
-      byDay.set(row.day, day);
-      const route = byRoute.get(row.route) ?? { count: 0, rejected: 0 };
+      byDay.set(dayKey, day);
+      const routeKey = String(row.route);
+      const route = byRoute.get(routeKey) ?? { count: 0, rejected: 0 };
       route.count += count;
       route.rejected += rejected;
-      byRoute.set(row.route, route);
+      byRoute.set(routeKey, route);
     }
 
     // #8609: quota headroom read from api_quota_daily -- the SAME table the
@@ -11884,18 +12016,16 @@ export async function writeTaoUsdIndexRow(
   env: Env,
   row: TaoUsdIndexRow,
 ): Promise<{ inserted: boolean }> {
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 1,
-    prepare: false,
-    fetch_types: false,
-  });
-  // The provenance array is bound as text and cast, not handed over as an
-  // object: with fetch_types:false postgres.js has no type OIDs to infer from,
-  // so an explicit ::jsonb is what makes the column type unambiguous.
+  // User-state D1, same runner the account/alert routes use. A missing
+  // binding throws here and surfaces as ingestTaoUsdIndex's caught
+  // "tick_failed" -- the same degrade the old code had when HYPERDRIVE was
+  // unbound. The provenance array is stringified into the TEXT-holding-JSON
+  // `pools` column (the D1 translation of the old jsonb cast).
   //
   // RETURNING plus a length check, rather than trusting a rowcount: ON CONFLICT
   // DO NOTHING returns zero rows on a re-run, which is precisely the signal
   // wanted -- "this height was already recorded" is a success, not a failure.
+  const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
   const written = await sql`
     INSERT INTO tao_usd_index
       (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
@@ -11906,7 +12036,7 @@ export async function writeTaoUsdIndexRow(
       ${row.price_basis},
       ${row.eth_usd},
       ${row.pool_count},
-      ${JSON.stringify(row.pools)}::jsonb
+      ${JSON.stringify(row.pools)}
     )
     ON CONFLICT (block_number, observed_at) DO NOTHING
     RETURNING block_number`;
@@ -11962,9 +12092,10 @@ export async function ingestTaoUsdIndex(env: Env): Promise<Row> {
 
 export default {
   // #8600: the data-api Worker's first cron. It lives here rather than on the
-  // api Worker because this is where HYPERDRIVE is bound -- routing a write
-  // through a service binding to reach the Worker that already owns the
-  // connection is the hop #4832 removed, not one to add back.
+  // api Worker for the same locality reason it always has -- this Worker owns
+  // the tick end to end (RPC reads + the tao_usd_index write, now on the
+  // shared user-state D1) -- routing a write through a service binding to
+  // reach another Worker is the hop #4832 removed, not one to add back.
   async scheduled(
     controller: ScheduledController,
     env: Env,

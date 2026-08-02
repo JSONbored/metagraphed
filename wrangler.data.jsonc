@@ -135,6 +135,19 @@
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
     },
   ],
+  // The SAME bounded D1 database the main Worker binds under the same name
+  // (wrangler.jsonc): registry + observations + user-state -- accounts, API
+  // keys, usage accounting, alert triggers, push subscriptions, and the
+  // TAO/USD index (migrations/d1/0004_user_state.sql). Chain-scale data
+  // (blocks/extrinsics/chain_events/...) never goes to D1; those reads stay
+  // on HYPERDRIVE above.
+  "d1_databases": [
+    {
+      "binding": "METAGRAPH_HEALTH_DB",
+      "database_name": "metagraphed",
+      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
+    },
+  ],
   // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.ts) --
   // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
   // (wrangler.jsonc), bound under the same name here so both Workers read/

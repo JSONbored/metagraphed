@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS watch_push_subscriptions (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   address      TEXT    NOT NULL,
   endpoint     TEXT    NOT NULL UNIQUE,
+  p256dh       TEXT    NOT NULL,
   auth         TEXT    NOT NULL,
   user_agent   TEXT,
   created_at   INTEGER NOT NULL,

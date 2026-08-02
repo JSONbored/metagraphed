@@ -1,18 +1,24 @@
 // Unit tests for the chain_alert_triggers CRUD write path (#4984 Part 1,
 // workers/data-api.ts's handleAlertTrigger*/handleAlertTriggersRoute
 // functions). A dedicated test file (not folded into the already 5000+-line
-// tests/data-api.test.ts) with its OWN postgres mock scoped to just this
-// table's shape -- vi.mock is per-test-file, so this doesn't touch that
-// file's shared mock or vice versa.
+// tests/data-api.test.ts) with its OWN per-test-queue fakes scoped to just
+// this table's shape.
 //
-// The mock is a simple per-test QUEUE (not a full SQL-semantics emulator,
-// matching data-api.test.ts's own established convention): each test
-// pushes exactly the rows each of ITS query calls (in order) should
-// resolve to, and asserts on the recorded call text/values for anything it
-// needs to verify was actually sent.
+// Two fakes, one per storage tier the routes actually touch since the
+// accounts-d1 port:
+//   - a queue-shaped D1 binding (tests/user-state-d1-queue.ts) for every
+//     user-state route (trigger CRUD, watch routes, evaluator scan/write-
+//     backs) -- chain_alert_triggers/chain_alert_deliveries live on D1 now;
+//   - the old postgres-module mock ONLY for the dereg-risk snapshot, whose
+//     reads are chain tables (blocks/neurons/...) still on the Postgres tier.
+// Both record into the SAME sqlCalls/mockQueue/failNextQuery stores, so each
+// test keeps the established convention: push exactly the rows each of ITS
+// statements (in order) should resolve to, and assert on the recorded call
+// text/values.
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
+import { createQueueD1 } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
 
 const mockQueue = vi.hoisted(() => ({ current: [] as Row[][] }));
@@ -38,30 +44,6 @@ vi.mock("postgres", () => ({
     }
     sql.begin = (cb: (sql: unknown) => unknown) => cb(sql);
     sql.end = () => Promise.resolve();
-    // #6746: condition (JSONB) is bound via sql.json(value) in the real
-    // INSERT/UPDATE -- this mock's tagged-template sql() doesn't need to
-    // know about JSON wrapping (it just records whatever value it's handed
-    // as a template placeholder), so a passthrough is a faithful stand-in.
-    sql.json = (value: unknown) => value;
-    // sql.unsafe(text, params) -- the #5022 match write-back's batched
-    // UPDATE builds its own placeholder text (plain scalar positional
-    // binds) rather than a bound JS array, matching workers/data-api.ts's
-    // established neurons-sync-prune/compare-health convention (see that
-    // route's own comment for why: this Worker's Hyperdrive
-    // fetch_types:false setting breaks postgres.js's automatic
-    // ARRAY-literal serialization). Recorded into the SAME sqlCalls list
-    // so existing assertions work unchanged regardless of call form.
-    sql.unsafe = (text: string, params: unknown[] = []) => {
-      sqlCalls.push({ text, values: params });
-      if (failNextQuery.error) {
-        const err = failNextQuery.error;
-        failNextQuery.error = null;
-        return Promise.reject(err);
-      }
-      return Promise.resolve(
-        mockQueue.current.length ? mockQueue.current.shift() : [],
-      );
-    };
     return sql;
   },
 }));
@@ -72,6 +54,7 @@ const CREATE_TOKEN = "test-alert-trigger-create-token";
 const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
 const WATCH_SECRET = "test-watch-trigger-token-secret";
 const env: Env = {
+  METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
   HYPERDRIVE: { connectionString: "postgres://mock" },
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
@@ -103,9 +86,14 @@ async function fetch(request: Request, envOverride: Env = env) {
   return worker.fetch(request, envOverride, {} as unknown as ExecutionContext);
 }
 
+// A chain_alert_triggers row in its D1 shape: INTEGER-0/1 `active`, and
+// table_filter/condition as TEXT holding JSON (pass overrides through
+// JSON.stringify where a test needs them) -- the route code's
+// normalizeAlertTriggerRow is what turns these back into the API's booleans
+// and parsed values, and these fixtures are what exercise it.
 function row(overrides: Row = {}) {
   return {
-    id: "1",
+    id: 1,
     owner_token: "stored-owner-token",
     name: null,
     table_filter: null,
@@ -115,7 +103,7 @@ function row(overrides: Row = {}) {
     min_amount_tao: null,
     channel: "email",
     destination: "a@b.com",
-    active: true,
+    active: 1,
     created_at: 1700000000000,
     updated_at: 1700000000000,
     last_matched_at: null,
@@ -219,16 +207,17 @@ test("create: 400 on a validation failure, without ever touching Postgres", asyn
   assert.equal(sqlCalls.length, 0);
 });
 
-test("create: 503 when HYPERDRIVE is unbound", async () => {
+test("create: 503 when METAGRAPH_HEALTH_DB is unbound", async () => {
   const res = await fetch(
     req("/api/v1/alerts/triggers", {
       method: "POST",
       headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
       body: { channel: "email", destination: "a@b.com", netuid: 7 },
     }),
-    { ...env, HYPERDRIVE: undefined } as unknown as Env,
+    { ...env, METAGRAPH_HEALTH_DB: undefined } as unknown as Env,
   );
   assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), { error: "d1 binding unavailable" });
 });
 
 test("create: 502 when the insert fails", async () => {
@@ -270,13 +259,13 @@ test("create: 201 on success, mints a fresh owner_token distinct from any stored
   assert.ok(sqlCalls[0].values.includes("a@b.com"));
 });
 
-test("create: 201 with a condition, inserts it as the JSONB value verbatim", async () => {
+test("create: 201 with a condition, binds it as its JSON text and parses the stored TEXT back out of the returned row", async () => {
   const condition = {
     metric: "subnet_alpha_price_rank",
     operator: "gt",
     threshold: 100,
   };
-  mockQueue.current.push([row({ condition })]);
+  mockQueue.current.push([row({ condition: JSON.stringify(condition) })]);
   const res = await fetch(
     req("/api/v1/alerts/triggers", {
       method: "POST",
@@ -288,14 +277,9 @@ test("create: 201 with a condition, inserts it as the JSONB value verbatim", asy
   const body = (await res.json()) as Row;
   assert.deepEqual(body.condition, condition);
   assert.match(sqlCalls[0].text, /INSERT INTO chain_alert_triggers/);
-  assert.ok(
-    sqlCalls[0].values.some(
-      (v) =>
-        v &&
-        typeof v === "object" &&
-        (v as Row).metric === "subnet_alpha_price_rank",
-    ),
-  );
+  // The runner stringifies object binds into the TEXT-holding-JSON column --
+  // the D1 statement receives the JSON text, not a driver-side jsonb value.
+  assert.ok(sqlCalls[0].values.includes(JSON.stringify(condition)));
 });
 
 test("create: 400 on a malformed condition", async () => {
@@ -427,6 +411,23 @@ test("create: 201 with a valid watch token -- counts active triggers for the add
   assert.ok(sqlCalls[0].values.includes(TEST_SS58));
   assert.match(sqlCalls[1].text, /INSERT INTO chain_alert_triggers/);
   assert.ok(sqlCalls[1].values.includes(TEST_SS58));
+});
+
+test("create: an empty COUNT result reads as zero active triggers, not a rejection", async () => {
+  // Defensive arm of the cap read -- COUNT(*) always yields one row from a
+  // real database, so an empty result models a store hiccup; it must fail
+  // OPEN into the insert rather than 403 a legitimate first trigger.
+  const token = await createTriggerToken(WATCH_SECRET, { ss58: TEST_SS58 });
+  mockQueue.current.push([]); // degenerate COUNT result
+  mockQueue.current.push([row({ owner_ss58: TEST_SS58 })]);
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-watch-trigger-token": token },
+      body: { channel: "email", destination: "a@b.com", netuid: 7 },
+    }),
+  );
+  assert.equal(res.status, 201);
 });
 
 test("create: 403 when the address already has WATCH_TRIGGERS_MAX_PER_ADDRESS active triggers -- never reaches the INSERT", async () => {
@@ -633,6 +634,24 @@ test("update: 200 on success, sends the new validated fields to the UPDATE", asy
   assert.ok(sqlCalls[1].values.includes("Transfer"));
 });
 
+test("update: an UPDATE that returns no row (deleted mid-request) yields a null body, not a crash", async () => {
+  // The race window between the ownership SELECT and the UPDATE: the row was
+  // deleted in between, so RETURNING is empty and the normalised view of
+  // nothing is null -- same as the pre-port behaviour of viewing a missing
+  // row.
+  mockQueue.current.push([row({ owner_token: "correct-token" })]);
+  mockQueue.current.push([]); // UPDATE ... RETURNING -> no row
+  const res = await fetch(
+    req("/api/v1/alerts/triggers/1", {
+      method: "PATCH",
+      headers: { "x-alert-trigger-owner-token": "correct-token" },
+      body: { channel: "email", destination: "a@b.com", netuid: 1 },
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(await res.json(), null);
+});
+
 test("update: omitting a field on PATCH keeps the existing row's value (partial-update semantics, not full-replace), including a non-null min_amount_tao", async () => {
   mockQueue.current.push([
     row({
@@ -642,7 +661,7 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
       // A non-null existing min_amount_tao specifically exercises the
       // Number(existing.min_amount_tao) branch of the merge's ternary --
       // every OTHER fixture in this file uses row()'s default (null).
-      min_amount_tao: "12.5", // Postgres numeric columns come back as strings
+      min_amount_tao: 12.5, // REAL column -- D1 returns a JS number
       channel: "email",
       destination: "a@b.com",
     }),
@@ -669,16 +688,22 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
   assert.ok(sqlCalls[1].values.includes("renamed"));
 });
 
-test("update: omitting condition on PATCH keeps the existing row's condition", async () => {
+test("update: omitting condition on PATCH keeps the existing row's condition -- the stored TEXT is parsed for the merge, then re-stringified for the bind", async () => {
   const condition = {
     metric: "neuron_immunity_countdown_blocks",
     operator: "lte",
     threshold: 500,
   };
   mockQueue.current.push([
-    row({ owner_token: "correct-token", netuid: 7, condition }),
+    row({
+      owner_token: "correct-token",
+      netuid: 7,
+      condition: JSON.stringify(condition),
+    }),
   ]);
-  mockQueue.current.push([row({ netuid: 7, condition })]);
+  mockQueue.current.push([
+    row({ netuid: 7, condition: JSON.stringify(condition) }),
+  ]);
   const res = await fetch(
     req("/api/v1/alerts/triggers/1", {
       method: "PATCH",
@@ -687,14 +712,7 @@ test("update: omitting condition on PATCH keeps the existing row's condition", a
     }),
   );
   assert.equal(res.status, 200);
-  assert.ok(
-    sqlCalls[1].values.some(
-      (v) =>
-        v &&
-        typeof v === "object" &&
-        (v as Row).metric === "neuron_immunity_countdown_blocks",
-    ),
-  );
+  assert.ok(sqlCalls[1].values.includes(JSON.stringify(condition)));
 });
 
 test("update: a resent condition replaces the existing one", async () => {
@@ -709,9 +727,15 @@ test("update: a resent condition replaces the existing one", async () => {
     threshold: 500,
   };
   mockQueue.current.push([
-    row({ owner_token: "correct-token", netuid: 7, condition: oldCondition }),
+    row({
+      owner_token: "correct-token",
+      netuid: 7,
+      condition: JSON.stringify(oldCondition),
+    }),
   ]);
-  mockQueue.current.push([row({ netuid: 7, condition: newCondition })]);
+  mockQueue.current.push([
+    row({ netuid: 7, condition: JSON.stringify(newCondition) }),
+  ]);
   const res = await fetch(
     req("/api/v1/alerts/triggers/1", {
       method: "PATCH",
@@ -961,7 +985,7 @@ test("watch update: 200 on success -- can pause (active:false) and edit the dest
       owner_ss58: TEST_SS58,
       netuid: 7,
       destination: "new@b.com",
-      active: false,
+      active: 0,
     }),
   ]);
   const res = await fetch(
@@ -978,7 +1002,8 @@ test("watch update: 200 on success -- can pause (active:false) and edit the dest
   assert.equal(sqlCalls.length, 2);
   assert.match(sqlCalls[1].text, /UPDATE chain_alert_triggers SET/);
   assert.ok(sqlCalls[1].values.includes("new@b.com"));
-  assert.ok(sqlCalls[1].values.includes(false));
+  // The runner binds booleans as 0/1 for the schema's INTEGER CHECK column.
+  assert.ok(sqlCalls[1].values.includes(0));
 });
 
 test("watch update: 400 on a validation failure (e.g. a destination that doesn't fit the existing channel)", async () => {
@@ -1160,7 +1185,7 @@ test("active list: 401 when the internal token is present but wrong", async () =
 test("active list: 200 with every active trigger reshaped for the evaluator, owner_token stripped", async () => {
   mockQueue.current.push([
     row({ id: "1", netuid: 7 }),
-    row({ id: "2", netuid: 8, table_filter: ["account_events"] }),
+    row({ id: "2", netuid: 8, table_filter: '["account_events"]' }),
   ]);
   const res = await fetch(
     req("/api/v1/internal/alert-triggers-active", {
@@ -1297,10 +1322,10 @@ test("matched writeback: 200, filters out malformed ids, and issues a single bat
   const call = sqlCalls[0];
   assert.match(call.text, /UPDATE chain_alert_triggers/);
   assert.match(call.text, /match_count = match_count \+ 1/);
-  assert.match(call.text, /last_matched_at = \$1/);
-  assert.match(call.text, /WHERE id IN \(\$2::bigint, \$3::bigint\)/);
-  // $1 is the shared `now` timestamp; $2.. are the validated ids, in
-  // order, with the malformed one already filtered out.
+  assert.match(call.text, /last_matched_at = \?/);
+  assert.match(call.text, /WHERE id IN \(\?, \?\)/);
+  // The first bind is the shared `now` timestamp; the rest are the
+  // validated ids, in order, with the malformed one already filtered out.
   assert.equal(typeof call.values[0], "number");
   assert.deepEqual(call.values.slice(1), ["1", "2"]);
 });
@@ -1607,6 +1632,19 @@ test("dereg-risk snapshot: current_block is null when the blocks table is empty"
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.current_block, null);
+});
+
+test("dereg-risk snapshot: 503 when HYPERDRIVE is unbound -- its chain-table reads stay on the Postgres tier", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+    }),
+    { ...env, HYPERDRIVE: undefined } as unknown as Env,
+  );
+  assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), {
+    error: "hyperdrive binding unavailable",
+  });
 });
 
 test("dereg-risk snapshot: 502 when a query fails", async () => {
