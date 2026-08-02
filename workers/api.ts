@@ -1214,7 +1214,102 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
 
+// #8998: cron branches, by the name they are reported under.
+//
+// Before this, of the six branches below THREE emitted nothing at all (health
+// probe, health prune, account-events rollup) and two emitted only on the
+// alert-worthy outcome (abuse-scan when flagged >= 1, upgrade-radar when
+// scan.alert). So a cron that stopped firing entirely was indistinguishable
+// from one that ran fine, and so was one that ran and failed -- silent in both
+// directions, with no exception storm to eventually notice.
+//
+// The health probe is the sharpest case: it is what WRITES self_health_checks,
+// the data behind our own uptime claim. If it stops, the uptime page keeps
+// serving the last good day and nothing reports the gap.
+//
+// A closed name table rather than the raw cron expression: the expressions come
+// from wrangler.jsonc so they are bounded today, but a label built from input
+// is the shape #9001 removed elsewhere, and a name survives a schedule change
+// where "0 * * * *" does not.
+function cronLabel(cron: string): string {
+  if (cron === HEALTH_PRUNE_CRON) return "health-prune";
+  if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
+  if (cron === ABUSE_SCAN_CRON) return "abuse-scan";
+  if (cron === UPGRADE_RADAR_CRON) return "upgrade-radar";
+  if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
+  if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
+  // Every unmatched cron falls through to the health prober, matching dispatch.
+  return "health-prober";
+}
+
+/**
+ * Run a cron tick and record exactly one usage_event for it.
+ *
+ * Wraps the whole dispatch rather than instrumenting six call sites, for the
+ * same reason the MCP protocol chokepoint does (#8993): a branch added later is
+ * covered by existing rather than by remembering.
+ *
+ * A handler's own `ok: false` is honoured when it reports one -- the
+ * account-events rollup returns `{ok: false, skipped: true}` when
+ * ROLLUP_SYNC_SECRET is unset, and that is a real "did not do the work"
+ * outcome, not a success.
+ */
 export async function handleScheduled(
+  controller: ScheduledController,
+  env: Env = {} as unknown as Env,
+  ctx: ExecutionContext = {} as unknown as ExecutionContext,
+) {
+  const startedAt = Date.now();
+  const label = cronLabel(controller?.cron || "");
+  try {
+    const result = await dispatchScheduled(controller, env, ctx);
+    const reported = (result as { ok?: unknown } | null | undefined)?.ok;
+    recordCronOutcome(
+      env,
+      ctx,
+      label,
+      typeof reported === "boolean" ? reported : true,
+      startedAt,
+    );
+    return result;
+  } catch (error) {
+    recordCronOutcome(env, ctx, label, false, startedAt);
+    // A cron has no caller to return an error to, so capture is the only
+    // signal that it failed at all.
+    const pending = Promise.resolve(
+      recordExceptionEvent(env, {
+        error,
+        route: `cron:${label}`,
+        errorCode: "internal_error",
+      }),
+    ).catch(() => false);
+    ctx?.waitUntil?.(pending);
+    throw error;
+  }
+}
+
+function recordCronOutcome(
+  env: Env,
+  ctx: ExecutionContext,
+  label: string,
+  ok: boolean,
+  startedAt: number,
+): void {
+  try {
+    const pending = Promise.resolve(
+      recordUsageEvent(env, {
+        route: `cron:${label}`,
+        ok,
+        durationMs: Date.now() - startedAt,
+      }),
+    ).catch(() => false);
+    ctx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the cron path.
+  }
+}
+
+async function dispatchScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
   ctx: ExecutionContext = {} as unknown as ExecutionContext,

@@ -777,6 +777,143 @@ describe("handleScheduled dispatch", () => {
     assert.equal(probeResult.reason, "no-operational-surfaces");
   });
 
+  // #8998: three of six cron branches emitted nothing at all and two emitted
+  // only on the alert-worthy outcome, so a cron that STOPPED FIRING was
+  // indistinguishable from one that ran fine -- and so was one that ran and
+  // failed. Silent in both directions, with no exception storm to eventually
+  // notice. The health probe is the sharpest case: it writes
+  // self_health_checks, the data behind our own uptime claim.
+  describe("#8998 cron telemetry", () => {
+    function capture() {
+      const posted: Row[] = [];
+      const original = globalThis.fetch;
+      globalThis.fetch = (async (url: string, init?: RequestInit) => {
+        posted.push({ url, body: JSON.parse(init!.body as string) });
+        return new Response("{}", { status: 200 });
+      }) as unknown as typeof fetch;
+      return {
+        posted,
+        restore: () => {
+          globalThis.fetch = original;
+        },
+      };
+    }
+    const waitingCtx = () => {
+      const waited: Promise<unknown>[] = [];
+      return {
+        waited,
+        ctx: {
+          waitUntil: (p: Promise<unknown>) => waited.push(p),
+        } as unknown as ExecutionContext,
+      };
+    };
+
+    test("a cron tick records one usage_event under its NAME, not its schedule", async () => {
+      const cap = capture();
+      const { waited, ctx } = waitingCtx();
+      try {
+        await handleScheduled(
+          { cron: "*/2 * * * *" } as unknown as ScheduledController,
+          { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
+          ctx,
+        );
+        await Promise.all(waited);
+        const usage = cap.posted.filter(
+          (p) => (p.body as Row).event === "usage_event",
+        );
+        assert.equal(usage.length, 1);
+        const props = (usage[0].body as Row).properties as Row;
+        // A name survives a schedule change where "*/2 * * * *" would not.
+        assert.equal(props.route, "cron:health-prober");
+        assert.equal(typeof props.duration_ms, "number");
+      } finally {
+        cap.restore();
+      }
+    });
+
+    // The rollup reports its own {ok:false, skipped:true} when the secret is
+    // missing. That is a real "did not do the work" outcome, and recording it
+    // as a success would make the signal useless for exactly the case it exists
+    // for.
+    test("a handler's own ok:false is honoured, not overwritten", async () => {
+      const cap = capture();
+      const { waited, ctx } = waitingCtx();
+      try {
+        await handleScheduled(
+          { cron: "17 * * * *" } as unknown as ScheduledController,
+          { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
+          ctx,
+        );
+        await Promise.all(waited);
+        const props = (
+          cap.posted.find((p) => (p.body as Row).event === "usage_event")!
+            .body as Row
+        ).properties as Row;
+        assert.equal(props.route, "cron:account-events-rollup");
+        assert.equal(props.ok, false);
+      } finally {
+        cap.restore();
+      }
+    });
+
+    // A cron has no caller to return an error to, so capture is the only
+    // signal that it failed at all.
+    test("a throwing cron records ok:false AND an $exception, and still throws", async () => {
+      const cap = capture();
+      const { waited, ctx } = waitingCtx();
+      try {
+        // The prune branch .catch-isolates its own failures by design, so it
+        // cannot demonstrate this. The rollup branch reads ROLLUP_SYNC_SECRET
+        // directly and has nothing between it and the caller.
+        const exploding = {
+          POSTHOG_PROJECT_TOKEN: "phc_test_token",
+          get ROLLUP_SYNC_SECRET(): never {
+            throw new Error("cron exploded");
+          },
+        } as unknown as Env;
+        await assert.rejects(() =>
+          handleScheduled(
+            { cron: "17 * * * *" } as unknown as ScheduledController,
+            exploding,
+            ctx,
+          ),
+        );
+        await Promise.all(waited);
+        const usage = cap.posted.find(
+          (p) => (p.body as Row).event === "usage_event",
+        );
+        assert.equal(((usage!.body as Row).properties as Row).ok, false);
+        const exception = cap.posted.find(
+          (p) => (p.body as Row).event === "$exception",
+        );
+        assert.ok(exception, "expected an $exception for a failing cron");
+        assert.equal(
+          ((exception!.body as Row).properties as Row).route,
+          "cron:account-events-rollup",
+        );
+      } finally {
+        cap.restore();
+      }
+    });
+
+    test("telemetry never changes what the cron returns", async () => {
+      const original = globalThis.fetch;
+      globalThis.fetch = (async () => {
+        throw new Error("posthog unreachable");
+      }) as unknown as typeof fetch;
+      try {
+        const result = (await handleScheduled(
+          { cron: "*/2 * * * *" } as unknown as ScheduledController,
+          { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
+        )) as Row;
+        assert.equal(result.ok, false);
+        assert.equal(result.reason, "no-operational-surfaces");
+      } finally {
+        globalThis.fetch = original;
+      }
+    });
+  });
+
   // The three EVENTS_LOAD_CRON ("*/3 * * * *") tests that lived here (the
   // non-fast-load-crons-never-drain invariant, the fast-load drain regression,
   // and the drain-failure isolation test) are retired along with the trigger
