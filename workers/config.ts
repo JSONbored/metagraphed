@@ -47,6 +47,36 @@ export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
 // `triggers.crons` entry.
 export const GITHUB_SIGNALS_SYNC_CRON = "20 6 * * *";
 
+// The remaining three machine-data lanes (#9096), moved off their retired
+// GitHub Actions sync workflows onto Worker-native crons writing their R2
+// stores directly. Each keeps the cadence its workflow ran on, offset onto a
+// minute that collides with no other trigger here (taken: 0/15/30/45 from the
+// */15 prober, 0, 7, 17, 23, 37, plus 3:37, 4:53 and 6:20).
+
+// Hourly operational-surfaces derivation, replacing sync-operational-surfaces.yml
+// (`0 * * * *`). Hourly is kept because this file backs LIVE health probing:
+// a surface added to the registry should enter the probe set within the hour,
+// not the day. Moved off :00 -- the top-of-hour minute already carries the
+// prune and a prober tick -- to :47. See src/operational-surfaces-sync.ts.
+export const OPERATIONAL_SURFACES_SYNC_CRON = "47 * * * *";
+
+// Daily surface-verification evidence sweep, replacing
+// sync-surface-verification.yml (`40 4 * * *`) -- same cadence, same minute,
+// which collides with nothing. Daily is right for the same reason it always
+// was: the underlying signal is a 90-day uptime window whose day_count and
+// uptime_ratio move slowly, so a tighter cadence would recompute a near
+// identical answer. Freshness of the health data itself is the 15-minute
+// prober's job. See src/surface-verification-sync.ts.
+export const SURFACE_VERIFICATION_SYNC_CRON = "40 4 * * *";
+
+// Daily schema-index baseline promotion, replacing sync-schema-snapshots.yml
+// (`0 5 * * *`). Same daily cadence and hour -- third-party OpenAPI documents
+// change on the order of days-to-weeks -- shifted off :00 to :05 so it never
+// shares a minute with the top-of-hour prune or a prober tick. It runs AFTER
+// the 04:40 verification sweep, keeping this repo's scheduled lanes in a
+// fixed, non-overlapping order. See src/schema-snapshots-sync.ts.
+export const SCHEMA_SNAPSHOTS_SYNC_CRON = "5 5 * * *";
+
 // Freshness watchdog (src/freshness-watchdog.ts) -- the alarm that replaces the
 // box-side Prometheus/Alertmanager pair and the cross-box dead-man's-switch,
 // neither of which survives the boxes (that design was peers watching peers,

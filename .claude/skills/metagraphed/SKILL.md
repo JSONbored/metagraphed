@@ -272,12 +272,21 @@ fresh checkout or a filtered single-file run. For just the fixture tree, without
 Stale committed artifacts fail the **derived-artifact freshness** + **contract-drift** gates.
 
 **Never commit `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json`.**
-`npm run build` always rewrites both to reflect a full local/CI build, but their committed copies on
-`main` are owned by the real deploy/publish pipeline (`r2-manifest.json` is the publish lockfile
-read from its committed path at publish time; `schemas/index.json` is a network-capture cache the
-build reconciles in place) — see the "Verify committed derived artifacts are fresh" step in
-`.github/workflows/validate.yml`, which explicitly excludes both for this reason. A contributor
-build will **always** show them as changed for reasons unrelated to your change.
+`npm run build` always rewrites both to reflect a full local/CI build, but neither committed copy is
+yours to move: `r2-manifest.json` is the publish lockfile, read from its committed path at publish
+time; `schemas/index.json` is a live network-capture cache whose current copy lives in the
+`generated/schemas-index.json` R2 store, written daily by a Worker cron
+(`src/schema-snapshots-sync.ts`) — the committed file is only the **fallback seed** a
+credential-less build reads when it cannot reach that store. Both are excluded from the "Verify
+committed derived artifacts are fresh" step in `.github/workflows/validate.yml` for this reason. A
+contributor build will **always** show them as changed for reasons unrelated to your change.
+
+`public/metagraph/operational-surfaces.json` is the same shape of thing one rung down: also a
+fallback seed (for the health prober's cold start), also written live by an hourly Worker cron
+(`src/operational-surfaces-sync.ts` → `generated/operational-surfaces.json`), also excluded from
+that gate. It is not on the never-commit list because a normal build reproduces it deterministically
+— but if it shows up dirty in a PR that did not intend to change the surface set, revert it the same
+way.
 
 Both `npm run build` and a standalone `node scripts/build-artifacts.ts` /
 `npm run build:artifacts` already **auto-revert** whichever of these actually went dirty, back

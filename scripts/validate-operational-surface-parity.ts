@@ -14,10 +14,14 @@
 // catalog, and 4 catalogued surfaces that had left the registry entirely and
 // were still being probed.
 //
-// The hourly sync-operational-surfaces workflow does NOT catch this. It
-// regenerates the file from the committed inputs and compares against the
-// committed copy, so it reports "617 -> 617" and passes -- it is comparing a
-// thing to itself. This validator compares the two ARTIFACTS the build actually
+// The hourly refresh lane does NOT catch this, and never did. The retired
+// sync-operational-surfaces workflow regenerated the file from the committed
+// inputs and compared it against the committed copy, so it reported
+// "617 -> 617" and passed -- it was comparing a thing to itself. Its
+// replacement, the hourly Worker cron in src/operational-surfaces-sync.ts
+// (#9096), DERIVES the list from the published surfaces.json by the very
+// filter this validator checks, so it cannot report a divergence either: it
+// is the filter. This validator compares the two ARTIFACTS the build actually
 // produces, which is where a real divergence would show up.
 //
 // Both artifacts come from one `npm run build`, so this should always hold; the

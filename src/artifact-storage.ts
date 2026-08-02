@@ -459,7 +459,10 @@ export const DUAL_PATTERNS: RegExp[] = [
   // 404s and the prober depends on the data publish's R2 latest/ surviving — so a
   // publish outage eventually freezes the *live* health tier too. DUAL (committed
   // + R2-mirrored) decouples the prober from the publish: its ASSETS read always
-  // succeeds from the deployed bundle. The #1025 freshness gate keeps it current.
+  // succeeds from the deployed bundle. #9096 added the hourly cron store in
+  // front of both tiers, so the committed copy is now purely the cold-start
+  // SEED it was always meant to be — the freshness of what the prober actually
+  // probes no longer depends on this file moving.
   /^operational-surfaces\.json$/,
 ];
 
@@ -476,8 +479,11 @@ const R2_PREFERRED_DUAL_PATTERNS: RegExp[] = [
   //   * GET /api/v1/surfaces serves surfaces.json from R2, republished on every
   //     data publish, so it reflects the newest candidate discovery.
   //   * operational-surfaces.json was read ASSETS-first, i.e. the COMMITTED
-  //     copy, refreshed only by the hourly sync-operational-surfaces PR from
-  //     the committed inputs.
+  //     copy, refreshed only by the hourly sync-operational-surfaces bot PR
+  //     from the committed inputs (that lane is retired — #9096 replaced it
+  //     with the hourly Worker cron in src/operational-surfaces-sync.ts, which
+  //     writes the `generated/operational-surfaces.json` R2 store the prober
+  //     now reads before anything else).
   //
   // Between those two cadences the live registry advertised surfaces the
   // callable catalog had never heard of: 10 of them measured on 2026-07-29 --

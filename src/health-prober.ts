@@ -1,7 +1,8 @@
 // Live operational-health cron prober.
 //
 // Runs in the Worker on a 15-minute Cron Trigger (workers/api.ts `scheduled()`):
-// loads the committed operational-surfaces.json list, probes each surface with
+// loads the operational-surfaces list (the hourly cron's R2 store first, the
+// committed copy as the cold-start seed — see loadOperationalSurfaces), probes each surface with
 // the shared isomorphic core (src/health-probe-core.ts) under bounded
 // concurrency, then writes:
 //   - Postgres surface_checks (append-only time-series → /health/trends)
@@ -26,6 +27,7 @@ import {
   type ProbeSurface,
 } from "./health-probe-core.ts";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
+import { OPERATIONAL_SURFACES_R2_KEY } from "./operational-surfaces-sync.ts";
 import {
   persistProbesToD1,
   pruneChecksD1,
@@ -346,13 +348,39 @@ export function workerWebSocketConnector(
     });
 }
 
-// Read the operational-surfaces.json (DUAL tier — committed + R2-mirrored) via
-// the ASSETS binding, falling back to R2. It is committed precisely so this read
-// never depends on the data publish (see artifact-storage.ts): a publish outage
-// must not freeze the live health prober. Returns the surfaces array (empty on
-// failure — the run then no-ops rather than throwing).
+// Read the prober's input list, newest source first (#9096).
+//
+// Three tiers, in order:
+//   1. The Worker-cron store (generated/operational-surfaces.json) — written
+//      hourly by src/operational-surfaces-sync.ts, which replaced the retired
+//      sync-operational-surfaces.yml bot-PR lane. This is the only copy with a
+//      writer that cannot silently stop without an alarm.
+//   2. The COMMITTED copy via ASSETS. Kept as the cold-start seed exactly as
+//      before: it is always present in the deployed bundle, so a cold store
+//      (first deploy, an R2 outage) can never leave the prober with nothing to
+//      probe. This is the #1017 SPOF guard, unchanged.
+//   3. The published R2 `latest/` copy, the last resort it always was.
+//
+// Returns the surfaces array (empty on failure — the run then no-ops rather
+// than throwing).
 export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
-  // ASSETS first (committed, always present in the deployed Worker).
+  // Cron store first (freshest; independent of the artifact publish).
+  try {
+    if (env.METAGRAPH_ARCHIVE?.get) {
+      const object = await env.METAGRAPH_ARCHIVE.get(
+        OPERATIONAL_SURFACES_R2_KEY,
+      );
+      if (object) {
+        const body = JSON.parse(await object.text()) as Row;
+        if (Array.isArray(body?.surfaces) && body.surfaces.length) {
+          return body.surfaces as Row[];
+        }
+      }
+    }
+  } catch {
+    // fall through to the committed seed
+  }
+  // ASSETS next (committed, always present in the deployed Worker).
   try {
     if (env.ASSETS?.fetch) {
       const response = await env.ASSETS.fetch(

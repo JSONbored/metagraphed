@@ -343,6 +343,9 @@ import {
   semanticSearch,
 } from "../src/ai-search.ts";
 import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
+import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
+import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
+import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_ROOT_CLAIM_PATH_PATTERN,
@@ -384,6 +387,9 @@ import {
   UPGRADE_RADAR_CRON,
   EMBEDDING_SYNC_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
+  OPERATIONAL_SURFACES_SYNC_CRON,
+  SCHEMA_SNAPSHOTS_SYNC_CRON,
+  SURFACE_VERIFICATION_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
   INCIDENTS_PATH_PATTERN,
@@ -1314,6 +1320,11 @@ function cronLabel(cron: string): string {
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
+  if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
+    return "operational-surfaces-sync";
+  if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) return "schema-snapshots-sync";
+  if (cron === SURFACE_VERIFICATION_SYNC_CRON)
+    return "surface-verification-sync";
   if (cron === ABUSE_SCAN_CRON) return "abuse-scan";
   if (cron === UPGRADE_RADAR_CRON) return "upgrade-radar";
   if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
@@ -1459,6 +1470,28 @@ async function dispatchScheduled(
     // see src/github-signals-sync.ts's header for the provenance, repo-list
     // sourcing, token posture, and subrequest budget.
     return runGithubSignalsSync(env, ctx, { readArtifact });
+  }
+  if (cron === OPERATIONAL_SURFACES_SYNC_CRON) {
+    // #9096: hourly derivation of the prober's cold-start surface list from
+    // the published registry, written straight to the R2 store the prober now
+    // reads first -- replacing the retired sync-operational-surfaces.yml
+    // bot-PR lane. See src/operational-surfaces-sync.ts's header for the
+    // derivation-equivalence argument and the schema_source carry-forward.
+    return runOperationalSurfacesSync(env, ctx, { readArtifact });
+  }
+  if (cron === SURFACE_VERIFICATION_SYNC_CRON) {
+    // #9096: daily per-surface probe-evidence sweep straight out of D1,
+    // replacing the retired sync-surface-verification.yml bot-PR lane. This
+    // snapshot is the ONLY producer of `machine-verified`, so the module
+    // refuses to run rather than run degraded -- see its header.
+    return runSurfaceVerificationSync(env, ctx, { readArtifact });
+  }
+  if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) {
+    // #9096: daily promotion of the published OpenAPI index into the durable
+    // drift baseline, with last-good retention, replacing the retired
+    // sync-schema-snapshots.yml bot-PR lane. The live capture itself stays in
+    // Node -- see the module header for why that split is deliberate.
+    return runSchemaSnapshotsSync(env, ctx, { readArtifact });
   }
   if (cron === ABUSE_SCAN_CRON) {
     // #8611: score recent per-key usage and report a spike to the ops channel.

@@ -54,7 +54,7 @@ import {
   type RepoRelease,
   type RepoSignal,
 } from "../src/github-signals-core.ts";
-import { r2ObjectUrl } from "./r2-rest.ts";
+import { readGeneratedStoreJson } from "./r2-rest.ts";
 
 // Re-exported so existing importers (tests, validate.ts) keep one import
 // site; the implementations live in the shared core.
@@ -109,34 +109,11 @@ export interface GithubSignalEntry {
  * posture every optional registry enrichment here follows.
  */
 export async function readGithubSignalsStore(): Promise<Row | null> {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-  if (!accountId || !apiToken) {
-    return null;
-  }
-  try {
-    const manifest: Row | null = await readJson(
-      path.join(repoRoot, "public/metagraph/r2-manifest.json"),
-    ).catch(() => null);
-    const bucketName =
-      typeof manifest?.bucket_name === "string" && manifest.bucket_name
-        ? (manifest.bucket_name as string)
-        : "metagraphed-artifacts";
-    const response = await fetch(
-      r2ObjectUrl(accountId, bucketName, GITHUB_SIGNALS_R2_KEY),
-      {
-        headers: { authorization: `Bearer ${apiToken}` },
-        signal: AbortSignal.timeout(30_000),
-      },
-    );
-    if (!response.ok) {
-      return null;
-    }
-    const doc = (await response.json()) as Row;
-    return Array.isArray(doc?.signals) ? doc : null;
-  } catch {
-    return null;
-  }
+  // #9096 folded the credential/bucket/URL/failure handling into ONE shared
+  // reader (scripts/r2-rest.ts readGeneratedStoreJson) once three lanes needed
+  // it; this keeps only the shape check that is specific to this store.
+  const doc = await readGeneratedStoreJson(GITHUB_SIGNALS_R2_KEY);
+  return doc && Array.isArray(doc.signals) ? (doc as Row) : null;
 }
 
 // Loads the signals into a Map keyed by githubRepoMapKey — R2 store first
