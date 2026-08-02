@@ -404,7 +404,51 @@ export async function mcpServerCardResponse(
     endpoint: `${base}/mcp`,
     transport: "streamable-http",
     protocol_versions: MCP_PROTOCOL_VERSIONS,
-    authentication: "none",
+    // #8967: this said "none", which is false and has been for some time.
+    // /mcp is a live OAuth 2.1 protected resource: a Bearer token it cannot
+    // validate gets a 401 carrying
+    //   www-authenticate: Bearer realm="OAuth",
+    //     resource_metadata=".../.well-known/oauth-protected-resource/mcp",
+    //     error="invalid_token"
+    // and the RFC 9728 metadata documents are served at that URL and at
+    // /.well-known/oauth-authorization-server. Our own mg_ API keys are also
+    // accepted on the same header and select a higher rate-limit tier.
+    //
+    // Telling registry consumers "none" understated a security-relevant
+    // property of the endpoint AND hid the thing that makes Claude/ChatGPT-
+    // class clients authenticate natively rather than paste keys.
+    //
+    // "optional" rather than a structured value: this field has been a string
+    // in every card ever served, and a consumer doing an equality check should
+    // fail loudly on a changed string rather than silently on a changed TYPE.
+    // The structure goes in the sibling field below.
+    authentication: "optional",
+    authentication_detail: {
+      // Anonymous access is deliberate, not an oversight -- registry crawlers
+      // and probes are the discovery funnel, and losing them would cost more
+      // than the access control gains. See ADR 0027.
+      anonymous: {
+        supported: true,
+        rate_limit: "100 requests / 60s per client IP",
+      },
+      oauth2: {
+        supported: true,
+        protected_resource_metadata: `${base}/.well-known/oauth-protected-resource/mcp`,
+        authorization_server_metadata: `${base}/.well-known/oauth-authorization-server`,
+        authorization_servers: [base],
+      },
+      api_key: {
+        supported: true,
+        scheme: "Bearer",
+        prefix: "mg_",
+        rate_limit: "500 requests / 60s per account, higher on paid tiers",
+      },
+      // Stated plainly because it is the honest answer today and a consumer
+      // deciding whether to implement auth deserves it: authenticating buys
+      // throughput, not reach. Every tool is callable anonymously.
+      effect:
+        "Authentication raises rate limits. It does not currently unlock additional tools or surfaces.",
+    },
     capabilities: MCP_CAPABILITIES,
     _meta: MCP_REGISTRY_META,
     tools: listToolDefinitions(),

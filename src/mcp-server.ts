@@ -1347,6 +1347,11 @@ interface McpCtx {
   domain?: string;
   sessionId?: string | null;
   clientIp?: string | null;
+  // #8967: the access model as it applied to THIS request -- "anonymous", or
+  // the tier of a verified mg_ key, resolved by the rate-limit gate that had
+  // to verify the bearer token anyway. Optional because every direct-call test
+  // builds a context without going through that gate.
+  authTier?: string;
   readArtifact?: AnyFn;
   readHealthKv?: AnyFn;
   // props: set by @cloudflare/workers-oauth-provider on the ExecutionContext
@@ -12104,6 +12109,12 @@ function mcpAttributionFor(ctx: McpCtx) {
   return {
     serverName: MCP_SERVER_INFO.name,
     serverVersion: MCP_SERVER_VERSION,
+    // #8967: which side of the access model this call fell on -- "anonymous",
+    // or the verified key's tier. Emitted unconditionally rather than only
+    // when authenticated, because "anonymous" is the answer the access-model
+    // decision actually turns on, and omitting it would make an unlabelled
+    // event ambiguous between "anonymous" and "emitted before this shipped".
+    ...(ctx?.authTier ? { authTier: ctx.authTier } : {}),
     ...(ctx?.clientName
       ? {
           clientName: ctx.clientName,
@@ -12436,7 +12447,7 @@ function rpcError(id: unknown, code: number, message: string) {
 }
 
 // Build the MCP processing context from the Worker request + injected deps.
-function buildContext(request: Request, env: Env, deps: Row) {
+function buildContext(request: Request, env: Env, deps: Row, authTier: string) {
   let domain;
   try {
     domain = new URL(request.url).host || PRIMARY_DOMAIN;
@@ -12471,6 +12482,10 @@ function buildContext(request: Request, env: Env, deps: Row) {
     clientIp: mcpClientKey(request),
     clientName,
     clientVersion,
+    // #8967: "anonymous" or the resolved key tier, from the gate that already
+    // verified the bearer token. Carried on the context so the $mcp_* emission
+    // chokepoint can label the event without a second key verification.
+    authTier,
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
     // The Worker's ExecutionContext, when the caller has one to give: only the
@@ -12521,11 +12536,26 @@ function mcpClientKey(request: Request) {
 // callers to import.
 export { parseUserAgentClient };
 
+/**
+ * Apply the tiered ceiling, and report which tier the caller resolved to.
+ *
+ * Returns `rejection` (a Response, or null to proceed) together with
+ * `authTier`. The tier is returned rather than recomputed downstream because
+ * resolving it costs a key verification -- doing that twice per request to
+ * label an event would be an odd trade.
+ *
+ * #8967: `authTier` is the dimension that makes the access model measurable.
+ * Authentication on /mcp currently buys THROUGHPUT ONLY (anonymous 100/60s vs
+ * keyed 500/60s and per-tier policies above), and until now nothing recorded
+ * which side of that line a request fell on -- so "how much MCP traffic is
+ * authenticated" was unanswerable, and therefore so was any question about
+ * whether the tier system is worth extending.
+ */
 async function enforceMcpRateLimit(
   request: Request,
   env: Env,
   ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
-) {
+): Promise<{ rejection: Response | null; authTier: string }> {
   // #8520: tiered rate limiting via the shared applyTieredRateLimit helper
   // (workers/tiered-rate-limit.ts), mirroring workers/api.ts's DATA checkpoint.
   // Anonymous callers keep the existing IP-keyed 100/60s ceiling unchanged; a
@@ -12554,6 +12584,10 @@ async function enforceMcpRateLimit(
   if (rateLimit.accountId) {
     recordApiKeyUsage(env, ctx, rateLimit.accountId, "mcp", !rateLimit.allowed);
   }
+  // applyTieredRateLimit always sets `tier`: a tier name for a verified key,
+  // or the literal "anonymous". No fallback needed, and inventing one would
+  // hide a future shape change rather than surface it.
+  const authTier = rateLimit.tier;
   if (!rateLimit.allowed) {
     // #8611: a blocked account gets 403 + its reason code. 429 would tell an
     // agent to retry shortly, which will never work and produces exactly the
@@ -12562,13 +12596,16 @@ async function enforceMcpRateLimit(
       code: "rate_limited",
       message: "Too many MCP requests from this client; slow down.",
     })!;
-    return jsonResponse(
-      rpcError(null, RPC_INVALID_REQUEST, rejection.message),
-      rejection.status,
-      rejection.headers,
-    );
+    return {
+      authTier,
+      rejection: jsonResponse(
+        rpcError(null, RPC_INVALID_REQUEST, rejection.message),
+        rejection.status,
+        rejection.headers,
+      ),
+    };
   }
-  return null;
+  return { rejection: null, authTier };
 }
 
 function bodyTooLargeResponse() {
@@ -12807,12 +12844,12 @@ export async function handleMcpRequest(
   env: Env = {} as unknown as Env,
   deps: Row = {},
 ) {
-  const rateLimitResponse = await enforceMcpRateLimit(
+  const { rejection, authTier } = await enforceMcpRateLimit(
     request,
     env,
     deps.executionCtx,
   );
-  if (rateLimitResponse) return rateLimitResponse;
+  if (rejection) return rejection;
 
   if (request.method === "GET") {
     return handleMcpStreamRequest(request, env);
@@ -12846,7 +12883,7 @@ export async function handleMcpRequest(
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;
 
-  const ctx = buildContext(request, env, deps);
+  const ctx = buildContext(request, env, deps, authTier);
 
   // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but cap
   // older-client compatibility so one HTTP request cannot fan out unboundedly.
