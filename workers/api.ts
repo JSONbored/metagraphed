@@ -96,6 +96,8 @@ import {
   handleHealthPercentiles,
   handleHealthTrends,
   withEdgeCache,
+  validateDeclaredQueryParams,
+  analyticsQueryError,
 } from "./request-handlers/analytics.ts";
 import {
   handleSubnetMetagraph,
@@ -1649,6 +1651,22 @@ async function handleChainEventsProxy(
   url: URL,
   ctx: Ctx,
 ) {
+  // Reject a parameter this route does not declare, BEFORE the cache lookup
+  // (#9149). This proxy forwards path+search verbatim and DATA_API ignores what
+  // it does not recognise, so `?palet=Balances` used to return the UNFILTERED
+  // feed as a 200 -- and `?pallet=Balances&methd=Transfer` was worse, applying
+  // one filter and dropping the other, which looks filtered.
+  //
+  // Ahead of the cache on purpose: the key is built from the full search
+  // string, so an unknown param would otherwise mint a fresh cache entry per
+  // typo, all holding the same unfiltered body.
+  //
+  // The allow-list is derived from API_ROUTES rather than written out here, so
+  // it cannot drift from the contract the way #9127's ceiling did.
+  const unknownParam = validateDeclaredQueryParams(url, url.pathname);
+  // Same error builder the other 136 routes use, so the body, code and
+  // `parameter` field are identical rather than merely similar.
+  if (unknownParam) return analyticsQueryError(unknownParam);
   if (!env.DATA_API) {
     return errorResponse(
       "data_tier_unavailable",
