@@ -2,6 +2,8 @@
 // is mocked so the routing + response shaping are tested with no real DB — the live
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
 import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.ts";
@@ -573,6 +575,13 @@ const env = {
       return statements.map(() => ({ success: true }));
     },
   },
+  // The neurons-family READ port flag-switches on this (see
+  // neuronsServedFromD1 in workers/data-api.ts): "postgres" keeps this
+  // whole mocked-postgres suite's reads on the lane it was written for. The
+  // D1 read lane is exercised for real in tests/data-api-neurons-d1.test.ts.
+  // (Writes are dual per #9157 and ignore the flag -- the D1 fake above is
+  // what the sync's D1 half records into.)
+  METAGRAPH_NEURONS_SOURCE: "postgres",
   NEURONS_SYNC_SECRET,
   NEURON_DAILY_BACKFILL_SECRET,
   ROLLUP_SYNC_SECRET,
@@ -4388,6 +4397,10 @@ test("backfill-neuron-daily writes neuron_daily + account_position_daily but NEV
     ok: true,
     neuron_daily_written: 1,
     account_position_daily_written: 1,
+    // Dual-write, mirroring neurons-sync's #9157 shape: D1 required,
+    // Postgres while HYPERDRIVE (bound in this suite's env) still exists.
+    stores: ["d1", "postgres"],
+    d1_statements: 2,
   });
   const text = queryText();
   expect(text).toMatch(/INSERT INTO neuron_daily\b/);
@@ -4395,8 +4408,14 @@ test("backfill-neuron-daily writes neuron_daily + account_position_daily but NEV
   // The critical invariant: a backfill batch must never touch the
   // latest-only `neurons` table or its deregistration prune (both are
   // wrong for historical dates -- see handleNeuronDailyBackfill's header).
+  // Checked on BOTH stores' recorded statements.
   expect(text).not.toMatch(/INSERT INTO neurons\b/);
   expect(text).not.toMatch(/DELETE FROM neurons\b/);
+  const d1Text = d1Calls.map((call) => call.sql).join("\n");
+  expect(d1Text).toMatch(/INSERT INTO neuron_daily\b/);
+  expect(d1Text).toMatch(/INSERT INTO account_position_daily\b/);
+  expect(d1Text).not.toMatch(/INSERT INTO neurons\b/);
+  expect(d1Text).not.toMatch(/DELETE FROM neurons\b/);
 });
 
 test("backfill-neuron-daily accepts the {rows:[...]} wrapped form, not just a bare array", async () => {
@@ -9929,4 +9948,258 @@ test("rpc-usage-prune maps a DB failure to a clean 502 instead of throwing", asy
     { secret: RPC_USAGE_SYNC_SECRET },
   );
   expect(res.status).toBe(502);
+});
+
+// --- neurons family on D1: the in-route lane switches ------------------------
+//
+// The neurons-family port (migrations/d1/0007_neurons.sql) moves whole routes
+// to a D1 dispatcher (covered end-to-end in tests/data-api-neurons-d1.test.ts),
+// but four Postgres routes only EMBED a neurons read next to tables that stay
+// on this tier -- the account summary's registrations card, the
+// weight-setters union's neurons-join branch, the positions stake join, and
+// the dereg-risk immune-neuron scan. These tests pin the D1 side of those
+// in-route switches against a real SQLite database while the rest of each
+// route keeps flowing through this suite's mocked postgres.
+
+const NEURONS_D1_SCHEMA = readFileSync(
+  new URL("../migrations/d1/0007_neurons.sql", import.meta.url),
+  "utf8",
+);
+
+function neuronsD1Env(
+  seedRows: Row[],
+  extraEnv: Record<string, unknown> = {},
+): Env {
+  const db = new DatabaseSync(":memory:");
+  db.exec(NEURONS_D1_SCHEMA);
+  const insert = db.prepare(
+    `INSERT INTO neurons (netuid, uid, hotkey, stake_tao, validator_permit, active, is_immunity_period, registered_at_block, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  for (const row of seedRows) {
+    insert.run(
+      ...([
+        row.netuid,
+        row.uid,
+        row.hotkey ?? null,
+        row.stake_tao ?? null,
+        row.validator_permit ?? null,
+        row.active ?? null,
+        row.is_immunity_period ?? null,
+        row.registered_at_block ?? null,
+        row.captured_at ?? 1,
+      ] as never[]),
+    );
+  }
+  const d1 = {
+    prepare(text: string) {
+      return {
+        bind(...values: unknown[]) {
+          return {
+            async all() {
+              return { results: db.prepare(text).all(...(values as never[])) };
+            },
+          };
+        },
+      };
+    },
+  };
+  return {
+    ...env,
+    METAGRAPH_NEURONS_SOURCE: undefined,
+    METAGRAPH_HEALTH_DB: d1,
+    ...extraEnv,
+  } as unknown as Env;
+}
+
+const reqD1 = (path: string, envD1: Env, init?: RequestInit) =>
+  worker.fetch(
+    new Request(`https://d${path}`, init),
+    envD1,
+    ctx as unknown as ExecutionContext,
+  );
+
+test("GET /api/v1/accounts/:ss58 reads the registrations card from D1 when the neurons flag moves off postgres", async () => {
+  const envD1 = neuronsD1Env([
+    {
+      netuid: 4,
+      uid: 1,
+      hotkey: SS58,
+      stake_tao: 10,
+      validator_permit: 1,
+      active: 1,
+    },
+  ]);
+  mockQueue.current = [
+    [], // SET
+    [], // SET LOCAL statement_timeout
+    [], // hotkeyScanRows
+    [], // coldkeyScanRows
+    // regRows comes from D1 now, so the queue jumps straight to activityRows
+    [
+      {
+        tx_count: "0",
+        last_tx_block: null,
+        last_tx_at: null,
+        total_fee_tao: null,
+      },
+    ],
+    [], // moduleRows
+  ];
+  const res = await reqD1(`/api/v1/accounts/${SS58}`, envD1);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.registrations.length).toBe(1);
+  expect(body.registrations[0].netuid).toBe(4);
+  expect(queryText()).not.toContain("FROM neurons");
+});
+
+test("GET /api/v1/accounts/:ss58/weight-setters decomposes the neurons join into a D1 slot fetch plus a tuple IN", async () => {
+  const envD1 = neuronsD1Env([
+    { netuid: 7, uid: 3, hotkey: SS58, validator_permit: 1, active: 1 },
+  ]);
+  mockRows.current = [
+    {
+      netuid: 7,
+      weight_sets: "2",
+      first_observed: "1783500000000",
+      last_observed: "1783600000000",
+    },
+  ];
+  const res = await reqD1(
+    `/api/v1/accounts/${SS58}/weight-setters?window=7d`,
+    envD1,
+  );
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.data.subnets[0].netuid).toBe(7);
+  const text = queryText();
+  expect(text).toContain("(e.netuid, e.uid) IN (($4::int, $5::int))");
+  expect(text).not.toContain("JOIN account_events e ON e.netuid = n.netuid");
+  const unsafeCall = sqlCalls.find((call) =>
+    call.text.includes("(e.netuid, e.uid) IN"),
+  );
+  expect(unsafeCall!.values.slice(-2)).toEqual([7, 3]);
+});
+
+test("GET /api/v1/accounts/:ss58/weight-setters drops the uid-keyed branch entirely when the account holds no D1 slots", async () => {
+  const envD1 = neuronsD1Env([]);
+  mockRows.current = [
+    {
+      netuid: 4,
+      weight_sets: "1",
+      first_observed: "1783500000000",
+      last_observed: "1783600000000",
+    },
+  ];
+  const res = await reqD1(
+    `/api/v1/accounts/${SS58}/weight-setters?window=7d`,
+    envD1,
+  );
+  expect(res.status).toBe(200);
+  const text = queryText();
+  expect(text).not.toContain("UNION ALL");
+  expect(text).toContain("FROM account_events");
+});
+
+test("GET /api/v1/accounts/:ss58/positions joins share_fraction against D1 neurons stake when the flag moves off postgres", async () => {
+  const envD1 = neuronsD1Env([
+    { netuid: 3, uid: 0, hotkey: "5Hk1", stake_tao: 1000 },
+  ]);
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions (stays on Postgres)
+  ];
+  const res = await reqD1("/api/v1/accounts/5Cold1/positions", envD1);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].stake_tao).toBe(250);
+  // The stake join never reached the mocked Postgres client.
+  expect(queryText()).not.toMatch(/FROM neurons WHERE hotkey IN/);
+});
+
+test("GET /api/v1/accounts/:ss58/positions with no positions never issues the D1 stake lookup", async () => {
+  const envD1 = neuronsD1Env([]);
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [], // loadNominatorPositions -- empty, so the stake join short-circuits
+  ];
+  const res = await reqD1("/api/v1/accounts/5NoPositions/positions", envD1);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.position_count).toBe(0);
+});
+
+test("GET /api/v1/accounts/:ss58/positions degrades to the empty card when the D1 stake join fails (#6769's contract, D1 lane)", async () => {
+  // A broken D1 binding: the stake lookup throws, the loader degrades to an
+  // empty map, and the route still answers with share-only positions.
+  const envD1 = {
+    ...neuronsD1Env([]),
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        throw new Error("d1 exploded");
+      },
+    },
+  } as unknown as Env;
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+  ];
+  const res = await reqD1("/api/v1/accounts/5Cold1/positions", envD1);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  // Same contract as the Postgres-lane #6769 test above: an unresolvable
+  // stake EXCLUDES the position (never a fabricated 0), so the failed D1
+  // join degrades to the empty card rather than a 502.
+  expect(body.position_count).toBe(0);
+  expect(body.positions).toEqual([]);
+});
+
+test("dereg-risk snapshot reads immune neurons from D1 when the flag moves off postgres", async () => {
+  const envD1 = neuronsD1Env(
+    [
+      {
+        netuid: 7,
+        uid: 0,
+        hotkey: "5Immune",
+        is_immunity_period: 1,
+        registered_at_block: 100,
+      },
+    ],
+    { ALERT_TRIGGERS_INTERNAL_TOKEN: "test-internal" },
+  );
+  mockQueue.current = [
+    [{ block_number: "1000" }], // blocks head
+    [{ netuid: 7, immunity_period: 50 }], // subnet_hyperparams
+    [{ netuid: 7, alpha_price_tao: "0.5" }], // subnet_snapshots
+  ];
+  const res = await reqD1(
+    "/api/v1/internal/alert-triggers-dereg-risk-snapshot",
+    envD1,
+    { headers: { "x-alert-triggers-internal-token": "test-internal" } },
+  );
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.current_block).toBe(1000);
+  expect(body.immune_neurons).toEqual([
+    { netuid: 7, hotkey: "5Immune", immunity_expires_at_block: 150 },
+  ]);
+  expect(queryText()).not.toContain("is_immunity_period = TRUE");
 });

@@ -56,6 +56,11 @@ const WATCH_SECRET = "test-watch-trigger-token-secret";
 const env: Env = {
   METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
   HYPERDRIVE: { connectionString: "postgres://mock" },
+  // Keeps the dereg-risk snapshot's immune-neurons read on the mocked
+  // Postgres lane this suite queues answers for (the neurons family is
+  // flag-switched to D1 in workers/data-api.ts; its D1 lane is exercised in
+  // tests/data-api-neurons-d1.test.ts).
+  METAGRAPH_NEURONS_SOURCE: "postgres",
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
   WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
