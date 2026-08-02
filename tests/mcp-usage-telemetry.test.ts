@@ -948,3 +948,101 @@ describe("MCP protocol-method usage telemetry", () => {
     assert.deepEqual(withSpy, without);
   });
 });
+
+// #8994: $mcp_initialize was emitted with `sessionId: ctx.sessionId`, which
+// reads the INBOUND Mcp-Session-Id header — and a client performing the
+// canonical initialize has none to send, because obtaining one is the point of
+// the call. So the property was null on every canonical initialize, and
+// $mcp_initialize could not be joined to the $mcp_tool_call events of the same
+// session: we had the child rows and no parent.
+describe("MCP initialize session id (#8994)", () => {
+  function initRecorder() {
+    const events: Row[] = [];
+    return {
+      events,
+      recordMcpInitializeEvent(env: unknown, event: unknown) {
+        events.push({ env, event });
+        return true;
+      },
+    };
+  }
+
+  async function initialize(clientInfo: Row | undefined, headers: Row = {}) {
+    const spy = initRecorder();
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          ...(clientInfo ? { clientInfo } : {}),
+        },
+      }),
+    });
+    const response = await handleMcpRequest(
+      request,
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        executionCtx: fakeExecutionCtx(),
+        recordMcpInitializeEvent: spy.recordMcpInitializeEvent,
+      }),
+    );
+    return { response, event: spy.events[0]?.event as Row };
+  }
+
+  // The whole point: the id on the event is the SAME one handed back in the
+  // header, so the parent row joins to its children.
+  test("the event carries the session id the response mints", async () => {
+    const { response, event } = await initialize({
+      name: "claude-code",
+      version: "2.1.220",
+    });
+    const header = response.headers.get("mcp-session-id");
+    assert.ok(header, "initialize must mint a session header");
+    assert.equal(event.sessionId, header);
+  });
+
+  test("clientInfo is still authoritative when the client sends it", async () => {
+    const { event } = await initialize({
+      name: "claude-code",
+      version: "2.1.220",
+    });
+    assert.equal(event.clientName, "claude-code");
+    assert.equal(event.clientNameSource, "client_info");
+  });
+
+  // initialize was the ONE $mcp_* event not spreading mcpAttributionFor, so a
+  // client omitting clientInfo produced an event with server attribution only —
+  // even though ctx.clientName had already been parsed two lines away.
+  test("falls back to the User-Agent, labelled as such", async () => {
+    const { event } = await initialize(undefined, {
+      "user-agent": "mcporter/0.12.3",
+    });
+    assert.equal(event.clientName, "mcporter");
+    // Never client_info: a transport-level guess must not be recorded as an
+    // MCP-declared identity.
+    assert.equal(event.clientNameSource, "user_agent");
+  });
+
+  // A failed initialize must not leak a session id the client was never given.
+  test("a non-initialize method mints nothing", async () => {
+    const spy = initRecorder();
+    const response = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      }),
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        executionCtx: fakeExecutionCtx(),
+        recordMcpInitializeEvent: spy.recordMcpInitializeEvent,
+      }),
+    );
+    assert.equal(response.headers.get("mcp-session-id"), null);
+    assert.equal(spy.events.length, 0);
+  });
+});

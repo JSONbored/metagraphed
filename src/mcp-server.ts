@@ -1352,6 +1352,10 @@ interface McpCtx {
   domain?: string;
   sessionId?: string | null;
   clientIp?: string | null;
+  // #8994: the session id a single `initialize` will hand back, generated
+  // before dispatch so the $mcp_initialize event can carry the session it is
+  // creating. Null for every other method and for batched bodies.
+  pendingSessionId?: string | null;
   // #8967: the access model as it applied to THIS request -- "anonymous", or
   // the tier of a verified mg_ key, resolved by the rate-limit gate that had
   // to verify the bearer token anyway. Optional because every direct-call test
@@ -12513,9 +12517,23 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           _meta: MCP_REGISTRY_META,
         };
         scheduleMcpInitializeEvent(ctx, {
-          clientName: params?.clientInfo?.name,
-          clientVersion: params?.clientInfo?.version,
-          sessionId: ctx?.sessionId,
+          // #8994: the client's clientInfo when it sent one, falling back to
+          // the User-Agent-derived name. initialize was the ONE $mcp_* event
+          // not spreading mcpAttributionFor, so a client omitting clientInfo
+          // produced an event with server attribution only -- even though
+          // ctx.clientName had already been parsed two lines away.
+          ...mcpAttributionFor(ctx),
+          ...(params?.clientInfo?.name
+            ? {
+                clientName: params.clientInfo.name,
+                clientVersion: params.clientInfo.version,
+                clientNameSource: "client_info" as const,
+              }
+            : {}),
+          // The session this call is CREATING, not the one it arrived with --
+          // a canonical initialize arrives with none, which is why this was
+          // null on every one of them.
+          sessionId: ctx?.pendingSessionId ?? ctx?.sessionId,
           serverName: MCP_SERVER_INFO.name,
           serverVersion: MCP_SERVER_VERSION,
         });
@@ -12686,6 +12704,11 @@ function buildContext(request: Request, env: Env, deps: Row, authTier: string) {
     // verified the bearer token. Carried on the context so the $mcp_* emission
     // chokepoint can label the event without a second key verification.
     authTier,
+    // #8994: set by handleMcpRequest for a single `initialize`, before
+    // dispatch, so the initialize event can report the session it creates.
+    // Declared here (not only assigned later) so the inferred context type
+    // carries it.
+    pendingSessionId: null as string | null,
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
     // The Worker's ExecutionContext, when the caller has one to give: only the
@@ -12904,10 +12927,37 @@ function validateMcpProtocolVersionHeader(request: Request) {
 function mintMcpSessionHeaderIfNeeded(
   body: Row | null,
   response: Row | null,
+  // #8994: the id is generated BEFORE dispatch and passed in, rather than
+  // minted here. It has to exist while the initialize event is emitted, and
+  // that happens inside dispatchMessage -- so generating it at response time
+  // meant $mcp_initialize could never carry the session it was creating.
+  sessionId: string | null,
 ): Record<string, string> {
   if (Array.isArray(body) || body?.method !== "initialize") return {};
   if (!response || response.error) return {};
-  return { "mcp-session-id": crypto.randomUUID() };
+  if (!sessionId) return {};
+  return { "mcp-session-id": sessionId };
+}
+
+/**
+ * The session id an `initialize` will hand back, generated before dispatch.
+ *
+ * #8994: $mcp_initialize was emitted with `sessionId: ctx?.sessionId`, which
+ * reads the INBOUND Mcp-Session-Id header -- and a client performing the
+ * canonical initialize has no session id to send yet, because obtaining one is
+ * the point of the call. So the property was null on every canonical
+ * initialize, and $mcp_initialize could not be joined to the $mcp_tool_call
+ * events of the same session. We had the child rows and no parent.
+ *
+ * Conditions match mintMcpSessionHeaderIfNeeded's exactly: a single (non-array)
+ * initialize. Batched/legacy-array requests predate the session concept and are
+ * left alone, and a FAILED initialize still mints nothing -- the id is
+ * generated here but only becomes a header if dispatch succeeded, so a
+ * negotiation failure cannot leak a session id a client was never given.
+ */
+function pendingMcpSessionId(body: Row | null): string | null {
+  if (Array.isArray(body) || body?.method !== "initialize") return null;
+  return crypto.randomUUID();
 }
 
 const MCP_STREAM_HUB_UNAVAILABLE_RESPONSE = new Response(null, {
@@ -13085,6 +13135,10 @@ export async function handleMcpRequest(
   if (versionError) return versionError;
 
   const ctx = buildContext(request, env, deps, authTier);
+  // Generated here, not inside dispatchMessage: mintMcpSessionHeaderIfNeeded
+  // below needs the SAME value the initialize event reported, or the header and
+  // the telemetry would disagree about which session was created.
+  ctx.pendingSessionId = pendingMcpSessionId(body);
 
   // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but cap
   // older-client compatibility so one HTTP request cannot fan out unboundedly.
@@ -13123,7 +13177,11 @@ export async function handleMcpRequest(
   }
 
   const response = await dispatchMessage(body, ctx);
-  const sessionHeaders = mintMcpSessionHeaderIfNeeded(body, response);
+  const sessionHeaders = mintMcpSessionHeaderIfNeeded(
+    body,
+    response,
+    ctx.pendingSessionId ?? null,
+  );
   if (!response) {
     // Notification(s) only — nothing to return.
     return new Response(null, {
