@@ -27,6 +27,7 @@
 // src/account-position-history.ts already carry for this exact reason — not
 // a new gap this route introduces.
 
+import { loadD1AlphaPricesByNetuid } from "./metagraph-neurons.ts";
 const RAO_PER_TAO = 1e9;
 
 export const ACCOUNTS_LIST_SORTS = [
@@ -117,6 +118,8 @@ interface AccountAccumulator {
   validatorCount: number;
   stakeTotalRao: bigint;
   emissionTotalRao: bigint;
+  unpricedStakeAlphaRao: bigint;
+  unpricedEmissionAlphaRao: bigint;
   latestCapturedAt: number | null;
   latestBlockNumber: number | null;
   subnets: AccountsListSubnetEntry[];
@@ -132,10 +135,22 @@ export interface AccountsListEntry {
   miner_count: number;
   total_stake_tao: number;
   total_emission_tao: number;
+  unpriced_stake_alpha: number;
+  unpriced_emission_alpha: number;
   latest_captured_at: string | null;
   latest_block_number: number | null;
   subnets: AccountsListSubnetEntry[];
   stake_dominance?: number | null;
+}
+
+// A finite non-negative price, or null. Zero is a legal price (a fully
+// drained pool values the alpha at nothing); negative/NaN are not.
+function nullablePositivePrice(
+  value: number | null | undefined,
+): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : null;
 }
 
 function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
@@ -158,6 +173,13 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
     miner_count: entry.uidCount - entry.validatorCount,
     total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
+    // The alpha the priced totals above do NOT cover (#9051): rows on
+    // subnets with no resolvable alpha price. See metagraph-neurons.ts's
+    // priceForNetuid for the full rationale.
+    unpriced_stake_alpha: roundTao(raoBigToTao(entry.unpricedStakeAlphaRao)),
+    unpriced_emission_alpha: roundTao(
+      raoBigToTao(entry.unpricedEmissionAlphaRao),
+    ),
     latest_captured_at: toIso(entry.latestCapturedAt),
     latest_block_number: entry.latestBlockNumber,
     subnets,
@@ -221,7 +243,15 @@ export function buildAccountsList(
   {
     sort = DEFAULT_ACCOUNTS_LIST_SORT,
     limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
-  }: { sort?: string; limit?: number | string } = {},
+    // netuid -> alpha_price_tao (#9051). Same contract as
+    // buildGlobalValidators': a cold/absent map prices nothing -- every
+    // non-root row lands in the unpriced_* residuals, never counted 1:1.
+    priceByNetuid = new Map<number, number | null>(),
+  }: {
+    sort?: string;
+    limit?: number | string;
+    priceByNetuid?: Map<number, number | null>;
+  } = {},
 ): AccountsListResult {
   const normalizedSort = ACCOUNTS_LIST_SORTS.includes(sort)
     ? sort
@@ -264,6 +294,8 @@ export function buildAccountsList(
         validatorCount: 0,
         stakeTotalRao: 0n,
         emissionTotalRao: 0n,
+        unpricedStakeAlphaRao: 0n,
+        unpricedEmissionAlphaRao: 0n,
         latestCapturedAt: null,
         latestBlockNumber: null,
         subnets: [],
@@ -279,8 +311,18 @@ export function buildAccountsList(
     entry.netuids.add(netuid);
     entry.uidCount += 1;
     if (isValidator) entry.validatorCount += 1;
-    entry.stakeTotalRao += toRaoBig(stake);
-    entry.emissionTotalRao += toRaoBig(emission);
+    // TAO-priced accumulation (#9051): root passes through at 1:1, every
+    // other netuid converts via its own subnet's alpha price, and an
+    // unpriceable row lands in the residuals instead of the totals.
+    const price =
+      netuid === 0 ? 1 : nullablePositivePrice(priceByNetuid.get(netuid));
+    if (price == null) {
+      entry.unpricedStakeAlphaRao += toRaoBig(stake);
+      entry.unpricedEmissionAlphaRao += toRaoBig(emission);
+    } else {
+      entry.stakeTotalRao += toRaoBig(stake * price);
+      entry.emissionTotalRao += toRaoBig(emission * price);
+    }
     if (capturedAt != null && Number.isFinite(capturedAt) && capturedAt > 0) {
       if (
         entry.latestCapturedAt == null ||
@@ -342,14 +384,21 @@ export async function loadAccountsList(
   {
     sort = DEFAULT_ACCOUNTS_LIST_SORT,
     limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
-  }: { sort?: string; limit?: number | string } = {},
+  }: {
+    sort?: string;
+    limit?: number | string;
+  } = {},
 ): Promise<AccountsListResult> {
-  const rows = await d1(
-    "SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, " +
-      "stake_tao, block_number, captured_at FROM neurons " +
-      "WHERE hotkey IS NOT NULL " +
-      "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
-    [],
-  );
-  return buildAccountsList(rows, { sort, limit });
+  const [rows, priceByNetuid] = await Promise.all([
+    d1(
+      "SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, " +
+        "stake_tao, block_number, captured_at FROM neurons " +
+        "WHERE hotkey IS NOT NULL " +
+        "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
+      [],
+    ),
+    // #9051: TAO-price the cross-subnet totals from the D1 snapshots mirror.
+    loadD1AlphaPricesByNetuid(d1),
+  ]);
+  return buildAccountsList(rows, { sort, limit, priceByNetuid });
 }

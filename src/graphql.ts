@@ -5260,6 +5260,10 @@ const rootValue = {
       miner_count: data.miner_count ?? 0,
       total_stake_tao: data.total_stake_tao ?? 0,
       total_emission_tao: data.total_emission_tao ?? 0,
+      // #9051 -- the movers lesson (#9039): an explicit projection must move
+      // in the same PR as the SDL, or a non-null field resolves null.
+      unpriced_stake_alpha: data.unpriced_stake_alpha ?? 0,
+      unpriced_emission_alpha: data.unpriced_emission_alpha ?? 0,
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,
       positions: data.positions || [],

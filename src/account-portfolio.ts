@@ -8,6 +8,7 @@
 // does the D1 read + envelope. Null-safe: no positions -> schema-stable empty card.
 
 import { computeConcentration } from "./concentration.ts";
+import { loadD1AlphaPricesByNetuid } from "./metagraph-neurons.ts";
 
 // The neurons-tier columns the portfolio reads for one hotkey.
 export const ACCOUNT_PORTFOLIO_READ_COLUMNS =
@@ -99,6 +100,8 @@ export interface AccountPortfolioResult {
   miner_count: number;
   total_stake_tao: number;
   total_emission_tao: number;
+  unpriced_stake_alpha: number;
+  unpriced_emission_alpha: number;
   overall_yield: number | null;
   stake_concentration: unknown;
   positions: AccountPortfolioPosition[];
@@ -109,13 +112,24 @@ export interface AccountPortfolioResult {
 export function buildAccountPortfolio(
   rows: Array<Record<string, unknown>> | null | undefined,
   ss58: string,
+  {
+    // netuid -> alpha_price_tao (#9051). Root passes through at 1:1; a
+    // netuid with no resolvable price keeps its position row (per-position
+    // stake_tao/emission_tao/yield are single-subnet figures, untouched)
+    // but contributes to the unpriced_* residuals instead of the totals,
+    // overall_yield, and stake_concentration.
+    priceByNetuid = new Map<number, number | null>(),
+  }: { priceByNetuid?: Map<number, number | null> } = {},
 ): AccountPortfolioResult {
   const list = Array.isArray(rows) ? rows : [];
   const positions: AccountPortfolioPosition[] = [];
+  const pricedStakeByPosition: number[] = [];
   const netuids = new Set<number>();
   let validatorCount = 0;
   let totalStake = 0;
   let totalEmission = 0;
+  let unpricedStake = 0;
+  let unpricedEmission = 0;
   let capturedAt: CaptureStamp | null = null;
   for (const row of list) {
     const netuid = toInt(row?.netuid);
@@ -129,8 +143,23 @@ export function buildAccountPortfolio(
     const emission = toNumber(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     if (isValidator) validatorCount += 1;
-    totalStake += stake;
-    totalEmission += emission;
+    const rowPrice = priceByNetuid.get(netuid);
+    const price =
+      netuid === 0
+        ? 1
+        : typeof rowPrice === "number" &&
+            Number.isFinite(rowPrice) &&
+            rowPrice >= 0
+          ? rowPrice
+          : null;
+    if (price == null) {
+      unpricedStake += stake;
+      unpricedEmission += emission;
+    } else {
+      totalStake += stake * price;
+      totalEmission += emission * price;
+      pricedStakeByPosition.push(stake * price);
+    }
     positions.push({
       netuid,
       uid: toInt(row?.uid),
@@ -157,12 +186,18 @@ export function buildAccountPortfolio(
     miner_count: positions.length - validatorCount,
     total_stake_tao: round9(totalStake),
     total_emission_tao: round9(totalEmission),
-    // Overall wallet return: total emission per total stake (null with no stake).
+    // The alpha the priced totals do NOT cover (#9051) -- positions on
+    // subnets with no resolvable alpha price.
+    unpriced_stake_alpha: round9(unpricedStake),
+    unpriced_emission_alpha: round9(unpricedEmission),
+    // Overall wallet return: priced emission per priced stake -- both sides
+    // in TAO, so the ratio is dimensionally coherent for the first time
+    // (#9051). Null with no priceable stake.
     overall_yield: totalStake > 0 ? round9(totalEmission / totalStake) : null,
-    // How concentrated the wallet's stake is across its subnets (Gini/HHI/etc.).
-    stake_concentration: computeConcentration(
-      positions.map((p) => p.stake_tao),
-    ),
+    // How concentrated the wallet's VALUE is across its priceable positions
+    // (Gini/HHI/etc.) -- priced legs only, since mixing different alpha
+    // units would weight the concentration by token count, not value.
+    stake_concentration: computeConcentration(pricedStakeByPosition),
     positions,
   };
 }
@@ -178,9 +213,13 @@ export async function loadAccountPortfolio(
   ) => Promise<Array<Record<string, unknown>>>,
   ss58: string,
 ): Promise<AccountPortfolioResult> {
-  const rows = await d1(
-    `SELECT ${ACCOUNT_PORTFOLIO_READ_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,
-    [ss58],
-  );
-  return buildAccountPortfolio(rows, ss58);
+  const [rows, priceByNetuid] = await Promise.all([
+    d1(
+      `SELECT ${ACCOUNT_PORTFOLIO_READ_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,
+      [ss58],
+    ),
+    // #9051: TAO-price the cross-subnet totals from the D1 snapshots mirror.
+    loadD1AlphaPricesByNetuid(d1),
+  ]);
+  return buildAccountPortfolio(rows, ss58, { priceByNetuid });
 }

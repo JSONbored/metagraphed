@@ -48,10 +48,37 @@ export const GlobalValidatorEntrySchema = z
     subnet_count: z.int().min(0),
     uid_count: z.int().min(0),
     take: z.number().nullable(),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier.",
+      ),
     root_stake_tao: z.number().min(0),
-    alpha_stake_tao: z.number().min(0),
-    total_emission_tao: z.number().min(0),
+    alpha_stake_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly.",
+      ),
+    total_emission_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing. A subnet with no resolvable price is EXCLUDED and reported in unpriced_stake_alpha instead -- never silently counted 1:1. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier.",
+      ),
+    unpriced_stake_alpha: z
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        "The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced. Optional on the wire: the api and data-api Workers deploy separately, so a tier response captured before this field shipped must still validate during the rollout window.",
+      ),
+    unpriced_emission_alpha: z
+      .number()
+      .min(0)
+      .optional()
+      .describe("Emission-side counterpart of unpriced_stake_alpha (#9051)."),
     nominator_count: z.int().min(0).nullable(),
     apy_estimate: z.number().min(0).nullable(),
     apy_estimate_eligible_subnet_count: z.int().min(0),

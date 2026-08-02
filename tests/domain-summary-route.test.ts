@@ -85,7 +85,12 @@ describe("GET /api/v1/domains", () => {
               return {
                 schema_version: 1,
                 subnets: [
-                  { netuid: 1, total_stake_alpha: 5, emission_share: 1 },
+                  {
+                    netuid: 1,
+                    total_stake_alpha: 5,
+                    alpha_price_tao: 1,
+                    emission_share: 1,
+                  },
                 ],
               };
             },
@@ -115,7 +120,14 @@ describe("GET /api/v1/domains", () => {
             schema_version: 1,
             captured_at: new Date().toISOString(),
             summary: { with_economics_count: 1 },
-            subnets: [{ netuid: 1, total_stake_alpha: 999, emission_share: 1 }],
+            subnets: [
+              {
+                netuid: 1,
+                total_stake_alpha: 999,
+                alpha_price_tao: 1,
+                emission_share: 1,
+              },
+            ],
           };
         },
       },

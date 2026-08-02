@@ -1,12 +1,31 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  buildAccountPortfolio,
+  buildAccountPortfolio as buildAccountPortfolioRaw,
   loadAccountPortfolio,
 } from "../src/account-portfolio.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
+
+// #9051: buildAccountPortfolio TAO-prices its cross-subnet totals through
+// priceByNetuid. These tests predate that and assert raw-sum arithmetic, so
+// the wrapper injects UNIT prices -- same numbers, priced code path. The
+// "#9051" block at the end passes real non-unit prices.
+const UNIT_PRICES = new Map<number, number | null>(
+  Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
+);
+function buildAccountPortfolio(
+  rows: unknown,
+  ss58: string,
+  options?: Parameters<typeof buildAccountPortfolioRaw>[2],
+) {
+  return buildAccountPortfolioRaw(
+    rows as Array<Record<string, unknown>>,
+    ss58,
+    { priceByNetuid: UNIT_PRICES, ...options },
+  );
+}
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -215,6 +234,9 @@ describe("buildAccountPortfolio", () => {
   test("loadAccountPortfolio filters by hotkey and shapes the rows", async () => {
     let seen: { sql: string; params: unknown[] } | undefined;
     const d1 = async (sql: string, params: unknown[]) => {
+      // #9051: answer the loader's new subnet_snapshots price read separately
+      // so the assertions below still pin the neurons query.
+      if (sql.includes("subnet_snapshots")) return [];
       seen = { sql, params };
       return ROWS;
     };
@@ -255,5 +277,55 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
     const body = await res.json();
     assert.equal(body.data.position_count, 0);
     assert.deepEqual(body.data.positions, []);
+  });
+});
+
+// #9051: the wallet totals and overall_yield are TAO-priced.
+describe("TAO-priced portfolio totals (#9051)", () => {
+  test("prices positions, keeps per-position figures raw, and residualizes", () => {
+    const out = buildAccountPortfolioRaw(
+      [
+        {
+          netuid: 0,
+          uid: 0,
+          stake_tao: 50,
+          emission_tao: 5,
+          validator_permit: 1,
+        },
+        {
+          netuid: 1,
+          uid: 1,
+          stake_tao: 800,
+          emission_tao: 40,
+          validator_permit: 0,
+        },
+        {
+          netuid: 4,
+          uid: 2,
+          stake_tao: 12,
+          emission_tao: 3,
+          validator_permit: 0,
+        },
+      ],
+      SS58,
+      {
+        priceByNetuid: new Map<number, number | null>([
+          [1, 0.5],
+          [4, null],
+        ]),
+      },
+    );
+    assert.equal(out.total_stake_tao, 450); // 50 + 800*0.5
+    assert.equal(out.total_emission_tao, 25); // 5 + 40*0.5
+    assert.equal(out.unpriced_stake_alpha, 12);
+    assert.equal(out.unpriced_emission_alpha, 3);
+    // overall_yield is priced/priced -- dimensionally coherent (25/450).
+    assert.equal(out.overall_yield, Math.round((25 / 450) * 1e9) / 1e9);
+    // Per-position stake_tao stays the RAW single-subnet figure: it is that
+    // subnet's own alpha count and is not a cross-subnet sum.
+    const sn1 = out.positions.find((p) => p.netuid === 1)!;
+    assert.equal(sn1.stake_tao, 800);
+    // The priceless position is still listed -- exclusion is from the totals.
+    assert.equal(out.position_count, 3);
   });
 });

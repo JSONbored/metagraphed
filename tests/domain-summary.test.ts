@@ -14,9 +14,14 @@ const SUBNETS = [
 ];
 
 const ECONOMICS = [
-  { netuid: 1, total_stake_alpha: 100, emission_share: 0.4 },
-  { netuid: 2, total_stake_alpha: 50, emission_share: 0.1 },
-  { netuid: 3, total_stake_alpha: 25, emission_share: 0.2 },
+  {
+    netuid: 1,
+    total_stake_alpha: 100,
+    alpha_price_tao: 1,
+    emission_share: 0.4,
+  },
+  { netuid: 2, total_stake_alpha: 50, alpha_price_tao: 1, emission_share: 0.1 },
+  { netuid: 3, total_stake_alpha: 25, alpha_price_tao: 1, emission_share: 0.2 },
   // netuid 4 has no economics row at all -- cold/missing tier.
 ];
 
@@ -98,7 +103,12 @@ describe("buildDomainSummary", () => {
       { netuid: 7, categories: ["search"], derived_categories: [] },
     ];
     const badEconomics = [
-      { netuid: "not-a-number", total_stake_alpha: 100, emission_share: 0.5 },
+      {
+        netuid: "not-a-number",
+        total_stake_alpha: 100,
+        alpha_price_tao: 1,
+        emission_share: 0.5,
+      },
     ];
     const search = buildDomainSummary("search", subnets, badEconomics);
     assert.equal(search.subnet_count, 1);
@@ -111,7 +121,12 @@ describe("buildDomainSummary", () => {
       { netuid: 9, categories: ["storage"], derived_categories: [] },
     ];
     const economics = [
-      { netuid: 9, total_stake_alpha: "not-a-number", emission_share: null },
+      {
+        netuid: 9,
+        total_stake_alpha: "not-a-number",
+        alpha_price_tao: 1,
+        emission_share: null,
+      },
     ];
     const storage = buildDomainSummary("storage", subnets, economics);
     assert.equal(storage.subnet_count, 1);
@@ -138,5 +153,44 @@ describe("buildDomainOverview", () => {
       inference,
       buildDomainSummary("inference", SUBNETS, ECONOMICS),
     );
+  });
+});
+
+// #9051: a domain's stake total is TAO-priced through each member subnet's
+// own alpha_price_tao, rather than summing incomparable alpha counts.
+describe("TAO-priced domain rollup (#9051)", () => {
+  test("prices each member subnet and residualizes the priceless ones", () => {
+    const subnets = [
+      { netuid: 1, categories: ["agents"], derived_categories: [] },
+      { netuid: 2, categories: ["agents"], derived_categories: [] },
+      { netuid: 3, categories: ["agents"], derived_categories: [] },
+    ];
+    const economics = [
+      {
+        netuid: 1,
+        total_stake_alpha: 100,
+        alpha_price_tao: 2,
+        emission_share: 0.1,
+      },
+      {
+        netuid: 2,
+        total_stake_alpha: 400,
+        alpha_price_tao: 0.5,
+        emission_share: 0.1,
+      },
+      // No price at all -- excluded from the priced total, reported separately.
+      {
+        netuid: 3,
+        total_stake_alpha: 70,
+        alpha_price_tao: null,
+        emission_share: 0.1,
+      },
+    ];
+    const out = buildDomainSummary("agents", subnets, economics);
+    assert.equal(out.total_stake_tao, 400); // 100*2 + 400*0.5
+    assert.equal(out.unpriced_stake_alpha, 70);
+    // Membership is unaffected by an unpriceable member.
+    assert.equal(out.subnet_count, 3);
+    assert.deepEqual(out.netuids, [1, 2, 3]);
   });
 });

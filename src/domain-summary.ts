@@ -63,6 +63,7 @@ export interface DomainSummaryResult {
   subnet_count: number;
   netuids: number[];
   total_stake_tao: number | null;
+  unpriced_stake_alpha: number | null;
   total_emission_share: number | null;
   emission_concentration: ConcentrationScorecard | null;
 }
@@ -86,6 +87,7 @@ export function buildDomainSummary(
 
   const netuids: number[] = [];
   let stakeRao = 0n;
+  let unpricedStakeRao = 0n;
   const emissionShares: number[] = [];
   for (const subnet of subnetRows || []) {
     if (!Number.isInteger(subnet?.netuid)) continue;
@@ -93,8 +95,26 @@ export function buildDomainSummary(
     const netuid = subnet.netuid as number;
     netuids.push(netuid);
     const econ = economicsByNetuid.get(netuid);
+    // TAO-priced (#9051): total_stake_alpha is that subnet's ALPHA count, and
+    // the economics row carries its own alpha_price_tao -- multiply through
+    // so the domain total is genuine TAO rather than a cross-subnet alpha
+    // sum. Root (netuid 0) is not a domain-taggable subnet, so no 1:1 branch
+    // is needed here; a subnet whose price is missing/null accumulates into
+    // the unpriced residual instead, never silently 1:1.
     const stake = Number(econ?.total_stake_alpha);
-    if (Number.isFinite(stake)) stakeRao += toRaoBig(stake);
+    if (Number.isFinite(stake)) {
+      // Guard null/undefined BEFORE Number(): Number(null) is 0, not NaN, so
+      // a null alpha_price_tao would otherwise value the whole subnet's
+      // stake at zero and silently report it as fully priced -- strictly
+      // worse than the unpriced residual it belongs in.
+      const rawPrice = econ?.alpha_price_tao;
+      const price = rawPrice == null ? Number.NaN : Number(rawPrice);
+      if (Number.isFinite(price) && price >= 0) {
+        stakeRao += toRaoBig(stake * price);
+      } else {
+        unpricedStakeRao += toRaoBig(stake);
+      }
+    }
     const emissionShare = Number(econ?.emission_share);
     if (Number.isFinite(emissionShare) && emissionShare > 0) {
       emissionShares.push(emissionShare);
@@ -108,6 +128,9 @@ export function buildDomainSummary(
     subnet_count: netuids.length,
     netuids,
     total_stake_tao: round(raoBigToTao(stakeRao)),
+    // The alpha the priced total does NOT cover: member subnets with no
+    // resolvable alpha_price_tao in the economics tier (#9051).
+    unpriced_stake_alpha: round(raoBigToTao(unpricedStakeRao)),
     // Sum of this domain's subnets' emission_share -- each subnet's share of
     // NETWORK-WIDE emission (dTAO emission is price-weighted: a subnet's share
     // of network TAO emission tracks its alpha price, scripts/fetch-native-

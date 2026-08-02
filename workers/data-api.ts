@@ -3554,6 +3554,42 @@ async function loadSubnetTempos(sql: postgres.TransactionSql, env: Env) {
   }
 }
 
+// netuid -> latest alpha_price_tao from subnet_snapshots (#9051), for the
+// TAO-priced cross-subnet sums in buildGlobalValidators/buildValidatorDetail/
+// buildAccountsList/buildAccountPortfolio. Same DISTINCT ON (netuid)
+// projection handleDeregRiskSnapshot already reads, and the same
+// savepoint-isolated-failure shape as loadSubnetTempos above: a
+// subnet_snapshots read failure degrades to an empty map -- every non-root
+// row then lands in the unpriced_* residuals rather than failing the route
+// or silently re-creating the mixed-denomination sums this exists to fix.
+// DAILY-cadence table, so prices can lag up to ~24h behind the live
+// economics tier; acceptable for leaderboard/portfolio valuation.
+async function loadAlphaPricesByNetuid(
+  sql: postgres.TransactionSql,
+  env: Env,
+): Promise<Map<number, number | null>> {
+  try {
+    const rows = await sql.savepoint(
+      (sql: postgres.TransactionSql) =>
+        sql<
+          Pick<SubnetSnapshots, "netuid" | "alpha_price_tao">[]
+        >`SELECT DISTINCT ON (netuid) netuid, alpha_price_tao
+          FROM subnet_snapshots
+          ORDER BY netuid, snapshot_date DESC`,
+    );
+    return new Map(
+      rows.map((row) => [
+        Number(row.netuid),
+        row.alpha_price_tao === null ? null : Number(row.alpha_price_tao),
+      ]),
+    );
+  } catch (err) {
+    console.error("subnet_snapshots alpha-price query failed:", err);
+    await captureDataApiError(err, "subnet-snapshots-alpha-price-query", env);
+    return new Map();
+  }
+}
+
 // Lookback (days) for each realized-return window (#7228), keyed by the
 // baseline-object field buildGlobalValidators/buildValidatorDetail read
 // (realized_return_1d/1w/1m). Mirrors the neuron_daily HISTORY_WINDOWS map --
@@ -3621,25 +3657,41 @@ async function loadRealizedStakeBaselines(
             hotkey: NeuronDaily["hotkey"];
             baseline_stake_tao: string | null;
           };
+          // TAO-priced at the BASELINE's own date (#9051): the builder's
+          // current-side totals are priced at the latest snapshot, so a
+          // baseline priced at ITS day's alpha_price_tao makes
+          // realized_return_* a true TAO-value return over the elapsed
+          // window (emission compounding + delegation flow + price
+          // movement), not a mixed-denomination stake-unit delta. Root
+          // (netuid 0) prices at 1; a non-root day-row with no matching
+          // subnet_snapshots price multiplies to NULL, which SUM() skips --
+          // the same excluded-not-1:1 rule the builder's unpriced_*
+          // residuals apply on the current side.
           return hotkey
             ? sql<BaselineRow[]>`
             WITH daily AS (
-              SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
-              FROM neuron_daily
-              WHERE validator_permit = TRUE AND hotkey = ${hotkey}
-                AND snapshot_date <= ${cutoff}
-                AND snapshot_date >= ${floor}
-              GROUP BY hotkey, snapshot_date
+              SELECT nd.hotkey, nd.snapshot_date,
+                SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS stake_tao
+              FROM neuron_daily nd
+              LEFT JOIN subnet_snapshots s
+                ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+              WHERE nd.validator_permit = TRUE AND nd.hotkey = ${hotkey}
+                AND nd.snapshot_date <= ${cutoff}
+                AND nd.snapshot_date >= ${floor}
+              GROUP BY nd.hotkey, nd.snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
             FROM daily ORDER BY hotkey, snapshot_date DESC`
             : sql<BaselineRow[]>`
             WITH daily AS (
-              SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
-              FROM neuron_daily
-              WHERE validator_permit = TRUE AND snapshot_date <= ${cutoff}
-                AND snapshot_date >= ${floor}
-              GROUP BY hotkey, snapshot_date
+              SELECT nd.hotkey, nd.snapshot_date,
+                SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS stake_tao
+              FROM neuron_daily nd
+              LEFT JOIN subnet_snapshots s
+                ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+              WHERE nd.validator_permit = TRUE AND nd.snapshot_date <= ${cutoff}
+                AND nd.snapshot_date >= ${floor}
+              GROUP BY nd.hotkey, nd.snapshot_date
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
             FROM daily ORDER BY hotkey, snapshot_date DESC`;
@@ -10657,6 +10709,7 @@ async function dispatchDataApiRequest(
             nominatorCounts,
             tempoByNetuid,
             realizedStakeByHotkey,
+            priceByNetuid,
           ] = await Promise.all([
             sql<
               Pick<
@@ -10680,6 +10733,7 @@ async function dispatchDataApiRequest(
             loadValidatorNominatorCounts(sql, env),
             loadSubnetTempos(sql, env),
             loadRealizedStakeBaselines(sql, {}, env),
+            loadAlphaPricesByNetuid(sql, env),
           ]);
           // Identity join (#5234): needs `rows` resolved first to know which
           // coldkeys to look up, so it can't join the Promise.all above.
@@ -10692,6 +10746,7 @@ async function dispatchDataApiRequest(
             buildGlobalValidators(rows, {
               sort,
               limit,
+              priceByNetuid,
               featuredHotkeys,
               identityByColdkey,
               nominatorCounts,
@@ -10708,16 +10763,22 @@ async function dispatchDataApiRequest(
         );
         if (validatorDetail) {
           const hotkey = decodeURIComponent(validatorDetail[1]);
-          const [rows, nominatorCounts, tempoByNetuid, realizedByHotkey] =
-            await Promise.all([
-              sql<Pick<Neurons, keyof Neurons>[]>`
+          const [
+            rows,
+            nominatorCounts,
+            tempoByNetuid,
+            realizedByHotkey,
+            priceByNetuid,
+          ] = await Promise.all([
+            sql<Pick<Neurons, keyof Neurons>[]>`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`,
-              loadValidatorNominatorCounts(sql, env),
-              loadSubnetTempos(sql, env),
-              loadRealizedStakeBaselines(sql, { hotkey }, env),
-            ]);
+            loadValidatorNominatorCounts(sql, env),
+            loadSubnetTempos(sql, env),
+            loadRealizedStakeBaselines(sql, { hotkey }, env),
+            loadAlphaPricesByNetuid(sql, env),
+          ]);
           // Identity join (#5234): see the /api/v1/validators comment above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
             sql,
@@ -10727,6 +10788,7 @@ async function dispatchDataApiRequest(
           return json(
             buildValidatorDetail(rows, hotkey, {
               identityByColdkey,
+              priceByNetuid,
               nominatorCount: nominatorCounts.get(hotkey) ?? null,
               tempoByNetuid,
               realizedStake: realizedByHotkey.get(hotkey) ?? null,
@@ -11077,7 +11139,8 @@ async function dispatchDataApiRequest(
           >`
           SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
           FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
-          return json(buildAccountPortfolio(rows, ss58));
+          const priceByNetuid = await loadAlphaPricesByNetuid(sql, env);
+          return json(buildAccountPortfolio(rows, ss58, { priceByNetuid }));
         }
 
         // GET /api/v1/accounts/:ss58/positions (#5233): the nominator-scoped
@@ -11170,27 +11233,31 @@ async function dispatchDataApiRequest(
             limitRaw == null || limitRaw === ""
               ? ACCOUNTS_LIST_LIMIT_DEFAULT
               : Number(limitRaw);
-          const rows = await sql<
-            Pick<
-              Neurons,
-              | "netuid"
-              | "uid"
-              | "hotkey"
-              | "coldkey"
-              | "validator_permit"
-              | "emission_tao"
-              | "stake_tao"
-              | "block_number"
-              | "captured_at"
-            >[]
-          >`
+          const [rows, priceByNetuid] = await Promise.all([
+            sql<
+              Pick<
+                Neurons,
+                | "netuid"
+                | "uid"
+                | "hotkey"
+                | "coldkey"
+                | "validator_permit"
+                | "emission_tao"
+                | "stake_tao"
+                | "block_number"
+                | "captured_at"
+              >[]
+            >`
           SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
           FROM neurons WHERE hotkey IS NOT NULL
-          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`;
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+            loadAlphaPricesByNetuid(sql, env),
+          ]);
           return json(
             buildAccountsList(rows, {
               sort: sortParam ?? DEFAULT_ACCOUNTS_LIST_SORT,
               limit,
+              priceByNetuid,
             }),
           );
         }
@@ -11214,19 +11281,31 @@ async function dispatchDataApiRequest(
             total_stake_tao: string | null;
             total_emission_tao: string | null;
           };
+          // TAO-priced at each point's own date (#9051): a validator's
+          // per-day cross-subnet totals convert each membership through that
+          // day's own alpha_price_tao (root at 1), so the series is a true
+          // TAO-value history rather than a sum of incomparable alpha
+          // counts. A non-root day-row with no matching price multiplies to
+          // NULL, which SUM() skips -- excluded, never silently 1:1.
           const rows = cutoff
             ? await sql<ValidatorHistoryRow[]>`
-            SELECT snapshot_date::text AS snapshot_date, COUNT(DISTINCT netuid) AS subnet_count,
-              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
-            FROM neuron_daily
-            WHERE hotkey = ${hotkey} AND validator_permit = TRUE AND snapshot_date >= ${cutoff}
-            GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+            SELECT nd.snapshot_date::text AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
+              SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_stake_tao,
+              SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_emission_tao
+            FROM neuron_daily nd
+            LEFT JOIN subnet_snapshots s
+              ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+            WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = TRUE AND nd.snapshot_date >= ${cutoff}
+            GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
             : await sql<ValidatorHistoryRow[]>`
-            SELECT snapshot_date::text AS snapshot_date, COUNT(DISTINCT netuid) AS subnet_count,
-              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
-            FROM neuron_daily
-            WHERE hotkey = ${hotkey} AND validator_permit = TRUE
-            GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+            SELECT nd.snapshot_date::text AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
+              SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_stake_tao,
+              SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_emission_tao
+            FROM neuron_daily nd
+            LEFT JOIN subnet_snapshots s
+              ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+            WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = TRUE
+            GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
           return json(
             buildValidatorHistory(rows, hotkey, {
               window: windowLabelFor(

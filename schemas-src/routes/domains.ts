@@ -37,7 +37,18 @@ export const DomainSummaryArtifactSchema = z
     domain: z.string(),
     subnet_count: z.int().min(0),
     netuids: z.array(z.int().min(0)),
-    total_stake_tao: z.number().nullable(),
+    total_stake_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051). A member with no resolvable price is excluded and reported in unpriced_stake_alpha.",
+      ),
+    unpriced_stake_alpha: z
+      .number()
+      .nullable()
+      .describe(
+        "The alpha the TAO-priced totals do NOT cover (#9051): raw cross-subnet alpha on subnets with no resolvable alpha_price_tao. 0 when every membership priced.",
+      ),
     total_emission_share: z.number().nullable(),
     emission_concentration: ConcentrationScorecardSchema.nullable(),
   })

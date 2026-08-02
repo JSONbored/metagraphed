@@ -38,6 +38,9 @@ const mockRows = vi.hoisted(() => ({
 // single shared `mockRows.current` (preserving every existing chain-events
 // test's simpler one-shape-fits-all behavior unchanged).
 const mockQueue = vi.hoisted(() => ({ current: [] as Row[] }));
+// #9051: overrides the derived unit-price answer for the subnet_snapshots
+// alpha-price read. Null => derive unit prices from mockRows' own netuids.
+const alphaPriceRows = vi.hoisted(() => ({ current: null as Row[] | null }));
 // State for the neurons-sync write route's tests only (#4771) -- unused by
 // every GET-route test above.
 const neuronsSyncFailure = vi.hoisted(() => ({ error: null as Error | null }));
@@ -377,6 +380,35 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(subnetTemposQueryFailure.error);
       }
+      // #9051: the validators/accounts/portfolio routes now also read
+      // latest-per-netuid alpha prices. Answer with a UNIT price for every
+      // netuid the test's own fixture rows mention, so these suites keep
+      // their pre-#9051 arithmetic while still exercising the priced path.
+      // A test that wants real conversion sets alphaPriceRows.current.
+      // Anchored to the WHOLE statement: top-holders embeds the same
+      // projection as a nested CTE and must keep its own answer.
+      if (
+        /^\s*SELECT DISTINCT ON \(netuid\) netuid, alpha_price_tao\s+FROM subnet_snapshots/.test(
+          text,
+        )
+      ) {
+        if (alphaPriceRows.current)
+          return Promise.resolve(alphaPriceRows.current);
+        const netuids = new Set<number>();
+        // Scan BOTH fixture channels: some suites stage neuron rows in
+        // mockRows.current, others in the ordered mockQueue.
+        const candidates: unknown[] = [
+          ...(mockRows.current as unknown[]),
+          ...(mockQueue.current as unknown[]).flat(),
+        ];
+        for (const row of candidates) {
+          const netuid = Number((row as Record<string, unknown>)?.netuid);
+          if (Number.isInteger(netuid)) netuids.add(netuid);
+        }
+        return Promise.resolve(
+          [...netuids].map((netuid) => ({ netuid, alpha_price_tao: 1 })),
+        );
+      }
       if (/AS baseline_stake_tao\b/.test(text)) {
         if (realizedBaselineState.error) {
           return Promise.reject(realizedBaselineState.error);
@@ -549,6 +581,7 @@ beforeEach(() => {
   sqlCalls.length = 0;
   sqlBeginOptions.length = 0;
   mockQueue.current = [];
+  alphaPriceRows.current = null;
   neuronsSyncFailure.error = null;
   neuronDailyBackfillFailure.error = null;
   neuronsSyncPruneRows.current = [];
@@ -2543,7 +2576,8 @@ test("GET /api/v1/validators/:hotkey carries realized_return_* scoped to that ho
   expect(body.realized_return_1w).toBeNull();
   expect(body.realized_return_1m).toBe(0); // (1500-1500)/1500 -- confirmed zero
   // The detail route scopes the baseline scan to the requested hotkey.
-  expect(queryText()).toMatch(/AND hotkey = \?/);
+  // Table-aliased since #9051 joined subnet_snapshots for the price.
+  expect(queryText()).toMatch(/AND nd\.hotkey = \?/);
 });
 
 const IDENTITY_ROW = {
@@ -2731,6 +2765,8 @@ test("GET /api/v1/validators/:hotkey joins nominator_count from validator_nomina
 });
 
 test("GET /api/v1/validators computes apy_estimate from a subnet_hyperparams tempo join (#2551)", async () => {
+  // #9051: unit prices keep this test's pre-pricing arithmetic.
+  alphaPriceRows.current = [{ netuid: 3, alpha_price_tao: 1 }];
   mockQueue.current = [
     [], // sql.begin's leading `SET statement_timeout`
     [
@@ -2775,6 +2811,8 @@ test("GET /api/v1/validators still serves the primary rows when the subnet_hyper
 });
 
 test("GET /api/v1/validators/:hotkey computes apy_estimate from a subnet_hyperparams tempo join (#2551)", async () => {
+  // #9051: unit prices keep this test's pre-pricing arithmetic.
+  alphaPriceRows.current = [{ netuid: 3, alpha_price_tao: 1 }];
   mockQueue.current = [
     [], // sql.begin's leading `SET statement_timeout`
     [
