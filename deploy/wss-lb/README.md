@@ -1,5 +1,14 @@
 # WSS load balancer (ADR 0013)
 
+> **This Node service no longer serves production.** `wss.metagraph.sh` is served
+> by the `metagraphed-wss-lb` Worker (`workers/wss-lb.ts`,
+> `wrangler.wss-lb.jsonc`) — see [Worker deployment](#worker-deployment) below.
+> The source here is kept because the Worker imports `src/select.ts` and
+> `src/rpc-policy.ts` from it unchanged, so the routing decision and the
+> read-only RPC policy are literally the same code, tested by the same suite,
+> before and after the move. `src/server.ts` and `src/proxy.ts` are the retired
+> Node runtime around them.
+
 A health-aware **WebSocket** reverse proxy that fans client connections out
 across the registry's healthy `subtensor-wss` endpoints — the cosmos.directory-
 style shared endpoint for the protocol the Cloudflare HTTP proxy can't serve
@@ -32,7 +41,33 @@ client ──wss──▶  wss-lb  ──wss──▶  healthiest registered sub
 - `GET /healthz` — `{ ok, pools: {finney: N, …}, last_refresh_ms }` (503 when the
   pool refresh is stale; wired to Railway's healthcheck).
 
-## Run
+## Worker deployment
+
+Production is `workers/wss-lb.ts` on `wrangler.wss-lb.jsonc`, reached through a
+zone **route** (`wss.metagraph.sh/*`) rather than a custom domain — see that
+file's own comment for why the route is what made the move off Railway
+reversible without a DNS propagation window.
+
+```bash
+npm run deploy:wss-lb
+```
+
+Two behaviours differ from the Node service above, both deliberate and both
+documented at their definitions in `workers/wss-lb.ts`:
+
+- **Per-IP concurrency** (`MAX_CONNECTIONS_PER_IP`) is gone. It counted in one
+  process's memory, which cannot work across many isolates in many colos — it
+  would have enforced nothing while appearing to. The connect-rate budget
+  survives, as a Rate Limiting binding.
+- **`last_refresh_ms`** is absent from the health body. It reported a background
+  refresh loop the Worker does not have (pools are read per request through the
+  edge cache), so any value would be invented.
+
+Note this Worker is **not** wired into Cloudflare Workers Builds, so unlike
+`metagraphed` it does not redeploy on a push to `main` — it ships with the
+command above.
+
+## Run (retired Node service)
 
 ```bash
 cd deploy/wss-lb && npm install && npm start        # local

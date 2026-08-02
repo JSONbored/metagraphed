@@ -34,6 +34,7 @@ import {
   selectWssUpstreams,
   type PoolsArtifact,
 } from "../deploy/wss-lb/src/select.ts";
+import { MAX_RPC_BODY_BYTES } from "../deploy/wss-lb/src/rpc-policy.ts";
 
 export interface WssLbEnv {
   // Where the pools artifact is read from. Not hardcoded so a staging
@@ -100,6 +101,45 @@ export async function loadPools(
   }
 }
 
+// Readiness, not liveness. The Node service keyed its health on the STATUS CODE
+// (503 once the pool went stale) precisely because a proxy with no reachable
+// upstream is not serving, and this is the one signal an external monitor gets:
+// answering a flat 200 would report the exact outage this service exists to
+// route around as healthy. So the same question the connect path asks -- can
+// selection actually produce an upstream? -- is asked here.
+//
+// `last_refresh_ms` from the Node service's body is deliberately NOT carried
+// over rather than filled with a placeholder: that number reported a background
+// refresh loop this Worker does not have (pools are read per-request through the
+// edge cache), so any value here would be invented. Omitted, per the same rule
+// applied to the embedding token count in #8979.
+export async function healthResponse(
+  env: WssLbEnv,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
+  const networks = networksOf(env);
+  const pools = await loadPools(env, fetchImpl);
+  // No artifact at all is the same condition the connect path turns into a 503,
+  // and it is distinct from a fetched-but-empty pool -- reported separately so a
+  // monitor can tell "the registry is unreachable" from "every endpoint is down".
+  const stale = pools === null;
+  const maxBlockLag = intOf(env.MAX_BLOCK_LAG, DEFAULT_MAX_BLOCK_LAG);
+  const counts: Record<string, number> = {};
+  for (const network of networks) {
+    counts[network] = selectWssUpstreams(pools, network, {
+      maxBlockLag,
+    }).length;
+  }
+  // "Every network is empty", not "any" -- one network degraded while the other
+  // serves is a real, partially-working state, and 503-ing the whole proxy for it
+  // would take down the healthy network's traffic on a monitor's say-so.
+  const ok = !stale && !networks.every((network) => counts[network] === 0);
+  return json(
+    { ok, stale, service: "wss-lb", networks, pools: counts },
+    ok ? 200 : 503,
+  );
+}
+
 // Dial one upstream. Returns the accepted socket, or null so the caller can try
 // the next candidate -- a failed handshake is expected during an endpoint
 // outage and must not abort the whole connect.
@@ -128,6 +168,23 @@ export async function dialUpstream(
   }
 }
 
+// The Node service capped inbound client frames at the protocol layer
+// (`new WebSocketServer({ maxPayload: MAX_RPC_BODY_BYTES })`), which a Worker
+// has no equivalent knob for -- so the cap is applied here instead, or it is
+// simply gone and one client can push arbitrarily large frames through us at an
+// upstream's expense.
+//
+// Wire BYTES, like maxPayload counted, not String.length: a multi-byte UTF-8
+// body would otherwise slip past a character count at up to 4x the cap. The
+// encode is skipped in both directions where the answer is already decided by
+// length alone, so the common small-JSON-RPC frame never pays for it.
+export function exceedsFrameCap(data: string | ArrayBuffer): boolean {
+  if (typeof data !== "string") return data.byteLength > MAX_RPC_BODY_BYTES;
+  if (data.length > MAX_RPC_BODY_BYTES) return true;
+  if (data.length * 4 <= MAX_RPC_BODY_BYTES) return false;
+  return new TextEncoder().encode(data).byteLength > MAX_RPC_BODY_BYTES;
+}
+
 // Bidirectional pipe. Either side closing or erroring tears down the other --
 // a half-open socket is worse than a closed one here, because a JSON-RPC client
 // waiting on a subscription that can no longer arrive will wait forever.
@@ -149,8 +206,17 @@ export function pipe(client: WebSocket, upstream: WebSocket): void {
   };
 
   client.addEventListener("message", (event) => {
+    const data = (event as MessageEvent).data as string | ArrayBuffer;
+    // 1009 (message too big) rather than dropping the frame silently: a client
+    // whose request never reaches an upstream would otherwise wait forever on a
+    // response that is never coming. Same close-the-connection behaviour
+    // `maxPayload` had.
+    if (exceedsFrameCap(data)) {
+      teardown(1009, "frame exceeds max size");
+      return;
+    }
     try {
-      upstream.send((event as MessageEvent).data as string | ArrayBuffer);
+      upstream.send(data);
     } catch {
       teardown(1011, "upstream send failed");
     }
@@ -208,11 +274,18 @@ export async function handleWssLbRequest(
   const makeUpgradeResponse = deps.makeUpgradeResponse ?? upgradeResponse;
   const url = new URL(request.url);
 
-  if (url.pathname === "/health" || url.pathname === "/") {
-    return json(
-      { ok: true, service: "wss-lb", networks: networksOf(env) },
-      200,
-    );
+  // /healthz is the DEPLOYED contract -- it is what railway.json's
+  // healthcheckPath points at and what the live service has answered on
+  // wss.metagraph.sh since it shipped, so anything already watching this service
+  // is watching that path. Renaming it to /health as part of the port would have
+  // silently 404'd every existing monitor the moment the route moved. /health is
+  // kept as the name the rest of this codebase uses.
+  if (
+    url.pathname === "/healthz" ||
+    url.pathname === "/health" ||
+    url.pathname === "/"
+  ) {
+    return healthResponse(env, fetchImpl);
   }
 
   const network = url.pathname.replace(/^\/+/, "").split("/")[0];

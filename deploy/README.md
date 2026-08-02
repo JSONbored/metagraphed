@@ -20,7 +20,7 @@ Chain → pruned fullnode subtensor-node ────────┴→ indexer-
                                                           │
                                                           ▼
                               CF Durable Object firehose (SSE/WS/GraphQL-subs) + alerter (#4984)
-Railway: wss-lb only (everything else that used to run there has moved to the boxes or Cloudflare)
+Railway: retired (wss-lb, the last service, is now the metagraphed-wss-lb Worker)
 R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 ```
 
@@ -28,8 +28,8 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 
 Three dedicated bare-metal boxes (Latitude.sh, real hostnames/IPs live only in
 the private `metagraphed-infra` Ansible inventory — never in this repo), plus
-Cloudflare edge and one Railway service. Verified directly against the running
-infrastructure, not inherited from prior docs:
+Cloudflare edge. Verified directly against the running infrastructure, not
+inherited from prior docs:
 
 | Tier                 | Where                                               | Pieces                                                                                                                                                                                                                                                                                                                               |
 | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -37,29 +37,28 @@ infrastructure, not inherited from prior docs:
 | Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data), Redis (cursor state). `indexer-rs-backfill` (sharded historical backfill) and `indexer-rs-tail` (the auto-following gap-closer) are **running** against the archive node's own RPC. |
 | Archive box (owned)  | dedicated bare-metal, separate from the indexer box | `subtensor` full archive node (`--pruning=archive --sync=full`). **Still syncing** — not yet at chain tip.                                                                                                                                                                                                                           |
 | Fullnode box (owned) | dedicated bare-metal, third box                     | `subtensor` **pruned**, warp-synced node. This, not the archive node, is `indexer-rs`'s current live-follow RPC source (`EVENTS_RPC_URL`) — it reached chain tip fast and isn't competing with the archive node's own sync for I/O.                                                                                                  |
-| Railway              | `wss-lb` only                                       | Everything else that previously ran on Railway (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) has moved to the boxes above or been retired; `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.                                                                               |
+| Railway              | **none — retired**                                  | `wss-lb`, the last service, moved to the `metagraphed-wss-lb` Worker; everything before it (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) had already moved to the boxes above or been retired. `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.                           |
 
 There is no Hetzner escape hatch — ADR 0013's "Railway core, Hetzner escape
 hatch" framing described a plan overtaken by events; the team went straight to
 bare metal instead.
 
-## Railway: `wss-lb`, the only service left
+## Railway: retired
 
 The `metagraphed-core` Railway project once held `postgres`/`redis`/`indexer`
-too (ADR 0013's topology); all of that has since moved to the dedicated boxes
-above, leaving `wss-lb` as the project's only service — verified live via
-`railway status` (production environment, `wss-lb` online at
-`https://wss.metagraph.sh`).
+(ADR 0013's topology); all of that moved to the dedicated boxes above, leaving
+`wss-lb` as the last service. That one is now the `metagraphed-wss-lb` Worker
+(`workers/wss-lb.ts`, `wrangler.wss-lb.jsonc`), so **the Railway dependency is
+gone entirely** — there is no longer a Railway account in the serving path.
 
-- **Config-as-code**: `wss-lb`'s Railway service reads `/deploy/wss-lb/railway.json`
-  (Railway does **not** auto-discover it from a subdirectory — set the
-  service's **Settings → Config-as-code → "Railway Config File"** to that
-  **absolute** repo-root path; it does **not** follow Root Directory).
-  Builds its Dockerfile from the **repo-root** build context (leave Root
-  Directory unset) and scopes redeploys with `watchPatterns`, so an unrelated
-  merge never triggers a pointless rebuild.
-- `wss-lb`'s own provisioning detail lives in
-  [`deploy/wss-lb/README.md`](wss-lb/README.md).
+`wss.metagraph.sh` is served through a Worker zone **route** rather than a
+custom domain; `wrangler.wss-lb.jsonc`'s own comment explains why that is what
+let the move happen without a DNS propagation window. Provisioning detail lives
+in [`deploy/wss-lb/README.md`](wss-lb/README.md).
+
+`deploy/wss-lb/railway.json` and `Dockerfile` are left in place as the retired
+service's build config — dead as deployment inputs, kept only so the Node
+service that `src/select.ts` was extracted from stays runnable and readable.
 
 ## Bare-metal bring-up
 
