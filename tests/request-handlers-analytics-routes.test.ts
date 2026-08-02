@@ -531,6 +531,64 @@ describe("handleUptime", () => {
     assert.deepEqual(body.data.surfaces, []);
   });
 
+  test("serves day rows from the D1 binding on a tier miss", async () => {
+    const rows = [
+      {
+        surface_id: "sn7-docs",
+        surface_key: "7|docs|https://example.com/docs",
+        day: "2026-08-01",
+        samples: 96,
+        ok_count: 96,
+        uptime_ratio: 1,
+        avg_latency_ms: 100,
+        latency_sample_count: 96,
+        p50: 90,
+        p95: 200,
+        p99: 250,
+        status: "ok",
+      },
+    ];
+    const env = mockEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({ all: async () => ({ results: rows }) }),
+        }),
+      },
+    });
+    const body = await json(
+      await handleUptime(
+        req("/"),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/uptime`),
+      ),
+    );
+    assert.equal((body.data.surfaces as unknown[]).length, 1);
+  });
+
+  test("a throwing D1 binding still serves the schema-stable empty payload", async () => {
+    const env = mockEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => {
+              throw new Error("d1 down");
+            },
+          }),
+        }),
+      },
+    });
+    const body = await json(
+      await handleUptime(
+        req("/"),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/uptime`),
+      ),
+    );
+    assert.deepEqual(body.data.surfaces, []);
+  });
+
   test("rejects unknown window values", async () => {
     const res = await handleUptime(
       req("/"),
