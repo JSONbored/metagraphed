@@ -25,6 +25,7 @@ import {
   triggerMatchesEvent,
   type EvaluatorAlertTrigger,
 } from "../src/alert-triggers.ts";
+import { recordUsageEvent } from "../src/usage-telemetry.ts";
 import { buildDeregRiskSnapshot } from "../src/dereg-risk.ts";
 import {
   mapBounded,
@@ -780,6 +781,26 @@ export class AlerterHub implements DurableObject {
             responseSnippet: null,
           });
         }
+        // #8997: a delivery hub that silently stops delivering is the classic
+        // Durable Object failure -- and this class had no telemetry at all.
+        //
+        // FAILURES ONLY, deliberately. evaluate() runs once per chain event, so
+        // a per-evaluation or even per-delivery event would scale with chain
+        // activity on a project already ~33x over its PostHog free tier
+        // (#9004). A failed delivery is bounded by how often an endpoint is
+        // actually broken, which is the thing worth paying to see.
+        //
+        // Per-delivery outcomes ARE already recorded -- into
+        // chain_alert_deliveries on the self-hosted Postgres. That box is
+        // decommissioned 2026-08-03, at which point this becomes the only
+        // signal rather than a duplicate one.
+        if (!succeeded) {
+          this.emitTelemetry({
+            route: "alerter-hub:deliver",
+            ok: false,
+            durationMs: Date.now() - now,
+          });
+        }
         if (succeeded) return;
         // Roll back the optimistic set above: a delivery that did NOT
         // succeed must not consume the rate-limit window, so the VERY NEXT
@@ -814,6 +835,29 @@ export class AlerterHub implements DurableObject {
       delivered: toDeliver.length,
       rate_limited: rateLimited,
     };
+  }
+
+  /**
+   * Fire-and-forget telemetry. A Durable Object has no ExecutionContext, so
+   * this uses DurableObjectState.waitUntil where the runtime provides it and
+   * otherwise lets the promise run detached -- never awaited, and never able
+   * to fail the evaluation ChainFirehoseHub's broadcast() is waiting on.
+   */
+  private emitTelemetry(event: {
+    route: string;
+    ok: boolean;
+    durationMs: number;
+  }): void {
+    try {
+      const pending = Promise.resolve(recordUsageEvent(this.env, event)).catch(
+        () => false,
+      );
+      (
+        this.state as unknown as { waitUntil?: (p: Promise<unknown>) => void }
+      ).waitUntil?.(pending);
+    } catch {
+      // Telemetry must never surface into the alerting path.
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
