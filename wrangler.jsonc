@@ -248,7 +248,11 @@
     // unambiguous proof the new pipeline (workers/data-api.ts's
     // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
-    "METAGRAPH_NEURONS_SOURCE": "retired",
+    // "d1", not "retired": the neurons D1 dispatcher lives in DATA_API (behind
+    // its Hyperdrive gate), so this flag must still FORWARD there -- see
+    // DATA_API_D1_FLAGS in workers/postgres-tier.ts. "retired" would make the
+    // fully-seeded D1 tables unreachable and serve empties.
+    "METAGRAPH_NEURONS_SOURCE": "d1",
     // top-holders (#6741/#6743): no D1 predecessor ever existed for this route
     // (account_balances/nominator_positions are Postgres-only tables) -- this
     // flag exists purely to reuse tryPostgresTier's proven fail-closed-to-

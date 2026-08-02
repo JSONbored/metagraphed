@@ -36,6 +36,56 @@ test("tryPostgresTier: flag not set to 'postgres' returns null without touching 
   assert.equal(currentPostgresTierFallbackGeneration(), before);
 });
 
+test("tryPostgresTier: a DATA_API-D1 flag set to 'd1' FORWARDS to DATA_API", async () => {
+  // The neurons dispatcher lives in DATA_API ahead of its Hyperdrive gate, so
+  // "d1" on this flag must still forward -- short-circuiting here would make
+  // the fully-seeded D1 tables unreachable and serve empties.
+  let called = false;
+  const env = mockEnv({
+    METAGRAPH_NEURONS_SOURCE: "d1",
+    DATA_API: dataApi(async () => {
+      called = true;
+      return Response.json({ data: { neurons: [1] } });
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_NEURONS_SOURCE");
+  assert.equal(called, true);
+  assert.deepEqual(result, { data: { neurons: [1] } });
+});
+
+test("tryPostgresTier: 'd1' on a NON-DATA-API-D1 flag still short-circuits", async () => {
+  // Health and subnet-snapshot D1 loaders live in THIS worker; forwarding
+  // their "d1" to DATA_API would hit Postgres-only legs there. The allowlist
+  // is per-flag on purpose.
+  let called = false;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "d1",
+    DATA_API: dataApi(async () => {
+      called = true;
+      return Response.json({});
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(result, null);
+  assert.equal(called, false);
+});
+
+test("tryPostgresTier: 'retired' on the neurons flag short-circuits too", async () => {
+  let called = false;
+  const env = mockEnv({
+    METAGRAPH_NEURONS_SOURCE: "retired",
+    DATA_API: dataApi(async () => {
+      called = true;
+      return Response.json({});
+    }),
+  });
+  assert.equal(
+    await tryPostgresTier(env, req(), "METAGRAPH_NEURONS_SOURCE"),
+    null,
+  );
+  assert.equal(called, false);
+});
+
 test("tryPostgresTier: no DATA_API binding falls back and bumps the fallback generation", async () => {
   const before = currentPostgresTierFallbackGeneration();
   const env = mockEnv({ METAGRAPH_BLOCKS_SOURCE: "postgres" });
