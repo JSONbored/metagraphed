@@ -130,3 +130,60 @@ test("a handled toolError (e.g. an unknown resource URI) never reaches PostHog",
     globalThis.fetch = original;
   }
 });
+
+// #8995: the `isNotification` early-return used to sit ABOVE the $exception
+// capture, so a notification whose dispatch threw produced no event, no
+// console.error, and a 202. That is the worst place to lose a fault — a
+// notification has no response for the CLIENT to inspect either, by definition,
+// so server-side capture is the only signal that can ever exist for it.
+//
+// The early return was right about the RESPONSE and wrong about the CAPTURE.
+// Those are separate decisions that had been collapsed onto one line.
+//
+// HONEST SCOPE NOTE: the internal-fault branch has no reachable path through
+// the public API today. Every handler a notification actually invokes either
+// captures and returns its own isError result (dispatchTool) or throws a
+// toolError, which returns before the capture by design. The fix is therefore
+// defensive — it removes a trap rather than closing a live hole. What IS
+// reachable, and asserted below, is that the toolError path stays uncaptured
+// on the notification side exactly as it does for a request.
+test("#8995: a NOTIFICATION carrying a handled toolError posts no $exception", async () => {
+  const original = globalThis.fetch;
+  const posted: Row[] = [];
+  globalThis.fetch = (async (
+    url: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
+    return { ok: true };
+  }) as unknown as typeof fetch;
+  const waited: Promise<unknown>[] = [];
+  try {
+    const response = await handleMcpRequest(
+      new Request("https://metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // No `id` — a notification. No session header either, so
+        // subscribeResource throws its invalid_params toolError.
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "resources/subscribe",
+          params: { uri: "metagraph://chain/stream" },
+        }),
+      }),
+      { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" } as unknown as Env,
+      { executionCtx: { waitUntil: (p: Promise<unknown>) => waited.push(p) } },
+    );
+    await Promise.all(waited);
+
+    // Still no reply, and still no $exception: a handled toolError is an
+    // expected outcome, not a fault, on both sides of the id/no-id split.
+    assert.equal(response.status, 202);
+    assert.deepEqual(
+      posted.filter((p) => p.body.event === "$exception"),
+      [],
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
