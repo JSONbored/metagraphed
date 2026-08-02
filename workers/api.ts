@@ -359,6 +359,8 @@ import {
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
   ACCOUNT_EVENTS_ROLLUP_CRON,
+  FRESHNESS_WATCHDOG_CRON,
+  FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
   ABUSE_SCAN_CRON,
   UPGRADE_RADAR_CRON,
@@ -424,6 +426,7 @@ import {
   WEBHOOK_TTL_SECONDS,
 } from "./config.ts";
 import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
+import { evaluateFreshness, shouldReport } from "../src/freshness-watchdog.ts";
 import { buildNetworksPayload } from "../src/network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
 import {
@@ -676,6 +679,77 @@ export async function runUpgradeRadarScan(env: Env, ctx?: Ctx) {
     };
   } catch {
     // A tick that cannot run is one stale capture, not an outage.
+    return { ok: false, reason: "unreachable" };
+  }
+}
+
+// Hourly freshness watchdog tick.
+//
+// Reads the freshness artifact the build already writes and compares every
+// source against the staleness policy that source declares for ITSELF -- see
+// src/freshness-watchdog.ts for why that is the signal worth alarming on, and
+// why this is the one alarm that survives the boxes.
+//
+// Degrades to a no-op rather than throwing when the artifact or the KV binding
+// is missing: a watchdog that can take the Worker's cron down with it is a
+// liability, and a missed tick is one missed report.
+export async function runFreshnessWatchdog(
+  env: Env,
+  ctx?: Ctx,
+  deps: { readArtifact?: ArtifactReader } = {},
+) {
+  const startedAt = Date.now();
+  const readArtifactFn = (deps.readArtifact ??
+    (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
+  try {
+    const artifact = (await readArtifactFn(
+      env,
+      "/metagraph/freshness.json",
+    )) as { sources?: unknown } | null;
+    if (!artifact) return { ok: false, reason: "artifact_unavailable" };
+
+    const verdict = evaluateFreshness(artifact.sources, Date.now());
+    // No KV means no memory of what was already reported. Report anyway rather
+    // than going silent -- a noisy alarm beats an absent one, and this is the
+    // only alarm left.
+    const kv = env.METAGRAPH_CONTROL;
+    const last = kv?.get
+      ? await kv.get(FRESHNESS_WATCHDOG_STATE_KEY).catch(() => null)
+      : null;
+    const report = shouldReport(verdict, last);
+
+    if (report) {
+      const pending = recordUsageEvent(env, {
+        route: "freshness-watchdog",
+        // `ok` describes whether the TICK ran, not whether the data is fresh --
+        // the staleness itself is carried by the fields below, and marking a
+        // successful check as a failure would make the watchdog look broken
+        // every time it correctly found something.
+        ok: true,
+        durationMs: Date.now() - startedAt,
+      }).catch(() => false);
+      if (typeof ctx?.waitUntil === "function") ctx.waitUntil(pending);
+      if (kv?.put) {
+        await kv
+          .put(FRESHNESS_WATCHDOG_STATE_KEY, verdict.signature)
+          .catch(() => undefined);
+      }
+    }
+
+    return {
+      ok: true,
+      checked: verdict.checked,
+      skipped: verdict.skipped,
+      stale_count: verdict.stale.length,
+      critical_count: verdict.critical.length,
+      reported: report,
+      // Bounded: a total publish stall makes EVERY source stale at once, and an
+      // alert body listing all of them is one nobody reads.
+      critical: verdict.critical.slice(0, 10),
+      stale: verdict.stale.slice(0, 10),
+    };
+  } catch {
+    // A tick that cannot run is one missed report, not an outage.
     return { ok: false, reason: "unreachable" };
   }
 }
@@ -1191,6 +1265,12 @@ export async function handleScheduled(
   if (cron === UPGRADE_RADAR_CRON) {
     // #8702: capture GitHub's release/BIT state and report a new testnet soak.
     return runUpgradeRadarScan(env, ctx);
+  }
+  if (cron === FRESHNESS_WATCHDOG_CRON) {
+    // The alarm that replaces the box-side monitoring stack: notice when a
+    // publish lane stops moving, which serving a 200 from stale artifacts
+    // otherwise hides completely.
+    return runFreshnessWatchdog(env, ctx);
   }
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
     // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,

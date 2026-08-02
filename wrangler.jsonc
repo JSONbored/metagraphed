@@ -589,6 +589,11 @@
       // UPGRADE_RADAR_CRON in workers/config.ts for why the cadence is fixed
       // by GitHub's unauthenticated rate limit rather than by the chain.
       "7,37 * * * *",
+      // 23 = hourly freshness watchdog. The alarm that replaces the indexer
+      // box's Prometheus/Alertmanager pair and the cross-box dead-man's-switch,
+      // which do not survive the boxes -- see FRESHNESS_WATCHDOG_CRON in
+      // workers/config.ts and src/freshness-watchdog.ts's header.
+      "23 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

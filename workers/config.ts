@@ -37,6 +37,22 @@ export const UPGRADE_RADAR_CRON = "7,37 * * * *";
 // don't tick on the same minute. Must match a wrangler.jsonc cron entry.
 export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
 
+// Freshness watchdog (src/freshness-watchdog.ts) -- the alarm that replaces the
+// box-side Prometheus/Alertmanager pair and the cross-box dead-man's-switch,
+// neither of which survives the boxes (that design was peers watching peers,
+// and there are no peers left).
+//
+// Hourly, offset to :23 so it does not share a minute with the top-of-hour
+// prune (0), the rollup (17), or the radar (7,37). Hourly is the right cadence
+// because the TIGHTEST limit any source declares for itself is 12 hours -- a
+// finer tick would re-ask a question whose answer cannot have changed, and the
+// watchdog's own de-dup (shouldReport) means a standing stall stays quiet after
+// the first tick regardless. Must match a wrangler.jsonc cron entry.
+export const FRESHNESS_WATCHDOG_CRON = "23 * * * *";
+// KV key holding the last-reported staleness signature, so a standing outage is
+// announced when it starts and when it changes rather than every hour forever.
+export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";
+
 // #8600: TAO/USD index tick. Every minute, which is ADR 0025 decision 5's
 // cadence and also Cloudflare's finest cron granularity -- the 300s staleness
 // threshold in the same decision assumes it, giving a reading four ticks of
