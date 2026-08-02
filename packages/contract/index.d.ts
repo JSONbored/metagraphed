@@ -9006,7 +9006,7 @@ export interface components {
                 archive_support?: boolean | null;
                 auth_required?: boolean;
                 /** @enum {string} */
-                health_source: "probe-derived" | "missing-probe" | "not-monitored";
+                health_source: "probe-derived" | "missing-probe" | "not-monitored" | "live-cron-prober";
                 health_stale: boolean;
                 id: string;
                 kind?: components["schemas"]["SurfaceKind"];

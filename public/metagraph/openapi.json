@@ -33736,7 +33736,8 @@
                   "enum": [
                     "probe-derived",
                     "missing-probe",
-                    "not-monitored"
+                    "not-monitored",
+                    "live-cron-prober"
                   ],
                   "type": "string"
                 },

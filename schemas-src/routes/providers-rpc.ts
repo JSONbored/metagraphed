@@ -201,7 +201,24 @@ const RpcPoolEndpointSchema = z
     archive_support: z.boolean().nullable().optional(),
     latency_ms: z.int().min(0).nullable().optional(),
     observed_at: z.string().nullable(),
-    health_source: z.enum(["probe-derived", "missing-probe", "not-monitored"]),
+    // The first three are what the BUILD emits (endpoint-artifacts.ts).
+    // `live-cron-prober` is injected at SERVE time by overlayRpcPoolEligibility,
+    // which replaces each pool endpoint's health from the 15-minute cron
+    // snapshot -- so it is the value the majority of this route's endpoints
+    // actually carry, and omitting it made 15 of 20 fail their own schema
+    // (#9138).
+    //
+    // `unavailable` is deliberately NOT here. overlayEndpointHealth emits it
+    // for a surface with no live reading, but overlayRpcPoolEligibility returns
+    // such an endpoint untouched (`if (!live) return endpoint`), so this route
+    // cannot produce it. Widening past what the producer emits would stop this
+    // enum catching the next drift.
+    health_source: z.enum([
+      "probe-derived",
+      "missing-probe",
+      "not-monitored",
+      "live-cron-prober",
+    ]),
     health_stale: z.boolean(),
     last_ok: z.string().nullable(),
     latest_block: z.int().min(0).nullable().optional(),
