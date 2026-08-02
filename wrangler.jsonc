@@ -258,6 +258,28 @@
     // spans/month on an account already ~33x over its event allowance (#9004).
     // Raise REST once that volume is dealt with; it is a config change.
     "POSTHOG_TRACES_SAMPLE_RATE_MCP": "1",
+    // usage_event sampling, sized against the 1M/MONTH free tier. See
+    // src/usage-telemetry.ts's sampling header for the mechanism (and for
+    // what is never sampled: failures and MCP tool calls).
+    //
+    // THE ARITHMETIC, measured 2026-08-02 after #9004/#9005 removed ~1.1M
+    // events/day of self-inflicted traffic:
+    //   block-detail   ~465K/day  (85.5% of all usage events, on its own)
+    //   everything else ~80K/day
+    //   -> 545K/day = 16.4M/month against a 1M/month allowance.
+    // Exceeding the allowance does not bill, it DROPS events -- and drops
+    // them indiscriminately, so an unsampled firehose takes $exception down
+    // with it. Sampling the firehose is what keeps the error inbox alive.
+    //
+    // At the rates below:
+    //   block-detail   465K x 0.01 = ~4.7K/day
+    //   everything else 80K x 0.2  = ~16K/day
+    //   -> ~21K/day = ~630K/month, plus ~60K/month of unsampled MCP events
+    //      and ~6K/month of $exception: ~700K/month, ~30% under the tier.
+    // Re-derive these two numbers when the traffic shape moves again (it has
+    // twice: chain-firehose-ingest, then block-detail).
+    "POSTHOG_USAGE_SAMPLE_RATE": "0.2",
+    "POSTHOG_USAGE_SAMPLE_RATES": "{\"block-detail\":0.01}",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started

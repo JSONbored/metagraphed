@@ -18,6 +18,9 @@ import {
   recordMcpToolsListEvent,
   recordUsageEvent,
   resolvePostHogHost,
+  resolveUsageSampleRate,
+  POSTHOG_USAGE_SAMPLE_RATE_ENV,
+  POSTHOG_USAGE_SAMPLE_RATES_ENV,
   statusClassOf,
   usageEventProperties,
 } from "../src/usage-telemetry.ts";
@@ -2128,5 +2131,238 @@ describe("normalizeExceptionMessage", () => {
       normalizeExceptionMessage("deadbeef.example.com failed"),
       "deadbeef.example.com failed",
     );
+  });
+});
+
+describe("usage_event sampling (free-tier budget)", () => {
+  const token = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  test("unsampled by default, so no test's call counts turn flaky", () => {
+    assert.equal(
+      resolveUsageSampleRate(mockEnv(token), { ok: true, durationMs: 1 }),
+      1,
+    );
+  });
+
+  test("the deployment default applies to a route with no override", () => {
+    const env = mockEnv({ ...token, [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.2" });
+    assert.equal(
+      resolveUsageSampleRate(env, {
+        route: "subnets",
+        ok: true,
+        durationMs: 1,
+      }),
+      0.2,
+    );
+    assert.equal(
+      resolveUsageSampleRate(env, { ok: true, durationMs: 1 }),
+      0.2,
+      "an event with no route still gets the default",
+    );
+  });
+
+  test("a per-route override beats the default", () => {
+    const env = mockEnv({
+      ...token,
+      [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.2",
+      [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"block-detail":0.01}',
+    });
+    assert.equal(
+      resolveUsageSampleRate(env, {
+        route: "block-detail",
+        ok: true,
+        durationMs: 1,
+      }),
+      0.01,
+    );
+    assert.equal(
+      resolveUsageSampleRate(env, { route: "health", ok: true, durationMs: 1 }),
+      0.2,
+      "a route absent from the map falls back to the default",
+    );
+  });
+
+  test("failures and MCP tool calls are NEVER sampled", () => {
+    const env = mockEnv({
+      ...token,
+      [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.01",
+      [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"block-detail":0.01}',
+    });
+    assert.equal(
+      resolveUsageSampleRate(env, {
+        route: "block-detail",
+        ok: false,
+        durationMs: 1,
+      }),
+      1,
+      "a rare failure must never be sampled away",
+    );
+    assert.equal(
+      resolveUsageSampleRate(env, {
+        mcpTool: "get_subnet",
+        ok: true,
+        durationMs: 1,
+      }),
+      1,
+      "MCP is the product signal and is low-volume",
+    );
+  });
+
+  test("a malformed or out-of-range rate degrades to unsampled, never to zero", () => {
+    for (const bad of ["", "  ", "abc", "-0.5", "1.5", "NaN"]) {
+      assert.equal(
+        resolveUsageSampleRate(
+          mockEnv({ ...token, [POSTHOG_USAGE_SAMPLE_RATE_ENV]: bad }),
+          { ok: true, durationMs: 1 },
+        ),
+        1,
+        `rate "${bad}" should fall back to unsampled`,
+      );
+    }
+  });
+
+  test("a malformed override map is ignored, and every route keeps the default", () => {
+    for (const bad of ['{"block-detail":', "[1,2,3]", "null", '"a string"']) {
+      assert.equal(
+        resolveUsageSampleRate(
+          mockEnv({
+            ...token,
+            [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.5",
+            [POSTHOG_USAGE_SAMPLE_RATES_ENV]: bad,
+          }),
+          { route: "block-detail", ok: true, durationMs: 1 },
+        ),
+        0.5,
+        `map "${bad}" should be ignored`,
+      );
+    }
+  });
+
+  test("an out-of-range entry inside the map is dropped, others survive", () => {
+    const env = mockEnv({
+      ...token,
+      [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.5",
+      [POSTHOG_USAGE_SAMPLE_RATES_ENV]:
+        '{"block-detail":2,"health":0.1,"subnets":"x"}',
+    });
+    assert.equal(
+      resolveUsageSampleRate(env, {
+        route: "block-detail",
+        ok: true,
+        durationMs: 1,
+      }),
+      0.5,
+    );
+    assert.equal(
+      resolveUsageSampleRate(env, { route: "health", ok: true, durationMs: 1 }),
+      0.1,
+    );
+    assert.equal(
+      resolveUsageSampleRate(env, {
+        route: "subnets",
+        ok: true,
+        durationMs: 1,
+      }),
+      0.5,
+    );
+  });
+
+  test("the parsed map is reused across calls with the same raw value", () => {
+    const env = mockEnv({
+      ...token,
+      [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"health":0.25}',
+    });
+    const first = resolveUsageSampleRate(env, {
+      route: "health",
+      ok: true,
+      durationMs: 1,
+    });
+    const second = resolveUsageSampleRate(env, {
+      route: "health",
+      ok: true,
+      durationMs: 1,
+    });
+    assert.equal(first, 0.25);
+    assert.equal(second, 0.25);
+  });
+
+  test("a sampled-out event never reaches the capture endpoint", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordUsageEvent(
+      mockEnv({ ...token, [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.2" }),
+      { route: "block-detail", ok: true, durationMs: 5 },
+      {
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+        random: () => 0.9,
+      },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls.length, 0);
+  });
+
+  test("a sampled-in event carries its weight so counts can be scaled back up", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordUsageEvent(
+      mockEnv({ ...token, [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.2" }),
+      { route: "block-detail", ok: true, durationMs: 5 },
+      {
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+        random: () => 0.1,
+      },
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls.length, 1);
+    assert.equal((calls[0].body as Row).properties.sample_rate, 0.2);
+  });
+
+  test("an unsampled event omits sample_rate entirely", async () => {
+    const calls: Row[] = [];
+    await recordUsageEvent(
+      mockEnv(token),
+      { route: "block-detail", ok: true, durationMs: 5 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(
+      "sample_rate" in (calls[0].body as Row).properties,
+      false,
+      "no sample_rate keeps every pre-existing dashboard query correct",
+    );
+  });
+
+  test("without an injected source the gate uses Math.random", async () => {
+    const calls: Row[] = [];
+    const realRandom = Math.random;
+    let used = false;
+    Math.random = () => {
+      used = true;
+      return 0.05;
+    };
+    try {
+      const recorded = await recordUsageEvent(
+        mockEnv({ ...token, [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.2" }),
+        { route: "block-detail", ok: true, durationMs: 5 },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      );
+      assert.equal(used, true, "the real Math.random is the default source");
+      assert.equal(recorded, true);
+      assert.equal((calls[0].body as Row).properties.sample_rate, 0.2);
+    } finally {
+      Math.random = realRandom;
+    }
+  });
+
+  test("a malformed event is still rejected as malformed, never as sampled-out", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordUsageEvent(
+      mockEnv({ ...token, [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.2" }),
+      { route: "block-detail", durationMs: 5 } as never,
+      {
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+        random: () => 0.01,
+      },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls.length, 0);
   });
 });
