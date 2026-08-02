@@ -10167,6 +10167,176 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /boolean/);
   });
 
+  // #9082. The `fields` enum these three tools publish is decorative at
+  // dispatch on its own (#8942), so every one of these cases is the runtime
+  // guard doing the work the schema only advertises -- which is also what
+  // tests/mcp-schema-enforcement.test.ts holds every published enum to.
+  describe("fields= projection (#9082)", () => {
+    function neuronsEnv(payload: Row) {
+      return {
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: { fetch: async () => Response.json(payload) },
+      };
+    }
+    const NEURON = {
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      active: true,
+      validator_permit: true,
+      trust: 0.5,
+      stake_tao: 12.5,
+    };
+
+    test("get_subnet_metagraph narrows each neuron to the named fields", async () => {
+      const res = await callTool(
+        "get_subnet_metagraph",
+        { netuid: 7, fields: ["uid", "hotkey"] },
+        {
+          env: neuronsEnv({
+            schema_version: 1,
+            netuid: 7,
+            neuron_count: 1,
+            neurons: [NEURON],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(out.neurons, [{ uid: 3, hotkey: "5Hot" }]);
+      // The envelope survives -- only the rows narrow.
+      assert.equal(out.neuron_count, 1);
+    });
+
+    test("get_neuron narrows the single row", async () => {
+      const res = await callTool(
+        "get_neuron",
+        { netuid: 7, uid: 3, fields: ["hotkey"] },
+        {
+          env: neuronsEnv({
+            schema_version: 1,
+            netuid: 7,
+            neuron: NEURON,
+          }),
+        },
+      );
+      assert.deepEqual(res.body.result.structuredContent.neuron, {
+        hotkey: "5Hot",
+      });
+    });
+
+    test("list_subnet_validators projects AFTER min_stake_tao filters", async () => {
+      // stake_tao is not among the requested fields, and the floor must still
+      // apply to it -- a filter that depended on what the caller asked to see
+      // would be a different query for every projection.
+      const res = await callTool(
+        "list_subnet_validators",
+        { netuid: 7, min_stake_tao: 10, fields: ["hotkey"] },
+        {
+          env: neuronsEnv({
+            schema_version: 1,
+            netuid: 7,
+            validator_count: 2,
+            validators: [NEURON, { ...NEURON, hotkey: "5Small", stake_tao: 1 }],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(out.validators, [{ hotkey: "5Hot" }]);
+      assert.equal(out.validator_count, 1);
+    });
+
+    test("list_subnet_validators projects on the unfiltered path too", async () => {
+      const res = await callTool(
+        "list_subnet_validators",
+        { netuid: 7, fields: ["hotkey"] },
+        {
+          env: neuronsEnv({
+            schema_version: 1,
+            netuid: 7,
+            validator_count: 1,
+            validators: [NEURON],
+          }),
+        },
+      );
+      assert.deepEqual(res.body.result.structuredContent.validators, [
+        { hotkey: "5Hot" },
+      ]);
+    });
+
+    test("an unsupported field name is rejected, listing the valid ones", async () => {
+      const res = await callTool(
+        "get_subnet_metagraph",
+        { netuid: 7, fields: ["uid", "stake"] },
+        {},
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(
+        res.body.result.content[0].text,
+        /unsupported field: stake\. Valid fields: .*stake_tao/,
+      );
+    });
+
+    test("several unsupported names pluralize and list every one", async () => {
+      const res = await callTool(
+        "get_subnet_metagraph",
+        { netuid: 7, fields: ["stake", 42] },
+        {},
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(
+        res.body.result.content[0].text,
+        /unsupported fields: stake, 42\./,
+      );
+    });
+
+    test("a non-array or empty fields argument is rejected", async () => {
+      for (const fields of ["uid", [], 7]) {
+        const res = await callTool(
+          "get_subnet_metagraph",
+          { netuid: 7, fields },
+          {},
+        );
+        assert.equal(res.body.result.isError, true, JSON.stringify(fields));
+        assert.match(
+          res.body.result.content[0].text,
+          /non-empty array of field names/,
+        );
+      }
+    });
+
+    test("omitting fields returns every column, unprojected", async () => {
+      const res = await callTool(
+        "get_subnet_metagraph",
+        { netuid: 7 },
+        {
+          env: neuronsEnv({
+            schema_version: 1,
+            netuid: 7,
+            neuron_count: 1,
+            neurons: [NEURON],
+          }),
+        },
+      );
+      assert.deepEqual(res.body.result.structuredContent.neurons, [NEURON]);
+    });
+
+    test("duplicates collapse rather than repeating a column", async () => {
+      const res = await callTool(
+        "get_subnet_metagraph",
+        { netuid: 7, fields: ["uid", "uid"] },
+        {
+          env: neuronsEnv({
+            schema_version: 1,
+            netuid: 7,
+            neuron_count: 1,
+            neurons: [NEURON],
+          }),
+        },
+      );
+      assert.deepEqual(res.body.result.structuredContent.neurons, [{ uid: 3 }]);
+    });
+  });
+
   // neurons' D1 write path is retired (#4772) and the table is dropped in
   // production, so list_subnet_validators always ranks over the schema-stable
   // empty base list (buildSubnetValidators([], netuid)) -- a D1 mock, if

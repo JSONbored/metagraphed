@@ -4,12 +4,20 @@
 // schema to reuse. Modeled fresh, matching each hand-written literal
 // field-for-field.
 import { z } from "zod";
-import { OpenObjectArraySchema, OpenObjectSchema } from "./shared.ts";
+import {
+  NeuronFieldsInputSchema,
+  OpenObjectArraySchema,
+  OpenObjectSchema,
+} from "./shared.ts";
 
 export const GetNeuronInputSchema = z
   .object({
     netuid: z.int().min(0),
     uid: z.int().min(0),
+    // #9082: narrow each returned row to these fields. Omit for the full
+    // row. Valid names are NeuronSchema's own, so this enum cannot drift
+    // from what the route can project.
+    fields: NeuronFieldsInputSchema,
   })
   .strict();
 export type GetNeuronInput = z.infer<typeof GetNeuronInputSchema>;

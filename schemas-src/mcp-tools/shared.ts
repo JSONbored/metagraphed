@@ -9,6 +9,7 @@
 // for the fuller rationale, first established in the pilot batch). These
 // two helpers are the Zod equivalent of that same shallow-on-purpose shape.
 import { z } from "zod";
+import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 
 // Bare `{type:"object"}` (hand-written, no `properties`/`additionalProperties`
 // declared -- JSON Schema's own default for an omitted additionalProperties
@@ -97,4 +98,26 @@ export const DistributionStatsSchema = z
 export const NotesFieldSchema = z
   .union([z.array(z.string()), z.string()])
   .nullable()
+  .optional();
+
+// --- `fields=` projection over the Neuron row (#9082) -----------------------
+//
+// Read off the published NeuronSchema rather than listed here, so the enum the
+// tools advertise and the fields the routes can actually project cannot drift
+// apart -- the same reason MCP_NETWORK_VALUES reads McpNetworkSchema.options
+// instead of carrying a hand-copied list (#8804, src/mcp-server.ts).
+//
+// Published as an enum rather than a free string because an agent reading
+// tools/list should be able to see which fields exist without a round trip. It
+// is enforced at dispatch too: the schema alone is decorative at runtime
+// (#8942), so src/mcp-server.ts validates every element against this same
+// array before it reaches the projector.
+export const NEURON_FIELD_NAMES = Object.keys(NeuronSchema.shape) as [
+  string,
+  ...string[],
+];
+
+export const NeuronFieldsInputSchema = z
+  .array(z.enum(NEURON_FIELD_NAMES))
+  .min(1)
   .optional();

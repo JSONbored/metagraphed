@@ -4051,6 +4051,7 @@ export async function handleRequest(
         env,
         Number(neuronMatch[1]),
         Number(neuronMatch[2]),
+        resolved.url,
       );
     }
     const hyperparamsHistoryMatch =

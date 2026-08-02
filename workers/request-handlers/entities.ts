@@ -46,11 +46,14 @@ import {
   validateQueryParams,
 } from "./analytics.ts";
 import type { QueryError } from "../list-query.ts";
+import { projectionMeta } from "../../src/field-projection.ts";
 import {
   buildGlobalValidators,
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildNeuronDetail,
+  parseNeuronFields,
+  projectNeuronPayload,
   buildValidatorDetail,
   NO_ALPHA_PRICES,
   overlayFeaturedValidators,
@@ -652,8 +655,13 @@ export async function handleSubnetMetagraph(
   const validationError = validateEntityQuery(url, [
     "validator_permit",
     "format",
+    "fields",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  // #9082. Parsed before the tier read so an unsupported field costs a 400
+  // rather than a full 256-row fetch the caller never sees.
+  const projection = parseNeuronFields(url.searchParams, "neurons");
+  if (projection.error) return analyticsQueryError(projection.error);
   // #4909 D1 retirement: neurons' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
@@ -667,6 +675,8 @@ export async function handleSubnetMetagraph(
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildSubnetMetagraph> | null) ??
     buildSubnetMetagraph([], netuid);
+  // CSV keeps its own fixed column set (NEURON_CSV_COLUMNS): a projected CSV
+  // would be a second, caller-defined column contract for the same download.
   if (csvRequested(url, request)) {
     return csvResponse(
       data.neurons as unknown[],
@@ -679,12 +689,15 @@ export async function handleSubnetMetagraph(
   return envelopeResponse(
     request,
     {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/metagraph.json`,
-        data.captured_at,
-      ),
+      data: projectNeuronPayload(data, projection.fields),
+      meta: {
+        ...(await metagraphMeta(
+          env,
+          `/metagraph/subnets/${netuid}/metagraph.json`,
+          data.captured_at,
+        )),
+        ...projectionMeta(projection.fields),
+      },
     },
     "short",
   );
@@ -737,7 +750,12 @@ export async function handleNeuron(
   env: Env,
   netuid: number,
   uid: number,
+  url: URL,
 ) {
+  const validationError = validateEntityQuery(url, ["fields"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const projection = parseNeuronFields(url.searchParams, "neuron");
+  if (projection.error) return analyticsQueryError(projection.error);
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
   const data =
@@ -750,12 +768,15 @@ export async function handleNeuron(
   return envelopeResponse(
     request,
     {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
-        data.captured_at,
-      ),
+      data: projectNeuronPayload(data, projection.fields),
+      meta: {
+        ...(await metagraphMeta(
+          env,
+          `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
+          data.captured_at,
+        )),
+        ...projectionMeta(projection.fields),
+      },
     },
     "short",
   );
@@ -871,8 +892,10 @@ export async function handleSubnetValidators(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const validationError = validateEntityQuery(url, ["format", "fields"]);
   if (validationError) return analyticsQueryError(validationError);
+  const projection = parseNeuronFields(url.searchParams, "validators");
+  if (projection.error) return analyticsQueryError(projection.error);
   // Featured-validator pin (#5166): applied once, right where the Postgres/D1
   // tiers converge, so it never needs duplicating per tier. This route has no
   // `sort` param at all -- its ranking is always the stake-DESC default -- so
@@ -897,12 +920,15 @@ export async function handleSubnetValidators(
   return envelopeResponse(
     request,
     {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/validators.json`,
-        data.captured_at,
-      ),
+      data: projectNeuronPayload(data, projection.fields),
+      meta: {
+        ...(await metagraphMeta(
+          env,
+          `/metagraph/subnets/${netuid}/validators.json`,
+          data.captured_at,
+        )),
+        ...projectionMeta(projection.fields),
+      },
     },
     "short",
   );

@@ -5,7 +5,7 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { NeuronFieldsInputSchema, OpenObjectArraySchema } from "./shared.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -18,6 +18,10 @@ export const ListSubnetValidatorsInputSchema = z
     netuid: z.int().min(0),
     limit: z.int().min(1).optional(),
     min_stake_tao: z.number().min(0).optional(),
+    // #9082: narrow each returned row to these fields. Omit for the full
+    // row. Valid names are NeuronSchema's own, so this enum cannot drift
+    // from what the route can project.
+    fields: NeuronFieldsInputSchema,
   })
   .strict();
 export type ListSubnetValidatorsInput = z.infer<

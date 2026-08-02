@@ -7201,7 +7201,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
       "cache": "short",
-      "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+      "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set.",
       "id": "subnet-metagraph",
       "mainnet_only": true,
       "method": "GET",
@@ -7223,6 +7223,12 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
@@ -7238,7 +7244,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
       "cache": "short",
-      "description": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+      "description": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400.",
       "id": "subnet-neuron",
       "mainnet_only": true,
       "method": "GET",
@@ -7249,7 +7255,14 @@
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "fields",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/hyperparameters.json",
@@ -7322,7 +7335,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/validators.json",
       "cache": "short",
-      "description": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+      "description": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set.",
       "id": "subnet-validators",
       "mainnet_only": true,
       "method": "GET",
@@ -7334,6 +7347,12 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": [
+        {
+          "name": "fields",
+          "schema": {
+            "type": "string"
+          }
+        },
         {
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",

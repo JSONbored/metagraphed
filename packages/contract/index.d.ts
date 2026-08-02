@@ -4336,7 +4336,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. */
+        /** Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set. */
         get: operations["subnetMetagraph"];
         put?: never;
         post?: never;
@@ -4353,7 +4353,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. */
+        /** Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. */
         get: operations["subnetNeuron"];
         put?: never;
         post?: never;
@@ -4693,7 +4693,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. */
+        /** Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set. */
         get: operations["subnetValidators"];
         put?: never;
         post?: never;
@@ -42421,6 +42421,7 @@ export interface operations {
         parameters: {
             query?: {
                 validator_permit?: "true";
+                fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
@@ -42542,7 +42543,9 @@ export interface operations {
     };
     subnetNeuron: {
         parameters: {
-            query?: never;
+            query?: {
+                fields?: string;
+            };
             header?: never;
             path: {
                 netuid: number;
@@ -45441,6 +45444,7 @@ export interface operations {
     subnetValidators: {
         parameters: {
             query?: {
+                fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };

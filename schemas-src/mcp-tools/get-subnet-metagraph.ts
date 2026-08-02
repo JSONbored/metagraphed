@@ -3,12 +3,16 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { NeuronFieldsInputSchema, OpenObjectArraySchema } from "./shared.ts";
 
 export const GetSubnetMetagraphInputSchema = z
   .object({
     netuid: z.int().min(0),
     validator_permit: z.boolean().optional(),
+    // #9082: narrow each returned row to these fields. Omit for the full
+    // row. Valid names are NeuronSchema's own, so this enum cannot drift
+    // from what the route can project.
+    fields: NeuronFieldsInputSchema,
   })
   .strict();
 export type GetSubnetMetagraphInput = z.infer<

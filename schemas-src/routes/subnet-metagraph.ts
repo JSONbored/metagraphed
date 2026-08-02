@@ -24,7 +24,10 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
-const NeuronSchema = z
+// Exported so the surfaces that serve these rows can derive `fields=`'s
+// allowed set from the CONTRACT rather than from a second list (#9082) --
+// see src/metagraph-neurons.ts's NEURON_PROJECTABLE_FIELDS.
+export const NeuronSchema = z
   .object({
     uid: z.int().min(0),
     hotkey: z.string().nullable(),
@@ -76,6 +79,9 @@ export const SubnetMetagraphResponseSchema = successEnvelopeSchema(
 export const SubnetMetagraphQuerySchema = z
   .object({
     validator_permit: z.enum(["true", "false"]).optional(),
+    // #9082: comma-separated Neuron field names, validated against
+    // NeuronSchema's own shape. Omit for the full row.
+    fields: z.string().optional(),
   })
   .strict();
 export type SubnetMetagraphQuery = z.infer<typeof SubnetMetagraphQuerySchema>;
@@ -93,7 +99,13 @@ export type NeuronDetailArtifact = z.infer<typeof NeuronDetailArtifactSchema>;
 export const NeuronDetailResponseSchema = successEnvelopeSchema(
   NeuronDetailArtifactSchema,
 );
-export const NeuronDetailQuerySchema = z.object({}).strict();
+export const NeuronDetailQuerySchema = z
+  .object({
+    // #9082: comma-separated Neuron field names, validated against
+    // NeuronSchema's own shape. Omit for the full row.
+    fields: z.string().optional(),
+  })
+  .strict();
 export type NeuronDetailQuery = z.infer<typeof NeuronDetailQuerySchema>;
 
 export const SubnetValidatorsArtifactSchema = z
@@ -112,7 +124,13 @@ export type SubnetValidatorsArtifact = z.infer<
 export const SubnetValidatorsResponseSchema = successEnvelopeSchema(
   SubnetValidatorsArtifactSchema,
 );
-export const SubnetValidatorsQuerySchema = z.object({}).strict();
+export const SubnetValidatorsQuerySchema = z
+  .object({
+    // #9082: comma-separated Neuron field names, validated against
+    // NeuronSchema's own shape. Omit for the full row.
+    fields: z.string().optional(),
+  })
+  .strict();
 export type SubnetValidatorsQuery = z.infer<typeof SubnetValidatorsQuerySchema>;
 
 // Per-day neuron_daily rollup point: a Neuron's state on one snapshot_date
