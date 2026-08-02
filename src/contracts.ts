@@ -33,6 +33,17 @@ export const SCHEMA_VERSION = 1;
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
 // server URL and the consumer metadata in contracts.json / api-index.json.
 export const PRIMARY_DOMAIN = "api.metagraph.sh";
+
+/**
+ * This repository's canonical URL, as published to consumers.
+ *
+ * One constant because it is published twice -- by the worker-computed MCP
+ * server card and by the MCP Registry listing (server.json) -- and two
+ * published descriptions of the same server disagreeing is the defect class
+ * ADR 0027 exists about. scripts/validate-mcp.ts asserts the listing against
+ * this rather than against a second literal.
+ */
+export const REPOSITORY_URL = "https://github.com/JSONbored/metagraphed";
 export const API_BASE_PATH = "/api/v1";
 export const ARTIFACT_BASE_PATH = "/metagraph";
 export const TYPE_DEFINITIONS_PATH = "/metagraph/types.d.ts";

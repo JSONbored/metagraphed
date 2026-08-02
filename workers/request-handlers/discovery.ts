@@ -1,4 +1,8 @@
-import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.ts";
+import {
+  CACHE_SECONDS,
+  PRIMARY_DOMAIN,
+  REPOSITORY_URL,
+} from "../../src/contracts.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
@@ -399,7 +403,7 @@ export async function mcpServerCardResponse(
     title: MCP_SERVER_INFO.title,
     description: MCP_INSTRUCTIONS,
     version: MCP_SERVER_INFO.version,
-    repository: "https://github.com/JSONbored/metagraphed",
+    repository: REPOSITORY_URL,
     documentation: `${base}/llms.txt`,
     endpoint: `${base}/mcp`,
     transport: "streamable-http",
