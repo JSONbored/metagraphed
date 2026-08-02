@@ -144,4 +144,10 @@ interface Env {
 // capturing before the migration that creates its watermark table.
 interface Env {
   RAW_CAPTURE_ENABLED?: string;
+  /** R2 SQL read tier over the chain lakehouse (src/r2-sql.ts). Token is a
+   * wrangler secret; account/warehouse fall back to this account's values and
+   * are only set when pointing at a different warehouse. */
+  R2_SQL_TOKEN?: string;
+  R2_SQL_ACCOUNT_ID?: string;
+  R2_SQL_WAREHOUSE?: string;
 }
