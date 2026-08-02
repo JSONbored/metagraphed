@@ -17,6 +17,7 @@ import {
   recordMcpToolCallEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
+  resolvePostHogChunkId,
   resolvePostHogHost,
   statusClassOf,
   usageEventProperties,
@@ -749,7 +750,118 @@ describe("recordMcpInitializeEvent", () => {
 // $exception fixture, not just the docs page -- see the module's own header
 // comment for the sources. These tests pin that shape so a future refactor
 // can't silently drift from it.
+// #9045: PostHog can only resolve a minified frame back to source if the frame
+// carries the chunk id of the sourcemap it was uploaded under. `posthog-cli
+// sourcemap inject` publishes that id at runtime on globalThis._posthogChunkIds,
+// keyed by the stack of an Error built inside the chunk.
+describe("resolvePostHogChunkId", () => {
+  test("returns the id when exactly one chunk registered itself", () => {
+    assert.equal(
+      resolvePostHogChunkId({
+        _posthogChunkIds: {
+          "Error\n    at index.js:1:1": "019fc1c0-8505-7612-a464-f3a75098a9ea",
+        },
+      }),
+      "019fc1c0-8505-7612-a464-f3a75098a9ea",
+    );
+  });
+
+  test("collapses repeat registrations of the SAME chunk to that one id", () => {
+    // One bundle can register under more than one key (the injected IIFE runs
+    // per isolate); identical ids are still unambiguous.
+    assert.equal(
+      resolvePostHogChunkId({
+        _posthogChunkIds: { a: "chunk-1", b: "chunk-1" },
+      }),
+      "chunk-1",
+    );
+  });
+
+  test("returns undefined for several DISTINCT chunks rather than guessing", () => {
+    // Guessing here would resolve frames against the wrong sourcemap, which is
+    // worse than leaving them minified.
+    assert.equal(
+      resolvePostHogChunkId({
+        _posthogChunkIds: { a: "chunk-1", b: "chunk-2" },
+      }),
+      undefined,
+    );
+  });
+
+  test("returns undefined when the marker is absent or unusable", () => {
+    assert.equal(resolvePostHogChunkId({}), undefined);
+    assert.equal(resolvePostHogChunkId({ _posthogChunkIds: {} }), undefined);
+    assert.equal(
+      resolvePostHogChunkId(
+        // A non-object marker must not throw its way out of a telemetry path.
+        { _posthogChunkIds: "nope" } as unknown as Parameters<
+          typeof resolvePostHogChunkId
+        >[0],
+      ),
+      undefined,
+    );
+    assert.equal(
+      resolvePostHogChunkId({ _posthogChunkIds: { a: "" } }),
+      undefined,
+    );
+    assert.equal(
+      resolvePostHogChunkId(
+        null as unknown as Parameters<typeof resolvePostHogChunkId>[0],
+      ),
+      undefined,
+    );
+  });
+});
+
 describe("recordExceptionEvent", () => {
+  test("stamps every frame with the running bundle's chunk id when injected", async () => {
+    // Mutating a real global: this suite runs with isolate:false, so the
+    // cleanup below is what keeps the marker from leaking into sibling files.
+    const scope = globalThis as { _posthogChunkIds?: Record<string, string> };
+    const before = scope._posthogChunkIds;
+    scope._posthogChunkIds = { "Error\n    at data-api.js:1:1": "chunk-abc" };
+    try {
+      const calls: Row[] = [];
+      const error = new RangeError("boom");
+      await recordExceptionEvent(
+        CONFIGURED,
+        { error, route: "test-route" },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      );
+      const frames =
+        calls[0].body.properties.$exception_list[0].stacktrace.frames;
+      assert.ok(frames.length > 0);
+      for (const frame of frames) assert.equal(frame.chunk_id, "chunk-abc");
+    } finally {
+      if (before === undefined) delete scope._posthogChunkIds;
+      else scope._posthogChunkIds = before;
+    }
+  });
+
+  test("omits chunk_id entirely when nothing injected a marker", async () => {
+    // Local dev, tests, and any deploy that skipped inject: the key must be
+    // ABSENT rather than present-and-empty, which PostHog would try to resolve.
+    const scope = globalThis as { _posthogChunkIds?: Record<string, string> };
+    const before = scope._posthogChunkIds;
+    delete scope._posthogChunkIds;
+    try {
+      const calls: Row[] = [];
+      await recordExceptionEvent(
+        CONFIGURED,
+        { error: new RangeError("boom"), route: "test-route" },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      );
+      const frames =
+        calls[0].body.properties.$exception_list[0].stacktrace.frames;
+      assert.ok(frames.length > 0);
+      for (const frame of frames) {
+        assert.equal("chunk_id" in frame, false);
+      }
+    } finally {
+      if (before !== undefined) scope._posthogChunkIds = before;
+    }
+  });
+
   const CONFIGURED = {
     [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
   } as unknown as Env;
@@ -789,8 +901,9 @@ describe("recordExceptionEvent", () => {
     assert.equal(list[0].stacktrace.type, "raw");
     assert.ok(list[0].stacktrace.frames.length > 0);
     for (const frame of list[0].stacktrace.frames) {
-      // PostHog's required markers for a manually-built (non-SDK) frame.
-      assert.equal(frame.platform, "custom");
+      // The marker that makes PostHog SYMBOLICATE the frame rather than
+      // take it at face value -- see ExceptionStackFrame (#9045).
+      assert.equal(frame.platform, "node:javascript");
       assert.equal(frame.lang, "javascript");
       assert.equal(typeof frame.function, "string");
     }
@@ -887,7 +1000,7 @@ describe("recordExceptionEvent", () => {
     const frames =
       calls[0].body.properties.$exception_list[0].stacktrace.frames;
     assert.equal(frames.length, 1);
-    assert.equal(frames[0].platform, "custom");
+    assert.equal(frames[0].platform, "node:javascript");
     assert.equal(frames[0].lang, "javascript");
     assert.equal(
       frames[0].function,

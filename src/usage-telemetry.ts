@@ -763,17 +763,80 @@ export async function recordMcpToolsListEvent(
 // Sentry everywhere this wires into once parity was proven, so PostHog is
 // now the only exception-capture path at every one of these call sites.
 
-/** One PostHog `$exception_list` stack frame. `platform`/`lang` are always
- * "custom"/"javascript" -- PostHog's required marker for a manually built
- * (non-SDK) frame, not something derived from the actual error. */
+/** One PostHog `$exception_list` stack frame.
+ *
+ * `platform` is "node:javascript", NOT the "custom" that PostHog's
+ * manual-capture docs show (#9045). Those two values mean different things to
+ * the symbolication pipeline, and the difference is why every Worker issue
+ * rendered raw bundle positions (`data-api.js@93344:18`) for months despite
+ * sourcemaps being uploaded correctly on every deploy since #8131:
+ *
+ *   - "custom" marks a frame the sender already resolved itself. PostHog takes
+ *     the filename/lineno at face value and never looks for a symbol set. It
+ *     is the right value when you ship unminified code and hand-build frames
+ *     that already point at real sources.
+ *   - "node:javascript" marks a frame from a real JS runtime that may be
+ *     minified. This is what posthog-node itself emits (verified in the pinned
+ *     dependency, node_modules/posthog-node/src/extensions/sentry-integration.ts,
+ *     which maps every frame to `platform: 'node:javascript'` alongside
+ *     `stacktrace.type: 'raw'`). It is what makes PostHog attempt resolution.
+ *
+ * We ship a minified bundle, so "custom" was simply the wrong one of the two.
+ *
+ * `chunk_id` is the other half: it ties the frame to a specific uploaded
+ * sourcemap. See resolvePostHogChunkId. */
 interface ExceptionStackFrame {
-  platform: "custom";
+  platform: "node:javascript";
   lang: "javascript";
   function: string;
   filename?: string;
   lineno?: number;
   colno?: number;
   in_app?: boolean;
+  chunk_id?: string;
+}
+
+// The global `posthog-cli sourcemap inject` writes into the deployed bundle.
+// Verified empirically by running the CLI against a bundle: it prepends an
+// IIFE that does, in effect,
+//
+//   globalThis._posthogChunkIds[new Error().stack] = "<uuid>"
+//
+// keyed by the stack of an Error constructed at the top of that chunk, and
+// appends a matching `//# chunkId=<uuid>` comment. The uuid is what the
+// uploaded sourcemap is filed under, so a frame carrying it resolves without
+// PostHog having to match bundle URLs (which would never work here: a Worker
+// stack yields a bare "data-api.js", not the public URL the map was uploaded
+// against -- the exact "source map paths must match your production bundle
+// URLs exactly" failure mode in PostHog's own troubleshooting docs).
+interface PostHogChunkIdRegistry {
+  _posthogChunkIds?: Record<string, string>;
+}
+
+/** The chunk id of the running bundle, or undefined when the marker is absent
+ * (local dev, tests, or a deploy that skipped the inject step).
+ *
+ * These Workers are each a SINGLE flat bundle with no code splitting -- the
+ * property scripts/deploy-worker-with-sourcemaps.sh already depends on when it
+ * globs one `<entry>.js` to deploy -- so exactly one chunk registers itself and
+ * its id applies to every frame. Anything else (zero entries, or several after
+ * a future switch to code splitting) returns undefined rather than guessing:
+ * a wrong chunk id would resolve frames against the wrong sourcemap, which is
+ * worse than leaving them unresolved. */
+export function resolvePostHogChunkId(
+  scope: PostHogChunkIdRegistry = globalThis as PostHogChunkIdRegistry,
+): string | undefined {
+  try {
+    const registry = scope?._posthogChunkIds;
+    if (!registry || typeof registry !== "object") return undefined;
+    const ids = Object.values(registry).filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    );
+    const unique = [...new Set(ids)];
+    return unique.length === 1 ? unique[0] : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // Caps how many stack frames get sent -- a runaway recursive error could
@@ -792,24 +855,30 @@ function parseStackFrames(stack: string): ExceptionStackFrame[] {
   // The first line is "ErrorName: message", not a frame.
   const lines = stack.split("\n").slice(1, MAX_EXCEPTION_FRAMES + 1);
   const frames: ExceptionStackFrame[] = [];
+  // Resolved once per exception, not per frame: every frame in a
+  // single-bundle Worker belongs to the same chunk.
+  const chunkId = resolvePostHogChunkId();
+  const chunk = chunkId === undefined ? {} : { chunk_id: chunkId };
   for (const line of lines) {
     const match = STACK_FRAME_PATTERN.exec(line);
     if (match) {
       const [, fn, filename, lineno, colno] = match;
       frames.push({
-        platform: "custom",
+        platform: "node:javascript",
         lang: "javascript",
         function: fn?.trim() || "<anonymous>",
         filename: filename.trim(),
         lineno: Number(lineno),
         colno: Number(colno),
         in_app: !filename.includes("node_modules"),
+        ...chunk,
       });
     } else if (line.trim()) {
       frames.push({
-        platform: "custom",
+        platform: "node:javascript",
         lang: "javascript",
         function: line.trim(),
+        ...chunk,
       });
     }
   }
