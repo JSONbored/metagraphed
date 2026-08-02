@@ -12551,6 +12551,14 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         return isNotification
           ? null
           : rpcResult(id, await readResource(params, ctx));
+      // #9017: the await stays INSIDE the ternary here, deliberately. A
+      // notification-shaped subscribe is a malformed request (MCP defines
+      // resources/subscribe as a request, so a conforming client always sends
+      // an id), and the established behaviour -- pinned by two tests in
+      // tests/mcp-server.test.ts -- is to accept it, return 202, and perform
+      // no side effect. Performing a subscription we cannot acknowledge is not
+      // obviously better than ignoring one we cannot acknowledge, and it is
+      // not a change to make on a whim.
       case "resources/subscribe":
         return isNotification
           ? null
@@ -12577,24 +12585,46 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   } catch (rawError) {
     const error = rawError as Row;
     dispatchOk = false;
-    if (isNotification) return null;
     // A toolError thrown by a protocol method (resources/read, prompts/get) is a
     // bad-params condition, not an internal fault — surface it as -32602.
+    // Notifications get no reply, but the classification is the same.
     if (error?.toolError) {
-      return rpcError(id, RPC_INVALID_PARAMS, error.message);
+      return isNotification
+        ? null
+        : rpcError(id, RPC_INVALID_PARAMS, error.message);
     }
     // Don't echo raw internals to the public client; log server-side instead.
     // Same discipline as callTool's sibling catch above: a handled toolError
     // is an expected outcome and returns before this point, uncaptured --
     // only a genuinely unexpected fault (malformed/unroutable JSON-RPC) gets
     // captured (metagraphed#8081).
+    //
+    // #8995: `if (isNotification) return null` used to sit ABOVE this, so an
+    // id-less request that threw produced no $exception, no console.error, and
+    // a 202. That is the worst possible place to lose a fault: a notification
+    // has no response for the CLIENT to inspect either, by definition, so
+    // server-side capture is the only signal that can ever exist -- and it was
+    // the one being skipped.
+    //
+    // The early return was right about the RESPONSE (a notification gets no
+    // error reply) and wrong about the CAPTURE. Those are separate decisions
+    // that had been collapsed onto one line; they are separate again below.
     scheduleExceptionEvent(ctx, {
       error,
-      route: `mcp-dispatch:${method}`,
+      // mcpMethodLabel, not the raw method: `method` is caller-supplied, so a
+      // raw label could mint a fingerprint per request -- the same unbounded-
+      // cardinality defect #9001 removed from the data-api's labels. Defensive
+      // rather than currently reachable: an unknown method returns rpcError
+      // from the switch's default WITHOUT throwing, so it never arrives here
+      // today. It costs nothing and stops that being a load-bearing accident
+      // if the default ever starts throwing.
+      route: `mcp-dispatch:${mcpMethodLabel(method)}`,
       errorCode: "internal_error",
     });
     console.error("MCP dispatch failed:", error);
-    return rpcError(id, RPC_INTERNAL_ERROR, "Internal error.");
+    return isNotification
+      ? null
+      : rpcError(id, RPC_INTERNAL_ERROR, "Internal error.");
   } finally {
     // finally, not per-return: the switch returns from inside every case, so
     // any per-case emission would have to be repeated 14 times and would still
