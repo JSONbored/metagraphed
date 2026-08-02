@@ -29,6 +29,11 @@ interface Env {
   ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
   CHAIN_FIREHOSE_SYNC_SECRET?: string;
+  /** #8748/#8750 restored lane: gates POST /api/v1/internal/emission-gate-sync,
+   * the D1 write path the sample-emission-gate.yml schedule POSTs chain
+   * readings to. Set via `wrangler secret put` AND as a GitHub Actions secret
+   * (the workflow sends it; the Worker checks it). */
+  EMISSION_GATE_SYNC_SECRET?: string;
   FULLNODE_RPC_ORIGINS?: string;
   GITHUB_OAUTH_CLIENT_SECRET?: string;
   /** #8702: authenticates the upgrade radar's twice-hourly GitHub reads
