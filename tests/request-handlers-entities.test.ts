@@ -766,6 +766,7 @@ describe("handleNeuron", () => {
       emptyEnv(),
       NETUID,
       UID,
+      url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
     );
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.neuron, null);
@@ -781,6 +782,7 @@ describe("handleNeuron", () => {
         env as unknown as Env,
         NETUID,
         999,
+        url(`/api/v1/subnets/${NETUID}/neurons/999`),
       ),
     );
     assert.equal(body.data.neuron, null);
@@ -4352,6 +4354,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         env as unknown as Env,
         NETUID,
         UID,
+        url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
       ),
     );
     assert.equal(body.data.neuron.hotkey, "postgres-hotkey");
@@ -6158,6 +6161,7 @@ describe("entities handler exports (#1900)", () => {
           emptyEnv() as unknown as Env,
           NETUID,
           UID,
+          url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
         ),
       () =>
         handleAccount(
@@ -6497,6 +6501,7 @@ describe("envelope + meta contracts (#1900)", () => {
         env as unknown as Env,
         NETUID,
         UID,
+        url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
       ),
     );
     assert.equal(body.meta.source, "metagraph-snapshot");
@@ -6508,6 +6513,7 @@ describe("envelope + meta contracts (#1900)", () => {
           env as unknown as Env,
           NETUID,
           UID,
+          url(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
         ),
       ),
     );

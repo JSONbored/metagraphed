@@ -19,6 +19,13 @@
 
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
+  parseFieldsParam,
+  projectRow,
+  projectRows,
+  resolveFieldProjection,
+} from "../../src/field-projection.ts";
+import { NEURON_FIELD_NAMES } from "../../schemas-src/routes/subnet-metagraph.ts";
+import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
   parseDateRange,
@@ -643,6 +650,33 @@ async function metagraphMeta(
   };
 }
 
+// #9082: `?fields=` on the three neuron routes. All three project the same
+// NeuronSchema row shape, so one helper covers them.
+//
+// Applied to the BUILT rows, not pushed into the SELECT: the neuron builder
+// derives fields from other columns (immunity_expires_at_block needs
+// registered_at_block + block_number + captured_at + is_immunity_period
+// together), so narrowing the SQL would silently drop derivations rather than
+// just columns. This is a payload/caller-token change, not a latency one.
+//
+// The allowed set is NeuronSchema's own keys, so a field added to the schema is
+// projectable the same day and no second list exists to drift -- and unlike a
+// row-derived set it accepts a schema-optional field such as
+// immunity_expires_at_block on a subnet where no neuron is currently in its
+// immunity window.
+function neuronProjection(url: URL, dataKey: string) {
+  const parsed = parseFieldsParam(
+    url.searchParams.get("fields"),
+    "uid,hotkey,stake_tao",
+  );
+  if (parsed.error || !parsed.fields) return parsed;
+  return resolveFieldProjection(
+    parsed.fields,
+    (field) => NEURON_FIELD_NAMES.has(field),
+    dataKey,
+  );
+}
+
 export async function handleSubnetMetagraph(
   request: Request,
   env: Env,
@@ -651,9 +685,12 @@ export async function handleSubnetMetagraph(
 ) {
   const validationError = validateEntityQuery(url, [
     "validator_permit",
+    "fields",
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  const projection = neuronProjection(url, "neurons");
+  if (projection.error) return analyticsQueryError(projection.error);
   // #4909 D1 retirement: neurons' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
@@ -667,6 +704,15 @@ export async function handleSubnetMetagraph(
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildSubnetMetagraph> | null) ??
     buildSubnetMetagraph([], netuid);
+  const projected = projection.fields
+    ? {
+        ...data,
+        neurons: projectRows(
+          data.neurons as Record<string, unknown>[],
+          projection.fields,
+        ),
+      }
+    : data;
   if (csvRequested(url, request)) {
     return csvResponse(
       data.neurons as unknown[],
@@ -679,12 +725,17 @@ export async function handleSubnetMetagraph(
   return envelopeResponse(
     request,
     {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/metagraph.json`,
-        data.captured_at,
-      ),
+      data: projected,
+      meta: {
+        ...(await metagraphMeta(
+          env,
+          `/metagraph/subnets/${netuid}/metagraph.json`,
+          data.captured_at,
+        )),
+        // Echo the applied projection, as the list routes already do, so a
+        // caller can tell a narrowed payload from a genuinely sparse one.
+        ...(projection.fields ? { fields: projection.fields } : {}),
+      },
     },
     "short",
   );
@@ -737,9 +788,12 @@ export async function handleNeuron(
   env: Env,
   netuid: number,
   uid: number,
+  url: URL,
 ) {
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
+  const projection = neuronProjection(url, "neuron");
+  if (projection.error) return analyticsQueryError(projection.error);
   const data =
     ((await tryPostgresTier(
       env,
@@ -747,15 +801,23 @@ export async function handleNeuron(
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildNeuronDetail> | null) ??
     buildNeuronDetail(null, netuid);
+  // `neuron` is a single object (and null on a cold store), so projectRow --
+  // a null stays null rather than becoming an empty object.
+  const projected = projection.fields
+    ? { ...data, neuron: projectRow(data.neuron, projection.fields) }
+    : data;
   return envelopeResponse(
     request,
     {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
-        data.captured_at,
-      ),
+      data: projected,
+      meta: {
+        ...(await metagraphMeta(
+          env,
+          `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
+          data.captured_at,
+        )),
+        ...(projection.fields ? { fields: projection.fields } : {}),
+      },
     },
     "short",
   );
@@ -871,8 +933,10 @@ export async function handleSubnetValidators(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const validationError = validateEntityQuery(url, ["fields", "format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const projection = neuronProjection(url, "validators");
+  if (projection.error) return analyticsQueryError(projection.error);
   // Featured-validator pin (#5166): applied once, right where the Postgres/D1
   // tiers converge, so it never needs duplicating per tier. This route has no
   // `sort` param at all -- its ranking is always the stake-DESC default -- so
@@ -885,6 +949,15 @@ export async function handleSubnetValidators(
     )) as ReturnType<typeof buildSubnetValidators> | null) ??
       buildSubnetValidators([], netuid),
   )!;
+  const projected = projection.fields
+    ? {
+        ...data,
+        validators: projectRows(
+          data.validators as Record<string, unknown>[],
+          projection.fields,
+        ),
+      }
+    : data;
   if (csvRequested(url, request)) {
     return csvResponse(
       data.validators as unknown[],
@@ -897,12 +970,15 @@ export async function handleSubnetValidators(
   return envelopeResponse(
     request,
     {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/validators.json`,
-        data.captured_at,
-      ),
+      data: projected,
+      meta: {
+        ...(await metagraphMeta(
+          env,
+          `/metagraph/subnets/${netuid}/validators.json`,
+          data.captured_at,
+        )),
+        ...(projection.fields ? { fields: projection.fields } : {}),
+      },
     },
     "short",
   );

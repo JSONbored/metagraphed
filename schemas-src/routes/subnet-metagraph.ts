@@ -24,7 +24,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
-const NeuronSchema = z
+export const NeuronSchema = z
   .object({
     uid: z.int().min(0),
     hotkey: z.string().nullable(),
@@ -56,6 +56,17 @@ const NeuronSchema = z
     take: z.number().nullable().optional(),
   })
   .strict();
+
+/** Every field of the published neuron row, derived from the schema itself so
+ * a field added above is projectable the same day and no second list exists to
+ * drift (#9082). Used by the `?fields=` projection on the three neuron routes.
+ * Deliberately the SCHEMA's keys and not the returned rows': several fields
+ * here are optional (immunity_expires_at_block is emitted only inside an
+ * immunity window), and a row-derived set would reject those as unsupported on
+ * a subnet where no neuron happens to carry them. */
+export const NEURON_FIELD_NAMES: ReadonlySet<string> = new Set(
+  Object.keys(NeuronSchema.shape),
+);
 
 export const SubnetMetagraphArtifactSchema = z
   .object({

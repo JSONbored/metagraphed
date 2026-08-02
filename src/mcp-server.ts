@@ -36,6 +36,8 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import { z } from "zod";
+import { projectRow, projectRows } from "./field-projection.ts";
+import { NEURON_FIELD_NAMES } from "../schemas-src/routes/subnet-metagraph.ts";
 import {
   SearchSubnetsInputSchema,
   SearchSubnetsOutputSchema,
@@ -6236,15 +6238,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // handleSubnetMetagraph (validator_permit=true is the only value that
       // changes the canonical cache path; omission and false are equivalent).
       const validatorPermit = optionalBoolean(args, "validator_permit");
-      return (
-        (await tryPostgresTier(
+      const fields = mcpNeuronFields(args);
+      const data =
+        ((await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
             validator_permit: validatorPermit ? "true" : undefined,
           }),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildSubnetMetagraph([], netuid)
-      );
+        )) as Row | null) ?? buildSubnetMetagraph([], netuid);
+      if (!fields) return data;
+      return {
+        ...data,
+        neurons: projectRows(
+          (data.neurons ?? []) as Record<string, unknown>[],
+          fields,
+        ),
+      };
     },
   },
   {
@@ -6278,7 +6288,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildSubnetValidators([], netuid);
-      if (limit === null && minStakeTao === null) {
+      const fields = mcpNeuronFields(args);
+      if (limit === null && minStakeTao === null && !fields) {
         return data;
       }
       // The loader already ranks by stake_tao DESC, so a limit after the
@@ -6291,7 +6302,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
                 typeof v.stake_tao === "number" && v.stake_tao >= minStakeTao,
             )
       ) as Row[];
-      const validators = limit === null ? filtered : filtered.slice(0, limit);
+      const limited = limit === null ? filtered : filtered.slice(0, limit);
+      // Projection LAST: min_stake_tao filters on stake_tao, so narrowing the
+      // rows first would make `fields=uid` silently drop the column the filter
+      // needs. validator_count counts the surviving rows, not the fields.
+      const validators = fields ? projectRows(limited, fields) : limited;
       return { ...data, validator_count: validators.length, validators };
     },
   },
@@ -6619,13 +6634,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // still forwarded in the synthetic path below, mirroring REST's
       // handleNeuron.
       const uid = requireNonNegativeInt(args, "uid");
-      return (
-        (await tryPostgresTier(
+      const fields = mcpNeuronFields(args);
+      const data =
+        ((await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildNeuronDetail(null, netuid)
-      );
+        )) as Row | null) ?? buildNeuronDetail(null, netuid);
+      if (!fields) return data;
+      // projectRow, not projectRows: `neuron` is a single object and is null
+      // on a cold store -- a null must stay null, not become {}.
+      return { ...data, neuron: projectRow(data.neuron, fields) };
     },
   },
   {
@@ -11927,6 +11946,33 @@ const TOOL_OUTPUT_SCHEMAS = {
     { target: "draft-2020-12" },
   ),
 };
+
+// #9082: the MCP side of `?fields=`. Resolved against the SAME schema-derived
+// set the REST routes use, so the two cannot answer differently about which
+// field names are valid, and an unknown one is a typed invalid_params error
+// rather than a silently empty row. Applied to the rows the tier returned --
+// the same after-the-fact shape this family's `limit`/`min_stake_tao`
+// post-filters already have.
+function mcpNeuronFields(args: unknown): string[] | null {
+  const requested = (args as { fields?: unknown })?.fields;
+  if (requested == null) return null;
+  if (!Array.isArray(requested) || requested.length === 0) {
+    throw toolError(
+      "invalid_params",
+      "fields must be a non-empty array of neuron field names.",
+    );
+  }
+  const fields = [...new Set(requested.map((f) => String(f)))];
+  const unknown = fields.filter((f) => !NEURON_FIELD_NAMES.has(f));
+  if (unknown.length > 0) {
+    throw toolError(
+      "invalid_params",
+      `fields includes unsupported field${unknown.length === 1 ? "" : "s"}: ` +
+        `${unknown.join(", ")}. Valid fields: ${[...NEURON_FIELD_NAMES].join(", ")}.`,
+    );
+  }
+  return fields;
+}
 
 export function listToolDefinitions() {
   return MCP_TOOLS.map((tool: Row) => {

@@ -10,6 +10,13 @@ export const GetNeuronInputSchema = z
   .object({
     netuid: z.int().min(0),
     uid: z.int().min(0),
+    /** #9082: narrow each returned neuron row to these fields. The rows are
+     * 17+ fields wide and a full subnet is ~24k tokens; "is my miner
+     * registered" needs two of them. Applied after the tier returns, like
+     * this family's other MCP-only post-filters. Field names come from the
+     * published neuron schema; an unknown one is an invalid_params error
+     * rather than a silent no-op. */
+    fields: z.array(z.string()).min(1).optional(),
   })
   .strict();
 export type GetNeuronInput = z.infer<typeof GetNeuronInputSchema>;

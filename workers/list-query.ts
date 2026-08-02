@@ -10,8 +10,12 @@ import {
 } from "../src/contracts.ts";
 import { linkHeader } from "./http.ts";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
-
-const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+import {
+  parseFieldsParam,
+  projectRows,
+  resolveFieldProjection,
+  type FieldProjectionResult,
+} from "../src/field-projection.ts";
 
 export type Row = Record<string, unknown>;
 
@@ -619,79 +623,36 @@ function validateListQuery(
   return null;
 }
 
-interface ProjectionResult {
-  fields?: string[] | null;
-  error?: QueryError;
-}
-
+// #9082: the projection primitive now lives in src/field-projection.ts and is
+// shared with the neuron routes. This wrapper keeps THIS route family's rule
+// exactly as it was -- a field is allowed when it appears on at least one
+// returned row -- while the neuron routes resolve against their schema instead.
+//
+// The lazy row scan is preserved deliberately: on the largest collection
+// (~1160 endpoints) a valid ?fields= request touches ~1 row instead of
+// materialising every row's keys, because resolveFieldProjection takes a
+// PREDICATE rather than a materialised Set. An unsupported field still scans
+// to the end to confirm it truly appears on no row.
 function parseProjection(
   params: URLSearchParams,
   rows: Row[],
   dataKey: string,
-): ProjectionResult {
-  if (!params.has("fields")) {
-    return { fields: null };
-  }
-  const requested = (params.get("fields") as string)
-    .split(",")
-    .map((field) => field.trim())
-    .filter((field) => field.length > 0);
-  if (
-    requested.length === 0 ||
-    requested.some((field) => !FIELD_NAME_PATTERN.test(field))
-  ) {
-    return {
-      error: {
-        parameter: "fields",
-        message:
-          "fields must be a comma-separated list of row field names, e.g. netuid,name,slug.",
-      },
-    };
-  }
+): FieldProjectionResult {
+  const parsed = parseFieldsParam(params.get("fields"));
+  if (parsed.error || !parsed.fields) return parsed;
 
-  // A field is "known" if it appears on at least one row, so correctness needs
-  // the union of all rows' keys (collections can be heterogeneous). But the
-  // common case — every requested field present on the first row — only needs
-  // one row. Scan lazily: drop each requested field as a row reveals it and stop
-  // the moment all are resolved. On the largest collection (~1160 endpoints) a
-  // valid ?fields= request now touches ~1 row instead of materializing every
-  // row's keys; an unsupported field still scans to the end to confirm it truly
-  // appears on no row. Behaviour is identical to the prior full-union check.
-  const fields = [...new Set(requested)];
-  const unresolved = new Set(fields);
+  const unresolved = new Set(parsed.fields);
   for (const row of rows) {
     if (unresolved.size === 0) break;
     if (row && typeof row === "object" && !Array.isArray(row)) {
       for (const key of Object.keys(row)) unresolved.delete(key);
     }
   }
-  if (unresolved.size > 0) {
-    const unknown = [...unresolved];
-    return {
-      error: {
-        parameter: "fields",
-        message: `fields includes unsupported field${unknown.length === 1 ? "" : "s"} for ${dataKey}: ${unknown.join(", ")}.`,
-      },
-    };
-  }
-
-  return { fields };
-}
-
-function projectRows(rows: Row[], fields: string[] | null | undefined): Row[] {
-  if (!fields) {
-    return rows;
-  }
-  return rows.map((row) => {
-    if (!row || typeof row !== "object" || Array.isArray(row)) {
-      return row;
-    }
-    return Object.fromEntries(
-      fields
-        .filter((field) => Object.hasOwn(row, field))
-        .map((field) => [field, row[field]]),
-    );
-  });
+  return resolveFieldProjection(
+    parsed.fields,
+    (field) => !unresolved.has(field),
+    dataKey,
+  );
 }
 
 function integerParam(value: string | null): number | null {
