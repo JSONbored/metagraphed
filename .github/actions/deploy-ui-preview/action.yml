@@ -92,6 +92,13 @@ runs:
     # fork-built code at the production domain. Do not add a `routes` block to this preview config.
     # Deliberately NOT the wrangler.json the untrusted build step generated — a malicious PR could
     # otherwise smuggle bindings/vars through apps/ui/wrangler.jsonc.
+    #
+    # workers_dev/preview_urls are both false: metagraphed-ui serves only from its custom domain,
+    # and the workers.dev + preview domains are gone for good (#9044), so asking for them here
+    # would be a no-op request to re-provision exactly what was deliberately removed.
+    #
+    # This heredoc writes STRICT JSON (.json, not .jsonc) — wrangler rejects `#`/`//` comments in
+    # it with `InvalidSymbol`. Keep all commentary out here in the YAML.
     - name: Write trusted preview Wrangler config
       shell: bash
       run: |
@@ -99,9 +106,6 @@ runs:
         {
           "compatibility_date": "2026-07-17",
           "name": "metagraphed-ui",
-          # metagraphed-ui serves only from its custom domain; the workers.dev and preview
-          # domains are gone for good (#9044). Asking for them here would be a no-op request
-          # to re-provision exactly what was deliberately removed, so both stay off.
           "workers_dev": false,
           "preview_urls": false,
           "compatibility_flags": ["nodejs_compat"],
