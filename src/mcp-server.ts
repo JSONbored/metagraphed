@@ -11897,6 +11897,37 @@ const TOOL_OUTPUT_SCHEMAS = {
   ),
 };
 
+/** The `_meta` key carrying the auth requirement on an advertised tool.
+ *
+ * `_meta` and NOT `annotations` (#9072): `annotations` is the MCP spec's own
+ * CLOSED vocabulary -- readOnlyHint / destructiveHint / idempotentHint /
+ * openWorldHint. Inventing a key inside it would publish a claim the spec does
+ * not define, and a client validating against the spec would be right to
+ * reject it. `_meta` is the sanctioned extension point, and the namespaced key
+ * says whose extension it is. */
+export const MCP_AUTH_REQUIRED_META_KEY = "metagraph.sh/auth_required";
+
+/**
+ * The tools that refuse an anonymous caller. Since #9009 the surface-credential
+ * store needs an identity to bind a stored secret to, so all three of its tools
+ * fail closed for anonymous callers -- and until #9072 nothing published said
+ * so, leaving a client to discover the precondition only by being refused.
+ *
+ * This is a DECLARED set, not one derived from the handlers. "Does this code
+ * path eventually reach an auth check" is not a property worth inferring from a
+ * function body and then publishing as a contract. What keeps it honest is that
+ * it cannot silently go stale: tests/mcp-auth-required.test.ts probes EVERY
+ * tool anonymously and fails if the declared set and the enforced set differ in
+ * either direction -- an undeclared tool that refuses anonymous callers is a
+ * precondition no client can discover, and a declared tool that serves them
+ * tells clients to authenticate for nothing.
+ */
+export const AUTH_REQUIRED_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "store_surface_credential",
+  "list_surface_credentials",
+  "delete_surface_credential",
+]);
+
 export function listToolDefinitions() {
   return MCP_TOOLS.map((tool: Row) => {
     const outputSchema =
@@ -11913,6 +11944,13 @@ export function listToolDefinitions() {
       // tools that leave our infrastructure are named in
       // TOOL_ANNOTATIONS_BY_NAME, and a tool may still override inline.
       annotations: annotationsForTool(tool as { name: string }),
+      // #9072: the auth precondition, published so a client can see it in
+      // tools/list instead of discovering it by being refused. Omitted (not
+      // `false`) for the public tools -- an absent key is the natural "no
+      // requirement", and emitting it on all 207 would be noise.
+      ...(AUTH_REQUIRED_TOOL_NAMES.has(tool.name as string)
+        ? { _meta: { [MCP_AUTH_REQUIRED_META_KEY]: true } }
+        : {}),
     };
   });
 }

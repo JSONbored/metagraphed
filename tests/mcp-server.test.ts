@@ -204,6 +204,10 @@ describe("MCP tool registry", () => {
       "title",
       "annotations",
       "outputSchema",
+      // #9072: the auth precondition, on the three credential-store tools
+      // only. tests/mcp-auth-required.test.ts is what pins WHICH tools carry
+      // it and that it matches what the handlers enforce.
+      "_meta",
     ]);
     for (const def of defs) {
       for (const key of Object.keys(def)) {
