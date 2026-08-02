@@ -582,6 +582,60 @@ describe("Worker runtime", () => {
     assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
   });
 
+  test("chain-events rejects a typo'd filter instead of serving unfiltered data", async () => {
+    // #9149. This proxy forwards path+search verbatim and DATA_API ignores what
+    // it does not recognise, so `?palet=Balances` used to return the UNFILTERED
+    // feed as a 200 -- and it never reached DATA_API's notice at all.
+    //
+    // The DATA_API binding below throws: if validation is removed, this test
+    // fails by surfacing that throw rather than by a quiet assertion, because a
+    // rejected request must never reach the upstream (nor mint a cache entry
+    // keyed on the typo).
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/chain-events?pallet=Balances&methd=Transfer",
+      ),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            throw new Error("upstream must not be called for a rejected query");
+          },
+        },
+      } as unknown as Env,
+      {},
+    );
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "methd");
+  });
+
+  test("chain-events still serves a request whose params are all declared", async () => {
+    // The other direction: a validator that rejected real parameters would
+    // break the route more visibly than the bug it replaced.
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/chain-events?pallet=Balances&method=Transfer&limit=5",
+      ),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            return new Response(JSON.stringify({ events: [] }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          },
+        },
+      } as unknown as Env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).ok, true);
+  });
+
   test("chain-events/stats ignores ?format=csv and keeps the JSON envelope", async () => {
     // Only the feed exposes a top-level row array; the stats aggregate has none,
     // so a CSV request must fall through to the enveloped JSON, not a bogus export.

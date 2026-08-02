@@ -31,6 +31,7 @@ import {
   resolveClientIp,
 } from "../config.ts";
 import { parseLimitParam } from "../request-params.ts";
+import { API_ROUTES } from "../../src/contracts.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
@@ -185,6 +186,60 @@ export function configureAnalytics(deps: {
 }) {
   readHealthMetaKv = deps.readHealthMetaKv;
   readEconomicsCurrentKv = deps.readEconomicsCurrentKv;
+}
+
+/**
+ * The declared query-parameter names for a route path, straight off the
+ * contract (#9149).
+ *
+ * The 33 handlers that call `validateQueryParams` pass a hand-written array,
+ * which is a second copy of a list the contract already publishes -- the same
+ * "one fact, several declarations" shape as #9127 and #9131. Deriving it means
+ * a parameter added to `API_ROUTES` is accepted the day it lands, and one
+ * removed stops being accepted, with no array to keep in step.
+ */
+export function declaredQueryParams(routePath: string): string[] | null {
+  const route = (
+    API_ROUTES as unknown as {
+      path: string;
+      method: string;
+      query_parameters?: { name: string }[];
+    }[]
+  ).find((entry) => entry.path === routePath && entry.method === "GET");
+  if (!route?.query_parameters?.length) return null;
+  return route.query_parameters.map((parameter) => parameter.name);
+}
+
+/**
+ * Reject a request carrying a parameter the route does not declare.
+ *
+ * Returns null when the route declares no query parameters at all -- there is
+ * nothing to typo, and treating "declares nothing" as "allows nothing" would
+ * start 400ing cache-busting params on 44 param-less detail routes for no gain.
+ */
+/**
+ * Parameters accepted on every route regardless of what it declares.
+ *
+ * `format` is the one API-wide parameter whose no-op is DELIBERATE and tested:
+ * /api/v1/chain-events/stats is an aggregate with no top-level row array, so
+ * `?format=csv` deliberately falls through to the JSON envelope rather than
+ * producing a bogus export ("chain-events/stats ignores ?format=csv and keeps
+ * the JSON envelope"). Rejecting it would break that contract to guard against
+ * a typo that cannot silently change any result -- the harm here is a dropped
+ * FILTER, and format is not one.
+ *
+ * A declared judgement rather than a derived fact, so it is deliberately a set
+ * of exactly one: anything added here stops being typo-checked everywhere.
+ */
+const GLOBALLY_ACCEPTED_PARAMS = ["format"];
+
+export function validateDeclaredQueryParams(
+  url: URL,
+  routePath: string,
+): QueryError | null {
+  const allowed = declaredQueryParams(routePath);
+  if (!allowed) return null;
+  return validateQueryParams(url, [...allowed, ...GLOBALLY_ACCEPTED_PARAMS]);
 }
 
 function validateQueryParams(
