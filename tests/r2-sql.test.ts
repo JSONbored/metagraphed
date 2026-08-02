@@ -203,19 +203,48 @@ describe("r2SqlQuery", () => {
 
   test("a stuck query is aborted by the timeout, not left pinning the request", async () => {
     // A fetch that never settles on its own: only the abort can end it.
+    //
+    // The abort is DRIVEN, not awaited (#9123). This used to pass
+    // `timeoutMs: 5` and rely on a real setTimeout, which hung in CI's
+    // shared-registry pass until vitest killed it at 30s -- a timeout test
+    // failing by timing out. Nothing else could end the promise, so a timer
+    // that did not fire was an indefinite hang rather than a wrong answer.
+    let fire: (() => void) | null = null;
+    let signalledMs: number | null = null;
+    let aborted = false;
     const impl = (async (_u: string, init: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
-        (init.signal as AbortSignal).addEventListener("abort", () =>
-          reject(new Error("aborted")),
-        );
+        (init.signal as AbortSignal).addEventListener("abort", () => {
+          aborted = true;
+          reject(new Error("aborted"));
+        });
       })) as unknown as typeof fetch;
-    const rows = await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+
+    const pending = r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
       fetch: impl,
       timeoutMs: 5,
       recordException: (async () => true) as never,
+      scheduleAbort: (abort, ms) => {
+        signalledMs = ms;
+        fire = abort;
+        return () => {};
+      },
     });
+    // The query is genuinely in flight until the abort is fired -- proving the
+    // stub really does hang, so the assertion below is about the abort and not
+    // about some other early return.
+    assert.equal(aborted, false, "not aborted before the timer fires");
+    assert.equal(signalledMs, 5, "the ceiling is handed to the scheduler");
+    (fire as unknown as () => void)();
+    // Asserted BEFORE the await: AbortController fires its listeners
+    // synchronously, so a broken abort fails here with a message instead of
+    // hanging until the suite's timeout. Nothing else can settle this promise,
+    // so without this line a regression is indistinguishable from a slow test
+    // -- which is exactly how the flake this replaces presented.
+    assert.equal(aborted, true, "the request was actually aborted");
+
     assert.equal(
-      rows,
+      await pending,
       null,
       "an aborted query degrades like any other failure",
     );
