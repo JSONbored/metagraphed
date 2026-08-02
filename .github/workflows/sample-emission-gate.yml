@@ -1,0 +1,60 @@
+name: Sample Emission Gate
+
+# Samples the emission-gate parameters, per-subnet enablement, and the dormant
+# TAO-flow watch (#8748/#8750) and POSTs the readings to the main Worker's
+# /api/v1/internal/emission-gate-sync route, which diffs against D1 and
+# appends only changed rows.
+#
+# RESTORED FROM THE INDEXER BOX. Formerly a 10-minute systemd timer writing
+# straight into the box's Postgres; that box is decommissioned, so the lane
+# comes back here on the same cadence. A workflow rather than a Worker cron
+# because the differs need BOTH the previous-state reads and the multi-call
+# chain reads (paged storage-key enumeration per subnet) that
+# scripts/sample-emission-gate.ts already owns -- the script keeps all chain
+# I/O, the Worker route keeps all persistence. One thing genuinely changed
+# with the move: the box run fetched from the private fullnode, and that node
+# is decommissioned too, so this fetches from the public archive endpoint
+# like every other caller now does.
+on:
+  schedule:
+    # Every 10 minutes — theta is recomputed by the runtime every 360 blocks
+    # (~72 minutes), and catching its moves needs a cadence tighter than that;
+    # matches the box timer this restores.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sample-emission-gate
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Sample and sync
+        run: node scripts/sample-emission-gate.ts
+        env:
+          # Public archive endpoint — a plain var, not a secret.
+          EMISSION_SAMPLER_RPC_URL: https://archive.chain.opentensor.ai
+          EMISSION_GATE_SYNC_SECRET: ${{ secrets.EMISSION_GATE_SYNC_SECRET }}
+          # Optional: the #8750 stirred-path alarm webhook; the script quietly
+          # skips it when unset.
+          LIVE_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}

@@ -269,6 +269,21 @@ import {
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
 } from "../src/alert-triggers.ts";
 import {
+  GATE_PARAM_SOURCES,
+  gateParamChanges,
+  subnetEnabledChanges,
+  type GateParam,
+  type GateParamReading,
+} from "../src/emission-gate-history.ts";
+import {
+  EMA_FROZEN_BASELINE_BLOCK,
+  FLOW_PARAM_ITEMS,
+  emaAdvancedEvents,
+  flowParamEvents,
+  type FlowParamItem,
+  type FlowParamObservation,
+} from "../src/emission-flow-monitor.ts";
+import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
   pruneHealthHistory,
@@ -2279,6 +2294,394 @@ async function handleAccountBalancesSyncProxy(request: Request, env: Env) {
   });
 }
 
+// --- POST /api/v1/internal/emission-gate-sync (#8748/#8750 restored) --------
+// The persistence half of the emission-gate sampling lane, moved off the
+// decommissioned box's Postgres onto D1. scripts/sample-emission-gate.ts (now
+// on a 10-minute GitHub Actions schedule, .github/workflows/
+// sample-emission-gate.yml) keeps ALL the chain reading and POSTs one
+// observation here; this handler loads the last known state per key from D1,
+// runs the same PURE differs the box run called (src/emission-gate-history.ts,
+// src/emission-flow-monitor.ts), batch-inserts only the rows they return, and
+// replies with the summary the script used to log. Idempotent by construction:
+// the differs return [] when nothing moved, so re-POSTing an unchanged
+// observation writes nothing.
+//
+// Auth mirrors handleNeuronsSync (workers/data-api.ts): a single shared-secret
+// header compared timing-safely, 503 when unprovisioned, 401 on mismatch --
+// with api.ts's own errorResponse envelope, like the other secret-gated route
+// that lives in this Worker (handleChainFirehoseIngest). Direct D1
+// (METAGRAPH_HEALTH_DB), not the DATA_API service binding: these tables live
+// in the same D1 database as the observation tables (migrations/d1/
+// 0005_emission_gate.sql), not in the chain-indexer Postgres.
+const EMISSION_GATE_SYNC_TOKEN_HEADER = "x-emission-gate-sync-token";
+// One observation is ~130 [netuid, boolean] pairs + ~130 EMA entries + four
+// scalar params -- a few KB. 1 MB is generous headroom without inviting a
+// pathological body, same posture as NEURONS_SYNC_MAX_BODY_BYTES.
+const EMISSION_GATE_SYNC_MAX_BODY_BYTES = 1_000_000;
+const EMISSION_GATE_SYNC_MAX_ENTRIES = 10_000;
+const EMISSION_GATE_SYNC_MAX_NETUID = 65_535;
+// Raw storage values are 0x-hex; the largest tracked item decodes from 24
+// bytes. 256 chars bounds any future shape without accepting arbitrary blobs.
+const EMISSION_GATE_SYNC_MAX_RAW_CHARS = 256;
+
+// Latest row per key via ROW_NUMBER() -- the D1/SQLite translation of the
+// box sampler's postgres `SELECT DISTINCT ON (key) ... ORDER BY key,
+// observed_at DESC` reads (DISTINCT ON is postgres-only; SQLite has window
+// functions). `id DESC` tiebreaks two rows sharing an observed_at
+// deterministically -- the differs write at most one row per key per run, so
+// it only matters for hand-migrated or hand-edited data.
+const EMISSION_GATE_PREV_PARAMS_SQL = `
+  SELECT param, value FROM (
+    SELECT param, value, ROW_NUMBER() OVER (
+      PARTITION BY param ORDER BY observed_at DESC, id DESC) AS rn
+      FROM emission_gate_param_history)
+   WHERE rn = 1`;
+const EMISSION_GATE_PREV_ENABLED_SQL = `
+  SELECT netuid, enabled FROM (
+    SELECT netuid, enabled, ROW_NUMBER() OVER (
+      PARTITION BY netuid ORDER BY observed_at DESC, id DESC) AS rn
+      FROM subnet_emission_enabled_history)
+   WHERE rn = 1`;
+// The EMA rows share the table but not the keyspace: `previous` for the flow
+// differ is per network-level ITEM, and subnet_ema_tao_flow rows are per
+// netuid -- same WHERE the box sampler's read carried.
+const EMISSION_GATE_PREV_FLOW_SQL = `
+  SELECT item, is_set FROM (
+    SELECT item, is_set, ROW_NUMBER() OVER (
+      PARTITION BY item ORDER BY observed_at DESC, id DESC) AS rn
+      FROM emission_flow_watch
+     WHERE item <> 'subnet_ema_tao_flow')
+   WHERE rn = 1`;
+
+const EMISSION_GATE_INSERT_PARAM_SQL = `
+  INSERT INTO emission_gate_param_history
+    (param, value, previous_value, source, block_number, observed_at, predates_capture)
+  VALUES (?, ?, ?, ?, ?, ?, ?)`;
+const EMISSION_GATE_INSERT_ENABLED_SQL = `
+  INSERT INTO subnet_emission_enabled_history
+    (netuid, enabled, previous_enabled, block_number, observed_at, predates_capture)
+  VALUES (?, ?, ?, ?, ?, ?)`;
+const EMISSION_GATE_INSERT_FLOW_SQL = `
+  INSERT INTO emission_flow_watch
+    (item, netuid, is_set, ema_block, block_number, observed_at, predates_capture)
+  VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+// [netuid, X] pair arrays are how the script serializes its Maps (JSON has no
+// Map). Bounds both the entry count and each netuid; the second element's
+// shape is the caller's to check per array.
+function validEmissionGateSyncPairs(
+  value: unknown,
+  validSecond: (second: unknown) => boolean,
+): boolean {
+  if (!Array.isArray(value) || value.length > EMISSION_GATE_SYNC_MAX_ENTRIES) {
+    return false;
+  }
+  return value.every(
+    (entry) =>
+      Array.isArray(entry) &&
+      entry.length === 2 &&
+      Number.isInteger(entry[0]) &&
+      entry[0] >= 0 &&
+      entry[0] <= EMISSION_GATE_SYNC_MAX_NETUID &&
+      validSecond(entry[1]),
+  );
+}
+
+// Defensive shape check over the whole POST body -- returns the 400 message,
+// or null when the body is well-formed. Everything downstream (the differs,
+// the D1 binds) assumes these shapes, so malformed input must die here as a
+// clean 400, never as an uncaught throw mid-write.
+function emissionGateSyncBodyError(parsed: unknown): string | null {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return "body must be a JSON object";
+  }
+  const body = parsed as Row;
+  if (!Number.isInteger(body.block_number) || body.block_number < 0) {
+    return "block_number must be a non-negative integer";
+  }
+  if (!Number.isInteger(body.observed_at) || body.observed_at <= 0) {
+    return "observed_at must be a positive epoch-ms integer";
+  }
+  if (
+    !body.current ||
+    typeof body.current !== "object" ||
+    Array.isArray(body.current)
+  ) {
+    return "current must be an object of gate-parameter readings";
+  }
+  for (const [param, value] of Object.entries(body.current)) {
+    if (!(param in GATE_PARAM_SOURCES)) {
+      return `current.${param} is not a tracked gate parameter`;
+    }
+    if (value !== null && typeof value !== "number") {
+      return `current.${param} must be a number or null`;
+    }
+    // A non-finite reading can only be a decode bug upstream; recording it
+    // would poison every later diff against this key.
+    if (typeof value === "number" && !Number.isFinite(value)) {
+      return `current.${param} must be finite`;
+    }
+  }
+  if (
+    !validEmissionGateSyncPairs(
+      body.current_enabled,
+      (second) => typeof second === "boolean",
+    )
+  ) {
+    return "current_enabled must be an array of [netuid, boolean] pairs";
+  }
+  if (
+    !Array.isArray(body.flow_observations) ||
+    body.flow_observations.length > EMISSION_GATE_SYNC_MAX_ENTRIES
+  ) {
+    return "flow_observations must be an array of {item, raw} observations";
+  }
+  for (const observation of body.flow_observations as Row[]) {
+    if (
+      !observation ||
+      typeof observation !== "object" ||
+      Array.isArray(observation)
+    ) {
+      return "flow_observations entries must be {item, raw} objects";
+    }
+    if (
+      typeof observation.item !== "string" ||
+      !(observation.item in FLOW_PARAM_ITEMS)
+    ) {
+      return "flow_observations items must be tracked flow parameters";
+    }
+    if (
+      observation.raw !== null &&
+      (typeof observation.raw !== "string" ||
+        observation.raw.length > EMISSION_GATE_SYNC_MAX_RAW_CHARS)
+    ) {
+      return "flow_observations raw must be a bounded hex string or null";
+    }
+  }
+  if (
+    !validEmissionGateSyncPairs(
+      body.current_ema,
+      (second) =>
+        second === null ||
+        (typeof second === "object" &&
+          !Array.isArray(second) &&
+          Number.isInteger((second as Row).block) &&
+          (second as Row).block >= 0),
+    )
+  ) {
+    return "current_ema must be an array of [netuid, {block} | null] pairs";
+  }
+  return null;
+}
+
+async function emissionGateSyncRows(
+  db: D1Database,
+  sql: string,
+): Promise<Row[]> {
+  const outcome = await db.prepare(sql).all();
+  return (outcome?.results ?? []) as Row[];
+}
+
+async function handleEmissionGateSync(request: Request, env: Env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  }
+  if (!env.EMISSION_GATE_SYNC_SECRET) {
+    return errorResponse(
+      "emission_gate_sync_unavailable",
+      "The emission-gate sync tier is not provisioned on this deployment.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EMISSION_GATE_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.EMISSION_GATE_SYNC_SECRET)) {
+    return errorResponse(
+      "emission_gate_sync_unauthorized",
+      `Provide a valid ${EMISSION_GATE_SYNC_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db) {
+    return errorResponse(
+      "emission_gate_sync_unavailable",
+      "The health D1 database is not bound to this deployment.",
+      503,
+    );
+  }
+
+  const raw = await request.text();
+  if (
+    new TextEncoder().encode(raw).length > EMISSION_GATE_SYNC_MAX_BODY_BYTES
+  ) {
+    return errorResponse(
+      "emission_gate_sync_body_too_large",
+      `Body exceeds ${EMISSION_GATE_SYNC_MAX_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "emission_gate_sync_invalid_body",
+      "Body must be JSON.",
+      400,
+    );
+  }
+  const shapeError = emissionGateSyncBodyError(parsed);
+  if (shapeError) {
+    return errorResponse("emission_gate_sync_invalid_body", shapeError, 400);
+  }
+  const body = parsed as Row;
+  const blockNumber = body.block_number as number;
+  const observedAt = body.observed_at as number;
+
+  try {
+    // Last known value per key, from the three history tables -- the same
+    // three reads the box sampler did, feeding the differs' `previous`.
+    const previous: GateParamReading = {};
+    for (const row of await emissionGateSyncRows(
+      db,
+      EMISSION_GATE_PREV_PARAMS_SQL,
+    )) {
+      previous[row.param as GateParam] =
+        row.value === null ? null : Number(row.value);
+    }
+    const previousEnabled = new Map<number, boolean>(
+      (await emissionGateSyncRows(db, EMISSION_GATE_PREV_ENABLED_SQL)).map(
+        (row) => [Number(row.netuid), Boolean(row.enabled)],
+      ),
+    );
+    const previousFlow = new Map<FlowParamItem, boolean>(
+      (await emissionGateSyncRows(db, EMISSION_GATE_PREV_FLOW_SQL)).map(
+        (row) => [row.item as FlowParamItem, Boolean(row.is_set)],
+      ),
+    );
+
+    const currentEnabled = new Map<number, boolean>(
+      body.current_enabled as [number, boolean][],
+    );
+    const currentEma = new Map<number, { block: number } | null>(
+      body.current_ema as [number, { block: number } | null][],
+    );
+
+    // The same four pure calls, in the same order, the box run made.
+    const paramChanges = gateParamChanges({
+      current: body.current as GateParamReading,
+      previous,
+      blockNumber,
+      observedAt,
+    });
+    const enabledChanges = subnetEnabledChanges({
+      current: currentEnabled,
+      previous: previousEnabled,
+      blockNumber,
+      observedAt,
+    });
+    const flowEvents = [
+      ...flowParamEvents({
+        current: body.flow_observations as FlowParamObservation[],
+        previous: previousFlow,
+        blockNumber,
+        observedAt,
+      }),
+      ...emaAdvancedEvents({
+        current: currentEma,
+        baselineBlock: EMA_FROZEN_BASELINE_BLOCK,
+        blockNumber,
+        observedAt,
+      }),
+    ];
+
+    const statements = [
+      ...paramChanges.map((change) =>
+        db
+          .prepare(EMISSION_GATE_INSERT_PARAM_SQL)
+          .bind(
+            change.param,
+            change.value,
+            change.previous_value,
+            change.source,
+            change.block_number,
+            change.observed_at,
+            change.predates_capture ? 1 : 0,
+          ),
+      ),
+      ...enabledChanges.map((change) =>
+        db
+          .prepare(EMISSION_GATE_INSERT_ENABLED_SQL)
+          .bind(
+            change.netuid,
+            change.enabled ? 1 : 0,
+            change.previous_enabled === null
+              ? null
+              : change.previous_enabled
+                ? 1
+                : 0,
+            change.block_number,
+            change.observed_at,
+            change.predates_capture ? 1 : 0,
+          ),
+      ),
+      ...flowEvents.map((event) =>
+        db
+          .prepare(EMISSION_GATE_INSERT_FLOW_SQL)
+          .bind(
+            event.item,
+            event.netuid,
+            event.is_set ? 1 : 0,
+            event.ema_block,
+            event.block_number,
+            event.observed_at,
+            event.predates_capture ? 1 : 0,
+          ),
+      ),
+    ];
+    // db.batch([]) is a D1 error, and a no-change run (the common case, the
+    // whole reason the differs exist) produces exactly that.
+    if (statements.length > 0) {
+      await db.batch(statements);
+    }
+
+    // The alertable list rides back to the script so its stderr ALERT +
+    // optional webhook (the #8750 stirred-path alarm) keep working -- a
+    // predates_capture row just states what was already true when capture
+    // began, so only genuine events qualify.
+    const alertable = flowEvents
+      .filter((event) => !event.predates_capture)
+      .map((event) => ({ item: event.item, netuid: event.netuid }));
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        block_number: blockNumber,
+        gate_param_rows: paramChanges.length,
+        subnet_enabled_rows: enabledChanges.length,
+        flow_watch_rows: flowEvents.length,
+        flow_alertable: alertable.length,
+        subnets_seen: currentEnabled.size,
+        ema_entries_seen: currentEma.size,
+        alertable,
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      },
+    );
+  } catch (err) {
+    // Same containment as handleNeuronsSync's write path: a D1 fault is a
+    // retryable upstream failure, not an unhandled Worker exception. The next
+    // 10-minute run re-observes the same chain state, so nothing is lost.
+    console.error("emission-gate-sync write failed:", err);
+    return errorResponse(
+      "emission_gate_sync_failed",
+      "The emission-gate history write failed; retry.",
+      502,
+    );
+  }
+}
+
 // GET /api/v1/chain/stream (#4982, ADR 0015) -- the public realtime firehose
 // transport. SSE by default; a WebSocket Upgrade header on this same path
 // gets the WS transport instead. No auth: this is the same public read-only
@@ -2686,6 +3089,17 @@ export async function handleRequest(
   // account-balances job POSTs here. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/account-balances-sync") {
     return handleAccountBalancesSyncProxy(request, env);
+  }
+  // The write path into the emission-gate history tables on D1 (#8748/#8750,
+  // box decommission) -- sample-emission-gate.yml's 10-minute schedule POSTs
+  // the sampler's chain readings here, and this Worker owns the
+  // previous-state reads, the pure differs, and the batch insert. Direct D1
+  // (METAGRAPH_HEALTH_DB), not the DATA_API service binding: these tables
+  // live in the same D1 database as the observation tables, not in the
+  // chain-indexer Postgres. POST-only, so it runs before the read-only
+  // method gate below, like the other internal sync routes above.
+  if (url.pathname === "/api/v1/internal/emission-gate-sync") {
+    return handleEmissionGateSync(request, env);
   }
   // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
   // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own
