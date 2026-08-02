@@ -3672,6 +3672,13 @@ function clampLimit(raw: string | number | null | undefined) {
   return Math.min(Math.max(Math.floor(n), 1), MAX_LIMIT);
 }
 
+// #8970: the ceiling used to translate a block window into a time window for
+// chunk exclusion on the chain_events hypertable. 5x Bittensor's ~12s target
+// block time, so the derived bound is a generous SUPERSET of the requested
+// block range -- it can only clip the window if average block time exceeded a
+// full minute across it, which is a chain halt rather than a query concern.
+const CHAIN_BLOCK_MS_CEILING = 60_000;
+
 function clampStatsBlocks(raw: string | number | null | undefined) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 1000;
@@ -10336,10 +10343,38 @@ async function dispatchDataApiRequest(
           // equal-count groups and flipping which groups survive LIMIT 100 at the
           // boundary. Tie-break on the GROUP BY key (unique per row) for a total,
           // stable order, matching the keyset orders on the sibling queries above.
-          const rows = await sql`
+          // #8970: chain_events is a TimescaleDB hypertable partitioned on
+          // observed_at. block_number is NOT the partition column, so a
+          // predicate on it -- however tightly bounded it looks -- excludes no
+          // chunks. This scanned every chunk (~723M rows; measured at 181s
+          // against production) while the Worker gave up at ~3.3s, which is why
+          // it presented as a deterministic 502 rather than a timeout.
+          //
+          // Fixed by giving the query a partition-column bound so chunk
+          // exclusion applies. The head is resolved first, in its own cheap
+          // index-backed lookup (idx_ce_observed for observed_at, the PK's
+          // leading column for block_number), which also removes the correlated
+          // max() subquery from the aggregate.
+          //
+          // block_number remains the EXACT filter -- the semantics of
+          // ?blocks=N are unchanged. observed_at is a deliberate superset whose
+          // only job is to let Timescale skip chunks.
+          const [head] = await sql`
+          SELECT max(block_number) AS block_number, max(observed_at) AS observed_at
+          FROM chain_events`;
+          const headBlock = numberOrNull(head?.block_number);
+          const headObservedAt = numberOrNull(head?.observed_at);
+          // A cold/empty store has no head to anchor on: answer with the same
+          // schema-stable empty shape the sibling routes use rather than
+          // running an unanchored scan.
+          const rows =
+            headBlock == null || headObservedAt == null
+              ? []
+              : await sql`
           SELECT pallet, method, count(*)::int AS count
           FROM chain_events
-          WHERE block_number > (SELECT max(block_number) FROM chain_events) - ${blocks}
+          WHERE observed_at >= ${headObservedAt - blocks * CHAIN_BLOCK_MS_CEILING}
+            AND block_number > ${headBlock - blocks}
           GROUP BY pallet, method
           ORDER BY count DESC, pallet ASC, method ASC
           LIMIT 100`;

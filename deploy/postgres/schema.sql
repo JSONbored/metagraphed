@@ -181,6 +181,14 @@ CREATE INDEX IF NOT EXISTS idx_ce_pallet_method ON chain_events (pallet, method,
 -- Pallet-only feed (pallet= without method=): serves the ORDER BY without a full PK scan.
 CREATE INDEX IF NOT EXISTS idx_ce_pallet_block  ON chain_events (pallet, block_number DESC, event_index DESC);
 CREATE INDEX IF NOT EXISTS idx_ce_observed      ON chain_events (observed_at DESC);
+-- #8970 (migration 0052): the SubnetOwnerChanged history routes query ALL
+-- history by design, so they have no correct time predicate to add and cannot
+-- benefit from chunk exclusion the way chain-events/stats now does. This
+-- partial index covers just that stream -- a few thousand rows out of ~723M --
+-- so the planner reads only matching rows instead of descending every chunk's
+-- copy of idx_ce_pallet_method and filtering JSONB afterwards.
+CREATE INDEX IF NOT EXISTS idx_ce_owner_changed ON chain_events (block_number ASC)
+  WHERE pallet = 'SubtensorModule' AND method = 'SubnetOwnerChanged';
 
 -- ---------------------------------------------------------------------------
 -- Metagraph tiers
