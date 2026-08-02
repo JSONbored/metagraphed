@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
+  DEGRADED_HEADER,
+  DEGRADED_TIER_UNAVAILABLE,
   markPostgresTierFallbackResponse,
   withEdgeCache,
 } from "../workers/request-handlers/analytics.ts";
@@ -1918,5 +1921,138 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
         "?window=7d",
       ),
     ]);
+  });
+});
+
+// #9110: a data-tier miss returns a schema-stable EMPTY payload. Until this
+// header existed, that was indistinguishable from a measured zero -- observed
+// live, /api/v1/chain/calls?window=30d served `total_extrinsics: 0` in the same
+// minute ?window=7d served 1,347,135, and 5,118,674 on the next attempt.
+//
+// Both directions matter. A degraded response that is not labelled is the bug.
+// A healthy response that IS labelled is a false alarm that trains consumers to
+// ignore the header, which is the same bug one step later.
+describe("degraded-tier labelling (#9110)", () => {
+  test("a tier miss is labelled on every analytics route that can degrade", async () => {
+    // No DATA_API bound, tier flags on -> tryPostgresTier degrades on each.
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+    } as unknown as Env;
+    const routes = [
+      "/api/v1/chain/calls?window=30d",
+      "/api/v1/chain/signers?window=7d",
+      // Carries its own inline tier branch rather than the shared helper; the
+      // `&& env.DATA_API` it used to guard with swallowed the degradation
+      // signal entirely, so this route is here on purpose.
+      "/api/v1/chain/fees?window=7d",
+      "/api/v1/chain/transfers?window=7d",
+      "/api/v1/chain/activity?window=7d",
+      "/api/v1/chain/stake-flow?window=7d",
+      "/api/v1/chain/weights?window=7d",
+      "/api/v1/chain/registrations?window=7d",
+      "/api/v1/health/trends",
+    ];
+    const unlabelled: string[] = [];
+    for (const route of routes) {
+      const res = await handleRequest(
+        new Request(`https://api.metagraph.sh${route}`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200, `${route}: expected a 200 empty payload`);
+      if (res.headers.get(DEGRADED_HEADER) !== DEGRADED_TIER_UNAVAILABLE) {
+        unlabelled.push(route);
+      }
+    }
+    assert.deepEqual(
+      unlabelled,
+      [],
+      `these served an empty payload from a tier miss without saying so: ${unlabelled.join(", ")}`,
+    );
+  });
+
+  test("a real tier HIT is NOT labelled", async () => {
+    // A working DATA_API, so tryPostgresTier returns a body and nothing
+    // degrades. This is the direction that keeps the header meaningful: if a
+    // healthy response carried it too, consumers would learn to ignore it.
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            group_by: "module",
+            observed_at: LAST_RUN_AT,
+            total_extrinsics: 1_347_135,
+            calls: [
+              {
+                call_module: "SubtensorModule",
+                call_function: null,
+                count: 603_215,
+                share: 0.4478,
+              },
+            ],
+          }),
+      },
+    } as unknown as Env;
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/calls?window=7d"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal(
+      body.data.total_extrinsics,
+      1_347_135,
+      "the tier body must be what is served",
+    );
+    assert.equal(
+      res.headers.get(DEGRADED_HEADER),
+      null,
+      "a measured response must not claim to be degraded",
+    );
+  });
+
+  test("the header is exposed cross-origin", () => {
+    // An unexposed header does not reach a browser client, which defeats the
+    // entire point of labelling.
+    assert.match(
+      EXPOSED_RESPONSE_HEADERS_VALUE,
+      new RegExp(DEGRADED_HEADER),
+      "x-metagraph-degraded must be in access-control-expose-headers",
+    );
+  });
+
+  test("marking is idempotent and tags the returned object", () => {
+    const once = markPostgresTierFallbackResponse(
+      new Response("{}", { headers: { "content-type": "application/json" } }),
+    );
+    const twice = markPostgresTierFallbackResponse(once);
+    assert.equal(once.headers.get(DEGRADED_HEADER), DEGRADED_TIER_UNAVAILABLE);
+    // withEdgeCache checks the WeakSet on the object it receives back, so the
+    // header is set IN PLACE and the same object comes out -- twice over.
+    assert.equal(twice, once);
+  });
+
+  test("an immutable-headers response is copied rather than throwing", () => {
+    // A response read back out of the edge cache has immutable headers. That
+    // path does not reach the marker today, but a degraded response must never
+    // become a 500 because the label could not be attached -- so the fallback
+    // copies instead of letting the TypeError escape.
+    const immutable = Response.redirect("https://api.metagraph.sh/x", 302);
+    assert.throws(() => immutable.headers.set("x-probe", "1"), TypeError);
+    const marked = markPostgresTierFallbackResponse(immutable);
+    assert.notEqual(marked, immutable, "an immutable response must be copied");
+    assert.equal(
+      marked.headers.get(DEGRADED_HEADER),
+      DEGRADED_TIER_UNAVAILABLE,
+    );
+    assert.equal(marked.status, immutable.status);
   });
 });
