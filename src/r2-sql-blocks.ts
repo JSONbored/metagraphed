@@ -67,6 +67,33 @@ export async function loadBlockFeedFromR2Sql(
   env: Env | null | undefined,
   query: BlockFeedQuery,
 ): Promise<ReturnType<typeof buildBlockFeed> | null> {
+  const page = await fetchBlockRowsFromR2Sql(env, query);
+  if (page === null) return null;
+  return buildBlockFeed(page.rows as never[], {
+    limit: page.limit,
+    offset: page.offset,
+    nextCursor: page.nextCursor,
+  });
+}
+
+/**
+ * The same query as {@link loadBlockFeedFromR2Sql}, stopping at the RAW rows.
+ *
+ * Callers that stitch this tier together with another source need the rows
+ * before formatting: feeding an already-formatted payload back through the
+ * formatter would run it twice, and a formatter is only guaranteed to be
+ * correct on the shape it was designed for. One formatting pass, at the end,
+ * over rows from every source.
+ */
+export async function fetchBlockRowsFromR2Sql(
+  env: Env | null | undefined,
+  query: BlockFeedQuery,
+): Promise<{
+  rows: Record<string, unknown>[];
+  limit: number;
+  offset: number;
+  nextCursor: string | null;
+} | null> {
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
@@ -114,7 +141,7 @@ export async function loadBlockFeedFromR2Sql(
     last && typeof last.block_number === "number"
       ? String(last.block_number)
       : null;
-  return buildBlockFeed(page as never[], { limit, offset, nextCursor });
+  return { rows: page, limit, offset, nextCursor };
 }
 
 /**
