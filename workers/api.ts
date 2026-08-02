@@ -951,6 +951,23 @@ export function usageRouteLabel(url: URL) {
     return null;
   }
 
+  // #9005: internal machine-to-machine plumbing is not API usage by anyone.
+  // /api/v1/internal/chain-firehose-ingest is our own relay POSTing into our
+  // own Worker (client "node"), and it alone emitted 177,894 usage_events in
+  // 24 hours -- 19% of the entire project's event volume, for a number nobody
+  // reads. It qualified only because it starts with /api/v1/ and so fell into
+  // the maskUsageRouteParams fallback below.
+  //
+  // Counting it is also actively misleading, not merely expensive: "requests
+  // served" silently included our own ingest traffic.
+  //
+  // $exception capture on these routes is UNAFFECTED and deliberately so -- a
+  // failing internal ingest must stay visible (6 of those 177,894 were 5xx).
+  // This excludes the per-request usage event, not error tracking.
+  if (pathname.startsWith("/api/v1/internal/")) {
+    return null;
+  }
+
   const route =
     pathname === "/api/v1/graphql"
       ? GRAPHQL_USAGE_ROUTE
