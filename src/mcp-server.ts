@@ -214,7 +214,10 @@ import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import {
+  currentPostgresTierFallbackGeneration,
+  tryPostgresTier,
+} from "../workers/postgres-tier.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
@@ -12855,6 +12858,36 @@ function scheduleTraceSpan(
   }
 }
 
+/**
+ * The in-band degraded marker (#9120), the MCP counterpart to #9114's
+ * `x-metagraph-degraded` header.
+ *
+ * `structuredContent` is the only channel here -- a tools/call result is
+ * `{ content, structuredContent, isError }` with no headers -- so an agent that
+ * cannot see this cannot tell a MEASURED zero from an UNMEASURABLE one. A
+ * human reading a UI notices an implausible zero; an agent asked "how busy has
+ * the chain been" reports thirty quiet days and moves on.
+ *
+ * Attached only to a plain object: a tool returning an array or a scalar has
+ * nowhere to put it without changing its published shape, and none of the
+ * tier-backed tools do.
+ *
+ * The counter is module-global, so a CONCURRENT call degrading can label this
+ * one too. Inherited from #9114 along with the seam, and it errs the same safe
+ * way -- a false "degraded" makes good data look suspect, where the bug it
+ * replaces made missing data look measured.
+ */
+export const MCP_DEGRADED_REASON = "tier_unavailable";
+
+export function markMcpTierDegraded(
+  data: unknown,
+  generationBefore: number,
+): unknown {
+  if (currentPostgresTierFallbackGeneration() === generationBefore) return data;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  return { ...(data as Row), degraded: { reason: MCP_DEGRADED_REASON } };
+}
+
 async function dispatchTool(
   params: Row,
   ctx: McpCtx,
@@ -12887,6 +12920,13 @@ async function dispatchTool(
     const toolStartedAt = Date.now();
     let toolOk = true;
     let data: unknown;
+    // #9120: the data tier degrading mid-call is invisible on this surface.
+    // MCP results carry no headers, so #9114's `x-metagraph-degraded` cannot
+    // reach an agent, and MCP handlers bypass withEdgeCache where that label is
+    // applied -- they call tryPostgresTier directly, at 126 sites. Captured
+    // here so the marker lands once, at the dispatcher, rather than being
+    // threaded through all of them and forgotten on the 127th.
+    const tierGenerationBefore = currentPostgresTierFallbackGeneration();
     try {
       data = await tool.handler(args, ctx);
     } catch (err) {
@@ -12909,9 +12949,10 @@ async function dispatchTool(
         });
       }
     }
+    const payload = markMcpTierDegraded(data, tierGenerationBefore);
     return {
-      content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: data as Row,
+      content: [{ type: "text", text: JSON.stringify(payload) }],
+      structuredContent: payload as Row,
       isError: false,
     };
   } catch (rawError) {
