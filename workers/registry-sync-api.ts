@@ -1,10 +1,21 @@
 // metagraphed registry-sync Worker — the ONLY write path into the registry
-// Postgres instance (a dedicated, separate database from the chain-indexer's
-// -- see deploy/postgres/registry-schema.sql). Kept SEPARATE from the main
-// api.ts Worker and from workers/data-api.ts (which is READ-ONLY by design
-// for chain data) for the same bundle-budget reason ADR 0013 already split
-// data-api.ts out: the postgres.js driver shouldn't grow every Worker that
-// merely proxies to it.
+// database, now D1 (`metagraphed`, schema in migrations/d1/0001_registry.sql).
+//
+// MOVED OFF THE SELF-HOSTED POSTGRES. The registry lived on a dedicated
+// Postgres on the indexer box, reached through Hyperdrive. That box is being
+// decommissioned, so the whole tier moved: 9,157 rows across four tables, which
+// is roughly 450x under D1's ceiling. The Hyperdrive binding and the postgres.js
+// driver are gone from this Worker entirely.
+//
+// WHAT CHANGED SEMANTICALLY. Three things, each documented where it happens
+// rather than only here: the jsonb `overlay` columns are TEXT, so anything
+// reading inside them must use json_extract(); `now()` becomes an epoch-ms
+// integer; and D1 has no interactive transactions, which reshapes the write
+// path into a read phase and one atomic batch (see applyRegistrySyncToD1).
+//
+// Kept SEPARATE from the main api.ts Worker for the same reason ADR 0013 split
+// data-api.ts out -- this is a write tier with its own auth gate, and the main
+// Worker should not grow one.
 //
 // Reached only via the main Worker's REGISTRY_SYNC_API service binding (no
 // public routes of its own) -- see workers/api.ts's handleRegistrySyncProxy,
@@ -13,14 +24,9 @@
 //
 // This is the write path scripts/sync-registry-to-postgres.ts (merge-
 // triggered) and scripts/backfill-registry-postgres.ts (scheduled full
-// resync) call over HTTPS from GitHub Actions -- there is no Tailscale, SSH,
-// or direct network path from CI to the database at all. GitHub Actions
-// only ever needs a REGISTRY_SYNC_SECRET value and the public HTTPS
-// endpoint; the database itself stays exactly as private as it already was
-// (bound to 127.0.0.1 on its host, reachable only via the Cloudflare Tunnel
-// + Workers VPC Service + Hyperdrive path already proven for reads).
-import type postgres from "postgres";
-import { syncBeginWithConnectionRetry } from "./hyperdrive-sync-retry.ts";
+// resync) call over HTTPS from GitHub Actions. GitHub Actions only ever needs
+// a REGISTRY_SYNC_SECRET value and the public HTTPS endpoint -- it never had,
+// and still does not have, any direct network path to the database.
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import {
   newSpanId,
@@ -74,6 +80,308 @@ interface SurfaceSyncRow {
   public_safe?: unknown;
   overlay?: unknown;
   source_commit?: string;
+}
+
+// Epoch-milliseconds "now", matching the INTEGER convention the D1 schema uses
+// for every timestamp column (migrations/d1/0001_registry.sql translation 4).
+// Postgres' now() returned a timestamptz; there is no such type here.
+const NOW_MS = "(unixepoch() * 1000)";
+
+export interface RegistrySyncSummary {
+  providers_written: number;
+  subnets_written: number;
+  surfaces_written: number;
+  surfaces_deleted: number;
+  subnets_deleted: number;
+}
+
+interface D1Like {
+  prepare(sql: string): {
+    bind(...values: unknown[]): {
+      all(): Promise<{ results?: unknown[] }>;
+    };
+  };
+  batch(statements: unknown[]): Promise<unknown>;
+}
+
+interface SurfaceRow {
+  id?: unknown;
+  subnet_netuid?: unknown;
+  overlay?: unknown;
+}
+
+function bound(db: D1Like, sql: string, values: unknown[]) {
+  return db.prepare(sql).bind(...values);
+}
+
+async function readRows(
+  db: D1Like,
+  sql: string,
+  values: unknown[],
+): Promise<SurfaceRow[]> {
+  const { results } = await bound(db, sql, values).all();
+  return (results as SurfaceRow[]) ?? [];
+}
+
+// One history row per surface that a prune/delete removed. Split out because
+// both the prune path and the delete-subnets path need exactly this, and the
+// original Postgres version duplicated it via DELETE ... RETURNING.
+function historyForDeleted(
+  db: D1Like,
+  rows: SurfaceRow[],
+  sourceCommit: string,
+) {
+  return rows.map((row) =>
+    bound(
+      db,
+      `INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit, recorded_at)
+       VALUES (?, ?, 'delete', ?, ?, ${NOW_MS})`,
+      [
+        row.id ?? null,
+        row.subnet_netuid ?? null,
+        typeof row.overlay === "string"
+          ? row.overlay
+          : JSON.stringify(row.overlay ?? {}),
+        sourceCommit,
+      ],
+    ),
+  );
+}
+
+/**
+ * Apply one sync payload to D1.
+ *
+ * TWO PHASES, AND WHY. Postgres gave this an interactive transaction
+ * (`sql.begin`), so it could DELETE ... RETURNING and then write a history row
+ * per returned id inside one atomic unit. D1 has no interactive transactions --
+ * `batch()` is a transaction, but it is a fixed list of statements decided
+ * before any of them runs. So the reads move to phase 1 and every write lands in
+ * a single phase-2 batch.
+ *
+ * The cost is a TOCTOU window between the two phases, and it is stated here
+ * rather than hidden: a surface deleted by a concurrent call between phases
+ * would produce a history row for a row that is already gone. That is acceptable
+ * for THIS path specifically -- it is CI-only, rate-limited to 30/60s, and in
+ * practice serialized by the workflows that call it -- and it is strictly better
+ * than the alternative of writing history outside a transaction entirely.
+ *
+ * Atomicity of the writes themselves is preserved: one batch, all-or-nothing,
+ * so a mid-batch failure can no longer leave a partial sync the way the
+ * pre-transaction version could.
+ */
+export async function applyRegistrySyncToD1(
+  db: D1Like,
+  payload: {
+    providers: ProviderSyncRow[];
+    subnets: SubnetSyncRow[];
+    surfaces: SurfaceSyncRow[];
+    pruneSurfaces: PruneSurfacesRow[];
+    deleteSubnets: DeleteSubnetRow[];
+  },
+): Promise<RegistrySyncSummary> {
+  const summary: RegistrySyncSummary = {
+    providers_written: 0,
+    subnets_written: 0,
+    surfaces_written: 0,
+    surfaces_deleted: 0,
+    subnets_deleted: 0,
+  };
+  const writes: unknown[] = [];
+
+  for (const p of payload.providers) {
+    if (!p.id || !p.overlay || !p.source_commit) continue;
+    writes.push(
+      bound(
+        db,
+        `INSERT INTO providers (id, overlay, source_commit, updated_at)
+         VALUES (?, ?, ?, ${NOW_MS})
+         ON CONFLICT (id) DO UPDATE SET
+           overlay = excluded.overlay,
+           source_commit = excluded.source_commit,
+           updated_at = ${NOW_MS}
+         -- SQLite's IS NOT is exactly Postgres' IS DISTINCT FROM (NULL-safe),
+         -- so the "only touch the row when the overlay actually changed"
+         -- semantics carry over verbatim.
+         WHERE providers.overlay IS NOT excluded.overlay`,
+        [p.id, JSON.stringify(p.overlay), p.source_commit],
+      ),
+    );
+    summary.providers_written += 1;
+  }
+
+  const writtenSubnetNetuids = new Set<unknown>();
+  for (const s of payload.subnets) {
+    if (
+      !Number.isInteger(s.netuid) ||
+      !s.slug ||
+      !s.name ||
+      !s.overlay ||
+      !s.source_commit
+    )
+      continue;
+    writes.push(
+      bound(
+        db,
+        `INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ${NOW_MS})
+         ON CONFLICT (netuid) DO UPDATE SET
+           slug = excluded.slug,
+           name = excluded.name,
+           source = excluded.source,
+           overlay = excluded.overlay,
+           source_commit = excluded.source_commit,
+           updated_at = ${NOW_MS}`,
+        [
+          s.netuid as number,
+          s.slug,
+          s.name,
+          s.source || "community",
+          JSON.stringify(s.overlay),
+          s.source_commit,
+        ],
+      ),
+    );
+    summary.subnets_written += 1;
+    writtenSubnetNetuids.add(s.netuid);
+  }
+
+  for (const prune of payload.pruneSurfaces) {
+    if (
+      !Number.isInteger(prune.subnet_netuid) ||
+      !Array.isArray(prune.current_surfaces) ||
+      !prune.source_commit
+    )
+      continue;
+    const keep = prune.current_surfaces
+      .filter((s) => s?.kind && s?.url)
+      .map((s) => ({ k: s.kind, u: s.url }));
+    // json_each over ONE bound JSON array rather than 2 placeholders per kept
+    // surface. The Postgres version built a VALUES join with positional binds,
+    // which here would mean thousands of parameters for a large subnet and run
+    // into SQLite's variable ceiling. This also keeps the statement text
+    // constant, so D1 can reuse the prepared plan.
+    const scopeToCommunity = prune.authority_scope === "community" ? 1 : 0;
+    const doomed = await readRows(
+      db,
+      `SELECT id, subnet_netuid, overlay FROM surfaces
+       WHERE subnet_netuid = ?
+         AND (? = 0 OR authority = 'community')
+         AND NOT EXISTS (
+           SELECT 1 FROM json_each(?) AS keep
+           WHERE json_extract(keep.value, '$.k') = surfaces.kind
+             AND json_extract(keep.value, '$.u') = surfaces.url
+         )`,
+      [prune.subnet_netuid as number, scopeToCommunity, JSON.stringify(keep)],
+    );
+    if (!doomed.length) continue;
+    // Delete by the exact ids just read, not by re-running the predicate: the
+    // history rows below describe THESE rows, and re-evaluating the predicate
+    // inside the batch could delete a different set than the one being recorded.
+    writes.push(
+      bound(
+        db,
+        `DELETE FROM surfaces WHERE id IN (SELECT value FROM json_each(?))`,
+        [JSON.stringify(doomed.map((r) => r.id))],
+      ),
+      ...historyForDeleted(db, doomed, prune.source_commit),
+    );
+    summary.surfaces_deleted += doomed.length;
+  }
+
+  for (const deletion of payload.deleteSubnets) {
+    if (!Number.isInteger(deletion.netuid) || !deletion.source_commit) continue;
+    if (writtenSubnetNetuids.has(deletion.netuid)) continue;
+    const doomed = await readRows(
+      db,
+      `SELECT id, subnet_netuid, overlay FROM surfaces WHERE subnet_netuid = ?`,
+      [deletion.netuid as number],
+    );
+    writes.push(
+      bound(db, `DELETE FROM surfaces WHERE subnet_netuid = ?`, [
+        deletion.netuid as number,
+      ]),
+      ...historyForDeleted(db, doomed, deletion.source_commit),
+      bound(db, `DELETE FROM subnets WHERE netuid = ?`, [
+        deletion.netuid as number,
+      ]),
+    );
+    summary.surfaces_deleted += doomed.length;
+    summary.subnets_deleted += 1;
+  }
+
+  for (const surf of payload.surfaces) {
+    if (
+      !Number.isInteger(surf.subnet_netuid) ||
+      !surf.surface_key ||
+      !surf.kind ||
+      !surf.url ||
+      !surf.overlay ||
+      !surf.source_commit
+    )
+      continue;
+    const overlay = JSON.stringify(surf.overlay);
+    // Postgres answered "was this an insert or an update?" with
+    // `RETURNING (xmax = 0)`, which reads MVCC internals SQLite does not have.
+    // Asking directly is both portable and clearer -- and it subsumes the old
+    // `WHERE ... IS DISTINCT FROM` guard, because an unchanged overlay is now
+    // skipped here instead of being sent and silently no-op'd.
+    const [existing] = await readRows(
+      db,
+      `SELECT id, overlay FROM surfaces WHERE subnet_netuid = ? AND kind = ? AND url = ?`,
+      [surf.subnet_netuid as number, surf.kind, surf.url],
+    );
+    if (existing && existing.overlay === overlay) continue;
+    const action = existing ? "update" : "insert";
+    writes.push(
+      bound(
+        db,
+        `INSERT INTO surfaces (
+           id, subnet_netuid, provider_id, surface_key, kind, url,
+           authority, review_state, probe_eligible, public_safe,
+           overlay, source_commit, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${NOW_MS})
+         ON CONFLICT (subnet_netuid, kind, url) DO UPDATE SET
+           provider_id = excluded.provider_id,
+           surface_key = excluded.surface_key,
+           authority = excluded.authority,
+           review_state = excluded.review_state,
+           probe_eligible = excluded.probe_eligible,
+           public_safe = excluded.public_safe,
+           overlay = excluded.overlay,
+           source_commit = excluded.source_commit,
+           updated_at = ${NOW_MS}`,
+        [
+          // The D1 schema deliberately has NO default for surfaces.id (a
+          // fabricated surrogate is worse than a failed insert), so the caller
+          // supplies it. Ignored on the UPDATE branch, which keeps the row's
+          // existing id.
+          (existing?.id as string) ?? crypto.randomUUID(),
+          surf.subnet_netuid as number,
+          surf.provider_id ?? null,
+          surf.surface_key,
+          surf.kind,
+          surf.url,
+          surf.authority || "community",
+          surf.review_state || "community-submitted",
+          // Booleans are 0/1 with a CHECK constraint in the D1 schema.
+          surf.probe_eligible ? 1 : 0,
+          surf.public_safe === false ? 0 : 1,
+          overlay,
+          surf.source_commit,
+        ],
+      ),
+      bound(
+        db,
+        `INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit, recorded_at)
+         VALUES (?, ?, ?, ?, ${NOW_MS})`,
+        [surf.subnet_netuid as number, action, overlay, surf.source_commit],
+      ),
+    );
+    summary.surfaces_written += 1;
+  }
+
+  if (writes.length) await db.batch(writes);
+  return summary;
 }
 
 function json(
@@ -153,8 +461,8 @@ async function dispatchRegistrySyncRequest(
         );
       }
     }
-    if (!env.HYPERDRIVE?.connectionString) {
-      return json({ error: "hyperdrive binding unavailable" }, 503);
+    if (!env.REGISTRY_DB) {
+      return json({ error: "registry database binding unavailable" }, 503);
     }
 
     const raw = await request.text();
@@ -218,201 +526,23 @@ async function dispatchRegistrySyncRequest(
       return json({ error: "no rows provided" }, 400);
     }
 
-    const summary = {
-      providers_written: 0,
-      subnets_written: 0,
-      surfaces_written: 0,
-      surfaces_deleted: 0,
-      subnets_deleted: 0,
-    };
     try {
-      // sql.begin() reserves ONE physical connection for the whole batch,
-      // including the SET -- Hyperdrive resets session state when a
-      // connection is returned to its pool, so a bare SET (no transaction)
-      // has no guarantee it applies to the writes that follow it (Hyperdrive's
-      // connection-lifecycle docs; same root cause as #4686). This also makes
-      // the batch atomic: previously a mid-batch failure left whatever had
-      // already been written committed and the rest silently never applied,
-      // a partial-sync state with no way to tell it happened; now the whole
-      // batch commits together or rolls back together.
-      return await syncBeginWithConnectionRetry(env, async (sql) => {
-        await sql`SET statement_timeout = '10000ms'`;
-
-        for (const p of providers) {
-          if (!p.id || !p.overlay || !p.source_commit) continue;
-          await sql`
-          INSERT INTO providers (id, overlay, source_commit)
-          VALUES (${p.id}, ${sql.json(p.overlay as postgres.JSONValue)}, ${p.source_commit})
-          ON CONFLICT (id) DO UPDATE SET
-            overlay = EXCLUDED.overlay,
-            source_commit = EXCLUDED.source_commit,
-            updated_at = now()
-          WHERE providers.overlay IS DISTINCT FROM EXCLUDED.overlay`;
-          summary.providers_written += 1;
-        }
-
-        const writtenSubnetNetuids = new Set();
-        for (const s of subnets) {
-          if (
-            !Number.isInteger(s.netuid) ||
-            !s.slug ||
-            !s.name ||
-            !s.overlay ||
-            !s.source_commit
-          )
-            continue;
-          await sql`
-          INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit)
-          VALUES (${s.netuid as number}, ${s.slug}, ${s.name}, ${s.source || "community"}, ${sql.json(s.overlay as postgres.JSONValue)}, ${s.source_commit})
-          ON CONFLICT (netuid) DO UPDATE SET
-            slug = EXCLUDED.slug,
-            name = EXCLUDED.name,
-            source = EXCLUDED.source,
-            overlay = EXCLUDED.overlay,
-            source_commit = EXCLUDED.source_commit,
-            updated_at = now()`;
-          summary.subnets_written += 1;
-          writtenSubnetNetuids.add(s.netuid);
-        }
-
-        for (const prune of pruneSurfaces) {
-          if (
-            !Number.isInteger(prune.subnet_netuid) ||
-            !Array.isArray(prune.current_surfaces) ||
-            !prune.source_commit
-          )
-            continue;
-          const keepPairs = prune.current_surfaces
-            .filter((surface) => surface?.kind && surface?.url)
-            .map((surface) => [surface.kind, surface.url]);
-          // `authority_scope: "community"` (set by the merge-triggered fast path,
-          // scripts/sync-registry-to-postgres.ts) bounds this prune to ONLY the
-          // community-authority rows for the subnet -- the fast path's
-          // current_surfaces comes from a single registry/subnets/<slug>.json file
-          // and has no visibility into machine-generated/candidate-promoted
-          // surfaces (authority: "registry-observed") the same subnet may also
-          // carry, so without this scope it would delete those rows on every
-          // merge that touches the file. The scheduled full resync
-          // (scripts/backfill-registry-postgres.ts) computes current_surfaces
-          // from the complete baseline-augmented view and omits authority_scope,
-          // so it keeps pruning across every authority as before.
-          const scopeToCommunity = prune.authority_scope === "community";
-          let deleted;
-          if (keepPairs.length) {
-            // Plain scalar positional binds via sql.unsafe, NOT a bound JS
-            // array -- Hyperdrive's fetch_types:false breaks postgres.js's
-            // ANY($1)/array serialization (confirmed live 2026-07-10, #4771's
-            // identical fix to data-api.ts's neurons-sync prune; this query
-            // shipped the same broken ANY(${keepKeys}) pattern in #3892 three
-            // days earlier and was never ported). A bound array here sends a
-            // malformed literal with no braces, 502'ing every write that
-            // pruned against a non-empty current_surfaces list. Matches
-            // (kind, url) pairs directly via a VALUES join instead of a
-            // synthetic separator-joined key.
-            const valuesSql = keepPairs
-              .map((_, i) => `($${i * 2 + 3}::text, $${i * 2 + 4}::text)`)
-              .join(", ");
-            deleted = await sql.unsafe(
-              `DELETE FROM surfaces
-              WHERE subnet_netuid = $2::int
-                AND (NOT $1::boolean OR authority = 'community')
-                AND NOT EXISTS (
-                  SELECT 1 FROM (VALUES ${valuesSql}) AS keep(kind, url)
-                  WHERE keep.kind = surfaces.kind AND keep.url = surfaces.url
-                )
-              RETURNING id, subnet_netuid, overlay`,
-              [scopeToCommunity, prune.subnet_netuid, ...keepPairs.flat()],
-            );
-          } else {
-            deleted = await sql`
-              DELETE FROM surfaces
-              WHERE subnet_netuid = ${prune.subnet_netuid as number}
-                AND (NOT ${scopeToCommunity} OR authority = ${"community"})
-              RETURNING id, subnet_netuid, overlay`;
-          }
-          for (const row of deleted) {
-            await sql`
-            INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit)
-            VALUES (${row.id}, ${row.subnet_netuid}, ${"delete"}, ${sql.json(row.overlay)}, ${prune.source_commit})`;
-            summary.surfaces_deleted += 1;
-          }
-        }
-
-        for (const deletion of deleteSubnets) {
-          if (!Number.isInteger(deletion.netuid) || !deletion.source_commit)
-            continue;
-          if (writtenSubnetNetuids.has(deletion.netuid)) continue;
-          const deletedSurfaces = await sql`
-          DELETE FROM surfaces
-          WHERE subnet_netuid = ${deletion.netuid as number}
-          RETURNING id, subnet_netuid, overlay`;
-          for (const row of deletedSurfaces) {
-            await sql`
-            INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit)
-            VALUES (${row.id}, ${row.subnet_netuid}, ${"delete"}, ${sql.json(row.overlay)}, ${deletion.source_commit})`;
-            summary.surfaces_deleted += 1;
-          }
-          const deletedSubnets = await sql`
-          DELETE FROM subnets
-          WHERE netuid = ${deletion.netuid as number}
-          RETURNING netuid`;
-          summary.subnets_deleted += deletedSubnets.length;
-        }
-
-        for (const surf of surfaces) {
-          if (
-            !Number.isInteger(surf.subnet_netuid) ||
-            !surf.surface_key ||
-            !surf.kind ||
-            !surf.url ||
-            !surf.overlay ||
-            !surf.source_commit
-          )
-            continue;
-          const result = await sql`
-          INSERT INTO surfaces (
-            subnet_netuid, provider_id, surface_key, kind, url,
-            authority, review_state, probe_eligible, public_safe,
-            overlay, source_commit
-          )
-          VALUES (
-            ${surf.subnet_netuid as number}, ${surf.provider_id ?? null}, ${surf.surface_key}, ${surf.kind}, ${surf.url},
-            ${surf.authority || "community"}, ${surf.review_state || "community-submitted"},
-            ${Boolean(surf.probe_eligible)}, ${surf.public_safe !== false},
-            ${sql.json(surf.overlay as postgres.JSONValue)}, ${surf.source_commit}
-          )
-          ON CONFLICT (subnet_netuid, kind, url) DO UPDATE SET
-            provider_id = EXCLUDED.provider_id,
-            surface_key = EXCLUDED.surface_key,
-            authority = EXCLUDED.authority,
-            review_state = EXCLUDED.review_state,
-            probe_eligible = EXCLUDED.probe_eligible,
-            public_safe = EXCLUDED.public_safe,
-            overlay = EXCLUDED.overlay,
-            source_commit = EXCLUDED.source_commit,
-            updated_at = now()
-          WHERE surfaces.overlay IS DISTINCT FROM EXCLUDED.overlay
-          RETURNING (xmax = 0) AS inserted`;
-          if (result.length) {
-            const action = result[0].inserted ? "insert" : "update";
-            await sql`
-            INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit)
-            VALUES (${surf.subnet_netuid as number}, ${action}, ${sql.json(surf.overlay as postgres.JSONValue)}, ${surf.source_commit})`;
-            summary.surfaces_written += 1;
-          }
-        }
-
-        return json({ ok: true, ...summary });
-      });
+      // ONE atomic batch, via applyRegistrySyncToD1 -- see that function's
+      // header for why the reads have to happen before it and what that costs.
+      // The old `SET statement_timeout` has no D1 equivalent and is dropped:
+      // D1 enforces its own query limits, and a bare SET was only ever needed
+      // because Hyperdrive could hand the follow-up query a different physical
+      // connection.
+      const summary = await applyRegistrySyncToD1(
+        env.REGISTRY_DB as unknown as D1Like,
+        { providers, subnets, surfaces, pruneSurfaces, deleteSubnets },
+      );
+      return json({ ok: true, ...summary });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
       await captureRegistrySyncError(err, env);
       return json({ error: "write failed" }, 502);
     }
-    // No sql.end() here: Hyperdrive automatically cleans up the connection
-    // when the request/invocation ends (Cloudflare's documented pattern) --
-    // the previous await sql.end(...) was undocumented, unnecessary extra
-    // work that also delayed every response by however long teardown took.
   }
 }
 

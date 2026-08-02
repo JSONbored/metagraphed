@@ -1,4 +1,12 @@
--- metagraphed-registry — target Postgres schema for the registry serving DB
+-- metagraphed-registry — the registry serving DB's Postgres schema.
+--
+-- SUPERSEDED: the registry moved to D1. The live schema is
+-- migrations/d1/0001_registry.sql, and workers/registry-sync-api.ts writes
+-- there; this file no longer describes anything deployed. It is kept as the
+-- provenance of that translation -- the D1 schema documents itself as a
+-- translation OF this one (jsonb -> TEXT, timestamptz -> epoch ms, uuid
+-- defaults, booleans -> 0/1 with CHECKs), and those notes only make sense with
+-- the original alongside them. Do not apply this to anything.
 --
 -- Applies to a DEDICATED, SEPARATE Postgres instance from schema.sql's chain
 -- sink (different container, different port, different credentials,

@@ -1,11 +1,9 @@
 {
   // Dedicated registry-sync Worker — the sole write path into the registry
-  // Postgres instance (a separate database from the chain-indexer's, see
-  // deploy/postgres/registry-schema.sql). Deployed separately from the main
-  // api.ts Worker for the same bundle-budget reason wrangler.data.jsonc
-  // already is: the postgres.js driver shouldn't grow every Worker that
-  // merely proxies to it. Reached only via the main Worker's
-  // REGISTRY_SYNC_API service binding (no public routes of its own).
+  // database, now D1 (see the d1_databases binding below). Deployed separately
+  // from the main api.ts Worker because it is a write tier with its own auth
+  // gate, which the main Worker should not grow. Reached only via the main
+  // Worker's REGISTRY_SYNC_API service binding (no public routes of its own).
   // Deploy: wrangler deploy -c wrangler.registry.jsonc
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-registry-sync-api",
@@ -52,11 +50,17 @@
       "head_sampling_rate": 1,
     },
   },
-  "hyperdrive": [
+  // The registry moved off the self-hosted Postgres (reached via Hyperdrive)
+  // onto D1 as its box was decommissioned -- 9,157 rows across four tables,
+  // roughly 450x under D1's ceiling. The Hyperdrive binding is deliberately
+  // REMOVED rather than left alongside: leaving it would keep a dead
+  // connection string in config and let a future change silently write to a
+  // database nothing reads. Schema: migrations/d1/0001_registry.sql.
+  "d1_databases": [
     {
-      "binding": "HYPERDRIVE",
-      "id": "8a080e4e39354f96822cf75bcaee668d",
-      "localConnectionString": "postgresql://metagraphed_registry:postgres@localhost:5433/metagraphed_registry",
+      "binding": "REGISTRY_DB",
+      "database_name": "metagraphed",
+      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
     },
   ],
   // Per-caller abuse control for this Worker's only route (#5548) -- the

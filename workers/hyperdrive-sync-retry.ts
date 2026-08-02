@@ -12,8 +12,10 @@
 // cutoff DELETE is; rpc-usage-event's plain INSERT is not -- an ambiguous commit plus
 // a retry would double-count, so it keeps the no-retry stance at its call site).
 //
-// Shared between workers/data-api.ts and workers/registry-sync-api.ts -- the same
-// neutral-module reasoning as workers/postgres-tier.ts.
+// Used by workers/data-api.ts. It was shared with workers/registry-sync-api.ts
+// until that Worker moved off Hyperdrive onto D1, which has no pooled connection
+// to drop and so needs none of this; the module stays separate from data-api.ts
+// for the same neutral-module reasoning as workers/postgres-tier.ts.
 import postgres from "postgres";
 
 // Retry only postgres.js's own connection-level failures -- a dropped socket, a torn-down

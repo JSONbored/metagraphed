@@ -11,8 +11,9 @@
 // exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
 // this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
 // own dedicated Worker the way registry-sync-api.ts does -- that split is
-// justified by registry-sync-api targeting a genuinely SEPARATE Postgres instance,
-// deliberately isolated so a bug in one can't take the other down. Here, splitting
+// justified by registry-sync-api targeting a genuinely SEPARATE database (a
+// different Postgres then, D1 now), deliberately isolated so a bug in one can't
+// take the other down. Here, splitting
 // read and write for the IDENTICAL database would buy nothing (both need the same
 // postgres.js driver either way) while adding a whole extra Worker/config/binding/
 // secret for zero bundle-budget benefit. handleNeuronsSync below owns its own
@@ -507,7 +508,8 @@ const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 // under load -- postgres.js's Cloudflare build (node_modules/postgres/cf/src/connection.js)
 // surfaces this as one of three transport-layer `error.code`s, never a query-correctness
 // problem. The retryable code set, the attempt cap, and the sync-route transaction retry
-// all live in workers/hyperdrive-sync-retry.ts (shared with registry-sync-api) -- the read
+// all live in workers/hyperdrive-sync-retry.ts (this Worker is now its only caller, since
+// registry-sync-api moved to D1 and has no pooled connection to retry) -- the read
 // dispatcher below keeps its own inline fresh-client loop over the same imported constants
 // because its client options differ (bigIntSafeJson types + idle_timeout).
 
