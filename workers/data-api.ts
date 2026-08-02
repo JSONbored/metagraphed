@@ -635,6 +635,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
+import { writeNeuronSnapshotToD1 } from "../src/neurons-d1-write.ts";
 import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
@@ -887,9 +888,6 @@ async function handleNeuronsSync(request: Request, env: Env) {
       401,
     );
   }
-  if (!env.HYPERDRIVE?.connectionString) {
-    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-  }
 
   const raw = await request.text();
   if (utf8Bytes(raw).length > NEURONS_SYNC_MAX_BODY_BYTES) {
@@ -948,6 +946,84 @@ async function handleNeuronsSync(request: Request, env: Env) {
   }
   const netuids = [...netuidMaxCapturedAt.keys()];
 
+  // Shaped ONCE, outside the transaction, so the D1 and Postgres writers put
+  // the same rows in the same shape into both stores -- two shapings would be
+  // two chances to diverge.
+  const dailyRows = rows.map((row: Row) => ({
+    ...row,
+    snapshot_date: neuronSyncSnapshotDate(row.captured_at),
+    updated_at: Date.now(),
+  }));
+  const positionRows = dailyRows
+    .filter((row: Row) => row.hotkey != null)
+    .map((row: Row) => ({
+      account: row.hotkey,
+      netuid: row.netuid,
+      snapshot_date: row.snapshot_date,
+      uid: row.uid,
+      coldkey: row.coldkey,
+      active: row.active,
+      validator_permit: row.validator_permit,
+      rank: row.rank,
+      trust: row.trust,
+      incentive: row.incentive,
+      dividends: row.dividends,
+      stake_tao: row.stake_tao,
+      emission_tao: row.emission_tao,
+      captured_at: row.captured_at,
+      updated_at: row.updated_at,
+    }));
+
+  // D1 is the binding this path REQUIRES; Hyperdrive is the one that goes away.
+  // The box's Postgres stays authoritative for reads while it lives, so it is
+  // still written when bound -- but the sync has to keep working the moment it
+  // is not, or the only live-refreshed family in the product stops advancing
+  // the instant the box is wiped (#9146).
+  //
+  // Checked HERE, after parsing and validation, not at the top: a malformed
+  // body is a 400 whether or not a store happens to be bound, and answering
+  // 503 to it would blame the infrastructure for the caller's payload.
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  // D1 first, and it must succeed: it is where this data lives once the box is
+  // gone, so a D1 failure is a lost snapshot even while Postgres still answers
+  // reads. db.batch() runs its statements in one implicit transaction, giving
+  // the same all-or-nothing guarantee sql.begin() gives the Postgres side --
+  // a mid-batch failure must never leave `neurons` upserted with stale UIDs
+  // left un-pruned.
+  let d1Statements = 0;
+  try {
+    ({ statements: d1Statements } = await writeNeuronSnapshotToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeNeuronSnapshotToD1
+      >[0],
+      { rows, dailyRows, positionRows, netuidMaxCapturedAt },
+    ));
+  } catch (err) {
+    console.error("data-api neurons-sync D1 write failed:", err);
+    await captureDataApiError(err, "neurons-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  // Postgres second, and only while it exists. Once HYPERDRIVE is unbound the
+  // sync is complete at the D1 write above -- no doomed subrequest to a dead
+  // origin, and no change to this handler needed at wipe.
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({
+      ok: true,
+      neurons_written: rows.length,
+      neuron_daily_written: dailyRows.length,
+      account_position_daily_written: positionRows.length,
+      netuids_covered: netuids.length,
+      // Reported rather than inferred: a reader can see which stores this
+      // snapshot actually reached.
+      stores: ["d1"],
+      d1_statements: d1Statements,
+    });
+  }
+
   try {
     // sql.begin() reserves ONE physical connection for the whole batch, same
     // connection-affinity reasoning as the read path above (#4686) -- and
@@ -958,12 +1034,6 @@ async function handleNeuronsSync(request: Request, env: Env) {
       env,
       async (sql: postgres.TransactionSql) => {
         await sql`SET statement_timeout = '20000ms'`;
-
-        const dailyRows = rows.map((row: Row) => ({
-          ...row,
-          snapshot_date: neuronSyncSnapshotDate(row.captured_at),
-          updated_at: Date.now(),
-        }));
 
         for (let i = 0; i < rows.length; i += NEURONS_SYNC_ROWS_PER_STATEMENT) {
           const chunk = rows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
@@ -1029,25 +1099,6 @@ async function handleNeuronsSync(request: Request, env: Env) {
         // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors that
         // retired D1 rollup's own filter -- account is NOT NULL and part of the
         // primary key, but a neuron row's hotkey can itself be null.
-        const positionRows = dailyRows
-          .filter((row: Row) => row.hotkey != null)
-          .map((row: Row) => ({
-            account: row.hotkey,
-            netuid: row.netuid,
-            snapshot_date: row.snapshot_date,
-            uid: row.uid,
-            coldkey: row.coldkey,
-            active: row.active,
-            validator_permit: row.validator_permit,
-            rank: row.rank,
-            trust: row.trust,
-            incentive: row.incentive,
-            dividends: row.dividends,
-            stake_tao: row.stake_tao,
-            emission_tao: row.emission_tao,
-            captured_at: row.captured_at,
-            updated_at: row.updated_at,
-          }));
         for (
           let i = 0;
           i < positionRows.length;
@@ -1119,6 +1170,8 @@ async function handleNeuronsSync(request: Request, env: Env) {
           account_position_daily_written: positionRows.length,
           netuids_covered: netuids.length,
           deregistered_pruned: pruned.length,
+          stores: ["d1", "postgres"],
+          d1_statements: d1Statements,
         });
       },
     );
