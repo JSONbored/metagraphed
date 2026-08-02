@@ -31,13 +31,13 @@ the private `metagraphed-infra` Ansible inventory — never in this repo), plus
 Cloudflare edge. Verified directly against the running infrastructure, not
 inherited from prior docs:
 
-| Tier                 | Where                                               | Pieces                                                                                                                                                                                                                                                                                                                               |
-| -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Edge (rented)        | **Cloudflare**                                      | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose + alerter (#4984), R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy. The health-prober and rollups also still run here (CF crons) — moving them to the indexer box is tracked separately (#2113), not done.                                            |
-| Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data), Redis (cursor state). `indexer-rs-backfill` (sharded historical backfill) and `indexer-rs-tail` (the auto-following gap-closer) are **running** against the archive node's own RPC. |
-| Archive box (owned)  | dedicated bare-metal, separate from the indexer box | `subtensor` full archive node (`--pruning=archive --sync=full`). **Still syncing** — not yet at chain tip.                                                                                                                                                                                                                           |
-| Fullnode box (owned) | dedicated bare-metal, third box                     | `subtensor` **pruned**, warp-synced node. This, not the archive node, is `indexer-rs`'s current live-follow RPC source (`EVENTS_RPC_URL`) — it reached chain tip fast and isn't competing with the archive node's own sync for I/O.                                                                                                  |
-| Railway              | **none — retired**                                  | `wss-lb`, the last service, moved to the `metagraphed-wss-lb` Worker; everything before it (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) had already moved to the boxes above or been retired. `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.                           |
+| Tier                 | Where                                               | Pieces                                                                                                                                                                                                                                                                                                         |
+| -------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge (rented)        | **Cloudflare**                                      | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose + alerter (#4984), R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy. The health-prober and rollups also still run here (CF crons) — moving them to the indexer box is tracked separately (#2113), not done.                      |
+| Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data). `indexer-rs-backfill` (sharded historical backfill) and `indexer-rs-tail` (the auto-following gap-closer) are **running** against the archive node's own RPC. |
+| Archive box (owned)  | dedicated bare-metal, separate from the indexer box | `subtensor` full archive node (`--pruning=archive --sync=full`). **Still syncing** — not yet at chain tip.                                                                                                                                                                                                     |
+| Fullnode box (owned) | dedicated bare-metal, third box                     | `subtensor` **pruned**, warp-synced node. This, not the archive node, is `indexer-rs`'s current live-follow RPC source (`EVENTS_RPC_URL`) — it reached chain tip fast and isn't competing with the archive node's own sync for I/O.                                                                            |
+| Railway              | **none — retired**                                  | `wss-lb`, the last service, moved to the `metagraphed-wss-lb` Worker; everything before it (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) had already moved to the boxes above or been retired. `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.     |
 
 There is no Hetzner escape hatch — ADR 0013's "Railway core, Hetzner escape
 hatch" framing described a plan overtaken by events; the team went straight to
@@ -65,10 +65,10 @@ service that `src/select.ts` was extracted from stays runnable and readable.
 **Production runs across three separate boxes, provisioned via the private
 `JSONbored/metagraphed-infra` Ansible repo** (`roles/subtensor-archive`,
 `roles/subtensor-fullnode`, `roles/indexer-rust`, `roles/postgres-timescale`,
-`roles/redis`, `roles/chain-firehose-relay`) — that repo's inventory holds the
+`roles/chain-firehose-relay`) — that repo's inventory holds the
 real hostnames/IPs and is the actual source of truth for what's deployed
 where. `deploy/docker-compose.yml` below is a **single-box reference/dev
-setup** (Postgres + Redis + a subtensor node co-located, so every hop is
+setup** (Postgres + a subtensor node co-located, so every hop is
 localhost) — useful for local development or a from-scratch bring-up, but it
 is not how production is actually composed across the three boxes:
 
@@ -82,7 +82,6 @@ That starts:
 - **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` then the
   optional `deploy/postgres/schema-timescaledb.sql` on first boot; never binds
   a public port (Cloudflare reaches it via Hyperdrive over a tunnel).
-- **`redis`** — the indexer cursor + heartbeat mirror.
 - **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
   complete state from genesis). Needs **~8 TB+ NVMe**; the from-genesis full
   sync takes days — production's own archive box is still mid-sync (see the
