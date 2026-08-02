@@ -1,0 +1,65 @@
+name: Check response conformance
+
+# Do the responses we SERVE match the schemas we PUBLISH? (#9141)
+#
+# #9138 shipped a route serving a `health_source` its own schema forbade -- on
+# 15 of 20 endpoints, in production, for as long as the serve-time overlay had
+# existed -- and #9142 was a second violation on the same route. Both were found
+# by hand, because nothing checked conformance out of band.
+#
+# The in-Worker tripwire (src/response-validation-tripwire.ts) cannot do this
+# job: it is default-OFF, log-only, and wired for 5 pilot routes. That is the
+# right design on the REQUEST path, where per-request Zod parsing costs latency
+# and a schema bug could 500 a live route. Out of band, being thorough is free.
+#
+# Green is the steady state, and the summary prints every run so a healthy run
+# is still legible -- same shape as check-safe-mode.yml / check-emission-drift.yml.
+on:
+  schedule:
+    # Daily. Schema drift arrives with a deploy, not with traffic, so hourly
+    # would add noise without shortening the window that matters.
+    - cron: "41 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-response-conformance
+  cancel-in-progress: false
+
+jobs:
+  conformance:
+    name: Validate live responses against the published spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Validates against the spec on the DEFAULT BRANCH, not a rebuild: that is
+      # the document consumers and the MCP server actually read.
+      - name: Validate live responses against the published spec
+        env:
+          LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
+        run: |
+          node scripts/check-response-conformance.ts | tee conformance.log
+          {
+            echo '## Response conformance'
+            echo '```json'
+            cat conformance.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
