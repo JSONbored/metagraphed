@@ -3036,12 +3036,38 @@ describe("handleScheduled", () => {
 // --- handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON (#4832, moved off GitHub
 // Actions -- formerly rollup-account-events-daily.yml, retired) -------------
 describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
+  test("skips FIRST when the account_events postgres tier is retired", async () => {
+    // Post-wipe state: the rollup's write target no longer exists, so the
+    // branch must skip before it builds a request -- with or without the
+    // secret configured. An absent flag skips too: a rollup into a tier this
+    // deployment does not serve from is pointless work.
+    for (const env of [
+      {},
+      { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "retired", ROLLUP_SYNC_SECRET: "s" },
+    ]) {
+      const result = await handleScheduled(
+        {
+          cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON,
+        } as unknown as ScheduledController,
+        env as unknown as Env,
+        {} as unknown as ExecutionContext,
+      );
+      assert.deepEqual(result, {
+        ok: false,
+        skipped: true,
+        reason: "account_events postgres tier retired",
+      });
+    }
+  });
+
   test("skips (does not throw) when ROLLUP_SYNC_SECRET is not configured", async () => {
     const result = await handleScheduled(
       {
         cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON,
       } as unknown as ScheduledController,
-      {} as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      } as unknown as Env,
       {} as unknown as ExecutionContext,
     );
     assert.deepEqual(result, {
@@ -3056,6 +3082,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
     let receivedPath;
     let receivedMethod;
     const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       ROLLUP_SYNC_SECRET: "shared-secret",
       DATA_API: {
         fetch(request: Request) {
@@ -3088,6 +3115,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
 
   test("relays a non-2xx DATA_API response instead of throwing", async () => {
     const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       ROLLUP_SYNC_SECRET: "shared-secret",
       DATA_API: {
         fetch() {
@@ -3111,6 +3139,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
 
   test("an unreadable DATA_API response body degrades to a clean error, not a throw", async () => {
     const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       ROLLUP_SYNC_SECRET: "shared-secret",
       DATA_API: {
         fetch() {
