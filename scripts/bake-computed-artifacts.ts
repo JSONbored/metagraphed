@@ -23,7 +23,7 @@
 // -- {ss58}, {hotkey}, {hash}, {ref}, {uid}, {h160} -- are not bakeable: the
 // key space is every account/block/extrinsic that has ever existed. Those are
 // reported in the manifest as `unbakeable` and belong behind an honest
-// structured 503 (or R2 SQL, metagraphed-infra#207), never a fabricated empty
+// structured 503 (or a future analytical query tier), never a fabricated empty
 // body.
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
