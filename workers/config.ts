@@ -340,6 +340,15 @@ export const BLOCK_EXTRINSICS_PATH_PATTERN =
 // the detail pattern (which is $-anchored, so it won't swallow the sub-path).
 export const BLOCK_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/events$/;
+// Per-block RAW pallet events (#1620), the all-events tier's sibling to
+// /events above. Dispatched inline in workers/api.ts by a numeric-only literal
+// regex; this named copy exists so isMainnetOnlyApiPath can reference the same
+// shape as its BLOCK_* neighbours rather than open-coding a third variant.
+// Accepts the hash form too, matching every other {ref} route -- the dispatch
+// site's numeric-only pattern is narrower, and a hash-form request is a 404
+// either way, so the wider shape here cannot admit anything the router serves.
+export const BLOCK_CHAIN_EVENTS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/chain-events$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).

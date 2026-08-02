@@ -2101,7 +2101,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 102,
+    "mainnet_only_route_count": 111,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -7240,13 +7240,10 @@
       "cache": "short",
       "description": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
       "id": "subnet-neuron",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/neurons/{uid}",
       "public": true,
@@ -7524,13 +7521,10 @@
       "cache": "short",
       "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
       "id": "subnet-neuron-history",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/neurons/{uid}/history",
       "public": true,
@@ -8709,13 +8703,10 @@
       "cache": "short",
       "description": "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
       "id": "block-detail",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/blocks/{ref}",
       "public": true,
@@ -8728,13 +8719,10 @@
       "cache": "short",
       "description": "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
       "id": "block-extrinsics",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/blocks/{ref}/extrinsics",
       "public": true,
@@ -8763,13 +8751,10 @@
       "cache": "short",
       "description": "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
       "id": "block-events",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/blocks/{ref}/events",
       "public": true,
@@ -8798,13 +8783,10 @@
       "cache": "short",
       "description": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
       "id": "chain-events-feed",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/chain-events",
       "public": true,
@@ -8881,13 +8863,10 @@
       "cache": "short",
       "description": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
       "id": "chain-events-stats",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/chain-events/stats",
       "public": true,
@@ -8909,13 +8888,10 @@
       "cache": "short",
       "description": "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
       "id": "block-chain-events",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/blocks/{ref}/chain-events",
       "public": true,
@@ -9048,13 +9024,10 @@
       "cache": "short",
       "description": "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
       "id": "extrinsic-detail",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/extrinsics/{hash}",
       "public": true,

@@ -356,6 +356,7 @@ import {
   BLOCK_DETAIL_PATH_PATTERN,
   BLOCK_EXTRINSICS_PATH_PATTERN,
   BLOCK_EVENTS_PATH_PATTERN,
+  BLOCK_CHAIN_EVENTS_PATH_PATTERN,
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
@@ -4329,6 +4330,14 @@ export function isMainnetOnlyApiPath(pathname: string) {
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
     BLOCK_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     BLOCK_EVENTS_PATH_PATTERN.test(pathname) ||
+    // The three chain-events routes were missing entirely. They read the same
+    // finney-only Postgres tier as their neighbours above, but because they
+    // dispatch through handleChainEventsProxy rather than tryPostgresTier they
+    // were never added here -- so on testnet they fell through to an R2 miss
+    // instead of the documented 404.
+    pathname === "/api/v1/chain-events" ||
+    pathname === "/api/v1/chain-events/stats" ||
+    BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(pathname) ||
     EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
     EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||

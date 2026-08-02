@@ -2490,7 +2490,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 102,
+    "mainnet_only_route_count": 111,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
