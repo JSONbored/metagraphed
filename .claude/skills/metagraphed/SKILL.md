@@ -508,16 +508,25 @@ happens on hover.
 
 ### Phase C3 — Test + gates locally
 
-The `ui` CI job runs lint, typecheck, test, a responsive-overflow e2e check, build, and a
+The `ui` CI job runs lint, typecheck, test, **build**, a responsive-overflow e2e check, and a
 bundle-size-budget check, in that order — run the same locally before pushing:
 
 ```sh
 npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
 npm run typecheck --workspace=apps/ui  # auto-builds packages/client first (pretypecheck) -- no separate step needed
 npm test --workspace=apps/ui
+npm run build --workspace=apps/ui      # MUST precede test:e2e since #8928 — see below
 npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwright install --with-deps chromium (once)
-npm run build --workspace=apps/ui
 ```
+
+**Build now comes before `test:e2e`** (#8928). The e2e check serves the PRODUCTION build via
+`wrangler dev` rather than `npm run dev`: the sweep loads 26 routes x 4 viewports, and Vite's
+dev server compiled each route on first hit, making that step ~48% of the whole `ui` job. It
+also means the check now exercises the bundle that actually ships, so prod-only breakage the
+dev server hid is in scope. `test:e2e` fails with no `.output/` present — build first.
+
+This does NOT change Phase C2's screenshot workflow below, which still uses `npm run dev` on
+purpose: those are contributor-facing before/after captures, not a CI gate.
 
 The responsive-overflow e2e check replays recorded API traffic (`tests/e2e/har/*.har`)
 instead of live production data, so it's deterministic regardless of live chain state. If

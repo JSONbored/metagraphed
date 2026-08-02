@@ -959,6 +959,16 @@ jobs:
       - name: Test
         run: npm test --workspace=apps/ui
 
+      # LOVABLE_SANDBOX force-enables Nitro's cloudflare-module preset outside
+      # Lovable's own environment (the preset otherwise emits a static-only
+      # client build with no Worker entry) -- matches the exact env Cloudflare
+      # Workers Builds sets in production (see apps/ui/DEPLOY.md).
+      - name: Build
+        env:
+          LOVABLE_SANDBOX: "1"
+          NITRO_PRESET: cloudflare-module
+        run: npm run build --workspace=apps/ui
+
       # Cache the downloaded browser binary across runs (#8910): the install
       # step below measured 65s (11% of this job), and re-downloading the same
       # Chromium build on every PR is the bulk of it. Keyed on the resolved
@@ -1007,16 +1017,6 @@ jobs:
       - name: Responsive overflow check (e2e)
         if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         run: npm run test:e2e --workspace=apps/ui
-
-      # LOVABLE_SANDBOX force-enables Nitro's cloudflare-module preset outside
-      # Lovable's own environment (the preset otherwise emits a static-only
-      # client build with no Worker entry) -- matches the exact env Cloudflare
-      # Workers Builds sets in production (see apps/ui/DEPLOY.md).
-      - name: Build
-        env:
-          LOVABLE_SANDBOX: "1"
-          NITRO_PRESET: cloudflare-module
-        run: npm run build --workspace=apps/ui
 
       # Guard against client-bundle regressions. Measures the INITIAL client
       # transfer for a cold visit to "/" -- the entry chunk plus the transitive

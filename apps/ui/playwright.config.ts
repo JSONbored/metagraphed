@@ -57,9 +57,31 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
+    // #8928: serve the PRODUCTION build, not `npm run dev`.
+    //
+    // The sweep is 26 routes x 4 viewports. Vite's dev server compiles each
+    // route on first hit, so the old command paid that cost 26 times -- while
+    // the same CI job already produced a production build and threw it away.
+    // Measured against the built bundle: "/" 1.18s cold, "/subnets" 0.31s,
+    // versus ~2.3s per test on the dev server.
+    //
+    // This deliberately changes WHAT is tested, from the dev bundle to the one
+    // that actually ships -- so prod-only breakage the dev server hides is now
+    // in scope. (.claude/skills/metagraphed/SKILL.md Phase C2 previously
+    // pointed here for dev-server parity with the contributor screenshot flow;
+    // that note is updated alongside this.)
+    //
+    // `wrangler dev` rather than `vite preview`: the cloudflare-module preset
+    // emits a Worker (.output/server/index.mjs + its own generated
+    // wrangler.json with the ASSETS binding), which vite preview cannot serve.
+    // The build must therefore already exist -- in CI the `Build` step is
+    // ordered before this one; locally, run `npm run build` first.
+    command: `npx wrangler dev -c .output/server/wrangler.json --port ${PORT} --local`,
+    cwd: import.meta.dirname,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    // Booting a Worker + assets is slower to first byte than Vite's dev server,
+    // and it is a one-time cost for the whole run rather than per route.
+    timeout: 120_000,
   },
 });
