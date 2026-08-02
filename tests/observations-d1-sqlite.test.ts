@@ -282,3 +282,51 @@ test("runD1StatementBatches splits work into bounded batches", async () => {
     batches: 0,
   });
 });
+
+test("a failing write lands one $exception per writer, each with its own route", async () => {
+  const exploding: ObservationsDb = {
+    prepare: () => ({ bind: () => ({}) }),
+    batch: async () => {
+      throw new Error("d1 down");
+    },
+  };
+  const captures: {
+    event?: string;
+    properties?: { route?: string; $exception_fingerprint?: string };
+  }[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url: unknown, init?: { body?: string }) => {
+    captures.push(JSON.parse(init?.body ?? "{}"));
+    return { ok: true } as Response;
+  }) as typeof fetch;
+  const env = { POSTHOG_PROJECT_TOKEN: "phc_test" } as never;
+  try {
+    await persistProbesToD1(exploding, [probe()], 1, env);
+    await rollupUptimeDailyToD1(
+      exploding,
+      [{ date: "d", start: 0, end: 1 }],
+      1,
+      env,
+    );
+    await pruneChecksD1(exploding, 1, env);
+    await upsertSubnetSnapshotsToD1(exploding, [{ netuid: 1 }], env);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.deepEqual(
+    captures.map((c) => c.properties?.route),
+    [
+      "observations-d1-persist",
+      "observations-d1-rollup",
+      "observations-d1-prune",
+      "observations-d1-snapshots",
+    ],
+  );
+  for (const c of captures) {
+    assert.equal(c.event, "$exception");
+    assert.equal(
+      c.properties?.$exception_fingerprint?.endsWith(":Error"),
+      true,
+    );
+  }
+});

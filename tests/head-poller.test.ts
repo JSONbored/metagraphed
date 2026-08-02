@@ -207,3 +207,37 @@ test("alarm: an RPC failure is contained and the chain re-arms", async () => {
   }
   assert.ok(alarm() !== null, "re-armed after failure");
 });
+
+test("alarm: a repeating failure captures ONE $exception; a changed failure captures again", async () => {
+  const { hub, alarm } = hubWith(
+    {
+      CHAIN_HEAD_POLL_ENABLED: "true",
+      CHAIN_HEAD_RPC_URL: "https://rpc.example",
+      POSTHOG_PROJECT_TOKEN: "phc_test",
+    },
+    new Map(),
+  );
+  const captures: { event?: string; properties?: { route?: string } }[] = [];
+  let rpcFailure = "rpc down";
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown, init?: { body?: string }) => {
+    if (String(url).includes("/i/v0/e/")) {
+      captures.push(JSON.parse(init?.body ?? "{}"));
+      return { ok: true } as unknown as Response;
+    }
+    throw new Error(rpcFailure);
+  }) as typeof fetch;
+  try {
+    await hub.alarm();
+    await hub.alarm();
+    assert.equal(captures.length, 1, "identical failure is captured once");
+    assert.equal(captures[0]?.event, "$exception");
+    assert.equal(captures[0]?.properties?.route, "head-poller");
+    rpcFailure = "name resolution failed";
+    await hub.alarm();
+    assert.equal(captures.length, 2, "a DIFFERENT failure is captured again");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.ok(alarm() !== null, "re-armed throughout");
+});

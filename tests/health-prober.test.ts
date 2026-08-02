@@ -2038,6 +2038,29 @@ describe("pruneHealthHistory edge paths", () => {
     assert.equal(result.cutoff, 100_000_000 - 1000);
   });
 
+  test("pruneD1Checks:true runs the D1 raw-checks delete against the bound DB", async () => {
+    const deletes: { sql: string; values: unknown[] }[] = [];
+    const env = mockEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare: (sql: string) => ({
+          bind: (...values: unknown[]) => ({ sql, values }),
+        }),
+        batch: async (statements: unknown[]) => {
+          deletes.push(...(statements as { sql: string; values: unknown[] }[]));
+        },
+      },
+    });
+    const result = await pruneHealthHistory(env, {
+      now: () => 1_000_000,
+      retentionMs: 1000,
+      pruneD1Checks: true,
+    });
+    assert.equal(result.pruned, true);
+    assert.equal(deletes.length, 1);
+    assert.match(deletes[0]!.sql, /DELETE FROM surface_checks/);
+    assert.deepEqual(deletes[0]!.values, [999_000]);
+  });
+
   test("still resolves {pruned:true} even when the Postgres sync fetch throws", async () => {
     const env = mockEnv({
       DATA_API: {

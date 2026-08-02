@@ -49,7 +49,10 @@ import {
   fetchHeadNumber,
   heightsToEmit,
 } from "../src/head-poller.ts";
-import { recordUsageEvent } from "../src/usage-telemetry.ts";
+import {
+  recordExceptionEvent,
+  recordUsageEvent,
+} from "../src/usage-telemetry.ts";
 import { resolveClientIp } from "./config.ts";
 import {
   GRAPHQL_MAX_COMPLEXITY,
@@ -743,6 +746,11 @@ export class ChainFirehoseHub implements DurableObject {
   // nothing to have aged out of an empty buffer).
   sseEventLog: SseRetainedEvent[];
   nextSseEventId: number;
+  // The last head-poller failure message sent to the $exception inbox. In-
+  // memory on purpose (same not-meant-to-survive-hibernation convention as
+  // the Maps/Sets above): a DO restart re-capturing one event per surviving
+  // failure is the desired behavior, not a leak.
+  lastCapturedHeadPollerError?: string;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -997,7 +1005,17 @@ export class ChainFirehoseHub implements DurableObject {
         await this.state.storage.put("head:last_seen", block.block_number);
       }
     } catch (error) {
-      console.error("[head-poller]", String((error as Error)?.message));
+      const message = String((error as Error)?.message);
+      console.error("[head-poller]", message);
+      // The poller retries every ~6s, so an RPC outage repeats the identical
+      // failure thousands of times -- capture only when the failure CHANGES
+      // (first occurrence, or a different message), the same storm control
+      // workers/data-api.ts applies to schema drift. console.error above
+      // stays unconditional; per-tick detail is cheap in logs.
+      if (message !== this.lastCapturedHeadPollerError) {
+        this.lastCapturedHeadPollerError = message;
+        await recordExceptionEvent(this.env, { error, route: "head-poller" });
+      }
     } finally {
       await this.state.storage.setAlarm(Date.now() + interval);
     }
