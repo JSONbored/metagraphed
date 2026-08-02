@@ -52,14 +52,16 @@ function sqlFetch(...responses: unknown[][]) {
 }
 
 describe("loadExtrinsicFeedColdTier", () => {
-  test("orders by (block, index) so paging cannot repeat or drop rows", async () => {
+  test("orders by the Postgres tier's exact composite key", async () => {
     const q = sqlFetch([row(10, 1), row(10, 0)]);
     const data = await loadExtrinsicFeedColdTier(TOKEN as never, { limit: 2 });
     assert.equal(data!.extrinsics.length, 2);
+    // The cursor token encodes this key, so the order must match data-api
+    // EXACTLY or tokens mis-seek across tiers -- and no prefix of it is a
+    // total order on its own (extrinsics share a block).
     assert.match(
       q[0]!,
-      /ORDER BY block_number DESC, extrinsic_index DESC/,
-      "block_number alone is not a total order here",
+      /ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC/,
     );
   });
 
@@ -73,16 +75,26 @@ describe("loadExtrinsicFeedColdTier", () => {
       success: true,
       blockStart: 100,
       blockEnd: 900,
-      cursor: 950,
+      from: 1_700_000_000_000,
+      to: 1_800_000_000_000,
+      block: 555,
+      cursor: "1700000000950.950.2",
     });
     const s = q[0]!;
     assert.match(s, new RegExp(`signer = '${SIGNER}'`));
     assert.match(s, /call_module = 'SubtensorModule'/);
     assert.match(s, /call_function = 'set_weights'/);
     assert.match(s, /success = TRUE/);
+    assert.match(s, /block_number = 555/);
     assert.match(s, /block_number >= 100/);
     assert.match(s, /block_number <= 900/);
-    assert.match(s, /block_number < 950/);
+    assert.match(s, /observed_at >= 1700000000000/);
+    assert.match(s, /observed_at <= 1800000000000/);
+    // The EXACT tuple seek data-api issues for the same token.
+    assert.match(
+      s,
+      /\(observed_at, block_number, extrinsic_index\) < \(1700000000950, 950, 2\)/,
+    );
   });
 
   test("DECLINES an unsafe signer instead of scanning every signer", async () => {
@@ -155,22 +167,23 @@ describe("loadExtrinsicFeedColdTier", () => {
     assert.equal(q2.length, 0);
   });
 
-  test("a full page carries a cursor, a short page does not", async () => {
+  test("a full page carries the Postgres tier's own token format", async () => {
     sqlFetch([row(9), row(8)]);
     const full = await loadExtrinsicFeedColdTier(TOKEN as never, { limit: 2 });
-    assert.equal(full!.next_cursor, "8");
+    // observed_at.block_number.extrinsic_index -- the same dot-joined token
+    // data-api emits, so paging survives a tier transition in either direction.
+    assert.equal(full!.next_cursor, "1700000000008.8.0");
 
     sqlFetch([row(9)]);
     const short = await loadExtrinsicFeedColdTier(TOKEN as never, { limit: 5 });
     assert.equal(short!.next_cursor ?? null, null);
   });
 
-  test("an invalid limit or cursor declines", async () => {
+  test("an invalid limit or offset declines", async () => {
     sqlFetch([]);
     for (const bad of [
       { limit: 0 },
       { limit: "x" },
-      { limit: 5, cursor: "junk" },
       { limit: 5, offset: "x" },
     ]) {
       assert.equal(
@@ -179,6 +192,34 @@ describe("loadExtrinsicFeedColdTier", () => {
         JSON.stringify(bad),
       );
     }
+  });
+
+  test("a malformed cursor token means page 1 -- the Postgres tier's exact behavior", async () => {
+    // decodeCursor(junk) -> null -> no cursor, identical to data-api. Parity
+    // demands the SAME page for the SAME request on either tier, so this must
+    // not decline.
+    const q = sqlFetch([row(9)]);
+    const data = await loadExtrinsicFeedColdTier(TOKEN as never, {
+      limit: 5,
+      cursor: "junk",
+    });
+    assert.ok(data);
+    assert.ok(!/junk/.test(q[0]!), "the bad token never reaches the SQL");
+    assert.ok(
+      !/</.test(q[0]!.split("ORDER BY")[0]!.replace(/block_number <= /g, "")),
+      "no seek predicate for an unusable token",
+    );
+  });
+
+  test("a cursor page ignores offset, mirroring data-api", async () => {
+    const q = sqlFetch([row(9), row(8)]);
+    const data = await loadExtrinsicFeedColdTier(TOKEN as never, {
+      limit: 2,
+      offset: 5,
+      cursor: "1700000000009.9.0",
+    });
+    assert.match(q[0]!, /LIMIT 2/, "no over-fetch on a cursor page");
+    assert.equal(data!.extrinsics.length, 2);
   });
 
   test("success = false is expressed, not dropped", async () => {

@@ -27,6 +27,7 @@ import {
   buildExtrinsicFeed,
 } from "./extrinsics.ts";
 import { formatAccountEvent } from "./account-events.ts";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -52,21 +53,33 @@ const EVENT_COLUMNS =
   "netuid, uid, amount_tao, alpha_amount, observed_at";
 const MAX_EMBEDDED_EVENTS = 50;
 
-/** Newest first, and stable: two extrinsics share a block, so block_number
- * alone is not a total order and paging over it would repeat or skip rows. */
-const FEED_ORDER = "ORDER BY block_number DESC, extrinsic_index DESC";
+/** EXACTLY the Postgres tier's feed order. The observed_at-leading key is not
+ * cosmetic: the public cursor token encodes this composite key, so a tier that
+ * ordered differently would emit tokens the other tier mis-seeks on. The two
+ * extra columns matter too -- extrinsics share a block, so no prefix of this
+ * key is a total order on its own. */
+const FEED_ORDER =
+  "ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC";
 
 export interface ExtrinsicFeedQuery {
   limit: number;
   offset?: number | null;
+  /** The raw ?cursor token. Decoded with the SAME codec and arity the
+   * Postgres tier uses, so tokens round-trip across tiers. */
   cursor?: unknown;
   signer?: unknown;
   module?: unknown;
   callFunction?: unknown;
   success?: unknown;
+  block?: unknown;
   blockStart?: unknown;
   blockEnd?: unknown;
+  from?: unknown;
+  to?: unknown;
 }
+
+/** The cursor tuple every extrinsic feed pages on, mirroring data-api. */
+const CURSOR_ARITY = 3;
 
 /** Build the WHERE terms, or null if any filter cannot be expressed safely. */
 function feedPredicates(query: ExtrinsicFeedQuery): string[] | null {
@@ -87,8 +100,11 @@ function feedPredicates(query: ExtrinsicFeedQuery): string[] | null {
     where.push(`${column} = '${name}'`);
   }
   for (const [value, clause] of [
+    [query.block, "block_number ="],
     [query.blockStart, "block_number >="],
     [query.blockEnd, "block_number <="],
+    [query.from, "observed_at >="],
+    [query.to, "observed_at <="],
   ] as [unknown, string][]) {
     if (value == null) continue;
     const n = safeBlockNumber(value);
@@ -101,10 +117,17 @@ function feedPredicates(query: ExtrinsicFeedQuery): string[] | null {
     if (typeof query.success !== "boolean") return null;
     where.push(`success = ${query.success ? "TRUE" : "FALSE"}`);
   }
-  if (query.cursor != null) {
-    const c = safeBlockNumber(query.cursor);
-    if (c === null) return null;
-    where.push(`block_number < ${c}`);
+  const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
+  if (cursor) {
+    // The same 3-part tuple seek the Postgres tier issues (tuple comparison
+    // verified supported on the live engine, 2026-08-02). An invalid token
+    // decodes to null and is treated as NO cursor -- exactly what data-api
+    // does -- so both tiers serve the identical page for the identical
+    // request, malformed tokens included.
+    where.push(
+      `(observed_at, block_number, extrinsic_index) < ` +
+        `(${cursor[0]}, ${cursor[1]}, ${cursor[2]})`,
+    );
   }
   return where;
 }
@@ -131,20 +154,29 @@ async function feedRows(
   if (base === null) return null;
   const where = [...base, ...extraWhere];
 
+  // Cursor pages never carry an offset -- the cursor already narrows past
+  // prior pages -- mirroring data-api's `OFFSET only when no cursor`.
+  const paged = decodeCursor(query.cursor, CURSOR_ARITY) ? 0 : offset;
+
   const sql =
     `SELECT ${EXTRINSIC_COLUMNS} FROM chain.extrinsics` +
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-    ` ${FEED_ORDER} LIMIT ${limit + offset}`;
+    ` ${FEED_ORDER} LIMIT ${limit + paged}`;
 
   const rows = await r2SqlQuery(env, sql);
   if (rows === null) return null;
 
-  const page = offset > 0 ? rows.slice(offset) : rows;
+  const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  const nextCursor =
-    last != null
-      ? (safeBlockNumber(last.block_number)?.toString() ?? null)
-      : null;
+  // The SAME token the Postgres tier emits for this row, so a client can page
+  // seamlessly across a tier transition in either direction.
+  const nextCursor = last
+    ? encodeCursor([
+        safeBlockNumber(last.observed_at),
+        safeBlockNumber(last.block_number),
+        safeBlockNumber(last.extrinsic_index),
+      ])
+    : null;
   return { rows: page, limit, offset, nextCursor };
 }
 
@@ -186,7 +218,13 @@ export async function loadBlockExtrinsicsColdTier(
 export async function loadAccountExtrinsicsColdTier(
   env: Env | null | undefined,
   ss58: string,
-  page: { limit: number; offset?: number | null; cursor?: unknown },
+  page: {
+    limit: number;
+    offset?: number | null;
+    cursor?: unknown;
+    blockStart?: unknown;
+    blockEnd?: unknown;
+  },
 ): Promise<ReturnType<typeof buildAccountExtrinsics> | null> {
   // An unusable address is a decline, not an unfiltered scan of every signer.
   if (safeSs58Literal(ss58) === null) return null;
@@ -195,6 +233,8 @@ export async function loadAccountExtrinsicsColdTier(
     offset: page.offset ?? 0,
     cursor: page.cursor,
     signer: ss58,
+    blockStart: page.blockStart,
+    blockEnd: page.blockEnd,
   });
   if (rows === null) return null;
   return buildAccountExtrinsics(rows.rows, ss58, {

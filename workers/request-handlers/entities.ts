@@ -3855,6 +3855,9 @@ export async function handleAccountExtrinsics(
     (await loadAccountExtrinsicsColdTier(env, ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
+      cursor: url.searchParams.get("cursor"),
+      blockStart: url.searchParams.get("block_start"),
+      blockEnd: url.searchParams.get("block_end"),
     })) ??
     buildAccountExtrinsics([], ss58, {
       limit: parsedLimit,
@@ -5135,7 +5138,20 @@ export async function handleExtrinsics(request: Request, env: Env, url: URL) {
       ? await loadExtrinsicFeedColdTier(env, {
           limit,
           offset,
+          // Every filter this route accepts is passed through -- a filter the
+          // tier does not receive is a filter it silently ignores, which is
+          // the one failure mode worse than declining. The tier validates
+          // each one and declines the whole query on anything unsafe.
+          cursor: sp.get("cursor"),
+          signer: sp.get("signer"),
           module: callModule,
+          callFunction: sp.get("call_function"),
+          success: successRaw === null ? null : successRaw === "true",
+          block: sp.get("block"),
+          blockStart: sp.get("block_start"),
+          blockEnd: sp.get("block_end"),
+          from: sp.get("from"),
+          to: sp.get("to"),
         })
       : null) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
