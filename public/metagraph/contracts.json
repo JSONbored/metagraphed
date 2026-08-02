@@ -300,6 +300,39 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "A grounded natural-language answer over the registry, served live at POST /api/v1/ask (no static file -- the response answers one caller's question). Retrieval runs over the embedded surface/subnet corpus; the answer carries inline [n] markers resolved by `citations`, each naming the surface, its netuid/slug, its URL, and the retrieval score, so every claim is traceable to a registered surface rather than to the model. `context_count` is how many retrieved documents were in the context window and `model` names the generator, so an answer stays attributable. Returns 503 ai_unavailable on a deployment with no AI binding.",
+      "id": "ask",
+      "path": "/metagraph/ai/ask.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AskArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Embedding-ranked discovery over the registry, served live at /api/v1/search/semantic (no static file). Matches by MEANING rather than by keyword, so it finds surfaces whose text never contains the query terms -- the complement to /api/v1/search, which is lexical. Each result carries its cosine `score`, what it is (`type`), the subnet (`netuid`/`slug`), a title/subtitle, the URL, and the surface's categories and service kinds. `model` names the embedding model so two runs can be told apart. Returns 503 ai_unavailable on a deployment with no AI binding.",
+      "id": "search-semantic",
+      "path": "/metagraph/ai/search-semantic.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SemanticSearchArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "A catalog-resolved liveness probe of ONE registered surface, served live at /api/v1/surfaces/{surface_id}/verify (no static file -- a stored verdict would be a stale one). Deliberately not arbitrary URL fetching: the caller names a surface the registry already knows and the Worker probes the URL it has on file, echoing the resolved identity (`surface_key`, `netuid`, `kind`, `url`, `provider`, `auth_required`) beside the outcome so a client can see exactly what was called on its behalf. `status`/`classification`/`callable` are the verdict, `latency_ms`/`status_code`/`error` the evidence, and `from_cache` says whether this was a fresh probe. 404 surface_not_found when no catalogued surface matches the id.",
+      "id": "surface-verify",
+      "path": "/metagraph/surfaces/{surface_id}/verify.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SurfaceVerifyArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "The v440 emission pipeline decomposed per subnet (#8744), served live at /api/v1/chain/emission-pipeline (no static file): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (gate_delta), distance to the bar measured against the WEIGHTED share, and the TAO split -- SubnetTaoInEmission (pool liquidity injection) vs SubnetExcessTao (chain buys), their total, and liquidity_fraction. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE HERE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition, so each field carries its kind and source in `field_sources`, all values are pinned to `chain_state.block`, and the four pipeline identities are evaluated on the rows being served -- `verification.verified` false means the response is not defensible and should not be used. The TAO channels are point samples at that block; measured across 14 consecutive blocks they move a few rao and liquidity_fraction varies by ~1e-5, so there is no rollup. Returns 503 rather than a body when the capture carries no pinned block.",
       "id": "emission-pipeline",
       "path": "/metagraph/chain/emission-pipeline.json",
@@ -2490,7 +2523,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 111,
+    "mainnet_only_route_count": 113,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

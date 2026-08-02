@@ -161,11 +161,32 @@ const FEED_MEDIA_TYPES = new Set<string>(
   Object.values(FEED_CONTENT_TYPES_BY_FORMAT),
 );
 
+// The OpenAPI 3.1 path-item verbs. A path item also carries non-operation keys
+// (`parameters`, `summary`, `$ref`), so the operation cannot simply be "the
+// first value".
+const OPENAPI_OPERATION_VERBS = new Set([
+  "get",
+  "put",
+  "post",
+  "delete",
+  "options",
+  "head",
+  "patch",
+  "trace",
+]);
+
 for (const [routePath, methods] of Object.entries(
   (currentOpenApi.paths as Row | undefined) || {},
 )) {
   if (FEED_OPENAPI_PATHS.has(routePath)) continue;
-  const operation = methods.get;
+  // Whichever verb this path publishes, DERIVED from the path item rather than
+  // named. Reading `.get` here meant a POST path looked like a route with no
+  // typed response at all -- the same "every route is a GET" assumption that
+  // kept POST /api/v1/ask out of the contract (#9092). Enumerating `get ?? post`
+  // would just move the assumption one verb along.
+  const operation = Object.entries(methods as Row).find(([verb]) =>
+    OPENAPI_OPERATION_VERBS.has(verb),
+  )?.[1] as Row | undefined;
   const dataRef =
     operation?.responses?.["200"]?.content?.["application/json"]?.schema
       ?.allOf?.[1]?.properties?.data?.$ref;

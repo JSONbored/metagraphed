@@ -20,6 +20,7 @@
 // the hand-edited schema was stale from before diffSubnets() gained name/slug.
 // Modeled here against the real (object) shape.
 import { z } from "zod";
+import { API_ROUTE_METHODS } from "../../src/contracts.ts";
 import { ArtifactBaseSchema, CacheProfileSchema } from "../envelope.ts";
 
 const ArtifactRetirementSchema = z
@@ -73,7 +74,13 @@ const ApiRouteSchema = z
     cache: CacheProfileSchema,
     description: z.string(),
     id: z.string(),
-    method: z.literal("GET"),
+    // DERIVED from API_ROUTES, not listed here. This was z.literal("GET")
+    // until #9092 registered POST /api/v1/ask, and that literal is exactly the
+    // "every route is a GET" assumption that kept the AI-native layer out of
+    // the contract for as long as it did. Reading the methods the routes
+    // actually declare means registering a route with a new verb cannot fail
+    // against a second, staler list.
+    method: z.enum(API_ROUTE_METHODS),
     path: z.string().regex(/^\/api\/v1/),
     public: z.literal(true),
     query_collection: z.string().nullable().optional(),

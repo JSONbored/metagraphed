@@ -122,6 +122,12 @@ import { SubnetOverviewArtifactSchema } from "./routes/subnet-overview.ts";
 import { EconomicsTrendsArtifactSchema } from "./routes/economics-trends.ts";
 import { EmissionPipelineArtifactSchema } from "./routes/emission-pipeline.ts";
 import {
+  AskArtifactSchema,
+  AskRequestSchema,
+  SemanticSearchArtifactSchema,
+  SurfaceVerifyArtifactSchema,
+} from "./routes/ai-native.ts";
+import {
   SubnetConcentrationArtifactSchema,
   SubnetConcentrationHistoryArtifactSchema,
 } from "./routes/subnet-concentration.ts";
@@ -425,6 +431,15 @@ register(SubnetOverviewArtifactSchema, "SubnetOverviewArtifact");
 // Batch 2 (#8056) additions.
 register(EconomicsTrendsArtifactSchema, "EconomicsTrendsArtifact");
 register(EmissionPipelineArtifactSchema, "EmissionPipelineArtifact");
+
+// The AI-native layer (#9092): live since ADR 0003 and never registered, so
+// absent from openapi.json and every generated client until now.
+register(AskArtifactSchema, "AskArtifact");
+// The only REQUEST-body component in the contract -- see route()'s
+// requestBodySchema argument in src/contracts.ts.
+register(AskRequestSchema, "AskRequest");
+register(SemanticSearchArtifactSchema, "SemanticSearchArtifact");
+register(SurfaceVerifyArtifactSchema, "SurfaceVerifyArtifact");
 register(SubnetConcentrationArtifactSchema, "SubnetConcentrationArtifact");
 register(
   SubnetConcentrationHistoryArtifactSchema,
@@ -945,6 +960,10 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "EvidenceClaim",
   "EvidenceLedgerArtifact",
   "SubnetEvidenceArtifact",
+  "AskArtifact",
+  "AskRequest",
+  "SemanticSearchArtifact",
+  "SurfaceVerifyArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited

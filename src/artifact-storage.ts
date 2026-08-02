@@ -253,6 +253,15 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // — never a file. A committed copy would be worse than none here, since every
   // share in it is only interpretable against the block it was pinned to.
   /^chain\/emission-pipeline\.json$/,
+  // The AI-native layer (#9092), all three computed live and never files:
+  // a grounded answer over retrieved surfaces (/api/v1/ask), embedding-ranked
+  // discovery (/api/v1/search/semantic), and a catalog-resolved probe of one
+  // registered surface (/api/v1/surfaces/{surface_id}/verify). Each response is
+  // specific to its request -- a committed copy would answer someone else's
+  // question.
+  /^ai\/ask\.json$/,
+  /^ai\/search-semantic\.json$/,
+  /^surfaces\/[^/]+\/verify\.json$/,
   // Network-wide rolling 24h buy/sell alpha-volume leaderboard, computed live from the
   // account_events stake stream at /api/v1/chain/alpha-volume — never a file.
   /^chain\/alpha-volume\.json$/,

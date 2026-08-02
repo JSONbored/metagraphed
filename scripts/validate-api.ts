@@ -273,7 +273,28 @@ assert.ok(
   "validate:api requires a local health/history/YYYY-MM-DD.json artifact; run `npm run build` before validating the API",
 );
 
-const checks: [string, (body: Row) => void][] = [
+/**
+ * How a check is dispatched, for the routes a bodyless GET cannot reach (#9092).
+ *
+ * Every check was a GET expected to return 200, which silently excluded three
+ * live routes from the contract entirely: `/api/v1/ask` is POST-only (a GET is
+ * 405), and `/api/v1/search/semantic` legitimately 503s here because the AI
+ * binding does not exist outside production. Neither could be registered while
+ * `checks.length === API_ROUTES.length` also demanded a 200 from each.
+ *
+ * `expect_status` is the honest way to say "this route exists and this is what
+ * it correctly does without that binding", rather than skipping it and losing
+ * the route-count guarantee that makes this array exhaustive.
+ */
+interface CheckOptions {
+  method?: string;
+  /** JSON request body; sets content-type and forces a non-GET dispatch. */
+  body?: unknown;
+  /** Expected status. Anything but 200 asserts the ERROR envelope instead. */
+  expect_status?: number;
+}
+
+const checks: [string, (body: Row) => void, CheckOptions?][] = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
   [
     "/api/v1/subnets",
@@ -2012,6 +2033,35 @@ const checks: [string, (body: Row) => void][] = [
     "/api/v1/build",
     (body) => assert.equal(Number.isInteger(body.data.artifact_count), true),
   ],
+  // --- The AI-native layer (#9092) ----------------------------------------
+  // These three are why CheckOptions exists. Two need the AI binding, which
+  // production has and this harness does not, so 503 ai_unavailable IS the
+  // correct behaviour here -- asserting it proves the route is registered and
+  // routed without pretending the binding exists.
+  [
+    "/api/v1/ask",
+    (body) => assert.equal((body.error as Row).code, "ai_unavailable"),
+    {
+      method: "POST",
+      body: { question: "which subnets expose public APIs?" },
+      expect_status: 503,
+    },
+  ],
+  [
+    "/api/v1/search/semantic?q=developer%20tooling",
+    (body) => assert.equal((body.error as Row).code, "ai_unavailable"),
+    { expect_status: 503 },
+  ],
+  // Probed with an id that resolves NOWHERE, on purpose. A real surface id
+  // makes this a live outbound request to a third-party host (measured 252ms
+  // against ~4ms here), which would put someone else's uptime in CI's critical
+  // path. The 404 still proves the route is registered, routed, and resolving
+  // ids against the catalogue; probe behaviour itself has its own coverage.
+  [
+    "/api/v1/surfaces/definitely-not-a-surface/verify",
+    (body) => assert.equal((body.error as Row).code, "surface_not_found"),
+    { expect_status: 404 },
+  ],
 ];
 
 assert.equal(
@@ -2020,25 +2070,56 @@ assert.equal(
   "API validation checks must cover every configured API route",
 );
 
-for (const [route, assertion] of checks) {
+for (const [route, assertion, options = {}] of checks) {
+  const expectStatus = options.expect_status ?? 200;
   const response = await handleRequest(
-    new Request(`https://metagraph.sh${route}`),
+    new Request(
+      `https://metagraph.sh${route}`,
+      options.body === undefined
+        ? { method: options.method ?? "GET" }
+        : {
+            method: options.method ?? "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(options.body),
+          },
+    ),
     env as unknown as Env,
     {},
   );
-  assert.equal(response.status, 200, `${route}: expected 200`);
+  assert.equal(
+    response.status,
+    expectStatus,
+    `${route}: expected ${expectStatus}`,
+  );
+  // CORS is universal -- an error must be readable cross-origin too.
   assert.equal(
     response.headers.get("access-control-allow-origin"),
     "*",
     `${route}: missing CORS`,
   );
+  const body = (await response.json()) as Row;
+  if (expectStatus !== 200) {
+    // The route is registered and routed; it just cannot produce a body in
+    // this environment. Assert the error envelope is well-formed and hand the
+    // whole thing to the check, which knows which error code it expects.
+    //
+    // ETag and the contract-version header are deliberately NOT asserted
+    // here: measured across the existing catalogue, no error response carries
+    // either -- a 404 on /api/v1/subnets/999999 and a 400 on a malformed
+    // ?limit both omit them. They are properties of a cacheable success body,
+    // not of every response.
+    assert.equal(body.ok, false, `${route}: expected an error envelope`);
+    assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
+    assert.ok(body.error, `${route}: error envelope must carry an error`);
+    assertion(body);
+    continue;
+  }
   assert.ok(response.headers.get("etag"), `${route}: missing ETag`);
   assert.equal(
     response.headers.get("x-metagraph-contract-version"),
     CONTRACT_VERSION,
     `${route}: missing contract header`,
   );
-  const body = (await response.json()) as Row;
   assert.equal(body.ok, true, `${route}: expected ok envelope`);
   assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
   validateWorkerResponse(route, body);

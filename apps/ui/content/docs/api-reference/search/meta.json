@@ -1,9 +1,11 @@
 {
   "title": "Search",
   "pages": [
+    "ask",
     "search",
     "search-by-network",
     "search-index",
-    "search-index-by-network"
+    "search-index-by-network",
+    "search-semantic"
   ]
 }
