@@ -387,6 +387,7 @@ import {
   EXTRINSICS_FEED_PATH_PATTERN,
   ACCOUNT_EVENTS_ROLLUP_CRON,
   FRESHNESS_WATCHDOG_CRON,
+  LAKEHOUSE_SEAM_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
   ABUSE_SCAN_CRON,
@@ -481,6 +482,7 @@ import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import { foldObservations, observeRequest } from "../src/usage-rollup.ts";
 import type { UsageObservation } from "../src/usage-rollup.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { runLakehouseSeamWatchdog } from "../src/lakehouse-seam-watchdog.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -1338,6 +1340,7 @@ function cronLabel(cron: string): string {
   if (cron === ABUSE_SCAN_CRON) return "abuse-scan";
   if (cron === UPGRADE_RADAR_CRON) return "upgrade-radar";
   if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
+  if (cron === LAKEHOUSE_SEAM_CRON) return "lakehouse-seam-watchdog";
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -1523,6 +1526,14 @@ async function dispatchScheduled(
   if (cron === UPGRADE_RADAR_CRON) {
     // #8702: capture GitHub's release/BIT state and report a new testnet soak.
     return runUpgradeRadarScan(env, ctx);
+  }
+  if (cron === LAKEHOUSE_SEAM_CRON) {
+    // The seam that routes every cold block read drifted 2,338 blocks once
+    // already, invisibly, because Postgres was still answering first. This
+    // notices the next time before the wipe makes it matter.
+    return runLakehouseSeamWatchdog(
+      env as unknown as Parameters<typeof runLakehouseSeamWatchdog>[0],
+    );
   }
   if (cron === FRESHNESS_WATCHDOG_CRON) {
     // The alarm that replaces the box-side monitoring stack: notice when a

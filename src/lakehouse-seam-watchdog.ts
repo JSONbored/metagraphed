@@ -1,25 +1,31 @@
-// Is the block seam still where the lakehouse actually ends? (#9161)
+// Is the block seam still where the lakehouse actually ends? (#9161/#9164)
 //
 // `DEFAULT_BLOCKS_SEAM` routes every cold block read: at or below it the
 // lakehouse answers with the full column set, above it D1's `blocks_head`
 // answers with five columns and no `author`/`spec_version`/`event_count`. So a
-// seam that lags the lakehouse does not fail — it quietly serves reduced rows
+// seam that lags the lakehouse does not fail -- it quietly serves reduced rows
 // for a range where verified ones exist, and silently narrows any filter on
 // those columns (see `d1CanServe`).
 //
-// It went stale exactly that way: the decoder extended the lakehouse 2,338
-// blocks past the constant and nothing re-measured it. `docs/disaster-recovery.md`
-// already warned that "a stale one silently mis-routes reads" — the warning
-// was right and unenforced, which is what this check fixes.
+// It went stale exactly that way: a decoder extended the lakehouse 2,338 blocks
+// past the constant and nothing re-measured it. `docs/disaster-recovery.md`
+// already warned that "a stale one silently mis-routes reads" -- the warning was
+// right and unenforced, which is what this watchdog fixes.
+//
+// WHY THIS IS A WORKER CRON, NOT A GITHUB ACTION. The check needs exactly one
+// R2 SQL query, and this Worker already holds `R2_SQL_TOKEN` as a Worker secret
+// -- an Actions job would need the same secret duplicated as a repository
+// secret, plus a third-party trigger hop, to ask a question the Worker can ask
+// itself. Same reasoning that moved the account-events rollup off
+// rollup-account-events-daily.yml onto a Worker-native cron.
 //
 // Deriving the seam per request would be the WRONG fix, and blocks-cold-tier.ts
 // argues that case correctly: a fixed height makes each block come from exactly
 // one source, so the boundary is reproducible instead of depending on what the
 // poller happened to retain. The seam stays a constant; this makes it
 // impossible for that constant to drift unnoticed.
-import { fileURLToPath } from "node:url";
-import { r2SqlQuery } from "../src/r2-sql.ts";
-import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
+import { r2SqlQuery } from "./r2-sql.ts";
+import { DEFAULT_BLOCKS_SEAM } from "./blocks-cold-tier.ts";
 
 export interface SeamVerdict {
   reasons: string[];
@@ -27,10 +33,10 @@ export interface SeamVerdict {
 }
 
 /**
- * The whole decision, as a pure function of what was measured (#9161).
+ * The whole decision, as a pure function of what was measured.
  *
- * Split out so the rule is testable without a lakehouse — same split as
- * `evaluateSafeMode` and `evaluateFreshness`.
+ * Split out so the rule is testable without a lakehouse -- same split as
+ * `evaluateFreshness` and `evaluateSafeMode`.
  */
 export function evaluateSeam({
   seam,
@@ -89,24 +95,41 @@ export function evaluateSeam({
   };
 }
 
-async function main(): Promise<void> {
-  // Reuses the Worker's own R2 SQL client rather than a second implementation,
-  // so this measures through the same request shape, timeout and guards the
-  // serving path uses.
-  const env = {
-    R2_SQL_TOKEN: process.env.R2_SQL_TOKEN,
-    R2_SQL_ACCOUNT_ID: process.env.R2_SQL_ACCOUNT_ID,
-    R2_SQL_WAREHOUSE: process.env.R2_SQL_WAREHOUSE,
-  } as unknown as Parameters<typeof r2SqlQuery>[0];
+const num = (value: unknown) =>
+  value === null || value === undefined ? null : Number(value);
 
-  const rows = await r2SqlQuery(
+/**
+ * One watchdog tick: measure the lakehouse, compare it to the shipped seam.
+ *
+ * Returns a summary rather than throwing, matching runFreshnessWatchdog -- a
+ * tick that cannot run is one missed report, not an outage, and a cron that
+ * throws is a cron nobody can read the result of.
+ */
+export async function runLakehouseSeamWatchdog(
+  env: Parameters<typeof r2SqlQuery>[0],
+  // Injectable so the MEASURED path is testable without a lakehouse. Same seam
+  // as r2-sql.ts's scheduleAbort and webhooks.ts's sleepFn: a branch that can
+  // only run against live infrastructure is a branch nothing verifies.
+  deps: { query?: typeof r2SqlQuery } = {},
+): Promise<Record<string, unknown>> {
+  const query = deps.query ?? r2SqlQuery;
+  const rows = await query(
     env,
     "SELECT min(block_number) AS lo, max(block_number) AS hi, count(*) AS n FROM chain.blocks",
   );
-  const row = rows?.[0];
-  const num = (value: unknown) =>
-    value === null || value === undefined ? null : Number(value);
+  // r2SqlQuery returns null when the lakehouse is UNCONFIGURED as well as when
+  // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
+  // lakehouse -- so it is reported as skipped rather than as drift.
+  if (rows === null) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: "lakehouse_unavailable",
+      seam: DEFAULT_BLOCKS_SEAM,
+    };
+  }
 
+  const row = rows[0];
   const { reasons, summary } = evaluateSeam({
     seam: DEFAULT_BLOCKS_SEAM,
     lo: num(row?.lo),
@@ -114,43 +137,14 @@ async function main(): Promise<void> {
     count: num(row?.n),
   });
 
-  console.log(JSON.stringify(summary, null, 2));
-
-  if (reasons.length === 0) {
-    console.log(
-      `OK: the seam is exactly max(chain.blocks) and the range is contiguous.`,
-    );
-    return;
-  }
-
-  for (const reason of reasons) console.error(`ALERT: ${reason}`);
-
-  const webhook = process.env.LIVE_ALERT_WEBHOOK_URL;
-  if (webhook) {
-    try {
-      await fetch(webhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(15_000),
-        body: JSON.stringify({
-          content:
-            `⚠️ metagraphed: the lakehouse block seam no longer matches the lakehouse.\n` +
-            reasons.map((reason) => `• ${reason}`).join("\n") +
-            `\nRe-measure and update DEFAULT_BLOCKS_SEAM, or set ICEBERG_BLOCKS_MAX (#9161).`,
-        }),
-      });
-    } catch (err) {
-      console.error(
-        `alert webhook failed: ${err instanceof Error ? err.message : err}`,
-      );
-    }
-  }
-
-  // Non-zero so the workflow records a failure -- a monitor whose alerts only
-  // reach a webhook is invisible when the webhook is misconfigured.
-  process.exit(1);
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await main();
+  return {
+    // `ok` describes whether the TICK ran, not whether the seam is correct --
+    // the drift itself is carried by `reasons`, and marking a successful check
+    // as a failure would make the watchdog look broken every time it correctly
+    // found something. Same convention as the freshness watchdog.
+    ok: true,
+    drifted: reasons.length > 0,
+    reasons,
+    ...summary,
+  };
 }

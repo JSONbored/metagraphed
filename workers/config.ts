@@ -95,6 +95,16 @@ export const SCHEMA_SNAPSHOTS_SYNC_CRON = "5 5 * * *";
 // watchdog's own de-dup (shouldReport) means a standing stall stays quiet after
 // the first tick regardless. Must match a wrangler.jsonc cron entry.
 export const FRESHNESS_WATCHDOG_CRON = "23 * * * *";
+
+// #9161: daily lakehouse seam watchdog. DEFAULT_BLOCKS_SEAM routes every cold
+// block read, and it drifted 2,338 blocks once already because a decoder
+// extended the lakehouse and nothing re-measured. Daily because the lakehouse
+// only moves when a backfill or decode lane runs -- a tighter tick would
+// re-ask a question whose answer cannot have changed. A Worker cron rather
+// than an Actions job because this Worker already holds R2_SQL_TOKEN; the
+// workflow form needed the same secret duplicated repo-side. Must match a
+// wrangler.jsonc cron entry.
+export const LAKEHOUSE_SEAM_CRON = "23 7 * * *";
 // KV key holding the last-reported staleness signature, so a standing outage is
 // announced when it starts and when it changes rather than every hour forever.
 export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";

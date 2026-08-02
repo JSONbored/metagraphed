@@ -658,6 +658,10 @@
       // UPGRADE_RADAR_CRON in workers/config.ts for why the cadence is fixed
       // by GitHub's unauthenticated rate limit rather than by the chain.
       "7,37 * * * *",
+      // 23 7 = daily lakehouse seam watchdog (#9161), Worker-native rather
+      // than a GitHub Action because R2_SQL_TOKEN already lives here -- see
+      // LAKEHOUSE_SEAM_CRON in workers/config.ts.
+      "23 7 * * *",
       // 23 = hourly freshness watchdog. The alarm that replaces the indexer
       // box's Prometheus/Alertmanager pair and the cross-box dead-man's-switch,
       // which do not survive the boxes -- see FRESHNESS_WATCHDOG_CRON in
