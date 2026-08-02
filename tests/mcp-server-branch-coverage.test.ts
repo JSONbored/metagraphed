@@ -1123,6 +1123,69 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
     assert.equal(usageRecorded, true);
   });
 
+  // #8992: a THROTTLED keyed caller must still be counted, with rejected=true.
+  // The counter used to sit after the `!rateLimit.allowed` return, so a
+  // rate-limited MCP request emitted nothing anywhere -- no usage_event
+  // (usageRouteLabel excludes /mcp), no $mcp_tool_call (rejected before
+  // callTool), and no rejected_count. workers/api.ts:2224-2231 fixed the same
+  // ordering for the DATA checkpoint in #8609; this pins it for MCP.
+  test("a keyed caller over the ceiling is still counted, as a rejection", async () => {
+    const VALID_KEY = "mg_aValidOpaqueUnkeyGeneratedSuffix";
+    const kvStore = new Map<string, string>();
+    let usageBody: { route?: string; rejected?: boolean } | null = null;
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key: string, options?: { type?: string }) {
+          if (!kvStore.has(key)) return null;
+          const raw = kvStore.get(key)!;
+          return options?.type === "json" ? JSON.parse(raw) : raw;
+        },
+        async put(key: string, value: string) {
+          kvStore.set(key, value);
+        },
+      },
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          if (new URL(req.url).pathname.endsWith("/keys/usage")) {
+            usageBody = await req.json();
+            return new Response(null, { status: 204 });
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "free",
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+      // The keyed tier is the one that rejects here.
+      MCP_RATE_LIMITER_KEYED: { limit: async () => ({ success: false }) },
+    };
+    const res = await rpc(
+      { jsonrpc: "2.0", id: 1, method: "ping" },
+      {
+        env,
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${VALID_KEY}`,
+        },
+      },
+    );
+
+    // Still rejected -- this changes the accounting, not the enforcement.
+    assert.equal(res.status, 429);
+    assert.equal(res.body.error.code, -32600);
+
+    // ...and the rejection was counted rather than dropped.
+    assert.notEqual(usageBody, null);
+    assert.equal(usageBody!.route, "mcp");
+    assert.equal(usageBody!.rejected, true);
+  });
+
   test("a request whose content-length exceeds the cap is rejected with 413", async () => {
     // contentLength > MAX_MCP_BODY_BYTES short-circuits before reading the body.
     const request = new Request(MCP_URL, {
