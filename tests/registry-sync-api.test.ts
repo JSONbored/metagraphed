@@ -1,83 +1,70 @@
-// Unit tests for the registry-sync Worker (workers/registry-sync-api.ts). postgres.js
-// is mocked so the auth/validation/upsert routing is tested with no real DB — the live
-// Hyperdrive path is validated separately.
+// Unit tests for the registry-sync Worker (workers/registry-sync-api.ts).
+//
+// The registry moved off the self-hosted Postgres onto D1, so the DB double here
+// is a D1 fake rather than a postgres.js mock. It records every statement --
+// both the phase-1 reads and the statements handed to batch() -- into one
+// ordered list, because the thing worth asserting is the STATEMENT STREAM the
+// Worker produces, and that is exactly what changed shape in the move.
 import { beforeEach, expect, test, vi } from "vitest";
 import { jsonBody } from "./row-type.ts";
-import type { AnyFn, Row } from "./row-type.ts";
+import type { Row } from "./row-type.ts";
 
 const sqlCalls = vi.hoisted(() => [] as Row[]);
-const surfaceResult = vi.hoisted(() => ({ current: [{ inserted: true }] }));
-const deleteResult = vi.hoisted(() => ({
-  surfaces: [] as Row[],
-  subnets: [] as Row[],
+// What the phase-1 SELECTs return. `doomed` feeds the prune / delete-subnets
+// reads; `existingSurface` feeds the per-surface existence probe that replaced
+// Postgres' RETURNING (xmax = 0).
+const selectResults = vi.hoisted(() => ({
+  doomed: [] as Row[],
+  existingSurface: null as Row | null,
 }));
 const failure = vi.hoisted(() => ({ error: null as Error | null }));
-// Countdown connection-failure state (METAGRAPHED-7, second recurrence) -- same semantics
-// as data-api's healthChecksSyncConnectionFailure: N rejections carrying a retryable
-// postgres.js connection code, then success, so the fresh-client retry in
-// workers/hyperdrive-sync-retry.ts is what a passing test proves.
-const connectionFailure = vi.hoisted(() => ({
-  remainingFailures: 0,
-  code: "CONNECTION_CLOSED",
-}));
 
-vi.mock("postgres", () => ({
-  default: () => {
-    const sql = (strings: TemplateStringsArray, ...values: unknown[]) => {
-      const text = Array.from(strings).join("?");
-      sqlCalls.push({ text, values });
-      if (failure.error && /INSERT INTO providers/.test(text)) {
-        return Promise.reject(failure.error);
-      }
-      if (
-        connectionFailure.remainingFailures > 0 &&
-        /INSERT INTO providers/.test(text)
-      ) {
-        connectionFailure.remainingFailures -= 1;
-        return Promise.reject(
-          Object.assign(
-            new Error(
-              `write ${connectionFailure.code} mock.hyperdrive.local:5432`,
-            ),
-            { code: connectionFailure.code },
-          ),
-        );
-      }
-      if (/INSERT INTO surfaces/.test(text)) {
-        return Promise.resolve(surfaceResult.current);
-      }
-      if (/DELETE FROM surfaces/.test(text)) {
-        return Promise.resolve(deleteResult.surfaces);
-      }
-      if (/DELETE FROM subnets/.test(text)) {
-        return Promise.resolve(deleteResult.subnets);
-      }
-      return Promise.resolve([]);
-    };
-    sql.json = (value: unknown) => value;
-    sql.end = () => Promise.resolve();
-    // sql.unsafe(text, params) -- the surfaces-prune's (kind, url) VALUES
-    // join (a bound JS array broke under this Worker's real Hyperdrive
-    // fetch_types:false setting, see the prune's own comment). Recorded into
-    // the SAME sqlCalls list so existing assertions work unchanged
-    // regardless of which call form produced them.
-    sql.unsafe = (text: string, params: unknown[] = []) => {
-      sqlCalls.push({ text, values: params });
-      if (/DELETE FROM surfaces/.test(text)) {
-        return Promise.resolve(deleteResult.surfaces);
-      }
-      return Promise.resolve([]);
-    };
-    // sql.begin(cb) reserves a connection for cb in real postgres.js; the
-    // mock just invokes cb with this same sql function so every existing
-    // tagged-template assertion (sqlCalls) still sees the identical call
-    // stream, and resolves to (or rejects with) whatever cb does.
-    sql.begin = (cb: AnyFn) => cb(sql);
-    return sql;
-  },
-}));
+class FakeStatement {
+  text: string;
+  values: unknown[] = [];
+  constructor(text: string) {
+    this.text = text;
+  }
+  bind(...values: unknown[]) {
+    this.values = values;
+    sqlCalls.push({ text: this.text, values });
+    return this;
+  }
+  async all() {
+    // The per-surface existence probe is the narrower of the two SELECTs, so it
+    // has to be matched first.
+    if (
+      /FROM surfaces\s+WHERE subnet_netuid = \? AND kind = \? AND url = \?/.test(
+        this.text,
+      )
+    ) {
+      return {
+        results: selectResults.existingSurface
+          ? [selectResults.existingSurface]
+          : [],
+      };
+    }
+    if (/SELECT id, subnet_netuid, overlay FROM surfaces/.test(this.text)) {
+      return { results: selectResults.doomed };
+    }
+    return { results: [] };
+  }
+}
 
-const { default: worker } = await import("../workers/registry-sync-api.ts");
+class FakeD1 {
+  prepare(text: string) {
+    return new FakeStatement(text);
+  }
+  async batch(statements: unknown[]) {
+    // One batch, all-or-nothing -- a thrown error here is the D1 analogue of a
+    // rolled-back transaction, which is what the 502 path must surface.
+    if (failure.error) throw failure.error;
+    return statements;
+  }
+}
+
+const { default: worker, applyRegistrySyncToD1 } =
+  await import("../workers/registry-sync-api.ts");
 
 const SECRET = "test-registry-sync-secret";
 
@@ -103,7 +90,7 @@ function post(
 function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
     REGISTRY_SYNC_SECRET: SECRET,
-    HYPERDRIVE: { connectionString: "postgres://mock" },
+    REGISTRY_DB: new FakeD1(),
     ...overrides,
   } as unknown as Env;
 }
@@ -133,14 +120,15 @@ const surface = () => ({
   source_commit: "abc123",
 });
 
+const sqlText = () => sqlCalls.map((c) => c.text).join("\n");
+const findCall = (pattern: RegExp) =>
+  sqlCalls.find((c) => pattern.test(c.text as string))!;
+
 beforeEach(() => {
   sqlCalls.length = 0;
-  surfaceResult.current = [{ inserted: true }];
-  deleteResult.surfaces = [];
-  deleteResult.subnets = [];
+  selectResults.doomed = [];
+  selectResults.existingSurface = null;
   failure.error = null;
-  connectionFailure.remainingFailures = 0;
-  connectionFailure.code = "CONNECTION_CLOSED";
 });
 
 test("rejects non-POST (405)", async () => {
@@ -151,7 +139,7 @@ test("rejects non-POST (405)", async () => {
 test("is disabled (503) when REGISTRY_SYNC_SECRET is not configured", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
+    { REGISTRY_DB: new FakeD1() } as unknown as Env,
   );
   expect(res.status).toBe(503);
 });
@@ -215,7 +203,7 @@ test("rate limiting: rejects an invalid token before consulting the limiter", as
   expect(limiter.limit.mock.calls.length).toBe(0);
 });
 
-test("returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+test("returns 503 when the REGISTRY_DB binding is unavailable", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
     { REGISTRY_SYNC_SECRET: SECRET } as unknown as Env,
@@ -280,7 +268,7 @@ test("upserts providers + subnets + surfaces and reports written counts", async 
     subnets_written: 1,
     surfaces_written: 1,
   });
-  const text = sqlCalls.map((c) => c.text).join("\n");
+  const text = sqlText();
   expect(text).toMatch(/INSERT INTO providers/);
   expect(text).toMatch(/INSERT INTO subnets/);
   expect(text).toMatch(/INSERT INTO surfaces/);
@@ -319,19 +307,21 @@ test("defaults subnet source and surface provider_id when omitted", async () => 
     baseEnv(),
   );
   expect(res.status).toBe(200);
-  const subnetCall = sqlCalls.find((c) => /INSERT INTO subnets/.test(c.text))!;
+  const subnetCall = findCall(/INSERT INTO subnets/);
   expect(subnetCall.values).toContain("community");
-  const surfaceCall = sqlCalls.find((c) =>
-    /INSERT INTO surfaces/.test(c.text),
-  )!;
+  const surfaceCall = findCall(/INSERT INTO surfaces/);
   expect(surfaceCall.values).toContain(null);
 });
 
 test("does not log surface_history when the surface upsert is a no-op", async () => {
-  // WHERE surfaces.overlay IS DISTINCT FROM EXCLUDED.overlay yields zero
-  // RETURNING rows when the overlay is unchanged -- no history entry, no
-  // surfaces_written increment.
-  surfaceResult.current = [];
+  // Postgres expressed this as WHERE ... IS DISTINCT FROM EXCLUDED.overlay and
+  // let the statement no-op. The D1 path decides it BEFORE building any
+  // statement: an existing row whose overlay is byte-identical is skipped
+  // outright, so neither the upsert nor the history row is ever queued.
+  selectResults.existingSurface = {
+    id: "00000000-0000-0000-0000-0000000000ff",
+    overlay: JSON.stringify(surface().overlay),
+  };
   const res = await worker.fetch(
     post({ surfaces: [surface()] }, { secret: SECRET }),
     baseEnv(),
@@ -339,26 +329,30 @@ test("does not log surface_history when the surface upsert is a no-op", async ()
   expect(res.status).toBe(200);
   const body = await jsonBody(res);
   expect(body.surfaces_written).toBe(0);
-  const text = sqlCalls.map((c) => c.text).join("\n");
+  const text = sqlText();
   expect(text).not.toMatch(/INSERT INTO surface_history/);
 });
 
 test("records an update action in surface_history when the row already existed", async () => {
-  surfaceResult.current = [{ inserted: false }];
+  // Replaces Postgres' RETURNING (xmax = 0), which read MVCC internals SQLite
+  // does not have: existence is asked directly, and a changed overlay means
+  // "update".
+  selectResults.existingSurface = {
+    id: "00000000-0000-0000-0000-0000000000ff",
+    overlay: JSON.stringify({ kind: "docs", url: "https://old.example/docs" }),
+  };
   await worker.fetch(
     post({ surfaces: [surface()] }, { secret: SECRET }),
     baseEnv(),
   );
   // The action is bound as a value, not embedded in the SQL text -- assert it
   // was passed to the surface_history insert as "update", not "insert".
-  const historyCall = sqlCalls.find((c) =>
-    /INSERT INTO surface_history/.test(c.text),
-  )!;
+  const historyCall = findCall(/INSERT INTO surface_history/);
   expect(historyCall.values).toContain("update");
 });
 
 test("prunes surfaces absent from the current subnet payload and records delete history", async () => {
-  deleteResult.surfaces = [
+  selectResults.doomed = [
     {
       id: "00000000-0000-0000-0000-000000000001",
       subnet_netuid: 8,
@@ -386,16 +380,19 @@ test("prunes surfaces absent from the current subnet payload and records delete 
 
   expect(res.status).toBe(200);
   expect(await res.json()).toMatchObject({ surfaces_deleted: 1 });
-  const text = sqlCalls.map((c) => c.text).join("\n");
-  expect(text).toMatch(/DELETE FROM surfaces/);
-  const historyCall = sqlCalls.find((c) =>
-    /INSERT INTO surface_history/.test(c.text),
-  )!;
-  expect(historyCall.values).toContain("delete");
+  const text = sqlText();
+  expect(text).toMatch(/DELETE FROM surfaces WHERE id IN/);
+  // The action is a literal here rather than a bind: unlike the upsert path,
+  // where it varies between insert/update, a prune only ever records a delete.
+  const historyCall = findCall(/INSERT INTO surface_history/);
+  expect(historyCall.text).toMatch(/'delete'/);
+  // and it describes the row that was actually read in phase 1
+  expect(historyCall.values).toContain("00000000-0000-0000-0000-000000000001");
+  expect(historyCall.values).toContain("def456");
 });
 
 test("REGRESSION: prune_surfaces with authority_scope 'community' passes a true scope flag, bounding the DELETE to community-authority rows", async () => {
-  deleteResult.surfaces = [];
+  selectResults.doomed = [];
 
   const res = await worker.fetch(
     post(
@@ -417,14 +414,16 @@ test("REGRESSION: prune_surfaces with authority_scope 'community' passes a true 
   );
 
   expect(res.status).toBe(200);
-  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
-  expect(deleteCall.text).toMatch(/authority = 'community'/);
-  // The scope flag is bound as a real parameter (true), not spliced into the query text.
-  expect(deleteCall.values).toContain(true);
+  // The scope moved into the phase-1 SELECT that decides WHICH rows die; the
+  // DELETE itself is now by explicit id. Bound as 0/1, not a boolean -- SQLite
+  // has no boolean type.
+  const readCall = findCall(/SELECT id, subnet_netuid, overlay FROM surfaces/);
+  expect(readCall.text).toMatch(/authority = 'community'/);
+  expect(readCall.values).toContain(1);
 });
 
 test("does not scope by authority when authority_scope is absent (the scheduled full-resync path)", async () => {
-  deleteResult.surfaces = [];
+  selectResults.doomed = [];
 
   const res = await worker.fetch(
     post(
@@ -445,58 +444,10 @@ test("does not scope by authority when authority_scope is absent (the scheduled 
   );
 
   expect(res.status).toBe(200);
-  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
-  // The scope flag is still present in the query shape (always-composed OR clause),
-  // but bound to false so it never actually filters by authority.
-  expect(deleteCall.values).toContain(false);
-});
-
-test("REGRESSION: prunes with a non-empty current_surfaces list via scalar positional binds, not a bound array", async () => {
-  // Hyperdrive's fetch_types:false breaks postgres.js's ANY($1)/array
-  // serialization (confirmed live 2026-07-10, #4771) -- a bound JS array
-  // parameter here sends Postgres a malformed literal with no braces and
-  // every write that pruned against a non-empty current_surfaces list
-  // 502'd. This mock can't reproduce the real Postgres-side failure, but it
-  // pins the query shape that avoids it: every bound value must be a
-  // scalar (never an array), and the (kind, url) pairs must appear as
-  // explicit $N::text placeholders in the query text instead.
-  deleteResult.surfaces = [];
-
-  const res = await worker.fetch(
-    post(
-      {
-        prune_surfaces: [
-          {
-            subnet_netuid: 8,
-            current_surfaces: [
-              { kind: "docs", url: "https://example.com/docs" },
-              { kind: "website", url: "https://example.com" },
-            ],
-            source_commit: "def456",
-          },
-        ],
-      },
-      { secret: SECRET },
-    ),
-    baseEnv(),
-  );
-
-  expect(res.status).toBe(200);
-  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
-  for (const value of deleteCall.values) {
-    expect(Array.isArray(value)).toBe(false);
-  }
-  expect(deleteCall.values).toEqual([
-    false,
-    8,
-    "docs",
-    "https://example.com/docs",
-    "website",
-    "https://example.com",
-  ]);
-  expect(deleteCall.text).toMatch(/\$3::text, \$4::text/);
-  expect(deleteCall.text).toMatch(/\$5::text, \$6::text/);
-  expect(deleteCall.text).not.toMatch(/ANY\(/);
+  // The flag is still present in the query shape (always-composed OR clause),
+  // but bound to 0 so it never actually filters by authority.
+  const readCall = findCall(/SELECT id, subnet_netuid, overlay FROM surfaces/);
+  expect(readCall.values).toContain(0);
 });
 
 test("skips a prune_surfaces entry missing subnet_netuid/current_surfaces/source_commit instead of failing the request", async () => {
@@ -514,12 +465,12 @@ test("skips a prune_surfaces entry missing subnet_netuid/current_surfaces/source
 
   expect(res.status).toBe(200);
   expect(await res.json()).toMatchObject({ surfaces_deleted: 0 });
-  const text = sqlCalls.map((c) => c.text).join("\n");
+  const text = sqlText();
   expect(text).not.toMatch(/DELETE FROM surfaces/);
 });
 
 test("deletes every surface for a subnet when current_surfaces has no valid kind/url entries", async () => {
-  deleteResult.surfaces = [
+  selectResults.doomed = [
     {
       id: "00000000-0000-0000-0000-000000000003",
       subnet_netuid: 8,
@@ -541,7 +492,7 @@ test("deletes every surface for a subnet when current_surfaces has no valid kind
 
   expect(res.status).toBe(200);
   expect(await res.json()).toMatchObject({ surfaces_deleted: 1 });
-  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
+  const deleteCall = findCall(/DELETE FROM surfaces/);
   expect(deleteCall.text).not.toMatch(/ANY/);
 });
 
@@ -559,19 +510,18 @@ test("skips a delete_subnets entry missing netuid/source_commit instead of faili
     surfaces_deleted: 0,
     subnets_deleted: 0,
   });
-  const text = sqlCalls.map((c) => c.text).join("\n");
+  const text = sqlText();
   expect(text).not.toMatch(/DELETE FROM subnets/);
 });
 
 test("deletes a removed subnet after recording delete history for its surfaces", async () => {
-  deleteResult.surfaces = [
+  selectResults.doomed = [
     {
       id: "00000000-0000-0000-0000-000000000002",
       subnet_netuid: 9,
       overlay: { kind: "subnet-api", url: "https://stale.example/api" },
     },
   ];
-  deleteResult.subnets = [{ netuid: 9 }];
 
   const res = await worker.fetch(
     post(
@@ -586,7 +536,7 @@ test("deletes a removed subnet after recording delete history for its surfaces",
     surfaces_deleted: 1,
     subnets_deleted: 1,
   });
-  const text = sqlCalls.map((c) => c.text).join("\n");
+  const text = sqlText();
   expect(text).toMatch(/DELETE FROM surfaces/);
   expect(text).toMatch(/DELETE FROM subnets/);
 });
@@ -611,7 +561,7 @@ test("does not delete a subnet that is also upserted in the same request", async
     surfaces_deleted: 0,
     subnets_deleted: 0,
   });
-  const text = sqlCalls.map((c) => c.text).join("\n");
+  const text = sqlText();
   expect(text).toMatch(/INSERT INTO subnets/);
   expect(text).toMatch(/INSERT INTO surfaces/);
   expect(text).not.toMatch(/DELETE FROM subnets/);
@@ -730,27 +680,145 @@ test("a body stream that errors mid-read still records ok:false on the trace spa
   expect(span.status.code).toBe(2); // ERROR
 });
 
-test("retries with a fresh client after a Hyperdrive CONNECTION_CLOSED and lands the batch (METAGRAPHED-7 second recurrence)", async () => {
-  connectionFailure.remainingFailures = 1;
-  const res = await worker.fetch(
-    post({ providers: [provider()] }, { secret: SECRET }),
-    baseEnv(),
-  );
-  expect(res.status).toBe(200);
-  expect(await res.json()).toMatchObject({ ok: true, providers_written: 1 });
-  // The providers INSERT ran twice: dropped socket on attempt 1, fresh client landed attempt 2.
-  expect(
-    sqlCalls.filter((c) => /INSERT INTO providers/.test(c.text as string))
-      .length,
-  ).toBe(2);
+// Hyperdrive's connection-retry tests (METAGRAPHED-7) are gone with Hyperdrive:
+// a D1 binding is not a pooled TCP connection, so there is no dropped socket to
+// retry. What replaces them are the risks D1 actually introduces.
+
+test("the keep-list is ONE bound JSON parameter, so the statement text is constant regardless of its size", async () => {
+  // The Postgres version built a VALUES join with two positional binds per kept
+  // surface. Carried over literally, a subnet with thousands of surfaces would
+  // run into SQLite's variable ceiling, and every distinct list length would be
+  // a distinct statement D1 could not reuse a plan for. json_each over a single
+  // bound JSON array fixes both, so the shape is pinned here.
+  const keptCount = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      kind: "docs",
+      url: `https://example.com/${i}`,
+    }));
+
+  for (const n of [1, 250]) {
+    sqlCalls.length = 0;
+    await worker.fetch(
+      post(
+        {
+          prune_surfaces: [
+            {
+              subnet_netuid: 8,
+              current_surfaces: keptCount(n),
+              source_commit: "def456",
+            },
+          ],
+        },
+        { secret: SECRET },
+      ),
+      baseEnv(),
+    );
+    const read = findCall(/SELECT id, subnet_netuid, overlay FROM surfaces/);
+    expect(read.text).toMatch(/json_each\(\?\)/);
+    // netuid, scope flag, keep-list -- three binds whatever n is.
+    expect((read.values as unknown[]).length).toBe(3);
+    expect(JSON.parse((read.values as string[])[2])).toHaveLength(n);
+  }
 });
 
-test("still 502s once every connection retry is exhausted (METAGRAPHED-7)", async () => {
-  connectionFailure.remainingFailures = 3;
-  const res = await worker.fetch(
-    post({ providers: [provider()] }, { secret: SECRET }),
+test("the prune DELETE targets the ids read in phase 1, not a re-evaluated predicate", async () => {
+  // The history rows describe the rows read in phase 1. Re-running the
+  // predicate inside the batch could delete a different set than the one being
+  // recorded, so the delete is pinned to those exact ids.
+  selectResults.doomed = [
+    { id: "id-a", subnet_netuid: 8, overlay: { k: 1 } },
+    { id: "id-b", subnet_netuid: 8, overlay: { k: 2 } },
+  ];
+  await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [{ kind: "docs", url: "https://example.com/d" }],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
     baseEnv(),
   );
-  expect(res.status).toBe(502);
-  expect((await jsonBody(res)).error).toBe("write failed");
+  const del = findCall(/DELETE FROM surfaces WHERE id IN/);
+  expect(JSON.parse((del.values as string[])[0])).toEqual(["id-a", "id-b"]);
+});
+
+test("every write lands in exactly one batch, so a partial sync is not representable", async () => {
+  // D1 has no interactive transaction; batch() IS the transaction. More than one
+  // batch per request would reintroduce the partial-sync state the Postgres
+  // version used sql.begin() to eliminate.
+  let batches = 0;
+  const db = new FakeD1();
+  const spy = {
+    prepare: (t: string) => db.prepare(t),
+    batch: async (stmts: unknown[]) => {
+      batches += 1;
+      return stmts;
+    },
+  };
+  const summary = await applyRegistrySyncToD1(spy as never, {
+    providers: [provider()],
+    subnets: [subnet()],
+    surfaces: [surface()],
+    pruneSurfaces: [],
+    deleteSubnets: [],
+  });
+  expect(batches).toBe(1);
+  expect(summary).toMatchObject({
+    providers_written: 1,
+    subnets_written: 1,
+    surfaces_written: 1,
+  });
+});
+
+test("nothing is batched when the payload produces no writes", async () => {
+  let batches = 0;
+  const db = new FakeD1();
+  const spy = {
+    prepare: (t: string) => db.prepare(t),
+    batch: async () => {
+      batches += 1;
+    },
+  };
+  const summary = await applyRegistrySyncToD1(spy as never, {
+    providers: [{ id: "acme" }],
+    subnets: [],
+    surfaces: [],
+    pruneSurfaces: [],
+    deleteSubnets: [],
+  });
+  expect(batches).toBe(0);
+  expect(summary.providers_written).toBe(0);
+});
+
+test("the #8981 type translations are applied to the bound values", async () => {
+  await worker.fetch(
+    post(
+      {
+        surfaces: [{ ...surface(), probe_eligible: true, public_safe: false }],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+  const insert = findCall(/INSERT INTO surfaces/);
+  const values = insert.values as unknown[];
+  // jsonb -> TEXT: the overlay is bound as a JSON string, never an object.
+  expect(typeof values[10]).toBe("string");
+  expect(JSON.parse(values[10] as string)).toEqual(surface().overlay);
+  // boolean -> 0/1, with a CHECK constraint behind it.
+  expect(values[8]).toBe(1);
+  expect(values[9]).toBe(0);
+  // timestamptz -> epoch ms, computed in SQL rather than bound.
+  expect(insert.text).toMatch(/unixepoch\(\) \* 1000/);
+  expect(insert.text).not.toMatch(/now\(\)/);
+  // uuid: no DB default, so the caller supplies one.
+  expect(values[0]).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+  );
 });

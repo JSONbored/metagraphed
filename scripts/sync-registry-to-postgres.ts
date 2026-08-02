@@ -1,15 +1,20 @@
 // Merge-triggered FAST PATH: upserts the registry/subnets/*.json +
 // registry/providers/*.json files that changed in a push into the registry
-// Postgres instance, within seconds/minutes of a merge rather than waiting
+// database (D1 since the self-hosted Postgres was retired), within
+// seconds/minutes of a merge rather than waiting
 // for the next scheduled full resync. Its sibling,
 // scripts/backfill-registry-postgres.ts, run on a schedule, is what keeps
 // the machine-discovered half of the same tables (subnets with no manual
 // file, candidate-promoted surfaces) fresh on ITS OWN cadence — that content
 // isn't tied to a git commit the way this script's trigger is. Together they
-// make Postgres the single, always-fresh source of truth for every
+// make the registry database the single, always-fresh mirror of every
 // subnet/provider/surface fact, human-authored or machine-discovered (see
-// deploy/postgres/registry-schema.sql's own comment for why these live in
-// one table set).
+// migrations/d1/0001_registry.sql for why these live in one table set).
+//
+// The filename still says "postgres" deliberately: this script's contract is
+// an HTTPS POST to the registry-sync Worker, which did not change when the
+// storage behind that Worker did, and renaming it would churn every workflow
+// that invokes it for no behavioural gain.
 //
 // Contribution/review is UNCHANGED: a contributor's PR still touches only
 // registry/subnets/<slug>.json, still gets scored by the Gittensory Gate
