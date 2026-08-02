@@ -1031,6 +1031,7 @@ import {
   composeCompareData,
   profilesProjectionFromRows,
   COMPARE_VALIDATORS_MAX,
+  loadSubnetTrajectory,
 } from "./analytics-live.ts";
 import {
   buildChainRegistrations,
@@ -1088,7 +1089,6 @@ import {
   formatLeaderboards,
   LEADERBOARD_BOARDS,
   loadSubnetReliability,
-  loadSubnetTrajectory,
   mergeFreshness,
   overlayArtifactEndpoints,
   overlayCatalogDetail,
@@ -4413,7 +4413,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/trajectory`),
           "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-        )) ?? (await loadSubnetTrajectory(netuid))
+        )) ??
+        (await loadSubnetTrajectory(netuid, {
+          db: ctx.env.METAGRAPH_HEALTH_DB,
+        }))
       );
     },
   },
@@ -4447,14 +4450,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             : "window is not supported.";
         throw toolError("invalid_params", message);
       }
-      const { label } = parsed!;
+      const { label, days } = parsed!;
       const postgres = await tryPostgresTier(
         ctx.env,
         mcpNeuronsTierRequest("/api/v1/economics/trends", { window: label }),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadEconomicsTrends({ windowLabel: label });
+      const { data } = await loadEconomicsTrends({
+        windowLabel: label,
+        windowDays: days,
+        db: ctx.env.METAGRAPH_HEALTH_DB,
+      });
       return data;
     },
   },

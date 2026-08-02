@@ -44,6 +44,7 @@ import {
   COMPARE_VALIDATORS_MAX,
   currentD1ReadFailureGeneration,
   growthRowsFromSamples,
+  loadSubnetTrajectory,
   loadSubnetUptime,
   parseCompareDimensions,
   parseCompareHotkeys,
@@ -269,8 +270,16 @@ export async function handleTrajectory(
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
   )) as ReturnType<typeof formatTrajectory> | null;
   if (!data) {
-    isFallback = true;
-    data = formatTrajectory({ netuid, rows: [] });
+    // Cacheable when D1-served — only an empty payload (no binding, or a D1
+    // read failure mid-load) is barred from the edge cache (see
+    // handleHealthTrends in analytics.ts).
+    const d1Generation = currentD1ReadFailureGeneration();
+    data = (await loadSubnetTrajectory(netuid, {
+      db: env.METAGRAPH_HEALTH_DB,
+    })) as ReturnType<typeof formatTrajectory>;
+    isFallback =
+      !env.METAGRAPH_HEALTH_DB ||
+      currentD1ReadFailureGeneration() !== d1Generation;
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -316,9 +325,9 @@ export async function handleEconomicsTrends(
     | { label: string; days: number }
     | { error: { parameter: string; message: string } };
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
+  const { label, days } = windowResult;
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
-  // and same flip as handleTrajectory above. D1 fully eliminated (2026-07-17).
+  // and same flip as handleTrajectory above. D1 reads resurrected 2026-08-02.
   let isFallback = false;
   let data = (await tryPostgresTier(
     env,
@@ -326,9 +335,17 @@ export async function handleEconomicsTrends(
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
   )) as Awaited<ReturnType<typeof loadEconomicsTrends>>["data"] | null;
   if (!data) {
-    isFallback = true;
-    const loaded = await loadEconomicsTrends({ windowLabel: label });
+    // Cacheable when D1-served — see handleTrajectory above.
+    const d1Generation = currentD1ReadFailureGeneration();
+    const loaded = await loadEconomicsTrends({
+      windowLabel: label,
+      windowDays: days,
+      db: env.METAGRAPH_HEALTH_DB,
+    });
     data = loaded.data;
+    isFallback =
+      !env.METAGRAPH_HEALTH_DB ||
+      currentD1ReadFailureGeneration() !== d1Generation;
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(

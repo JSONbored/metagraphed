@@ -15,9 +15,11 @@ import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
+  loadSubnetTrajectory,
   loadSubnetUptime,
   type ObservationsReadDb,
 } from "../src/analytics-live.ts";
+import { loadEconomicsTrends } from "../src/economics-trends.ts";
 
 const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
@@ -268,4 +270,85 @@ test("an all() result that is neither an array nor { results } yields zero rows"
     surfaces: unknown[];
   };
   assert.deepEqual(data.surfaces, []);
+});
+
+function seedSnapshot(over: Record<string, unknown> = {}) {
+  const row = {
+    netuid: 8,
+    snapshot_date: "2026-08-01",
+    completeness_score: 70,
+    surface_count: 5,
+    endpoint_count: 2,
+    validator_count: 64,
+    miner_count: 192,
+    total_stake_tao: 1234.5,
+    alpha_price_tao: 0.021,
+    emission_share: 0.0125,
+    tao_in_pool_tao: 400.5,
+    alpha_in_pool: 19000,
+    alpha_out_pool: 81000,
+    subnet_volume_tao: 55.25,
+    ...over,
+  };
+  db.prepare(
+    `INSERT INTO subnet_snapshots
+     (netuid, snapshot_date, completeness_score, surface_count, endpoint_count, validator_count, miner_count, total_stake_tao, alpha_price_tao, emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool, subnet_volume_tao)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    ...([
+      row.netuid,
+      row.snapshot_date,
+      row.completeness_score,
+      row.surface_count,
+      row.endpoint_count,
+      row.validator_count,
+      row.miner_count,
+      row.total_stake_tao,
+      row.alpha_price_tao,
+      row.emission_share,
+      row.tao_in_pool_tao,
+      row.alpha_in_pool,
+      row.alpha_out_pool,
+      row.subnet_volume_tao,
+    ] as never[]),
+  );
+}
+
+test("loadSubnetTrajectory reads snapshot rows from D1 and formats them", async () => {
+  seedSnapshot();
+  seedSnapshot({ snapshot_date: "2026-08-02", completeness_score: 72 });
+  const data = (await loadSubnetTrajectory(8, { db: readDb() })) as {
+    netuid: unknown;
+    point_count: number;
+    points: { date: string }[];
+  };
+  assert.equal(data.point_count, 2);
+  assert.equal(data.points[0]!.date, "2026-08-01");
+});
+
+test("loadSubnetTrajectory without a binding keeps the empty trajectory", async () => {
+  seedSnapshot();
+  const data = (await loadSubnetTrajectory(8, {})) as { point_count: number };
+  assert.equal(data.point_count, 0);
+});
+
+test("loadEconomicsTrends aggregates snapshots per day, windowed and unwindowed", async () => {
+  seedSnapshot();
+  seedSnapshot({ netuid: 21, total_stake_tao: 100 });
+  seedSnapshot({ snapshot_date: "2026-07-01" });
+  const all = await loadEconomicsTrends({ windowLabel: "all", db: readDb() });
+  assert.equal((all.data.days as unknown[]).length, 2, "both days aggregated");
+  const windowed = await loadEconomicsTrends({
+    windowLabel: "30d",
+    windowDays: 30,
+    now: Date.parse("2026-08-02T00:00:00Z"),
+    db: readDb(),
+  });
+  assert.equal(
+    (windowed.data.days as unknown[]).length,
+    1,
+    "2026-07-01 sits outside the 30-day cutoff and is dropped",
+  );
+  const noDb = await loadEconomicsTrends({ windowLabel: "30d" });
+  assert.deepEqual(noDb.rows, []);
 });

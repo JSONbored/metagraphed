@@ -10,6 +10,7 @@ import {
   formatIncidents,
   formatLeaderboards,
   formatPercentiles,
+  formatTrajectory,
   formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
@@ -81,7 +82,7 @@ export function currentD1ReadFailureGeneration(): number {
 // the schema-stable empty payload has been their floor since 2026-07-17.
 // console.error keeps the failure diagnosable in the tail without making a
 // read failure a route failure.
-async function d1All(
+export async function d1All(
   db: ObservationsReadDb | null | undefined,
   sql: string,
   params: unknown[],
@@ -628,6 +629,31 @@ export async function loadGlobalIncidentRows(
       MAX_INCIDENT_ROWS,
     ],
   );
+}
+
+// One subnet's trajectory from the daily snapshots (shared by the REST route,
+// the MCP tool, and GraphQL — moved here from health-serving.ts when its D1
+// read was resurrected, 2026-08-02, because the read helper lives in this
+// module and health-serving is this module's own import). With a `db` binding
+// this runs the pre-elimination subnet_snapshots query; without one it keeps
+// the schema-stable empty trajectory (the 2026-07-17 floor).
+export async function loadSubnetTrajectory(
+  netuid: unknown,
+  { db = null }: { db?: ObservationsReadDb | null } = {},
+): Promise<Record<string, unknown>> {
+  const rows = await d1All(
+    db,
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
+            subnet_volume_tao
+     FROM subnet_snapshots
+     WHERE netuid = ?
+     ORDER BY snapshot_date DESC
+     LIMIT 400`,
+    [netuid],
+  );
+  return formatTrajectory({ netuid, rows });
 }
 
 // D1 fully eliminated (2026-07-17): surface_status/subnet_snapshots/
