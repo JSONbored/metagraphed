@@ -176,6 +176,23 @@ export function safeBlockNumber(value: unknown): number | null {
   return Number.isSafeInteger(n) ? n : null;
 }
 
+/** An SS58 address that is safe to inline: only the base58 alphabet, at the
+ * lengths Substrate addresses actually take. Refused rather than escaped, for
+ * the same reason as the other literal guards here. */
+export function safeSs58Literal(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return /^[1-9A-HJ-NP-Za-km-z]{47,49}$/.test(value) ? value : null;
+}
+
+/** A bare SQL identifier value (a pallet or call name). These reach a
+ * string-built query as VALUES, not as identifiers, but the character set is
+ * still constrained to what the chain actually emits so nothing else can be
+ * smuggled through. */
+export function safeNameLiteral(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(value) ? value : null;
+}
+
 /** A 0x-prefixed hex hash that is safe to inline. Anything else is refused
  * rather than escaped — this codebase's hashes are always plain hex, so a
  * value that is not is a bug or an attack, and neither should reach the

@@ -23,7 +23,12 @@
 //     cache. See src/r2-sql.ts's header for the measurements.
 
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
-import { r2SqlQuery, safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
+import {
+  r2SqlQuery,
+  safeBlockNumber,
+  safeHexLiteral,
+  safeSs58Literal,
+} from "./r2-sql.ts";
 
 /** Columns the formatters need — kept identical to the Postgres tier's SELECT
  * list so both tiers hand the formatter the same shape. */
@@ -54,8 +59,9 @@ export interface BlockFeedQuery {
  * since R2 SQL has no bound parameters and this value reaches a string-built
  * query. Anything else is refused rather than escaped. */
 export function safeAuthorLiteral(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  return /^[1-9A-HJ-NP-Za-km-z]{47,49}$/.test(value) ? value : null;
+  // Delegates to the shared SS58 guard so block authors and extrinsic signers
+  // cannot drift apart into two subtly different notions of a valid address.
+  return safeSs58Literal(value);
 }
 
 /**
