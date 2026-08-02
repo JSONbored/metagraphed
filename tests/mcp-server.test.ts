@@ -8427,6 +8427,106 @@ describe("list_subnets", () => {
     },
   });
 
+  // #8942. Dispatch enforces none of the published inputSchemas, and the audit
+  // found these four properties were the ENTIRE dangerous set across all 235
+  // enum properties on 207 tools: 231 already reject by hand, and these
+  // silently degraded instead. The `not_` pair is the closer analogue of #8804
+  // -- the agent asked to EXCLUDE something, got no error, and got back exactly
+  // what it excluded.
+  describe("list_subnets categorical enum enforcement (#8942)", () => {
+    const enumDeps = () =>
+      makeDeps({
+        "/metagraph/subnets.json": {
+          subnets: [
+            {
+              netuid: 7,
+              slug: "a",
+              name: "A",
+              coverage_level: "probed",
+              curation_level: "maintainer-reviewed",
+            },
+            {
+              netuid: 8,
+              slug: "b",
+              name: "B",
+              coverage_level: "manifested",
+              curation_level: "native",
+            },
+          ],
+        },
+      });
+
+    test("an out-of-enum inclusion errors instead of returning an empty page", async () => {
+      const res = await callTool(
+        "list_subnets",
+        { curation_level: "not-a-real-level" },
+        { deps: enumDeps() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /must be one of/);
+    });
+
+    // The worse half: an unmatched EXCLUSION excluded nothing, so the caller
+    // got the full list back and no indication its filter had been ignored.
+    test("an out-of-enum exclusion errors instead of silently not filtering", async () => {
+      const res = await callTool(
+        "list_subnets",
+        { not_coverage_level: "nonsense" },
+        { deps: enumDeps() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /must be one of/);
+    });
+
+    // workers/list-query.ts made REST enum membership case-insensitive in
+    // #2073 explicitly "like the MCP list_subnets tool (which lowercases its
+    // args)". A strict membership test would close the hole above by breaking
+    // that parity in the other direction, so a differently-cased MEMBER must
+    // still work.
+    test("a differently-cased member still filters, preserving REST parity", async () => {
+      const out = (
+        await callTool(
+          "list_subnets",
+          { curation_level: "Maintainer-Reviewed" },
+          { deps: enumDeps() },
+        )
+      ).body.result.structuredContent;
+      assert.equal(out.total, 1);
+      assert.equal(out.subnets[0].netuid, 7);
+    });
+
+    // status/subnet_type/domain are DELIBERATELY free-text on this tool (see
+    // schemas-src/mcp-tools/list-subnets.ts's header). Validating them would be
+    // a behaviour change nobody asked for.
+    test("free-text categoricals are still unvalidated", async () => {
+      const res = await callTool(
+        "list_subnets",
+        { status: "whatever-string-i-like" },
+        { deps: enumDeps() },
+      );
+      // Not an error -- it simply matches nothing, which is the correct
+      // behaviour for a free-text filter and the WRONG behaviour for an enum.
+      assert.equal(res.body.result.isError, false);
+      assert.equal(res.body.result.structuredContent.total, 0);
+    });
+
+    test("valid members and omission are unaffected", async () => {
+      const filtered = (
+        await callTool(
+          "list_subnets",
+          { coverage_level: "probed" },
+          { deps: enumDeps() },
+        )
+      ).body.result.structuredContent;
+      assert.equal(filtered.total, 1);
+      assert.equal(filtered.subnets[0].netuid, 7);
+
+      const all = (await callTool("list_subnets", {}, { deps: enumDeps() }))
+        .body.result.structuredContent;
+      assert.equal(all.total, 2);
+    });
+  });
+
   test("network:test reads the testnet index, finney matches the default (#8228)", async () => {
     const localDeps = makeDeps({
       "/metagraph/subnets.json": {

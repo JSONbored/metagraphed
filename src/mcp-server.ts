@@ -44,7 +44,11 @@ import {
   ListSubnetsInputSchema,
   ListSubnetsOutputSchema,
 } from "../schemas-src/mcp-tools/list-subnets.ts";
-import { McpNetworkSchema } from "../schemas-src/shared.ts";
+import {
+  CoverageLevelSchema,
+  CurationLevelSchema,
+  McpNetworkSchema,
+} from "../schemas-src/shared.ts";
 import {
   GetSubnetInputSchema,
   GetSubnetOutputSchema,
@@ -3236,6 +3240,52 @@ function subnetCategoricalMatch(subnet: Row, field: string, value: unknown) {
   return String(subnet[field] ?? "").toLowerCase() === value;
 }
 
+// #8942: the two categoricals list_subnets actually publishes an enum for.
+// `status`/`subnet_type`/`domain` are DELIBERATELY free-text here (see
+// schemas-src/mcp-tools/list-subnets.ts's own header) and must stay unvalidated
+// -- only these two are constrained on the wire, so only these two are checked.
+//
+// Members are read from the shared Zod enums the published inputSchema is
+// derived from, not re-listed, so the guard cannot drift from what we advertise.
+const LIST_SUBNETS_ENUM_MEMBERS: Record<string, readonly string[]> = {
+  coverage_level: CoverageLevelSchema.options,
+  curation_level: CurationLevelSchema.options,
+};
+
+/**
+ * Reject a categorical value that is not a member of its published enum.
+ *
+ * #8942: dispatch enforces none of the published schemas -- validateToolArguments
+ * checks only object-ness and unknown keys -- so before this, an out-of-enum
+ * value here was accepted and then simply matched nothing. The audit found this
+ * was the ENTIRE dangerous set across all 235 enum properties on 207 tools:
+ * 231 already reject by hand, and these four (the two below plus their `not_`
+ * counterparts) silently degraded instead:
+ *
+ *   coverage_level / curation_level      -> matched no row -> HTTP 200 with
+ *                                           subnets: [], total: 0
+ *   not_coverage_level / not_curation_level -> excluded no row -> the full
+ *                                           list, silently UNFILTERED
+ *
+ * The `not_` pair is the closer analogue of #8804: the agent asked to exclude
+ * something, got no error, and got back exactly what it excluded.
+ *
+ * Case-INSENSITIVE on purpose. workers/list-query.ts made REST enum membership
+ * case-insensitive in #2073 explicitly "like the MCP list_subnets tool (which
+ * lowercases its args)", so a strict membership test here would close one hole
+ * by breaking that parity in the other direction -- MCP stricter than REST, for
+ * a value we already know how to interpret. Rejecting a NON-MEMBER and
+ * accepting a differently-cased MEMBER are separable, and this does both.
+ */
+function requireCategoricalEnumMember(arg: string, lowered: string) {
+  const allowed = LIST_SUBNETS_ENUM_MEMBERS[arg];
+  if (!allowed || allowed.includes(lowered)) return;
+  throw toolError(
+    "invalid_params",
+    `Argument \`${arg}\` must be one of: ${allowed.join(", ")}.`,
+  );
+}
+
 // Apply the categorical filters: keep rows matching every `field=v` and matching
 // none of the `not_field=v` exclusions (case-insensitive). A row missing the
 // field never matches, so it survives an exclusion but fails an inclusion.
@@ -3244,10 +3294,18 @@ export function categoricalFilterSubnets(rows: Row[], args: Row) {
   const excludes: { field: string; value: string }[] = [];
   for (const arg of LIST_SUBNETS_CATEGORICAL) {
     const inc = typeof args?.[arg] === "string" ? args[arg].trim() : "";
-    if (inc) includes.push({ field: arg, value: inc.toLowerCase() });
+    if (inc) {
+      const lowered = inc.toLowerCase();
+      requireCategoricalEnumMember(arg, lowered);
+      includes.push({ field: arg, value: lowered });
+    }
     const exc =
       typeof args?.[`not_${arg}`] === "string" ? args[`not_${arg}`].trim() : "";
-    if (exc) excludes.push({ field: arg, value: exc.toLowerCase() });
+    if (exc) {
+      const lowered = exc.toLowerCase();
+      requireCategoricalEnumMember(arg, lowered);
+      excludes.push({ field: arg, value: lowered });
+    }
   }
   if (includes.length === 0 && excludes.length === 0) {
     return rows;
