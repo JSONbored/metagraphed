@@ -33,6 +33,8 @@
 // (bittensor 10.4.0, substrate.create_storage_key("SubtensorModule",
 // "RAORecycledForRegistration", [netuid])) across netuid 0/1/4/101/65535.
 
+import type { FieldSources } from "./field-provenance.ts";
+
 type Row = Record<string, unknown>;
 
 export const RECYCLED_KV_TTL = 600; // seconds — a registration-count counter, not a live price
@@ -92,7 +94,23 @@ function raoToTao(rao: bigint): number {
 // malformed result (schema-stable, never throws). A subnet with zero
 // registrations reads back the chain's own 0x00...0 ValueQuery default,
 // decoding to a real 0, not null.
-export async function loadSubnetRecycled(
+/**
+ * Where each published value came from (#9104).
+ *
+ * `measured`, and naming the item is the point: this is the chain's own
+ * cumulative counter, deliberately NOT an account_events aggregation -- the
+ * burn amount is captured by no ingested event or extrinsic field, so
+ * reconstructing it from the log layer is not possible. The map says which of
+ * those two things the number is, in band.
+ */
+export const SUBNET_RECYCLED_FIELD_SOURCES = {
+  recycled_tao: {
+    kind: "measured",
+    storage: "SubtensorModule.RAORecycledForRegistration",
+  },
+} as const satisfies FieldSources;
+
+async function loadSubnetRecycledSnapshot(
   env: Env,
   netuid: number,
 ): Promise<Row> {
@@ -167,4 +185,22 @@ export async function loadSubnetRecycled(
   }
 
   return payload;
+}
+
+/**
+ * The served scorecard: the snapshot above plus its provenance map.
+ *
+ * Attached outside the loader so it never enters the KV blob -- at a 600s TTL
+ * an entry cached before #9104 would otherwise serve without provenance for the
+ * rest of its life. It is also the single point REST, GraphQL and MCP all
+ * inherit it from, rather than three call sites kept in step by hand.
+ */
+export async function loadSubnetRecycled(
+  env: Env,
+  netuid: number,
+): Promise<Row> {
+  return {
+    ...(await loadSubnetRecycledSnapshot(env, netuid)),
+    field_sources: SUBNET_RECYCLED_FIELD_SOURCES,
+  };
 }
