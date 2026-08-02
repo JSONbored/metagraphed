@@ -29,6 +29,8 @@
 // Safe no-op when POSTHOG_PROJECT_TOKEN is unset — self-hosters / local / CI
 // see zero behavior change. Never throws.
 
+import { ErrorTracking } from "@posthog/core";
+
 /** Env var holding the PostHog project API token (wrangler secret). */
 export const POSTHOG_PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN";
 
@@ -762,144 +764,45 @@ export async function recordMcpToolsListEvent(
   }
 }
 
-// Error tracking via PostHog's manual/raw $exception capture (#7758). No SDK
-// needed for this either -- PostHog documents a raw capture-API shape for
-// exactly the "no SDK for your platform" case (a real, first-class path, not
-// a hack). The public docs page (posthog.com/docs/api/capture) only
-// summarizes the shape; the exact property names/types below are confirmed
-// against PostHog's own repo (docs/onboarding/error-tracking/api.tsx, the
-// source their public docs render from), including a real example payload.
-// Originally landed as a parallel-run alongside each site's existing
-// Sentry.captureException call, additive rather than a replacement
-// (metagraphed#7757 is the consolidation epic). #7766 has since removed
-// Sentry everywhere this wires into once parity was proven, so PostHog is
-// now the only exception-capture path at every one of these call sites.
-
-/** One PostHog `$exception_list` stack frame.
- *
- * `platform` is "node:javascript", NOT the "custom" that PostHog's
- * manual-capture docs show (#9045). Those two values mean different things to
- * the symbolication pipeline, and the difference is why every Worker issue
- * rendered raw bundle positions (`data-api.js@93344:18`) for months despite
- * sourcemaps being uploaded correctly on every deploy since #8131:
- *
- *   - "custom" marks a frame the sender already resolved itself. PostHog takes
- *     the filename/lineno at face value and never looks for a symbol set. It
- *     is the right value when you ship unminified code and hand-build frames
- *     that already point at real sources.
- *   - "node:javascript" marks a frame from a real JS runtime that may be
- *     minified. This is what posthog-node itself emits (verified in the pinned
- *     dependency, node_modules/posthog-node/src/extensions/sentry-integration.ts,
- *     which maps every frame to `platform: 'node:javascript'` alongside
- *     `stacktrace.type: 'raw'`). It is what makes PostHog attempt resolution.
- *
- * We ship a minified bundle, so "custom" was simply the wrong one of the two.
- *
- * `chunk_id` is the other half: it ties the frame to a specific uploaded
- * sourcemap. See resolvePostHogChunkId. */
-interface ExceptionStackFrame {
-  platform: "node:javascript";
-  lang: "javascript";
-  function: string;
-  filename?: string;
-  lineno?: number;
-  colno?: number;
-  in_app?: boolean;
-  chunk_id?: string;
-}
-
-// The global `posthog-cli sourcemap inject` writes into the deployed bundle.
-// Verified empirically by running the CLI against a bundle: it prepends an
-// IIFE that does, in effect,
+// Error tracking via PostHog's `$exception` capture (#7758).
 //
-//   globalThis._posthogChunkIds[new Error().stack] = "<uuid>"
+// The exception SHAPE is built by @posthog/core's own ErrorPropertiesBuilder
+// (#9068) rather than by hand. It was hand-written for as long as the bundle
+// budget claimed a 1 MiB ceiling; #9060 established the real ceiling is 10 MB
+// on Workers Paid, and with that gone there is no reason to keep a private
+// copy of a shaper the ecosystem maintains. What the library does that the
+// hand-written version did not:
 //
-// keyed by the stack of an Error constructed at the top of that chunk, and
-// appends a matching `//# chunkId=<uuid>` comment. The uuid is what the
-// uploaded sourcemap is filed under, so a frame carrying it resolves without
-// PostHog having to match bundle URLs (which would never work here: a Worker
-// stack yields a bare "data-api.js", not the public URL the map was uploaded
-// against -- the exact "source map paths must match your production bundle
-// URLs exactly" failure mode in PostHog's own troubleshooting docs).
-interface PostHogChunkIdRegistry {
-  _posthogChunkIds?: Record<string, string>;
-}
+//   - attaches chunk_id PER FILENAME via getFilenameToChunkIdMap; ours only
+//     worked when exactly one distinct chunk registered itself and gave up
+//     entirely under code splitting,
+//   - emits `platform: "node:javascript"` from the parser, so the field that
+//     took months to get right (#9045) can no longer drift,
+//   - walks `{ cause }` chains, which we dropped on the floor entirely,
+//   - coerces non-Error throws (string, object, DOMException, ErrorEvent)
+//     instead of collapsing them through String(),
+//   - carries Sentry's hardened frame parsing/reversal/limits upstream.
+//
+// The TRANSPORT deliberately stays ours: one fetch per event. posthog-node's
+// client batches on a flush interval for a long-lived Node process, and a
+// Workers isolate can be evicted between requests, so a batched event is a
+// dropped event. We adopt the library's shaping, not its client lifecycle.
 
-/** The chunk id of the running bundle, or undefined when the marker is absent
- * (local dev, tests, or a deploy that skipped the inject step).
- *
- * These Workers are each a SINGLE flat bundle with no code splitting -- the
- * property scripts/deploy-worker-with-sourcemaps.sh already depends on when it
- * globs one `<entry>.js` to deploy -- so exactly one chunk registers itself and
- * its id applies to every frame. Anything else (zero entries, or several after
- * a future switch to code splitting) returns undefined rather than guessing:
- * a wrong chunk id would resolve frames against the wrong sourcemap, which is
- * worse than leaving them unresolved. */
-export function resolvePostHogChunkId(
-  scope: PostHogChunkIdRegistry = globalThis as PostHogChunkIdRegistry,
-): string | undefined {
-  try {
-    const registry = scope?._posthogChunkIds;
-    if (!registry || typeof registry !== "object") return undefined;
-    const ids = Object.values(registry).filter(
-      (id): id is string => typeof id === "string" && id.length > 0,
-    );
-    const unique = [...new Set(ids)];
-    return unique.length === 1 ? unique[0] : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-// Caps how many stack frames get sent -- a runaway recursive error could
-// otherwise produce hundreds of near-identical frames for little value.
-const MAX_EXCEPTION_FRAMES = 30;
-
-// Matches V8's `Error.prototype.stack` frame format (Workers run the same V8
-// engine Node does): "    at functionName (file:line:col)" or
-// "    at file:line:col" for an anonymous/top-level frame. Never throws on
-// an unrecognized line -- it still becomes a frame (the raw text as
-// `function`, no file/line/col) rather than being silently dropped.
-const STACK_FRAME_PATTERN =
-  /^\s*at\s+(?:(.+?)\s+\()?([^()]+):(\d+):(\d+)\)?\s*$/;
-
-function parseStackFrames(stack: string): ExceptionStackFrame[] {
-  // The first line is "ErrorName: message", not a frame.
-  const lines = stack.split("\n").slice(1, MAX_EXCEPTION_FRAMES + 1);
-  const frames: ExceptionStackFrame[] = [];
-  // Resolved once per exception, not per frame: every frame in a
-  // single-bundle Worker belongs to the same chunk.
-  const chunkId = resolvePostHogChunkId();
-  const chunk = chunkId === undefined ? {} : { chunk_id: chunkId };
-  for (const line of lines) {
-    const match = STACK_FRAME_PATTERN.exec(line);
-    if (match) {
-      const [, fn, filename, lineno, colno] = match;
-      frames.push({
-        platform: "node:javascript",
-        lang: "javascript",
-        function: fn?.trim() || "<anonymous>",
-        filename: filename.trim(),
-        lineno: Number(lineno),
-        colno: Number(colno),
-        in_app: !filename.includes("node_modules"),
-        ...chunk,
-      });
-    } else if (line.trim()) {
-      frames.push({
-        platform: "node:javascript",
-        lang: "javascript",
-        function: line.trim(),
-        ...chunk,
-      });
-    }
-  }
-  // PostHog/Sentry's event protocol (this shape is explicitly modeled on
-  // Sentry's) orders frames oldest-call-first -- the LAST entry is where the
-  // exception was thrown. That's the reverse of how V8 prints a stack
-  // (most-recent-call-first), so the parsed order is reversed here to match.
-  return frames.reverse();
-}
+// Immutable: coercer set and parser never vary per call, so build once per
+// isolate rather than per exception.
+const EXCEPTION_STACK_PARSER = ErrorTracking.createStackParser(
+  "node:javascript",
+  ErrorTracking.nodeStackLineParser,
+);
+const EXCEPTION_PROPERTIES_BUILDER = new ErrorTracking.ErrorPropertiesBuilder(
+  [
+    new ErrorTracking.ErrorCoercer(),
+    new ErrorTracking.StringCoercer(),
+    new ErrorTracking.ObjectCoercer(),
+    new ErrorTracking.PrimitiveCoercer(),
+  ],
+  EXCEPTION_STACK_PARSER,
+);
 
 /** Inputs for a captured exception. `error` is the raw caught value -- this
  * module extracts type/message/stack itself, callers never format it.
@@ -949,31 +852,27 @@ function exceptionListEntry(error: unknown): {
   type: string;
   entry: Record<string, unknown>;
 } {
-  const isError = error instanceof Error;
-  const type =
-    sanitizeLabel(isError && error.name ? error.name : "Error") ?? "Error";
-  const rawMessage = isError ? error.message : String(error);
+  const built = EXCEPTION_PROPERTIES_BUILDER.buildFromUnknown(error, {
+    // Every capture site wraps a genuinely caught (try/catch), non-fatal
+    // fault -- never an uncaught/fatal one. Since #7766 removed Sentry's
+    // automatic withSentry() wrap, a truly uncaught throw has no dedicated
+    // $exception capture of its own; it still surfaces as an ok:false usage
+    // event (and trace span, if sampled) via withUsageTelemetry's finally
+    // block in workers/api.ts, just without a stack trace.
+    mechanism: { handled: true, type: "generic" },
+  });
+  const entry = (built.$exception_list?.[0] ?? {}) as Record<string, unknown>;
+  const type = sanitizeLabel(entry.type) ?? "Error";
+  // Two things stay OURS on top of the library's shape, because neither is a
+  // reimplementation of anything it provides: the Hyperdrive-host collapse
+  // that keeps one logical fault from splitting into an Issue per connection
+  // (normalizeExceptionMessage), and the label cap every free-form field in
+  // this module gets.
+  const rawValue =
+    typeof entry.value === "string" ? entry.value : String(entry.value ?? "");
   const value =
-    sanitizeLabel(normalizeExceptionMessage(rawMessage)) ?? "(no message)";
-  const frames =
-    isError && typeof error.stack === "string"
-      ? parseStackFrames(error.stack)
-      : [];
-  return {
-    type,
-    entry: {
-      type,
-      value,
-      // Every capture site wraps a genuinely caught (try/catch), non-fatal
-      // fault -- never an uncaught/fatal one. Since #7766 removed Sentry's
-      // automatic withSentry() wrap, a truly uncaught throw has no dedicated
-      // $exception capture of its own; it still surfaces as an ok:false
-      // usage event (and trace span, if sampled) via withUsageTelemetry's
-      // finally block in workers/api.ts, just without a stack trace.
-      mechanism: { handled: true, synthetic: false },
-      stacktrace: { type: "raw", frames },
-    },
-  };
+    sanitizeLabel(normalizeExceptionMessage(rawValue)) ?? "(no message)";
+  return { type, entry: { ...entry, type, value } };
 }
 
 /**
