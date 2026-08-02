@@ -4811,7 +4811,20 @@ function buildFreshnessArtifact({
         lane: "adapter-snapshot",
         pathValue: `registry/adapters/latest/${row.slug}.json`,
         requiredForPublish: false,
-        staleAfterHours: 12,
+        // Same window as this lane's own aggregate (`adapter-snapshots`, just
+        // above) and for the same reason: the publish re-snapshots adapters, so
+        // the refresh cadence these rows are measured against is the publish's,
+        // and the publish runs daily.
+        //
+        // This was a hardcoded 12 with no stated rationale, which made every
+        // adapter row report itself stale for roughly half of every day even
+        // when the pipeline was perfectly healthy -- a source cannot be fresher
+        // than the job that writes it, and declaring otherwise turns a freshness
+        // contract into permanent background noise. Tying it to the same
+        // env-configurable knob as the rest of the lane also means ops widening
+        // the window during a lag (METAGRAPH_FRESHNESS_BLOCKING_HOURS) no longer
+        // silently skips these rows.
+        staleAfterHours: blockingHours,
         status: row.status,
         staleBehavior: "warn",
       }),
