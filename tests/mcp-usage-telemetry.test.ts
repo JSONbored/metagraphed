@@ -168,7 +168,15 @@ describe("MCP tool-dispatch usage telemetry", () => {
     assert.deepEqual(spy.events, []);
   });
 
-  test("does not record tools/list — only tool invocations", async () => {
+  // #8993 CHANGED THIS DELIBERATELY. This used to assert tools/list recorded
+  // NOTHING, which was true and was the bug: 9 of 14 dispatch cases were
+  // silent, so "MCP usage" meant "tool calls" and nothing else. tools/list now
+  // records like every other protocol method.
+  //
+  // What must stay true is the distinction the original test was reaching for:
+  // a protocol event is not a TOOL event. It carries `route`, never `mcpTool`,
+  // so the tool-call count is unchanged by this.
+  test("records tools/list as a protocol event, not a tool invocation", async () => {
     const spy = recorder();
     await callMcp(
       { jsonrpc: "2.0", id: 1, method: "tools/list" },
@@ -179,7 +187,10 @@ describe("MCP tool-dispatch usage telemetry", () => {
       },
     );
 
-    assert.deepEqual(spy.events, []);
+    assert.equal(spy.events.length, 1);
+    const event = spy.events[0].event as Row;
+    assert.equal(event.route, "mcp:tools/list");
+    assert.equal(event.mcpTool, undefined);
   });
 
   test("falls back to the real recorder when none is injected", async () => {
@@ -803,5 +814,137 @@ describe("MCP semantic-search degradation (ai_degraded)", () => {
       },
     );
     assert.equal(payload.result.isError, false);
+  });
+});
+
+// #8993: 9 of the 14 cases in dispatchMessage's switch emitted NOTHING — every
+// resources/* method (including resources/subscribe, which MCP_CAPABILITIES
+// advertises), both prompts/*, ping, both notifications/*, and the
+// unknown-method default. Only initialize, tools/list and tools/call were
+// visible, so "MCP usage" really meant "tool calls" and whether agents read
+// resources at all was unanswerable.
+describe("MCP protocol-method usage telemetry", () => {
+  const rpcCall = (method: string, params?: Row) => ({
+    jsonrpc: "2.0",
+    id: 1,
+    method,
+    ...(params ? { params } : {}),
+  });
+
+  async function eventsFor(method: string, params?: Row, env = CONFIGURED_ENV) {
+    const spy = recorder();
+    await callMcp(rpcCall(method, params), env, {
+      executionCtx: fakeExecutionCtx(),
+      recordUsageEvent: spy.recordUsageEvent,
+    });
+    return spy.events.map((e) => e.event as Row);
+  }
+
+  test("every previously-silent protocol method now emits one event", async () => {
+    for (const method of [
+      "ping",
+      "resources/list",
+      "resources/templates/list",
+      "prompts/list",
+    ]) {
+      const events = await eventsFor(method);
+      assert.equal(events.length, 1, `${method} emitted ${events.length}`);
+      assert.equal(events[0].route, `mcp:${method}`);
+      assert.equal(events[0].ok, true);
+      assert.equal(typeof events[0].durationMs, "number");
+    }
+  });
+
+  // The one method that already had its own usage_event. Emitting here too
+  // would double-count every tool call in the project's headline number.
+  test("tools/call is NOT double-counted", async () => {
+    const events = await eventsFor("tools/call", {
+      name: TOOL,
+      arguments: {},
+    });
+    assert.equal(events.length, 1);
+    // The surviving event is the tool one (keyed by tool), not a protocol one.
+    assert.equal(events[0].mcpTool, TOOL);
+    assert.equal(events[0].route, undefined);
+  });
+
+  // An unknown method returns rpcError WITHOUT throwing, so timing alone would
+  // have recorded it as a success.
+  test("an unknown method is recorded as a failure", async () => {
+    const events = await eventsFor("totally/made/up");
+    assert.equal(events.length, 1);
+    assert.equal(events[0].ok, false);
+  });
+
+  // `method` is caller-supplied. Labelling it verbatim would mint a new route
+  // per request — the unbounded-cardinality defect #9001 removed elsewhere.
+  test("unknown methods collapse to one label rather than minting one each", async () => {
+    const a = await eventsFor("totally/made/up");
+    const b = await eventsFor("something/else/entirely");
+    assert.equal(a[0].route, "mcp:unknown");
+    assert.equal(b[0].route, "mcp:unknown");
+  });
+
+  // A notification has no response to inspect -- 202, empty body -- so
+  // server-side telemetry is the ONLY way it can ever be observed. callMcp
+  // parses JSON, so this drives handleMcpRequest directly.
+  test("a notification emits too, despite returning no response", async () => {
+    const spy = recorder();
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+      }),
+    });
+    const response = await handleMcpRequest(
+      request,
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        executionCtx: fakeExecutionCtx(),
+        recordUsageEvent: spy.recordUsageEvent,
+      }),
+    );
+    assert.equal(response.status, 202);
+    const events = spy.events.map((e) => e.event as Row);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].route, "mcp:notifications/initialized");
+  });
+
+  test("the caller's client and auth tier ride along", async () => {
+    const spy = recorder();
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "claude-code/2.1.220",
+      },
+      body: JSON.stringify(rpcCall("ping")),
+    });
+    await handleMcpRequest(
+      request,
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        executionCtx: fakeExecutionCtx(),
+        recordUsageEvent: spy.recordUsageEvent,
+      }),
+    );
+    const event = spy.events[0].event as Row;
+    assert.equal(event.client, "claude-code");
+    // No credential was presented, so the tier is the explicit "anonymous"
+    // (ADR 0027) rather than an omission.
+    assert.equal(event.authTier, "anonymous");
+  });
+
+  test("telemetry never changes the protocol response", async () => {
+    const withSpy = await callMcp(rpcCall("prompts/list"), CONFIGURED_ENV, {
+      executionCtx: fakeExecutionCtx(),
+      recordUsageEvent: () => {
+        throw new Error("recorder exploded");
+      },
+    });
+    const without = await callMcp(rpcCall("prompts/list"), {});
+    assert.deepEqual(withSpy, without);
   });
 });
