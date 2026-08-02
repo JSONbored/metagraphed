@@ -547,8 +547,32 @@ const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
 const RPC_USAGE_SYNC_SECRET = "test-rpc-usage-sync-secret";
 const NOMINATOR_POSITIONS_SYNC_SECRET = "test-nominator-positions-sync-secret";
 const ACCOUNT_BALANCES_SYNC_SECRET = "test-account-balances-sync-secret";
+/**
+ * Statements the neurons-sync D1 write path prepared (#9146), recorded the same
+ * way `sqlCalls` records the Postgres side so a test can assert on either.
+ */
+const d1Calls = vi.hoisted((): { sql: string; values: unknown[] }[] => []);
+/** Set by a test to make the next D1 batch reject, for the failure paths. */
+const d1Failure = vi.hoisted((): { error: Error | null } => ({ error: null }));
+
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
+  METAGRAPH_HEALTH_DB: {
+    prepare(sql: string) {
+      const entry = { sql, values: [] as unknown[] };
+      d1Calls.push(entry);
+      return {
+        bind(...values: unknown[]) {
+          entry.values = values;
+          return entry;
+        },
+      };
+    },
+    async batch(statements: unknown[]) {
+      if (d1Failure.error) throw d1Failure.error;
+      return statements.map(() => ({ success: true }));
+    },
+  },
   NEURONS_SYNC_SECRET,
   NEURON_DAILY_BACKFILL_SECRET,
   ROLLUP_SYNC_SECRET,
@@ -579,6 +603,8 @@ const queryParams = () =>
 
 beforeEach(() => {
   sqlCalls.length = 0;
+  d1Calls.length = 0;
+  d1Failure.error = null;
   sqlBeginOptions.length = 0;
   mockQueue.current = [];
   alphaPriceRows.current = null;
@@ -877,6 +903,8 @@ test("chain-events ignores malformed integer position filters", async () => {
 
   for (const path of cases) {
     sqlCalls.length = 0;
+    d1Calls.length = 0;
+    d1Failure.error = null;
     const res = await req(path);
     expect(res.status).toBe(200);
     const values = sqlCalls.flatMap((call) => call.values);
@@ -1495,6 +1523,8 @@ test("GET /api/v1/extrinsics with success=false filters correctly, distinct from
   expect(body.extrinsics[0].success).toBe(false);
   expect(queryText()).toContain("AND success =");
   sqlCalls.length = 0;
+  d1Calls.length = 0;
+  d1Failure.error = null;
   await req("/api/v1/extrinsics");
   expect(queryText()).not.toContain("AND success =");
 });
@@ -3813,6 +3843,69 @@ test("neurons-sync rejects a row missing a valid captured_at (400)", async () =>
 test("neurons-sync rejects an empty array (400)", async () => {
   const res = await postNeurons([], { secret: NEURONS_SYNC_SECRET });
   expect(res.status).toBe(400);
+});
+
+test("neurons-sync still writes when Hyperdrive is gone -- the wipe case (#9146)", async () => {
+  // The whole point of the D1 port. Once the box is wiped HYPERDRIVE is
+  // unbound, and this handler used to answer 503 to every sync: the only
+  // live-refreshed family in the product would stop advancing on the spot.
+  // No config change should be needed at wipe -- the same code path just
+  // stops finding Postgres.
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-neurons-sync-token": NEURONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([neuronSyncRow()]),
+    }),
+    { ...env, HYPERDRIVE: undefined } as unknown as Env,
+    ctx as unknown as ExecutionContext,
+  );
+  expect(res.status, "with no Postgres, D1 is the only store").toEqual(200);
+  const body = (await res.json()) as Row;
+  expect(body.stores, "with no Postgres, D1 is the only store").toEqual(["d1"]);
+  expect(
+    body.neurons_written,
+    "the snapshot must reach D1, not merely be acknowledged",
+  ).toEqual(1);
+  // And it really wrote: the snapshot reached D1, it was not just acknowledged.
+  expect(
+    d1Calls.some((call) => call.sql.startsWith("INSERT INTO neurons")),
+    "the snapshot must reach D1, not merely be acknowledged",
+  ).toBe(true);
+  // Postgres was never dialled -- no doomed subrequest to a dead origin.
+  expect(
+    sqlCalls.length,
+    "an unbound Hyperdrive must not be contacted at all",
+  ).toEqual(0);
+});
+
+test("neurons-sync fails the whole sync when D1 rejects (#9146)", async () => {
+  // D1 is where this data lives once the box is gone, so a D1 failure is a
+  // LOST snapshot -- it must not be reported as a success just because
+  // Postgres still happened to accept the same rows.
+  d1Failure.error = new Error("d1 down");
+  const res = await postNeurons([neuronSyncRow()], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status, "d1 write failed").toEqual(502);
+  expect(((await res.json()) as Row).error).toBe("d1 write failed");
+});
+
+test("neurons-sync writes both stores while the box lives (#9146)", async () => {
+  const res = await postNeurons([neuronSyncRow()], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.stores).toEqual(["d1", "postgres"]);
+  // Same snapshot into both, so a read served from either agrees.
+  expect(
+    d1Calls.some((call) => call.sql.startsWith("INSERT INTO neurons")),
+  ).toBe(true);
+  expect(queryText()).toMatch(/INSERT INTO neurons/);
 });
 
 test("neurons-sync upserts neurons + neuron_daily + account_position_daily and reports written counts", async () => {
@@ -9454,6 +9547,8 @@ test("subnet-snapshot-sync nulls a malformed pipeline_block_hash", async () => {
     12345,
   ]) {
     sqlCalls.length = 0;
+    d1Calls.length = 0;
+    d1Failure.error = null;
     const res = await postSubnetSnapshot(
       [snapshotRow({ pipeline_block_hash: bad })],
       { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
@@ -9482,6 +9577,8 @@ test("subnet-snapshot-sync accepts an upper-case pipeline_block_hash", async () 
 test("subnet-snapshot-sync nulls a non-finite pipeline_block", async () => {
   for (const bad of ["8740436", Number.NaN]) {
     sqlCalls.length = 0;
+    d1Calls.length = 0;
+    d1Failure.error = null;
     const res = await postSubnetSnapshot(
       [snapshotRow({ pipeline_block: bad })],
       { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
