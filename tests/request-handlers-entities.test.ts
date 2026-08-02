@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { describe, test } from "vitest";
+import { afterEach, describe, test } from "vitest";
 import {
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -2800,6 +2800,120 @@ describe("handleAccount", () => {
       "chain-events",
     );
     assert.equal(second.headers.get("etag"), etag);
+  });
+});
+
+describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", () => {
+  // One test per newly wired handler, all proving the same thing: with no
+  // Postgres flag set and R2 SQL configured, the lakehouse answer flows
+  // through the shared formatters into the response instead of the
+  // schema-stable empty. globalThis.fetch is the R2 SQL transport, restored
+  // after each test.
+  const LAKE_ENV = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
+  const realFetch = globalThis.fetch;
+  const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
+
+  function lakeFetch(...responses: unknown[][]) {
+    const queries: string[] = [];
+    let call = 0;
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      const rows = responses[Math.min(call, responses.length - 1)] ?? [];
+      call += 1;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return queries;
+  }
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  const SUDO_ROW = {
+    block_number: 4200,
+    extrinsic_index: 1,
+    extrinsic_hash: "0x" + "e".repeat(64),
+    signer: ADDR,
+    call_module: "Sudo",
+    call_function: "sudo",
+    call_args: null,
+    success: true,
+    fee_tao: null,
+    tip_tao: null,
+    observed_at: 1_700_000_004_200,
+  };
+  const EVENT_ROW = {
+    block_number: 4200,
+    event_index: 0,
+    extrinsic_index: 1,
+    event_kind: "StakeAdded",
+    hotkey: ADDR,
+    coldkey: null,
+    netuid: 7,
+    uid: 3,
+    amount_tao: "5000",
+    alpha_amount: null,
+    observed_at: 1_700_000_004_200,
+  };
+
+  test("handleSudo serves the Sudo-module feed from the lakehouse", async () => {
+    const q = lakeFetch([SUDO_ROW]);
+    const body = await json(
+      await handleSudo(req("/api/v1/sudo"), LAKE_ENV, url("/api/v1/sudo")),
+    );
+    assert.equal(body.data.extrinsics.length, 1);
+    assert.match(q[0]!, /call_module = 'Sudo'/);
+  });
+
+  test("handleGovernanceConfigChanges serves the AdminUtils feed", async () => {
+    const q = lakeFetch([{ ...SUDO_ROW, call_module: "AdminUtils" }]);
+    const body = await json(
+      await handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes"),
+        LAKE_ENV,
+        url("/api/v1/governance/config-changes?success=true"),
+      ),
+    );
+    assert.equal(body.data.extrinsics.length, 1);
+    assert.match(q[0]!, /call_module = 'AdminUtils'/);
+    assert.match(q[0]!, /success = TRUE/);
+  });
+
+  test("handleBlockEvents serves one block's events from the lakehouse", async () => {
+    const q = lakeFetch([EVENT_ROW]);
+    const body = await json(
+      await handleBlockEvents(
+        req("/api/v1/blocks/4200/events"),
+        LAKE_ENV,
+        "4200",
+        url("/api/v1/blocks/4200/events"),
+      ),
+    );
+    assert.equal(body.data.events.length, 1);
+    assert.equal(body.data.block_number, 4200);
+    assert.match(q[0]!, /ORDER BY event_index ASC/);
+  });
+
+  test("handleAccountEvents serves the account feed from the lakehouse", async () => {
+    const q = lakeFetch([EVENT_ROW]);
+    const body = await json(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${ADDR}/events`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/events?kind=StakeAdded`),
+      ),
+    );
+    assert.equal(body.data.events.length, 1);
+    assert.match(q[0]!, /event_kind = 'StakeAdded'/);
+    assert.match(
+      q[0]!,
+      new RegExp(`hotkey = '${ADDR}' OR coldkey = '${ADDR}'`),
+    );
   });
 });
 

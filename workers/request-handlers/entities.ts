@@ -145,6 +145,10 @@ import {
   loadExtrinsicColdTier,
   loadExtrinsicFeedColdTier,
 } from "../../src/extrinsics-cold-tier.ts";
+import {
+  loadAccountEventsColdTier,
+  loadBlockEventsColdTier,
+} from "../../src/events-cold-tier.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
@@ -3657,6 +3661,15 @@ export async function handleAccountEvents(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildAccountEvents> | null) ??
+    (await loadAccountEventsColdTier(env, ss58, {
+      limit: parsedLimit,
+      offset: parsedOffset,
+      cursor: url.searchParams.get("cursor"),
+      kind: url.searchParams.get("kind"),
+      netuid: url.searchParams.get("netuid"),
+      blockStart: url.searchParams.get("block_start"),
+      blockEnd: url.searchParams.get("block_end"),
+    })) ??
     buildAccountEvents([], ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -5038,7 +5051,11 @@ export async function handleBlockEvents(
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
   )) as { data: ReturnType<typeof buildBlockEvents> } | null) ?? {
-    data: buildBlockEvents([], ref, null, { limit, offset }),
+    // Lazily built only when the Postgres tier missed: `??` evaluates its
+    // right side lazily, so the lakehouse is not queried on the hot path.
+    data:
+      (await loadBlockEventsColdTier(env, ref, { limit, offset })) ??
+      buildBlockEvents([], ref, null, { limit, offset }),
   };
   // CSV reuses the account-events EVENTS_CSV_COLUMNS — buildBlockEvents maps the
   // same formatAccountEvent row shape (#5746). Cold block → empty → header-only.
@@ -5230,6 +5247,22 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
+    // The category predicate is data-api's own pathname->module mapping
+    // ("Sudo"), expressed against the lakehouse verbatim -- same feed, same
+    // cursor, one fixed filter.
+    (await loadExtrinsicFeedColdTier(env, {
+      limit,
+      offset,
+      module: "Sudo",
+      cursor: sp.get("cursor"),
+      callFunction: sp.get("call_function"),
+      success: successRaw === null ? null : successRaw === "true",
+      block: sp.get("block"),
+      blockStart: sp.get("block_start"),
+      blockEnd: sp.get("block_end"),
+      from: sp.get("from"),
+      to: sp.get("to"),
+    })) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -5305,6 +5338,22 @@ export async function handleGovernanceConfigChanges(
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
+    // The category predicate is data-api's own pathname->module mapping
+    // ("AdminUtils"), expressed against the lakehouse verbatim -- same feed, same
+    // cursor, one fixed filter.
+    (await loadExtrinsicFeedColdTier(env, {
+      limit,
+      offset,
+      module: "AdminUtils",
+      cursor: sp.get("cursor"),
+      callFunction: sp.get("call_function"),
+      success: successRaw === null ? null : successRaw === "true",
+      block: sp.get("block"),
+      blockStart: sp.get("block_start"),
+      blockEnd: sp.get("block_end"),
+      from: sp.get("from"),
+      to: sp.get("to"),
+    })) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
